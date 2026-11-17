@@ -538,7 +538,11 @@ export async function renderScreen(
   if (states.length === 0) states.push({ state: 'sampled', data: {} })
 
   const viewports = VIEWPORTS.filter((viewport) => (args.viewports ?? VIEWPORTS).includes(viewport))
-  const members = context.registry.components.map(({ name, props }) => ({ name, props }))
+  const members = context.registry.components.map(({ name, props, parts }) => ({
+    name,
+    props,
+    parts,
+  }))
 
   const files = await pageOf(context.screenBuilder)
   const browser = await launch(context.root)

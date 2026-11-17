@@ -52,6 +52,8 @@ export function resolveComponent(name: string): ComponentType<Record<string, unk
 export interface MemberProps {
   name: string
   props: readonly RegistryProp[]
+  /** Its compound parts, each with the props its function takes (`Panel` for `Dashboard.Panel`). */
+  parts: readonly { name: string; props: readonly RegistryProp[] }[]
 }
 
 /** What a renderer asks about the vocabulary's props. */
@@ -65,31 +67,26 @@ export interface PropSource {
 /**
  * The props of `'A'` or `'A.B'` in a list of members, using the validator's rule (`validate.ts`'s
  * `surfaceOf`) so the result agrees with the document. A member's props are its undotted props. A
- * compound part's props are the owner's props with the `Part.` prefix, with the prefix removed,
- * because that is how a spec writes them
- * (`{"component": "SettingsRow.Group", "props": {"title": …}}`).
+ * compound part's props are the ones the registry lists under the part (`parts`), named as a spec
+ * writes them (`{"component": "SettingsRow.Group", "props": {"title": …}}`).
  *
  * The stub scan below and the inspector's rows both use this function. Two implementations could
- * differ. For example, a scan that stripped any dotted prefix would stub a required
- * `Header.onSort` onto `Table.Cell`, putting a handler on the wrong element.
+ * differ. For example, a scan that stripped any dotted prefix from the owner's props would stub a
+ * required `Header.onSort` onto `Table.Cell`, putting a handler on the wrong element.
  */
 export function propSource(members: readonly MemberProps[]): PropSource {
-  const byMember = new Map(members.map((member) => [member.name, member.props]))
+  const byMember = new Map(members.map((member) => [member.name, member]))
 
   return {
     knows: (member) => byMember.has(member),
     propsOf(componentName) {
       const direct = byMember.get(componentName)
-      if (direct !== undefined) return direct.filter((prop) => !prop.name.includes('.'))
+      if (direct !== undefined) return direct.props.filter((prop) => !prop.name.includes('.'))
 
       const [owner, part] = componentName.split('.')
       const owned = owner === undefined ? undefined : byMember.get(owner)
-      if (owned === undefined || part === undefined) return []
-
-      const prefix = `${part}.`
-      return owned
-        .filter((prop) => prop.name.startsWith(prefix))
-        .map((prop) => ({ ...prop, name: prop.name.slice(prefix.length) }))
+      const found = owned?.parts.find((candidate) => candidate.name === part)
+      return found === undefined ? [] : [...found.props]
     },
   }
 }

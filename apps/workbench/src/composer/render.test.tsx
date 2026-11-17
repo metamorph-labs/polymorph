@@ -124,6 +124,14 @@ describe('the renderer shows what it cannot draw', () => {
         .sort(),
     ).toEqual(['children', 'title'])
     expect(propsOf('SettingsRow').map((prop) => prop.name)).not.toContain('Group.title')
+    // A part whose props the registry lists only under the part.
+    expect(
+      propsOf('Dashboard.Panel')
+        .map((prop) => prop.name)
+        .sort(),
+    ).toEqual(['children', 'title'])
+    expect(propsOf('AppShell.NavItem').map((prop) => prop.name)).toContain('label')
+    expect(propsOf('Dashboard.Region')).toEqual([])
   })
 
   it('renders a node that throws as one fault chip, not a blank canvas', () => {
