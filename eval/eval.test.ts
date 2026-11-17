@@ -600,6 +600,26 @@ const AHEAD_RUNS = [
   },
 ]
 
+/**
+ * The same run with a first call the CLI denies, so the server writes no line
+ * for it. The denied call's result is reported while `validate`'s line is in
+ * the journal and `validate`'s own result is not.
+ */
+const AHEAD_DENIED = resolve(SCRATCH, 'stand-in-ahead-denied')
+const AHEAD_DENIED_RUNS = [
+  {
+    turns: [
+      {
+        content: [{ type: 'tool_use', name: 'write_file', input: {} }],
+        usage: { input_tokens: 1000, output_tokens: 100 },
+        ahead: true,
+      },
+      scriptedCheck(UNLAWFUL),
+      scriptedText('end_turn'),
+    ],
+  },
+]
+
 /* -------------------------------------------------------------------------- */
 /* The runs                                                                   */
 /* -------------------------------------------------------------------------- */
@@ -640,6 +660,7 @@ beforeAll(async () => {
     throughStandIn('cli-half-line', HALF_LINE_RUNS, HALF_LINE),
     throughStandIn('cli-unreadable', UNREADABLE_RUNS, UNREADABLE),
     throughStandIn('cli-ahead', AHEAD_RUNS, AHEAD, ['--max-iterations', '1']),
+    throughStandIn('cli-ahead-denied', AHEAD_DENIED_RUNS, AHEAD_DENIED, ['--max-iterations', '1']),
   ])
 
   const [
@@ -750,8 +771,8 @@ beforeAll(async () => {
       'eval/briefs/dashboard-usage.md',
     ]),
   ])
-  const [halfLine, unreadable, ahead] = await attempted
-  Object.assign(attempts, { halfLine, unreadable, ahead })
+  const [halfLine, unreadable, ahead, aheadDenied] = await attempted
+  Object.assign(attempts, { halfLine, unreadable, ahead, aheadDenied })
   Object.assign(runs, {
     two,
     cap,
@@ -1272,6 +1293,20 @@ describe('the CLI runner', () => {
       inputTokens: 2000,
       outputTokens: 200,
       toolCalls: { get_system_card: 1, validate: 1 },
+    })
+  })
+
+  it('lets a result the server wrote no line for release no other call’s verdict', () => {
+    // A denied call has a result and no journal line. Matched by count alone,
+    // its result would let `validate`'s line through a turn early.
+    const { code, stderr, results } = attempts.aheadDenied as Awaited<ReturnType<typeof attempt>>
+    expect({ code, stderr: code === 0 ? '' : stderr }).toEqual({ code: 0, stderr: '' })
+    expect(results?.records[0]).toMatchObject({
+      ended: 'cap',
+      turns: 2,
+      inputTokens: 2000,
+      outputTokens: 200,
+      toolCalls: { validate: 1 },
     })
   })
 

@@ -185,7 +185,11 @@ async function answered(calls) {
   return results
 }
 
-const callsOf = (message) => (message.content ?? []).filter((block) => block.type === 'tool_use')
+/** The calls a turn makes: none when its response did not stop to use tools. */
+const callsOf = (message) =>
+  message.stop_reason === 'tool_use'
+    ? (message.content ?? []).filter((block) => block.type === 'tool_use')
+    : []
 
 /** The turn an `ahead` turn has already played the calls of, with their results. */
 let early = null

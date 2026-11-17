@@ -997,9 +997,10 @@ async function runOnceCli({
   const pending = new Set()
   /** How much of the journal has been read: every line up to the last one read whole. */
   let read = 0
-  /** The tool results the CLI has reported, and the calls whose journal lines are read. */
-  let answeredCalls = 0
-  let readCalls = 0
+  /** Each call's tool by its id, then per tool: the results the CLI has reported and the journal lines read. */
+  const toolOf = new Map()
+  const answeredCalls = new Map()
+  const readCalls = new Map()
   /** Whether the server had listed its tools, and what the CLI said of it at the start. */
   let listed = false
   let connection = 'not listed'
@@ -1027,6 +1028,9 @@ async function runOnceCli({
    * be a turn ahead of the line of its output the runner is reading. A
    * verdict read that early would count against the turn before it, and the
    * iteration cap would end the run without the turn that made the call.
+   * Lines and results are matched by tool, so a result the server never
+   * wrote a line for (a tool the CLI denied or does not have) lets no other
+   * tool's line through early.
    */
   const readJournal = () => {
     const text = readFileSync(journal, 'utf8')
@@ -1044,8 +1048,9 @@ async function runOnceCli({
         read = next
         continue
       }
-      if (readCalls >= answeredCalls) return
-      readCalls += 1
+      const lines = readCalls.get(entry.tool) ?? 0
+      if (lines >= (answeredCalls.get(entry.tool) ?? 0)) return
+      readCalls.set(entry.tool, lines + 1)
       read = next
       if (entry.failed !== undefined) {
         console.error(`eval: ${brief} #${run}: \`${entry.tool}\` failed: ${entry.failed}`)
@@ -1096,6 +1101,7 @@ async function runOnceCli({
           for (const call of calls.get(last.id) ?? []) {
             countCall(tally, call.name)
             pending.add(call.id)
+            toolOf.set(call.id, call.name)
           }
         } else if (CUT_OFF.has(last.stopReason)) halt({ ended: last.stopReason })
         break
@@ -1146,6 +1152,7 @@ async function runOnceCli({
           if (last?.id === message.id && last.stopReason === 'tool_use') {
             countCall(tally, name)
             pending.add(block.id)
+            toolOf.set(block.id, name)
           } else calls.set(message.id, [...(calls.get(message.id) ?? []), { id: block.id, name }])
         }
         break
@@ -1154,8 +1161,11 @@ async function runOnceCli({
         const content = Array.isArray(event.message?.content) ? event.message.content : []
         const answered = content.filter((block) => block.type === 'tool_result')
         if (answered.length === 0) break
-        for (const block of answered) pending.delete(block.tool_use_id)
-        answeredCalls += answered.length
+        for (const block of answered) {
+          pending.delete(block.tool_use_id)
+          const tool = toolOf.get(block.tool_use_id)
+          if (tool !== undefined) answeredCalls.set(tool, (answeredCalls.get(tool) ?? 0) + 1)
+        }
         readJournal()
         if (stop !== null || pending.size > 0) break
         // Every call of the turn is answered: where the API runner decides whether to send the next request.
