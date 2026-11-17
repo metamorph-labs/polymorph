@@ -1,5 +1,5 @@
 import type { Registry } from './build'
-import { DEFAULT_FRAMEWORK, FRAMEWORK_NAMES, type Framework } from './frameworks'
+import { DEFAULT_FRAMEWORK, FRAMEWORK_NAMES, shippedParts, type Framework } from './frameworks'
 import { DEFAULT_PLATFORM, NO_SUBSTITUTE, PLATFORM_STATUSES, type Platform } from './platforms'
 
 /**
@@ -241,37 +241,6 @@ const labelled = (label: string, names: readonly string[]) =>
   names.length === 0 ? label : `${label}: ${names.join(', ')}`
 
 /**
- * The compound parts a framework or platform ships for the member. React's are
- * the export's (`parts`). Another framework's are the parts its shell's files
- * declare, after the member's own file (`ToastViewport.vue` is
- * `Toast.Viewport`), each with React's props where React has the part. A
- * native platform's are the parts its contract carries, which are the parts
- * the registry flattens into `props` (`Row.selected`).
- */
-function partsIn(
-  component: CardComponent,
-  platform: Platform,
-  framework: Framework,
-): CardComponent['parts'] {
-  if (platform !== DEFAULT_PLATFORM) {
-    const carried = new Set(
-      component.props
-        .filter((prop) => prop.name.includes('.'))
-        .map((prop) => prop.name.slice(0, prop.name.indexOf('.'))),
-    )
-    return component.parts.filter((part) => carried.has(part.name))
-  }
-  if (framework === 'react') return component.parts
-  const sources = component.frameworks[framework].shell?.sources ?? []
-  return sources.slice(1).flatMap((source) => {
-    const file = source.slice(source.lastIndexOf('/') + 1).replace(/\.[^.]+$/, '')
-    if (!file.startsWith(component.name)) return []
-    const name = file.slice(component.name.length)
-    return [component.parts.find((part) => part.name === name) ?? { name, props: [] }]
-  })
-}
-
-/**
  * What an agent on the page may do with a member, then what it reads, on a
  * web card: `agent: check, uncheck | checked, disabled`. A secret state is
  * marked, because an agent asked for it gets `{ secret: true }`. `null` for a
@@ -331,7 +300,7 @@ function componentLine(component: CardComponent, platform: Platform, framework: 
     segments.push(labelled(`${carrier.name}()`, propNames(own)))
     if (carrier.members.length > 0) segments.push(`${carrier.name}.{${carrier.members.join(', ')}}`)
   }
-  for (const part of partsIn(component, platform, framework)) {
+  for (const part of shippedParts(component, platform, framework)) {
     segments.push(labelled(`${component.name}.${part.name}`, propNames(part.props)))
   }
   for (const other of exported) {

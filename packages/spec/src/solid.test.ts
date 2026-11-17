@@ -192,6 +192,23 @@ describe('the Relay screens, emitted for Solid', () => {
   })
 })
 
+/**
+ * A screen drawn from the parts no Relay screen composes: a shell's navigation,
+ * a dashboard's panels, a table's sections, an avatar group and a tour target.
+ */
+const OVERVIEW = JSON.parse(
+  readFileSync(resolve(ROOT, 'packages/spec/fixtures/overview.json'), 'utf8'),
+) as ScreenSpec
+
+describe('a screen drawn from its members’ parts, emitted for Solid', () => {
+  it('is a lawful spec that typechecks against the Solid vocabulary', async () => {
+    expect(validateSpec(registry, OVERVIEW, { framework: 'solid' }).faults).toEqual([])
+    const code = await emitSolid(OVERVIEW, 'usage-overview')
+    expect(code).toContain('<Dashboard.Panel title="Requests by key">')
+    expect(solidTypeErrors({ 'usage-overview': code })['usage-overview']).toEqual([])
+  }, 120_000)
+})
+
 describe('the framework, checked before anything is emitted', () => {
   it('refuses a member the Solid map marks absent, with the map’s reason', () => {
     const missing: Registry = {

@@ -1,0 +1,120 @@
+{
+  "spec": "polymorph-screen/1",
+  "name": "UsageOverview",
+  "purpose": "A probe: an overview whose shell, panels, table and avatars are drawn from their members' parts.",
+  "inputs": [
+    { "name": "requests", "type": "string" },
+    { "name": "onOpenBilling", "type": "() => void" }
+  ],
+  "root": {
+    "component": "AppShell",
+    "props": {
+      "sidebar": {
+        "component": "AppShell.NavGroup",
+        "props": { "label": "Workspace" },
+        "children": [
+          {
+            "component": "AppShell.NavItem",
+            "props": { "label": "Usage", "href": "/usage", "current": true }
+          },
+          {
+            "component": "AppShell.NavItem",
+            "props": { "label": "Billing", "onSelect": { "$": "onOpenBilling" } }
+          }
+        ]
+      },
+      "sidebarFooter": {
+        "component": "AppShell.UserCard",
+        "props": { "name": "Bao Tran", "detail": "Owner" }
+      }
+    },
+    "children": [
+      {
+        "component": "Dashboard",
+        "props": {
+          "title": "Usage",
+          "primary": {
+            "component": "Dashboard.Panel",
+            "props": { "title": "Requests by key" },
+            "children": [
+              {
+                "component": "Table",
+                "props": { "label": "Requests by key" },
+                "children": [
+                  {
+                    "component": "Table.Head",
+                    "children": [
+                      {
+                        "component": "Table.Row",
+                        "children": [
+                          { "component": "Table.Header", "children": ["Key"] },
+                          {
+                            "component": "Table.Header",
+                            "props": { "numeric": true },
+                            "children": ["Requests"]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "component": "Table.Body",
+                    "children": [
+                      {
+                        "component": "Table.Row",
+                        "children": [
+                          { "component": "Table.Cell", "children": ["Production"] },
+                          {
+                            "component": "Table.Cell",
+                            "props": { "numeric": true },
+                            "children": [{ "$": "requests" }]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "component": "Table.Foot",
+                    "children": [
+                      {
+                        "component": "Table.Row",
+                        "children": [
+                          { "component": "Table.Cell", "children": ["All keys"] },
+                          {
+                            "component": "Table.Cell",
+                            "props": { "numeric": true },
+                            "children": [{ "$": "requests" }]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "secondary": {
+            "component": "Dashboard.Panel",
+            "props": { "title": "On call" },
+            "children": [
+              {
+                "component": "Tour.Target",
+                "props": { "name": "on-call" },
+                "children": [
+                  {
+                    "component": "Avatar.Group",
+                    "props": { "label": "On call", "max": 3 },
+                    "children": [
+                      { "component": "Avatar", "props": { "name": "Bao Tran" } },
+                      { "component": "Avatar", "props": { "name": "Ines Okafor" } }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

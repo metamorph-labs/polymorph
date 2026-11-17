@@ -1,6 +1,11 @@
 // The value imports use the pure subpaths, because the browser validates
 // documents too. The types come from the root and are erased at compile time.
-import { DEFAULT_FRAMEWORK, unionParts, type Framework } from '@polymorph/registry/frameworks'
+import {
+  DEFAULT_FRAMEWORK,
+  shippedParts,
+  unionParts,
+  type Framework,
+} from '@polymorph/registry/frameworks'
 import { DEFAULT_PLATFORM, NO_SUBSTITUTE, type Platform } from '@polymorph/registry/platforms'
 import { validate as validateShape } from '@polymorph/registry/shape'
 import type {
@@ -270,11 +275,16 @@ export function validateSpec(
     if (known === null) {
       faults.push({
         path,
-        message: `no component called \`${element.component}\`${nearest(registry, element.component, components, primitives)}`,
+        message:
+          `no component called \`${element.component}\`` +
+          (partsOfOwner(element.component, components, platform, framework) ??
+            nearest(registry, element.component, components, primitives)),
       })
     } else {
       checkPlatform(element, known, platform, path, faults)
       checkFramework(element, known, framework, path, faults)
+      const absent = partFault(element.component, known, platform, framework)
+      if (absent !== null) faults.push({ path, message: absent })
 
       /*
        * The prop check is the style law. `className`, `style` and `css` are
@@ -324,7 +334,10 @@ export function validateSpec(
         })
       }
 
-      if (known.component) checkGrid(known.component, props, path, faults)
+      // The grid is the member's. A part has no variant × tone cell of its own.
+      if (known.component && known.part === undefined) {
+        checkGrid(known.component, props, path, faults)
+      }
       checkIcons(registry, props, path, faults)
       if (element.children !== undefined && !known.props.has('children')) {
         faults.push({ path, message: `\`${element.component}\` takes no children` })
@@ -847,8 +860,14 @@ function checkNativeScreen(
     const isOwner = component !== undefined && element.component === component.name
     const props = element.props ?? {}
 
-    // A member the registry does not know has its fault already.
-    if (surface !== null && judges.renders !== undefined && !judges.renders(element.component)) {
+    // A member the registry does not know has its fault already, and so has a
+    // part the platform does not carry.
+    if (
+      surface !== null &&
+      partFault(element.component, surface, platform, DEFAULT_FRAMEWORK) === null &&
+      judges.renders !== undefined &&
+      !judges.renders(element.component)
+    ) {
       faults.push({
         path,
         message:
@@ -1000,16 +1019,15 @@ interface Surface {
   /** Present for a vocabulary member; absent for an exception primitive. */
   component?: RegistryComponent
   primitive?: ExceptionPrimitive
+  /** Present for a compound part: its name in its member (`Panel` for `Dashboard.Panel`). */
+  part?: string
 }
 
-function typesOf(props: RegistryProp[], slice?: string): Map<string, RegistryProp> {
+/** A member's own props by name. A part's props, which `props` lists with the part's name, are left out. */
+function typesOf(props: RegistryProp[]): Map<string, RegistryProp> {
   const map = new Map<string, RegistryProp>()
   for (const prop of props) {
-    if (slice === undefined) {
-      if (!prop.name.includes('.')) map.set(prop.name, prop)
-    } else if (prop.name.startsWith(slice)) {
-      map.set(prop.name.slice(slice.length), prop)
-    }
+    if (!prop.name.includes('.')) map.set(prop.name, prop)
   }
   return map
 }
@@ -1017,10 +1035,11 @@ function typesOf(props: RegistryProp[], slice?: string): Map<string, RegistryPro
 /**
  * A component name, a compound part, or an exception primitive.
  *
- * Compound parts are `SettingsRow.Group` and `Table.Row`. The registry lists
- * their props under the owner with a `Group.` prefix, as one component with one
- * entry, because an agent asking about Table needs to know a row takes
- * `selected` and a cell does not.
+ * A compound part is `SettingsRow.Group`, `Table.Row` or `Dashboard.Panel`:
+ * a part the member's export carries, which the registry lists in `parts`
+ * with the props its function takes. Whether the screen's framework or
+ * platform carries the part is a second question, which `partFault` answers,
+ * so a part React has is never reported as a name nobody knows.
  */
 function surfaceOf(
   name: string,
@@ -1046,8 +1065,63 @@ function surfaceOf(
   const compound = owner === undefined ? undefined : components.get(owner)
   if (segments.length !== 2 || compound === undefined || part === undefined) return null
 
-  const types = typesOf(compound.props, `${part}.`)
-  return types.size === 0 ? null : { props: new Set(types.keys()), types, component: compound }
+  const found = compound.parts.find((candidate) => candidate.name === part)
+  if (found === undefined) return null
+  const types = new Map(found.props.map((prop) => [prop.name, prop]))
+  return { props: new Set(types.keys()), types, component: compound, part }
+}
+
+/** `Table.Row`, `Table.Cell`: the parts of a member a screen may name, as a fault lists them. */
+function partNames(component: RegistryComponent, platform: Platform, framework: Framework): string {
+  const names = shippedParts(component, platform, framework).map(
+    (part) => `\`${component.name}.${part.name}\``,
+  )
+  return names.length === 0
+    ? `\`${component.name}\` has no parts`
+    : `\`${component.name}\`’s parts are ${names.join(', ')}`
+}
+
+/**
+ * A compound part the screen's framework or platform does not carry, as the
+ * fault's message, or `null`.
+ *
+ * The system card lists a member's parts by the same rule (`shippedParts`).
+ * React carries every part. A generated vocabulary carries the parts its
+ * shell's files declare. A native platform carries the parts its contract
+ * declares, so a screen that named another would not compile. The fault lists
+ * the parts the member has there, because a bare refusal leaves the author to
+ * guess the next name.
+ */
+function partFault(
+  name: string,
+  known: Surface,
+  platform: Platform,
+  framework: Framework,
+): string | null {
+  const { component, part } = known
+  if (component === undefined || part === undefined) return null
+  if (shippedParts(component, platform, framework).some((shipped) => shipped.name === part)) {
+    return null
+  }
+  const where = platform === DEFAULT_PLATFORM ? `in ${framework}` : `on ${platform}`
+  return `\`${name}\` is not a part ${where} — ${partNames(component, platform, framework)} there`
+}
+
+/**
+ * What to say of a name that is a known member and a part it does not have:
+ * the parts it does have. `null` when the name is not that.
+ */
+function partsOfOwner(
+  name: string,
+  components: Map<string, RegistryComponent>,
+  platform: Platform,
+  framework: Framework,
+): string | null {
+  const segments = name.split('.')
+  const [owner] = segments
+  const component = owner === undefined ? undefined : components.get(owner)
+  if (segments.length !== 2 || component === undefined) return null
+  return ` — ${partNames(component, platform, framework)}`
 }
 
 /* -------------------------------------------------------------------------- */

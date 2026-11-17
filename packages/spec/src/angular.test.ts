@@ -371,6 +371,26 @@ const PEOPLE: ScreenSpec = {
   },
 }
 
+/**
+ * A screen drawn from the parts no Relay screen composes: a shell's navigation,
+ * a dashboard's panels, a table's sections, an avatar group and a tour target.
+ */
+const OVERVIEW = JSON.parse(
+  readFileSync(resolve(ROOT, 'packages/spec/fixtures/overview.json'), 'utf8'),
+) as ScreenSpec
+
+describe('a screen drawn from its members’ parts, emitted for Angular', () => {
+  it('is a lawful spec that compiles, its template type-checked', async () => {
+    expect(validateSpec(registry, OVERVIEW, { framework: 'angular' }).faults).toEqual([])
+    const code = await emitAngular(OVERVIEW, 'usage-overview')
+    expect(angularErrors({ 'usage-overview': code })['usage-overview']).toEqual([])
+    const template = templateOf(code)
+    expect(template).toContain('<pm-dashboard-panel title="Requests by key">')
+    expect(template).toContain('<tfoot pmTableFoot>')
+    expect(code).toMatch(/imports: \[[^\]]*DashboardPanel/)
+  }, 120_000)
+})
+
 describe('a list, emitted for Angular from its items', () => {
   let code = ''
   beforeAll(async () => {

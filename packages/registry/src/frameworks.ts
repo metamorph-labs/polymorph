@@ -1,4 +1,4 @@
-import type { MemberDependencies } from './platforms'
+import { DEFAULT_PLATFORM, type MemberDependencies } from './platforms'
 import { arr, nullable, obj, rec, str, validate, type Shape } from './shape'
 
 /**
@@ -214,6 +214,51 @@ export interface FrameworkDocument {
 }
 
 /** Where a framework's map lives, relative to the repository root. */
+/** What `shippedParts` reads of a member: its registry entry. */
+export interface PartsOwner<Part extends { name: string }> {
+  name: string
+  props: readonly { name: string }[]
+  parts: readonly Part[]
+  frameworks: MemberFrameworks
+}
+
+/**
+ * The compound parts a framework or a platform carries for a member. The
+ * system card lists these and the screen-spec validator accepts these, so an
+ * agent is never told of a part it may not write.
+ *
+ * React's are the export's (`parts`). Another framework's are the parts its
+ * shell's files declare, after the member's own file (`ToastViewport.vue` is
+ * `Toast.Viewport`), each with React's props where React has the part; the
+ * registry publishes that record for every member native there. A native
+ * platform's are the parts its contract carries, which are the parts the
+ * registry flattens into `props` (`Row.selected`).
+ */
+export function shippedParts<Part extends { name: string; props: readonly unknown[] }>(
+  component: PartsOwner<Part>,
+  platform: string,
+  framework: Framework,
+): (Part | { name: string; props: never[] })[] {
+  if (platform !== DEFAULT_PLATFORM) {
+    const carried = new Set(
+      component.props
+        .filter((prop) => prop.name.includes('.'))
+        .map((prop) => prop.name.slice(0, prop.name.indexOf('.'))),
+    )
+    return component.parts.filter((part) => carried.has(part.name))
+  }
+  // An entry with no shell record says nothing of the member's files there, so
+  // nothing says the framework lacks a part React has.
+  const shell = component.frameworks[framework].shell
+  if (framework === DEFAULT_FRAMEWORK || shell === undefined) return [...component.parts]
+  return shell.sources.slice(1).flatMap((source) => {
+    const file = source.slice(source.lastIndexOf('/') + 1).replace(/\.[^.]+$/, '')
+    if (!file.startsWith(component.name)) return []
+    const name = file.slice(component.name.length)
+    return [component.parts.find((part) => part.name === name) ?? { name, props: [] }]
+  })
+}
+
 export const frameworkFile = (framework: MappedFramework): string =>
   `design/frameworks/${framework}.json`
 

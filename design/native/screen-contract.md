@@ -269,6 +269,9 @@ without a rendering is listed in `packages/native/src/pending.ts` (iOS) or
 `packages/native/src/kotlin-pending.ts` (Android), and a screen that uses one is a fault at that
 node, because the emitted call would not compile. On Android a compound part is drawn by a
 composable of its own, so a part is a fault until the member package declares that composable.
+A compound part is one the platform's contract declares. A part only the web vocabularies carry,
+such as `Dashboard.Panel` or `Table.Head`, is a fault that lists the member's parts on the
+platform.
 
 An `adapted` member is emitted exactly as a native one. The member renders as its entry's `as`
 says (`DataTable` as a list on iPhone, `Dialog` as a modal sheet), so the emitted view never

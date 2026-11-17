@@ -157,9 +157,9 @@ const inComment = (text: string) => text.replace(/\*\//g, '*\\/')
 
 /**
  * Prop name -> its record, for a member, a compound part or a ladder primitive.
- * A part's record is named as the part declares it (`onClick` for
- * `Table.Row`, which the registry lists as `Row.onClick`), so its reading is
- * the part's own: an `onFoo` prop is an event. The Angular emitter reads a
+ * A part's records are the ones the registry lists under the part (`parts`),
+ * named as the part declares them (`onClick` for `Table.Row`), so its reading
+ * is the part's own: an `onFoo` prop is an event. The Angular emitter reads a
  * callback's parameters from the record's type.
  */
 export function propTypes(
@@ -173,15 +173,14 @@ export function propTypes(
     const [owner = name, part] = name.split('.')
     const entry = components.get(owner)
     if (entry === undefined) return null
-    const prefix = part === undefined ? '' : `${part}.`
-    const types = new Map<string, RegistryProp>()
-    for (const prop of entry.props) {
-      if (prefix === '' ? !prop.name.includes('.') : prop.name.startsWith(prefix)) {
-        const name = prop.name.slice(prefix.length)
-        types.set(name, { ...prop, name })
-      }
+    if (part === undefined) {
+      return new Map(
+        entry.props.filter((prop) => !prop.name.includes('.')).map((prop) => [prop.name, prop]),
+      )
     }
-    return types
+    const parts = 'parts' in entry ? entry.parts : []
+    const found = parts.find((candidate) => candidate.name === part)
+    return found === undefined ? null : new Map(found.props.map((prop) => [prop.name, prop]))
   }
 }
 

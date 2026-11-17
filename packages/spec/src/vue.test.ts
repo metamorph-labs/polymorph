@@ -278,6 +278,26 @@ describe('render calls, inside a value', () => {
   })
 })
 
+/**
+ * A screen drawn from the parts no Relay screen composes: a shell's navigation,
+ * a dashboard's panels, a table's sections, an avatar group and a tour target.
+ */
+const OVERVIEW = JSON.parse(
+  readFileSync(resolve(ROOT, 'packages/spec/fixtures/overview.json'), 'utf8'),
+) as ScreenSpec
+
+describe('a screen drawn from its members’ parts, emitted for Vue', () => {
+  it('is a lawful spec that compiles, with each part’s props read from the part', async () => {
+    expect(validateSpec(registry, OVERVIEW, { framework: 'vue' }).faults).toEqual([])
+    const code = await emitVue(OVERVIEW, 'usage-overview')
+    expect(compileErrors(code, 'usage-overview')).toEqual([])
+    // `onSelect` is the part's event and `sidebar` the shell's slot.
+    expect(code).toContain('<AppShell.NavItem label="Billing" @select="props.onOpenBilling" />')
+    expect(code).toContain('<template #sidebar>')
+    expect(code).toContain('<Dashboard.Panel title="Requests by key">')
+  })
+})
+
 describe('the framework, checked before anything is emitted', () => {
   it('passes the Relay screens once every member they compose has a Vue shell', () => {
     for (const name of SCREENS) {

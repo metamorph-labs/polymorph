@@ -237,6 +237,25 @@ describe('text, written so it reads back as typed', () => {
   })
 })
 
+/**
+ * A screen drawn from the parts no Relay screen composes: a shell's navigation,
+ * a dashboard's panels, a table's sections, an avatar group and a tour target.
+ */
+const OVERVIEW = JSON.parse(
+  readFileSync(resolve(ROOT, 'packages/spec/fixtures/overview.json'), 'utf8'),
+) as ScreenSpec
+
+describe('a screen drawn from its members’ parts, emitted for Svelte', () => {
+  it('is a lawful spec that compiles with no warning', async () => {
+    expect(validateSpec(registry, OVERVIEW, { framework: 'svelte' }).faults).toEqual([])
+    const code = await emitSvelte(OVERVIEW, 'usage-overview')
+    const { error, warnings } = compiled(code, 'usage-overview')
+    expect(error).toBeNull()
+    expect(warnings).toEqual([])
+    expect(code).toContain('<Dashboard.Panel title="Requests by key"')
+  })
+})
+
 describe('the framework, checked before anything is emitted', () => {
   it('passes the Relay screens once every member they compose has a Svelte shell', () => {
     for (const name of SCREENS) {
