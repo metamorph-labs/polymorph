@@ -24,7 +24,7 @@ under the SIL Open Font License unless its package states otherwise.
 Dependencies
 ------------
 The published packages depend on, but do not bundle, third-party packages
-(Radix UI, React Aria, Zag, lucide, d3, culori, apca-w3, zod and others),
+(Radix UI, React Aria, Zag, lucide, d3, culori, zod and others),
 each under its own licence as declared in its package.
 
 Adapted code
@@ -32,3 +32,11 @@ Adapted code
 packages/solid/src/conventions/machine.ts is adapted from Zag's Solid adapter
 (@zag-js/solid), Copyright (c) 2021 Chakra UI, under the MIT License. The file
 keeps that licence's notice.
+
+Formulas
+--------
+packages/theme/src/color/apca.ts computes APCA lightness contrast (Lc) from the
+formula and constants of version 0.0.98G-4g, as published by Myndex Research
+and cited by the W3C's WCAG 3 working draft. It is written for this project and
+takes no code from the apca-w3 package. "APCA" names the method the numbers
+follow; this project is not affiliated with or endorsed by Myndex.

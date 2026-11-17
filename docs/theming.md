@@ -316,7 +316,7 @@ sequential, diverging) are a separate family, documented in [charts.md](charts.m
 
 Every (text, surface) combination a pairing may produce is enumerated in `LAWFUL_PAIRINGS`
 (`packages/theme/src/pairings.ts`) and measured in both modes. Text is measured with **APCA**
-(`apca-w3`) on the rounded sRGB channels, with a translucent foreground composited over its
+(`packages/theme/src/color/apca.ts`, the published formula) on the rounded sRGB channels, with a translucent foreground composited over its
 background first. Each floor is an |Lc| magnitude:
 
 | Floor | Lc | Applies to |

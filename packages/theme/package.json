@@ -9,7 +9,6 @@
     "./runtime": "./src/runtime.ts"
   },
   "dependencies": {
-    "apca-w3": "^0.1.9",
     "culori": "^4.0.2",
     "zod": "^4.4.3"
   },

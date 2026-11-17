@@ -134,7 +134,7 @@ theme engine.
 | --- | --- | --- |
 | `vite` | `>=6` (optional) | `@polymorph/engine/vite` |
 
-Dependencies: the workspace's `@polymorph/theme` (bundled into `dist/`), plus `culori`, `apca-w3`
+Dependencies: the workspace's `@polymorph/theme` (bundled into `dist/`), plus `culori`
 and `zod`, `@internationalized/date` (calendar dates for RelativeTime and the charts' date
 axes), and `d3-scale`, `d3-array` and `d3-shape` (the chart engine's scales and paths,
 imported only under `src/charts/`, its containment boundary). There is no

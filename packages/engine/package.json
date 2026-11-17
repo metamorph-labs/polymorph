@@ -26,7 +26,6 @@
   "dependencies": {
     "@internationalized/date": "^3.12.2",
     "@polymorph/theme": "workspace:*",
-    "apca-w3": "^0.1.9",
     "culori": "^4.0.2",
     "d3-array": "^3.2.4",
     "d3-scale": "^4.0.2",

@@ -309,7 +309,6 @@ describe('the published surface exists', () => {
   it('imports no UI framework and no icon set: only the packages listed here', () => {
     const allowed = new Set([
       '@internationalized/date',
-      'apca-w3',
       'culori',
       'd3-array',
       'd3-scale',

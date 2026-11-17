@@ -1,11 +1,6 @@
-// `apca-w3` ships no types, so the declaration must travel with this source
-// into every program that compiles it (@polymorph/react-ui, apps/workbench). The
-// rule's `import` form cannot do that: there is nothing to import.
-// eslint-disable-next-line @typescript-eslint/triple-slash-reference
-/// <reference path="./apca-w3.d.ts" />
-import { APCAcontrast, sRGBtoY } from 'apca-w3'
 import { converter } from 'culori'
 
+import { lightnessContrast, screenLuminance } from './apca'
 import { toChannels, type Oklch } from './ramp'
 
 /**
@@ -62,9 +57,9 @@ export function composite(foreground: Translucent, background: Oklch): Oklch {
 
 /** Signed APCA Lc: positive for dark-on-light, negative for light-on-dark. */
 export function apcaLc(foreground: Translucent, background: Oklch): number {
-  return APCAcontrast(
-    sRGBtoY(toChannels(composite(foreground, background))),
-    sRGBtoY(toChannels(background)),
+  return lightnessContrast(
+    screenLuminance(toChannels(composite(foreground, background))),
+    screenLuminance(toChannels(background)),
   )
 }
 

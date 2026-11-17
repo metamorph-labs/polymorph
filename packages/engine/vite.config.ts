@@ -25,7 +25,7 @@ const entry = (path: string) => fileURLToPath(new URL(path, import.meta.url))
  *
  * Which dependencies are external and which are bundled:
  *
- *  - `culori`, `apca-w3`, `zod`, the three d3 packages and
+ *  - `culori`, `zod`, the three d3 packages and
  *    `@internationalized/date` stay external. They are declared dependencies, so the consumer's package
  *    manager installs one copy of each.
  *  - `vite` stays external because it is the host the build plugin runs inside.
@@ -65,7 +65,6 @@ export default defineConfig({
         'vite',
         'culori',
         /^culori\//,
-        'apca-w3',
         'zod',
         'd3-array',
         'd3-scale',
