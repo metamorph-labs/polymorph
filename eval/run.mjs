@@ -995,8 +995,11 @@ async function runOnceCli({
   const calls = new Map()
   let last = null
   const pending = new Set()
-  /** How much of the journal has been read: every line up to the last newline. */
+  /** How much of the journal has been read: every line up to the last one read whole. */
   let read = 0
+  /** The tool results the CLI has reported, and the calls whose journal lines are read. */
+  let answeredCalls = 0
+  let readCalls = 0
   /** Whether the server had listed its tools, and what the CLI said of it at the start. */
   let listed = false
   let connection = 'not listed'
@@ -1018,18 +1021,32 @@ async function runOnceCli({
    * answered. Only a line that ends in a newline is read. The server may still
    * be appending one while the CLI reports another call's result, and that
    * line is read whole at a later read.
+   *
+   * A call's line is read once the CLI has reported that call's result, and
+   * not before. The server writes the line when it answers, and the CLI may
+   * be a turn ahead of the line of its output the runner is reading. A
+   * verdict read that early would count against the turn before it, and the
+   * iteration cap would end the run without the turn that made the call.
    */
   const readJournal = () => {
     const text = readFileSync(journal, 'utf8')
     const end = text.lastIndexOf('\n') + 1
-    const lines = text.slice(read, end).split('\n').filter(Boolean)
-    read = end
-    for (const line of lines) {
+    while (read < end) {
+      const next = text.indexOf('\n', read) + 1
+      const line = text.slice(read, next - 1)
+      if (line === '') {
+        read = next
+        continue
+      }
       const entry = JSON.parse(line)
       if (entry.listed !== undefined) {
         listed = cli.names.every((name) => entry.listed.includes(name))
+        read = next
         continue
       }
+      if (readCalls >= answeredCalls) return
+      readCalls += 1
+      read = next
       if (entry.failed !== undefined) {
         console.error(`eval: ${brief} #${run}: \`${entry.tool}\` failed: ${entry.failed}`)
       }
@@ -1038,7 +1055,7 @@ async function runOnceCli({
         harnessFault = entry.fault
         tally.lastSubmitted = entry.submitted ?? tally.lastSubmitted
         halt({ ended: 'harness' })
-        break
+        return
       }
       if (entry.verdict !== undefined) countVerdict(tally, entry.verdict, entry.submitted)
     }
@@ -1138,6 +1155,7 @@ async function runOnceCli({
         const answered = content.filter((block) => block.type === 'tool_result')
         if (answered.length === 0) break
         for (const block of answered) pending.delete(block.tool_use_id)
+        answeredCalls += answered.length
         readJournal()
         if (stop !== null || pending.size > 0) break
         // Every call of the turn is answered: where the API runner decides whether to send the next request.

@@ -578,6 +578,28 @@ const UNREADABLE_RUNS = [
   },
 ]
 
+/**
+ * A run in which the CLI is a turn ahead of the line of its output the runner
+ * is reading: the server has answered `validate`, and written its verdict,
+ * before the CLI reports the results of the turn before it. One `validate`
+ * call is allowed, so the verdict ends the run.
+ */
+const AHEAD = resolve(SCRATCH, 'stand-in-ahead')
+const UNLAWFUL = JSON.stringify({ ...JSON.parse(LAWFUL), root: { component: 'Modal' } })
+const AHEAD_RUNS = [
+  {
+    turns: [
+      {
+        content: [{ type: 'tool_use', name: 'get_system_card', input: {} }],
+        usage: { input_tokens: 1000, output_tokens: 100 },
+        ahead: true,
+      },
+      scriptedCheck(UNLAWFUL),
+      scriptedText('end_turn'),
+    ],
+  },
+]
+
 /* -------------------------------------------------------------------------- */
 /* The runs                                                                   */
 /* -------------------------------------------------------------------------- */
@@ -603,14 +625,21 @@ beforeAll(async () => {
   const local = { ANTHROPIC_API_KEY: 'local-key' }
 
   /** One run of the settings brief through a stand-in. */
-  const throughStandIn = (name: string, scripts: object[], directory: string) =>
+  const throughStandIn = (
+    name: string,
+    scripts: object[],
+    directory: string,
+    more: string[] = [],
+  ) =>
     attempt(name, [
       ...['--runner', 'cli', '--claude', standIn(scripts, directory), '--model', 'local-model'],
       ...['--runs', '1', '--briefs', 'eval/briefs/settings-workspace.md'],
+      ...more,
     ])
   const attempted = Promise.all([
     throughStandIn('cli-half-line', HALF_LINE_RUNS, HALF_LINE),
     throughStandIn('cli-unreadable', UNREADABLE_RUNS, UNREADABLE),
+    throughStandIn('cli-ahead', AHEAD_RUNS, AHEAD, ['--max-iterations', '1']),
   ])
 
   const [
@@ -721,8 +750,8 @@ beforeAll(async () => {
       'eval/briefs/dashboard-usage.md',
     ]),
   ])
-  const [halfLine, unreadable] = await attempted
-  Object.assign(attempts, { halfLine, unreadable })
+  const [halfLine, unreadable, ahead] = await attempted
+  Object.assign(attempts, { halfLine, unreadable, ahead })
   Object.assign(runs, {
     two,
     cap,
@@ -1228,6 +1257,21 @@ describe('the CLI runner', () => {
       lawful: true,
       firstShotLawful: true,
       iterations: 1,
+    })
+  })
+
+  it('reads a call’s verdict only once the CLI has reported that call’s result', () => {
+    // The verdict is in the journal while the runner reads the turn before the
+    // call. Counted then, it would end the run at the cap one turn early, with
+    // the turn that called `validate` and its tokens left out of the record.
+    const { code, stderr, results } = attempts.ahead as Awaited<ReturnType<typeof attempt>>
+    expect({ code, stderr: code === 0 ? '' : stderr }).toEqual({ code: 0, stderr: '' })
+    expect(results?.records[0]).toMatchObject({
+      ended: 'cap',
+      turns: 2,
+      inputTokens: 2000,
+      outputTokens: 200,
+      toolCalls: { get_system_card: 1, validate: 1 },
     })
   })
 

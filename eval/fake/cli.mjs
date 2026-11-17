@@ -34,6 +34,9 @@ import { scriptedTurns } from './script.mjs'
  *    would if it were still writing. Text that does not end in a newline is a
  *    line half written, and a line that is not JSON is one the runner cannot
  *    read.
+ *  - `ahead`: the stand-in makes the next turn's calls before it reports this
+ *    turn's results, so the server has written their lines by then. That is
+ *    the journal a runner finds when it reads the CLI's output a turn late.
  */
 
 const PREFIX = 'mcp__polymorph__'
@@ -158,8 +161,39 @@ const total = {
   output_tokens: 0,
 }
 
+/** What the tools answer a turn's calls. A tool the runner did not allow is denied, as `--permission-mode dontAsk` denies it. */
+async function answered(calls) {
+  const results = []
+  for (const call of calls) {
+    if (!allowed.has(`${PREFIX}${call.name}`)) {
+      results.push({
+        type: 'tool_result',
+        tool_use_id: call.id,
+        content: `Permission to use ${PREFIX}${call.name} has been denied.`,
+        is_error: true,
+      })
+      continue
+    }
+    const answer = await client.callTool({ name: call.name, arguments: call.input })
+    results.push({
+      type: 'tool_result',
+      tool_use_id: call.id,
+      content: answer.content,
+      ...(answer.isError ? { is_error: true } : {}),
+    })
+  }
+  return results
+}
+
+const callsOf = (message) => (message.content ?? []).filter((block) => block.type === 'tool_use')
+
+/** The turn an `ahead` turn has already played the calls of, with their results. */
+let early = null
+
 for (let turn = 1; ; turn += 1) {
-  const message = next()
+  const message = early?.message ?? next()
+  const made = early?.results
+  early = null
   if (message.delay !== undefined) await new Promise((done) => setTimeout(done, message.delay))
 
   if (message.cli !== undefined) {
@@ -241,25 +275,10 @@ for (let turn = 1; ; turn += 1) {
     break
   }
 
-  // A tool the runner did not allow is denied, as `--permission-mode dontAsk` denies it.
-  const results = []
-  for (const call of calls) {
-    if (!allowed.has(`${PREFIX}${call.name}`)) {
-      results.push({
-        type: 'tool_result',
-        tool_use_id: call.id,
-        content: `Permission to use ${PREFIX}${call.name} has been denied.`,
-        is_error: true,
-      })
-      continue
-    }
-    const answer = await client.callTool({ name: call.name, arguments: call.input })
-    results.push({
-      type: 'tool_result',
-      tool_use_id: call.id,
-      content: answer.content,
-      ...(answer.isError ? { is_error: true } : {}),
-    })
+  const results = made ?? (await answered(calls))
+  if (message.ahead) {
+    const following = next()
+    early = { message: following, results: await answered(callsOf(following)) }
   }
   if (message.journal !== undefined) {
     if (journal === undefined) refuse('a turn writes to the journal, and the server has none')
