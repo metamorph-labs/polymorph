@@ -27,6 +27,42 @@ const cards = () => [...document.querySelectorAll('li')] as HTMLElement[]
 const settled = async (count: number) =>
   vi.waitFor(() => expect(cards()).toHaveLength(count), { timeout: 3000 })
 
+/**
+ * Every state a card takes from here on, each with the card's `pointer-events`
+ * at that moment. A leaving card is `closed` for as long as its leave lasts,
+ * which can be shorter than the interval a poll samples at, so the changes are
+ * recorded as they happen. The observer's callback runs before the card can be
+ * removed, because removal waits for a later task.
+ */
+function watchCardStates(): { seen: { state: string; pointerEvents: string }[]; stop: () => void } {
+  const seen: { state: string; pointerEvents: string }[] = []
+  const record = (card: HTMLElement) =>
+    seen.push({
+      state: card.dataset['state'] ?? '',
+      pointerEvents: getComputedStyle(card).pointerEvents,
+    })
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.type === 'attributes') {
+        if (mutation.target instanceof HTMLLIElement) record(mutation.target)
+        continue
+      }
+      for (const node of mutation.addedNodes) {
+        if (node instanceof HTMLLIElement) record(node)
+      }
+    }
+  })
+  observer.observe(document.body, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: ['data-state'],
+  })
+  return { seen, stop: () => observer.disconnect() }
+}
+
+const statesOf = (watch: { seen: { state: string }[] }) => watch.seen.map((entry) => entry.state)
+
 describe('the imperative API', () => {
   it('raises a toast from outside React and returns its id', async () => {
     render(<Toaster />)
@@ -294,18 +330,21 @@ describe('leaving', () => {
     // Dismissed by hand. Without the two-step store this element would leave
     // while still marked open, and the rule that stops a leaving card taking a
     // click would never apply.
+    const byHand = watchCardStates()
     toast({ title: 'By hand', durationMs: Number.POSITIVE_INFINITY })
     await settled(1)
     toast.dismiss()
-    await vi.waitFor(() => expect(cards()[0]?.dataset['state']).toBe('closed'))
-    expect(getComputedStyle(cards()[0] as HTMLElement).pointerEvents).toBe('none')
+    await vi.waitFor(() => expect(statesOf(byHand)).toEqual(['open', 'closed']))
+    expect(byHand.seen.at(-1)?.pointerEvents).toBe('none')
     await settled(0)
+    byHand.stop()
 
     // And when its own timer runs out.
+    const timedOut = watchCardStates()
     toast({ title: 'Timed out', durationMs: 100 })
-    await settled(1)
-    await vi.waitFor(() => expect(cards()[0]?.dataset['state']).toBe('closed'))
+    await vi.waitFor(() => expect(statesOf(timedOut)).toEqual(['open', 'closed']))
     await settled(0)
+    timedOut.stop()
   })
 
   it('moves the card with the finger while it is dragged, and dismisses it past the threshold', async () => {
