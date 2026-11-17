@@ -128,17 +128,49 @@ export function validate(
     }
 
     /*
-     * Returns the faults of the *best* branch only. Otherwise a union of five
-     * shapes would report one typo as five contradictory faults. The useful
-     * branch is the one the value nearly matched, which is the one with the
-     * fewest faults.
+     * Returns the faults of one branch only. Otherwise a union of five shapes
+     * would report one typo as five contradictory faults.
+     *
+     * The branch is the one the value was written as. An object is judged as
+     * the object member whose required keys it has, and a list as the list
+     * member, so the faults are about what the author wrote: an element with a
+     * misspelt field is reported at that field. An object that has no member's
+     * required key is reported once, with the keys an object may have here.
+     * Any other value is reported by the branch with the fewest faults.
      */
     case 'union': {
-      if (shape.of.some((member) => validate(member, value, path, scope).length === 0)) return []
-      const attempts = shape.of
-        .map((member) => validate(member, value, path, scope))
-        .sort((a, b) => a.length - b.length)
-      return attempts[0] ?? [`${path}: matches none of the allowed shapes`]
+      const attempts = shape.of.map((member) => validate(member, value, path, scope))
+      if (attempts.some((faults) => faults.length === 0)) return []
+      const kinds = shape.of.map((member) => resolved(member, scope))
+      const fewest = (candidates: string[][]) =>
+        [...candidates].sort((a, b) => a.length - b.length)[0]
+      const ofKind = (kind: Shape['kind']) =>
+        attempts.filter((_, index) => kinds[index]?.kind === kind)
+
+      if (isPlainObject(value) && ofKind('record').length === 0) {
+        const objects = kinds.flatMap((member, index) =>
+          member?.kind === 'object'
+            ? [{ keys: requiredKeys(member), faults: attempts[index] }]
+            : [],
+        )
+        const written = objects.filter(({ keys }) => keys.some((key) => Object.hasOwn(value, key)))
+        const faults = fewest(written.flatMap((member) => (member.faults ? [member.faults] : [])))
+        if (faults !== undefined) return faults
+        if (objects.length > 0) {
+          const own = Object.keys(value)
+          return [
+            `${path}: an object here has ${listed(
+              objects.map(({ keys }) => keys.join('` and `')),
+              'or',
+            )}, ` + `and this one has ${own.length === 0 ? 'no keys' : listed(own, 'and')}`,
+          ]
+        }
+      }
+      if (Array.isArray(value)) {
+        const faults = fewest(ofKind('array'))
+        if (faults !== undefined) return faults
+      }
+      return fewest(attempts) ?? [`${path}: matches none of the allowed shapes`]
     }
 
     case 'string': {
@@ -197,9 +229,18 @@ export function validate(
 
       // Unknown keys are a fault. Agents read the registry and trust every field
       // in it, and a field the schema does not describe carries no promise that
-      // it will stay.
+      // it will stay. The fault names the fields the object does have, so
+      // its author can tell which one was meant.
       for (const key of Object.keys(value)) {
-        if (!Object.hasOwn(shape.fields, key)) faults.push(`${path}.${key}: not in the schema`)
+        if (!Object.hasOwn(shape.fields, key)) {
+          const fields = Object.keys(shape.fields)
+          faults.push(
+            `${path}.${key}: \`${key}\` is not in the schema — ` +
+              (fields.length === 0
+                ? 'there are no fields here'
+                : `the fields here are ${listed(fields, 'and')}`),
+          )
+        }
       }
       return faults
     }
@@ -213,7 +254,36 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 function typeOf(value: unknown): string {
   if (value === null) return 'null'
   if (Array.isArray(value)) return 'an array'
-  return `a ${typeof value}`
+  return typeof value === 'object' ? 'an object' : `a ${typeof value}`
+}
+
+/** The shape a union member stands for: a reference followed, and `nullable` and `defs` opened. */
+function resolved(shape: Shape, scope: Record<string, Shape>): Shape | undefined {
+  switch (shape.kind) {
+    case 'ref': {
+      const target = Object.hasOwn(scope, shape.name) ? scope[shape.name] : undefined
+      return target === undefined ? undefined : resolved(target, scope)
+    }
+    case 'nullable':
+      return resolved(shape.of, scope)
+    case 'defs':
+      return resolved(shape.of, { ...scope, ...shape.defs })
+    default:
+      return shape
+  }
+}
+
+/** The keys an object shape cannot be without. */
+function requiredKeys(shape: Extract<Shape, { kind: 'object' }>): string[] {
+  const optional = new Set(shape.optional ?? [])
+  return Object.keys(shape.fields).filter((key) => !optional.has(key))
+}
+
+/** `a`, `b` and `c`, each as code. */
+function listed(names: readonly string[], joiner: 'and' | 'or'): string {
+  const quoted = names.map((name) => `\`${name}\``)
+  const last = quoted.pop() ?? ''
+  return quoted.length === 0 ? last : `${quoted.join(', ')} ${joiner} ${last}`
 }
 
 /* -------------------------------------------------------------------------- */

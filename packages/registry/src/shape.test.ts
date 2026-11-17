@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { defs, jsonSchema, obj, rec, ref, str, validate } from './shape'
+import { arr, defs, jsonSchema, num, obj, rec, ref, str, union, validate } from './shape'
 
 /**
  * The validator reads a document's own keys and nothing else.
@@ -21,14 +21,18 @@ describe('a closed object rejects keys that exist on Object.prototype', () => {
   const binding = obj({ $: str() })
 
   it.each(PROTOTYPE_KEYS)('reports an unknown key named %s', (key) => {
-    expect(validate(binding, { $: 'onSave', [key]: 'x' })).toEqual([`$.${key}: not in the schema`])
+    expect(validate(binding, { $: 'onSave', [key]: 'x' })).toEqual([
+      `$.${key}: \`${key}\` is not in the schema — the fields here are \`$\``,
+    ])
   })
 
   it('reports an own __proto__ key, the way JSON.parse writes one', () => {
     // An object literal with `__proto__:` sets the prototype. Only a parse
     // produces the own key that a document carries.
     const document: unknown = JSON.parse('{"$": "onSave", "__proto__": "x"}')
-    expect(validate(binding, document)).toEqual(['$.__proto__: not in the schema'])
+    expect(validate(binding, document)).toEqual([
+      '$.__proto__: `__proto__` is not in the schema — the fields here are `$`',
+    ])
   })
 })
 
@@ -81,6 +85,74 @@ describe('a ref resolves against the definitions, not their prototype', () => {
     expect(validate(defs({ toString: str() }, ref('toString')), 'x')).toEqual([])
     expect(validate(defs({ toString: str() }, ref('toString')), 1)).toEqual([
       '$: expected a string, got a number',
+    ])
+  })
+})
+
+/**
+ * A fault says what its author can act on. A key the schema lacks is reported
+ * with the fields the object does have. A value in a union is reported as the
+ * form it was written in, where the fewest-faults branch would report an
+ * element with one misspelt field as "expected a string".
+ */
+describe('a fault names what the author wrote', () => {
+  const input = obj({ name: str(), type: str(), doc: str() }, { optional: ['doc'] })
+
+  it('lists the fields an object has beside the key it lacks', () => {
+    expect(validate(input, { name: 'photo', type: 'string', optional: true })).toEqual([
+      '$.optional: `optional` is not in the schema — the fields here are `name`, `type` and `doc`',
+    ])
+    expect(validate(obj({}), { extra: 1 })).toEqual([
+      '$.extra: `extra` is not in the schema — there are no fields here',
+    ])
+  })
+
+  it('calls an object an object', () => {
+    expect(validate(str(), {})).toEqual(['$: expected a string, got an object'])
+  })
+
+  const value = defs(
+    {
+      Value: union([str(), num(), ref('Binding'), ref('Element'), ref('Plain'), arr(ref('Value'))]),
+      Binding: obj({ $: str() }),
+      Element: obj({ component: str(), children: arr(ref('Value')) }, { optional: ['children'] }),
+      Plain: obj({ $object: rec(ref('Value')) }),
+    },
+    ref('Value'),
+  )
+
+  it('judges an object in a union as the member whose required key it has', () => {
+    expect(validate(value, { component: 'Text', text: 'Saved' })).toEqual([
+      '$.text: `text` is not in the schema — the fields here are `component` and `children`',
+    ])
+    expect(validate(value, { $: 'count', fallback: 0 })).toEqual([
+      '$.fallback: `fallback` is not in the schema — the fields here are `$`',
+    ])
+    expect(validate(value, { component: 7 })).toEqual([
+      '$.component: expected a string, got a number',
+    ])
+  })
+
+  it('reports a fault inside a nested value at the place it is', () => {
+    const tree = { component: 'Stack', children: ['a', { component: 'Text', children: [true] }] }
+    expect(validate(value, tree)).toEqual([
+      '$.children[1].children[0]: expected a string, got a boolean',
+    ])
+    expect(validate(value, [1, [{ $object: { label: {} } }]])).toEqual([
+      '$[1][0].$object.label: an object here has `$`, `component` or `$object`, and this one has no keys',
+    ])
+  })
+
+  it('reports an object of no member’s form once, with the keys an object may have', () => {
+    expect(validate(value, { label: 'Profile', done: true })).toEqual([
+      '$: an object here has `$`, `component` or `$object`, and this one has `label` and `done`',
+    ])
+  })
+
+  it('reports any other value by the member it nearly matched', () => {
+    expect(validate(value, true)).toEqual(['$: expected a string, got a boolean'])
+    expect(validate(union([obj({ a: str() }), rec(num())]), { b: 'x' })).toEqual([
+      '$.b: expected a number, got a string',
     ])
   })
 })

@@ -2495,7 +2495,11 @@ describe('the results schema', () => {
   it('rejects a record with a field it does not describe', () => {
     const results = structuredClone((runs.two as Evaluation).results)
     Object.assign(results.records[0] as object, { mood: 'confident' })
-    expect(validate(RESULTS_SHAPE, results)).toEqual(['$.records[0].mood: not in the schema'])
+    expect(validate(RESULTS_SHAPE, results)).toEqual([
+      expect.stringContaining(
+        '$.records[0].mood: `mood` is not in the schema — the fields here are `brief`, `run`, ',
+      ),
+    ])
   })
 })
 

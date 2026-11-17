@@ -81,6 +81,85 @@ describe('the format', () => {
   })
 })
 
+describe('a document of the wrong shape is told what its author wrote', () => {
+  const faults = (mutate: (spec: Record<string, unknown>) => void) => {
+    const spec = base() as unknown as Record<string, unknown>
+    mutate(spec)
+    return validateSpec(registry, spec).faults
+  }
+
+  it('lists the fields a document, an input and an element have beside a key they lack', () => {
+    expect(faults((spec) => (spec['notes'] = 'A finding.'))).toEqual([
+      {
+        path: '$.notes',
+        message:
+          '`notes` is not in the schema — the fields here are `spec`, `name`, `purpose`, ' +
+          '`platform`, `root`, `inputs` and `types`',
+      },
+    ])
+    expect(
+      faults((spec) => {
+        ;(spec['inputs'] as Record<string, unknown>[])[0]!['optional'] = true
+      }),
+    ).toEqual([
+      {
+        path: '$.inputs[0].optional',
+        message: '`optional` is not in the schema — the fields here are `name`, `type` and `doc`',
+      },
+    ])
+  })
+
+  it('reports a misspelt field of a nested element at that field', () => {
+    const nested = { component: 'Text', text: 'Saved' }
+    expect(
+      faults((spec) => ((spec['root'] as { children: unknown[] }).children = [nested])),
+    ).toEqual([
+      {
+        path: '$.root.children[0].text',
+        message:
+          '`text` is not in the schema — the fields here are `component`, `props`, `children` ' +
+          'and `exception`',
+      },
+    ])
+  })
+
+  it('says how a plain object is written, where a value is one', () => {
+    const props = { label: 'Save', onClick: { $: 'onSave' }, badge: { text: 'New' } }
+    expect(
+      faults(
+        (spec) =>
+          ((spec['root'] as { children: unknown[] }).children = [{ component: 'Button', props }]),
+      ),
+    ).toEqual([
+      {
+        path: '$.root.children[0].props.badge',
+        message:
+          'an object here has `$`, `component` or `$object`, and this one has `text` — a binding ' +
+          'is `{ "$": "anInput" }`, an element is `{ "component": … }`, and a plain object, such ' +
+          'as a column or an option, is written `{ "$object": { … } }`',
+      },
+    ])
+  })
+
+  it('lists `root` before the inputs it binds and the types they mention', () => {
+    // An author who writes the document from top to bottom then declares each input with the
+    // tree's bindings already written. A document's own key order stays free.
+    const schema = jsonSchema(SCREEN_SHAPE) as { properties: Record<string, unknown> }
+    expect(Object.keys(schema.properties)).toEqual([
+      'spec',
+      'name',
+      'purpose',
+      'platform',
+      'root',
+      'inputs',
+      'types',
+    ])
+    const { inputs, root, ...rest } = base()
+    expect(validateSpec(registry, { ...rest, root, inputs })).toEqual({ ok: true, faults: [] })
+    expect(validateSpec(registry, { inputs, root, ...rest })).toEqual({ ok: true, faults: [] })
+  })
+})
+
 describe('a spec is checked against the vocabulary, not only against a shape', () => {
   const fault = (mutate: (spec: ScreenSpec) => void) => {
     const spec = base()

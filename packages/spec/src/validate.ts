@@ -160,6 +160,11 @@ export interface NativePackage {
   rendered: readonly string[]
 }
 
+/** What the shape check adds where a value is an object of no form the format has. */
+const PLAIN_OBJECT =
+  'a binding is `{ "$": "anInput" }`, an element is `{ "component": … }`, and a plain object, ' +
+  'such as a column or an option, is written `{ "$object": { … } }`'
+
 export function validateSpec(
   registry: Registry,
   document: unknown,
@@ -175,7 +180,13 @@ export function validateSpec(
 
   const shapeFaults = validateShape(SCREEN_SHAPE, document).map((message) => {
     const [path = '$', ...rest] = message.split(': ')
-    return { path, message: rest.join(': ') }
+    const said = rest.join(': ')
+    // The one union in the format is a value, and the object a value is most
+    // often miswritten as is a plain one.
+    return {
+      path,
+      message: said.startsWith('an object here has ') ? `${said} — ${PLAIN_OBJECT}` : said,
+    }
   })
   if (shapeFaults.length > 0) return { ok: false, faults: shapeFaults }
 

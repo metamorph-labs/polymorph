@@ -114,7 +114,11 @@ describe('the schema check can fail', () => {
       broken((draft) => {
         ;(draft.components[0] as unknown as { extra: number }).extra = 1
       }),
-    ).toContain('$.components[0].extra: not in the schema')
+    ).toContainEqual(
+      expect.stringContaining(
+        '$.components[0].extra: `extra` is not in the schema — the fields here are `name`, ',
+      ),
+    )
   })
 
   it('catches a value outside its enum', () => {
@@ -614,7 +618,9 @@ describe('the agent contracts come from the specs', () => {
     ])
     ;(draft.components[0] as { agent: unknown }).agent = { ...agent, extra: true }
     expect(validate(REGISTRY_SHAPE, draft)).toEqual([
-      '$.components[0].agent.extra: not in the schema',
+      expect.stringContaining(
+        '$.components[0].agent.extra: `extra` is not in the schema — the fields here are ',
+      ),
     ])
   })
 })

@@ -209,6 +209,19 @@ export const SCREEN_SHAPE: Shape = defs(
           'The platform the screen is for; `web` when absent. A member the registry marks absent ' +
           'on it is a fault that names the substitute.',
       }),
+      // `root` comes before `inputs` and `types`, and the published schema lists
+      // them in this order. An author who writes the document from top to bottom
+      // then declares each input with the tree's bindings already written, and
+      // names each type with the inputs already written. In the other order an
+      // input the tree turns out to need, such as a function a member requires,
+      // is bound and never declared. A document's own key order is free.
+      root: ref('Element'),
+      inputs: arr(INPUT, {
+        description:
+          'What the screen is handed: data and callbacks. Everything a binding can name, and the ' +
+          'only way behaviour enters a spec. Every binding in `root` names one of these, a ' +
+          'function a member requires included.',
+      }),
       types: rec(arr(str()), {
         description:
           'Module -> the type names the inputs mention. A screen is handed its own domain’s types ' +
@@ -216,12 +229,6 @@ export const SCREEN_SHAPE: Shape = defs(
           'from the tree — the emitter writes `import type` lines from this and `tsc` checks them. ' +
           'Each key is a module specifier and each name an identifier.',
       }),
-      inputs: arr(INPUT, {
-        description:
-          'What the screen is handed: data and callbacks. Everything a binding can name, and the ' +
-          'only way behaviour enters a spec.',
-      }),
-      root: ref('Element'),
     },
     { optional: ['platform', 'types'] },
   ),
