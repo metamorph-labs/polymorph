@@ -53,8 +53,11 @@ public struct PMTextarea: PMTextareaRendering {
       .modifier(
         PMFieldBox(invalid: invalid, disabled: disabled, readOnly: readOnly, focused: focused)
       )
-      .contentShape(.rect)
-      .simultaneousGesture(TapGesture().onEnded { if !disabled { focused = true } })
+      // One row and the recipe's padding are shorter than the hit target.
+      .pmHitTarget()
+      // A tap in the box focuses the field, and the text view places its
+      // caret where the tap lands.
+      .pmOpensOnTap(!disabled, simultaneous: true) { focused = true }
       .pmLimitedText(
         $shown, value: props.value, committed: value, maxLength: props.maxLength
       ) { kept in

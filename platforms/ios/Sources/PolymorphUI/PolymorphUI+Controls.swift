@@ -1,12 +1,12 @@
 // The parts several controls share: the field family's container (Input,
 // Textarea, Select's trigger), the embedded adornment button (Input's clear),
-// the tap that opens a choosing field from anywhere in its hit area, a text
-// field's text kept to its `maxLength`, the keyboard a text field's type asks
-// for, the label row of a row-labelled control and its name when it has one
-// (Checkbox, Switch), the spinning `loading` glyph (Button, Spinner), a
-// sortable header's glyph and value (Table, DataTable), a file's size as text
-// (FileUpload, AttachmentChip), the pasteboard a copy control writes to
-// (CodeBlock, CopyButton), the disclosure's trigger and region
+// the tap that opens a field from anywhere in its hit area and the box it
+// publishes, a text field's text kept to its `maxLength`, the keyboard a text
+// field's type asks for, the label row of a row-labelled control and its name
+// when it has one (Checkbox, Switch), the spinning `loading` glyph (Button,
+// Spinner), a sortable header's glyph and value (Table, DataTable), a file's
+// size as text (FileUpload, AttachmentChip), the pasteboard a copy control
+// writes to (CodeBlock, CopyButton), the disclosure's trigger and region
 // (Accordion, Collapsible), and a field's error row (FormField, InlineEdit).
 
 import PolymorphTokens
@@ -106,29 +106,65 @@ private struct PMEmbeddedButton<Label: View>: View {
 }
 
 /// A tap in a field's hit area that its own buttons do not take: it opens
-/// what the field opens, as a press on the web's field does. The buttons in
-/// the field keep their own taps, because a child's gesture comes first. Only
-/// while `enabled`: a field that holds a system control (a filled date, a
-/// filled time) leaves its taps to the control, and a disabled field takes
-/// none.
+/// what the field opens (a text field's focus, a choosing field's panel), as a
+/// press on the web's field does. The buttons in the field keep their own
+/// taps, because a child's gesture comes first. The whole of the view's frame
+/// takes the tap, and the frame is published as the field's box
+/// (`PMTapBoxKey`) in every state, disabled and read-only included.
+///
+/// The exclusive tap acts only while `enabled`, and is not attached
+/// otherwise: a field that holds a system control (a filled date, a filled
+/// time) leaves its taps to the control, and a disabled field takes none. The
+/// simultaneous tap is for a field whose text view places its caret where the
+/// tap lands (Textarea, PromptInput): the text view keeps the tap and the
+/// field is focused too. It takes no tap from the views in it, so it stays
+/// attached and does nothing while not `enabled`.
 private struct PMOpensOnTap: ViewModifier {
   let enabled: Bool
+  let simultaneous: Bool
   let action: @MainActor () -> Void
 
   func body(content: Content) -> some View {
-    if enabled {
-      content.onTapGesture { action() }
+    let area = content.contentShape(.rect).pmTapBox()
+    if simultaneous {
+      area.simultaneousGesture(TapGesture().onEnded { if enabled { action() } })
+    } else if enabled {
+      area.onTapGesture { action() }
     } else {
-      content
+      area
     }
+  }
+}
+
+/// The boxes that take a text entry's tap: the bounds of each view
+/// `pmOpensOnTap` takes a tap in, all of which is hit-testable. The simulator
+/// audit reads them with the entry hosted and holds a hosted text field or
+/// text view to the smallest box that contains it, because the member's box,
+/// not the editable line UIKit publishes as the element, is where a person
+/// taps. A preference adds no view and no accessibility element, and draws
+/// nothing.
+struct PMTapBoxKey: PreferenceKey {
+  static let defaultValue: [Anchor<CGRect>] = []
+
+  static func reduce(value: inout [Anchor<CGRect>], nextValue: () -> [Anchor<CGRect>]) {
+    value.append(contentsOf: nextValue())
   }
 }
 
 extension View {
   /// Runs `action` on a tap in the view's hit area outside its buttons, while
-  /// `enabled`. Apply it after `pmHitTarget()`, so the area is the hit target.
-  func pmOpensOnTap(_ enabled: Bool, _ action: @escaping @MainActor () -> Void) -> some View {
-    modifier(PMOpensOnTap(enabled: enabled, action: action))
+  /// `enabled`, and publishes the area as the field's box. Apply it after
+  /// `pmHitTarget()`, so the area is the hit target. `simultaneous` lets the
+  /// text view in the view take the tap as well.
+  func pmOpensOnTap(
+    _ enabled: Bool, simultaneous: Bool = false, _ action: @escaping @MainActor () -> Void
+  ) -> some View {
+    modifier(PMOpensOnTap(enabled: enabled, simultaneous: simultaneous, action: action))
+  }
+
+  /// Publishes the view's bounds as a box that takes a tap (`PMTapBoxKey`).
+  fileprivate func pmTapBox() -> some View {
+    anchorPreference(key: PMTapBoxKey.self, value: .bounds) { [$0] }
   }
 }
 

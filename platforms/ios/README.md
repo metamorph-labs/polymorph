@@ -109,7 +109,7 @@ eagerly.
 | `Sources/PolymorphUI/Generated/Catalogue.swift`, `Fixtures.swift` | Every member with its iOS status (`PMCatalogue.members`), and every states fixture the member files declare (`PMFixtures.all`). |
 | `Sources/PolymorphUI/Generated/Strings.swift`, `Recipes.swift`, `Brands.swift`, `Phones.swift` | The decisions made elsewhere that the members read: `PMStrings`, every default a spec names for text, in English, from `packages/native/src/strings.ts`, each looked up through `String(localized:comment:)` in the app's main bundle, so an app translates them in its own string catalog; `PMRecipe`, the numbers the recipes write (measures in `space.10` steps, breakpoints in points, a sheet's height as a fraction of the window, an opacity, a scale) and the few a web member's source or the chart engine writes (SplitPane's steps, ConversationPage's split, a chart marker's radius), from `packages/native/src/recipes.ts`; each provider's brand mark, the engine's `BRAND_DRAWINGS` path for path; and PhoneInput's calling codes, the engine's table read through its own lookups (`packages/native/src/phones.ts`). |
 | `Sources/PolymorphUI/<Member>.swift` | One member, written by hand: `PM<Member>`, conforming to `PM<Member>Rendering`, and `<Member>States`, its states fixture. `Badge.swift` is the template. A native or adapted member without a file here is listed in `packages/native/src/pending.ts`, and what a member cannot do on iOS that its contract asks is in `PLATFORM_GAPS` there, with the reason. A member reads every field of its contract, or `packages/native/src/undrawn.ts` names the field under `ios` with the reason. |
-| `Tests/PolymorphUITests/` | The harness. It renders every fixture entry under the default pairing in light mode and a dark-mode pairing (`RenderingTests`, PNGs in `.snapshots/`, gitignored), reads each root's identity and promises from the accessibility tree and holds every text field, date picker, menu picker and colour well a member hosts to a name (`IdentityTests`), checks the catalogue, the lawful grid and that every icon role's SF Symbol exists (`ContractTests`), hosts members in a window, presses, types into, clicks and sends keys to them, and reads back what they report and expose (`BehaviourTests`), and, on an iOS simulator only, audits each entry for accessibility (`AccessibilityAuditTests`): every element labelled (a hosted UIKit control's label is published only in an app, so `IdentityTests` holds those on macOS), a 44-point hit region on everything a person acts on, and nothing outside the window that no scroll view holds, at the default and the largest text size. The harness decides whether the members draw their scroll views (`Harness.scene`'s `scrolls`), so a fixture never turns scrolling off itself. |
+| `Tests/PolymorphUITests/` | The harness. It renders every fixture entry under the default pairing in light mode and a dark-mode pairing (`RenderingTests`, PNGs in `.snapshots/`, gitignored), reads each root's identity and promises from the accessibility tree and holds every text field, date picker, menu picker and colour well a member hosts to a name (`IdentityTests`), checks the catalogue, the lawful grid and that every icon role's SF Symbol exists (`ContractTests`), hosts members in a window, presses, types into, clicks and sends keys to them, and reads back what they report and expose (`BehaviourTests`), and, on an iOS simulator only, audits each entry for accessibility (`AccessibilityAuditTests`): every element labelled (a hosted UIKit control's label is published only in an app, so `IdentityTests` holds those on macOS), a 44-point hit region on everything a person acts on (a text field's is the box its member takes its tap in, and a control UIKit hosts that takes its taps over less is recorded rather than counted as a defect), and nothing outside the window that no scroll view holds, at the default and the largest text size. The harness decides whether the members draw their scroll views (`Harness.scene`'s `scrolls`), so a fixture never turns scrolling off itself. |
 
 Everything in `Generated/` is written by `pnpm native:contracts` from the registry, so a prop's
 Swift name and type are the spec's; never edit it. The laws in `packages/native/src/laws.test.ts`
@@ -180,23 +180,24 @@ and its states fixture, remove it from the pending list if it is listed there, r
   `inverse` table lists them.
 - `pmShadow` draws outer layers with SwiftUI's `shadow`, which has no spread and no inset; those
   values are in each `PMShadowLayer` for a view that draws them itself.
-- A 44-point element for a control UIKit hosts: a text field's editable line (`UITextField`, the
-  multi-line text view), the compact date picker, a menu picker's button and the navigation
-  bar's buttons. SwiftUI sizes these as UIKit does and publishes UIKit's frame to VoiceOver,
-  while the member's box takes the tap. The simulator audit counts each one, and the recorded
-  threshold (`scripts/native-audits/thresholds.json`) holds the count. They stay as they are by
-  decision: a field or picker that behaved otherwise would differ from the same control in every
-  other SwiftUI app, and the guideline's hit region, the box, is already there. The number falls
-  only when UIKit changes a size. It rises only for a new fixture state that hosts such a control,
-  named here: ConfirmDialog's "open, awaiting the phrase" and "open, the phrase mistyped", whose
-  phrase field is a text field, each counted at the default text size; AppShell's "with a
-  banner — a notice across the frame, above the rail and the topbar", whose navigation bar holds
-  the menu button, counted at both text sizes; every state of PhoneInput but "readOnly — the
-  country as read-only text", whose number is a text field, each field counted at the default
-  text size, "sizes side by side" for its three; InlineEdit's "editing", "failed — the error
-  under the field, tied to it" and "required, blank — save disabled", whose field is a text
-  field, each counted at the default text size; and every state of SearchPage, whose search
-  field is a text field, each counted at the default text size.
+- A 44-point hit region for a control UIKit hosts that takes its own taps: the compact date
+  picker, a menu picker's button and a colour well. UIKit sizes each as it does in every SwiftUI
+  app and delivers its taps over the area it hit-tests to it, which no member's area widens. The
+  simulator audit records each one whose area is under 44 points on an axis, and `ios.system` in
+  `scripts/native-audits/thresholds.json` holds the count. They stay as they are by decision: a
+  picker that behaved otherwise would differ from the same control in every other SwiftUI app.
+  The number falls only when UIKit takes such a control's taps over 44 points. It rises only for
+  a new fixture state that hosts such a control, named here. The run records them in these
+  states: DatePicker's "filled", "open — the month grid, the value chosen", "clearable", "out of
+  range — past maxValue, invalid", "a refused date — invalid", "hour — the hour on its own beside
+  the date" (the date picker and the hour's menu button) and "datetime — the time beside the
+  date" and "disabled", and TimeInput's "filled", "hour granularity" (the hour's menu button) and
+  "disabled", each at the default text size, where UIKit takes the control's taps over less than
+  44 points of height. A disabled control takes no taps, so it is measured by its bounds.
+
+A text field's VoiceOver element is its editable line (`UITextField`, the multi-line text view),
+as in any SwiftUI app, while the member's box takes the tap. The simulator audit holds the box,
+which every text-entry member publishes, to 44 points, and finds no text field short of it.
 
 ## Working on it
 
@@ -216,10 +217,11 @@ From the repository root:
   [docs/native.md](../../docs/native.md)) build and test on macOS, and the package type-checks for
   the iOS Simulator, with the accessibility audit when a simulator runtime is installed. It needs
   Xcode; the audit needs an iOS simulator runtime (`xcodebuild -downloadPlatform iOS`, 8.5 GB for
-  iOS 26.5), runs on an iPhone simulator of the device type and runtime the threshold was
+  iOS 26.5), runs on an iPhone simulator of the device type and runtime the thresholds were
   measured on (the newest runtime when that one is not installed, which it says), and fails when
-  it finds more defects than `scripts/native-audits/thresholds.json` allows
-  ([docs/verification.md](../../docs/verification.md), "The simulator audit").
+  it finds more defects, or records more system controls, than
+  `scripts/native-audits/thresholds.json` allows ([docs/verification.md](../../docs/verification.md),
+  "The simulator audit").
 
 From this directory, `swift build` and `swift test` build and test both libraries.
 

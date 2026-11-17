@@ -25,10 +25,19 @@ import { join, resolve } from 'node:path'
  *    contract tests (the render and identity tests are macOS's, run by
  *    `swift test`). It reads the result bundle and prints every failure and
  *    runtime warning the run recorded. A failure of `AccessibilityAuditTests`
- *    that names an entry is a defect the audit found; the step fails when there
- *    are more of them than `scripts/native-audits/thresholds.json` allows
- *    (`ios.count`), and on any other failure. `PM_MEMBERS=Input,Toast`
- *    audits only the members it names, and then fails on any defect;
+ *    that names an entry is a finding of the audit, and its wording says
+ *    which of two kinds it is. A system control is a control UIKit hosts that
+ *    takes its own taps over the area UIKit hit-tests to it (a compact date
+ *    picker, a menu's button, a navigation bar's button); one whose area is
+ *    under the 44-point hit region is recorded as "… is UIKit's control at
+ *    UIKit's size, hit-tested over 34 points of height". Every other finding
+ *    is a defect. The script prints each list, and the step fails when there
+ *    are more defects than
+ *    `scripts/native-audits/thresholds.json` allows (`ios.count`), more
+ *    system controls than it records (`ios.system`), or any other failure.
+ *    `PM_MEMBERS=Input,Toast` audits only the members it names, and then
+ *    fails on any defect and prints the system controls without failing on
+ *    them;
  * 3. otherwise prints why the audit was skipped and exits 0.
  *
  * `docs/verification.md` ("The iOS gate") describes the whole gate.
@@ -42,17 +51,22 @@ const IOS_TARGET = '17.0'
 /** How long the simulator run may take, building included, before it is stopped. */
 const TEST_TIMEOUT_MS = 30 * 60 * 1000
 /**
- * The most defects the audit may report (`count`), with the device type and
- * the runtime it was measured on (`device`, `runtime`). The number comes down,
- * and rises only for a new fixture state that hosts a control UIKit sizes
- * (`docs/verification.md`, "The audit thresholds").
+ * The most defects the audit may report (`count`, zero), the system controls
+ * it records under the hit region (`system`), and the device type and the
+ * runtime both were measured on (`device`, `runtime`). `system` rises only
+ * for a new fixture state that hosts such a control, and falls when UIKit
+ * takes one's taps over 44 points (`docs/verification.md`, "The audit
+ * thresholds").
  */
 const THRESHOLD = JSON.parse(
   readFileSync(resolve(ROOT, 'scripts/native-audits/thresholds.json'), 'utf8'),
 ).ios
-/** The audit's own suite, and the shape of its failures: `Member — entry (size): what is wrong`. */
+/** The audit's own suite, and the shape of its findings: `Member — entry (size): what it found`. */
 const AUDIT = 'AccessibilityAuditTests'
-const DEFECT = /^.+ — .+ \(UICTContentSizeCategory\w+\): .+/s
+const FINDING = /^.+ — .+ \(UICTContentSizeCategory\w+\): .+/s
+/** A system control the audit records: `… is UIKit's control at UIKit's size, hit-tested over 34 points of height`. */
+const SYSTEM =
+  /: .+ is UIKit's control at UIKit's size, hit-tested over [\d.]+ points of (?:height|width)$/s
 
 const say = (line) => console.error(`ios-audit: ${line}`)
 
@@ -312,40 +326,52 @@ if (report === undefined) {
   process.exit(1)
 }
 for (const warning of report.warnings) say(`runtime warning: ${warning}`)
-const defects = report.failures.filter(
-  (failure) => failure.suite === AUDIT && DEFECT.test(failure.message),
+const findings = report.failures.filter(
+  (failure) => failure.suite === AUDIT && FINDING.test(failure.message),
 )
-const others = report.failures.filter((failure) => !defects.includes(failure))
+const system = findings.filter((failure) => SYSTEM.test(failure.message))
+const defects = findings.filter((failure) => !system.includes(failure))
+const others = report.failures.filter((failure) => !findings.includes(failure))
+if (system.length > 0) say(`system controls at UIKit's size, recorded (${system.length}):`)
+for (const failure of system) say(`  ${failure.message}`)
+if (defects.length > 0) say(`defects (${defects.length}):`)
 for (const failure of defects) say(`  ${failure.message}`)
 for (const failure of others) say(`  ${failure.suite}.${failure.test}: ${failure.message}`)
 const ran = `${report.cases} test cases (${report.suites.join(', ')}) on ${on}`
 if (others.length > 0 || (!test.ok && report.failures.length === 0)) {
   if (report.failures.length === 0) process.stderr.write(test.stdout + test.stderr)
-  say(`failed — ${ran}: a test failed other than by finding a defect, listed above`)
+  say(`failed — ${ran}: a test failed other than by an audit finding, listed above`)
   process.exit(1)
 }
+const listed = (list) => `${list.length > 0 ? ', listed above' : ''}`
 if (only) {
   say(
     `PolymorphUITests ran ${ran}, auditing only ${only}: ${defects.length} defects` +
-      `${defects.length > 0 ? ', listed above' : ''}; the threshold applies to a whole run`,
+      `${listed(defects)}, and ${system.length} system controls recorded${listed(system)}; ` +
+      'the thresholds apply to a whole run',
   )
   process.exit(defects.length > 0 ? 1 : 0)
 }
 const counted =
-  `the accessibility audit found ${defects.length} defects` +
-  `${defects.length > 0 ? ', listed above' : ''}; ` +
-  `scripts/native-audits/thresholds.json allows ${THRESHOLD.count}, measured on ${measured}`
-if (defects.length > THRESHOLD.count) {
+  `the accessibility audit found ${defects.length} defects${listed(defects)} and recorded ` +
+  `${system.length} system controls${listed(system)}; scripts/native-audits/thresholds.json ` +
+  `allows ${THRESHOLD.count} defects and records ${THRESHOLD.system} system controls, ` +
+  `measured on ${measured}`
+if (defects.length > THRESHOLD.count || system.length > THRESHOLD.system) {
   say(`failed — ${ran}: ${counted}`)
   process.exit(1)
 }
 say(`PolymorphUITests ran ${ran}: ${counted}`)
-if (defects.length < THRESHOLD.count) {
+for (const [key, found, number] of [
+  ['ios.count', defects.length, THRESHOLD.count],
+  ['ios.system', system.length, THRESHOLD.system],
+]) {
+  if (found >= number) continue
   say(
     comparable
-      ? `lower "ios.count" in scripts/native-audits/thresholds.json to ${defects.length}`
-      : `fewer defects than the threshold on ${on}; lower "ios.count" from a run on ${measured}, ` +
-          "or record this run's count with its device and runtime",
+      ? `lower "${key}" in scripts/native-audits/thresholds.json to ${found}`
+      : `fewer findings than "${key}" on ${on}; lower it from a run on ${measured}, ` +
+          "or record this run's numbers with its device and runtime",
   )
 }
 

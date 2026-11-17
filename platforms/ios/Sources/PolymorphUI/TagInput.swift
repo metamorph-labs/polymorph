@@ -69,8 +69,8 @@ public struct PMTagInput: PMTagInputRendering {
     .modifier(
       PMFieldBox(invalid: invalid, disabled: disabled, readOnly: full, focused: focused))
     .pmHitTarget()
-    .contentShape(.rect)
-    .onTapGesture { if !disabled { focused = true } }
+    // A tap in the field outside a chip's remove button focuses the entry.
+    .pmOpensOnTap(!disabled) { focused = true }
     .onChange(of: focused) { _, now in if !now { props.onBlur?() } }
     .accessibilityElement(children: .contain)
     .pmMember(

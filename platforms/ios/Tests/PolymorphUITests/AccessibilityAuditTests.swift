@@ -1,8 +1,10 @@
 #if os(iOS)
-  import PolymorphUI
   import SwiftUI
   import UIKit
   import XCTest
+
+  // `@testable` reaches the boxes the members publish (`PMTapBoxKey`).
+  @testable import PolymorphUI
 
   /// The accessibility audit, run on an iOS simulator by `scripts/ios-audit.mjs`.
   ///
@@ -27,6 +29,36 @@
   /// An entry whose `expect` sets `hidden` to `true` is a decorative state and
   /// must expose nothing.
   ///
+  /// The hit region is measured by what the element is:
+  ///
+  /// - A hosted text entry view (a `UITextField`, or an editable `UITextView`)
+  ///   is its editable line, which UIKit publishes as the element, while the
+  ///   member's box takes the tap. The member's `pmOpensOnTap` publishes the
+  ///   box (`PMTapBoxKey`), and the audit reads the boxes at the root of the
+  ///   hosting. The view passes when the smallest box that contains its frame
+  ///   is 44 points on each axis. A view in no box, or in a box under 44
+  ///   points, is a defect.
+  /// - A system control, a hosted `UIControl` that is not a text entry view
+  ///   (the compact date picker, a menu's button, a navigation bar's button),
+  ///   takes its own taps over the area UIKit hit-tests to it, which can be
+  ///   larger than its bounds (a bar button's platter), and it publishes no
+  ///   accessibility frame in the test process. The audit probes that area:
+  ///   from the centre of the control's bounds it calls `window.hitTest` a
+  ///   pixel at a time outward along the horizontal and the vertical line
+  ///   through the centre, as far as the view returned is the control or a
+  ///   view inside it, and takes the run on each line as the control's width
+  ///   and height. A control whose area is 44 points on each axis passes. One
+  ///   whose area is shorter is UIKit's control at UIKit's size, which no
+  ///   member's area can widen: the audit records it with the area it
+  ///   measured, and `scripts/ios-audit.mjs` counts it against its own number
+  ///   rather than as a defect. A disabled control takes no taps, so UIKit
+  ///   hit-tests nothing to it: it is measured by its bounds, the least area
+  ///   it takes its taps in once enabled. An enabled control whose centre
+  ///   hit-tests to another view takes no tap at all, which is a defect.
+  ///   A text entry view is not probed, because a tap beside its line goes to
+  ///   the member's gesture, which `hitTest` returns as the hosting view.
+  /// - Every other element is measured by the frame SwiftUI publishes.
+  ///
   /// A scroll view's elements are published by UIKit's accessibility runtime,
   /// which runs in an app and not in a package's test process, so the audit
   /// reads each entry with its scroll views drawn at rest (`Harness.scene`'s
@@ -39,12 +71,12 @@
   ///
   /// A text field or a text view is a UIKit view SwiftUI hosts, and UIKit
   /// publishes its label, traits and frame through the same runtime. The audit
-  /// reads such a view's frame from the view and holds it to the hit region and
-  /// the window. Its label is not published here, so `IdentityTests` holds
-  /// every hosted control (a text field, a date picker, a menu picker, a
-  /// colour well) to a name on macOS, where AppKit publishes it in the test's
-  /// process, and the members name their text fields the same way on both
-  /// platforms (`pmEntryName`).
+  /// reads such a view's frame from the view and holds it to the hit region,
+  /// as above, and to the window. Its label is not published here, so
+  /// `IdentityTests` holds every hosted control (a text field, a date picker,
+  /// a menu picker, a colour well) to a name on macOS, where AppKit publishes
+  /// it in the test's process, and the members name their text fields the
+  /// same way on both platforms (`pmEntryName`).
   @MainActor
   final class AccessibilityAuditTests: XCTestCase {
     /// The text sizes every entry is audited at.
@@ -97,7 +129,7 @@
 
     private func audit(_ entry: PMStateEntry, of member: String, at size: UIContentSizeCategory) {
       let label = "\(member) — \(entry.name) (\(size.rawValue))"
-      let (window, nodes) = host(entry, size, scrolls: false)
+      let (window, nodes, boxes) = host(entry, size, scrolls: false)
       defer { retire(window) }
       let elements = nodes.filter(\.isElement)
       if entry.expect["hidden"] == "true" {
@@ -113,7 +145,7 @@
 
       // What the entry publishes with its scroll views drawn: every element no
       // scroll view holds, by what it is, where that hosting puts it.
-      let (scrolling, drawn) = host(entry, size, scrolls: true)
+      let (scrolling, drawn, _) = host(entry, size, scrolls: true)
       retire(scrolling)
       var unscrolled = Dictionary(grouping: drawn.filter(\.isElement), by: \.key).mapValues {
         $0.map(\.frame)
@@ -129,10 +161,17 @@
         let shown = name.isEmpty ? element.kind : name
         let frame = element.frame
         if element.actionable {
-          XCTAssertGreaterThanOrEqual(
-            (frame.width * scale).rounded(), hitRegion * scale, "\(label): \(shown) is too narrow to hit")
-          XCTAssertGreaterThanOrEqual(
-            (frame.height * scale).rounded(), hitRegion * scale, "\(label): \(shown) is too short to hit")
+          switch element.control {
+          case .entry:
+            holdToBox(frame, of: shown, in: boxes, label, scale: scale)
+          case .system(let control):
+            record(control, of: shown, in: window, label, scale: scale)
+          case .element:
+            XCTAssertGreaterThanOrEqual(
+              pixels(frame.width, scale), hitRegion * scale, "\(label): \(shown) is too narrow to hit")
+            XCTAssertGreaterThanOrEqual(
+              pixels(frame.height, scale), hitRegion * scale, "\(label): \(shown) is too short to hit")
+          }
         }
         // An element no scroll view holds is published both ways: each takes
         // the next frame of its kind from the second hosting, and an element
@@ -148,11 +187,135 @@
       }
     }
 
+    /// Holds a hosted text entry view to the box it takes its tap in: the
+    /// smallest box a member publishes (`PMTapBoxKey`) that contains the
+    /// view's frame, compared in whole pixels. UIKit publishes the editable
+    /// line as the element, and the member's box around it is the area that
+    /// focuses it.
+    private func holdToBox(
+      _ frame: CGRect, of shown: String, in boxes: [CGRect], _ label: String, scale: CGFloat
+    ) {
+      let line = pixelFrame(frame, scale)
+      let box = boxes.filter { pixelFrame($0, scale).contains(line) }
+        .min { $0.width * $0.height < $1.width * $1.height }
+      guard let box else {
+        XCTFail("\(label): \(shown) lies in no box that takes its tap, at \(described(frame))")
+        return
+      }
+      XCTAssertGreaterThanOrEqual(
+        pixels(box.width, scale), hitRegion * scale,
+        "\(label): \(shown)'s box, \(described(box)), is too narrow to hit")
+      XCTAssertGreaterThanOrEqual(
+        pixels(box.height, scale), hitRegion * scale,
+        "\(label): \(shown)'s box, \(described(box)), is too short to hit")
+    }
+
+    /// Holds a system control to the area UIKit hit-tests to it
+    /// (`hitArea`), and records it when that area is under the hit region on
+    /// an axis. It takes its own taps at the size UIKit gives it, so no
+    /// member's area can widen it, and the audit neither passes it nor counts
+    /// it as a defect: the wording tells `scripts/ios-audit.mjs` to count it
+    /// against `ios.system`.
+    private func record(
+      _ control: UIView, of shown: String, in window: UIWindow, _ label: String, scale: CGFloat
+    ) {
+      guard let area = hitArea(of: control, in: window, scale: scale) else {
+        XCTFail("\(label): \(shown) takes no tap, because another view covers its centre")
+        return
+      }
+      let recorded = "\(label): \(shown) is UIKit's control at UIKit's size, hit-tested over"
+      if pixels(area.width, scale) < hitRegion * scale {
+        XCTFail("\(recorded) \(points(area.width, scale)) points of width")
+      }
+      if pixels(area.height, scale) < hitRegion * scale {
+        XCTFail("\(recorded) \(points(area.height, scale)) points of height")
+      }
+    }
+
+    /// The width and height of the area UIKit delivers a control's touches
+    /// in. From the centre of the control's bounds, `window.hitTest` is
+    /// called a pixel at a time outward along the horizontal and the vertical
+    /// line through the centre, as far as the view it returns is the control
+    /// or a view inside it, and no further than the hit region on each side.
+    /// Each line's run of such pixels is the area on that axis. A disabled
+    /// control gives its bounds, and an enabled one whose centre hit-tests to
+    /// another view gives none.
+    private func hitArea(of control: UIView, in window: UIWindow, scale: CGFloat) -> CGSize? {
+      let frame = control.convert(control.bounds, to: nil)
+      if disabled(control) { return frame.size }
+      let centre = CGPoint(x: frame.midX, y: frame.midY)
+      let takes = { (point: CGPoint) -> Bool in
+        guard let hit = window.hitTest(point, with: nil) else { return false }
+        return hit === control || hit.isDescendant(of: control)
+      }
+      guard takes(centre) else { return nil }
+      // The pixels past the centre, towards (dx, dy), that hit-test to the control.
+      let reach = { (dx: CGFloat, dy: CGFloat) -> Int in
+        var count = 0
+        while CGFloat(count) < self.hitRegion * scale {
+          let distance = CGFloat(count + 1) / scale
+          guard takes(CGPoint(x: centre.x + dx * distance, y: centre.y + dy * distance)) else { break }
+          count += 1
+        }
+        return count
+      }
+      let width = 1 + reach(-1, 0) + reach(1, 0)
+      let height = 1 + reach(0, -1) + reach(0, 1)
+      return CGSize(width: CGFloat(width) / scale, height: CGFloat(height) / scale)
+    }
+
+    /// Whether a control takes no touch because it is disabled: the control
+    /// itself, or a view that holds it, which is how SwiftUI disables a
+    /// control it hosts.
+    private func disabled(_ control: UIView) -> Bool {
+      if (control as? UIControl)?.isEnabled == false { return true }
+      var view: UIView? = control
+      while let held = view, !(held is UIWindow) {
+        if !held.isUserInteractionEnabled { return true }
+        view = held.superview
+      }
+      return false
+    }
+
+    /// A length in whole pixels of the screen, so a 44-point frame that
+    /// floating point reports as 43.99999 points passes.
+    private func pixels(_ length: CGFloat, _ scale: CGFloat) -> CGFloat {
+      (length * scale).rounded()
+    }
+
+    /// A frame with each edge on the nearest whole pixel.
+    private func pixelFrame(_ frame: CGRect, _ scale: CGFloat) -> CGRect {
+      let edge = { (value: CGFloat) in (value * scale).rounded() }
+      return CGRect(
+        x: edge(frame.minX), y: edge(frame.minY),
+        width: edge(frame.maxX) - edge(frame.minX), height: edge(frame.maxY) - edge(frame.minY))
+    }
+
+    /// A length in points as whole pixels give it, to a tenth: `34`, `34.3`.
+    private func points(_ length: CGFloat, _ scale: CGFloat) -> String {
+      let tenths = (pixels(length, scale) / scale * 10).rounded() / 10
+      return tenths == tenths.rounded() ? String(Int(tenths)) : String(format: "%.1f", tenths)
+    }
+
     /// Takes a window off the screen and releases the entry it hosted. Its
     /// frame and its screen stay readable.
     private func retire(_ window: UIWindow) {
       window.isHidden = true
       window.rootViewController = nil
+    }
+
+    /// What an actionable node is, which decides what its hit region is
+    /// measured by.
+    private enum Control {
+      /// An element SwiftUI publishes: its own frame.
+      case element
+      /// A hosted text field or editable text view: the box its member takes
+      /// its tap in.
+      case entry
+      /// A hosted UIKit control that is not a text entry view (the compact
+      /// date picker, a menu's button, a navigation bar's button): the area
+      /// UIKit hit-tests to the control, which is recorded when short.
+      case system(UIView)
     }
 
     /// One node of the tree: an element or a container SwiftUI publishes, or a
@@ -164,6 +327,7 @@
       let label: String?
       let frame: CGRect
       let actionable: Bool
+      let control: Control
       let kind: String
 
       /// What the element is, wherever it is drawn: the same element in both
@@ -171,11 +335,20 @@
       var key: String { "\(kind)|\(identifier ?? "")|\(label ?? "")|\(actionable)" }
     }
 
+    /// The boxes an entry's fields take their taps in, in the window's
+    /// coordinates, as the hosting's last layout publishes them.
+    private final class Boxes {
+      var frames: [CGRect] = []
+    }
+
     /// The entry in a key window at a text size, with its scroll views drawn
-    /// or at rest, and the tree it exposes, depth first.
+    /// or at rest, the tree it exposes, depth first, and the boxes its
+    /// fields take their taps in (`PMTapBoxKey`). The boxes are read at the
+    /// root of the hosting, where every member's preference arrives, and
+    /// resolved there in the window's coordinates.
     private func host(
       _ entry: PMStateEntry, _ size: UIContentSizeCategory, scrolls: Bool
-    ) -> (UIWindow, [Node]) {
+    ) -> (UIWindow, [Node], [CGRect]) {
       let pass = Harness.passes[0]
       let text = DynamicTypeSize(size) ?? .large
       let window = UIWindow(frame: .zero)
@@ -186,10 +359,20 @@
       let canvas = self.canvas(for: entry, pass, text, in: window)
       // Animations are off, so a repeating one (a skeleton's shimmer) holds
       // still and every run reads the same frames.
+      let boxes = Boxes()
       let controller = UIHostingController(
         rootView: Harness.scene(entry, pass, size: canvas, scrolls: scrolls)
           .dynamicTypeSize(text)
-          .transaction { $0.disablesAnimations = true })
+          .transaction { $0.disablesAnimations = true }
+          .backgroundPreferenceValue(PMTapBoxKey.self) { anchors in
+            GeometryReader { proxy in
+              let origin = proxy.frame(in: .global).origin
+              let frames = anchors.map { proxy[$0].offsetBy(dx: origin.x, dy: origin.y) }
+              Color.clear
+                .allowsHitTesting(false)
+                .onChange(of: frames, initial: true) { _, frames in boxes.frames = frames }
+            }
+          })
       controller.safeAreaRegions = []
       window.frame.size.height = max(canvas.height, Harness.tallest)
       window.rootViewController = controller
@@ -198,7 +381,7 @@
       RunLoop.main.run(until: Date().addingTimeInterval(0.05))
       var nodes: [Node] = []
       for child in children(of: controller.view) { collect(child, into: &nodes) }
-      return (window, nodes)
+      return (window, nodes, boxes.frames)
     }
 
     /// The canvas an entry is laid out on: the harness's width, and the height
@@ -238,11 +421,12 @@
           for child in children(of: view) { collect(child, into: &nodes) }
           return
         }
+        let entry = view is UITextField || (view as? UITextView)?.isEditable == true
         nodes.append(
           Node(
             isElement: true, isHostedView: true, identifier: view.accessibilityIdentifier,
             label: view.accessibilityLabel, frame: view.convert(view.bounds, to: nil),
-            actionable: view is UIControl || (view as? UITextView)?.isEditable == true,
+            actionable: view is UIControl || entry, control: entry ? .entry : .system(view),
             kind: String(describing: type(of: view))))
         return
       }
@@ -253,7 +437,7 @@
           isElement: object.isAccessibilityElement, isHostedView: false,
           identifier: text(object, "accessibilityIdentifier"), label: text(object, "accessibilityLabel"),
           frame: object.accessibilityFrame, actionable: !traits.intersection(actionable).isEmpty,
-          kind: String(describing: type(of: object))))
+          control: .element, kind: String(describing: type(of: object))))
       if object.isAccessibilityElement { return }
       for child in children(of: object) { collect(child, into: &nodes) }
     }

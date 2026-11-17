@@ -19,7 +19,9 @@
 // The field is a vertical-axis `TextField` at `text.md` in `text.primary`,
 // padded `space-1` by `space-2`, named by `label` (a composer has no visible
 // label), its placeholder in `text.muted`. It grows from one line to
-// `maxRows` lines, then scrolls: Textarea's autosize, always on. A hardware
+// `maxRows` lines, then scrolls: Textarea's autosize, always on. It is at
+// least the hit target tall, its first line at the top, because one line and
+// its padding are shorter, as on Android. A hardware
 // keyboard's Return sends and Shift-Return starts a line; while a reply
 // streams, or while the composer is empty, Return does nothing. The system
 // keyboard's Return starts a line, as it does in every iOS composer, and the
@@ -198,9 +200,12 @@ public struct PMPromptInput: PMPromptInputRendering {
       .padding(.vertical, space.s1)
       .padding(.horizontal, space.s2)
       .frame(maxWidth: .infinity, alignment: .leading)
-      .contentShape(.rect)
+      // At least the hit target tall, its first line at the top, so the line
+      // stays where it is as the field grows: one line and its padding are
+      // shorter than the target.
+      .pmHitTarget(alignment: .topLeading)
       // A tap in the field's padding focuses it, as a click on the web's field does.
-      .simultaneousGesture(TapGesture().onEnded { if !disabled { focused = true } })
+      .pmOpensOnTap(!disabled, simultaneous: true) { focused = true }
   }
 
   /// The controlled `value` when given, otherwise the composer's own draft.

@@ -37,8 +37,9 @@ theme's `hitTarget` (in SwiftUI, `.contentShape` over a frame of at least that s
 that takes the touch, because an area on a container does not widen a button inside it, and, where
 the recipe keeps a smaller drawn box, a hit area centred on the box and reaching past its edges, so
 the element VoiceOver finds is the hit target while the layout keeps the box (`pmHitRegion`); a
-control UIKit hosts keeps UIKit's own frame as its element, as it does in every SwiftUI app, and
-the simulator audit counts it under the recorded threshold; in
+control UIKit hosts keeps UIKit's own frame as its element, as it does in every SwiftUI app, so the
+simulator audit holds a text field to the box its member takes its tap in (`pmOpensOnTap`) and
+records a system control whose taps UIKit takes over less than the hit target; in
 Compose, `Modifier.pmHitTarget()`, which reserves the area as Material's
 `minimumInteractiveComponentSize()` does, at the theme's size), as a web member extends its own to
 `--pm-hit-target`.

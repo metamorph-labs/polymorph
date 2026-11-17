@@ -226,7 +226,7 @@ project its path falls under in the table above, unless its row names another ga
 | The Compose laws | `packages/native/src/kotlin-laws.test.ts` | `pnpm test`, `pnpm gate:android` | the same, in Kotlin, with Material outside its bridge ([The Android gate](#the-android-gate)) |
 | The screen emitters | `packages/spec/src/emit-swift.test.ts`, `emit-kotlin.test.ts` | `pnpm test` | an emitted native screen that breaks the screen contract: state, asynchronous work, navigation, a theme or a token in the file |
 | The rendering harness | `platforms/ios/Tests/PolymorphUITests`, `platforms/android/ui/src/test/kotlin/dev/polymorph/ui` | `pnpm gate:ios`, `pnpm gate:android` | a fixture entry that renders an empty canvas, or whose identity, label or value is not what its `expect` says |
-| The accessibility audits | `scripts/ios-audit.mjs` (`AccessibilityAuditTests` on an iPhone simulator), `scripts/android-audit.mjs` (`AccessibilityAuditTest` under Robolectric) | `pnpm gate:ios`, `pnpm gate:android` | more defects than `scripts/native-audits/thresholds.json` allows ([The audit thresholds](#the-audit-thresholds)). On iOS a defect is an element with no label, a target under 44 points, or an element outside the window that no scroll view holds, at the default and the largest text size; on Android it is an entry that breaks the harness's semantics rules, a node a person acts on that takes touches over less than 48dp or says nothing, two such nodes with the same bounds, or a node a person types into that carries a content description |
+| The accessibility audits | `scripts/ios-audit.mjs` (`AccessibilityAuditTests` on an iPhone simulator), `scripts/android-audit.mjs` (`AccessibilityAuditTest` under Robolectric) | `pnpm gate:ios`, `pnpm gate:android` | more defects than `scripts/native-audits/thresholds.json` allows ([The audit thresholds](#the-audit-thresholds)). On iOS a defect is an element with no label, a target under 44 points (a text field by the box its member takes its tap in), or an element outside the window that no scroll view holds, at the default and the largest text size, and a control UIKit hosts that takes its taps over less than 44 points is recorded against a number of its own; on Android it is an entry that breaks the harness's semantics rules, a node a person acts on that takes touches over less than 48dp or says nothing, two such nodes with the same bounds, or a node a person types into that carries a content description |
 
 ### The tools and the eval
 
@@ -1322,7 +1322,7 @@ accessibility. It is separate from `pnpm gate` because it needs Xcode.
 | `pnpm emit:examples --check` | each platform's example holds the screen the emitter writes from its spec (`platforms/ios/Examples/Relay`, `platforms/android/examples/relay`) |
 | `vitest run --project logic packages/native` | the contracts' tests and the laws over the Swift sources |
 | `swift build`, `swift test` (in `platforms/ios`) | the libraries and the Relay example compile on macOS; the rendering harness, the example's renders and focus test, and every other Swift test pass |
-| `node scripts/ios-audit.mjs` | every target `xcodebuild test` builds type-checks for the iOS Simulator; where a simulator runtime is installed, `PolymorphUITests` runs on an iPhone simulator and the accessibility audit finds no more defects than `scripts/native-audits/thresholds.json` allows |
+| `node scripts/ios-audit.mjs` | every target `xcodebuild test` builds type-checks for the iOS Simulator; where a simulator runtime is installed, `PolymorphUITests` runs on an iPhone simulator and the accessibility audit finds no more defects, and records no more system controls, than `scripts/native-audits/thresholds.json` allows |
 
 ### The contracts
 
@@ -1576,8 +1576,9 @@ test targets. That needs only Xcode, and it is the only step that compiles the c
 `#if os(iOS)` and `canImport(UIKit)`.
 
 It then runs `PolymorphUITests` with `xcodebuild test` on an iPhone simulator of the device type
-and the iOS runtime the threshold was measured on (`scripts/native-audits/thresholds.json`). UIKit
-sizes its own controls by release and device, so the count is comparable only on them. Where that
+and the iOS runtime the thresholds were measured on (`scripts/native-audits/thresholds.json`).
+UIKit sizes its own controls by release and device, so the counts are comparable only on them.
+Where that
 runtime is not installed, the run is on the newest one `xcrun simctl list runtimes` lists, and on
 the recorded device type if it supports it, else the iPhone type its devices use, and the script
 says that the run differs from the measurement. The script creates the simulator for the run and
@@ -1594,7 +1595,10 @@ hold five rules:
 - the first node that carries a member's identifier is the fixture's member;
 - every element has a label;
 - everything a person can act on (a button, a link, an adjustable element, a UIKit control or an
-  editable text view) offers a 44-point hit region;
+  editable text view) offers a 44-point hit region, measured by what it is: a text entry view by
+  the box its member takes its tap in, a system control by the area UIKit hit-tests to it, and
+  every other element by the frame SwiftUI publishes ("Hosted UIKit views", below). A system
+  control under 44 points is recorded rather than counted as a defect;
 - every element lies inside the window where a device places it, unless a scroll view holds it.
 
 How the audit hosts and reads an entry decides what those rules measure:
@@ -1622,7 +1626,31 @@ How the audit hosts and reads an entry decides what those rules measure:
   runtime runs in an app and not in a package's test process. The audit reads such a view's frame
   from the view itself and does not read its label. `IdentityTests` holds the label on macOS
   instead, where AppKit publishes the same control's name in the test's process: every text
-  field, date picker, menu picker and colour well an entry hosts must have one.
+  field, date picker, menu picker and colour well an entry hosts must have one. A hosted view's
+  hit region is measured by what the view is, which the audit reads from its class:
+  - A text entry view, a `UITextField` or an editable `UITextView`, is the editable line, as
+    in any SwiftUI app, while the member's box takes the tap. The foundation's `pmOpensOnTap`,
+    which every text-entry member applies to its box, makes the whole box hit-testable and
+    publishes its frame as a SwiftUI preference (`PMTapBoxKey`), which adds no view and no
+    accessibility element and draws nothing. The audit reads the boxes at the root of the
+    hosting, in the window's coordinates. A text entry view passes when the smallest box that
+    contains its frame is 44 points on each axis. One that no box contains, or whose box is under
+    44 points, is a defect. A text entry view is not hit-tested, because a tap beside its line
+    goes to the member's gesture, which `hitTest` returns as the hosting view.
+  - A system control is any other hosted `UIControl`: the compact date picker, a menu picker's
+    button, a navigation bar's button. It takes its own taps over the area UIKit hit-tests to it,
+    which can be larger than its bounds (a bar button takes the taps on its whole platter), and it
+    publishes no accessibility frame in the test process. The audit probes that area: from the
+    centre of the control's bounds it calls `window.hitTest` one pixel at a time outward along
+    the horizontal and the vertical line through the centre, as far as the view returned is the
+    control or a view inside it, and takes the run on each line as the area's width and height.
+    A control whose area is 44 points on each axis passes. One whose area is shorter is UIKit's
+    control at UIKit's size, which no member's area can widen, so the audit records it with the
+    area it measured ("is UIKit's control at UIKit's size, hit-tested over 34 points of height")
+    and `scripts/ios-audit.mjs` counts it against `ios.system`, not as a defect. A disabled
+    control takes no taps, so UIKit hit-tests nothing to it, and the audit measures it by its
+    bounds, the least area it takes its taps in once enabled. An enabled control whose centre
+    hit-tests to another view takes no tap at all, which is a defect.
 - **Scroll views.** The same runtime publishes a scroll view's elements, so the audit reads each
   entry with its scroll views drawn at rest (`Harness.scene` with `scrolls` off), where SwiftUI
   publishes every element, and hosts it again with its scroll views drawn, as a device lays it out.
@@ -1640,22 +1668,26 @@ type-checked but not run on that machine. `xcodebuild -downloadPlatform iOS` ins
 
 ### The audit thresholds
 
-Each audit prints the defects it finds, one per line, and its gate fails when there are more than
-`scripts/native-audits/thresholds.json` allows: `ios.count` for the simulator audit, beside the
-`device` and `runtime` it was measured on, and `android` for the Android audit. Any other failure fails the gate whatever the count: a test other than the audit, a
-crash, or an Android audit that stops on an exception. A defect is fixed in its member or in the
-foundation, never by changing the audit's rules. The thresholds go down: a change that clears
-defects lowers its number in the same change, and each script says when the count is under the
-number. A threshold counts defects and does not name them, so a change that clears one defect
-and adds another keeps the count; the printed list shows which. A run that `PM_MEMBERS` limits to
-some members fails on any defect, because the thresholds count whole runs. `ios.count` is not a
-backlog: every defect it allows is a control UIKit hosts at UIKit's own size (a text field's
-editable line, the compact date picker, a menu picker's button, a bar button), kept so by decision
-because the member's box already takes the tap and a control sized otherwise would differ from
-the same control in every other SwiftUI app; `platforms/ios/README.md` lists them under "What is
-not here". A threshold rises only for a new fixture state that hosts such a control, by the
-defects the whole audit then reports, and the same change names the state in that list. It never
-rises for a defect a member could clear.
+Each audit prints what it finds, one per line, and its gate fails when it finds more than
+`scripts/native-audits/thresholds.json` allows. The simulator audit has two numbers, beside the
+`device` and `runtime` they were measured on. `ios.count` counts defects, and it is zero.
+`ios.system` counts the system controls the audit records (a control UIKit hosts that takes its
+taps over less than 44 points, above), and `scripts/ios-audit.mjs` prints them in a list of their
+own. `android` counts the Android audit's defects. Any other failure fails the gate whatever the
+count: a test other than the audit, a crash, or an Android audit that stops on an exception. A
+defect is fixed in its member or in the foundation, never by changing the audit's rules. The
+thresholds go down: a change that clears findings lowers its number in the same change, and each
+script says when a count is under its number. A threshold counts findings and does not name
+them, so a change that clears one and adds another keeps the count; the printed list shows which.
+A run that `PM_MEMBERS` limits to some members fails on any defect and prints the system controls
+without failing on them, because the thresholds count whole runs. `ios.system` is not a backlog:
+each control it records is UIKit's own at UIKit's size, kept so by decision, because a control
+sized otherwise would differ from the same control in every other SwiftUI app;
+`platforms/ios/README.md` names the fixture states that host them under "What is not here". It
+falls when UIKit takes such a control's taps over 44 points. It rises only for a new fixture state
+that hosts such a control, by what the whole audit then records, and the same change names the
+state in that list. It never rises for a defect a member could clear, and `ios.count` does not
+rise.
 
 ## The Android gate
 

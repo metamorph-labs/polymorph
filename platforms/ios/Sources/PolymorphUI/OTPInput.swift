@@ -11,8 +11,9 @@
 // A cell is a square of the large control height in Input's rest recipe,
 // `bg.surface` in a `border.default` hairline with the control seat and the
 // control radius, its digit in `text.md` with tabular figures, appearing with
-// a fade over the control duration. The cells are `space-3` apart. While the
-// field has focus the caret cell, the next to fill or the last when full,
+// a fade over the control duration. The cells are `space-3` apart, centred in
+// a box the hit target tall, which takes the tap that focuses the field. While
+// the field has focus the caret cell, the next to fill or the last when full,
 // draws the focus ring and the `border.focus.solid` hairline; invalid draws
 // every cell's hairline in `danger.border` and wins over the caret's. Disabled
 // cells are Input's disabled cell. There is no hover, because the cells are
@@ -57,6 +58,9 @@ public struct PMOTPInput: PMOTPInputRendering {
     }
     .accessibilityHidden(true)
     // The field lies under the cells, which paint its digits; a tap on them focuses it.
+    // It draws nothing, so it keeps the default text size: at a larger one its
+    // line would stand taller than the cells, past the field's box, and take
+    // the taps of what lies above and below it.
     .background {
       TextField(name ?? "", text: text)
         .textFieldStyle(.plain)
@@ -69,9 +73,11 @@ public struct PMOTPInput: PMOTPInputRendering {
         .pmEntryName(name)
         .accessibilityValue(Text(code))
         .pmFieldHint(invalid: invalid, field?.hint)
+        .dynamicTypeSize(...DynamicTypeSize.large)
     }
-    .contentShape(.rect)
-    .onTapGesture { if !disabled { focused = true } }
+    // The cells are the large control height; the box is the hit target tall.
+    .pmHitTarget()
+    .pmOpensOnTap(!disabled) { focused = true }
     .accessibilityElement(children: .contain)
     .pmMember("OTPInput", attributes(code, length: length, invalid: invalid, disabled: disabled))
     .preference(key: PMFieldControlKey.self, value: PMFieldControl(disabled: disabled))

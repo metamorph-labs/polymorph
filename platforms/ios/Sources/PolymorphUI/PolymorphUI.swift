@@ -426,11 +426,12 @@ extension Text {
 /// differ on a phone, as `docs/native.md` describes.
 private struct PMHitTarget: ViewModifier {
   @Environment(\.pmTheme) private var theme
+  let alignment: Alignment
 
   func body(content: Content) -> some View {
     let target = theme.defaultDensity.hitTarget
     content
-      .frame(minWidth: target, minHeight: target)
+      .frame(minWidth: target, minHeight: target, alignment: alignment)
       .contentShape(.rect)
   }
 }
@@ -515,9 +516,11 @@ private struct PMOutsetHitTarget: ViewModifier {
 
 extension View {
   /// Extends the view's hit area to the theme's `hitTarget`; the drawn part
-  /// stays its own size, centred in it.
-  func pmHitTarget() -> some View {
-    modifier(PMHitTarget())
+  /// stays its own size, centred in it, or placed at `alignment` (a growing
+  /// field's first line at the top, so it stays where it is as lines are
+  /// added).
+  func pmHitTarget(alignment: Alignment = .center) -> some View {
+    modifier(PMHitTarget(alignment: alignment))
   }
 
   /// Extends the view's hit area to the theme's `hitTarget` past its edges
