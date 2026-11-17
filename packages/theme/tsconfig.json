@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/theme.tsbuildinfo",
+    // DOM is here only for `runtime.ts`; node types only for the source test
+    // that reads this directory. `runtime.test.ts` enforces mechanically that no
+    // other module touches either — the engine has to stay pure.
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"]
+}

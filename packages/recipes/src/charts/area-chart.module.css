@@ -1,0 +1,120 @@
+/* AreaChart — `design/components/area-chart.md`.
+ *
+ * `--pm-chart-mark` holds the band's paint. It is always a token reference
+ * (`var(--pm-chart-3)`), never a colour, so a palette change repaints every band
+ * without this file knowing the palette. Its default is the de-emphasis grey,
+ * because an unresolvable custom property invalidates its whole declaration and
+ * an unpainted band would not be drawn. */
+
+.surface {
+  composes: plotSurface from './frame/chart-frame.module.css';
+}
+
+/* The legend is composed, not restated. The isolate keys' recipe (the hollow
+   `[aria-pressed='false']` swatch) lives in the legend's sheet. Composing its
+   base class here adds that sheet to this member's closure, where the selectors
+   law reads it (see the note in `area-chart.md`). */
+.legend {
+  composes: legend from './frame/chart-legend.module.css';
+}
+
+.marks {
+  display: block;
+
+  --pm-chart-mark: var(--pm-chart-other);
+}
+
+.grid path {
+  fill: none;
+  stroke: var(--pm-chart-grid);
+  stroke-width: 1;
+}
+
+/* The target line is drawn by the shared annotation layer. `baseline` is
+   shorthand for a `line` annotation, and its rule, dash and label recipes live
+   in `frame/chart-annotations.module.css`. */
+
+/* A light wash, never a solid fill. It uses the same 10% as LineChart's area
+   variant, so a band and a filled line look the same. */
+.band {
+  fill: var(--pm-chart-mark);
+  opacity: 0.1;
+  stroke: none;
+}
+
+/* The band edge is the series' line, so a stacked area reads as weighted lines
+   instead of blocks of colour. It also separates touching bands: the 2px stroke
+   sits on the boundary and covers half of the band below, so the two never
+   merge. */
+.edge {
+  fill: none;
+  stroke: var(--pm-chart-mark);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The crosshair is the only active-state feedback. Bands never dim, because a
+   fading wash would change the picture the reader is comparing against.
+ *
+ * Its paint keys off the attribute, not the class, for the same reason as the
+ * frame's empty state: state is exposed as an attribute *for CSS to key off*.
+ * So this file states how an active reading position looks, instead of that
+ * being implied by the component rendering an element. */
+.crosshair {
+  fill: none;
+  stroke-width: 1;
+}
+
+.crosshair[data-active] {
+  stroke: var(--pm-chart-axis);
+}
+
+/* In `percent` every x totals exactly the plot's height, so the top band's edge
+   sits on the plot's top edge and half of its 2px stroke falls outside the box.
+   An SVG root clips that by default. The marks layer overflows instead of the
+   scale being inset, because an inset would draw the line away from the value
+   it reports. */
+.marks[data-variant='percent'] {
+  overflow: visible;
+}
+
+/* The `chart.marks` binding: washes and edges fade in, staggered bottom-up in
+   stacking order, so the bottom band appears first. There is no draw-on; value
+   changes re-render.
+ *
+ * Scoped to the band layer so the stagger counts only bands. The grid and the
+ * target rule are `g` elements too. A stagger on `.marks g` would delay the
+ * first band, and by a different amount with a baseline than without. */
+.bands g {
+  animation: chart-bands-enter var(--pm-motion-duration-surface) var(--pm-motion-easing-enter)
+    backwards;
+}
+
+.bands g:nth-child(2) {
+  animation-delay: var(--pm-motion-stagger-step);
+}
+
+.bands g:nth-child(3) {
+  animation-delay: calc(var(--pm-motion-stagger-step) * 2);
+}
+
+/* `n + 4`, not `4`: the stagger is **capped and later bands share its last
+   step** (the stagger primitive in motion.md). With `4` alone, band five would
+   get no delay, and a chart at the eight-series limit would enter back to
+   front. */
+.bands g:nth-child(n + 4) {
+  animation-delay: calc(var(--pm-motion-stagger-step) * 3);
+}
+
+@keyframes chart-bands-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bands g {
+    animation: none;
+  }
+}

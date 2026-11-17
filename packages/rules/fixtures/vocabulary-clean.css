@@ -1,0 +1,42 @@
+/* The same component, expressed through tokens. Structural literals — 0, the
+   1px hairline, 100%, auto, viewport units, the 9999px pill — are not design
+   decisions and stay legal. */
+
+.button {
+  display: inline-flex;
+  gap: var(--pm-space-2);
+  align-items: center;
+  height: var(--pm-control-height-md);
+  padding: 0 var(--pm-space-4);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-accent-contrast);
+  background: var(--pm-accent-bg);
+  border: 1px solid var(--pm-border-default);
+  border-radius: var(--pm-radius-md);
+  box-shadow: var(--pm-shadow-raised);
+}
+
+.buttonPill {
+  border-radius: 9999px;
+}
+
+.buttonBlock {
+  width: 100%;
+  height: auto;
+}
+
+.buttonNested {
+  padding: var(--pm-space-3, var(--pm-space-2));
+}
+
+/* The lawful escape: branch on an *axis*, never on a theme. The flag token is
+   emitted by the theme engine (EXPOSED_AXES), so this says "wherever depth is
+   flat" and cannot be made to say "wherever the theme is terminal". */
+@container style(--pm-axis-depth: flat) {
+  .cardBranch {
+    border: 1px solid var(--pm-border-default);
+  }
+}

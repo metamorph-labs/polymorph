@@ -1,0 +1,198 @@
+/**
+ * Relay's ticket queue — a filtered, sortable table under a page header.
+ *
+ * Emitted from a screen spec (`polymorph-screen/1`). Composition and bindings only:
+ * this file holds no state, computes nothing, and expresses no style — the
+ * container that renders it owns all three.
+ */
+import { Component, input } from '@angular/core'
+import {
+  Button,
+  Card,
+  DataTable,
+  DensityScope,
+  FilterBar,
+  Grid,
+  ListPage,
+  SearchInput,
+  Select,
+  Stat,
+  type DataTableColumn,
+  type DataTableSort,
+  type EmptyStateProps,
+  type StatProps,
+} from '@polymorph/angular-ui'
+import type { Ticket } from './tickets'
+
+export interface InboxViewProps {
+  /** Already filtered and sorted. */
+  tickets: Ticket[]
+  /** The queue's four numbers, derived by the container from the whole collection rather than from the filtered view — which is why the band outlives the empty story. */
+  summary: { open: StatProps; urgent: StatProps; response: StatProps; solved: StatProps }
+  /** Cell renderers are code, so they arrive as an input. */
+  columns: DataTableColumn<Ticket>[]
+  sort: DataTableSort
+  onSortChange: (sort: DataTableSort) => void
+  getRowId: (ticket: Ticket) => string
+  onRowClick: (ticket: Ticket) => void
+  onNewTicket: () => void
+  isFiltered: boolean
+  onClearFilters: () => void
+  resultCount: { shown: number; total: number }
+  query: string
+  onQueryChange: (query: string) => void
+  status: string | null
+  statusOptions: { value: string; label: string }[]
+  onStatusChange: (value: string | null) => void
+  priority: string | null
+  priorityOptions: { value: string; label: string }[]
+  onPriorityChange: (value: string | null) => void
+  isEmpty: boolean
+  emptyState: EmptyStateProps
+}
+
+@Component({
+  selector: 'app-inbox-view',
+  imports: [
+    Button,
+    Card,
+    DataTable,
+    DensityScope,
+    FilterBar,
+    Grid,
+    ListPage,
+    SearchInput,
+    Select,
+    Stat,
+  ],
+  template: `
+    <ng-template #secondaryActionTemplate>
+      <pm-button
+        variant="ghost"
+        tone="neutral"
+        label="Clear filters"
+        (click)="onClearFilters()()"
+      />
+    </ng-template>
+    <pm-list-page
+      title="Inbox"
+      [empty]="isEmpty()"
+      [emptyState]="{
+        icon: 'search',
+        title: 'No tickets match these filters',
+        description: 'Every conversation is still here — the filters are hiding them.',
+        secondaryAction: secondaryActionTemplate,
+      }"
+    >
+      <ng-container ngProjectAs="[slot=summary]">
+        <pm-grid [columns]="4" [gap]="6">
+          <pm-card>
+            <pm-stat
+              [label]="summary().open.label"
+              [value]="summary().open.value"
+              [trend]="summary().open.trend"
+              [footer]="summary().open.footer"
+            />
+          </pm-card>
+          <pm-card>
+            <pm-stat
+              [label]="summary().urgent.label"
+              [value]="summary().urgent.value"
+              [trend]="summary().urgent.trend"
+              [footer]="summary().urgent.footer"
+            />
+          </pm-card>
+          <pm-card>
+            <pm-stat
+              [label]="summary().response.label"
+              [value]="summary().response.value"
+              [trend]="summary().response.trend"
+              [footer]="summary().response.footer"
+            />
+          </pm-card>
+          <pm-card>
+            <pm-stat
+              [label]="summary().solved.label"
+              [value]="summary().solved.value"
+              [trend]="summary().solved.trend"
+              [footer]="summary().solved.footer"
+            />
+          </pm-card>
+        </pm-grid>
+      </ng-container>
+      <ng-container ngProjectAs="[slot=actions]">
+        <pm-button icon="add" label="New ticket" (click)="onNewTicket()()" />
+      </ng-container>
+      <ng-container ngProjectAs="[slot=filters]">
+        <pm-filter-bar
+          [isFiltered]="isFiltered()"
+          (clear)="onClearFilters()()"
+          [resultCount]="resultCount()"
+        >
+          <ng-container ngProjectAs="[slot=search]">
+            <pm-search-input
+              size="sm"
+              placeholder="Search tickets…"
+              aria-label="Search tickets"
+              [value]="query()"
+              (change)="onQueryChange()($event)"
+            />
+          </ng-container>
+          <pm-select
+            size="sm"
+            [options]="statusOptions()"
+            emptyOption="Any status"
+            aria-label="Filter by status"
+            [value]="status()"
+            (change)="onStatusChange()($event)"
+          />
+          <pm-select
+            size="sm"
+            [options]="priorityOptions()"
+            emptyOption="Any priority"
+            aria-label="Filter by priority"
+            [value]="priority()"
+            (change)="onPriorityChange()($event)"
+          />
+        </pm-filter-bar>
+      </ng-container>
+      <!-- Rung 2, declared: A queue is scanned rather than read, so more rows in the same viewport is worth more here than the breathing room the rest of the product gets. Nothing new is invented: this is the same theme in its compact variant, applied to a region. -->
+      <pm-density-scope value="compact" as="section">
+        <pm-data-table
+          label="Tickets"
+          [stickyHeader]="true"
+          [columns]="columns()"
+          [data]="tickets()"
+          [getRowId]="getRowId()"
+          [sort]="sort()"
+          (sortChange)="onSortChange()($event)"
+          [emptyState]="emptyState()"
+          (rowClick)="onRowClick()($event)"
+        />
+      </pm-density-scope>
+    </pm-list-page>
+  `,
+})
+export class InboxView {
+  readonly tickets = input.required<InboxViewProps['tickets']>()
+  readonly summary = input.required<InboxViewProps['summary']>()
+  readonly columns = input.required<InboxViewProps['columns']>()
+  readonly sort = input.required<InboxViewProps['sort']>()
+  readonly onSortChange = input.required<InboxViewProps['onSortChange']>()
+  readonly getRowId = input.required<InboxViewProps['getRowId']>()
+  readonly onRowClick = input.required<InboxViewProps['onRowClick']>()
+  readonly onNewTicket = input.required<InboxViewProps['onNewTicket']>()
+  readonly isFiltered = input.required<InboxViewProps['isFiltered']>()
+  readonly onClearFilters = input.required<InboxViewProps['onClearFilters']>()
+  readonly resultCount = input.required<InboxViewProps['resultCount']>()
+  readonly query = input.required<InboxViewProps['query']>()
+  readonly onQueryChange = input.required<InboxViewProps['onQueryChange']>()
+  readonly status = input.required<InboxViewProps['status']>()
+  readonly statusOptions = input.required<InboxViewProps['statusOptions']>()
+  readonly onStatusChange = input.required<InboxViewProps['onStatusChange']>()
+  readonly priority = input.required<InboxViewProps['priority']>()
+  readonly priorityOptions = input.required<InboxViewProps['priorityOptions']>()
+  readonly onPriorityChange = input.required<InboxViewProps['onPriorityChange']>()
+  readonly isEmpty = input.required<InboxViewProps['isEmpty']>()
+  readonly emptyState = input.required<InboxViewProps['emptyState']>()
+}

@@ -1,0 +1,94 @@
+/* Popover — `design/components/popover.md`.
+ *
+ * Wider padding and a larger radius than a menu, because this holds content
+ * rather than rows. A panel of FormFields at a menu's `space-2` inset would look
+ * like a broken list. */
+
+.panel {
+  /* `overlay` in the stacking order. The popper copies it onto its wrapper
+     (menu.module.css explains how). */
+  z-index: var(--pm-z-overlay);
+  inline-size: max-content;
+  max-inline-size: calc(var(--pm-space-10) * 4);
+  padding: var(--pm-inset-pane);
+  background: var(--pm-bg-overlay);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-surface);
+  box-shadow: var(--pm-shadow-transient);
+  transform-origin: var(--radix-popover-content-transform-origin);
+}
+
+/* The `popover.panel` binding: `scale-fade`, anchored origin, surface class.
+   The same transient-surface motion as Select and Menu, so the three are
+   consistent. */
+.panel[data-state='open'] {
+  animation: popover-enter var(--pm-motion-duration-surface) var(--pm-motion-easing-enter);
+}
+
+.panel[data-state='closed'] {
+  animation: popover-exit var(--pm-motion-duration-surface-exit) var(--pm-motion-easing-exit);
+}
+
+@keyframes popover-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes popover-exit {
+  to {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+/* Reduced-motion projection (`docs/motion.md`): `scale-fade` projects to
+   `fade` with the same durations. The three transient surfaces must stay
+   consistent under reduced motion too. A Popover that still grew while a
+   Select did not would be an inconsistency. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes popover-enter {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes popover-exit {
+    to {
+      opacity: 0;
+    }
+  }
+}
+
+.panel:focus-visible {
+  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline-offset: var(--pm-focus-offset);
+}
+
+/* The sheet, below 30rem with `presentation="sheet"` (the sheet presentation).
+   The panel box is the shared anatomy (`sheet.module.css`, used by the sheet
+   partial). This member keeps its own inset inside it, the same `--pm-space-5`
+   as the anchored panel, because only the shape changes, not the content. The
+   sheet presentation's safe-area padding is added to the member's edge
+   padding. The `max-width` rule no longer applies, because a sheet is
+   full-width. */
+.sheetBody {
+  min-block-size: 0;
+  padding: var(--pm-inset-pane);
+  padding-block-end: calc(var(--pm-inset-pane) + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+}
+
+/* Glass (`depth: glass`): the pane uses the surface role at the engine's mix
+   (`--pm-material-surface`), and the material provides the lift that the
+   overlay stacking order provides elsewhere. The backdrop shows through the
+   pane as a blurred, saturated wash, so the surface stands apart by its
+   material rather than by a lighter step. The mix is a contrast decision that
+   the glass law measures over worst-case backdrops; a recipe only applies it. */
+@container style(--pm-axis-depth: glass) {
+  .panel {
+    background: var(--pm-material-surface);
+    backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  }
+}

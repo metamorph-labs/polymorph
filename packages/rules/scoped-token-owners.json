@@ -1,0 +1,18 @@
+{
+  "--pm-shell-": [
+    "packages/recipes/src/archetypes/app-shell.module.css",
+    "packages/recipes/src/archetypes/list-page.module.css"
+  ],
+  "--pm-page-": [
+    "packages/recipes/src/archetypes/list-page.module.css",
+    "packages/recipes/src/archetypes/settings-page.module.css",
+    "packages/recipes/src/archetypes/form-page.module.css",
+    "packages/recipes/src/archetypes/detail-page.module.css",
+    "packages/recipes/src/archetypes/auth-page.module.css",
+    "packages/recipes/src/archetypes/dashboard.module.css",
+    "packages/recipes/src/archetypes/conversation-page.module.css",
+    "packages/recipes/src/archetypes/master-detail-page.module.css",
+    "packages/recipes/src/archetypes/search-page.module.css"
+  ],
+  "--pm-chart-height-": ["packages/recipes/src/charts/frame/chart-frame.module.css"]
+}

@@ -1,0 +1,327 @@
+/* Menu — `design/components/menu.md`.
+ *
+ * The panel is Select's content recipe, unchanged, on purpose. A dropdown of
+ * options and a dropdown of commands are the same surface at the same offset.
+ * If they differed by two pixels, the product would have two dropdown designs.
+ *
+ * The danger tone is deliberately quiet. A destructive command stays low-key
+ * until it is confirmed, and the ConfirmDialog carries the strong warning. So
+ * this is red text on a red wash, never a red fill. */
+
+.content {
+  display: flex;
+  flex-direction: column;
+
+  /* `overlay` in the stacking order. It is declared on the content class and
+     applied on the popper: Radix's popper copies the content's computed z-index
+     onto its own positioned wrapper (@radix-ui/react-popper 1.3.7), so the
+     whole surface joins the layer without a `:global`. Every Radix-lane overlay
+     content class in the vocabulary has this line. */
+  z-index: var(--pm-z-overlay);
+  min-inline-size: calc(var(--pm-space-10) * 2);
+  max-block-size: var(--radix-dropdown-menu-content-available-height);
+  padding: var(--pm-inset-list);
+  overflow: hidden;
+  background: var(--pm-bg-overlay);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-surface);
+  box-shadow: var(--pm-shadow-transient);
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+
+  /* The list takes focus only to hand it to a row, so it draws no ring of its
+     own: the ring belongs on the row the reader moves through. */
+  outline: none;
+}
+
+/* The `menu.content` binding: `scale-fade`, surface class, anchored origin.
+   Select's rule and numbers. Radix keeps the node mounted for the closed
+   animation, so the exit animates instead of cutting. */
+.content[data-state='open'] {
+  animation: menu-content-enter var(--pm-motion-duration-surface) var(--pm-motion-easing-enter);
+}
+
+.content[data-state='closed'] {
+  animation: menu-content-exit var(--pm-motion-duration-surface-exit) var(--pm-motion-easing-exit);
+}
+
+@keyframes menu-content-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes menu-content-exit {
+  to {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+/* Reduced-motion projection (`docs/motion.md`): `scale-fade` projects to
+   `fade`. The duration stays, because an opacity change is vestibular-safe and
+   the panel must still appear to arrive rather than cut in. Select's recipe has
+   the same block, and the reduced-motion law
+   (`packages/react-ui/src/conventions/reduced-motion.test.ts`) fails a stylesheet
+   without it. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes menu-content-enter {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes menu-content-exit {
+    to {
+      opacity: 0;
+    }
+  }
+
+  /* The cascade projects to presence (`docs/motion.md`). A delay counts as
+     motion even when the delayed element does not move, so items arrive with
+     their panel. Both scopes, because the sheet's rows are the same rows. */
+  .sheetList .item,
+  .content[data-state='open'] .item {
+    animation: none;
+  }
+}
+
+/* The sheet, below 30rem (the sheet presentation) ----------------------------
+ *
+ * The panel box is the shared anatomy (`sheet.module.css`, used by the sheet
+ * partial). This member styles only its rows' container inside it: the same
+ * `--pm-space-2` inset as the popper panel, on a list that scrolls under the
+ * sheet presentation's cap. The `min-width` and `sideOffset` rules no longer
+ * apply, because a sheet has no anchor. The safe-area padding is the sheet
+ * presentation's: added to this member's edge padding, and zero where there is
+ * no notch, because a sheet whose last row sits behind the home indicator hides
+ * content (`docs/layout.md`). */
+.sheetList {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+  padding: var(--pm-inset-list);
+  padding-block-end: calc(var(--pm-inset-list) + env(safe-area-inset-bottom, 0px));
+  margin: 0;
+  overflow-y: auto;
+  list-style: none;
+  outline: none;
+}
+
+/* items --------------------------------------------------------------------- */
+
+.item {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-3);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  cursor: pointer;
+  border-radius: var(--pm-radius-sm);
+  outline: none;
+}
+
+/* The checkbox entry: the item recipe plus Select's check column, unchanged.
+   The check has its own `--pm-space-2` gap where the item's icon keeps
+   `--pm-space-3`. The check uses the leading slot, so a checkbox entry takes no
+   icon. It is applied with `.item` (the layout primitives' two-class idiom)
+   rather than composed, because the registry's extractor reads `composes` as a
+   cross-file graph, and a same-file composition would be an edge to nothing. */
+.checkbox {
+  gap: var(--pm-space-2);
+}
+
+/* Select's check column, unchanged: `--pm-icon-size-sm` is reserved whether or
+   not this row is checked, so labels stay aligned as checks change. */
+.check {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--pm-icon-size-sm);
+}
+
+.glyph {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--pm-text-muted);
+}
+
+.label {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* At the far edge, so hints line up down the panel whatever the label length.
+   A submenu's chevron also sits here. A row never has both, because a row that
+   opens a list runs no command. */
+.hint {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  margin-inline-start: auto;
+  color: var(--pm-text-muted);
+}
+
+/* The chevron follows the row's colour, so it stays legible on the highlight. A
+   hint that stayed muted would disappear into the accent wash. */
+.item[data-highlighted] .hint {
+  color: inherit;
+}
+
+.separator {
+  margin-block: var(--pm-space-2);
+  border-block-start: 1px solid var(--pm-border-subtle);
+}
+
+.groupLabel {
+  padding: var(--pm-space-2) var(--pm-space-3);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+  text-transform: uppercase;
+}
+
+/* The cascade: items appear one by one during the panel's enter, each delayed
+   by the stagger step and clamped to the stagger ceiling, so a long menu gets
+   denser instead of slower. Temperament changes it only through the tokens:
+   expressive uses 32ms per item, subtle a quick 19ms, and `none` derives zero,
+   so there is no cascade. It runs on enter only; lists do not reverse it on
+   exit.
+
+   The index steps stop at twelve. The spec already forbids longer menus, and
+   every later item shares the ceiling. */
+.sheetList .item,
+.content[data-state='open'] .item {
+  animation: menu-item-enter var(--pm-motion-duration-control) var(--pm-motion-easing-enter)
+    backwards;
+}
+
+.sheetList[role='menu'] .item:nth-child(2),
+.content[data-state='open'] .item:nth-child(2) {
+  animation-delay: min(calc(1 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(3),
+.content[data-state='open'] .item:nth-child(3) {
+  animation-delay: min(calc(2 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(4),
+.content[data-state='open'] .item:nth-child(4) {
+  animation-delay: min(calc(3 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(5),
+.content[data-state='open'] .item:nth-child(5) {
+  animation-delay: min(calc(4 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(6),
+.content[data-state='open'] .item:nth-child(6) {
+  animation-delay: min(calc(5 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(7),
+.content[data-state='open'] .item:nth-child(7) {
+  animation-delay: min(calc(6 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(8),
+.content[data-state='open'] .item:nth-child(8) {
+  animation-delay: min(calc(7 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(9),
+.content[data-state='open'] .item:nth-child(9) {
+  animation-delay: min(calc(8 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(10),
+.content[data-state='open'] .item:nth-child(10) {
+  animation-delay: min(calc(9 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(11),
+.content[data-state='open'] .item:nth-child(11) {
+  animation-delay: min(calc(10 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(n + 12),
+.content[data-state='open'] .item:nth-child(n + 12) {
+  animation-delay: var(--pm-motion-stagger-max);
+}
+
+@keyframes menu-item-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+/* states -------------------------------------------------------------------- */
+
+.item[data-tone='danger'] {
+  color: var(--pm-danger-text);
+}
+
+/* Radix sets `data-highlighted` from both pointer and keyboard, so there is no
+   `:hover` rule here: one state covers both. */
+.item[data-highlighted] {
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+}
+
+.item[data-tone='danger'][data-highlighted] {
+  color: var(--pm-danger-text);
+  background: var(--pm-danger-subtle);
+}
+
+.item[data-highlighted] .glyph {
+  color: inherit;
+}
+
+.item[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  background: transparent;
+}
+
+.item[data-disabled] .glyph {
+  color: var(--pm-text-disabled);
+}
+
+/* Select's rule, unchanged: the check shows selection in the accent, and the
+   label keeps the row's colour. */
+.checkbox[data-state='checked'] .check {
+  color: var(--pm-accent-text);
+}
+
+/* Glass (`depth: glass`): the pane uses the surface role at the engine's mix
+   (`--pm-material-surface`), and the material provides the lift that the
+   overlay stacking order provides elsewhere. The backdrop shows through the
+   pane as a blurred, saturated wash, so the surface stands apart by its
+   material rather than by a lighter step. The mix is a contrast decision that
+   the glass law measures over worst-case backdrops; a recipe only applies it. */
+@container style(--pm-axis-depth: glass) {
+  .content {
+    background: var(--pm-material-surface);
+    backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  }
+}

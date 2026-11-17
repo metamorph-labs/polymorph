@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en" data-system="plain" data-palette="neutral">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Every element in one file</title>
+    <script src="/polymorph/prepaint.js"></script>
+    <link rel="stylesheet" href="/polymorph/polymorph.css" />
+    <link rel="stylesheet" href="/polymorph/themes/plain.css" />
+    <script type="module">
+      import { loadAgentBridge, restore, toast } from '/polymorph/polymorph-all.js'
+      window.polymorphPage = { restore, toast, loadAgentBridge }
+    </script>
+  </head>
+  <body>
+    <poly-stack gap="5" p="6">
+      <poly-heading level="1">Every element</poly-heading>
+      <poly-dialog id="dialog" title="Confirm the order">
+        <poly-button slot="trigger" label="Open the dialog"></poly-button>
+        <poly-text id="dialog-body">The order ships today.</poly-text>
+      </poly-dialog>
+    </poly-stack>
+  </body>
+</html>

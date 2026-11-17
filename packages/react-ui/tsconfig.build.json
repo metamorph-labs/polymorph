@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Types only: Vite emits the JavaScript (`vite.build.config.ts`). No
+    // declaration maps: the tarball ships no source for one to point at.
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "declarationMap": false,
+    "rootDir": "src",
+    "outDir": "dist/types",
+    // Its own buildinfo, so the typecheck's `--noEmit` cache never convinces
+    // this program its declarations are already written.
+    "incremental": false,
+    "tsBuildInfoFile": null
+  },
+  // The conformance runner and adapters are test tooling, not part of the published surface.
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/test-setup.ts", "src/conformance/**"]
+}

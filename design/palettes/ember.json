@@ -1,0 +1,11 @@
+{
+  "name": "ember",
+  "accentHue": 31,
+  "neutralTint": 0.019,
+  "chromaBudget": "low",
+  "chartCaps": {
+    "light": 4,
+    "dark": 3,
+    "published": 3
+  }
+}

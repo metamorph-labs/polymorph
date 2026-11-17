@@ -1,0 +1,223 @@
+/* TreeSelect — `design/components/tree-select.md`.
+ *
+ * The trigger copies Select's recipe instead of sharing it, as Select copies
+ * Input's: the completeness law checks each member's own stylesheet, and that
+ * check means something only with one stylesheet per member.
+ * `tree-select.test.tsx` compares the two triggers' computed values instead.
+ *
+ * The rows in the panel are Tree's, drawn by Tree's recipe. This recipe draws
+ * the panel around them.
+ *
+ * `var(--radix-*)` values are measured by the positioning engine at runtime
+ * (the trigger's width, the room around it, the transform origin). No one
+ * chooses them, so the token law allows them (packages/rules/src/stylelint/values.js). */
+
+.trigger {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  justify-content: space-between;
+  max-inline-size: 100%;
+  block-size: var(--pm-control-height-md);
+  padding-inline: var(--pm-space-5);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  cursor: pointer;
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-field);
+  border-radius: var(--pm-radius-control);
+
+  /* The control seat shadow, from Input, used by every field in the family. */
+  box-shadow: var(--pm-shadow-seat);
+}
+
+/* One line, cut with an ellipsis, so a long label never widens the field. */
+.value {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--pm-text-muted);
+
+  /* Select's chevron binding: transform, control class, `standard` easing,
+     because the change is symmetric with no direction of travel. */
+  transition: transform var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+/* trigger sizes — the conventions' size system ------------------------------ */
+
+.trigger[data-size='sm'] {
+  gap: var(--pm-space-2);
+  block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-4);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+}
+
+.trigger[data-size='lg'] {
+  block-size: var(--pm-control-height-lg);
+  padding-inline: var(--pm-space-6);
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+}
+
+/* trigger states ------------------------------------------------------------ */
+
+.trigger[data-placeholder] {
+  color: var(--pm-text-muted);
+}
+
+.trigger[data-invalid] {
+  border-color: var(--pm-danger-border);
+}
+
+.trigger[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-subtle);
+
+  /* The seat shadow signals a ready control, so disabled removes it (as in Input). */
+  box-shadow: none;
+}
+
+/* While open, the trigger keeps the hover border so it does not flicker back
+   to rest. Invalid is excluded from both rules rather than overridden, so the
+   error border stays on hover and while the panel is open. */
+.trigger[data-state='open']:not([data-invalid]) {
+  border-color: var(--pm-border-strong);
+}
+
+.trigger:hover:not([data-disabled], [data-invalid]) {
+  border-color: var(--pm-border-strong);
+}
+
+.trigger[data-state='open'] .chevron {
+  transform: rotate(180deg);
+}
+
+.trigger[data-disabled] .chevron {
+  color: var(--pm-text-disabled);
+}
+
+/* panel --------------------------------------------------------------------- */
+
+/* As wide as the longest row up to a measure: never narrower than the trigger,
+   at most four `--pm-space-10` unless the trigger is wider, and never wider
+   than the room the popper measures. Tree's rows wrap a long label inside it.
+   As tall as the room below the trigger, scrolling inside. */
+.content {
+  /* `overlay` from the stacking scale. The popper copies it onto its wrapper
+     (menu.module.css explains how). */
+  z-index: var(--pm-z-overlay);
+  inline-size: max-content;
+  min-inline-size: var(--radix-popover-trigger-width);
+  max-inline-size: min(
+    var(--radix-popover-content-available-width),
+    max(var(--radix-popover-trigger-width), calc(var(--pm-space-10) * 4))
+  );
+  max-block-size: var(--radix-popover-content-available-height);
+  padding: var(--pm-inset-list);
+  overflow-y: auto;
+  background: var(--pm-bg-overlay);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-surface);
+  box-shadow: var(--pm-shadow-transient);
+  transform-origin: var(--radix-popover-content-transform-origin);
+}
+
+/* `scale-fade`, surface class, as Select's panel (motion.md's duration scale: a
+   dropdown is a transient anchored surface, not a modal). Radix keeps the node
+   mounted for the closed animation, so the exit animates instead of cutting. */
+.content[data-state='open'] {
+  animation: tree-select-content-enter var(--pm-motion-duration-surface)
+    var(--pm-motion-easing-enter);
+}
+
+.content[data-state='closed'] {
+  animation: tree-select-content-exit var(--pm-motion-duration-surface-exit)
+    var(--pm-motion-easing-exit);
+}
+
+@keyframes tree-select-content-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes tree-select-content-exit {
+  to {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+/* The sheet, below 30rem (the conventions' sheet presentation) ---------------
+ *
+ * The panel box is the shared anatomy (`sheet.module.css`). This member styles
+ * only the tree's box inside it: the popper panel's inset, and a tree that
+ * scrolls under the sheet's height cap. The safe-area inset adds to the edge
+ * padding and is zero on devices without a notch. */
+.sheetBody {
+  min-block-size: 0;
+  padding: var(--pm-inset-list);
+  padding-block-end: calc(var(--pm-inset-list) + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+}
+
+/* Fixture box for the spec's long labels at a narrow width: narrower than a
+   phone, built from tokens (96 × 2 = 192px at standard density) because the CSS
+   law covers every file in this package, fixtures included. */
+.harness {
+  inline-size: calc(var(--pm-space-10) * 2);
+  max-inline-size: 100%;
+}
+
+/* Reduced-motion versions (motion.md). The rotation stays, because it shows
+   open or closed; only its transition goes. The panel fades without growing. */
+@media (prefers-reduced-motion: reduce) {
+  .chevron {
+    transition: none;
+  }
+
+  @keyframes tree-select-content-enter {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes tree-select-content-exit {
+    to {
+      opacity: 0;
+    }
+  }
+}
+
+/* Glass (`depth: glass`), as Select's panel: the surface role at the engine's
+   mix, with the backdrop blurred behind it. The glass law checks the mix's
+   contrast over worst-case backdrops, and recipes only apply it. */
+@container style(--pm-axis-depth: glass) {
+  .content {
+    background: var(--pm-material-surface);
+    backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  }
+}

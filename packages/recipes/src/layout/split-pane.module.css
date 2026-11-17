@@ -1,0 +1,138 @@
+/* SplitPane — `design/components/split-pane.md`.
+ *
+ * The recipe is a grid and a line. The tracks carry the layout. The component
+ * writes the ratio as an `fr` pair and the content floors as px into the
+ * `--pm-split-*` pattern tokens (data, not style, as in chart-tip), and
+ * `minmax()` holds the floors whatever the ratio prop says. Everything a theme
+ * can vary (the line's colours, the ring, the feedback timing) is a `--pm-*`
+ * token in this file, where the token law can check it.
+ *
+ * The split is never transitioned. The ratio follows the reader's pointer
+ * directly, and a transitioned track would lag behind it, as a transitioned
+ * Slider thumb does. Keyboard steps apply instantly for the same reason. Only
+ * the divider's colours use the `stateFeedback` timing, restated on the
+ * pseudo-element because `composes` cannot reach one. */
+
+.root {
+  --pm-split-start: 1fr;
+  --pm-split-end: 1fr;
+  --pm-split-start-min: 0px;
+  --pm-split-end-min: 0px;
+
+  display: grid;
+  grid-template-columns:
+    minmax(var(--pm-split-start-min), var(--pm-split-start))
+    auto
+    minmax(var(--pm-split-end-min), var(--pm-split-end));
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+/* A pane that cannot shrink would block the divider, so both axes get a zero
+   minimum size. Scrolling inside a pane is that pane's concern. */
+.pane {
+  min-inline-size: 0;
+  min-block-size: 0;
+  overflow: hidden;
+}
+
+/* The divider: an empty 8px column with a 1px line down its centre. The
+   thickness is the seam, the visual gap between the panes, and the line marks
+   the handle. The actual pointer target is the ::after below. */
+.divider {
+  composes: focusRing from '../conventions/focus.module.css';
+  position: relative;
+  inline-size: var(--pm-space-2);
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+  background: transparent;
+}
+
+/* The line is a pseudo-element rather than the box itself, so the seam can be
+   wider than a hairline without painting an 8px bar. It is centred with
+   `(100% - line) / 2` because the centre must hold at both line widths. */
+.divider::before {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc((100% - 1px) / 2);
+  inline-size: 1px;
+  content: '';
+  background: var(--pm-border-default);
+  transition: background-color var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+/* The hit area: `control-height-sm` thick, centred on the seam. The 24px
+   WCAG 2.5.8 minimum is the control-height law's own minimum, reused rather
+   than restated, and it scales with density like every other target. */
+.divider::after {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc((100% - var(--pm-control-height-sm)) / 2);
+  inline-size: var(--pm-control-height-sm);
+  content: '';
+}
+
+.divider:hover::before {
+  background: var(--pm-border-strong);
+}
+
+/* While held or focused, the line takes the accent and grows to 2px, because
+   colour alone would be lost against a busy pane edge. It grows symmetrically,
+   so the seam's centre never moves. */
+.divider:focus-visible::before,
+.divider[data-state='dragging']::before {
+  inset-inline-start: calc((100% - 2px) / 2);
+  inline-size: 2px;
+  background: var(--pm-accent-bg);
+}
+
+/* Stacked: the same recipe rotated a quarter turn. It is one section, placed
+   last, so the axis swap outranks every base rule it changes. */
+.root[data-orientation='vertical'] {
+  grid-template-columns: none;
+  grid-template-rows:
+    minmax(var(--pm-split-start-min), var(--pm-split-start))
+    auto
+    minmax(var(--pm-split-end-min), var(--pm-split-end));
+}
+
+.root[data-orientation='vertical'] .divider {
+  inline-size: auto;
+  block-size: var(--pm-space-2);
+  cursor: row-resize;
+}
+
+.root[data-orientation='vertical'] .divider::before {
+  inset-block: auto;
+  inset-inline: 0;
+  inset-block-start: calc((100% - 1px) / 2);
+  inline-size: auto;
+  block-size: 1px;
+}
+
+.root[data-orientation='vertical'] .divider::after {
+  inset-block: auto;
+  inset-inline: 0;
+  inset-block-start: calc((100% - var(--pm-control-height-sm)) / 2);
+  inline-size: auto;
+  block-size: var(--pm-control-height-sm);
+}
+
+.root[data-orientation='vertical'] .divider:focus-visible::before,
+.root[data-orientation='vertical'] .divider[data-state='dragging']::before {
+  inset-inline: 0;
+  inset-block-start: calc((100% - 2px) / 2);
+  inline-size: auto;
+  block-size: 2px;
+}
+
+/* Fixture harness from the spec (ScrollArea's pattern): a fixed-height box for
+   a stacked split to divide. The root is as tall as its container, and a
+   container with no height gives it only its content's, which the ratio then
+   divides: each pane is drawn at its share of the taller pane's content, and
+   the rest of that content is cut. */
+.harness {
+  inline-size: 100%;
+  block-size: calc(var(--pm-space-10) * 2);
+}

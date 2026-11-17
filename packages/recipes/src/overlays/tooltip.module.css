@@ -1,0 +1,93 @@
+/* Tooltip — `design/components/tooltip.md`.
+ *
+ * The only place the vocabulary uses the inverse pair directly. There is no
+ * border: the inverse fill stands out by value in both modes, and a border on a
+ * 24px-tall bubble would add an unnecessary third edge. */
+
+/* The anchor Radix needs and nothing else: a box exactly the size of the
+   control inside it, so the bubble is positioned against the control's own
+   edges. Tooltip.tsx explains why it exists. */
+.anchor {
+  display: inline-flex;
+}
+
+.bubble {
+  /* `overlay` in the stacking order. The popper copies it onto its wrapper
+     (menu.module.css explains how). */
+  z-index: var(--pm-z-overlay);
+
+  /* Three times `--pm-space-10`, or the room on the side the bubble was placed
+     on when that is less. `--radix-tooltip-content-available-width` is measured
+     by the positioning engine at runtime: the distance from the trigger to the
+     window's edge. The positioner moves a bubble to the other side of its
+     trigger when the first is short, and does nothing more when both are, so a
+     bubble opened to the left or right of a trigger in a narrow window would
+     cross the window's edge. Here it narrows and its text wraps. The offset
+     below is taken from the room, because the room is measured for the box
+     around the bubble, and the offset is inside that box.
+     Until the positioner has measured, the room is the window's width. Without
+     that fallback the declaration would be invalid for the first frame, and the
+     bubble the positioner measures would be as wide as its text on one line. */
+  max-inline-size: min(
+    calc(var(--pm-space-10) * 3),
+    calc(var(--radix-tooltip-content-available-width, 100vw) - var(--pm-space-2))
+  );
+  padding: var(--pm-space-2) var(--pm-space-3);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-inverse);
+  background: var(--pm-bg-inverse);
+  border-radius: var(--pm-radius-detail);
+  box-shadow: var(--pm-shadow-raised);
+}
+
+/* The offset from the trigger, one space step: a margin on the edge that faces
+   the trigger, keyed off the side the bubble was placed on.
+ *
+ * It is a margin because the positioner measures the box around the bubble,
+ * and a margin is inside that box. The positioner then places the bubble one
+ * step from its trigger and counts the step when it checks a side for room.
+ * The Zag members pass a gutter of zero, so this is the whole gap in every
+ * renderer.
+ *
+ * It is not `translate`. The bubble is a motion surface, and the engine
+ * animates `translate`, `scale` and `opacity` on a surface and writes each one
+ * inline, so a `translate` declared here never applies.
+ *
+ * The properties are physical because the sides are: `left` is the window's
+ * left in a right-to-left document too. */
+
+.bubble[data-side='top'] {
+  margin-bottom: var(--pm-space-2);
+}
+
+.bubble[data-side='bottom'] {
+  margin-top: var(--pm-space-2);
+}
+
+.bubble[data-side='left'] {
+  margin-right: var(--pm-space-2);
+}
+
+.bubble[data-side='right'] {
+  margin-left: var(--pm-space-2);
+}
+
+/* Radix has two open states: after the delay, or instantly because a
+   neighbouring tooltip was just open. The vocabulary treats them the same. The
+   bubble stays hoverable in both, so a long hint does not close when the
+   pointer moves onto it. */
+.bubble[data-state='delayed-open'],
+.bubble[data-state='instant-open'] {
+  pointer-events: auto;
+}
+
+/* A closing bubble is not a hover target. This applies the motion law "motion
+   never blocks input" (`docs/motion.md`). It comes last so the cascade reads in
+   the order the states occur. */
+.bubble[data-state='closed'] {
+  pointer-events: none;
+}

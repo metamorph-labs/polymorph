@@ -1,0 +1,35 @@
+/* CursorPagination — `design/components/cursor-pagination.md`.
+ *
+ * The controls are Buttons and the row is an Inline, so this only styles the
+ * position text between the arrows, and the append form's end line. */
+
+/* A column, so the append form's end line takes a line of its own under the
+   row: beside the position, two muted texts would read as one phrase. The
+   replace form has one child, the row, which a column lays out as a row does.
+
+   The root takes focus when the app's hold disables the button that had it
+   (`cursor-pagination.md`, A11y), so it draws the one focus ring. It has the
+   controls' corners, so the ring follows the row it surrounds. */
+.pagination {
+  composes: focusRing from '../conventions/focus.module.css';
+  display: inline-flex;
+  flex-direction: column;
+  border-radius: var(--pm-radius-control);
+}
+
+/* As FilterBar's count: muted text at the buttons' type step. The append
+   form's end line reads as the position does. */
+.position,
+.end {
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-muted);
+}
+
+/* Tabular numerals, so "26–50" → "51–75" does not shift the arrow. */
+.position {
+  font-variant-numeric: var(--pm-font-numeric);
+}

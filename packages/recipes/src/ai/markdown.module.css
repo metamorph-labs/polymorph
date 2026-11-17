@@ -1,0 +1,79 @@
+/* Markdown — `design/components/markdown.md`.
+ *
+ * Most styling comes from other members through composition: paragraphs are
+ * Text, headings are Heading, fences are CodeBlock, tables are Table. This
+ * sheet owns the spacing between them and the three things no member draws: a
+ * list's markers, a quote's rule and an image's frame. It also restates
+ * StreamingText's caret, because the two are separate members and the laws
+ * check each member's own stylesheet. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-4);
+  min-inline-size: 0;
+}
+
+/* Lists. This is the only place the base layer's list reset is undone, because
+   a list in a reply is real content and its markers matter. The indent is a
+   space step, so the marker column rescales with density like every other
+   gutter. */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+  margin: 0;
+  padding-inline-start: var(--pm-space-6);
+  list-style: revert;
+}
+
+/* A nested list sits inside its item at the item's spacing. */
+.item > * + * {
+  margin-block-start: var(--pm-space-2);
+}
+
+/* Markers use the secondary text colour, because the words are the content and
+   the bullet is punctuation. */
+.item::marker {
+  color: var(--pm-text-secondary);
+}
+
+/* A quote is set apart by a rule on its start edge. ReasoningDisclosure uses
+   the same rule, so quoted text and the model's reasoning share one quieter
+   style. */
+.quote {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-3);
+  margin: 0;
+  padding-inline-start: var(--pm-space-4);
+  border-inline-start: 2px solid var(--pm-border-strong);
+}
+
+/* An image never widens the thread. It fits the column, keeps its aspect ratio,
+   and uses the same radius step as Skeleton's rect. */
+.image {
+  display: block;
+  max-inline-size: 100%;
+  block-size: auto;
+  border-radius: var(--pm-radius-md);
+}
+
+/* The caret, copied exactly from StreamingText: a steady 2px stroke, one text
+   step tall, in the accent fill. It sits inside the last paragraph's Text. */
+.caret {
+  display: inline-block;
+  inline-size: 2px;
+  margin-inline-start: var(--pm-space-1);
+  vertical-align: text-bottom;
+  background: var(--pm-accent-bg);
+  border-radius: 1px;
+}
+
+.root[data-size='sm'] .caret {
+  block-size: var(--pm-text-sm-size);
+}
+
+.root[data-size='md'] .caret {
+  block-size: var(--pm-text-md-size);
+}

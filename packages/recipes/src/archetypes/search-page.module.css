@@ -1,0 +1,56 @@
+/* SearchPage — `design/archetypes/search-page.md`.
+ *
+ * The measure is nine of `--pm-space-10`. Results are read as lines, and a
+ * list row wider than this puts its trailing fact a long way from its title.
+ * At every density the content box stays wider than FilterBar's `36rem` line,
+ * so a FilterBar keeps its clusters in one row. At FormPage's seven it does
+ * not at the compact density.
+ *
+ * The body is not a panel. Its groups are each a Heading over a List, and the
+ * List's ruled rows sit on the page background. */
+
+.page {
+  --pm-page-padding-x: var(--pm-space-7);
+  --pm-page-padding-y: var(--pm-space-6);
+  --pm-page-max-width: calc(var(--pm-space-10) * 9);
+  --pm-content-gutter: var(--pm-space-6);
+
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--pm-content-gutter);
+  max-inline-size: var(--pm-page-max-width);
+  margin-inline: auto;
+  padding: var(--pm-page-padding-y) var(--pm-page-padding-x);
+}
+
+/* The page scope's narrow step, explained in `list-page.module.css`. `40rem`
+   is a rem literal because a breakpoint is geometry, not theme
+   (`docs/layout.md`). One space step smaller on both axes. */
+@container (width < 40rem) {
+  .page {
+    --pm-page-padding-x: var(--pm-space-6);
+    --pm-page-padding-y: var(--pm-space-5);
+  }
+}
+
+/* The field and its filters are one block, spaced by the filter row's own
+   gap, and the page's gutter separates the block from the results. The column
+   stretches the field to the page's measure, so its end lines up with the
+   results' end. The margin is zeroed so the `<form>` lays out as the `<div>`
+   does. */
+.search {
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--pm-space-3);
+  margin: 0;
+}
+
+/* Groups of results, one gutter apart. Each group brings its own Stack, so a
+   heading sits closer to its list than to the group above it. */
+.results {
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--pm-content-gutter);
+  min-inline-size: 0;
+}

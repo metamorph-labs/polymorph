@@ -1,0 +1,34 @@
+Polymorph
+Copyright (c) 2026 Metamorph, Inc.
+
+Licensed under the MIT License (see LICENSE).
+
+Third-party marks
+-----------------
+packages/engine/src/icon/brands.ts holds the Google, Microsoft and GitHub marks
+for sign-in buttons, as those companies' branding guidelines describe for "sign
+in with" buttons, and every renderer draws them from it: BrandMark in each web
+foundation, PMBrandMark in platforms/ios and platforms/android. The marks are
+trademarks of their respective owners. They are not licensed under the MIT
+License and may be used only as those guidelines allow.
+
+Fonts
+-----
+The house systems in design/systems/ name font families that applications
+install from Fontsource: Bricolage Grotesque, Fira Code, Fraunces, Geist,
+Geist Mono, Inter, JetBrains Mono, Lora, Outfit, Plus Jakarta Sans, Public Sans,
+Source Sans 3, Source Serif 4 and Space Grotesk. No font files are distributed
+with this repository or its packages; each font is licensed by its authors,
+under the SIL Open Font License unless its package states otherwise.
+
+Dependencies
+------------
+The published packages depend on, but do not bundle, third-party packages
+(Radix UI, React Aria, Zag, lucide, d3, culori, apca-w3, zod and others),
+each under its own licence as declared in its package.
+
+Adapted code
+------------
+packages/solid/src/conventions/machine.ts is adapted from Zag's Solid adapter
+(@zag-js/solid), Copyright (c) 2021 Chakra UI, under the MIT License. The file
+keeps that licence's notice.

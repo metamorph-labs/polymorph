@@ -1,0 +1,399 @@
+/* Button — `design/components/button.md`, with each recipe cell copied from the spec.
+ *
+ * Source order matters. Selectors ascend in specificity:
+ *
+ *   base -> size -> icon-only -> loading -> rest cells -> disabled -> hover ->
+ *   the unfilled hover choice -> active -> on
+ *
+ * Disabled comes *before* hover/active and still wins, because the interactive rules are guarded
+ * with `:not(:disabled)` instead of out-specifying it. This keeps specificity non-descending
+ * (stylelint's `no-descending-specificity` is enforced here) while a disabled button stays inert.
+ *
+ * Motion is composed, never restated. `stateFeedback` provides the colour transitions, `pressable`
+ * the `button.press` binding, and `spin` the `button.spinner` binding. Their tokens, their
+ * reduced-motion versions and their `[data-motion="none"]` switch-off come with them
+ * (`conventions/motion.module.css`), so this file names no duration and no easing. */
+
+.button {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback pressable from '../conventions/motion.module.css';
+  display: inline-flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  justify-content: center;
+  max-inline-size: 100%;
+  block-size: var(--pm-control-height-md);
+  padding-inline: var(--pm-space-5);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  cursor: pointer;
+  user-select: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--pm-radius-control);
+}
+
+/* The label never wraps. Overflowing text is a caller bug and shows as an ellipsis. The button
+   keeps flexbox's default shrink so the ellipsis can appear. The glyphs below are `flex: none`, so
+   the text shrinks and the icon never does. */
+.label {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.glyph,
+.spinner {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The `button.spinner` binding: `spin`, an ambient motion. The motion module owns its period, its
+   inverse temperament scaling and its three switch-offs. */
+.spinner {
+  composes: spin from '../conventions/motion.module.css';
+}
+
+/* The count: a Badge after the label, or over the top end corner of an icon-only button's glyph.
+   It takes no press of its own, so a press on it is a press on the button, and a press on a
+   neighbour it reaches over is the neighbour's. */
+.count {
+  display: inline-flex;
+  flex: none;
+  pointer-events: none;
+}
+
+/* sizes — the conventions' size system -------------------------------------- */
+
+.button[data-size='sm'] {
+  gap: var(--pm-space-2);
+  block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-4);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+}
+
+.button[data-size='lg'] {
+  block-size: var(--pm-control-height-lg);
+  padding-inline: var(--pm-space-6);
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+}
+
+/* icon-only — square, so width follows the height token per size ------------ */
+
+.button[data-icon-only] {
+  inline-size: var(--pm-control-height-md);
+  padding-inline: 0;
+}
+
+.button[data-icon-only]:has(> .count) {
+  position: relative;
+}
+
+/* The count's start edge is fixed at the button's inline centre, and the count grows toward the
+   inline end. One figure covers the glyph's top end corner and stays inside the box; a wider
+   count reaches past the end edge instead of across the glyph. It stays inside the box on the
+   block axis. */
+.button[data-icon-only] > .count {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: calc(100% / 2);
+}
+
+/* Loading keeps its rest colours and only removes pointer input (the conventions' loading rule).
+   `pointer-events: none` also stops :hover and :active from matching, so no interactive rule needs
+   to handle this state. */
+.button[data-state='loading'] {
+  pointer-events: none;
+}
+
+.button[data-size='sm'][data-icon-only] {
+  inline-size: var(--pm-control-height-sm);
+}
+
+.button[data-size='lg'][data-icon-only] {
+  inline-size: var(--pm-control-height-lg);
+}
+
+/* rest cells --------------------------------------------------------------- */
+
+/* The lit fill: a contact seat shadow plus an inset top highlight, in one list. The coherence law
+   requires both tokens to be `none` together (flat) or set together (borders/elevated). So the
+   list is never half `none`, which would make it invalid. Flat systems stay flat, and every other
+   system gets the lit fill with no branch in the recipe. */
+.button[data-variant='solid'][data-tone='accent'] {
+  color: var(--pm-accent-contrast);
+  background-color: var(--pm-accent-bg);
+
+  /* The primary action uses the theme's gradient where one exists. Other themes need no fallback
+     rule. A partnerless theme resolves the token to a plain colour, a colour is not an image, and
+     an invalid image layer computes to `none`. The solid fill and its hover/active colours then
+     apply unchanged. In gradient themes the image covers those colours, so hover feedback comes
+     from the glow below and press feedback from the transform. Both are already composed. */
+  background-image: var(--pm-accent-gradient);
+  box-shadow: var(--pm-shadow-seat), var(--pm-shadow-inset-top);
+}
+
+.button[data-variant='solid'][data-tone='danger'] {
+  color: var(--pm-danger-contrast);
+  background: var(--pm-danger-solid);
+  box-shadow: var(--pm-shadow-seat), var(--pm-shadow-inset-top);
+}
+
+.button[data-variant='soft'][data-tone='accent'] {
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+}
+
+.button[data-variant='soft'][data-tone='danger'] {
+  color: var(--pm-danger-text);
+  background: var(--pm-danger-subtle);
+}
+
+.button[data-variant='outline'][data-tone='neutral'] {
+  color: var(--pm-text-primary);
+
+  /* `border.field` is the generic border in light themes and the input border in dark themes.
+     That is the whole definition of this role. */
+  border-color: var(--pm-border-field);
+}
+
+.button[data-variant='outline'][data-tone='accent'] {
+  color: var(--pm-accent-text);
+  border-color: var(--pm-accent-bg);
+}
+
+.button[data-variant='outline'][data-tone='danger'] {
+  color: var(--pm-danger-text);
+  border-color: var(--pm-danger-border);
+}
+
+.button[data-variant='ghost'][data-tone='neutral'] {
+  color: var(--pm-text-secondary);
+}
+
+.button[data-variant='ghost'][data-tone='accent'] {
+  color: var(--pm-accent-text);
+}
+
+.button[data-variant='ghost'][data-tone='danger'] {
+  color: var(--pm-danger-text);
+}
+
+/* disabled — one recipe per variant, tone-independent (conventions) --------- */
+
+.button[data-variant='solid'][data-disabled],
+.button[data-variant='soft'][data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  background: var(--pm-bg-subtle);
+  border-color: transparent;
+
+  /* The seat shadow and top highlight signal "pressable", so disabled removes them. */
+  box-shadow: none;
+}
+
+.button[data-variant='outline'][data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  background: transparent;
+  border-color: var(--pm-border-subtle);
+}
+
+.button[data-variant='ghost'][data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  background: transparent;
+}
+
+/* A count has its own fill, so on a disabled button it would be the only part at full strength.
+   It is desaturated and faded as a whole, as AvatarButton's face is. */
+.button[data-disabled] > .count {
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+
+/* hover -------------------------------------------------------------------- */
+
+/* The interactive guard is `:not(:disabled)` rather than `:enabled`. On a `<button>` the two
+   match the same elements with the same specificity, but only `:not(:disabled)` matches an `<a>`.
+   Link's `variant="button"` reuses these cells through the shared data attributes. `:enabled`
+   never matches an anchor, so it would get rest colours and no hover. */
+
+/* Glow: the accent solid shows a glow on hover. The glow *replaces* the lit-fill list instead of
+   joining it. A mixed list with a glow that resolves to `none` (no ornament) would invalidate the
+   whole value, and under a 12px halo the 1px seat is not visible anyway. Only accent gets the
+   glow, because the glow tokens carry the accent colour and would misstate a danger fill's tone. */
+.button[data-variant='solid'][data-tone='accent']:not(:disabled):hover {
+  background-color: var(--pm-accent-bg-hover);
+  box-shadow: var(--pm-glow-hover);
+}
+
+.button[data-variant='solid'][data-tone='danger']:not(:disabled):hover {
+  background: var(--pm-danger-solid-hover);
+}
+
+.button[data-variant='soft'][data-tone='accent']:not(:disabled):hover {
+  background: var(--pm-accent-subtle-hover);
+}
+
+.button[data-variant='soft'][data-tone='danger']:not(:disabled):hover {
+  background: var(--pm-danger-subtle-hover);
+}
+
+.button[data-variant='outline'][data-tone='neutral']:not(:disabled):hover {
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-strong);
+}
+
+.button[data-variant='outline'][data-tone='accent']:not(:disabled):hover {
+  background: var(--pm-accent-subtle);
+}
+
+.button[data-variant='outline'][data-tone='danger']:not(:disabled):hover {
+  background: var(--pm-danger-subtle);
+}
+
+.button[data-variant='ghost'][data-tone='neutral']:not(:disabled):hover {
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-subtle);
+}
+
+.button[data-variant='ghost'][data-tone='accent']:not(:disabled):hover {
+  background: var(--pm-accent-subtle);
+}
+
+.button[data-variant='ghost'][data-tone='danger']:not(:disabled):hover {
+  background: var(--pm-danger-subtle);
+}
+
+/* The unfilled hover choice. A system may give outline and ghost no wash under the pointer
+   (`overrides.hover.unfilled: none` in the system file, written as the flag `--pm-hover-unfilled`).
+   The rule has the hover rules' specificity and comes after them, so it removes their wash. The
+   active and on-state rules come after it, so a press still washes one step and a toggle that is
+   on keeps its wash: a control must still answer the click, and an on toggle must still look on.
+   The border and text changes above stay. */
+@container style(--pm-hover-unfilled: none) {
+  .button:is([data-variant='outline'], [data-variant='ghost'])[data-tone]:not(:disabled):hover {
+    background: transparent;
+  }
+}
+
+/* active. The press *transform* comes from `pressable`, composed above. Every washed variant
+   moves one step on press instead of keeping its hover value, so the control still responds at
+   the moment of the click. `soft` uses the full scale (3→4→5). `outline`/`ghost` enter the scale
+   on hover, so their press is its second step (3→4), one step past hover. */
+
+.button[data-variant='solid'][data-tone='accent']:not(:disabled):active {
+  background-color: var(--pm-accent-bg-active);
+}
+
+.button[data-variant='solid'][data-tone='danger']:not(:disabled):active {
+  background: var(--pm-danger-solid-active);
+}
+
+.button[data-variant='soft'][data-tone='accent']:not(:disabled):active {
+  background: var(--pm-accent-subtle-active);
+}
+
+.button[data-variant='soft'][data-tone='danger']:not(:disabled):active {
+  background: var(--pm-danger-subtle-active);
+}
+
+.button[data-variant='outline'][data-tone='neutral']:not(:disabled):active {
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-strong);
+}
+
+.button[data-variant='outline'][data-tone='accent']:not(:disabled):active {
+  background: var(--pm-accent-subtle-hover);
+}
+
+.button[data-variant='outline'][data-tone='danger']:not(:disabled):active {
+  background: var(--pm-danger-subtle-hover);
+}
+
+.button[data-variant='ghost'][data-tone='neutral']:not(:disabled):active {
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-subtle);
+}
+
+.button[data-variant='ghost'][data-tone='accent']:not(:disabled):active {
+  background: var(--pm-accent-subtle-hover);
+}
+
+.button[data-variant='ghost'][data-tone='danger']:not(:disabled):active {
+  background: var(--pm-danger-subtle-hover);
+}
+
+/* the toggle's on state -----------------------------------------------------
+ *
+ * `data-state="on"` holds the variant's own `active` cell. No new cells are needed, because every
+ * lawful variant × tone already defines its active row. `off` is the rest row, told apart by the
+ * attributes alone, so it has no rule here.
+ *
+ * These are the last interactive rules and have the same specificity, so hover while on *keeps*
+ * these colours. The wash scale has no further step, and the pointer still gets feedback from the
+ * press transform and the solid's glow. Disabled stays excluded, as above. */
+
+.button[data-variant='solid'][data-tone='accent'][data-state='on']:not(:disabled) {
+  background-color: var(--pm-accent-bg-active);
+}
+
+.button[data-variant='solid'][data-tone='danger'][data-state='on']:not(:disabled) {
+  background: var(--pm-danger-solid-active);
+}
+
+.button[data-variant='soft'][data-tone='accent'][data-state='on']:not(:disabled) {
+  background: var(--pm-accent-subtle-active);
+}
+
+.button[data-variant='soft'][data-tone='danger'][data-state='on']:not(:disabled) {
+  background: var(--pm-danger-subtle-active);
+}
+
+.button[data-variant='outline'][data-tone='neutral'][data-state='on']:not(:disabled) {
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-strong);
+}
+
+.button[data-variant='outline'][data-tone='accent'][data-state='on']:not(:disabled) {
+  background: var(--pm-accent-subtle-hover);
+}
+
+.button[data-variant='outline'][data-tone='danger'][data-state='on']:not(:disabled) {
+  background: var(--pm-danger-subtle-hover);
+}
+
+.button[data-variant='ghost'][data-tone='neutral'][data-state='on']:not(:disabled) {
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-subtle);
+}
+
+.button[data-variant='ghost'][data-tone='accent'][data-state='on']:not(:disabled) {
+  background: var(--pm-accent-subtle-hover);
+}
+
+.button[data-variant='ghost'][data-tone='danger'][data-state='on']:not(:disabled) {
+  background: var(--pm-danger-subtle-hover);
+}
+
+/* The focus glow is deliberately not restated. The selectors law requires every component to show
+   focus through the composed ring, and that requirement takes priority over the halo. Solid cells
+   set `box-shadow`, so on them the shared rule's glow loses the cascade and keyboard focus shows
+   only the shared ring. On a solid the glow appears on hover instead (above). Every variant
+   without a rest shadow gets the ring *and* the halo from the composed rule. */

@@ -1,0 +1,364 @@
+/* The space-token lookup, shared by Stack, Inline and Grid.
+ *
+ * Spacing resolves through attribute selectors rather than inline custom
+ * properties, so every token reference sits in a stylesheet where the Stylelint
+ * token law can check it. The law cannot see an inline
+ * `style={{ '--x': 'var(--pm-space-3)' }}`.
+ *
+ * ORDER MATTERS: `padding` first, then `padding-inline`, then `padding-block`.
+ * All three selectors have equal specificity, so source order makes `px`/`py`
+ * override `p` per axis. `layout.test.tsx` asserts it.
+ */
+
+.layout {
+  min-width: 0;
+}
+
+/* Lists lose their default margin, padding and markers. The attribute rules
+   below win on specificity, so `p` still works on a `<ul>`. */
+ul.layout,
+ol.layout {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* gap ---------------------------------------------------------------------- */
+
+.layout[data-gap='0'] {
+  gap: var(--pm-space-0);
+}
+
+.layout[data-gap='1'] {
+  gap: var(--pm-space-1);
+}
+
+.layout[data-gap='2'] {
+  gap: var(--pm-space-2);
+}
+
+.layout[data-gap='3'] {
+  gap: var(--pm-space-3);
+}
+
+.layout[data-gap='4'] {
+  gap: var(--pm-space-4);
+}
+
+.layout[data-gap='5'] {
+  gap: var(--pm-space-5);
+}
+
+.layout[data-gap='6'] {
+  gap: var(--pm-space-6);
+}
+
+.layout[data-gap='7'] {
+  gap: var(--pm-space-7);
+}
+
+.layout[data-gap='8'] {
+  gap: var(--pm-space-8);
+}
+
+.layout[data-gap='9'] {
+  gap: var(--pm-space-9);
+}
+
+.layout[data-gap='10'] {
+  gap: var(--pm-space-10);
+}
+
+/* padding ------------------------------------------------------------------ */
+
+.layout[data-p='0'] {
+  padding: var(--pm-space-0);
+}
+
+.layout[data-p='1'] {
+  padding: var(--pm-space-1);
+}
+
+.layout[data-p='2'] {
+  padding: var(--pm-space-2);
+}
+
+.layout[data-p='3'] {
+  padding: var(--pm-space-3);
+}
+
+.layout[data-p='4'] {
+  padding: var(--pm-space-4);
+}
+
+.layout[data-p='5'] {
+  padding: var(--pm-space-5);
+}
+
+.layout[data-p='6'] {
+  padding: var(--pm-space-6);
+}
+
+.layout[data-p='7'] {
+  padding: var(--pm-space-7);
+}
+
+.layout[data-p='8'] {
+  padding: var(--pm-space-8);
+}
+
+.layout[data-p='9'] {
+  padding: var(--pm-space-9);
+}
+
+.layout[data-p='10'] {
+  padding: var(--pm-space-10);
+}
+
+/* padding-inline — must follow `padding` to override it ---------------------- */
+
+.layout[data-px='0'] {
+  padding-inline: var(--pm-space-0);
+}
+
+.layout[data-px='1'] {
+  padding-inline: var(--pm-space-1);
+}
+
+.layout[data-px='2'] {
+  padding-inline: var(--pm-space-2);
+}
+
+.layout[data-px='3'] {
+  padding-inline: var(--pm-space-3);
+}
+
+.layout[data-px='4'] {
+  padding-inline: var(--pm-space-4);
+}
+
+.layout[data-px='5'] {
+  padding-inline: var(--pm-space-5);
+}
+
+.layout[data-px='6'] {
+  padding-inline: var(--pm-space-6);
+}
+
+.layout[data-px='7'] {
+  padding-inline: var(--pm-space-7);
+}
+
+.layout[data-px='8'] {
+  padding-inline: var(--pm-space-8);
+}
+
+.layout[data-px='9'] {
+  padding-inline: var(--pm-space-9);
+}
+
+.layout[data-px='10'] {
+  padding-inline: var(--pm-space-10);
+}
+
+/* padding-block — likewise ------------------------------------------------- */
+
+.layout[data-py='0'] {
+  padding-block: var(--pm-space-0);
+}
+
+.layout[data-py='1'] {
+  padding-block: var(--pm-space-1);
+}
+
+.layout[data-py='2'] {
+  padding-block: var(--pm-space-2);
+}
+
+.layout[data-py='3'] {
+  padding-block: var(--pm-space-3);
+}
+
+.layout[data-py='4'] {
+  padding-block: var(--pm-space-4);
+}
+
+.layout[data-py='5'] {
+  padding-block: var(--pm-space-5);
+}
+
+.layout[data-py='6'] {
+  padding-block: var(--pm-space-6);
+}
+
+.layout[data-py='7'] {
+  padding-block: var(--pm-space-7);
+}
+
+.layout[data-py='8'] {
+  padding-block: var(--pm-space-8);
+}
+
+.layout[data-py='9'] {
+  padding-block: var(--pm-space-9);
+}
+
+.layout[data-py='10'] {
+  padding-block: var(--pm-space-10);
+}
+
+/* axes --------------------------------------------------------------------- */
+
+.layout[data-align='stretch'] {
+  align-items: stretch;
+}
+
+.layout[data-align='start'] {
+  align-items: flex-start;
+}
+
+.layout[data-align='center'] {
+  align-items: center;
+}
+
+.layout[data-align='end'] {
+  align-items: flex-end;
+}
+
+.layout[data-align='baseline'] {
+  align-items: baseline;
+}
+
+.layout[data-justify='start'] {
+  justify-content: flex-start;
+}
+
+.layout[data-justify='center'] {
+  justify-content: center;
+}
+
+.layout[data-justify='end'] {
+  justify-content: flex-end;
+}
+
+.layout[data-justify='between'] {
+  justify-content: space-between;
+}
+
+/* flow --------------------------------------------------------------------- */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.inline {
+  display: flex;
+  flex-direction: row;
+}
+
+.inline[data-wrap] {
+  flex-wrap: wrap;
+}
+
+/* The grid is its own query container ----------------------------------------
+ *
+ * `columns` is a ceiling, not a fixed count: N tracks where there is room for
+ * N, half of them rounded up in the middle band, and one when there is room for
+ * one (`docs/layout.md`). A Grid in a drawer and a Grid on a page have
+ * different widths at the same moment, so the count must come from the
+ * container, never from the viewport.
+ *
+ * The grid always has twelve tracks, and each child spans `12 / N`. This shape
+ * is forced. A container query is answered by the nearest ancestor container,
+ * so no element can size itself from its own width. This was measured in a
+ * browser: a `container-type` element under its own `@container` rule keeps the
+ * outer value while its children change. The tracks are on the grid, so the
+ * grid cannot respond to itself, but its children can. Spans cost nothing,
+ * because every count the API allows (1, 2, 3, 4, 6, 12) divides twelve, and so
+ * does every halved count. `repeat(12, …)` with `span 12/N` resolves to
+ * exactly the track widths and gutters of `repeat(N, …)`. Each item takes
+ * `12/N` tracks plus the `12/N - 1` gaps inside it, which is
+ * `W/N - g·(N-1)/N` either way. The alternative is a wrapper element around
+ * every Grid, which adds a DOM node per instance for arithmetic that is already
+ * free.
+ *
+ * `minmax(0, 1fr)` stops content from widening a track. Truncation is the cell
+ * owner's decision, not the grid's.
+ *
+ * `inline-size: 100%` is required by containment. An inline-size container's
+ * width no longer derives from its contents, so a Grid placed directly in a
+ * flex row would otherwise resolve to zero (also measured). 100% of the row is
+ * the correct width there, shrinkable like any other item, and identical to
+ * `auto` everywhere the vocabulary already places a Grid.
+ */
+.grid {
+  container-type: inline-size;
+  display: grid;
+  inline-size: 100%;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.grid[data-columns='1'] > * {
+  grid-column: span 12;
+}
+
+.grid[data-columns='2'] > * {
+  grid-column: span 6;
+}
+
+.grid[data-columns='3'] > * {
+  grid-column: span 4;
+}
+
+.grid[data-columns='4'] > * {
+  grid-column: span 3;
+}
+
+.grid[data-columns='6'] > * {
+  grid-column: span 2;
+}
+
+.grid[data-columns='12'] > * {
+  grid-column: span 1;
+}
+
+/* Half the ceiling, rounded up. Each count is written out because CSS cannot
+   compute `ceil(N/2)` in a track expression, and a rule that could would still
+   need six answers.
+ *
+ * `44rem` and `28rem` are rem literals with this comment rather than tokens, as
+ * every container threshold is (`docs/layout.md`). A breakpoint is geometry,
+ * not theme. Scaling one with density would change the layout for a reader who
+ * only changed how tight their controls are. The bands are written as closed
+ * ranges rather than relying on source order, so each rule states the width it
+ * applies to. */
+@container (28rem <= width < 44rem) {
+  /* 1 and 2 are already at one column: `ceil(1/2)` and `ceil(2/2)` are 1. */
+  .grid[data-columns='1'] > *,
+  .grid[data-columns='2'] > * {
+    grid-column: span 12;
+  }
+
+  .grid[data-columns='3'] > *,
+  .grid[data-columns='4'] > * {
+    grid-column: span 6;
+  }
+
+  .grid[data-columns='6'] > * {
+    grid-column: span 4;
+  }
+
+  .grid[data-columns='12'] > * {
+    grid-column: span 2;
+  }
+}
+
+/* One column, whatever the ceiling. The selector uses `[data-columns]` so its
+   specificity matches the rules above. A container query adds no specificity,
+   so a bare `.grid > *` would lose to all of them. */
+@container (width < 28rem) {
+  .grid[data-columns] > * {
+    grid-column: span 12;
+  }
+}

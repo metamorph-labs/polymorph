@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Types only. Vite emits the JavaScript (`vite.config.ts`).
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    // No declaration maps: the tarball ships `dist` without `src`.
+    "declarationMap": false,
+    "rootDir": "src",
+    "outDir": "dist/types",
+    "incremental": false,
+    "tsBuildInfoFile": null
+  },
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
+}

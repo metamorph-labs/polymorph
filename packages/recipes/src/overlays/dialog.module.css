@@ -1,0 +1,258 @@
+/* Dialog — `design/components/dialog.md`.
+ *
+ * The motion engine animates this member, not this file. The scrim fades and
+ * the panel scale-fades from its trigger, both through `MotionSurface`, because
+ * an exit that can be interrupted needs presence coordination and CSS cannot
+ * keep a leaving node mounted.
+ *
+ * CSS handles what motion must not touch: the panel's box, and the rule that a
+ * leaving surface stops taking clicks. That rule applies the motion law
+ * "motion never blocks input" (`docs/motion.md`): an overlay that is closing
+ * must not capture the next click. */
+
+/* `overlay` in the stacking order: every portalled overlay surface uses one
+   layer, above shell chrome and below toasts. Drawer composes this scrim and
+   gets the layer with it. */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--pm-z-overlay);
+  background: var(--pm-bg-scrim);
+}
+
+/* Fills the viewport, centres the panel, and takes no pointer events itself,
+   so a click that misses the panel lands on the scrim and dismisses. */
+.positioner {
+  position: fixed;
+  inset: 0;
+  z-index: var(--pm-z-overlay);
+  display: grid;
+
+  /* One explicit track. An implicit `auto` track is sized by the panel's
+     intrinsic size, so content wider than the window would widen the track and
+     push the whole dialog, close button included, off the edge with no way to
+     scroll back. `minmax(0, 1fr)` makes the track the window width, which is
+     the only width an overlay has. */
+  grid-template-columns: minmax(0, 1fr);
+
+  /* One explicit row, for the same reason on the other axis. An implicit `auto`
+     row grows to the panel's content, so a full-screen panel stretched into it
+     is as tall as a long body and runs past the bottom of the window, and the
+     body never has to scroll. `minmax(0, 1fr)` makes the row the window
+     height. */
+  grid-template-rows: minmax(0, 1fr);
+  place-items: center;
+  pointer-events: none;
+}
+
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  inline-size: min(calc(var(--pm-space-10) * 5), calc(100vw - var(--pm-space-7) * 2));
+
+  /* The max-height calculation uses `dvh` (dialog.md's size cell). On phones
+     `100vh` includes the collapsed browser chrome, so a card capped against it
+     puts its footer behind the URL bar (`docs/layout.md`); `dvh` tracks the
+     live viewport. The `vh` base is here and the `dvh` override is in the
+     `@supports` block after this rule, because a dedupe minifier deletes a
+     same-property pair. */
+  max-block-size: calc(100vh - var(--pm-space-8) * 2);
+  padding: var(--pm-inset-surface);
+
+  /* The body is the part that scrolls, and it shrinks first. The panel scrolls
+     only when the parts that do not shrink, the title, the description and the
+     footer, are taller than the panel by themselves: a long description, or
+     large text in a short window. Every part then stays in reach instead of
+     running past the panel's edge. */
+  overflow-y: auto;
+  pointer-events: auto;
+  background: var(--pm-bg-overlay);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-surface);
+  box-shadow: var(--pm-shadow-transient);
+}
+
+@supports (height: 1dvh) {
+  .panel {
+    max-block-size: calc(100dvh - var(--pm-space-8) * 2);
+  }
+}
+
+.title {
+  padding-inline-end: var(--pm-space-8);
+  font-family: var(--pm-text-xl-family);
+  font-size: var(--pm-text-xl-size);
+  font-weight: var(--pm-text-xl-weight);
+  line-height: var(--pm-text-xl-line-height);
+  letter-spacing: var(--pm-text-xl-tracking);
+  color: var(--pm-text-primary);
+}
+
+.description {
+  margin-block-start: var(--pm-space-2);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+}
+
+/* The only scrolling region, so the title and the actions stay in place while a
+   long body scrolls. `min-block-size: 0` lets it shrink inside the flex column
+   instead of pushing the panel past its max height. */
+.body {
+  min-block-size: 0;
+  margin-block-start: var(--pm-space-5);
+  overflow-y: auto;
+}
+
+.footer {
+  display: flex;
+  gap: var(--pm-space-3);
+  justify-content: flex-end;
+  margin-block-start: var(--pm-space-6);
+}
+
+.close {
+  position: absolute;
+  inset-block-start: var(--pm-space-4);
+  inset-inline-end: var(--pm-space-4);
+}
+
+/* sizes — scaled by density on purpose, so a comfortable theme gets roomier
+   dialogs, as it does everything else. */
+
+.panel[data-size='sm'] {
+  inline-size: min(calc(var(--pm-space-10) * 4), calc(100vw - var(--pm-space-7) * 2));
+}
+
+.panel[data-size='lg'] {
+  inline-size: min(calc(var(--pm-space-10) * 7), calc(100vw - var(--pm-space-7) * 2));
+}
+
+/* The bottom sheet (`presentation="sheet"`) ----------------------------------
+ *
+ * The sheet presentation's anatomy (`design/components/README.md`), composed
+ * from `sheet.module.css`, so the shared surface is defined once. These classes
+ * replace `.panel` and `.positioner` entirely in sheet form (the component
+ * swaps them below `30rem` when `'sheet'` is chosen). That also keeps the
+ * `[data-size]` width rules and the full-screen block below from reaching the
+ * sheet: they select `.panel`, and a sheet-form panel does not have it. `size`
+ * has no visible effect below the threshold, because a sheet is as tall as its
+ * content, not as wide as a card. The attribute stays on the panel, because it
+ * is still what the caller asked for.
+ *
+ * The member's own parts stay inside the sheet: padding `--pm-space-6`, the
+ * scrolling body, the close control and the footer. The safe-area padding is
+ * the sheet presentation's: added to this member's edge padding, and zero where
+ * there is no notch, because a footer under the home indicator is hidden
+ * content (`docs/layout.md`). */
+
+.sheetPositioner {
+  composes: positioner from './sheet.module.css';
+}
+
+.sheetPanel {
+  composes: panel from './sheet.module.css';
+
+  /* The close button's inset anchor, the same as the card's. */
+  position: relative;
+  padding: var(--pm-inset-surface);
+  padding-block-end: calc(var(--pm-inset-surface) + env(safe-area-inset-bottom, 0px));
+
+  /* The card's rule: the body scrolls, and the sheet itself scrolls only when
+     its title, description and footer alone are taller than its cap. */
+  overflow-y: auto;
+}
+
+/* The sheet ------------------------------------------------------------------
+ *
+ * Below `30rem` the panel is no longer a card in the middle of the screen; it
+ * fills the screen. At that width a centred dialog would have only a thin
+ * border of scrim around it, and the side padding would take space the content
+ * needs.
+ *
+ * This uses `@media`, the one exemption from container-first responsiveness,
+ * with its reasoning in `docs/layout.md`. Every other member measures its
+ * container, because a Grid in a drawer and a Grid on a page have different
+ * widths at the same moment. An overlay has no such ambiguity: it is portalled
+ * to the document, positioned `fixed`, and its container is the viewport.
+ * There is no box between this panel and the window, so querying the window
+ * queries its only container. Overlays are shell-class, and the shell owns the
+ * viewport.
+ *
+ * `30rem` is a rem literal, like the shell's `48rem`. A breakpoint is geometry,
+ * not theme. Scaling it with density would turn a dialog into a sheet for a
+ * reader who only changed how tight their controls are.
+ *
+ * All three size selectors are listed, because `[data-size]` outranks the bare
+ * `.panel` and would otherwise reapply a width inside the sheet rule. The sizes
+ * apply to a dialog; a full-screen panel has no small, medium or large form. */
+@media (width < 30rem) {
+  .panel,
+  .panel[data-size='sm'],
+  .panel[data-size='lg'] {
+    /* Stretched to fill the positioner rather than set to 100% of it, because
+       of the panel's padding. A percentage sizes the content box, so a padded
+       panel at 100% is the window plus its inset. It overflows on both sides,
+       and the close button falls off. Stretching fills the area correctly under
+       either box model. */
+    place-self: stretch;
+    inline-size: auto;
+    block-size: auto;
+    max-block-size: none;
+
+    /* No rounded corners: every edge of the panel is now an edge of the screen,
+       and a radius there would cut a curve out of the display. The border is
+       removed for the same reason, because it would draw a hairline box around
+       the whole window. */
+    border: 0;
+    border-radius: 0;
+
+    /* In the full-screen form the panel's block padding clears the notch: it is
+       added to the padding, and zero where there is no notch. Every edge of the
+       panel is an edge of the display here, and a footer under the home
+       indicator is hidden content (`docs/layout.md`). */
+    padding-block: calc(var(--pm-space-6) + env(safe-area-inset-top, 0px))
+      calc(var(--pm-space-6) + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Radix focuses the panel itself when it contains nothing focusable. A ring
+   around a whole modal adds no information. The ring belongs on the control the
+   reader will use, and every such control composes the focus convention. This
+   is the standard exception for a programmatically focused `tabindex="-1"`
+   container. It covers both forms, because the sheet panel is the same
+   programmatic target. */
+.panel:focus-visible,
+.sheetPanel:focus-visible {
+  outline: none;
+}
+
+/* A closing surface is no longer a click target. Both parts, because the scrim
+   is the dismiss surface and the panel holds the content. */
+.scrim[data-state='closed'],
+.panel[data-state='closed'] {
+  pointer-events: none;
+}
+
+/* While open, the panel takes clicks even though its positioner does not. This
+   follows the closed rule so the cascade reads in the order the states occur. */
+.panel[data-state='open'] {
+  pointer-events: auto;
+}
+
+/* Glass (`depth: glass`): the pane uses the surface role at the engine's mix
+   (`--pm-material-surface`), and the material provides the lift that the
+   overlay stacking order provides elsewhere. The backdrop shows through the
+   pane as a blurred, saturated wash, so the surface stands apart by its
+   material rather than by a lighter step. The mix is a contrast decision that
+   the glass law measures over worst-case backdrops; a recipe only applies it. */
+@container style(--pm-axis-depth: glass) {
+  .panel {
+    background: var(--pm-material-surface);
+    backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  }
+}

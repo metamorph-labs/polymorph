@@ -1,0 +1,27 @@
+{
+  "name": "harbor",
+  "axes": {
+    "geometry": "sharp",
+    "depth": "flat",
+    "density": "compact",
+    "contrastTemperament": "stark",
+    "typePersonality": "mono",
+    "colorStrategy": "quiet",
+    "motionTemperament": "subtle",
+    "ornament": "grid"
+  },
+  "fonts": {
+    "body": {
+      "family": "Space Grotesk Variable"
+    },
+    "display": {
+      "family": "Plus Jakarta Sans Variable"
+    },
+    "mono": {
+      "family": "Fira Code Variable"
+    }
+  },
+  "defaultPalette": "ember",
+  "defaultMode": "light",
+  "kind": "tenant"
+}

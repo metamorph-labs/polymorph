@@ -1,0 +1,80 @@
+{
+  "name": "@polymorph/svelte-ui",
+  "version": "1.0.15",
+  "description": "The polymorph vocabulary for Svelte: every member as a Svelte 5 component generated from its framework-neutral description, styled by its token-only recipe from @polymorph/recipes.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "svelte": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": [
+    "**/*.css",
+    "./src/index.ts",
+    "./dist/index.js"
+  ],
+  "scripts": {
+    "build": "node ../svelte/scripts/package.mjs ."
+  },
+  "dependencies": {
+    "@polymorph/recipes": "workspace:*",
+    "@polymorph/svelte": "workspace:*",
+    "@zag-js/accordion": "^1.46.0",
+    "@zag-js/carousel": "^1.46.0",
+    "@zag-js/checkbox": "^1.46.0",
+    "@zag-js/collapsible": "^1.46.0",
+    "@zag-js/color-picker": "^1.46.0",
+    "@zag-js/combobox": "^1.46.0",
+    "@zag-js/date-picker": "^1.46.0",
+    "@zag-js/dialog": "^1.46.0",
+    "@zag-js/hover-card": "^1.46.0",
+    "@zag-js/menu": "^1.46.0",
+    "@zag-js/number-input": "^1.46.0",
+    "@zag-js/popover": "^1.46.0",
+    "@zag-js/radio-group": "^1.46.0",
+    "@zag-js/scroll-area": "^1.46.0",
+    "@zag-js/select": "^1.46.0",
+    "@zag-js/slider": "^1.46.0",
+    "@zag-js/svelte": "^1.46.0",
+    "@zag-js/switch": "^1.46.0",
+    "@zag-js/tabs": "^1.46.0",
+    "@zag-js/tooltip": "^1.46.0"
+  },
+  "peerDependencies": {
+    "svelte": "^5.46.4"
+  },
+  "devDependencies": {
+    "@polymorph/conformance": "workspace:*",
+    "@polymorph/engine": "workspace:*",
+    "@polymorph/registry": "workspace:*",
+    "@polymorph/rules": "workspace:*",
+    "@polymorph/shells": "workspace:*",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@testing-library/dom": "^10.4.1",
+    "axe-core": "^4.12.1",
+    "svelte": "^5.57.2",
+    "svelte-check": "^4.7.6",
+    "svelte2tsx": "^0.7.61",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.5"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "restricted",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "svelte": "./dist/index.js",
+        "default": "./dist/index.js"
+      }
+    }
+  }
+}

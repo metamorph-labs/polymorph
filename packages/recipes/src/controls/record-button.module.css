@@ -1,0 +1,98 @@
+/* RecordButton — `design/components/record-button.md`.
+ *
+ * A row: while recording, the meter (the mark and the time), then the Button.
+ * The Button brings its own recipe, ghost at rest and outline while recording,
+ * so this file lays out the row and draws the meter. */
+
+.root {
+  display: inline-flex;
+  gap: var(--pm-space-2);
+  align-items: center;
+  max-inline-size: 100%;
+}
+
+.meter {
+  display: inline-flex;
+  gap: var(--pm-space-2);
+  align-items: center;
+}
+
+/* The mark: a dot in the middle of a box the halo fills at the full level. The
+   level is set inline on this element as data, and it defaults to none. The box
+   holds the halo, so a loud input moves nothing beside it. */
+.mark {
+  --pm-record-button-level: 0;
+
+  position: relative;
+  flex: none;
+  inline-size: var(--pm-space-6);
+  block-size: var(--pm-space-6);
+}
+
+/* The halo is the dot's size at no level, a third of the box, and the whole box
+   at the full level. It takes the danger border colour, which stands apart from
+   the surface and from the dot in both modes, where the danger wash would not.
+   It is not the only sign of recording: the dot, the glyph, the frame and the
+   time say it too. */
+.mark::before {
+  position: absolute;
+  inset: 0;
+  content: '';
+  background: var(--pm-danger-border);
+  border-radius: var(--pm-radius-pill);
+  transform: scale(calc((1 + 2 * var(--pm-record-button-level)) / 3));
+  transition: transform var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+/* The dot takes the danger text colour, which the pairing checks hold on every
+   `bg.*` surface, because a recording's mark is red by convention on every
+   platform. */
+.mark::after {
+  position: absolute;
+  inset: var(--pm-space-3);
+  content: '';
+  background: var(--pm-danger-text);
+  border-radius: var(--pm-radius-pill);
+}
+
+/* The seconds recorded, as AudioPlayer draws its clock: the theme's tabular
+   figures keep the digits' width while the time moves. The step follows the
+   control's size (the conventions' size system). */
+.elapsed {
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  font-variant-numeric: var(--pm-font-numeric);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+  white-space: nowrap;
+}
+
+.root[data-size='sm'] .elapsed {
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+}
+
+/* motion projections ------------------------------------------------------- */
+
+/* With motion off, and under reduced motion, the halo does not grow: it stays
+   at its full size and the level is its opacity, which is the scale-fade
+   pattern's projection to a fade. A duration token can make a change instant
+   but cannot remove the scale, so the scale is removed here, last in the file,
+   over the rule it undoes. */
+:global([data-motion='none']) .mark::before {
+  opacity: var(--pm-record-button-level);
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mark::before {
+    opacity: var(--pm-record-button-level);
+    transform: none;
+    transition: none;
+  }
+}

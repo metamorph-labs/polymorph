@@ -1,0 +1,166 @@
+{
+  "spec": "polymorph-screen/1",
+  "name": "OnboardingProfileStep",
+  "purpose": "The first of four account-setup steps, collecting the customer's name, role and optional photo.",
+  "inputs": [
+    {
+      "name": "activeStepIndex",
+      "type": "number",
+      "doc": "0-based index of the current setup step; earlier steps are finished. 0 on this screen."
+    },
+    { "name": "name", "type": "string", "doc": "The customer's name." },
+    { "name": "onNameChange", "type": "(value: string) => void" },
+    { "name": "role", "type": "string", "doc": "The selected role value; empty string when none." },
+    {
+      "name": "roleOptions",
+      "type": "{ value: string; label: string }[]",
+      "doc": "The short list of roles."
+    },
+    { "name": "onRoleChange", "type": "(value: string) => void" },
+    {
+      "name": "photoFiles",
+      "type": "{ id: string; name: string; size?: number; status: 'uploading' | 'done' | 'error'; progress?: number; message?: string }[]",
+      "doc": "The photo as upload rows; empty when none chosen."
+    },
+    { "name": "onPhotoAdd", "type": "(files: File[]) => void" },
+    {
+      "name": "onPhotoReject",
+      "type": "(rejections: { file: File; reason: 'type' | 'size' | 'count' }[]) => void"
+    },
+    { "name": "onPhotoRemove", "type": "(id: string) => void" },
+    { "name": "onPhotoRetry", "type": "(id: string) => void" },
+    {
+      "name": "continueDisabled",
+      "type": "boolean",
+      "doc": "True until name and role are both filled in."
+    },
+    { "name": "onContinue", "type": "() => void", "doc": "Moves to the next step." },
+    {
+      "name": "onSaveAndExit",
+      "type": "() => void",
+      "doc": "Saves what has been entered and leaves setup to finish later."
+    }
+  ],
+  "root": {
+    "component": "FormPage",
+    "props": {
+      "title": "Set up your account",
+      "description": "Tell us a little about you. You can leave at any time and pick up where you stopped.",
+      "onSubmit": { "$": "onContinue" },
+      "actions": {
+        "component": "Inline",
+        "props": { "justify": "between", "gap": 3, "align": "center" },
+        "children": [
+          {
+            "component": "Button",
+            "props": {
+              "label": "Save and finish later",
+              "variant": "ghost",
+              "tone": "neutral",
+              "onClick": { "$": "onSaveAndExit" }
+            }
+          },
+          {
+            "component": "Inline",
+            "props": { "gap": 3 },
+            "children": [
+              {
+                "component": "Button",
+                "props": {
+                  "label": "Back",
+                  "variant": "outline",
+                  "tone": "neutral",
+                  "disabled": true
+                }
+              },
+              {
+                "component": "Button",
+                "props": {
+                  "label": "Continue",
+                  "variant": "solid",
+                  "tone": "accent",
+                  "type": "submit",
+                  "disabled": { "$": "continueDisabled" }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "children": [
+      {
+        "component": "Stepper",
+        "props": {
+          "activeIndex": { "$": "activeStepIndex" },
+          "steps": [
+            { "$object": { "label": "Profile" } },
+            { "$object": { "label": "Team" } },
+            { "$object": { "label": "Integrations" } },
+            { "$object": { "label": "Done" } }
+          ]
+        }
+      },
+      {
+        "component": "Card",
+        "children": [
+          {
+            "component": "Stack",
+            "props": { "gap": 5 },
+            "children": [
+              {
+                "component": "FormField",
+                "props": { "label": "Name", "required": true },
+                "children": [
+                  {
+                    "component": "Input",
+                    "props": {
+                      "value": { "$": "name" },
+                      "onChange": { "$": "onNameChange" },
+                      "autoComplete": "name"
+                    }
+                  }
+                ]
+              },
+              {
+                "component": "FormField",
+                "props": { "label": "Role", "required": true },
+                "children": [
+                  {
+                    "component": "Select",
+                    "props": {
+                      "value": { "$": "role" },
+                      "onChange": { "$": "onRoleChange" },
+                      "options": { "$": "roleOptions" },
+                      "placeholder": "Choose your role"
+                    }
+                  }
+                ]
+              },
+              {
+                "component": "FormField",
+                "props": { "label": "Photo (optional)" },
+                "children": [
+                  {
+                    "component": "FileUpload",
+                    "props": {
+                      "title": "Drop a photo or click to browse",
+                      "hint": "PNG or JPG",
+                      "accept": "image/*",
+                      "multiple": false,
+                      "files": { "$": "photoFiles" },
+                      "onFilesAdd": { "$": "onPhotoAdd" },
+                      "onReject": { "$": "onPhotoReject" },
+                      "onRemove": { "$": "onPhotoRemove" },
+                      "onRetry": { "$": "onPhotoRetry" }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

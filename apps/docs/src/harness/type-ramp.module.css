@@ -1,0 +1,30 @@
+/* The type ramp, rendered at emitted size in the theme's own families. */
+
+.row {
+  display: flex;
+  gap: var(--pm-space-4);
+  align-items: baseline;
+  padding-block: var(--pm-space-2);
+  border-block-end: 1px solid var(--pm-border-subtle);
+}
+
+.step {
+  flex: none;
+  inline-size: calc(var(--pm-space-10) + var(--pm-space-6));
+  font-family: var(--pm-font-mono);
+  font-size: var(--pm-text-xs-size);
+  color: var(--pm-text-muted);
+}
+
+.specimen {
+  overflow: hidden;
+  font-family: var(--pm-sample-family);
+  font-size: var(--pm-sample-size);
+  font-style: var(--pm-sample-style, normal);
+  font-weight: var(--pm-sample-weight);
+  line-height: var(--pm-sample-line-height);
+  color: var(--pm-text-primary);
+  letter-spacing: var(--pm-sample-tracking);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

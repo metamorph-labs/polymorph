@@ -1,0 +1,42 @@
+/* Seeded reds for the vocabulary-integrity law. See ./README.md — this file is
+   data. Every reference below names a `--pm-*` property that no theme emits and
+   no stylesheet declares; the two lawful reads at the end must stay silent.
+
+   Prose is not a reference: this comment names `--pm-accent-border` and must not
+   be reported for it. */
+
+.panel {
+  /* The original incident, verbatim, from an early paint experiment. One ghost
+     name in a layered background, and CSS throws away the whole declaration —
+     every pool in it, on every theme, silently. */
+  background:
+    radial-gradient(circle at 20% 0%, var(--pm-accent-subtle), transparent 60%),
+    linear-gradient(var(--pm-bg-wash-from), var(--pm-bg-wash-to)), var(--pm-accent-border);
+}
+
+.panelBordered {
+  /* A wrong name with a working fallback is still a wrong name: this paints
+     correctly forever, and the token it meant to read is never read. */
+  border-color: var(--pm-border-defualt, var(--pm-border-default));
+}
+
+.panelRaised {
+  /* And a ghost inside a fallback, which is the shape a rename leaves behind. */
+  box-shadow: var(--pm-shadow-raised, var(--pm-shadow-lifted));
+}
+
+/* The lawful axis branch, misspelled. This fails more quietly than a bad `var()`:
+   the query matches nothing, the branch never happens, and the recipe reads as
+   though it was never written. */
+@container style(--pm-axis-dpeth: flat) {
+  .panelFlat {
+    border: 1px solid var(--pm-border-default);
+  }
+}
+
+.panelLawful {
+  /* Both halves of what exists: a token the theme emits, and one the vocabulary
+     declares for itself. Neither may be reported. */
+  padding: var(--pm-space-4);
+  block-size: var(--pm-shell-topbar-height);
+}

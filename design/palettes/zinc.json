@@ -1,0 +1,12 @@
+{
+  "name": "zinc",
+  "accentHue": 286,
+  "neutralHue": 286,
+  "neutralTint": 0.013,
+  "chromaBudget": "none",
+  "chartCaps": {
+    "light": 4,
+    "dark": 3,
+    "published": 3
+  }
+}

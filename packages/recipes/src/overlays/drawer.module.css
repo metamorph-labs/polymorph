@@ -1,0 +1,238 @@
+/* Drawer — `design/components/drawer.md`.
+ *
+ * The scrim is Dialog's, composed rather than restated, because it is the same
+ * surface. The rest is specific to a drawer: an edge-pinned positioner, a panel
+ * with free corners rounded and an attached edge, and the flat-overlay rule. A
+ * transient surface stands apart from the page in every house system, however
+ * flat that system's page is.
+ *
+ * The motion engine animates the drawer (see Drawer.tsx) with the `sheet`
+ * pattern, which needs presence coordination for its exit and a transform that
+ * CSS must not also write. This file handles the box, and the rule that a
+ * leaving surface stops taking clicks. */
+
+.scrim {
+  composes: scrim from './dialog.module.css';
+}
+
+/* Flexbox, so the pinning is logical: `flex-end` on the inline axis is the right
+   edge in LTR and the left edge in RTL. That matches `side="end"`, which no
+   physical `inset` can express. */
+.positioner {
+  position: fixed;
+  inset: 0;
+
+  /* `overlay` in the stacking order. The scrim above gets the same layer
+     through `composes`. */
+  z-index: var(--pm-z-overlay);
+  display: flex;
+  pointer-events: none;
+}
+
+.positioner[data-side='end'] {
+  justify-content: flex-end;
+}
+
+.positioner[data-side='start'] {
+  justify-content: flex-start;
+}
+
+.positioner[data-side='bottom'] {
+  align-items: flex-end;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  max-inline-size: 100%;
+  max-block-size: 100%;
+
+  /* The body is the part that scrolls, and it shrinks first. The panel scrolls
+     only when the header and the footer are taller than the panel by
+     themselves: a long description, or large text in a short window. Every
+     part then stays in reach instead of running past the panel's edge, as in
+     Dialog. */
+  overflow-y: auto;
+  pointer-events: auto;
+  background: var(--pm-bg-overlay);
+  border-radius: 0;
+  box-shadow: var(--pm-shadow-transient);
+}
+
+/* sides — one attached edge, one border, two free corners ------------------- */
+
+.panel[data-side='end'],
+.panel[data-side='start'] {
+  block-size: 100%;
+}
+
+.panel[data-side='end'] {
+  border-inline-start: 1px solid var(--pm-border-subtle);
+  border-start-start-radius: var(--pm-radius-surface);
+  border-end-start-radius: var(--pm-radius-surface);
+}
+
+.panel[data-side='start'] {
+  border-inline-end: 1px solid var(--pm-border-subtle);
+  border-start-end-radius: var(--pm-radius-surface);
+  border-end-end-radius: var(--pm-radius-surface);
+}
+
+.panel[data-side='bottom'] {
+  inline-size: 100%;
+
+  /* Padding added above the home indicator, zero where there is no notch,
+     because a sheet whose last row sits behind the indicator hides content
+     (drawer.md's panel cell; `docs/layout.md`). Unitless `0`, as in Command,
+     for a bare env() fallback: the lint law rejects `0px` outside calc(), and
+     the resolved value is the same. */
+  padding-block-end: env(safe-area-inset-bottom, 0);
+  border-block-start: 1px solid var(--pm-border-subtle);
+  border-start-start-radius: var(--pm-radius-surface);
+  border-start-end-radius: var(--pm-radius-surface);
+}
+
+/* sizes — the same space-scale calculation as Dialog's widths, so a comfortable
+   theme gets a roomier sheet, as it does everything else. A bottom sheet sizes
+   on the other axis: it is as tall as its content, up to a share of the
+   viewport, because a sheet that is always 66vh tall is a dialog. */
+
+.panel[data-side='end'][data-size='sm'],
+.panel[data-side='start'][data-size='sm'] {
+  inline-size: calc(var(--pm-space-10) * 4);
+}
+
+.panel[data-side='end'][data-size='md'],
+.panel[data-side='start'][data-size='md'] {
+  inline-size: calc(var(--pm-space-10) * 5);
+}
+
+.panel[data-side='end'][data-size='lg'],
+.panel[data-side='start'][data-size='lg'] {
+  inline-size: calc(var(--pm-space-10) * 6);
+}
+
+/* All bottom sizes are measured in `dvh` (drawer.md's size cell, one cell at
+   three sizes). On phones `100vh` includes the collapsed browser chrome, so a
+   half-height sheet measured against it sits behind the URL bar
+   (`docs/layout.md`). Each rule has the `vh` base, and the `dvh` override is in
+   the `@supports` block right after it, because a dedupe minifier deletes a
+   same-property pair and would ship the dist with `dvh` only. */
+.panel[data-side='bottom'][data-size='sm'] {
+  max-block-size: 50vh;
+}
+
+@supports (height: 1dvh) {
+  .panel[data-side='bottom'][data-size='sm'] {
+    max-block-size: 50dvh;
+  }
+}
+
+.panel[data-side='bottom'][data-size='md'] {
+  max-block-size: 66vh;
+}
+
+@supports (height: 1dvh) {
+  .panel[data-side='bottom'][data-size='md'] {
+    max-block-size: 66dvh;
+  }
+}
+
+.panel[data-side='bottom'][data-size='lg'] {
+  max-block-size: 80vh;
+}
+
+@supports (height: 1dvh) {
+  .panel[data-side='bottom'][data-size='lg'] {
+    max-block-size: 80dvh;
+  }
+}
+
+/* the three bands ----------------------------------------------------------- */
+
+.header {
+  display: flex;
+  flex: none;
+  gap: var(--pm-space-3);
+  align-items: flex-start;
+  padding: var(--pm-space-5) var(--pm-space-5) var(--pm-space-3);
+}
+
+.heading {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.close {
+  flex: none;
+}
+
+.title {
+  font-family: var(--pm-text-xl-family);
+  font-size: var(--pm-text-xl-size);
+  font-weight: var(--pm-text-xl-weight);
+  line-height: var(--pm-text-xl-line-height);
+  letter-spacing: var(--pm-text-xl-tracking);
+  color: var(--pm-text-primary);
+}
+
+.description {
+  margin-block-start: var(--pm-space-2);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+}
+
+/* The only scrolling region. This is Dialog's rule, and it matters more here: a
+   drawer is the tallest surface in the vocabulary, and a header that scrolled
+   away would take the ✕ with it. `min-block-size: 0` lets it shrink inside the
+   flex column instead of pushing the panel past the viewport. */
+.body {
+  min-block-size: 0;
+  padding-inline: var(--pm-space-5);
+  overflow-y: auto;
+}
+
+.footer {
+  display: flex;
+  flex: none;
+  gap: var(--pm-space-3);
+  justify-content: flex-end;
+  padding: var(--pm-space-3) var(--pm-space-5) var(--pm-space-5);
+}
+
+/* states -------------------------------------------------------------------- */
+
+/* Radix focuses the panel itself when it contains nothing focusable. A ring
+   around a whole sheet adds no information. The ring belongs on the control the
+   reader will use, and every such control composes the focus convention. */
+.panel:focus-visible {
+  outline: none;
+}
+
+/* A closing surface is no longer a click target. This applies the motion law
+   "motion never blocks input" (`docs/motion.md`): an overlay that is closing
+   must not capture the next click. */
+.panel[data-state='closed'] {
+  pointer-events: none;
+}
+
+.panel[data-state='open'] {
+  pointer-events: auto;
+}
+
+/* Glass (`depth: glass`): the pane uses the surface role at the engine's mix
+   (`--pm-material-surface`), and the material provides the lift that the
+   overlay stacking order provides elsewhere. The backdrop shows through the
+   pane as a blurred, saturated wash, so the surface stands apart by its
+   material rather than by a lighter step. The mix is a contrast decision that
+   the glass law measures over worst-case backdrops; a recipe only applies it. */
+@container style(--pm-axis-depth: glass) {
+  .panel {
+    background: var(--pm-material-surface);
+    backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  }
+}

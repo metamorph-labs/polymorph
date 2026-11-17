@@ -1,0 +1,183 @@
+/* Accordion — `design/components/accordion.md`.
+ *
+ * One treatment: **ruled**, a hairline in technical systems and a warmer rule in
+ * document ones. No boxed variant: a panel around a disclosure list is a Card.
+ *
+ * Motion is CSS rather than the engine, as in the sidebar. `collapse` animates a
+ * size, the one thing law 2 lets a container animate, and a CSS transition on
+ * Radix's measured height is interruptible. Durations are `--pm-motion-*`
+ * tokens, so temperament rescales them and `none` stops them. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Each row draws its bottom rule. The first row also draws the top rule, which
+   the list would otherwise lack. */
+.item {
+  border-block-end: 1px solid var(--pm-border-subtle);
+}
+
+.item:first-child {
+  border-block-start: 1px solid var(--pm-border-subtle);
+}
+
+/* The heading is a real `<h3>`/`<h4>` with user-agent margins and display.
+   They are reset because the trigger inside it owns the layout. */
+.header {
+  display: flex;
+  margin: 0;
+  font: inherit;
+}
+
+.trigger {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  inline-size: 100%;
+  min-block-size: var(--pm-control-height-lg);
+  padding-block: var(--pm-space-3);
+  padding-inline: 0;
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+  color: var(--pm-text-primary);
+  text-align: start;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.label {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.chevron {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--pm-text-muted);
+
+  /* Rotates on `control` × `standard`, like Select's chevron, because the change
+     is symmetric and has no direction of travel. */
+  transition: transform var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+/* states -------------------------------------------------------------------- */
+
+/* Hover changes colour only. The rules already separate the rows, and a tinted
+   background on one row would look like a selection. */
+.trigger:hover {
+  color: var(--pm-accent-text);
+}
+
+.trigger:hover .chevron {
+  color: var(--pm-text-secondary);
+}
+
+.trigger[data-state='open'] .chevron {
+  transform: rotate(180deg);
+}
+
+/* After hover, so a pointer over a disabled row does not highlight it. */
+.trigger[data-disabled],
+.trigger[data-disabled]:hover,
+.trigger[data-disabled]:hover .chevron {
+  color: var(--pm-text-disabled);
+  cursor: default;
+}
+
+/* the panel ------------------------------------------------------------------
+ *
+ * `overflow: hidden` clips the content while the size animates, as the motion
+ * spec's interruption laws require (`design/motion/motion.md`). */
+
+.content {
+  overflow: hidden;
+}
+
+.inner {
+  padding-block: 0 var(--pm-space-4);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+}
+
+/* `collapse`, persistent mode: size over `surface` × `standard` both ways, from
+   Radix's measured height. That property is browser-measured geometry, so it is
+   lawful in vocabulary CSS. */
+
+@keyframes pm-accordion-open {
+  from {
+    block-size: 0;
+  }
+
+  to {
+    block-size: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes pm-accordion-close {
+  from {
+    block-size: var(--radix-accordion-content-height);
+  }
+
+  to {
+    block-size: 0;
+  }
+}
+
+/* The content fade, the `collapse` pattern's 0.5 split (`design/motion/motion.md`):
+   in over the second half, and out before the space closes. */
+
+@keyframes pm-accordion-reveal {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pm-accordion-conceal {
+  to {
+    opacity: 0;
+  }
+}
+
+.content[data-state='open'] {
+  animation: pm-accordion-open var(--pm-motion-duration-surface) var(--pm-motion-easing-standard);
+}
+
+.content[data-state='closed'] {
+  animation: pm-accordion-close var(--pm-motion-duration-surface) var(--pm-motion-easing-standard);
+}
+
+.content[data-state='open'] .inner {
+  animation: pm-accordion-reveal calc(var(--pm-motion-duration-surface) * 0.5)
+    var(--pm-motion-easing-standard) calc(var(--pm-motion-duration-surface) * 0.5) both;
+}
+
+.content[data-state='closed'] .inner {
+  animation: pm-accordion-conceal calc(var(--pm-motion-duration-surface) * 0.5)
+    var(--pm-motion-easing-standard) both;
+}
+
+/* Reduced-motion projection (`design/motion/motion.md`): `collapse` keeps the
+   content fade, but the size change is instant, so only the size animations go. */
+@media (prefers-reduced-motion: reduce) {
+  .content[data-state='open'],
+  .content[data-state='closed'] {
+    animation: none;
+  }
+
+  .chevron {
+    transition: none;
+  }
+}

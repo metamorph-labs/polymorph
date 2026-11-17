@@ -1,0 +1,28 @@
+{
+  "name": "flint",
+  "register": "The layered register. Crisp corners, planes a whisper apart in lightness, and a blue wash on the surfaces themselves — a layered material, approximated in tint.",
+  "axes": {
+    "geometry": "crisp",
+    "depth": "elevated",
+    "density": "standard",
+    "contrastTemperament": "soft",
+    "typePersonality": "grotesque",
+    "colorStrategy": "tinted",
+    "motionTemperament": "standard",
+    "ornament": "minimal"
+  },
+  "fonts": {
+    "body": {
+      "family": "Public Sans Variable"
+    },
+    "display": {
+      "family": "Public Sans Variable"
+    },
+    "mono": {
+      "family": "JetBrains Mono Variable"
+    }
+  },
+  "defaultPalette": "cobalt",
+  "defaultMode": "light",
+  "kind": "designed"
+}

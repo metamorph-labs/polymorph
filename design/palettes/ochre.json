@@ -1,0 +1,12 @@
+{
+  "name": "ochre",
+  "accentHue": 50,
+  "neutralHue": 85,
+  "neutralTint": 0.01,
+  "chromaBudget": "medium",
+  "chartCaps": {
+    "light": 4,
+    "dark": 3,
+    "published": 3
+  }
+}

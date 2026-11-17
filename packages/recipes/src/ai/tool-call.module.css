@@ -1,0 +1,253 @@
+/* ToolCall — `design/components/tool-call.md`.
+ *
+ * A row on a subtle surface: FileUpload's file row with a disclosure added.
+ * The surface is the subtle wash, not Card's lit surface, because a tool call
+ * sits inside a reply, and lit cards would fill the reply with boxes. The
+ * hairline and the radius are the control's, because the row is a button.
+ * Status is a glyph in a role colour beside text a reader hears, never colour
+ * alone. */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  background: var(--pm-bg-subtle);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-control);
+}
+
+/* The row is the trigger: full width, at the minimum target height, with no
+   outer margin. */
+.trigger {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: flex;
+  gap: var(--pm-space-2);
+  align-items: center;
+  inline-size: 100%;
+  min-block-size: var(--pm-control-height-sm);
+  padding: var(--pm-space-1) var(--pm-space-3);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+  text-align: start;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--pm-radius-control);
+}
+
+/* A row with nothing to open does not act as a button: no pointer cursor, no
+   hover. */
+.trigger:disabled {
+  cursor: default;
+}
+
+.trigger:enabled:hover {
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-surface);
+}
+
+.mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--pm-text-muted);
+}
+
+/* The tool's name in the mono font, because it is an identifier. Code's chip
+   is not used, because it would put a box inside a box. */
+.name {
+  flex: none;
+  font-family: var(--pm-font-mono);
+  color: var(--pm-text-primary);
+}
+
+.summary {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trailing {
+  display: inline-flex;
+  flex: none;
+  gap: var(--pm-space-2);
+  align-items: center;
+  margin-inline-start: auto;
+}
+
+.duration {
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  font-variant-numeric: var(--pm-font-numeric);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+}
+
+/* The status glyph: `toolcall.status` fades in over the control duration when
+   the status changes, following CodeBlock's copy→confirm precedent. It
+   animates opacity only, so the reduced-motion law has nothing to remove. A
+   running glyph spins instead: one element runs one animation, and a fade
+   declared on every glyph would replace the loop. */
+.status {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+.status:not(.spinning) {
+  animation: pm-tool-call-status var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+@keyframes pm-tool-call-status {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Running: the `loading` glyph on the spin loop, `button.spinner`'s binding
+   composed from the motion module. */
+.spinning {
+  composes: spin from '../conventions/motion.module.css';
+}
+
+.reader {
+  composes: visuallyHidden from '../conventions/a11y.module.css';
+}
+
+.chevron {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--pm-text-muted);
+  transition: transform var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+.trigger[data-state='open'] .chevron {
+  transform: rotate(180deg);
+}
+
+/* status colours: the glyph matches the text --------------------------------- */
+
+.card[data-status='pending'] .status {
+  color: var(--pm-text-muted);
+}
+
+.card[data-status='running'] .status {
+  color: var(--pm-accent-text);
+}
+
+.card[data-status='done'] .status {
+  color: var(--pm-success-text);
+}
+
+.card[data-status='error'] .status {
+  color: var(--pm-danger-text);
+}
+
+.card[data-status='error'] {
+  border-color: var(--pm-danger-border);
+}
+
+.card[data-status='denied'] .status {
+  color: var(--pm-text-muted);
+}
+
+.card[data-status='approval'] .status {
+  color: var(--pm-warning-text);
+}
+
+/* the body: `collapsible.content` by reference ---------------------------------- */
+
+.content {
+  overflow: hidden;
+}
+
+.inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-3);
+  padding: var(--pm-space-2) var(--pm-space-3) var(--pm-space-3);
+  border-block-start: 1px solid var(--pm-border-subtle);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+}
+
+/* The overline style for the two section headings. */
+.heading {
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+  text-transform: uppercase;
+}
+
+/* The app's text for a failure or a refusal. */
+.message {
+  margin: 0;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+}
+
+.card[data-status='error'] .message {
+  color: var(--pm-danger-text);
+}
+
+@keyframes pm-tool-call-open {
+  from {
+    block-size: 0;
+  }
+
+  to {
+    block-size: var(--radix-collapsible-content-height);
+  }
+}
+
+@keyframes pm-tool-call-close {
+  from {
+    block-size: var(--radix-collapsible-content-height);
+  }
+
+  to {
+    block-size: 0;
+  }
+}
+
+.content[data-state='open'] {
+  animation: pm-tool-call-open var(--pm-motion-duration-surface) var(--pm-motion-easing-standard);
+}
+
+.content[data-state='closed'] {
+  animation: pm-tool-call-close var(--pm-motion-duration-surface) var(--pm-motion-easing-standard);
+}
+
+/* Reduced motion (`design/motion/motion.md`): the collapse is instant and the
+   chevron stops rotating. The status fade keeps its duration. */
+@media (prefers-reduced-motion: reduce) {
+  .content[data-state='open'],
+  .content[data-state='closed'] {
+    animation: none;
+  }
+
+  .chevron {
+    transition: none;
+  }
+}

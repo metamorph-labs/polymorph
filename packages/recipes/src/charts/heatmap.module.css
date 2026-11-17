@@ -1,0 +1,49 @@
+/* Heatmap — `design/components/heatmap.md`.
+ *
+ * `--pm-chart-cell` holds the cell's quantised step. It is always another custom
+ * property (`var(--pm-chart-seq-4)`), never a colour, so a palette change
+ * recolours every cell without this file knowing the palette. Its default is
+ * the de-emphasis grey, because an unresolvable custom property invalidates its
+ * whole declaration and an unpainted cell would not be drawn.
+ *
+ * No gridlines: **the gaps form the grid**. A rule between filled cells would
+ * compete with the data it is meant to organise. */
+
+.surface {
+  composes: plotSurface from './frame/chart-frame.module.css';
+}
+
+.marks {
+  display: block;
+
+  --pm-chart-cell: var(--pm-chart-other);
+}
+
+.cell {
+  fill: var(--pm-chart-cell);
+
+  /* No stroke. The 2px separation is left as space in the layout, not drawn. */
+  stroke: none;
+}
+
+/* The invisible pointer target: the cell plus its gaps, at least 24px. A dense
+   grid's cells are often smaller than that. Every position has a target,
+   present or absent, so a pointer over a hole in the grid gets the same "no
+   data" a keyboard user hears. */
+.hit {
+  fill: transparent;
+}
+
+/* The surface ring at cell scale: a 2px ring in the surface colour, then a 1px
+   axis-weight outline outside it. A ring is used instead of a colour change,
+   because a cell that changed step on hover would show a different value. */
+.cell[data-active] {
+  stroke: var(--pm-bg-surface);
+  stroke-width: 2;
+  outline: 1px solid var(--pm-chart-axis);
+  outline-offset: 0;
+}
+
+/* Motion is `chart.frame` only: cells appear with the frame's fade. A staggered
+   cell-by-cell entrance would shimmer across the grid, and the stagger is for
+   series, which a heatmap does not have. */

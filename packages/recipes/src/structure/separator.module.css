@@ -1,0 +1,47 @@
+/* Separator — `design/components/separator.md`.
+ *
+ * No margins, on purpose: spacing belongs to the parent's gap, so adding a line
+ * never silently changes the spacing around it. */
+
+.separator {
+  flex: none;
+  border-block-start: 1px solid var(--pm-border-subtle);
+}
+
+.separator[data-orientation='horizontal'] {
+  inline-size: 100%;
+}
+
+/* Stretches to the row it divides, so no height is declared. A row with no
+   height draws nothing, which is correct: there is nothing to divide. */
+.separator[data-orientation='vertical'] {
+  align-self: stretch;
+  border-block-start: 0;
+  border-inline-start: 1px solid var(--pm-border-subtle);
+}
+
+/* The labelled divider: the label at the smallest step, muted, with equal rules
+   either side, `--pm-space-3` from the text (the size system's icon–label gap
+   at `md`, `design/components/README.md`). No margins, as above. */
+.labelled {
+  display: flex;
+  flex: none;
+  gap: var(--pm-space-3);
+  align-items: center;
+  inline-size: 100%;
+}
+
+.rule {
+  flex: 1;
+  border-block-start: 1px solid var(--pm-border-subtle);
+}
+
+.label {
+  flex: none;
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+}

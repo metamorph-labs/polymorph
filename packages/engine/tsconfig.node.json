@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/engine-node.tsbuildinfo",
+    // The node files at this package's root, and nothing else. Separate from
+    // `tsconfig.json` so the engine keeps `"types": []`: its source must
+    // typecheck without node's globals in scope, and one config for both would
+    // quietly hand them over.
+    "types": ["node"],
+    // `vite.test.ts` drives the theme plugin, which imports the theme, and the
+    // theme's runtime is typed against the DOM.
+    "lib": ["ES2023", "DOM"]
+  },
+  "include": ["*.test.ts", "dist-lock.ts", "vite.config.ts"]
+}

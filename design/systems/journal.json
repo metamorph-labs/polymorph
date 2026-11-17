@@ -1,0 +1,29 @@
+{
+  "name": "journal",
+  "register": "The writing desk. Warm paper with a grain, separation drawn in rules, a serif at the door — and the accent is ink itself.",
+  "axes": {
+    "geometry": "soft",
+    "depth": "borders",
+    "density": "comfortable",
+    "contrastTemperament": "soft",
+    "typePersonality": "humanist",
+    "colorStrategy": "quiet",
+    "motionTemperament": "subtle",
+    "ornament": "grain"
+  },
+  "fonts": {
+    "body": {
+      "family": "Source Sans 3 Variable"
+    },
+    "display": {
+      "family": "Lora Variable",
+      "fallback": "serif"
+    },
+    "mono": {
+      "family": "Fira Code Variable"
+    }
+  },
+  "defaultPalette": "umber",
+  "defaultMode": "light",
+  "kind": "designed"
+}

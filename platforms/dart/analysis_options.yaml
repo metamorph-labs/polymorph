@@ -1,0 +1,31 @@
+# The rules are listed rather than included from package:lints, so
+# `dart analyze` needs no dependency fetched and runs offline.
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+
+linter:
+  rules:
+    - always_declare_return_types
+    - annotate_overrides
+    - avoid_relative_lib_imports
+    - camel_case_types
+    # Not `constant_identifier_names`: a pairing's constant is
+    # `PMThemes.plain_neutral`, the name the Kotlin and Swift packages give it,
+    # with the underscore between the system and the palette.
+    - directives_ordering
+    - file_names
+    - hash_and_equals
+    - library_prefixes
+    - non_constant_identifier_names
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - prefer_final_fields
+    - prefer_single_quotes
+    - slash_for_doc_comments
+    - type_annotate_public_apis
+    - unnecessary_const
+    - unnecessary_new
+    - unnecessary_this

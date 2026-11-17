@@ -1,0 +1,18 @@
+/* ChartBrush — the range selection's paint (the interaction rules,
+ * `docs/charts.md`).
+ *
+ * It uses `SELECTION_ROLES` and adds no tokens, because a brushed range is the
+ * same selection state the rest of the vocabulary uses. The rect sits under the
+ * marks, so it does not cover the data. Its fill is the selected surface, a wash
+ * in every system: the marks are drawn on it. */
+
+.range {
+  fill: var(--pm-selection-surface);
+  stroke: none;
+}
+
+.edge {
+  fill: none;
+  stroke: var(--pm-selection-border);
+  stroke-width: 1;
+}

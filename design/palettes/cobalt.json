@@ -1,0 +1,12 @@
+{
+  "name": "cobalt",
+  "accentHue": 240,
+  "neutralHue": 240,
+  "neutralTint": 0.004,
+  "chromaBudget": "medium",
+  "chartCaps": {
+    "light": 4,
+    "dark": 3,
+    "published": 3
+  }
+}

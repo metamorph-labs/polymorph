@@ -1,0 +1,74 @@
+/* SectionNav — `design/components/section-nav.md`.
+ *
+ * A row of links that wraps, so every item is on screen at any width. The
+ * current item takes the selection treatment the AppShell rail gives its own,
+ * so a current location looks the same at both levels.
+ *
+ * Nothing slides between items: they are pages, and navigation does not
+ * animate (the AppShell rail's law). Colour and press feedback come from
+ * `stateFeedback` and `pressable`. */
+
+.nav {
+  min-inline-size: 0;
+}
+
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A flex item is as wide as its content at least. The row's width is the cap,
+   so a label wider than the row is clipped and does not widen the page. */
+.item {
+  display: flex;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.link {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback pressable from '../conventions/motion.module.css';
+  display: inline-flex;
+  align-items: center;
+  min-inline-size: 0;
+  block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-3);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+
+  /* The row is navigation, not prose, so the user agent's underline is removed. */
+  text-decoration: none;
+  cursor: pointer;
+  background: transparent;
+  border-radius: var(--pm-radius-md);
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* states -------------------------------------------------------------------- */
+
+/* The current item uses the selection treatment (`design/components/README.md`),
+   not a persistent hover, so the current location reads as chosen, not hovered. */
+.link[aria-current='page'] {
+  color: var(--pm-selection-text);
+  background: var(--pm-selection-bg);
+}
+
+/* Selection takes precedence over hover: if hover restyled the current item,
+   the current location would flicker with the pointer. */
+.link:hover:not([aria-current='page']) {
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-subtle);
+}

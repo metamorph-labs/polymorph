@@ -1,0 +1,89 @@
+/* Carousel — `design/components/carousel.md`.
+ *
+ * A snap-scrolling viewport, so swipe, momentum and RTL need no code. The
+ * scrollbar is hidden because the dots and buttons replace it.
+ *
+ * No autoplay. The only animation here is the current dot's width, on the
+ * state-feedback timing. Programmatic scrolling uses the surface duration in the
+ * component. */
+
+.viewport {
+  composes: focusRing from '../conventions/focus.module.css';
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  border-radius: var(--pm-radius-md);
+}
+
+.slide {
+  min-inline-size: 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.controls {
+  display: flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  justify-content: center;
+  margin-block-start: var(--pm-space-3);
+}
+
+/* The dots sit one hit target apart, centre to centre, so each dot's hit area
+   ends where its neighbour's begins. Closer together, a hit area reaches over
+   the next dot, and a press on a dot lands on the dot after it. The padding
+   holds the outer hit areas inside the rail, clear of the buttons beside it.
+   A rail longer than its line wraps, and its rows are one hit target apart
+   too. */
+.rail {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: calc(var(--pm-hit-target) - var(--pm-space-2));
+  align-items: center;
+  justify-content: center;
+  padding: calc((var(--pm-hit-target) - var(--pm-space-2)) / 2);
+}
+
+/* A dot shows one position. The pseudo-element grows the hit area to the
+   `--pm-hit-target` square, the minimum pressable size at every density, so the
+   dots can stay small. A space step would shrink with density, below it. */
+.dot {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  position: relative;
+  inline-size: var(--pm-space-2);
+  block-size: var(--pm-space-2);
+  padding: 0;
+  cursor: pointer;
+  background: var(--pm-border-default);
+  border: none;
+  border-radius: var(--pm-radius-pill);
+  transition:
+    background-color var(--pm-motion-duration-control) var(--pm-motion-easing-standard),
+    inline-size var(--pm-motion-duration-control) var(--pm-motion-easing-standard),
+    margin-inline var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+.dot::after {
+  position: absolute;
+  inset-block-start: calc((100% - var(--pm-hit-target)) / 2);
+  inset-inline-start: calc((100% - var(--pm-hit-target)) / 2);
+  inline-size: var(--pm-hit-target);
+  block-size: var(--pm-hit-target);
+  content: '';
+}
+
+.dot:hover {
+  background: var(--pm-border-strong);
+}
+
+/* The current position: a wider accent pill. The negative margin takes the
+   extra width back, so the pill grows about its own centre. The other dots
+   keep their places, and its hit area stays the square its neighbours end
+   at. */
+.dot[aria-current='true'] {
+  inline-size: var(--pm-space-4);
+  margin-inline: calc((var(--pm-space-2) - var(--pm-space-4)) / 2);
+  background: var(--pm-accent-bg);
+}

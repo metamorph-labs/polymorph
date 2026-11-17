@@ -1,0 +1,163 @@
+/* Tour — `design/components/tour.md`.
+ *
+ * The motion engine animates the scrim and the panel, as it animates Dialog's
+ * scrim and Popover's panel. This file draws their boxes. The member writes the
+ * geometry it measures as custom properties on the elements: the panel's corner
+ * (`--pm-tour-x`, `--pm-tour-y`) and the target's rectangle
+ * (`--pm-tour-hole-*`). The positions are physical, because they are the
+ * window's coordinates, which do not turn in a right-to-left page. */
+
+/* The part a step points at adds no box, so the layout around what it wraps
+   does not change. The member measures the boxes inside it. */
+.target {
+  display: contents;
+}
+
+/* A step with no target, or one whose target is not drawn: Dialog's scrim. It
+   takes presses, because the modal substrate turns pointer events off on the
+   page, and a press there ends nothing. */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--pm-z-overlay);
+  pointer-events: auto;
+  background: var(--pm-bg-scrim);
+}
+
+/* A step with a target: the scrim with the target cut out of it. The element
+   is the cut-out, one space step larger than the target on every side, and its
+   shadow is the scrim, spread past the window on every side, as ImageEditor's
+   rounded mask is. The cut-out is a difference of lightness with an edge, not a
+   colour, so it reads in every system and in forced colours. */
+.spotlight {
+  --pm-tour-hole-x: 0px;
+  --pm-tour-hole-y: 0px;
+  --pm-tour-hole-width: 0px;
+  --pm-tour-hole-height: 0px;
+
+  position: fixed;
+  top: calc(var(--pm-tour-hole-y) - var(--pm-space-2));
+  left: calc(var(--pm-tour-hole-x) - var(--pm-space-2));
+  z-index: var(--pm-z-overlay);
+  width: calc(var(--pm-tour-hole-width) + var(--pm-space-2) * 2);
+  height: calc(var(--pm-tour-hole-height) + var(--pm-space-2) * 2);
+  pointer-events: none;
+  border-radius: var(--pm-radius-control);
+  outline: 2px solid var(--pm-border-strong);
+  box-shadow: 0 0 0 100vmax var(--pm-bg-scrim);
+}
+
+/* The panel's box with its margin, at the corner the engine computed. It takes
+   no presses itself; the panel does. Its width is its content's, not the room
+   left of its corner, so the box the engine measures is the box it places. */
+.positioner {
+  --pm-tour-x: 0px;
+  --pm-tour-y: 0px;
+
+  position: fixed;
+  top: var(--pm-tour-y);
+  left: var(--pm-tour-x);
+  z-index: var(--pm-z-overlay);
+  inline-size: max-content;
+  pointer-events: none;
+}
+
+/* Popover's surface. The margin is the gap between the panel and its target
+   and between the panel and the window's edge, so the engine's placement reads
+   no length of its own. The width is Popover's, and at phone width the window
+   less that margin on each side, so the panel never overflows it. */
+.panel {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--pm-space-3);
+  align-items: center;
+  inline-size: max-content;
+  max-inline-size: min(calc(var(--pm-space-10) * 4), calc(100vw - var(--pm-space-3) * 2));
+
+  /* `vh` here and `dvh` in the `@supports` block below, as Dialog's panel is,
+     because a dedupe minifier deletes a same-property pair. */
+  max-block-size: calc(100vh - var(--pm-space-3) * 2);
+  margin: var(--pm-space-3);
+  padding: var(--pm-inset-pane);
+  overflow-y: auto;
+  pointer-events: auto;
+  background: var(--pm-bg-overlay);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-surface);
+  box-shadow: var(--pm-shadow-transient);
+}
+
+@supports (height: 1dvh) {
+  .panel {
+    max-block-size: calc(100dvh - var(--pm-space-3) * 2);
+  }
+}
+
+.panel:focus-visible {
+  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline-offset: var(--pm-focus-offset);
+}
+
+.title {
+  grid-column: 1 / -1;
+  padding-inline-end: var(--pm-space-8);
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+  color: var(--pm-text-primary);
+}
+
+/* The panel's description: the body and the position, read together. It adds
+   no box, so both lay out in the panel's grid. */
+.description {
+  display: contents;
+}
+
+.body {
+  grid-column: 1 / -1;
+  margin-block-start: var(--pm-space-2);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+}
+
+/* The position shares the last row with the actions, at its start. */
+.position {
+  grid-column: 1;
+  margin-block-start: var(--pm-space-5);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  font-variant-numeric: tabular-nums;
+  color: var(--pm-text-secondary);
+}
+
+.actions {
+  display: flex;
+  grid-column: 2;
+  gap: var(--pm-space-2);
+  justify-content: flex-end;
+  margin-block-start: var(--pm-space-5);
+}
+
+.close {
+  position: absolute;
+  inset-block-start: var(--pm-space-3);
+  inset-inline-end: var(--pm-space-3);
+}
+
+/* Glass (`depth: glass`): Popover's material, for the same surface. */
+@container style(--pm-axis-depth: glass) {
+  .panel {
+    background: var(--pm-material-surface);
+    backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  }
+}

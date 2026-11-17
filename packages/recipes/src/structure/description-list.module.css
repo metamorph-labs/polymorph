@@ -1,0 +1,56 @@
+/* DescriptionList — `design/components/description-list.md`.
+ *
+ * No pseudo-classes and no motion, as in Stat: these are read-only facts. Terms
+ * are start-aligned in both orientations, because a right-aligned label
+ * column's ragged left edge costs more than it gains. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-4);
+  margin: 0;
+}
+
+/* Vertical: term over detail, as one block. */
+.pair {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-1);
+}
+
+/* The overline style (`design/components/README.md`, "Type usage"), the same as
+   Stat's label: emphasis from case and tracking, never an extra weight. */
+.term {
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-secondary);
+  text-transform: uppercase;
+}
+
+/* Plain strings use this style; members keep their own. The UA margin on dd is
+   removed, because that indentation is a browser default, not this design. */
+.detail {
+  margin: 0;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+}
+
+/* Horizontal: a content-sized term column, so no width token is needed and no
+   label is truncated. `display: contents` places each pair's dt and dd on the
+   grid's tracks. */
+.root[data-orientation='horizontal'] {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--pm-space-3) var(--pm-space-6);
+}
+
+.root[data-orientation='horizontal'] .pair {
+  display: contents;
+}

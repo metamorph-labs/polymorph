@@ -1,0 +1,693 @@
+/* AppShell — `design/archetypes/app-shell.md`.
+ *
+ * The `--pm-shell-*` scope is declared here and nowhere else. The values are
+ * computed from space tokens, so a compact theme gets a tighter frame with no
+ * extra declaration. Changing one of them is a one-line change that no screen
+ * needs to know about (the churn test in `pages.test.tsx`).
+ *
+ * The sidebar collapse is the only animated structural change in the shell.
+ * It uses the `appshell.sidebar` binding: `collapse` in persistent mode on the
+ * inline axis. Law 2 lets a container animate only its size, and a grid track
+ * counts as a container. */
+
+.shell {
+  --pm-shell-topbar-height: calc(var(--pm-space-7) + var(--pm-space-6));
+  --pm-shell-sidebar-width: calc(var(--pm-space-10) * 2 + var(--pm-space-7));
+  --pm-shell-sidebar-width-collapsed: calc(var(--pm-space-7) + var(--pm-space-5));
+
+  display: grid;
+  grid-template:
+    'banner banner' auto
+    'sidebar topbar' minmax(var(--pm-shell-topbar-height), auto)
+    'sidebar content' minmax(0, 1fr)
+    / var(--pm-shell-sidebar-width) minmax(0, 1fr);
+  min-inline-size: 0;
+  inline-size: 100%;
+
+  /* On phones `100vh` includes the collapsed browser chrome, so a `100vh`
+     shell puts its bottom edge behind the URL bar (`docs/layout.md`). The
+     fallback pattern (app-shell.md's root cell) puts the `vh` base here and
+     the `dvh` override in the `@supports` block below. A deduplicating
+     minifier would merge two declarations of one property in the same rule,
+     and the built CSS would ship with only `dvh`. */
+  block-size: 100vh;
+
+  /* The texture sits on the page surface it decorates. It is `none` for themes
+     whose ornament level disables it, and the colour underneath is exactly
+     `bg.app`. */
+  background: var(--pm-texture-page) var(--pm-bg-app);
+  transition: grid-template-columns var(--pm-motion-duration-surface)
+    var(--pm-motion-easing-standard);
+}
+
+@supports (height: 1dvh) {
+  .shell {
+    block-size: 100dvh;
+  }
+}
+
+/* Region surfaces are theme data. The rail is one step off the page, and the
+   region borders use the theme's emphasis (a flat system draws them at
+   `border.default`, a shadowed one keeps them subtle). So a dark rail on a
+   light app is a value a theme sets, not a separate recipe. */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  grid-area: sidebar;
+  gap: var(--pm-space-2);
+  min-inline-size: 0;
+  min-block-size: 0;
+  padding: var(--pm-space-4);
+  overflow: hidden;
+  background: var(--pm-shell-rail-bg);
+  border-inline-end: 1px solid var(--pm-shell-rail-border);
+}
+
+/* The head row: brand and the collapse toggle, at the topbar's height so the
+   rail's first row and the frame's first row share a baseline. */
+.railHead {
+  display: flex;
+  flex: none;
+  gap: var(--pm-space-2);
+  align-items: center;
+  min-block-size: var(--pm-shell-topbar-height);
+}
+
+.brand {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-inline-size: 0;
+  padding-inline: var(--pm-space-3);
+}
+
+.nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+  min-block-size: 0;
+  overflow-y: auto;
+}
+
+.sidebarFooter {
+  flex: none;
+}
+
+/* NavItem — `app-shell.md`'s NavItem recipe, cell by cell.
+ *
+ * It is start-aligned, which is why it exists instead of a stretched ghost
+ * Button. The glyph sits at the same x on every row, so the rail reads as a
+ * column instead of a stack of centred pills.
+ *
+ * Colour transitions come from `stateFeedback`. There is no entrance motion,
+ * because rails do not animate their nav. */
+.navItem {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback pressable from '../conventions/motion.module.css';
+  position: relative;
+  display: flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  justify-content: flex-start;
+  inline-size: 100%;
+  block-size: var(--pm-control-height-md);
+  padding-inline: var(--pm-space-3);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+  text-align: start;
+
+  /* The root swap (`href`) makes the row an <a>. The rail is navigation, not
+     prose, so the user agent's link underline is removed. */
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--pm-radius-md);
+}
+
+.navGlyph {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--pm-text-muted);
+}
+
+/* When the rail is narrow, the text truncates, never the glyph or the count. */
+.navLabel {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navEnd {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+/* NavGroup — `app-shell.md`'s NavGroup recipe, cell by cell.
+ *
+ * The label uses the system's only section-heading recipe (SettingsRow.Group's
+ * overline, also used by Dashboard.Panel): `text.xs`, uppercase, muted. Many
+ * sidebars use sentence case for group labels. This system styles every
+ * section heading the same way, so the rail matches the settings screen. */
+.navGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+}
+
+/* The top padding is the space between groups. It is on the label, not the
+   group, because it is the space before a heading, and a group whose heading
+   is hidden (collapsed) should not reserve it. */
+.navGroupLabel {
+  padding: var(--pm-space-4) var(--pm-space-3) var(--pm-space-1);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+  text-transform: uppercase;
+}
+
+/* The rail's own padding is already above the first group. */
+.navGroup:first-child .navGroupLabel {
+  padding-block-start: 0;
+}
+
+/* UserCard — the rail's foot.
+ *
+ * It is a row, not a control. The control is whatever is in `end`. Its height
+ * is the avatar's plus the row's padding. It shares the left edge of every
+ * NavItem above it, so it reads as the bottom of the same column. */
+.userCard {
+  display: flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  min-inline-size: 0;
+  padding: var(--pm-space-2) var(--pm-space-3);
+  border-radius: var(--pm-radius-md);
+}
+
+/* The text truncates, as NavItem's label does, for the same reason: an
+   ellipsis shows that text is hidden, and a clipped glyph is a rendering bug. */
+.userText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.userName {
+  overflow: hidden;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* One step smaller and one tone lighter. A composition cannot reach this,
+   because `Text` stops at `sm` and its lowest tone is `secondary`. */
+.userDetail {
+  overflow: hidden;
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userEnd {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+/* The current item uses the selection treatment (`design/components/README.md`),
+   not a persistent hover. The selection colours sit one step below the hover
+   wash and have their own text colour, so the current location reads as
+   chosen, not hovered. */
+.navItem[data-current] {
+  color: var(--pm-selection-text);
+  background: var(--pm-selection-bg);
+}
+
+.navItem[data-current] .navGlyph {
+  color: var(--pm-selection-text);
+}
+
+/* Selection takes precedence over hover, as in Table's law, for the same
+   reason: if hover restyled the current row, the current location would
+   flicker with the pointer. The hover uses `bg.surface` because the rail
+   itself is `bg.subtle`. */
+.navItem:hover:not([data-current]) {
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-surface);
+}
+
+.navItem:hover:not([data-current]) .navGlyph {
+  color: var(--pm-text-secondary);
+}
+
+.toggle {
+  display: flex;
+  flex: none;
+}
+
+/* The banner's row. It is `auto`, so a shell without a banner gives it no
+   height. The rail and the content region start under it. */
+.banner {
+  grid-area: banner;
+  min-inline-size: 0;
+}
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  grid-area: topbar;
+  gap: var(--pm-space-4);
+  align-items: center;
+  justify-content: space-between;
+  min-inline-size: 0;
+  padding-block: var(--pm-space-2);
+  padding-inline: var(--pm-space-6);
+  background: var(--pm-shell-topbar-bg);
+  border-block-end: 1px solid var(--pm-shell-topbar-border);
+  box-shadow: var(--pm-shadow-resting);
+}
+
+.topbarSlot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-3);
+  align-items: center;
+  min-inline-size: 0;
+}
+
+/* The content region, and the container the page inside it measures.
+ *
+ * This is the boundary `docs/layout.md` names for the page archetypes. It must
+ * be an ancestor of the page, not the page itself, because a container query
+ * is answered by the nearest ancestor container. A page cannot query its own
+ * width. The shell already knows how much room is left after the rail (the
+ * whole window once the rail becomes a drawer), so the region that provides
+ * the width declares the container.
+ *
+ * It contains both axes, so a page reads the region's visible height as
+ * `100cqb`: DetailPage's aside that stays in view is never taller than the
+ * region. The region's height is its grid row's, never its content's, so
+ * containing its block size changes nothing it draws.
+ *
+ * It is the only scroll container. The frame stays in place and the page
+ * inside it scrolls. The texture also stays in place, because the default
+ * background attachment pins it to the region's box, so the page scrolls over
+ * a still surface. */
+.content {
+  container-type: size;
+  grid-area: content;
+  min-inline-size: 0;
+  min-block-size: 0;
+  overflow-wrap: anywhere;
+  overflow-y: auto;
+  background: var(--pm-texture-page) var(--pm-bg-app);
+}
+
+.page {
+  min-inline-size: 0;
+  inline-size: 100%;
+  max-inline-size: calc(var(--pm-space-10) * 16);
+  padding: var(--pm-space-8);
+  margin-inline: auto;
+}
+
+@container (width < 40rem) {
+  .page {
+    padding: var(--pm-space-6);
+  }
+}
+
+/* The dock: a floating layer over the content region.
+ *
+ * It uses the same grid cell as the content instead of a row below it.
+ * `align-self: end` makes it float instead of acting as a footer, so the page
+ * keeps its full height and the layer sits over its bottom edge. Sharing the
+ * cell also keeps it centred when the rail collapses. The cell widens, so the
+ * dock re-centres with the page without knowing the rail's width.
+ *
+ * It is not inside `.content`, because an absolutely positioned child of a
+ * scroll container scrolls with it, and a prompt that scrolls away is not a
+ * dock.
+ *
+ * `raise` is the same intra-member lift the skip link uses: above the page,
+ * below the frame's own chrome and below every overlay. */
+.dock {
+  display: flex;
+  grid-area: content;
+  align-self: end;
+  justify-content: center;
+  padding: 0 var(--pm-space-6) var(--pm-space-5);
+  pointer-events: none;
+  z-index: var(--pm-z-raise);
+}
+
+/* The layer ignores the pointer, so the space around the floating control
+   still belongs to the page. The dock's children re-enable it. */
+.dock > * {
+  pointer-events: auto;
+}
+
+/* Off-screen until it receives keyboard focus, then clearly visible. `raise` on
+   the stacking scale is an intra-member lift over the shell's content, not
+   chrome and not an overlay. */
+.skip {
+  composes: focusRing from '../conventions/focus.module.css';
+  position: absolute;
+  inset-block-start: var(--pm-space-3);
+  inset-inline-start: var(--pm-space-3);
+  z-index: var(--pm-z-raise);
+  padding: var(--pm-space-2) var(--pm-space-3);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-accent-text);
+  background: var(--pm-bg-surface);
+  border-radius: var(--pm-radius-md);
+  transform: translateY(-200%);
+}
+
+.skip:focus-visible {
+  transform: translateY(0);
+}
+
+/* collapsed ----------------------------------------------------------------- */
+
+@media (width >= 48rem) {
+  .shell[data-collapsed] {
+    grid-template-columns: var(--pm-shell-sidebar-width-collapsed) minmax(0, 1fr);
+  }
+}
+
+/* The small viewport ----------------------------------------------------------
+ *
+ * Below the reading width, two columns on a phone leave only a rail and a
+ * narrow gutter. So the rail leaves the grid and becomes a drawer over the
+ * content, and the topbar gets a `menu` button to open it.
+ *
+ * `48rem` is a literal, not a token, because a breakpoint belongs to the
+ * viewport, not the theme. Scaling it with density would change the layout
+ * for a reader who only changed control density. It is the only number in
+ * this file that is deliberately not derived. */
+
+@media (width < 48rem) {
+  .shell {
+    grid-template:
+      'banner' auto
+      'topbar' minmax(var(--pm-shell-topbar-height), auto)
+      'content' minmax(0, 1fr)
+      / minmax(0, 1fr);
+  }
+
+  /* Off-canvas, and closed, not only out of view.
+   *
+   * `visibility: hidden` handles accessibility. A rail moved off-screen by a
+   * transform keeps its tab order, so a keyboard user tabs into a nav they
+   * cannot see and the focus ring goes off-screen. Hidden removes it from the
+   * tab order and the accessibility tree together. That matches the state below
+   * this breakpoint, where the navigation is behind a button.
+   *
+   * The transition list differs by direction on purpose. Closing transitions
+   * `visibility`, which is discrete and changes at the end, so the rail stays
+   * rendered while it slides away. Opening does not transition it, and this is
+   * required. A transitioned property takes its new computed value only at the
+   * style recalculation that starts the transition, which happens after the
+   * effect that moves focus into the rail. Focusing a hidden element fails
+   * silently, so the change must be immediate when opening. */
+  .sidebar {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+
+    /* `shell` on the stacking scale. The drawer-mode rail is shell chrome,
+       above the page and its lifts and below every portalled overlay
+       (`--pm-z-overlay`). So a sheet's scrim covers the rail instead of the
+       rail showing through it. */
+    z-index: var(--pm-z-shell);
+    inline-size: var(--pm-shell-sidebar-width);
+    visibility: hidden;
+    box-shadow: var(--pm-shadow-transient);
+    transform: translateX(-100%);
+    transition:
+      transform var(--pm-motion-duration-surface) var(--pm-motion-easing-standard),
+      visibility var(--pm-motion-duration-surface);
+  }
+
+  .shell[data-drawer] .sidebar {
+    visibility: visible;
+    transform: translateX(0);
+    transition-property: transform;
+  }
+
+  /* Reduced motion (`docs/motion.md`). A slide normally becomes a fade, but a
+     sheet held off-screen by a transform cannot fade in place: at opacity 0 it
+     would already have to be in its final position. So it appears instantly.
+     dialog.md gives the same rule for its scrim and panel. The drawer's scrim
+     already complies as written, because its animation is opacity only.
+
+     Both selectors are needed, because `.shell[data-drawer] .sidebar` has
+     higher specificity than `.sidebar`. Overriding only the closed rule would
+     leave the opening transition in place. */
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar,
+    .shell[data-drawer] .sidebar {
+      transition: none;
+    }
+  }
+
+  /* No collapse toggle below the breakpoint. Here the rail is a sheet over the
+     page, not a column of the frame, and a strip of glyphs floating over the
+     content is not a useful state. */
+  .toggle {
+    display: none;
+  }
+
+  /* The scrim exists only while the drawer is open. A fixed transparent layer
+     over a page with no drawer would capture every click.
+
+     It uses `raise`, not `shell`, because of DOM order. The scrim renders after
+     the sidebar, so at the same level it would paint over the rail it should
+     sit under. One step lower keeps the order page, scrim, rail without
+     changing the DOM. */
+  .scrim {
+    position: fixed;
+    inset: 0;
+    z-index: var(--pm-z-raise);
+    background: var(--pm-bg-scrim);
+    border: 0;
+    animation: shell-scrim-enter var(--pm-motion-duration-surface) var(--pm-motion-easing-enter);
+  }
+
+  @keyframes shell-scrim-enter {
+    from {
+      opacity: 0;
+    }
+  }
+}
+
+/* At frame widths, the drawer's button and scrim are not used. */
+@media (width >= 48rem) {
+  .drawerToggle,
+  .scrim {
+    display: none;
+  }
+}
+
+/* When collapsed, the rail keeps a padding and the item drops its own, so the
+   glyph centres in the remaining width instead of in a box offset by the
+   sidebar's inset. */
+@media (width >= 48rem) {
+  .shell[data-collapsed] .sidebar {
+    padding-inline: var(--pm-space-2);
+  }
+
+  /* The head stacks when the rail narrows. A mark and a control do not fit side
+   by side in 48px, and dropping either would lose the brand or the way to
+   expand the rail. */
+  .shell[data-collapsed] .railHead {
+    flex-direction: column;
+    min-block-size: auto;
+  }
+
+  .shell[data-collapsed] .brand {
+    flex: none;
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  /* NavItem collapsed: no API, keyed off the shell.
+ *
+ * The item adapts to the narrow rail because the shell composed it. Everything
+ * else in the rail is content the shell did not compose, and there
+ * `overflow: hidden` clips what no longer fits instead of squashing it.
+ * Adapting that content is the application's job. That division keeps this a
+ * rail: the shell owns one item, not the whole nav. */
+  .shell[data-collapsed] .navItem {
+    gap: 0;
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  /* Visually hidden but still read aloud. The label is the accessible name in
+   every mode, so it is clipped, not unmounted or `display: none`. UserCard's
+   two lines are clipped too, because they are the card's accessible content,
+   and clipping keeps a collapsed rail's foot available to screen readers. */
+  .shell[data-collapsed] .navLabel,
+  .shell[data-collapsed] .navEnd,
+  .shell[data-collapsed] .userText {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    border: 0;
+    clip-path: inset(50%);
+  }
+
+  /* Removed, not clipped, for a different reason in each case.
+ *
+ * A group's title is a heading for a boundary that is no longer drawn. The
+ * spec requires removing it, because clipping it would announce a section
+ * nobody can see.
+ *
+ * UserCard's `end` is interactive. A menu trigger clipped to one pixel is a tab
+ * stop nobody can find, with its focus ring off-screen. The drawer's
+ * `visibility: hidden` follows the same reasoning. So `end` leaves the tab
+ * order along with its space. */
+  .shell[data-collapsed] .navGroupLabel,
+  .shell[data-collapsed] .userEnd {
+    display: none;
+  }
+
+  /* The avatar centres in the remaining width, in the same way as the nav glyph. */
+  .shell[data-collapsed] .userCard {
+    gap: 0;
+    justify-content: center;
+    padding-inline: 0;
+  }
+}
+
+/* The navigation on top --------------------------------------------------------
+ *
+ * `navigation: 'top'` lays the rail along the frame's top row: the brand, then
+ * the items in a row, and the topbar continues the row with its own slots. It
+ * is the same `<nav>` in the same place in the document, before the topbar, so
+ * the order a keyboard reaches the row in is the order it is drawn in. Every
+ * rule is inside the frame-width query, so below the breakpoint the rail is
+ * the drawer it is in the rail layout.
+ *
+ * The nav's column is as wide as its row needs, and the topbar keeps at least
+ * the width its own content needs. When the row is wider than the frame, the
+ * items wrap onto a further line, as SectionNav's do, so every destination
+ * stays on screen and the frame never scrolls sideways. */
+@media (width >= 48rem) {
+  .shell[data-navigation='top'] {
+    grid-template:
+      'banner banner' auto
+      'sidebar topbar' minmax(var(--pm-shell-topbar-height), auto)
+      'content content' minmax(0, 1fr)
+      / auto minmax(min-content, 1fr);
+  }
+
+  /* The topbar's surface and lower edge, so the nav and the topbar read as one
+     bar. `overflow` is visible because the row ends at the last item, and a
+     clipped box would cut that item's focus ring. */
+  .shell[data-navigation='top'] .sidebar {
+    flex-direction: row;
+    align-items: center;
+    padding-block: var(--pm-space-2);
+    padding-inline: var(--pm-space-4) 0;
+    overflow: visible;
+    background: var(--pm-shell-topbar-bg);
+    border-inline-end: 0;
+    border-block-end: 1px solid var(--pm-shell-topbar-border);
+    box-shadow: var(--pm-shadow-resting);
+  }
+
+  /* The head keeps the brand and gives up the toggle: the collapse narrows a
+     rail, and a row has no rail to narrow. A head with no brand takes no room. */
+  .shell[data-navigation='top'] .railHead {
+    min-block-size: auto;
+  }
+
+  .shell[data-navigation='top'] .railHead:not(:has(.brand)),
+  .shell[data-navigation='top'] .toggle {
+    display: none;
+  }
+
+  .shell[data-navigation='top'] .brand {
+    flex: none;
+  }
+
+  /* The items in a row. It is not a scroll container, because a scroll
+     container clips the focus ring of an item at its edge. */
+  .shell[data-navigation='top'] .nav {
+    flex-flow: row wrap;
+    align-items: center;
+    overflow: visible;
+  }
+
+  /* An item is as wide as its glyph, label and count. A label wider than the
+     whole row still ends in an ellipsis. */
+  .shell[data-navigation='top'] .navItem {
+    inline-size: auto;
+  }
+
+  /* The bar is on `bg.surface`, which is the rail's hover fill, so hover steps
+     to `bg.subtle` here, as SectionNav's does on its page. */
+  .shell[data-navigation='top'] .navItem:hover:not([data-current]) {
+    background: var(--pm-bg-subtle);
+  }
+
+  /* A group's items join the row. The overline is removed, as in the collapsed
+     rail, and a rule before the group draws the boundary. The group keeps
+     `role="group"` and its name. */
+  .shell[data-navigation='top'] .navGroup {
+    flex-flow: row wrap;
+    align-items: center;
+    padding-inline-start: var(--pm-space-2);
+    border-inline-start: 1px solid var(--pm-border-subtle);
+  }
+
+  .shell[data-navigation='top'] .navGroupLabel {
+    display: none;
+  }
+
+  /* A group that starts the row has nothing before it to divide from. It is
+     the nav slot's first child, or the first child of an element a renderer
+     wraps each part in that draws no box of its own, so a sibling combinator
+     between two groups would not reach them. */
+  .shell[data-navigation='top'] .nav > .navGroup:first-child,
+  .shell[data-navigation='top'] .nav > :first-child > .navGroup {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+}

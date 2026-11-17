@@ -1,0 +1,11 @@
+{
+  "name": "umber",
+  "accentHue": 75,
+  "neutralTint": 0.008,
+  "chromaBudget": "ink",
+  "chartCaps": {
+    "light": 4,
+    "dark": 3,
+    "published": 3
+  }
+}

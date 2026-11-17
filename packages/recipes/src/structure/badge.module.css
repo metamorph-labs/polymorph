@@ -1,0 +1,184 @@
+/* Badge — `design/components/badge.md`.
+ *
+ * Eighteen cells, written out rather than looped, so each pair can be read beside
+ * the spec and checked by the contrast law. The count and the dot come last,
+ * because each changes the box the cells paint. */
+
+.badge {
+  display: inline-flex;
+  gap: var(--pm-space-1);
+  align-items: center;
+  padding: var(--pm-space-1) var(--pm-space-3);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  text-transform: uppercase;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  border-radius: var(--pm-radius-detail);
+}
+
+.glyph {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+/* variant=soft -------------------------------------------------------------- */
+
+.badge[data-variant='soft'][data-tone='neutral'] {
+  color: var(--pm-text-secondary);
+  background: var(--pm-bg-subtle);
+}
+
+.badge[data-variant='soft'][data-tone='accent'] {
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+}
+
+.badge[data-variant='soft'][data-tone='danger'] {
+  color: var(--pm-danger-text);
+  background: var(--pm-danger-subtle);
+}
+
+.badge[data-variant='soft'][data-tone='warning'] {
+  color: var(--pm-warning-text);
+  background: var(--pm-warning-subtle);
+}
+
+.badge[data-variant='soft'][data-tone='success'] {
+  color: var(--pm-success-text);
+  background: var(--pm-success-subtle);
+}
+
+.badge[data-variant='soft'][data-tone='info'] {
+  color: var(--pm-info-text);
+  background: var(--pm-info-subtle);
+}
+
+/* variant=solid ------------------------------------------------------------- */
+
+.badge[data-variant='solid'][data-tone='neutral'] {
+  color: var(--pm-text-inverse);
+  background: var(--pm-bg-inverse);
+}
+
+.badge[data-variant='solid'][data-tone='accent'] {
+  color: var(--pm-accent-contrast);
+  background: var(--pm-accent-bg);
+}
+
+.badge[data-variant='solid'][data-tone='danger'] {
+  color: var(--pm-danger-contrast);
+  background: var(--pm-danger-solid);
+}
+
+.badge[data-variant='solid'][data-tone='warning'] {
+  color: var(--pm-warning-contrast);
+  background: var(--pm-warning-solid);
+}
+
+.badge[data-variant='solid'][data-tone='success'] {
+  color: var(--pm-success-contrast);
+  background: var(--pm-success-solid);
+}
+
+.badge[data-variant='solid'][data-tone='info'] {
+  color: var(--pm-info-contrast);
+  background: var(--pm-info-solid);
+}
+
+/* variant=outline — transparent fill; border and text carry the tone */
+
+.badge[data-variant='outline'][data-tone='neutral'] {
+  color: var(--pm-text-secondary);
+  background: transparent;
+  border-color: var(--pm-border-default);
+}
+
+.badge[data-variant='outline'][data-tone='accent'] {
+  color: var(--pm-accent-text);
+  background: transparent;
+  border-color: var(--pm-accent-bg);
+}
+
+.badge[data-variant='outline'][data-tone='danger'] {
+  color: var(--pm-danger-text);
+  background: transparent;
+  border-color: var(--pm-danger-border);
+}
+
+.badge[data-variant='outline'][data-tone='warning'] {
+  color: var(--pm-warning-text);
+  background: transparent;
+  border-color: var(--pm-warning-border);
+}
+
+.badge[data-variant='outline'][data-tone='success'] {
+  color: var(--pm-success-text);
+  background: transparent;
+  border-color: var(--pm-success-border);
+}
+
+.badge[data-variant='outline'][data-tone='info'] {
+  color: var(--pm-info-text);
+  background: transparent;
+  border-color: var(--pm-info-border);
+}
+
+/* The count: as tall as the `text.xs` size and two small steps, not a whole line,
+   so it fits the corner of an icon-only Button and covers only the corner of its
+   glyph. Figures and a plus sign have no descenders, so the shorter box clips
+   nothing. It is never narrower than it is tall, so one digit is a square. Its
+   figures are the system's numeric ones, which are tabular in every system, so a
+   count that changes keeps its width. */
+
+.badge[data-count] {
+  justify-content: center;
+  min-inline-size: calc(var(--pm-text-xs-size) + var(--pm-space-2));
+  block-size: calc(var(--pm-text-xs-size) + var(--pm-space-2));
+  padding: 0 var(--pm-space-1);
+  font-variant-numeric: var(--pm-font-numeric);
+}
+
+/* The dot: a round mark with no text, filled with the tone's solid colour in every
+   variant. A soft or an outline fill is too faint to be seen as a mark on its own. */
+
+.badge[data-dot] {
+  inline-size: var(--pm-space-3);
+  block-size: var(--pm-space-3);
+  padding: 0;
+  border: 0;
+  border-radius: var(--pm-radius-pill);
+}
+
+.badge[data-dot][data-tone='neutral'] {
+  background: var(--pm-bg-inverse);
+}
+
+.badge[data-dot][data-tone='accent'] {
+  background: var(--pm-accent-bg);
+}
+
+.badge[data-dot][data-tone='danger'] {
+  background: var(--pm-danger-solid);
+}
+
+.badge[data-dot][data-tone='warning'] {
+  background: var(--pm-warning-solid);
+}
+
+.badge[data-dot][data-tone='success'] {
+  background: var(--pm-success-solid);
+}
+
+.badge[data-dot][data-tone='info'] {
+  background: var(--pm-info-solid);
+}
+
+/* A dot's words, for assistive technology only. */
+.spoken {
+  composes: visuallyHidden from '../conventions/a11y.module.css';
+}

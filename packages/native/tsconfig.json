@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/native.tsbuildinfo",
+    // DOM for the same reason as the registry's: importing it as workspace
+    // source pulls in `@polymorph/theme`'s `runtime.ts`. Nothing here touches a
+    // DOM — the generator writes text and the laws read files.
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"]
+}

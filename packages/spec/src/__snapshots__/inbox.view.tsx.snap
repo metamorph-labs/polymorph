@@ -1,0 +1,176 @@
+/**
+ * Relay's ticket queue — a filtered, sortable table under a page header.
+ *
+ * Emitted from a screen spec (`polymorph-screen/1`). Composition and bindings only:
+ * this file holds no state, computes nothing, and expresses no style — the
+ * container that renders it owns all three.
+ */
+
+import {
+  Button,
+  Card,
+  DataTable,
+  DensityScope,
+  FilterBar,
+  Grid,
+  ListPage,
+  SearchInput,
+  Select,
+  Stat,
+  type DataTableColumn,
+  type DataTableSort,
+  type EmptyStateProps,
+  type StatProps,
+} from '@polymorph/react-ui'
+import type { Ticket } from './tickets'
+
+export interface InboxViewProps {
+  /** Already filtered and sorted. */
+  tickets: Ticket[]
+  /** The queue's four numbers, derived by the container from the whole collection rather than from the filtered view — which is why the band outlives the empty story. */
+  summary: { open: StatProps; urgent: StatProps; response: StatProps; solved: StatProps }
+  /** Cell renderers are code, so they arrive as an input. */
+  columns: DataTableColumn<Ticket>[]
+  sort: DataTableSort
+  onSortChange: (sort: DataTableSort) => void
+  getRowId: (ticket: Ticket) => string
+  onRowClick: (ticket: Ticket) => void
+  onNewTicket: () => void
+  isFiltered: boolean
+  onClearFilters: () => void
+  resultCount: { shown: number; total: number }
+  query: string
+  onQueryChange: (query: string) => void
+  status: string | null
+  statusOptions: { value: string; label: string }[]
+  onStatusChange: (value: string | null) => void
+  priority: string | null
+  priorityOptions: { value: string; label: string }[]
+  onPriorityChange: (value: string | null) => void
+  isEmpty: boolean
+  emptyState: EmptyStateProps
+}
+
+export function InboxView({
+  tickets,
+  summary,
+  columns,
+  sort,
+  onSortChange,
+  getRowId,
+  onRowClick,
+  onNewTicket,
+  isFiltered,
+  onClearFilters,
+  resultCount,
+  query,
+  onQueryChange,
+  status,
+  statusOptions,
+  onStatusChange,
+  priority,
+  priorityOptions,
+  onPriorityChange,
+  isEmpty,
+  emptyState,
+}: InboxViewProps) {
+  return (
+    <ListPage
+      title="Inbox"
+      empty={isEmpty}
+      summary={
+        <Grid columns={4} gap={6}>
+          <Card>
+            <Stat
+              label={summary.open.label}
+              value={summary.open.value}
+              trend={summary.open.trend}
+              footer={summary.open.footer}
+            />
+          </Card>
+          <Card>
+            <Stat
+              label={summary.urgent.label}
+              value={summary.urgent.value}
+              trend={summary.urgent.trend}
+              footer={summary.urgent.footer}
+            />
+          </Card>
+          <Card>
+            <Stat
+              label={summary.response.label}
+              value={summary.response.value}
+              trend={summary.response.trend}
+              footer={summary.response.footer}
+            />
+          </Card>
+          <Card>
+            <Stat
+              label={summary.solved.label}
+              value={summary.solved.value}
+              trend={summary.solved.trend}
+              footer={summary.solved.footer}
+            />
+          </Card>
+        </Grid>
+      }
+      emptyState={{
+        icon: 'search',
+        title: 'No tickets match these filters',
+        description: 'Every conversation is still here — the filters are hiding them.',
+        secondaryAction: (
+          <Button variant="ghost" tone="neutral" label="Clear filters" onClick={onClearFilters} />
+        ),
+      }}
+      actions={<Button icon="add" label="New ticket" onClick={onNewTicket} />}
+      filters={
+        <FilterBar
+          isFiltered={isFiltered}
+          onClear={onClearFilters}
+          resultCount={resultCount}
+          search={
+            <SearchInput
+              size="sm"
+              placeholder="Search tickets…"
+              aria-label="Search tickets"
+              value={query}
+              onChange={onQueryChange}
+            />
+          }
+        >
+          <Select
+            size="sm"
+            options={statusOptions}
+            emptyOption="Any status"
+            aria-label="Filter by status"
+            value={status}
+            onChange={onStatusChange}
+          />
+          <Select
+            size="sm"
+            options={priorityOptions}
+            emptyOption="Any priority"
+            aria-label="Filter by priority"
+            value={priority}
+            onChange={onPriorityChange}
+          />
+        </FilterBar>
+      }
+    >
+      {/* Rung 2, declared: A queue is scanned rather than read, so more rows in the same viewport is worth more here than the breathing room the rest of the product gets. Nothing new is invented: this is the same theme in its compact variant, applied to a region. */}
+      <DensityScope value="compact" as="section">
+        <DataTable
+          label="Tickets"
+          stickyHeader
+          columns={columns}
+          data={tickets}
+          getRowId={getRowId}
+          sort={sort}
+          onSortChange={onSortChange}
+          emptyState={emptyState}
+          onRowClick={onRowClick}
+        />
+      </DensityScope>
+    </ListPage>
+  )
+}

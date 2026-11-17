@@ -1,0 +1,111 @@
+/* JsonTree — `design/components/json-tree.md`.
+ *
+ * JSON is code: mono at the reading size. Kind colours come from text and
+ * accent roles, not status colours, because a `false` is not a warning and
+ * status colour on every boolean would teach readers to ignore it.
+ *
+ * Children never animate: a thousand-node subtree cannot animate smoothly, and
+ * expanding should be instant. Only the chevron rotates, on control tokens. */
+
+.root {
+  margin: 0;
+  padding: 0;
+  font-family: var(--pm-font-mono);
+  font-size: var(--pm-text-sm-size);
+  line-height: var(--pm-text-sm-line-height);
+  color: var(--pm-text-primary);
+  list-style: none;
+}
+
+.row {
+  padding-block: 2px;
+}
+
+/* The disclosure toggle, styled as a ghost row. Its name is the key and summary.
+   The chevron only shows what `aria-expanded` already says. */
+.toggle {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  gap: var(--pm-space-2);
+  align-items: center;
+  padding: 0 var(--pm-space-1);
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: var(--pm-radius-sm);
+}
+
+.toggle:hover {
+  background: var(--pm-bg-subtle);
+}
+
+.chevron {
+  display: inline-flex;
+  color: var(--pm-text-muted);
+  transition: transform var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+.toggle[aria-expanded='true'] .chevron {
+  transform: rotate(90deg);
+}
+
+.key {
+  color: var(--pm-text-primary);
+}
+
+.colon {
+  color: var(--pm-text-muted);
+}
+
+.summary {
+  color: var(--pm-text-muted);
+}
+
+/* A leaf: key beside value, with the toggle's inset so leaves and branches align
+   at every level. */
+.row > .key,
+.row > .value,
+.row > .summary {
+  padding-inline: var(--pm-space-1);
+}
+
+.row > .key {
+  padding-inline-end: 0;
+  margin-inline-end: var(--pm-space-2);
+}
+
+.value[data-kind='string'] {
+  color: var(--pm-text-secondary);
+}
+
+.value[data-kind='number'] {
+  color: var(--pm-accent-text);
+}
+
+.value[data-kind='boolean'],
+.value[data-kind='null'] {
+  font-style: italic;
+  color: var(--pm-text-muted);
+}
+
+/* One level in: indented, with a guide line back to the parent. */
+.children {
+  padding: 0;
+  padding-inline-start: var(--pm-space-5);
+  margin: 0;
+  margin-inline-start: var(--pm-space-2);
+  list-style: none;
+  border-inline-start: 1px solid var(--pm-border-subtle);
+}
+
+/* Reduced-motion projection (`design/motion/motion.md`): the chevron rotation is
+   instant. The toggle's colour feedback stays. */
+@media (prefers-reduced-motion: reduce) {
+  .chevron {
+    transition: none;
+  }
+}

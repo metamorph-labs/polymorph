@@ -1,0 +1,230 @@
+{
+  "spec": "polymorph-screen/1",
+  "name": "BookRoomScreen",
+  "purpose": "Lets an employee book a meeting room by choosing room, date, start time, length, invitees and an optional note, with validation on submit.",
+  "platform": "web",
+  "types": {
+    "@polymorph/react-ui": ["SelectOption", "RadioOption", "ErrorSummaryError"],
+    "@internationalized/date": ["CalendarDate"]
+  },
+  "inputs": [
+    { "name": "rooms", "type": "SelectOption[]", "doc": "The known list of bookable rooms." },
+    {
+      "name": "durations",
+      "type": "RadioOption[]",
+      "doc": "The lengths on offer: 30, 60 and 90 minutes."
+    },
+    { "name": "room", "type": "string", "doc": "Selected room value." },
+    { "name": "date", "type": "CalendarDate | null", "doc": "Selected date." },
+    {
+      "name": "today",
+      "type": "CalendarDate",
+      "doc": "Today's date; the earliest selectable date."
+    },
+    { "name": "startTime", "type": "any", "doc": "Selected start time, as TimeInput value." },
+    { "name": "duration", "type": "string", "doc": "Selected length value." },
+    { "name": "invitees", "type": "string[]", "doc": "Email addresses invited." },
+    { "name": "note", "type": "string", "doc": "Optional note for the invitation." },
+    {
+      "name": "validateEmail",
+      "type": "(raw: string) => string | null",
+      "doc": "Normalises an email or returns null to reject it."
+    },
+    {
+      "name": "errors",
+      "type": "{ room?: string; date?: string; startTime?: string; duration?: string; invitees?: string; note?: string }",
+      "doc": "Per-field error messages from the last submit."
+    },
+    {
+      "name": "summaryErrors",
+      "type": "ErrorSummaryError[]",
+      "doc": "Every error in form order, each with the field id it names; empty when there are none."
+    },
+    { "name": "summaryTitle", "type": "string", "doc": "Title of the error summary." },
+    { "name": "submitting", "type": "boolean", "doc": "True while the booking is being made." },
+    { "name": "onRoomChange", "type": "(value: string) => void" },
+    { "name": "onDateChange", "type": "(value: CalendarDate | null) => void" },
+    { "name": "onStartTimeChange", "type": "(value: any) => void" },
+    { "name": "onDurationChange", "type": "(value: string) => void" },
+    { "name": "onInviteesChange", "type": "(values: string[]) => void" },
+    { "name": "onNoteChange", "type": "(value: string) => void" },
+    { "name": "onSubmit", "type": "() => void", "doc": "Validates and books the room." },
+    { "name": "onCancel", "type": "() => void", "doc": "Leaves the screen without booking." }
+  ],
+  "root": {
+    "component": "FormPage",
+    "props": {
+      "title": "Book a room",
+      "description": "Choose a room, a time and who to invite.",
+      "onSubmit": { "$": "onSubmit" },
+      "actions": {
+        "component": "Inline",
+        "props": { "gap": 3, "justify": "end" },
+        "children": [
+          {
+            "component": "Button",
+            "props": {
+              "label": "Cancel",
+              "variant": "ghost",
+              "tone": "neutral",
+              "type": "button",
+              "disabled": { "$": "submitting" },
+              "onClick": { "$": "onCancel" }
+            }
+          },
+          {
+            "component": "Button",
+            "props": {
+              "label": "Book room",
+              "variant": "solid",
+              "tone": "accent",
+              "type": "submit",
+              "loading": { "$": "submitting" },
+              "disabled": { "$": "submitting" }
+            }
+          }
+        ]
+      }
+    },
+    "children": [
+      {
+        "component": "ErrorSummary",
+        "props": { "title": { "$": "summaryTitle" }, "errors": { "$": "summaryErrors" } }
+      },
+      {
+        "component": "Card",
+        "children": [
+          {
+            "component": "Stack",
+            "props": { "gap": 5 },
+            "children": [
+              {
+                "component": "FormField",
+                "props": {
+                  "id": "room",
+                  "label": "Room",
+                  "required": true,
+                  "error": { "$": "errors.room" }
+                },
+                "children": [
+                  {
+                    "component": "Select",
+                    "props": {
+                      "options": { "$": "rooms" },
+                      "placeholder": "Choose a room",
+                      "value": { "$": "room" },
+                      "onChange": { "$": "onRoomChange" }
+                    }
+                  }
+                ]
+              },
+              {
+                "component": "Grid",
+                "props": { "columns": 2, "gap": 4 },
+                "children": [
+                  {
+                    "component": "FormField",
+                    "props": {
+                      "id": "date",
+                      "label": "Date",
+                      "required": true,
+                      "error": { "$": "errors.date" }
+                    },
+                    "children": [
+                      {
+                        "component": "DatePicker",
+                        "props": {
+                          "minValue": { "$": "today" },
+                          "value": { "$": "date" },
+                          "onChange": { "$": "onDateChange" }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "component": "FormField",
+                    "props": {
+                      "id": "startTime",
+                      "label": "Start time",
+                      "required": true,
+                      "error": { "$": "errors.startTime" }
+                    },
+                    "children": [
+                      {
+                        "component": "TimeInput",
+                        "props": {
+                          "value": { "$": "startTime" },
+                          "onChange": { "$": "onStartTimeChange" }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "component": "FormField",
+                "props": {
+                  "id": "duration",
+                  "label": "Length",
+                  "required": true,
+                  "error": { "$": "errors.duration" }
+                },
+                "children": [
+                  {
+                    "component": "RadioGroup",
+                    "props": {
+                      "options": { "$": "durations" },
+                      "orientation": "horizontal",
+                      "value": { "$": "duration" },
+                      "onChange": { "$": "onDurationChange" }
+                    }
+                  }
+                ]
+              },
+              {
+                "component": "FormField",
+                "props": {
+                  "id": "invitees",
+                  "label": "Invitees",
+                  "description": "Type an email address and press Enter or comma.",
+                  "required": true,
+                  "error": { "$": "errors.invitees" }
+                },
+                "children": [
+                  {
+                    "component": "TagInput",
+                    "props": {
+                      "placeholder": "name@example.com",
+                      "value": { "$": "invitees" },
+                      "validate": { "$": "validateEmail" },
+                      "onChange": { "$": "onInviteesChange" }
+                    }
+                  }
+                ]
+              },
+              {
+                "component": "FormField",
+                "props": {
+                  "id": "note",
+                  "label": "Note",
+                  "description": "Optional. Added to the invitation.",
+                  "error": { "$": "errors.note" }
+                },
+                "children": [
+                  {
+                    "component": "Textarea",
+                    "props": {
+                      "rows": 3,
+                      "value": { "$": "note" },
+                      "onChange": { "$": "onNoteChange" }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

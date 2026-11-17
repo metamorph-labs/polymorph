@@ -1,0 +1,100 @@
+/* Banner — `design/components/banner.md`.
+ *
+ * A bar across the frame. It has a rule at its foot and no radius, because it
+ * runs edge to edge and the page starts under it. Alert's tinted wash and its
+ * law-checked pairings are reused, so a tone looks the same in both. */
+
+.banner {
+  display: flex;
+  gap: var(--pm-space-3);
+  align-items: flex-start;
+  min-inline-size: 0;
+  padding: var(--pm-space-2) var(--pm-space-4);
+  border-block-end: 1px solid;
+}
+
+/* One small control tall and top-aligned. The action and the ✕ are small
+   controls, and one line of the message is padded to the same height, so the
+   glyph, the first line, the action and the ✕ share a centre line, and a
+   message that wraps keeps the glyph and the ✕ beside its first line. */
+.glyph {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  block-size: var(--pm-control-height-sm);
+}
+
+/* The message and the action wrap as a pair, inside the glyph and the ✕. On
+   a narrow frame the action moves under the message and starts where the
+   message starts. */
+.content {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: var(--pm-space-2) var(--pm-space-3);
+  align-items: flex-start;
+  min-inline-size: 0;
+}
+
+/* Takes the free width. Its basis is the narrowest column a sentence reads in,
+   so a short message keeps its action beside it on a phone, and the action
+   wraps under the message before the message is squeezed further. */
+.text {
+  flex: 1 1 calc(var(--pm-space-10) * 2);
+  min-inline-size: 0;
+  padding-block: calc(
+    (var(--pm-control-height-sm) - var(--pm-text-sm-line-height) * var(--pm-text-sm-size)) / 2
+  );
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.action,
+.close {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+
+/* tones — the wash, its rule, and the glyph ----------------------------------
+ *
+ * Law-checked pairings: the glyph is `{tone}.text` on `{tone}.subtle`, and the
+ * message is `text.primary`, which is lawful on every `bg.*`, the `subtle`
+ * steps included. */
+
+.banner[data-tone='neutral'] {
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-default);
+}
+
+.banner[data-tone='info'] {
+  background: var(--pm-info-subtle);
+  border-color: var(--pm-info-border);
+}
+
+.banner[data-tone='info'] .glyph {
+  color: var(--pm-info-text);
+}
+
+.banner[data-tone='warning'] {
+  background: var(--pm-warning-subtle);
+  border-color: var(--pm-warning-border);
+}
+
+.banner[data-tone='warning'] .glyph {
+  color: var(--pm-warning-text);
+}
+
+.banner[data-tone='danger'] {
+  background: var(--pm-danger-subtle);
+  border-color: var(--pm-danger-border);
+}
+
+.banner[data-tone='danger'] .glyph {
+  color: var(--pm-danger-text);
+}

@@ -1,0 +1,25 @@
+name: Bug
+description: Something in a package, the docs or the tooling does not work as documented.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The smallest code or steps that show it. A failing test is ideal.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Package versions, React, bundler, browser and OS.
+    validations:
+      required: true

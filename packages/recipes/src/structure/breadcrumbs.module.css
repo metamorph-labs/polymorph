@@ -1,0 +1,107 @@
+/* Breadcrumbs — `design/components/breadcrumbs.md`.
+ *
+ * Link's styling (underline on hover, focus ring, decoration metrics) in
+ * `text.secondary`, because eight accent links would compete with the page.
+ *
+ * No motion of its own: navigation does not animate (the AppShell rail's law).
+ * The overflow Menu brings its own. */
+
+.nav {
+  min-inline-size: 0;
+}
+
+.list {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--pm-space-2);
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  list-style: none;
+}
+
+/* An item is a crumb and the separator after it. It is a grid so that the row
+   knows the narrowest an item can be: the crumb's track goes down to
+   `--pm-space-6`, room for a letter and an ellipsis, and the separator keeps
+   its width. In a flex item the crumb's whole label would count, and no item
+   could narrow. */
+.item {
+  display: grid;
+  flex: none;
+  grid-template-columns: minmax(var(--pm-space-6), auto);
+  grid-auto-columns: auto;
+  grid-auto-flow: column;
+  gap: var(--pm-space-2);
+  align-items: center;
+}
+
+/* A row wider than its container narrows its crumbs. It stays one line, and it
+   does not reach past the container, where on a phone it pans the page. The
+   overflow control's item holds no crumb and keeps its width. */
+.item:has(.crumb) {
+  flex-shrink: 1;
+}
+
+/* The middle of the trail narrows first, as it is the middle the overflow
+   takes. The first crumb and the current page keep their words until every
+   crumb between them is at its floor. Flex shrink is a proportion, not an
+   order, so the middle's factor is large enough that the two ends give up less
+   width than a browser lays out while a middle crumb has any to give. */
+.item:has(.crumb):not(:first-child, :last-child) {
+  flex-shrink: 1000000;
+}
+
+/* Every crumb is clipped at the same width, so a 40-character document title
+   does not break the single row. A crumb in a narrowed item is clipped at its
+   track's width. */
+.crumb {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  composes: focusRing from '../conventions/focus.module.css';
+  display: inline-block;
+  min-inline-size: 0;
+  max-inline-size: calc(var(--pm-space-10) * 2);
+  padding: 0;
+  overflow: hidden;
+  font: inherit;
+  color: var(--pm-text-secondary);
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-decoration-line: none;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--pm-radius-sm);
+}
+
+.separator {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--pm-text-muted);
+}
+
+/* states -------------------------------------------------------------------- */
+
+/* Colour and underline, so the affordance does not depend on seeing the
+   difference between two greys. This is Link's rule. */
+.crumb:hover {
+  color: var(--pm-text-primary);
+  text-decoration-line: underline;
+}
+
+/* After hover, so it wins. The current page is a location, not a link, so it has
+   no underline, no hover colour and no pointer cursor. */
+.crumb[aria-current='page'],
+.crumb[aria-current='page']:hover {
+  color: var(--pm-text-primary);
+  text-decoration-line: none;
+  cursor: default;
+}

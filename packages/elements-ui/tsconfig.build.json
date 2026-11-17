@@ -1,0 +1,31 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Types only: Vite emits the JavaScript (`vite.build.config.ts`).
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    // No declaration maps: the tarball ships `dist` without `src`.
+    "declarationMap": false,
+    "rootDir": "src",
+    "outDir": "dist/types",
+    // Its own buildinfo, so the typecheck's `--noEmit` cache never convinces
+    // this program its declarations are already written.
+    "incremental": false,
+    "tsBuildInfoFile": null
+  },
+  // The laws, the fixtures, the galleries, the mount helper, the bridge's tests and the
+  // no-build entries are test tooling or another build's input, not the published surface.
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.states.ts",
+    "src/test-setup.ts",
+    "src/mount.ts",
+    "src/galleries.ts",
+    "src/conformance/**",
+    "src/bridge/**",
+    "src/parity/**",
+    "src/cdn/**"
+  ]
+}

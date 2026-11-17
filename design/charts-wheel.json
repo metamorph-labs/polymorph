@@ -1,0 +1,196 @@
+{
+  "$comment": "The chart wheel: the authored series palette that packages/theme/src/color/chart-wheel.ts transcribes and packages/theme/src/chart-laws.test.ts judges (explained in docs/charts.md). The derivation must land `canonical` exactly for plain × neutral, and the palette laws re-judge every other pairing. The reference is the canonical eight-family chart wheel the default pairing is calibrated to. Per step, `oklch` is the target (authored values where exact/adopted) and `hex` is its deterministic sRGB projection — the emitted-hex comparison target. `ref`: exact = the reference's authored OKLCH; repaired = moved the minimum a hard gate demanded; adopted = the reference's own dark step; derived = no reference counterpart, stepped under the gates. Gate numbers are OKLab ΔE ×100, Machado severity-1.0 CVD, measured on sRGB hex.",
+  "anchors": [
+    { "slot": 1, "family": "orange", "hue": 41.116 },
+    { "slot": 2, "family": "teal", "hue": 184.704 },
+    { "slot": 3, "family": "blue", "hue": 245 },
+    { "slot": 4, "family": "yellow", "hue": 84.429 },
+    { "slot": 5, "family": "amber", "hue": 70.08 },
+    { "slot": 6, "family": "red", "hue": 16.439 },
+    { "slot": 7, "family": "purple", "hue": 303.9 },
+    { "slot": 8, "family": "green", "hue": 162.48 }
+  ],
+  "rotation": "Chromatic palettes rotate every anchor rigidly by (accentHue − 41.116) so slot 1 sits on the brand; achromatic budgets (none, ink) take the canonical anchors unrotated. Re-stepping after rotation reuses the same repair loop; the palette laws re-judge the result — rotation is never exempt.",
+  "canonical": {
+    "light": [
+      { "slot": 1, "hex": "#ec5600", "oklch": [0.646, 0.222, 41.116], "ref": "exact" },
+      { "slot": 2, "hex": "#009488", "oklch": [0.6, 0.118, 184.704], "ref": "exact" },
+      {
+        "slot": 3,
+        "hex": "#005081",
+        "oklch": [0.418, 0.105, 245],
+        "ref": "repaired",
+        "from": "oklch(0.398 0.07 227.392) — chroma hard floor; the reference sits at its hue's gamut ceiling; minimal-ΔE repair 4.8"
+      },
+      {
+        "slot": 4,
+        "hex": "#fabc00",
+        "oklch": [0.828, 0.189, 84.429],
+        "ref": "exact",
+        "note": "band WARN L .829 — kept for exactness; relief slot (1.71:1 on the light surface)"
+      },
+      {
+        "slot": 5,
+        "hex": "#d08500",
+        "oklch": [0.679, 0.188, 70.08],
+        "ref": "repaired",
+        "from": "L .769 — the yellow/amber adjacent pair pre-repair measured CVD 6.0 / normal 7.3, both floors binding; +1 step guard band lands normal 15.8"
+      },
+      {
+        "slot": 6,
+        "hex": "#ba0139",
+        "oklch": [0.501, 0.2, 16.439],
+        "ref": "derived",
+        "note": "the authored OKLCH is the truth and this hex is formatHex's rounded projection of it; a truncating read-back gives #ba0039 (green channel 1.07 truncated), which is wrong"
+      },
+      { "slot": 7, "hex": "#b369ff", "oklch": [0.67, 0.217, 303.9], "ref": "derived" },
+      { "slot": 8, "hex": "#007650", "oklch": [0.5, 0.109, 162.48], "ref": "derived" }
+    ],
+    "dark": [
+      { "slot": 1, "hex": "#be4400", "oklch": [0.55, 0.169, 41.116], "ref": "derived" },
+      {
+        "slot": 2,
+        "hex": "#00c5b5",
+        "oklch": [0.74, 0.131, 184.704],
+        "ref": "derived",
+        "note": "band WARN"
+      },
+      {
+        "slot": 3,
+        "hex": "#0177bc",
+        "oklch": [0.55, 0.138, 245],
+        "ref": "derived",
+        "note": "formatHex's rounded projection of the OKLCH; a truncating read-back gives #0077bc (red channel 1.45 truncated), which is wrong here — the diverging pole's #0077bc is a different colour (C .17)"
+      },
+      {
+        "slot": 4,
+        "hex": "#906b00",
+        "oklch": [0.55, 0.113, 84.429],
+        "ref": "derived",
+        "note": "the yellow/amber adjacency prices both modes: light pulls amber down, dark holds yellow at L .55"
+      },
+      {
+        "slot": 5,
+        "hex": "#f69e00",
+        "oklch": [0.769, 0.188, 70.08],
+        "ref": "adopted",
+        "note": "band WARN L .769 — the reference's own step, kept"
+      },
+      { "slot": 6, "hex": "#ff2357", "oklch": [0.645, 0.246, 16.439], "ref": "adopted" },
+      { "slot": 7, "hex": "#ab4eff", "oklch": [0.627, 0.265, 303.9], "ref": "adopted" },
+      {
+        "slot": 8,
+        "hex": "#00b981",
+        "oklch": [0.696, 0.17, 162.48],
+        "ref": "adopted",
+        "note": "band WARN"
+      }
+    ]
+  },
+  "unplaced": {
+    "value": "oklch(0.488 0.243 264.376) #1447e6 — the reference's dark chart-1 indigo",
+    "resolution": "folded into the blue family (docs/charts.md)"
+  },
+  "sequential": {
+    "hue": "slot 1 (rotates with the wheel)",
+    "chromaTarget": 0.16,
+    "vizLadder": {
+      "light": [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3],
+      "dark": [0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85]
+    },
+    "canonicalHex": {
+      "light": ["#ffd3c3", "#ffa381", "#ef7748", "#cc5827", "#a73b00", "#7b2900", "#521800"],
+      "dark": ["#3e1100", "#662100", "#913200", "#bb4812", "#dd6738", "#ff885b", "#ffbca3"]
+    },
+    "ordinalUsableFrom": { "light": 3, "dark": 3 },
+    "$note": "The near-surface end recedes by design (sequential, not ordinal); ordinal ramps start at the first step clearing 2:1 on the mode's surface — step 3 in both modes."
+  },
+  "diverging": {
+    "poles": { "pos": "orange (slot-1 anchor hue)", "neg": "blue (slot-3 anchor hue)" },
+    "poleStep": { "light": { "l": 0.55, "c": 0.17 }, "dark": { "l": 0.68, "c": 0.17 } },
+    "arms": {
+      "$rationale": "three steps per side on the fixed anchor hues; arm 3 is the pole (chart.neg.3 / chart.pos.3 — there is no separate pole token), arm 1 sits nearest mid. Loudness-to-mid strictly monotone outward (law), per-step mismatch between sides ≤ 0.2 except light arm 3's 1.0 — the poles' own asymmetry, inherited not introduced.",
+      "ladder": {
+        "light": [
+          { "l": 0.81, "c": 0.07 },
+          { "l": 0.68, "c": 0.12 },
+          { "l": 0.55, "c": 0.17 }
+        ],
+        "dark": [
+          { "l": 0.42, "c": 0.07 },
+          { "l": 0.55, "c": 0.12 },
+          { "l": 0.68, "c": 0.17 }
+        ]
+      },
+      "canonical": {
+        "light": {
+          "neg": ["#9bc6ec", "#519fdd", "#0077bc"],
+          "pos": ["#e9b39e", "#d67d5c", "#be4400"]
+        },
+        "dark": {
+          "neg": ["#295171", "#2677b2", "#069ff9"],
+          "pos": ["#6d3f2e", "#ab5636", "#ec6d3a"]
+        }
+      },
+      "loudnessToMid": {
+        "light": { "neg": [17.6, 31.4, 44.2], "pos": [17.4, 31.5, 45.3] },
+        "dark": { "neg": [15.3, 29.0, 43.0], "pos": [15.1, 29.1, 43.0] }
+      }
+    },
+    "canonical": {
+      "light": { "neg": "#0077bc", "mid": "#f5f5f5", "pos": "#be4400" },
+      "dark": { "neg": "#069ff9", "mid": "#2a2a2a", "pos": "#ec6d3a" }
+    },
+    "mid": "neutral gray, never a hue — light binds to bg.subtle; dark takes the neutral step nearest L .32 that is neither the grid's step nor the axis's (canonically step 5, #2a2a2a, while the grid wears #353535, so a zero cell never reads as grid). Where quiet borders derive the grid onto step 5 (flint, journal — border alpha 0.06) the mid steps DOWN to step 4, never up — the zero is a rest note, quieter than the arms and the furniture both, and a zero cell louder than the axis is a shout about nothing; mid means zero exactly, near-zero wears arm 1",
+    "loudness": { "light": [44.2, 45.3], "dark": [39.7, 39.7] },
+    "$doctrine": "The pair is FIXED to the orange and blue anchors across every palette — a polarity code is a convention, not a brand surface. Neither pole is red or green: polarity is geometry, sentiment is a decision (the Stat delta doctrine at palette scale). Warm = above, cool = below (the temperature reading)."
+  },
+  "seriesCap": {
+    "allPairs": { "light": 4, "dark": 3 },
+    "published": 3,
+    "$note": "mode-minimum governs; forms where any two marks can neighbor (scatter, small multiples) carry at most 3 series"
+  },
+  "surfaces": {
+    "light": "#ffffff",
+    "dark": "#171717",
+    "$note": "plain/neutral's emitted bg.surface, recorded beside the measurements; the palette laws re-probe emission, never this file"
+  },
+  "measured": {
+    "light": {
+      "worstAdjacentCVD": "13.8 (protan, slots 1↔2)",
+      "worstAdjacentNormal": "15.8 (slots 4↔5)",
+      "bandWarns": [3, 4],
+      "reliefSlots": { "4": 1.71, "5": 2.98 }
+    },
+    "dark": {
+      "worstAdjacentCVD": "13.9 (deutan, slots 5↔6)",
+      "worstAdjacentNormal": "22.8 (slots 4↔5)",
+      "bandWarns": [2, 5, 8],
+      "reliefSlots": {}
+    },
+    "tailEnumeration": {
+      "red>purple>green": 1.56,
+      "green>purple>red": 1.13,
+      "purple>green>red": 0.8,
+      "purple>red>green": 0.8,
+      "green>red>purple": 0.8,
+      "red>green>purple": 0.8,
+      "$metric": "min adjacent gate margin across BOTH modes (1.0 = at target)"
+    },
+    "statusCollisions": {
+      "light": {
+        "danger": { "1": 11.9, "5": 12.1 },
+        "warning": { "1": 13.6, "5": 8.2 },
+        "success": { "2": 6.5, "8": 12.7 },
+        "info": { "2": 9.3 }
+      },
+      "dark": {
+        "danger": { "1": 11.1, "4": 12.5 },
+        "warning": { "1": 12.7, "4": 7.5 },
+        "success": { "2": 14.5, "4": 12.7, "8": 11 },
+        "info": { "3": 8.8 }
+      },
+      "$doctrine": "series-vs-status pairs under ΔE 15 lean on the icon + label pairing and placement, never hue alone; a series that MEANS good/bad wears status tokens instead (docs/charts.md)"
+    }
+  }
+}

@@ -1,0 +1,131 @@
+/* ApprovalCard — `design/components/approval-card.md`.
+ *
+ * Uses Alert's wash, because this belongs to Alert's family: a toned surface
+ * with a glyph that matches the text. The rest of this sheet draws what Alert
+ * lacks, which is the two actions and the decided state. */
+
+.card {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-4);
+  padding: var(--pm-space-4);
+  border: 1px solid;
+  border-radius: var(--pm-radius-lg);
+}
+
+.head {
+  display: flex;
+  gap: var(--pm-space-3);
+  align-items: flex-start;
+}
+
+/* Top-aligned to the title's line box, as in Alert. */
+.glyph {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  block-size: calc(var(--pm-text-sm-line-height) * var(--pm-text-sm-size));
+}
+
+.copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--pm-space-1);
+  min-inline-size: 0;
+}
+
+/* Hierarchy comes from colour, not from extra weight, as in Alert and Toast. */
+.title {
+  margin: 0;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+}
+
+.description {
+  margin: 0;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+}
+
+/* The details sit on the page's surface inside the wash, so a ToolCall or a
+   CodeBlock in them is not tinted. */
+.details {
+  min-inline-size: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-3);
+}
+
+/* The outcome record: a sentence with a matching glyph. */
+.outcome {
+  display: inline-flex;
+  gap: var(--pm-space-2);
+  align-items: center;
+  margin: 0;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+}
+
+.outcomeGlyph {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+/* tones (Alert's cells) ------------------------------------------------------- */
+
+.card[data-tone='warning'] {
+  background: var(--pm-warning-subtle);
+  border-color: var(--pm-warning-border);
+}
+
+.card[data-tone='warning'] .glyph {
+  color: var(--pm-warning-text);
+}
+
+.card[data-tone='danger'] {
+  background: var(--pm-danger-subtle);
+  border-color: var(--pm-danger-border);
+}
+
+.card[data-tone='danger'] .glyph {
+  color: var(--pm-danger-text);
+}
+
+/* decided. The wash changes to the page's surface, because the card is now a
+   record and no longer a request. The outcome glyph carries the answer's
+   colour. */
+
+.card[data-decision] {
+  background: var(--pm-bg-surface);
+  border-color: var(--pm-border-subtle);
+}
+
+.card[data-decision] .glyph {
+  color: var(--pm-text-muted);
+}
+
+.card[data-decision='approved'] .outcomeGlyph {
+  color: var(--pm-success-text);
+}
+
+.card[data-decision='denied'] .outcomeGlyph {
+  color: var(--pm-text-muted);
+}

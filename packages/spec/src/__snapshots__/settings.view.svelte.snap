@@ -1,0 +1,114 @@
+<script module lang="ts">
+/**
+ * Relay's settings screen — appearance and notifications, as two labelled groups.
+ *
+ * Emitted from a screen spec (`polymorph-screen/1`). Composition and bindings only:
+ * this file holds no state, computes nothing, and expresses no style — the
+ * container that renders it owns all three.
+ */
+import { Checkbox, Select, SettingsPage, SettingsRow, Switch } from '@polymorph/svelte-ui'
+
+export interface SettingsViewProps {
+  /** The system currently worn. */
+  system: string | null
+  onSystemChange: (value: string | null) => void
+  /** The palette painting it. */
+  palette: string | null
+  onPaletteChange: (value: string | null) => void
+  /** The stored preference, which may be `system`. */
+  mode: string
+  onModeChange: (value: string | null) => void
+  density: string | null
+  onDensityChange: (value: string | null) => void
+  motion: string
+  onMotionChange: (value: string | null) => void
+  systemOptions: { value: string; label: string }[]
+  paletteOptions: { value: string; label: string }[]
+  modeOptions: { value: string; label: string }[]
+  densityOptions: { value: string; label: string }[]
+  motionOptions: { value: string; label: string }[]
+  digest: boolean
+  onDigestChange: (next: boolean) => void
+  signature: boolean
+  onSignatureChange: (next: boolean | 'indeterminate') => void
+}
+</script>
+
+<script lang="ts">
+let {
+  system,
+  onSystemChange,
+  palette,
+  onPaletteChange,
+  mode,
+  onModeChange,
+  density,
+  onDensityChange,
+  motion,
+  onMotionChange,
+  systemOptions,
+  paletteOptions,
+  modeOptions,
+  densityOptions,
+  motionOptions,
+  digest,
+  onDigestChange,
+  signature,
+  onSignatureChange,
+}: SettingsViewProps = $props()
+</script>
+
+<SettingsPage
+  title="Settings"
+  description="Appearance applies to every screen in Relay the moment it changes."
+  ><SettingsRow.Group title="Appearance"
+    ><SettingsRow label="System" description="Type, shape and spacing — how the product is built."
+      >{#snippet control()
+        }<Select options={systemOptions} value={system} onChange={onSystemChange}
+        />{/snippet
+      }</SettingsRow
+    ><SettingsRow
+      label="Palette"
+      description="The colour it is painted with. Any palette, any system."
+      >{#snippet control()
+        }<Select options={paletteOptions} value={palette} onChange={onPaletteChange}
+        />{/snippet
+      }</SettingsRow
+    ><SettingsRow label="Mode" description="Follow the operating system, or pin one."
+      >{#snippet control()
+        }<Select options={modeOptions} value={mode} onChange={onModeChange}
+        />{/snippet
+      }</SettingsRow
+    ><SettingsRow label="Density" description="Space and control sizes. Never the type scale."
+      >{#snippet control()
+        }<Select
+          options={densityOptions}
+          emptyOption="theme default"
+          value={density}
+          onChange={onDensityChange}
+        />{/snippet
+      }</SettingsRow
+    ><SettingsRow
+      label="Motion"
+      description="How much the interface moves. None is a full stop, not a slower version."
+      >{#snippet control()
+        }<Select options={motionOptions} value={motion} onChange={onMotionChange}
+        />{/snippet
+      }</SettingsRow
+    ></SettingsRow.Group
+  ><SettingsRow.Group title="Notifications"
+    ><SettingsRow
+      label="Daily digest"
+      description="One summary each morning instead of a notification per reply."
+      >{#snippet control()}<Switch checked={digest} onCheckedChange={onDigestChange} />{/snippet
+      }</SettingsRow
+    ><SettingsRow
+      label="Append my signature"
+      description="Added to the end of every reply you send."
+      >{#snippet control()
+        }<Checkbox checked={signature} onCheckedChange={onSignatureChange}
+        />{/snippet
+      }</SettingsRow
+    ></SettingsRow.Group
+  ></SettingsPage
+>

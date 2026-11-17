@@ -1,0 +1,19 @@
+{
+  "name": "@polymorph/native",
+  "version": "1.0.15",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/contracts.ts",
+    "./pending": "./src/pending.ts"
+  },
+  "dependencies": {
+    "@polymorph/registry": "workspace:*",
+    "@polymorph/theme": "workspace:*",
+    "jiti": "^2.7.0"
+  },
+  "bin": {
+    "polymorph-native-contracts": "./bin/contracts.js"
+  },
+  "license": "MIT"
+}

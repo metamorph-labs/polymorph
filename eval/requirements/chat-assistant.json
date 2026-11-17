@@ -1,0 +1,71 @@
+{
+  "requirements": [
+    {
+      "id": "thread",
+      "says": "The conversation is a log that follows the newest turn.",
+      "check": {
+        "element": {
+          "component": "ChatThread"
+        }
+      }
+    },
+    {
+      "id": "composer",
+      "says": "A message can be written and sent from the bottom of the screen.",
+      "check": {
+        "element": {
+          "component": "PromptInput",
+          "props": {
+            "onSubmit": "given"
+          }
+        }
+      }
+    },
+    {
+      "id": "attach",
+      "says": "A file can be attached to a message.",
+      "check": {
+        "element": {
+          "component": "PromptInput",
+          "props": {
+            "onAttach": "given"
+          }
+        }
+      }
+    },
+    {
+      "id": "stop-while-streaming",
+      "says": "While a reply is arriving, sending gives way to stopping it.",
+      "check": {
+        "element": {
+          "component": "PromptInput",
+          "props": {
+            "streaming": "dynamic",
+            "onStop": "given"
+          }
+        }
+      }
+    },
+    {
+      "id": "empty-conversation",
+      "says": "An empty conversation says what the assistant can help with.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": "ChatThread",
+              "props": {
+                "empty": "given"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "EmptyState"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

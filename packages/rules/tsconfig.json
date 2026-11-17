@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/rules.tsbuildinfo",
+    // DOM for the same reason as the registry's, the CLI's and the server's
+    // configs. `token-references.test.ts` derives the full token list from the
+    // engine, and importing it as workspace source pulls in the theme package's
+    // `runtime.ts`. Nothing in the plugin uses the DOM. A lint rule reads an AST,
+    // and every test here is a node test.
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"]
+  },
+  // The package root holds the build config and the packaging law, both node
+  // code checked like the rest.
+  "include": ["src/**/*.ts", "*.ts"]
+}

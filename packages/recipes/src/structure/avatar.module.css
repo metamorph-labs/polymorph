@@ -1,0 +1,134 @@
+/* Avatar — `design/components/avatar.md`.
+ *
+ * Round at every geometry, including `sharp`, like Switch's thumb: both depict
+ * round objects, and the geometry axis governs surfaces. */
+
+.avatar {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: var(--pm-text-muted);
+  background: var(--pm-bg-subtle);
+  border-radius: var(--pm-radius-pill);
+}
+
+/* Sits over the fallback that is already painted, so a slow image never leaves a
+   gap or appears abruptly. */
+.image {
+  composes: fadeIn from '../conventions/motion.module.css';
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-pill);
+}
+
+.initials {
+  text-transform: uppercase;
+  user-select: none;
+}
+
+/* The initials fallback, in one of the five families the theme emits.
+ *
+ * Written out rather than generated, like Badge's eighteen cells, so each pair
+ * can be read beside the role list and checked by the contrast law. `accent` is
+ * also the default, so a name hashing to accent looks like one with no tone,
+ * which is intended. */
+.avatar[data-fallback='initials'] {
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+}
+
+.avatar[data-tone='info'] {
+  color: var(--pm-info-text);
+  background: var(--pm-info-subtle);
+}
+
+.avatar[data-tone='success'] {
+  color: var(--pm-success-text);
+  background: var(--pm-success-subtle);
+}
+
+.avatar[data-tone='warning'] {
+  color: var(--pm-warning-text);
+  background: var(--pm-warning-subtle);
+}
+
+.avatar[data-tone='danger'] {
+  color: var(--pm-danger-text);
+  background: var(--pm-danger-subtle);
+}
+
+/* sizes --------------------------------------------------------------------- */
+
+.avatar[data-size='sm'] {
+  inline-size: var(--pm-space-6);
+  block-size: var(--pm-space-6);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+}
+
+.avatar[data-size='md'] {
+  inline-size: var(--pm-space-7);
+  block-size: var(--pm-space-7);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+}
+
+.avatar[data-size='lg'] {
+  inline-size: var(--pm-space-8);
+  block-size: var(--pm-space-8);
+  font-family: var(--pm-text-lg-family);
+  font-size: var(--pm-text-lg-size);
+  font-weight: var(--pm-text-lg-weight);
+  line-height: var(--pm-text-lg-line-height);
+  letter-spacing: var(--pm-text-lg-tracking);
+}
+
+/* Avatar.Group ---------------------------------------------------------
+ *
+ * The ring is the charts' 2px surface gap around a circle: marks are separated by
+ * the surface colour, never a stroke, and each face stays legible. The overlap is
+ * a quarter of the diameter, a ratio, so every size stacks alike. */
+
+.group {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* The surplus chip: Avatar's geometry, the icon fallback's fill, and text one
+   step stronger than muted, because a count is read. It carries `.avatar` beside
+   this class (the layout primitives' two-class pattern) for the circle, diameter
+   and text step. A same-file `composes` would be an edge to nowhere in the
+   registry's cross-file graph. */
+.surplus {
+  color: var(--pm-text-secondary);
+  background: var(--pm-bg-subtle);
+}
+
+.group .avatar {
+  box-shadow: 0 0 0 2px var(--pm-bg-surface);
+}
+
+.group .avatar:not(:first-child) {
+  margin-inline-start: calc(var(--pm-space-7) / -4);
+}
+
+.group .avatar[data-size='sm']:not(:first-child) {
+  margin-inline-start: calc(var(--pm-space-6) / -4);
+}
+
+.group .avatar[data-size='lg']:not(:first-child) {
+  margin-inline-start: calc(var(--pm-space-8) / -4);
+}

@@ -1,0 +1,9 @@
+name: polymorph_tokens
+description: >-
+  Polymorph's design decisions as plain Dart values: each house system with its default palette,
+  resolved for Flutter's 48 logical pixel floor. No Flutter dependency.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.0.0

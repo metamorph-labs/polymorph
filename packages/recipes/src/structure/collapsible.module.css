@@ -1,0 +1,153 @@
+/* Collapsible — `design/components/collapsible.md`.
+ *
+ * The trigger is as wide as its label, because a full-width trigger would look
+ * like an Accordion. No rules and no hover wash: a flush trigger has no box to
+ * tint, so hover is Accordion's colour-only change. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+}
+
+/* An inline row at the minimum target height, flush with the content.
+   `align-self` keeps the trigger at content width while the region is full
+   width, so a wide paragraph never widens the button. */
+.trigger {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  align-self: start;
+  gap: var(--pm-space-2);
+  align-items: center;
+  min-block-size: var(--pm-control-height-sm);
+  padding: 0;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+  text-align: start;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.label {
+  min-inline-size: 0;
+}
+
+.chevron {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--pm-text-muted);
+
+  /* Rotates on `control` × `standard`, like Accordion's chevron, because the
+     change is symmetric and has no direction of travel. */
+  transition: transform var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+/* states -------------------------------------------------------------------- */
+
+/* Colour only, no wash, the same hover as Accordion. */
+.trigger:hover {
+  color: var(--pm-accent-text);
+}
+
+.trigger:hover .chevron {
+  color: var(--pm-text-secondary);
+}
+
+.trigger[data-state='open'] .chevron {
+  transform: rotate(180deg);
+}
+
+/* the region ----------------------------------------------------------------
+ *
+ * `collapsible.content`: `collapse`, persistent mode, `surface` class, the same
+ * binding as `accordion.content` (`design/motion/motion.md`), driven by Radix's
+ * measured height. `overflow: hidden` is what the interruption law requires of
+ * any box whose size animates. */
+
+.content {
+  overflow: hidden;
+}
+
+/* The gap to the trigger is inside the animated region, so it collapses with
+   the content. Plain strings get the reading text style. */
+.inner {
+  padding-block-start: var(--pm-space-3);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+}
+
+@keyframes pm-collapsible-open {
+  from {
+    block-size: 0;
+  }
+
+  to {
+    block-size: var(--radix-collapsible-content-height);
+  }
+}
+
+@keyframes pm-collapsible-close {
+  from {
+    block-size: var(--radix-collapsible-content-height);
+  }
+
+  to {
+    block-size: 0;
+  }
+}
+
+/* The content fade uses the `collapse` pattern's 0.5 split. It fades in over the
+   second half, once there is room, and out before the space closes. */
+
+@keyframes pm-collapsible-reveal {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pm-collapsible-conceal {
+  to {
+    opacity: 0;
+  }
+}
+
+.content[data-state='open'] {
+  animation: pm-collapsible-open var(--pm-motion-duration-surface) var(--pm-motion-easing-standard);
+}
+
+.content[data-state='closed'] {
+  animation: pm-collapsible-close var(--pm-motion-duration-surface) var(--pm-motion-easing-standard);
+}
+
+.content[data-state='open'] .inner {
+  animation: pm-collapsible-reveal calc(var(--pm-motion-duration-surface) * 0.5)
+    var(--pm-motion-easing-standard) calc(var(--pm-motion-duration-surface) * 0.5) both;
+}
+
+.content[data-state='closed'] .inner {
+  animation: pm-collapsible-conceal calc(var(--pm-motion-duration-surface) * 0.5)
+    var(--pm-motion-easing-standard) both;
+}
+
+/* Reduced-motion projection (`design/motion/motion.md`): an instant size change,
+   the content fade kept, the chevron still. At `none` the durations are 0s. */
+@media (prefers-reduced-motion: reduce) {
+  .content[data-state='open'],
+  .content[data-state='closed'] {
+    animation: none;
+  }
+
+  .chevron {
+    transition: none;
+  }
+}

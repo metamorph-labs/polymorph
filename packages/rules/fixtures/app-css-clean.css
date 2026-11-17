@@ -1,0 +1,12 @@
+/* Application CSS the rules allow: it reads tokens and declares only its own properties. See
+   ./README.md. */
+
+.print {
+  --print-gutter: var(--pm-space-4);
+  padding: var(--print-gutter);
+  color: var(--pm-text-primary);
+}
+
+body {
+  font-size: var(--pm-text-md-size);
+}

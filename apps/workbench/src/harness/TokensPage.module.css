@@ -1,0 +1,342 @@
+/* Harness chrome. ./README.md explains why CSS is allowed in this directory. */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-8);
+  max-width: 1200px;
+  padding: var(--pm-space-7) var(--pm-space-5) var(--pm-space-10);
+  margin: 0 auto;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--pm-display-sm-family);
+  font-size: var(--pm-display-sm-size);
+  font-weight: var(--pm-display-sm-weight);
+  line-height: var(--pm-display-sm-line-height);
+  letter-spacing: var(--pm-display-sm-tracking);
+  color: var(--pm-text-primary);
+
+  /* A member name is one word with no break points. `SegmentedControl` at display size is wider
+     than a phone, and the overflow would make every gallery page it titles scroll sideways.
+     `anywhere` lets the word break instead. */
+  overflow-wrap: anywhere;
+}
+
+.scope {
+  margin: var(--pm-space-2) 0 0;
+  font-size: var(--pm-text-sm-size);
+  color: var(--pm-text-secondary);
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-4);
+}
+
+.axisList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--pm-space-3);
+  margin: 0;
+}
+
+.axis {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-1);
+  padding: var(--pm-space-3);
+  background: var(--pm-bg-subtle);
+  border-radius: var(--pm-radius-md);
+}
+
+.axis dd {
+  margin: 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-4);
+  padding: var(--pm-space-6);
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-lg);
+  box-shadow: var(--pm-shadow-raised);
+}
+
+/* Entries lay out as page content, not as flex items of the section. See GalleryPage.tsx.
+   `min-width: 0` makes a wide fixture scroll instead of stretching the card. */
+.entry {
+  min-width: 0;
+}
+
+/* The "sizes side by side" fixtures render an `Inline` row as their root. Three md controls are
+   wider than a phone, so without wrapping each such gallery page scrolls sideways at 375. The
+   harness applies the wrap here, to every layout-member fixture root at once. It selects them by
+   the layout family's `data-justify` attribute, which Inline and Stack set and member roots never
+   do. The selector is not `.entry > *` because a member's column-flex root relies on stretch to
+   clamp its rows, and wrapping it removes the clamp. FileUpload's list would then extend 16px
+   past the page. The fixtures copy the spec's States tables exactly and the harness may not
+   change them, so the wrap belongs to the harness and applies to no member. */
+.entry > [data-justify] {
+  flex-wrap: wrap;
+}
+
+/* Section titles use `Heading`, not a class here. The note below is styled in this file because
+   its negative margin against the title is harness chrome, and `--pm-text-muted` is one step
+   quieter than any tone `Text` offers. */
+.sectionNote {
+  margin: calc(-1 * var(--pm-space-3)) 0 0;
+  font-size: var(--pm-text-sm-size);
+  color: var(--pm-text-muted);
+}
+
+.tokenName {
+  font-family: var(--pm-font-mono);
+  font-size: var(--pm-text-xs-size);
+  color: var(--pm-text-secondary);
+}
+
+.tokenValue {
+  font-family: var(--pm-font-mono);
+  font-size: var(--pm-text-xs-size);
+  color: var(--pm-text-muted);
+}
+
+/* Contrast law -------------------------------------------------------------- */
+
+.lawPass,
+.lawFail {
+  margin: 0;
+  font-size: var(--pm-text-sm-size);
+}
+
+.lawPass {
+  color: var(--pm-success-text);
+}
+
+.lawFail {
+  color: var(--pm-danger-text);
+}
+
+/* Ramps --------------------------------------------------------------------- */
+
+.rampRow {
+  display: flex;
+  gap: var(--pm-space-4);
+  align-items: center;
+}
+
+.rampName {
+  flex: 0 0 5rem;
+  font-family: var(--pm-font-mono);
+  font-size: var(--pm-text-xs-size);
+  color: var(--pm-text-secondary);
+}
+
+.ramp {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(12, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-sm);
+}
+
+.rampStep {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 44px;
+}
+
+.rampStepLabel {
+  padding-bottom: 2px;
+  font-family: var(--pm-font-mono);
+  font-size: 9px;
+
+  /* White with `difference` blending inverts against each swatch. It is the only way to keep the
+     label legible on all twelve steps. */
+  color: #fff;
+  mix-blend-mode: difference;
+}
+
+/* Colour swatches ----------------------------------------------------------- */
+
+.swatchGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--pm-space-4);
+}
+
+.swatch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-1);
+}
+
+.chip {
+  height: 56px;
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-md);
+}
+
+.checks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0;
+  margin: var(--pm-space-1) 0 0;
+  list-style: none;
+}
+
+.checkPass,
+.checkFail {
+  font-family: var(--pm-font-mono);
+  font-size: var(--pm-text-xs-size);
+}
+
+.checkPass {
+  color: var(--pm-text-muted);
+}
+
+.checkFail {
+  color: var(--pm-danger-text);
+}
+
+/* Type ---------------------------------------------------------------------- */
+
+.typeRow {
+  display: grid;
+  grid-template-columns: 8rem 1fr auto;
+  gap: var(--pm-space-4);
+  align-items: baseline;
+  padding-bottom: var(--pm-space-3);
+  border-bottom: 1px solid var(--pm-border-subtle);
+}
+
+.typeSpecimen {
+  overflow: hidden;
+  color: var(--pm-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Space --------------------------------------------------------------------- */
+
+.spaceRow {
+  display: grid;
+  grid-template-columns: 6rem 1fr auto;
+  gap: var(--pm-space-4);
+  align-items: center;
+}
+
+.spaceBar {
+  height: 12px;
+  background: var(--pm-accent-bg);
+  border-radius: var(--pm-radius-sm);
+}
+
+/* Wrapping. This row lists a component's required selectors, so its length depends on the data.
+   Five of them are wider than a phone. Without wrapping, the harness itself would add a
+   horizontal scrollbar to every gallery the phone lane captures. */
+.inlineValues {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-5);
+  padding-top: var(--pm-space-3);
+  border-top: 1px solid var(--pm-border-subtle);
+}
+
+/* Specimens ----------------------------------------------------------------- */
+
+.specimenRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-6);
+  align-items: flex-start;
+}
+
+.specimen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+  align-items: flex-start;
+}
+
+.radiusChip,
+.shadowChip,
+.gradientChip,
+.textureChip {
+  width: 72px;
+  height: 72px;
+}
+
+.radiusChip {
+  background: var(--pm-accent-subtle);
+  border: 1px solid var(--pm-accent-bg);
+}
+
+.shadowChip {
+  background: var(--pm-bg-raised);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-md);
+}
+
+/* Gradient and texture specimens. */
+.gradientChip {
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-md);
+}
+
+/* The texture sits on the app background it is designed to blend into, so the visible contrast
+   here is the same comparison the ΔL bound limits. */
+.textureChip {
+  background-color: var(--pm-bg-app);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-md);
+}
+
+.iconChip {
+  display: block;
+  border-style: solid;
+  border-color: var(--pm-text-secondary);
+  border-radius: var(--pm-radius-sm);
+}
+
+.focusTarget {
+  height: var(--pm-control-height-md);
+  padding: 0 var(--pm-space-4);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  color: var(--pm-accent-contrast);
+  cursor: pointer;
+  background: var(--pm-accent-bg);
+  border: none;
+  border-radius: var(--pm-radius-md);
+}
+
+.focusTarget:focus-visible {
+  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline-offset: var(--pm-focus-offset);
+}
+
+/* Motion -------------------------------------------------------------------- */
+
+.valueGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--pm-space-3);
+}
+
+.valueRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-1);
+  padding: var(--pm-space-3);
+  background: var(--pm-bg-subtle);
+  border-radius: var(--pm-radius-sm);
+}

@@ -1,0 +1,137 @@
+/* Plan — `design/components/plan.md`.
+ *
+ * A list of steps with no surface of its own: it takes the surface of the turn,
+ * Card or pane it sits in, because a box inside a reply would be a second box
+ * around the reply's ToolCalls. Each step is a status glyph beside its text.
+ * The glyph colours are ToolCall's, and the words beside the title say the
+ * status, so colour and glyph are never the only mark. A pending or skipped
+ * step is quieter by its text roles alone. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  gap: var(--pm-space-2);
+  align-items: flex-start;
+  min-inline-size: 0;
+}
+
+/* One title line tall, so the glyph stays beside the title's first line however
+   far the title wraps. The line height is a ratio, so it is multiplied by the
+   size, as in Alert. */
+.mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  block-size: calc(var(--pm-text-sm-line-height) * var(--pm-text-sm-size));
+}
+
+/* The glyph fades in when its step's status changes: `toolcall.status`, by
+   reference. The member mounts the glyph again on each change, so the
+   animation plays each time. It animates opacity only, so reduced motion has
+   nothing to remove. A running glyph spins instead, because one element runs
+   one animation. */
+.glyph {
+  display: inline-flex;
+}
+
+.glyph:not(.spinning) {
+  animation: pm-plan-status var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+@keyframes pm-plan-status {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Running: the `loading` glyph on the spin loop, `button.spinner`'s binding
+   composed from the motion module. */
+.spinning {
+  composes: spin from '../conventions/motion.module.css';
+}
+
+/* The text wraps anywhere, so a long title or a path breaks onto the next line
+   and the list never widens its container. */
+.copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.title {
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+}
+
+/* A hint under the title, so it takes the metadata step. */
+.description {
+  margin-block-start: 2px;
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-secondary);
+}
+
+/* The status words after each title, and the status line. */
+.reader {
+  composes: visuallyHidden from '../conventions/a11y.module.css';
+}
+
+.line {
+  composes: visuallyHidden from '../conventions/a11y.module.css';
+}
+
+/* status: the glyph's colour, and the quieter text of a step not yet run or
+   passed over ---------------------------------------------------------------- */
+
+.step[data-status='pending'] .mark {
+  color: var(--pm-text-muted);
+}
+
+.step[data-status='running'] .mark {
+  color: var(--pm-accent-text);
+}
+
+.step[data-status='done'] .mark {
+  color: var(--pm-success-text);
+}
+
+.step[data-status='error'] .mark {
+  color: var(--pm-danger-text);
+}
+
+.step[data-status='skipped'] .mark {
+  color: var(--pm-text-muted);
+}
+
+.step[data-status='pending'] .title,
+.step[data-status='skipped'] .title {
+  color: var(--pm-text-secondary);
+}
+
+.step[data-status='pending'] .description,
+.step[data-status='skipped'] .description {
+  color: var(--pm-text-muted);
+}

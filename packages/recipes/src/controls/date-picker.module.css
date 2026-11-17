@@ -1,0 +1,242 @@
+/* DatePicker — `design/components/date-picker.md`.
+ *
+ * Input's container, holding a row of digit segments instead of a text caret. It is restated
+ * rather than shared, for the same reason as in Select and Combobox: the completeness law checks a
+ * component's own stylesheet source, and `dates.test.tsx` compares what the two resolve to, which
+ * is a stronger guarantee.
+ *
+ * Tabular figures keep the field from shifting as the user arrows through a month. */
+
+.field {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  max-inline-size: 100%;
+  block-size: var(--pm-control-height-md);
+  padding-inline: var(--pm-space-5);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  cursor: text;
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-field);
+  border-radius: var(--pm-radius-control);
+
+  /* The control seat shadow, from Input's recipe, used by every field in the family. */
+  box-shadow: var(--pm-shadow-seat);
+}
+
+/* The row shows the value. The `2px` gap around the separators keeps `12/07/2026` from reading as
+   one number. */
+.segments {
+  display: flex;
+  flex: 1;
+  gap: 2px;
+  align-items: center;
+  min-inline-size: 0;
+  outline: none;
+}
+
+.segment {
+  padding-inline: 2px;
+  color: var(--pm-text-primary);
+  border-radius: var(--pm-radius-sm);
+  outline: none;
+  font-variant-numeric: var(--pm-font-numeric);
+
+  /* A segment is editable text so a phone shows its keyboard, and every change is the field's
+     own, so no caret is drawn in it. */
+  caret-color: transparent;
+}
+
+/* The unfilled placeholder, such as `dd`, `mm`, `yyyy`, localized. */
+.segment[data-placeholder] {
+  color: var(--pm-text-muted);
+}
+
+/* Marks the current position, not a selection. It uses the temporary wash family, the same as a
+   hovered menu row. Only colour changes, because the content around the caret must not move
+   (`stateFeedback` transitions colour and nothing that causes reflow). */
+.segment:focus {
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+}
+
+.separator {
+  color: var(--pm-text-muted);
+}
+
+/* Input's embedded-adornment convention, unchanged. */
+.clear {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback pressable from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-self: stretch;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  padding: 0;
+  color: var(--pm-text-muted);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--pm-radius-sm);
+  animation: date-picker-clear-enter var(--pm-motion-duration-control) var(--pm-motion-easing-enter);
+}
+
+@keyframes date-picker-clear-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+.clear:hover {
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-subtle);
+}
+
+/* sizes — the conventions' size system -------------------------------------- */
+
+.field[data-size='sm'] {
+  gap: var(--pm-space-2);
+  block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-4);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+}
+
+.field[data-size='lg'] {
+  block-size: var(--pm-control-height-lg);
+  padding-inline: var(--pm-space-6);
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+}
+
+/* states -------------------------------------------------------------------- */
+
+.field[data-invalid] {
+  border-color: var(--pm-danger-border);
+}
+
+.field[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-subtle);
+
+  /* The seat shadow signals "ready", so disabled removes it (as in Input). */
+  box-shadow: none;
+}
+
+.field[data-disabled] .segment,
+.field[data-disabled] .separator {
+  color: var(--pm-text-disabled);
+}
+
+/* Open keeps the hover border, and the invalid border stays in both states. */
+.field[data-state='open']:not([data-invalid]) {
+  border-color: var(--pm-border-strong);
+}
+
+.field:hover:not([data-disabled], [data-invalid]) {
+  border-color: var(--pm-border-strong);
+}
+
+/* popup --------------------------------------------------------------------- */
+
+/* Select's panel surface, with no padding of its own, because the Calendar has its own
+   `--pm-space-3` and a second layer of padding would frame the grid twice. */
+.content {
+  /* `overlay` from the stacking scale. The popper moves it onto its wrapper (menu.module.css
+     explains how). */
+  z-index: var(--pm-z-overlay);
+  padding: 0;
+  overflow: hidden;
+  background: var(--pm-bg-overlay);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-surface);
+  box-shadow: var(--pm-shadow-transient);
+  transform-origin: var(--radix-popover-content-transform-origin);
+}
+
+/* The `datepicker.popup` binding: `scale-fade`, surface class, anchored origin. It is Select's
+   binding, because both are panels attached to a field. Radix keeps the node mounted for the
+   closed animation. */
+.content[data-state='open'] {
+  animation: date-picker-content-enter var(--pm-motion-duration-surface)
+    var(--pm-motion-easing-enter);
+}
+
+.content[data-state='closed'] {
+  animation: date-picker-content-exit var(--pm-motion-duration-surface-exit)
+    var(--pm-motion-easing-exit);
+}
+
+@keyframes date-picker-content-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes date-picker-content-exit {
+  to {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+/* The sheet, below 30rem (the conventions' sheet presentation). The panel box is the shared
+   anatomy (`sheet.module.css`). This member's container around the unchanged Calendar keeps the
+   popover's zero inset, because the grid has its own `--pm-space-3`. It is centred in the
+   full-width sheet and scrolls within the sheet's maximum height. The popover alignment rules
+   (bottom-end, `sideOffset`) no longer apply. The safe-area padding follows the sheet: it adds to
+   this member's own (zero) edge padding, so the grid's last row clears the home indicator. */
+.sheetBody {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-block-size: 0;
+  padding-block-end: env(safe-area-inset-bottom, 0);
+  overflow-y: auto;
+}
+
+/* Reduced motion (motion.md): `scale-fade` reduces to the fade it builds on, and keeps its
+   duration. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes date-picker-content-enter {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes date-picker-content-exit {
+    to {
+      opacity: 0;
+    }
+  }
+}
+
+/* Glass (`depth: glass`): the pane uses the surface role at the engine's mix
+   (`--pm-material-surface`). The material provides the separation that the overlay elevation
+   steps provide elsewhere. The backdrop shows through the pane as a blurred, saturated wash, so the
+   surface stands apart by its material rather than by a lighter step. The mix is a contrast
+   decision that the glass law measures over worst-case backdrops. A recipe only applies it. */
+@container style(--pm-axis-depth: glass) {
+  .content {
+    background: var(--pm-material-surface);
+    backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  }
+}

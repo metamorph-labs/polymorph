@@ -1,0 +1,208 @@
+/* Skeleton — `design/components/skeleton.md`.
+ *
+ * The sweep is the motion module's `shimmer`, composed: a token period, inverse
+ * temperament scaling, and three ways to stop (a 0s token, `[data-motion="none"]`,
+ * reduced motion). This file sets the shape, all from tokens, so a skeleton
+ * matches what it replaces. */
+
+.skeleton {
+  composes: shimmer from '../conventions/motion.module.css';
+  background: var(--pm-bg-subtle);
+}
+
+/* shapes -------------------------------------------------------------------- */
+
+.skeleton[data-shape='text'] {
+  border-radius: var(--pm-radius-detail);
+}
+
+.skeleton[data-shape='rect'] {
+  border-radius: var(--pm-radius-md);
+}
+
+.skeleton[data-shape='circle'] {
+  border-radius: var(--pm-radius-pill);
+}
+
+/* text: exactly the line box of the step it replaces, so nothing jumps when the
+   real text arrives ---------------------------------------------------------- */
+
+.skeleton[data-text-step='xs'] {
+  block-size: calc(var(--pm-text-xs-size) * var(--pm-text-xs-line-height));
+}
+
+.skeleton[data-text-step='sm'] {
+  block-size: calc(var(--pm-text-sm-size) * var(--pm-text-sm-line-height));
+}
+
+.skeleton[data-text-step='md'] {
+  block-size: calc(var(--pm-text-md-size) * var(--pm-text-md-line-height));
+}
+
+.skeleton[data-text-step='lg'] {
+  block-size: calc(var(--pm-text-lg-size) * var(--pm-text-lg-line-height));
+}
+
+.skeleton[data-text-step='xl'] {
+  block-size: calc(var(--pm-text-xl-size) * var(--pm-text-xl-line-height));
+}
+
+.skeleton[data-text-step='2xl'] {
+  block-size: calc(var(--pm-text-2xl-size) * var(--pm-text-2xl-line-height));
+}
+
+.skeleton[data-text-step='3xl'] {
+  block-size: calc(var(--pm-text-3xl-size) * var(--pm-text-3xl-line-height));
+}
+
+/* width — a space step, or all of it ---------------------------------------- */
+
+.skeleton[data-width='full'] {
+  inline-size: 100%;
+}
+
+.skeleton[data-width='0'] {
+  inline-size: var(--pm-space-0);
+}
+
+.skeleton[data-width='1'] {
+  inline-size: var(--pm-space-1);
+}
+
+.skeleton[data-width='2'] {
+  inline-size: var(--pm-space-2);
+}
+
+.skeleton[data-width='3'] {
+  inline-size: var(--pm-space-3);
+}
+
+.skeleton[data-width='4'] {
+  inline-size: var(--pm-space-4);
+}
+
+.skeleton[data-width='5'] {
+  inline-size: var(--pm-space-5);
+}
+
+.skeleton[data-width='6'] {
+  inline-size: var(--pm-space-6);
+}
+
+.skeleton[data-width='7'] {
+  inline-size: var(--pm-space-7);
+}
+
+.skeleton[data-width='8'] {
+  inline-size: var(--pm-space-8);
+}
+
+.skeleton[data-width='9'] {
+  inline-size: var(--pm-space-9);
+}
+
+.skeleton[data-width='10'] {
+  inline-size: var(--pm-space-10);
+}
+
+/* size — the block size, and a circle's diameter. Stated after `width` so a
+   circle stays a circle even when both are given -------------------------------- */
+
+.skeleton[data-size='0'] {
+  block-size: var(--pm-space-0);
+}
+
+.skeleton[data-size='1'] {
+  block-size: var(--pm-space-1);
+}
+
+.skeleton[data-size='2'] {
+  block-size: var(--pm-space-2);
+}
+
+.skeleton[data-size='3'] {
+  block-size: var(--pm-space-3);
+}
+
+.skeleton[data-size='4'] {
+  block-size: var(--pm-space-4);
+}
+
+.skeleton[data-size='5'] {
+  block-size: var(--pm-space-5);
+}
+
+.skeleton[data-size='6'] {
+  block-size: var(--pm-space-6);
+}
+
+.skeleton[data-size='7'] {
+  block-size: var(--pm-space-7);
+}
+
+.skeleton[data-size='8'] {
+  block-size: var(--pm-space-8);
+}
+
+.skeleton[data-size='9'] {
+  block-size: var(--pm-space-9);
+}
+
+.skeleton[data-size='10'] {
+  block-size: var(--pm-space-10);
+}
+
+.skeleton[data-shape='circle'][data-size='0'] {
+  inline-size: var(--pm-space-0);
+  block-size: var(--pm-space-0);
+}
+
+.skeleton[data-shape='circle'][data-size='1'] {
+  inline-size: var(--pm-space-1);
+  block-size: var(--pm-space-1);
+}
+
+.skeleton[data-shape='circle'][data-size='2'] {
+  inline-size: var(--pm-space-2);
+  block-size: var(--pm-space-2);
+}
+
+.skeleton[data-shape='circle'][data-size='3'] {
+  inline-size: var(--pm-space-3);
+  block-size: var(--pm-space-3);
+}
+
+.skeleton[data-shape='circle'][data-size='4'] {
+  inline-size: var(--pm-space-4);
+  block-size: var(--pm-space-4);
+}
+
+.skeleton[data-shape='circle'][data-size='5'] {
+  inline-size: var(--pm-space-5);
+  block-size: var(--pm-space-5);
+}
+
+.skeleton[data-shape='circle'][data-size='6'] {
+  inline-size: var(--pm-space-6);
+  block-size: var(--pm-space-6);
+}
+
+.skeleton[data-shape='circle'][data-size='7'] {
+  inline-size: var(--pm-space-7);
+  block-size: var(--pm-space-7);
+}
+
+.skeleton[data-shape='circle'][data-size='8'] {
+  inline-size: var(--pm-space-8);
+  block-size: var(--pm-space-8);
+}
+
+.skeleton[data-shape='circle'][data-size='9'] {
+  inline-size: var(--pm-space-9);
+  block-size: var(--pm-space-9);
+}
+
+.skeleton[data-shape='circle'][data-size='10'] {
+  inline-size: var(--pm-space-10);
+  block-size: var(--pm-space-10);
+}

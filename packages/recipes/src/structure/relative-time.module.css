@@ -1,0 +1,8 @@
+/* RelativeTime — `design/components/relative-time.md`.
+ *
+ * No rules, on purpose: the root inherits the surrounding type step and colour.
+ * Timeline sets its `time` in muted `text.xs` because it owns that column. In a
+ * table cell or a Text block, RelativeTime takes that context's step.
+ *
+ * No motion: the only motion a timestamp could have is updating, which this
+ * member does not do. */

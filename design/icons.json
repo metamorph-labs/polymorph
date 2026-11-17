@@ -1,0 +1,593 @@
+{
+  "set": "lucide",
+  "roles": {
+    "add": {
+      "glyph": "plus",
+      "group": "action",
+      "ios": "plus",
+      "android": "add"
+    },
+    "remove": {
+      "glyph": "minus",
+      "group": "action",
+      "ios": "minus",
+      "android": "remove"
+    },
+    "delete": {
+      "glyph": "trash-2",
+      "group": "action",
+      "ios": "trash",
+      "android": "delete"
+    },
+    "edit": {
+      "glyph": "pencil",
+      "group": "action",
+      "ios": "pencil",
+      "android": "edit"
+    },
+    "duplicate": {
+      "glyph": "copy",
+      "group": "action",
+      "ios": "plus.square.on.square",
+      "android": "library_add"
+    },
+    "copy": {
+      "glyph": "clipboard-copy",
+      "group": "action",
+      "ios": "doc.on.clipboard",
+      "android": "content_copy"
+    },
+    "search": {
+      "glyph": "search",
+      "group": "action",
+      "ios": "magnifyingglass",
+      "android": "search"
+    },
+    "filter": {
+      "glyph": "funnel",
+      "group": "action",
+      "ios": "line.3.horizontal.decrease",
+      "android": "filter_list"
+    },
+    "sort": {
+      "glyph": "arrow-up-down",
+      "group": "action",
+      "ios": "arrow.up.arrow.down",
+      "android": "sort"
+    },
+    "sort-asc": {
+      "glyph": "arrow-up-narrow-wide",
+      "group": "action",
+      "ios": "arrow.up.to.line.compact",
+      "android": "arrow_upward"
+    },
+    "sort-desc": {
+      "glyph": "arrow-down-wide-narrow",
+      "group": "action",
+      "ios": "arrow.down.to.line.compact",
+      "android": "arrow_downward"
+    },
+    "refresh": {
+      "glyph": "rotate-cw",
+      "group": "action",
+      "ios": "arrow.clockwise",
+      "android": "refresh"
+    },
+    "rotate": {
+      "glyph": "rotate-cw",
+      "group": "action",
+      "ios": "arrow.clockwise",
+      "android": "rotate_90_degrees_cw"
+    },
+    "flip": {
+      "glyph": "flip-horizontal-2",
+      "group": "action",
+      "ios": "arrow.left.and.right.righttriangle.left.righttriangle.right",
+      "android": "flip"
+    },
+    "download": {
+      "glyph": "download",
+      "group": "action",
+      "ios": "arrow.down.to.line",
+      "android": "download"
+    },
+    "upload": {
+      "glyph": "upload",
+      "group": "action",
+      "ios": "arrow.up.to.line",
+      "android": "upload"
+    },
+    "share": {
+      "glyph": "share-2",
+      "group": "action",
+      "ios": "square.and.arrow.up",
+      "android": "share"
+    },
+    "open-external": {
+      "glyph": "external-link",
+      "group": "action",
+      "ios": "arrow.up.right.square",
+      "android": "open_in_new"
+    },
+    "settings": {
+      "glyph": "settings",
+      "group": "action",
+      "ios": "gearshape",
+      "android": "settings"
+    },
+    "overflow": {
+      "glyph": "ellipsis",
+      "group": "action",
+      "ios": "ellipsis",
+      "android": "more_vert"
+    },
+    "link": {
+      "glyph": "link",
+      "group": "action",
+      "ios": "link",
+      "android": "link"
+    },
+    "back": {
+      "glyph": "arrow-left",
+      "group": "navigation",
+      "ios": "arrow.left",
+      "android": "arrow_back"
+    },
+    "forward": {
+      "glyph": "arrow-right",
+      "group": "navigation",
+      "ios": "arrow.right",
+      "android": "arrow_forward"
+    },
+    "up": {
+      "glyph": "arrow-up",
+      "group": "navigation",
+      "ios": "arrow.up",
+      "android": "arrow_upward"
+    },
+    "down": {
+      "glyph": "arrow-down",
+      "group": "navigation",
+      "ios": "arrow.down",
+      "android": "arrow_downward"
+    },
+    "previous": {
+      "glyph": "chevron-left",
+      "group": "navigation",
+      "ios": "chevron.left",
+      "android": "navigate_before"
+    },
+    "next": {
+      "glyph": "chevron-right",
+      "group": "navigation",
+      "ios": "chevron.right",
+      "android": "navigate_next"
+    },
+    "expand": {
+      "glyph": "chevron-down",
+      "group": "navigation",
+      "ios": "chevron.down",
+      "android": "expand_more"
+    },
+    "collapse": {
+      "glyph": "chevron-up",
+      "group": "navigation",
+      "ios": "chevron.up",
+      "android": "expand_less"
+    },
+    "home": {
+      "glyph": "house",
+      "group": "navigation",
+      "ios": "house",
+      "android": "home"
+    },
+    "menu": {
+      "glyph": "menu",
+      "group": "navigation",
+      "ios": "line.3.horizontal",
+      "android": "menu"
+    },
+    "close": {
+      "glyph": "x",
+      "group": "navigation",
+      "ios": "xmark",
+      "android": "close"
+    },
+    "info": {
+      "glyph": "info",
+      "group": "status",
+      "ios": "info.circle",
+      "android": "info"
+    },
+    "success": {
+      "glyph": "circle-check",
+      "group": "status",
+      "ios": "checkmark.circle",
+      "android": "check_circle"
+    },
+    "warning": {
+      "glyph": "triangle-alert",
+      "group": "status",
+      "ios": "exclamationmark.triangle",
+      "android": "warning"
+    },
+    "error": {
+      "glyph": "circle-alert",
+      "group": "status",
+      "ios": "exclamationmark.circle",
+      "android": "error"
+    },
+    "help": {
+      "glyph": "circle-question-mark",
+      "group": "status",
+      "ios": "questionmark.circle",
+      "android": "help"
+    },
+    "loading": {
+      "glyph": "loader-circle",
+      "group": "status",
+      "ios": "arrow.triangle.2.circlepath",
+      "android": "autorenew"
+    },
+    "locked": {
+      "glyph": "lock",
+      "group": "status",
+      "ios": "lock",
+      "android": "lock"
+    },
+    "unlocked": {
+      "glyph": "lock-open",
+      "group": "status",
+      "ios": "lock.open",
+      "android": "lock_open"
+    },
+    "visible": {
+      "glyph": "eye",
+      "group": "status",
+      "ios": "eye",
+      "android": "visibility"
+    },
+    "hidden": {
+      "glyph": "eye-off",
+      "group": "status",
+      "ios": "eye.slash",
+      "android": "visibility_off"
+    },
+    "favorite": {
+      "glyph": "star",
+      "group": "status",
+      "ios": "star",
+      "android": "star"
+    },
+    "pinned": {
+      "glyph": "pin",
+      "group": "status",
+      "ios": "pin",
+      "android": "push_pin"
+    },
+    "notification": {
+      "glyph": "bell",
+      "group": "status",
+      "ios": "bell",
+      "android": "notifications"
+    },
+    "user": {
+      "glyph": "user",
+      "group": "object",
+      "ios": "person",
+      "android": "person"
+    },
+    "team": {
+      "glyph": "users",
+      "group": "object",
+      "ios": "person.2",
+      "android": "group"
+    },
+    "calendar": {
+      "glyph": "calendar",
+      "group": "object",
+      "ios": "calendar",
+      "android": "calendar_today"
+    },
+    "time": {
+      "glyph": "clock",
+      "group": "object",
+      "ios": "clock",
+      "android": "schedule"
+    },
+    "document": {
+      "glyph": "file-text",
+      "group": "object",
+      "ios": "doc.text",
+      "android": "description"
+    },
+    "table": {
+      "glyph": "table",
+      "group": "object",
+      "ios": "tablecells",
+      "android": "table_chart"
+    },
+    "folder": {
+      "glyph": "folder",
+      "group": "object",
+      "ios": "folder",
+      "android": "folder"
+    },
+    "tag": {
+      "glyph": "tag",
+      "group": "object",
+      "ios": "tag",
+      "android": "sell"
+    },
+    "inbox": {
+      "glyph": "inbox",
+      "group": "object",
+      "ios": "tray",
+      "android": "inbox"
+    },
+    "archive": {
+      "glyph": "archive",
+      "group": "object",
+      "ios": "archivebox",
+      "android": "archive"
+    },
+    "comment": {
+      "glyph": "message-square",
+      "group": "object",
+      "ios": "message",
+      "android": "comment"
+    },
+    "confirm": {
+      "glyph": "check",
+      "group": "form",
+      "ios": "checkmark",
+      "android": "check"
+    },
+    "indeterminate": {
+      "glyph": "minus",
+      "group": "form",
+      "ios": "minus",
+      "android": "remove"
+    },
+    "clear": {
+      "glyph": "x",
+      "group": "form",
+      "ios": "xmark",
+      "android": "clear"
+    },
+    "drag": {
+      "glyph": "grip-vertical",
+      "group": "form",
+      "ios": "line.3.horizontal",
+      "android": "drag_indicator"
+    },
+    "mode-light": {
+      "glyph": "sun",
+      "group": "form",
+      "ios": "sun.max",
+      "android": "light_mode"
+    },
+    "mode-dark": {
+      "glyph": "moon",
+      "group": "form",
+      "ios": "moon",
+      "android": "dark_mode"
+    },
+    "mode-system": {
+      "glyph": "monitor",
+      "group": "form",
+      "ios": "display",
+      "android": "contrast"
+    },
+    "rating": {
+      "glyph": "star",
+      "group": "form",
+      "ios": "star",
+      "android": "star_border"
+    },
+    "run": {
+      "glyph": "play",
+      "group": "action",
+      "ios": "play",
+      "android": "play_arrow"
+    },
+    "pause": {
+      "glyph": "pause",
+      "group": "action",
+      "ios": "pause",
+      "android": "pause"
+    },
+    "undo": {
+      "glyph": "undo-2",
+      "group": "action",
+      "ios": "arrow.uturn.backward",
+      "android": "undo"
+    },
+    "connect": {
+      "glyph": "plug",
+      "group": "action",
+      "ios": "powerplug",
+      "android": "power"
+    },
+    "egress": {
+      "glyph": "arrow-up-right",
+      "group": "status",
+      "ios": "arrow.up.right",
+      "android": "north_east"
+    },
+    "denied": {
+      "glyph": "ban",
+      "group": "status",
+      "ios": "nosign",
+      "android": "block"
+    },
+    "local": {
+      "glyph": "cpu",
+      "group": "status",
+      "ios": "cpu",
+      "android": "memory"
+    },
+    "mail": {
+      "glyph": "mail",
+      "group": "object",
+      "ios": "envelope",
+      "android": "mail"
+    },
+    "device": {
+      "glyph": "laptop",
+      "group": "object",
+      "ios": "laptopcomputer",
+      "android": "laptop"
+    },
+    "model": {
+      "glyph": "sparkles",
+      "group": "object",
+      "ios": "sparkles",
+      "android": "auto_awesome"
+    },
+    "terminal": {
+      "glyph": "square-terminal",
+      "group": "object",
+      "ios": "terminal",
+      "android": "terminal"
+    },
+    "key": {
+      "glyph": "key-round",
+      "group": "object",
+      "ios": "key",
+      "android": "key"
+    },
+    "network": {
+      "glyph": "globe",
+      "group": "object",
+      "ios": "globe",
+      "android": "language"
+    },
+    "cloud": {
+      "glyph": "cloud",
+      "group": "object",
+      "ios": "cloud",
+      "android": "cloud"
+    },
+    "tool": {
+      "glyph": "blocks",
+      "group": "object",
+      "ios": "square.stack.3d.up",
+      "android": "widgets"
+    },
+    "ledger": {
+      "glyph": "scroll-text",
+      "group": "object",
+      "ios": "scroll",
+      "android": "receipt_long"
+    },
+    "droplet": {
+      "glyph": "droplet",
+      "group": "object",
+      "ios": "drop",
+      "android": "water_drop"
+    },
+    "briefing": {
+      "glyph": "sunrise",
+      "group": "object",
+      "ios": "sunrise",
+      "android": "wb_twilight"
+    },
+    "kernel": {
+      "glyph": "shield-check",
+      "group": "object",
+      "ios": "checkmark.shield",
+      "android": "verified_user"
+    },
+    "diff": {
+      "glyph": "git-compare",
+      "group": "object",
+      "ios": "arrow.left.arrow.right",
+      "android": "compare_arrows"
+    },
+    "browser": {
+      "glyph": "app-window",
+      "group": "object",
+      "ios": "macwindow",
+      "android": "web_asset"
+    },
+    "delivery": {
+      "glyph": "truck",
+      "group": "object",
+      "ios": "truck.box",
+      "android": "local_shipping"
+    },
+    "click": {
+      "glyph": "mouse-pointer-click",
+      "group": "action",
+      "ios": "cursorarrow.click",
+      "android": "ads_click"
+    },
+    "watch": {
+      "glyph": "binoculars",
+      "group": "status",
+      "ios": "binoculars",
+      "android": "track_changes"
+    },
+    "signin": {
+      "glyph": "scan-face",
+      "group": "status",
+      "ios": "faceid",
+      "android": "fingerprint"
+    },
+    "send": {
+      "glyph": "send-horizontal",
+      "group": "action",
+      "ios": "paperplane",
+      "android": "send"
+    },
+    "stop": {
+      "glyph": "square",
+      "group": "action",
+      "ios": "stop",
+      "android": "stop"
+    },
+    "attach": {
+      "glyph": "paperclip",
+      "group": "action",
+      "ios": "paperclip",
+      "android": "attach_file"
+    },
+    "record": {
+      "glyph": "mic",
+      "group": "action",
+      "ios": "mic",
+      "android": "mic"
+    },
+    "helpful": {
+      "glyph": "thumbs-up",
+      "group": "action",
+      "ios": "hand.thumbsup",
+      "android": "thumb_up"
+    },
+    "unhelpful": {
+      "glyph": "thumbs-down",
+      "group": "action",
+      "ios": "hand.thumbsdown",
+      "android": "thumb_down"
+    },
+    "reasoning": {
+      "glyph": "brain",
+      "group": "object",
+      "ios": "brain",
+      "android": "psychology"
+    },
+    "cite": {
+      "glyph": "quote",
+      "group": "object",
+      "ios": "quote.opening",
+      "android": "format_quote"
+    },
+    "artifact": {
+      "glyph": "panel-right",
+      "group": "object",
+      "ios": "sidebar.right",
+      "android": "view_sidebar"
+    }
+  }
+}

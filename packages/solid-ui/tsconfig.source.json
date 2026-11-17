@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // The source a consumer's Solid compiles (the `solid` export condition): TypeScript removed,
+    // JSX kept, so the consumer's compiler writes it for the browser, a server or hydration.
+    "noEmit": false,
+    "declaration": false,
+    "rootDir": "src",
+    "outDir": "dist/source",
+    "incremental": false,
+    "tsBuildInfoFile": null
+  },
+  // The laws, the fixtures, the galleries and the mount helper are test tooling, not the
+  // published surface.
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.states.tsx",
+    "src/test-setup.ts",
+    "src/mount.ts",
+    "src/galleries.ts",
+    "src/conformance/**"
+  ]
+}

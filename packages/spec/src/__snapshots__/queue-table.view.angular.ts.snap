@@ -1,0 +1,46 @@
+/**
+ * A probe: a table drawn from its parts.
+ *
+ * Emitted from a screen spec (`polymorph-screen/1`). Composition and bindings only:
+ * this file holds no state, computes nothing, and expresses no style — the
+ * container that renders it owns all three.
+ */
+import { Component, input } from '@angular/core'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@polymorph/angular-ui'
+
+export interface QueueTableProps {
+  subject: string
+  onOpen: () => void
+}
+
+@Component({
+  selector: 'app-queue-table',
+  imports: [Table, TableBody, TableCell, TableHead, TableHeader, TableRow],
+  template: `
+    <pm-table label="Tickets">
+      <thead pmTableHead>
+        <tr pmTableRow>
+          <th pmTableHeader>Ticket</th>
+          <th pmTableHeader [numeric]="true">Replies</th>
+        </tr>
+      </thead>
+      <tbody pmTableBody>
+        <tr pmTableRow [interactive]="true" (click)="onOpen()()">
+          <td pmTableCell>{{ subject() }}</td>
+          <td pmTableCell [numeric]="true">4</td>
+        </tr>
+      </tbody>
+    </pm-table>
+  `,
+})
+export class QueueTable {
+  readonly subject = input.required<QueueTableProps['subject']>()
+  readonly onOpen = input.required<QueueTableProps['onOpen']>()
+}

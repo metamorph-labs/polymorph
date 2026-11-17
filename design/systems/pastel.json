@@ -1,0 +1,28 @@
+{
+  "name": "pastel",
+  "register": "The crafted default. Lavender-tinted neutrals, lit fills that read as pressable objects, a violet weather in the empty spaces.",
+  "axes": {
+    "geometry": "soft",
+    "depth": "elevated",
+    "density": "standard",
+    "contrastTemperament": "standard",
+    "typePersonality": "humanist",
+    "colorStrategy": "tinted",
+    "motionTemperament": "standard",
+    "ornament": "minimal"
+  },
+  "fonts": {
+    "body": {
+      "family": "Plus Jakarta Sans Variable"
+    },
+    "display": {
+      "family": "Plus Jakarta Sans Variable"
+    },
+    "mono": {
+      "family": "Fira Code Variable"
+    }
+  },
+  "defaultPalette": "amethyst",
+  "defaultMode": "light",
+  "kind": "designed"
+}

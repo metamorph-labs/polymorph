@@ -1,0 +1,77 @@
+/* CopyButton — `design/components/copy-button.md`.
+ *
+ * Button `ghost`/`neutral` by reference, never re-derived. `composes` brings the base, the
+ * conventions' sizing, the icon-only square, the ghost/neutral rest, hover, press and disabled
+ * cells, the press feedback and the focus ring. This follows Link's precedent, because this
+ * element must also carry `data-state="copied"`, a state Button's own API has no reason to offer.
+ * This file adds only the confirmation. */
+
+.button {
+  composes: button from './button.module.css';
+}
+
+/* Both glyphs share one grid cell so the confirmation can fade out. An unmounting node cannot
+   animate its exit (the `input.clear` binding's reasoning), so neither glyph unmounts and the
+   state chooses which one shows. The stack is `aria-hidden`, because it adds no meaning beyond the
+   label. */
+.glyphs {
+  display: inline-grid;
+}
+
+.copyGlyph {
+  display: inline-flex;
+  grid-area: 1 / 1;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The confirmation: `confirm` in success text, which the pairing checks allow on every `bg.*`
+   surface. At rest it has opacity 0 with the exit transition set, so when `copied` reverts the
+   glyph fades out at `control-exit`. This is the exit half of `checkbox.indicator`'s binding,
+   where a pop has no reverse. */
+.confirmGlyph {
+  display: inline-flex;
+  grid-area: 1 / 1;
+  align-items: center;
+  justify-content: center;
+  color: var(--pm-success-text);
+  opacity: 0;
+  transition: opacity var(--pm-motion-duration-control-exit) var(--pm-motion-easing-exit);
+}
+
+/* The copy glyph hides instantly as the confirmation pops in, and returns the same way. Only the
+   confirmation animates. */
+.button[data-state='copied'] .copyGlyph {
+  opacity: 0;
+}
+
+/* The same entrance as `checkbox.indicator`: `spring-pop` run as the 0.5 scale on the enter curve,
+   as in Checkbox's CSS. The transition is turned off while the state holds, so only the pop
+   animates the entrance. */
+.button[data-state='copied'] .confirmGlyph {
+  opacity: 1;
+  transition: none;
+  animation: copy-button-pop var(--pm-motion-duration-control) var(--pm-motion-easing-enter);
+}
+
+@keyframes copy-button-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+/* Reduced motion (motion.md): spring-pop becomes a fade. The 2000ms hold is a timer, not a motion,
+   and does not scale with temperament. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes copy-button-pop {
+    from {
+      opacity: 0;
+    }
+  }
+}
+
+/* The status region: content for assistive technology, outside the layout. */
+.status {
+  composes: visuallyHidden from '../conventions/a11y.module.css';
+}

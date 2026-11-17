@@ -1,0 +1,155 @@
+// Emitted from a screen spec (`polymorph-screen/1`): `SettingsScreen`, for Android. The screen is
+// the spec's tree and nothing more: it holds no state, launches nothing and navigates nowhere. The
+// app renders it from a store that owns the model, its coroutines and its router, and implements
+// the actions (`design/native/screen-contract.md`).
+
+import androidx.compose.runtime.Composable
+import dev.polymorph.ui.PMCheckbox
+import dev.polymorph.ui.PMCheckedState
+import dev.polymorph.ui.PMLoadStatus
+import dev.polymorph.ui.PMSelect
+import dev.polymorph.ui.PMSelectOptionEntry
+import dev.polymorph.ui.PMSettingsPage
+import dev.polymorph.ui.PMSettingsRow
+import dev.polymorph.ui.PMSettingsRowGroup
+import dev.polymorph.ui.PMSome
+import dev.polymorph.ui.PMSwitch
+
+/** What `SettingsScreen` shows. `loadStatus` says which of the four load states it is in. */
+data class SettingsModel(
+    val loadStatus: PMLoadStatus,
+    /** The system currently worn. */
+    val system: String?,
+    /** The palette painting it. */
+    val palette: String?,
+    /** The stored preference, which may be `system`. */
+    val mode: String,
+    val density: String?,
+    val motion: String,
+    val systemOptions: List<PMSelectOptionEntry>,
+    val paletteOptions: List<PMSelectOptionEntry>,
+    val modeOptions: List<PMSelectOptionEntry>,
+    val densityOptions: List<PMSelectOptionEntry>,
+    val motionOptions: List<PMSelectOptionEntry>,
+    val digest: Boolean,
+    val signature: PMCheckedState,
+) {
+    /**
+     * The app extends it with values of its own: `SettingsModel.placeholder`, the model before
+     * anything loads.
+     */
+    companion object
+}
+
+/** The code the app supplies to `SettingsScreen`, one function per action. */
+interface SettingsActions {
+    fun onSystemChange(value: String?)
+    fun onPaletteChange(value: String?)
+    fun onModeChange(value: String?)
+    fun onDensityChange(value: String?)
+    fun onMotionChange(value: String?)
+    fun onDigestChange(next: Boolean)
+    fun onSignatureChange(next: PMCheckedState)
+}
+
+/** Relay's settings screen — appearance and notifications, as two labelled groups. */
+@Composable
+fun SettingsScreen(model: SettingsModel, actions: SettingsActions) {
+    PMSettingsPage(
+        loadStatus = model.loadStatus,
+        description = "Appearance applies to every screen in Relay the moment it changes.",
+        title = "Settings",
+    ) {
+        PMSettingsRowGroup(title = "Appearance") {
+            PMSettingsRow(
+                control = {
+                    PMSelect(
+                        onChange = actions::onSystemChange,
+                        options = model.systemOptions,
+                        value = PMSome(model.system),
+                    )
+                },
+                description = "Type, shape and spacing — how the product is built.",
+                label = "System",
+            )
+            PMSettingsRow(
+                control = {
+                    PMSelect(
+                        onChange = actions::onPaletteChange,
+                        options = model.paletteOptions,
+                        value = PMSome(model.palette),
+                    )
+                },
+                description = "The colour it is painted with. Any palette, any system.",
+                label = "Palette",
+            )
+            PMSettingsRow(
+                control = {
+                    PMSelect(
+                        onChange = actions::onModeChange,
+                        options = model.modeOptions,
+                        value = PMSome(model.mode),
+                    )
+                },
+                description = "Follow the operating system, or pin one.",
+                label = "Mode",
+            )
+            PMSettingsRow(
+                control = {
+                    PMSelect(
+                        emptyOption = "theme default",
+                        onChange = actions::onDensityChange,
+                        options = model.densityOptions,
+                        value = PMSome(model.density),
+                    )
+                },
+                description = "Space and control sizes. Never the type scale.",
+                label = "Density",
+            )
+            PMSettingsRow(
+                control = {
+                    PMSelect(
+                        onChange = actions::onMotionChange,
+                        options = model.motionOptions,
+                        value = PMSome(model.motion),
+                    )
+                },
+                description = "How much the interface moves. None is a full stop, not a slower version.",
+                label = "Motion",
+            )
+        }
+        PMSettingsRowGroup(title = "Notifications") {
+            PMSettingsRow(
+                control = {
+                    PMSwitch(checked = model.digest, onCheckedChange = actions::onDigestChange)
+                },
+                description = "One summary each morning instead of a notification per reply.",
+                label = "Daily digest",
+            )
+            PMSettingsRow(
+                control = {
+                    PMCheckbox(
+                        checked = model.signature,
+                        onCheckedChange = actions::onSignatureChange,
+                    )
+                },
+                description = "Added to the end of every reply you send.",
+                label = "Append my signature",
+            )
+        }
+    }
+}
+
+/**
+ * Every action doing nothing, so an app compiles against the screen before it wires its store. An
+ * action that answers returns the empty value of its result.
+ */
+object SettingsInert : SettingsActions {
+    override fun onSystemChange(value: String?) {}
+    override fun onPaletteChange(value: String?) {}
+    override fun onModeChange(value: String?) {}
+    override fun onDensityChange(value: String?) {}
+    override fun onMotionChange(value: String?) {}
+    override fun onDigestChange(next: Boolean) {}
+    override fun onSignatureChange(next: PMCheckedState) {}
+}

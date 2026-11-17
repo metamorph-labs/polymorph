@@ -1,0 +1,143 @@
+/* Menubar — `design/components/menubar.md`.
+ *
+ * The bar and its titles are this file's own. Each open menu is Menu's panel
+ * and Menu's rows: every class below the bar composes its class from Menu's
+ * recipe instead of copying it, as SplitButton's halves compose Button's. So a
+ * menu opened from a title and a menu opened from an overflow Button are one
+ * design, with no copy to drift. Menu's recipe also plays the panel's motion,
+ * its row cascade and their reduced-motion projection. */
+
+/* How far a focused title draws outside its box: the ring's offset and width,
+   or `--pm-space-1` where that is more. The bar scrolls, and a scroll container
+   clips at its padding edge, so the bar is larger than its titles by this
+   much. */
+.bar {
+  --pm-menubar-reach: max(calc(var(--pm-focus-offset) + var(--pm-focus-width)), var(--pm-space-1));
+
+  display: flex;
+  gap: var(--pm-space-1);
+  align-items: center;
+
+  /* A bar that is a flex or grid item may be narrower than its titles. It then
+     scrolls inside its own box instead of widening the track or the page. */
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  padding: var(--pm-menubar-reach);
+
+  /* The negative margins keep the titles where they would be without the
+     padding. The inline end takes none: a box that passes its container's end
+     edge lets the page scroll sideways. */
+  margin-block: calc(var(--pm-menubar-reach) * -1);
+  margin-inline-start: calc(var(--pm-menubar-reach) * -1);
+  overflow: auto hidden;
+
+  /* A thin scrollbar shows that a row longer than its box scrolls. Its thumb is
+     the ramp's strongest step, as ScrollArea's is. */
+  scrollbar-color: var(--pm-border-strong) transparent;
+  scrollbar-width: thin;
+}
+
+/* A title: one label on a quiet control, Menu's row height and type. */
+.title {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  block-size: var(--pm-control-height-sm);
+  padding-block: 0;
+  padding-inline: var(--pm-space-3);
+  margin: 0;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  white-space: nowrap;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--pm-radius-sm);
+}
+
+/* states -------------------------------------------------------------------- */
+
+.title:disabled {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+}
+
+/* Under the pointer a title takes the ghost Button's wash. */
+.title:not(:disabled):hover {
+  background: var(--pm-bg-subtle);
+}
+
+/* The system's unfilled hover choice, as Button reads it: a system may give a
+   quiet control no wash under the pointer. The open rule below comes after
+   it, so an open title keeps its wash. */
+@container style(--pm-hover-unfilled: none) {
+  .title:not(:disabled):hover {
+    background: transparent;
+  }
+}
+
+/* The title whose menu is open takes Menu's highlighted row: it is the row of
+   the bar the open menu belongs to. */
+.title[data-state='open'] {
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+}
+
+/* the open menu — Menu's recipe, composed ----------------------------------- */
+
+.content {
+  composes: content from './menu.module.css';
+}
+
+.item {
+  composes: item from './menu.module.css';
+}
+
+.checkbox {
+  composes: checkbox from './menu.module.css';
+}
+
+.check {
+  composes: check from './menu.module.css';
+}
+
+.glyph {
+  composes: glyph from './menu.module.css';
+}
+
+.label {
+  composes: label from './menu.module.css';
+}
+
+.hint {
+  composes: hint from './menu.module.css';
+}
+
+.separator {
+  composes: separator from './menu.module.css';
+}
+
+.groupLabel {
+  composes: groupLabel from './menu.module.css';
+}
+
+/* the phone form ------------------------------------------------------------ */
+
+/* Below the sheet presentation's threshold the bar is one Menu behind one
+   Button. This box holds that Button and has no box of its own. */
+.collapsed {
+  display: contents;
+}
+
+/* The box the narrow-container fixture puts a long row in, as Tabs' fixture
+   does: narrower than the row, so the row scrolls inside it. */
+.harness {
+  inline-size: calc(var(--pm-space-10) * 3);
+  max-inline-size: 100%;
+}

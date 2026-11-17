@@ -1,0 +1,93 @@
+/* AttachmentChip — `design/components/attachment-chip.md`.
+ *
+ * FileUpload's row recipe at chip scale: the same hairline edge, the control
+ * radius (because the chip holds the remove button), and the same
+ * `data-status` values. Name and meta sit in one column so the chip stays one
+ * line tall regardless of the name. */
+
+.chip {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  gap: var(--pm-space-2);
+  align-items: center;
+  max-inline-size: 100%;
+  min-block-size: var(--pm-control-height-sm);
+  padding: var(--pm-space-1) var(--pm-space-2) var(--pm-space-1) var(--pm-space-3);
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-control);
+}
+
+/* Without a remove button, the chip ends with its own padding instead of
+   leaving room for the missing button. */
+.chip:not(:has(button)) {
+  padding-inline-end: var(--pm-space-3);
+}
+
+.mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--pm-text-muted);
+}
+
+.body {
+  display: inline-flex;
+  flex: 1;
+  gap: var(--pm-space-2);
+  align-items: baseline;
+  min-inline-size: 0;
+}
+
+/* `min-inline-size: 0` lets the name truncate instead of pushing the remove
+   button off the chip, as in FileUpload. */
+.name {
+  min-inline-size: 0;
+  overflow: hidden;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  flex: none;
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+}
+
+/* The app's failure text in the danger colour, as in FileUpload's message cell. */
+.message {
+  flex: none;
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-danger-text);
+}
+
+/* states ------------------------------------------------------------------- */
+
+/* The whole chip shows the failure, as FileUpload's row does. The message says
+   what happened, and the border makes the chip easy to find in a row of six. */
+.chip[data-status='error'] {
+  border-color: var(--pm-danger-border);
+}
+
+.chip[data-status='error'] .mark {
+  color: var(--pm-danger-text);
+}
+
+/* While uploading, the name is dimmed because the file cannot be sent yet. */
+.chip[data-status='uploading'] .name {
+  color: var(--pm-text-secondary);
+}

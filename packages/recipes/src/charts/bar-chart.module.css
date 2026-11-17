@@ -1,0 +1,174 @@
+/* BarChart — `design/components/bar-chart.md`.
+ *
+ * `--pm-chart-mark` holds the series' paint. Its value is always another custom
+ * property (`var(--pm-chart-3)`), never a colour, so a palette change repaints
+ * every bar without this file knowing the palette. Its default is the
+ * de-emphasis grey, because an unresolvable custom property invalidates its
+ * whole declaration and an unpainted bar would not be drawn. */
+
+.surface {
+  composes: plotSurface from './frame/chart-frame.module.css';
+}
+
+/* The legend is composed, not restated. The isolate keys' recipe (the hollow
+   `[aria-pressed='false']` swatch) lives in the legend's sheet. Composing its
+   base class here adds that sheet to this member's closure, where the selectors
+   law reads it (see the note in `bar-chart.md`). */
+.legend {
+  composes: legend from './frame/chart-legend.module.css';
+}
+
+.marks {
+  display: block;
+
+  --pm-chart-mark: var(--pm-chart-other);
+
+  /* The zero line's position in the plot, set inline by the component because it
+     is geometry, not a design value, like Progress's `scaleX`. The default is
+     the plot's floor, where zero sits on every chart with no negative values. */
+  --pm-chart-zero: 100%;
+}
+
+/* Hairlines on the value axis only: horizontal when the bars are vertical, and
+   vertical when they are horizontal. The reference library turns the other
+   direction off per example; here it is never drawn. */
+.grid path {
+  fill: none;
+  stroke: var(--pm-chart-grid);
+  stroke-width: 1;
+}
+
+.bar {
+  fill: var(--pm-chart-mark);
+
+  /* No stroke. A border adds heavy ink that is not data, and makes a dense
+     chart look like a fence. Touching marks are separated by the 2px gap the
+     layout leaves. */
+  stroke: none;
+}
+
+/* The only axis stroke. */
+.zero {
+  fill: none;
+  stroke: var(--pm-chart-axis);
+  stroke-width: 1;
+}
+
+/* The target line is drawn by the shared annotation layer. `baseline` is
+   shorthand for a `line` annotation, and its rule, dash and label recipes live
+   in `frame/chart-annotations.module.css`, which every member uses for
+   reference lines. */
+
+/* A line over the bars (`lines`): LineChart's stroke and its marker, so a line
+   reads the same on both members. The 2px surface ring keeps a point legible
+   where it sits on a bar of its own colour. */
+.line {
+  fill: none;
+  stroke: var(--pm-chart-mark);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.point {
+  fill: var(--pm-chart-mark);
+  stroke: var(--pm-bg-surface);
+  stroke-width: 2;
+}
+
+.point[data-active] {
+  stroke-width: 3;
+}
+
+/* A line enters by opacity only, as LineChart's strokes do: it does not grow
+   with the bars, because a line's position is its value at every point. */
+.lines g {
+  animation: chart-lines-enter var(--pm-motion-duration-surface) var(--pm-motion-easing-enter)
+    backwards;
+}
+
+@keyframes chart-lines-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The invisible pointer target. The painted mark is often thinner than the 24px
+   minimum, so the band takes the hit instead of a tiny target. */
+.hit {
+  fill: transparent;
+}
+
+/* Transient emphasis: the band under the reading position keeps full opacity
+   and everything else fades back. The colours do not change, so each series
+   stays recognisable while the reader moves along the axis. */
+.marks[data-reading] .bands g:not([data-active]) .bar {
+  opacity: 0.8;
+  transition: opacity var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+/* The `chart.marks` binding: bars grow **from the zero line**, staggered band by
+   band with the shared stagger.
+ *
+ * The entrance animates a transform, not the height, because the height is
+ * data (as with Progress's inline transform). The origin is the zero rule, not
+ * the mark's own edge, so a negative bar grows downward and a positive one
+ * upward from the same line. `transform-box: view-box` puts the origin in plot
+ * coordinates; each group's own bounding box would give every band a different
+ * origin.
+ *
+ * Scoped to the band layer, as the area chart scopes its stagger. The grid and
+ * the target rule are `g` elements too, and a rise on `.marks g` would scale
+ * them out of the zero line with the marks. The frame's own fade covers them. */
+.bands g {
+  transform-box: view-box;
+  transform-origin: center var(--pm-chart-zero);
+  animation: chart-bars-rise var(--pm-motion-duration-surface) var(--pm-motion-easing-enter)
+    backwards;
+}
+
+.bands g:nth-child(2) {
+  animation-delay: var(--pm-motion-stagger-step);
+}
+
+.bands g:nth-child(3) {
+  animation-delay: calc(var(--pm-motion-stagger-step) * 2);
+}
+
+/* `n + 4`, not `4`: the stagger is **capped and later bands share its last
+   step** (the stagger primitive in motion.md). With `4` alone, band five would
+   get no delay, and a dense chart would enter back to front. */
+.bands g:nth-child(n + 4) {
+  animation-delay: calc(var(--pm-motion-stagger-step) * 3);
+}
+
+.marks[data-orientation='horizontal'] .bands g {
+  transform-origin: var(--pm-chart-zero) center;
+  animation-name: chart-bars-reach;
+}
+
+@keyframes chart-bars-rise {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes chart-bars-reach {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* The horizontal rule sets `animation-name` at higher specificity, so the
+   reduced-motion override must match that selector. An override on `.bands g`
+   alone loses, and a horizontal chart would still animate for a reader who
+   asked for reduced motion. `reduced-motion.test.ts` checks for this. */
+@media (prefers-reduced-motion: reduce) {
+  .bands g,
+  .lines g,
+  .marks[data-orientation='horizontal'] .bands g,
+  .marks[data-reading] .bands g:not([data-active]) .bar {
+    animation: none;
+    transition: none;
+  }
+}

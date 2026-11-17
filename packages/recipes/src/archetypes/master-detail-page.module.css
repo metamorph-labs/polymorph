@@ -1,0 +1,125 @@
+/* MasterDetailPage — `design/archetypes/master-detail-page.md`.
+ *
+ * A page that fills its region, as ConversationPage does. The list and the
+ * detail each scroll on their own, so the page is a column of fixed height
+ * (the content region's): the header at the top and the panes filling the
+ * rest. The `--pm-page-*` scope is declared here, as on every page root, with
+ * ConversationPage's values, because both pages set two reading columns side
+ * by side under a header that spans the page's whole height. */
+
+.page {
+  --pm-page-padding-x: var(--pm-space-7);
+  --pm-page-padding-y: var(--pm-space-6);
+  --pm-page-max-width: calc(var(--pm-space-10) * 15);
+  --pm-content-gutter: var(--pm-space-5);
+
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--pm-content-gutter);
+  inline-size: 100%;
+  max-inline-size: var(--pm-page-max-width);
+  block-size: 100%;
+  min-block-size: 0;
+  margin-inline: auto;
+  padding: var(--pm-page-padding-y) var(--pm-page-padding-x);
+}
+
+/* The page scope's narrow step, explained in `list-page.module.css`: one space
+   step smaller on both axes, at the `40rem` breakpoint every page shares. */
+@container (width < 40rem) {
+  .page {
+    --pm-page-padding-x: var(--pm-space-6);
+    --pm-page-padding-y: var(--pm-space-5);
+  }
+}
+
+/* What is left after the header: the split, or the one pane. */
+.body {
+  display: flex;
+  flex: 1;
+  min-block-size: 0;
+}
+
+.body > * {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+/* The list pane scrolls itself. Its edge is the end of the list, so a scroll
+   that reaches it does not carry on into the page. */
+.list {
+  block-size: 100%;
+  min-block-size: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* The list is hidden, not removed, while the detail is drawn alone. A class
+   that sets `display` would otherwise outrank the browser's own rule for
+   `hidden`. */
+.list[hidden] {
+  display: none;
+}
+
+/* The pane takes focus from a script only, when nothing in it does. The ring
+   is the shared rule's, drawn inside the pane's edge, because the split's pane
+   clips what is drawn outside it. */
+.list:focus-visible {
+  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline-offset: calc(var(--pm-focus-width) * -1);
+}
+
+/* The detail pane: the way back, when the detail is drawn alone, over the
+   detail, which scrolls under it. */
+.detail {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  min-block-size: 0;
+}
+
+/* In the split the detail starts a gutter off the seam, so its heading does
+   not sit on the separator's line. The list's rows run to the seam, because
+   their fill marks the current item against it. */
+.page[data-layout='split'] .detail {
+  padding-inline-start: var(--pm-content-gutter);
+}
+
+/* The way back stays in view while the detail scrolls, because on a phone it
+   is the only way to the list. */
+.back {
+  flex: none;
+  padding-block-end: var(--pm-space-3);
+}
+
+.scroll {
+  flex: 1;
+  min-block-size: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* The empty form in the split: EmptyState centred in the pane, in the place
+   the detail takes, as ListPage centres its empty state in the table's. */
+.empty {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  min-block-size: 0;
+  overflow-y: auto;
+}
+
+/* Fixture harnesses from the spec: fixed-height boxes for the page to fill,
+   in place of the shell's content region. The second is a phone's width, so
+   the completeness law renders the one-pane arrangement. */
+.harness {
+  inline-size: 100%;
+  block-size: calc(var(--pm-space-10) * 6);
+}
+
+.phone {
+  inline-size: calc(var(--pm-space-10) * 4);
+  max-inline-size: 100%;
+  block-size: calc(var(--pm-space-10) * 6);
+}

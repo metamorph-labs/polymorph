@@ -1,0 +1,330 @@
+/* Tabs — `design/components/tabs.md`.
+ *
+ * One variant, underline. The underline sits on the strip's rule rather than
+ * beside it: the rule is the baseline every tab shares, and the indicator marks
+ * the active tab's part of it. So the list is positioned, and the indicator is
+ * absolute inside it.
+ *
+ * A horizontal list wider than its container scrolls inside it, and an edge
+ * with more tabs beyond it fades. All of that is in the horizontal section
+ * below, keyed on the root's orientation, so the vertical strip takes none of
+ * it. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+}
+
+.list {
+  position: relative;
+  display: flex;
+  gap: var(--pm-space-5);
+}
+
+.trigger {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  gap: var(--pm-space-2);
+  align-items: center;
+  padding-block: var(--pm-space-3);
+  padding-inline: 0;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--pm-radius-sm);
+}
+
+.glyph {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--pm-text-muted);
+}
+
+.count {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+/* Sits on the list's rule, not under it: 2px covering the 1px baseline, so the
+   active tab looks like a thicker piece of the same line.
+
+   Positioned from the start edges and offset by transform, because the engine
+   animates `x`/`y`, and a rule anchored to the opposite edge would need an
+   inverted measurement for no benefit. */
+.indicator {
+  inset-block: auto 0;
+  block-size: 2px;
+  background: var(--pm-accent-bg);
+}
+
+/* The rule's slide in a shell whose machine moves it with a CSS transition
+   (Zag's tabs machine). The machine writes the transition inline, with a
+   duration of its own, so these replace its duration and curve with the
+   motion tokens: a temperament rescales the slide, and `none`, where the
+   tokens are 0ms, makes it a jump. The React member slides the rule through
+   the motion engine (`MotionIndicator`, the `tabs.indicator` spring) and draws
+   no transition, so it does not take this class. */
+.slide {
+  transition-duration: var(--pm-motion-duration-surface) !important;
+  transition-timing-function: var(--pm-motion-easing-standard) !important;
+}
+
+/* Reduced motion: the rule jumps to the new tab (`tabs.indicator`'s projection). */
+@media (prefers-reduced-motion: reduce) {
+  .slide {
+    transition-property: none !important;
+  }
+}
+
+.content {
+  padding-block-start: var(--pm-space-5);
+}
+
+/* The `tabs.content` binding: `fade`, surface class. No slide, because tabs are
+   peers and a direction would imply an order they do not have. */
+.content[data-state='active'] {
+  animation: tabs-content-enter var(--pm-motion-duration-surface) var(--pm-motion-easing-enter);
+}
+
+@keyframes tabs-content-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+/* states -------------------------------------------------------------------- */
+
+.trigger[data-state='active'] {
+  color: var(--pm-text-primary);
+}
+
+.trigger[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+}
+
+.trigger:hover:not([data-disabled]) {
+  color: var(--pm-text-primary);
+}
+
+.trigger[data-disabled] .glyph {
+  color: var(--pm-text-disabled);
+}
+
+/* horizontal — a strip that scrolls when it is wider than its container ----- */
+
+/* A root that is a flex or grid item may be narrower than its triggers. The
+   list then scrolls inside it instead of widening the track. */
+.root[data-orientation='horizontal'] {
+  min-inline-size: 0;
+}
+
+/* Each rule below reaches the root's own list, and the indicator inside it,
+   through child combinators. A panel can hold another Tabs, and a vertical one
+   inside a horizontal one takes none of these. */
+
+/* The baseline rule is the root's, drawn between the list and the panel: the
+   list is ordered first and the rule second, ahead of everything else the root
+   holds. It is not the list's border, because the list scrolls, fades at its
+   edges and is larger than its triggers (all below), and the rule does none of
+   those. It spans the container. */
+.root[data-orientation='horizontal']::before {
+  order: -1;
+  content: '';
+  border-block-end: 1px solid var(--pm-border-subtle);
+}
+
+.root[data-orientation='horizontal'] > .list {
+  /* How far a focused trigger draws outside its box: the ring's offset and
+     width, or `--pm-space-2` for the halo under the ring where that is more. */
+  --pm-tabs-reach: max(calc(var(--pm-focus-offset) + var(--pm-focus-width)), var(--pm-space-2));
+
+  order: -2;
+
+  /* A scroll container has no minimum block size, so in a root shorter than
+     its content the strip would give up its height and clip its triggers. The
+     panel takes the shortfall instead, as it did before the strip scrolled. */
+  flex: none;
+
+  /* A scroll container clips at its padding edge, so the list is larger than
+     its triggers by the reach on every side, and negative margins keep the
+     triggers where they are without the padding. The inline end takes no
+     negative margin: a box that passes the container's end edge lets the page
+     scroll sideways. */
+  padding: var(--pm-tabs-reach);
+  margin-block: calc(var(--pm-tabs-reach) * -1);
+  margin-inline-start: calc(var(--pm-tabs-reach) * -1);
+  overflow: auto hidden;
+
+  /* Where a tab comes to rest when the browser scrolls to it on focus, or the
+     member does when it becomes current: clear of the edge fade. */
+  scroll-padding-inline: calc(var(--pm-space-6) + var(--pm-tabs-reach));
+
+  /* Where the edge fade below is not supported, a thin scrollbar shows that
+     the strip scrolls. Its thumb is the ramp's strongest step, as ScrollArea's
+     is. */
+  scrollbar-color: var(--pm-border-strong) transparent;
+  scrollbar-width: thin;
+}
+
+/* The list's padding edge is the reach past the triggers, so the indicator
+   comes in from it by the reach, and ends where its tab ends.
+
+   The React foundation's `MotionIndicator` sets `inset-block-start: 0` inline,
+   which outranks this stylesheet. With both block insets and the block size
+   set, a box is placed from its start inset unless its start margin is `auto`,
+   which then takes the space left over. So the margin is `auto`, and the
+   indicator rests on its end inset in React as it does in a renderer that
+   leaves the start inset alone. */
+.root[data-orientation='horizontal'] > * > .indicator {
+  inset-block-end: var(--pm-tabs-reach);
+  margin-block-start: auto;
+}
+
+/* The edge fade: an edge with more tabs beyond it fades out, and an edge with
+   nothing beyond it does not. It is a mask, so it needs no surface colour, and
+   it is driven by the list's own scroll position, so it needs no code.
+ *
+ * The mask is two layers, each opaque but for a fade one space step wide at
+ * one physical edge, and each larger than the list, so its fade can rest
+ * outside it. The left layer slides in by position and the right one by size,
+ * because two animations of one property would replace each other. Each
+ * animation runs over the first or last stretch of the scroll range, as long
+ * as the fade is wide. A mask reads only alpha, so `black` is not a colour
+ * decision here.
+ *
+ * The first animation also carries the mask's image, the same at both ends.
+ * A list with nothing to scroll has an inactive timeline and neither
+ * animation applies, so a list that fits has no mask at all.
+ *
+ * The animations are written as longhands, with no duration. A scroll-driven
+ * animation needs the duration left at `auto`, and a build's minifier writes
+ * the `animation` shorthand out with `0s`, which makes each fade switch
+ * instead of following the scroll. The React vocabulary's published build is
+ * checked for it (`packages/react-ui/packaging.test.ts`).
+ *
+ * The gradients are physical because a gradient has no logical direction.
+ * Right to left, the scroll starts at the right edge, so the two animations
+ * swap ranges and run backwards. The direction is read from the root's own
+ * `dir`, which Radix and Zag both write from the direction they are given.
+ * An ancestor's `dir` is not read, because a right-to-left page can hold a
+ * left-to-right strip. `:dir()` is not used, because the minifier rewrites it
+ * as a list of languages, and a language is not the strip's direction.
+ *
+ * With the fade, the scrollbar is hidden, as Carousel's is behind its dots. */
+@supports (animation-timeline: scroll()) {
+  .root[data-orientation='horizontal'] > .list {
+    scrollbar-width: none;
+    mask-repeat: no-repeat;
+    mask-composite: intersect;
+    animation-name: tabs-fade-left, tabs-fade-right;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+    animation-timeline: scroll(self inline);
+    animation-range:
+      0 var(--pm-space-6),
+      calc(100% - var(--pm-space-6)) 100%;
+  }
+
+  .root[data-orientation='horizontal'][dir='rtl'] > .list {
+    animation-direction: reverse;
+    animation-range:
+      calc(100% - var(--pm-space-6)) 100%,
+      0 var(--pm-space-6);
+  }
+}
+
+@keyframes tabs-fade-left {
+  from {
+    mask-image:
+      linear-gradient(to right, transparent, black var(--pm-space-6)),
+      linear-gradient(to left, transparent, black var(--pm-space-6));
+    mask-position:
+      calc(var(--pm-space-6) * -1) 0,
+      0 0;
+  }
+
+  to {
+    mask-image:
+      linear-gradient(to right, transparent, black var(--pm-space-6)),
+      linear-gradient(to left, transparent, black var(--pm-space-6));
+    mask-position:
+      0 0,
+      0 0;
+  }
+}
+
+@keyframes tabs-fade-right {
+  from {
+    mask-size:
+      200% 100%,
+      100% 100%;
+  }
+
+  to {
+    mask-size:
+      200% 100%,
+      calc(100% + var(--pm-space-6)) 100%;
+  }
+}
+
+/* Fixture box for the spec's strip wider than its container: narrower than a
+   phone, built from tokens (96 × 3 = 288px at standard density) because the CSS
+   law covers every file in this package, fixtures included. */
+.harness {
+  inline-size: calc(var(--pm-space-10) * 3);
+  max-inline-size: 100%;
+}
+
+/* vertical — the same strip turned on its side ------------------------------ */
+
+.root[data-orientation='vertical'] {
+  flex-direction: row;
+  gap: var(--pm-space-6);
+}
+
+.root[data-orientation='vertical'] .list {
+  flex-direction: column;
+  gap: var(--pm-space-1);
+  align-items: stretch;
+  align-self: flex-start;
+
+  /* The rule runs down the start edge instead of along the bottom. The panel
+     can be taller, so keep the list intrinsic and end the rule at its final
+     trigger instead of stretching it with the root's cross axis. */
+  border-inline-start: 1px solid var(--pm-border-subtle);
+}
+
+/* Start-aligned and padded away from the rule. A vertical tab is a row, and a
+   row with a centred label would look misaligned, as a nav item would. */
+.root[data-orientation='vertical'] .trigger {
+  justify-content: flex-start;
+  padding-block: var(--pm-space-2);
+  padding-inline: var(--pm-space-4);
+  text-align: start;
+}
+
+.root[data-orientation='vertical'] .indicator {
+  inset-block: 0 auto;
+  inset-inline-start: 0;
+  inline-size: 2px;
+  block-size: auto;
+}
+
+/* The panel takes the space the strip does not. */
+.root[data-orientation='vertical'] .content {
+  flex: 1;
+  min-inline-size: 0;
+  padding-block-start: 0;
+}

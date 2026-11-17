@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en" data-system="plain" data-palette="neutral">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>A page with no build</title>
+    <!-- The stored theme choice applies before the first paint. -->
+    <script src="/polymorph/prepaint.js"></script>
+    <link rel="stylesheet" href="/polymorph/polymorph.css" />
+    <link rel="stylesheet" href="/polymorph/themes/plain.css" />
+    <script type="module" src="/polymorph/polymorph.js"></script>
+    <script type="module" src="/page.js"></script>
+  </head>
+  <body>
+    <poly-stack gap="5" p="6">
+      <poly-heading level="1">Orders</poly-heading>
+
+      <poly-card id="card" title="Summary">
+        <poly-text id="card-text">Three orders wait for review.</poly-text>
+      </poly-card>
+
+      <poly-dialog id="dialog" title="Confirm the order" description="It ships today.">
+        <poly-button slot="trigger" label="Open the dialog"></poly-button>
+        <poly-text id="dialog-body">The order ships today.</poly-text>
+        <poly-button slot="footer" variant="solid" tone="accent" label="Done"></poly-button>
+      </poly-dialog>
+
+      <poly-table id="table" label="Orders">
+        <poly-table-head>
+          <poly-table-row>
+            <poly-table-header>Order</poly-table-header>
+            <poly-table-header>Total</poly-table-header>
+          </poly-table-row>
+        </poly-table-head>
+        <poly-table-body>
+          <poly-table-row id="row" data-order="A-1">
+            <poly-table-cell>A-1</poly-table-cell>
+            <poly-table-cell numeric>12</poly-table-cell>
+          </poly-table-row>
+        </poly-table-body>
+      </poly-table>
+
+      <form id="form" method="post" action="/echo">
+        <poly-stack gap="4">
+          <poly-form-field label="Name">
+            <poly-input name="name" value="Ada"></poly-input>
+          </poly-form-field>
+          <poly-checkbox name="agree" value="yes" label="Agree to the terms"></poly-checkbox>
+          <poly-select
+            name="priority"
+            aria-label="Priority"
+            value="low"
+            options='[{"value":"low","label":"Low"},{"value":"high","label":"High"}]'
+          ></poly-select>
+          <poly-button type="submit" label="Send"></poly-button>
+        </poly-stack>
+      </form>
+
+      <div id="swaps">
+        <poly-card id="swap-card" title="Swapped">
+          <poly-text>Before the swap.</poly-text>
+        </poly-card>
+        <poly-button id="swap-button" label="Before"></poly-button>
+        <poly-button id="morph-button" label="Save" disabled></poly-button>
+      </div>
+
+      <div id="snapshot">
+        <poly-card title="Kept">
+          <poly-text>Snapshot content.</poly-text>
+        </poly-card>
+        <poly-button label="Kept"></poly-button>
+      </div>
+    </poly-stack>
+  </body>
+</html>

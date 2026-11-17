@@ -1,0 +1,119 @@
+/* SourceList — `design/components/source-list.md`.
+ *
+ * Timeline's column layout for pages: a narrow index column and a text column.
+ * The index uses Citation's mark style, so both share one visible numbering.
+ * There is no surface and no rule between rows, because a list under a
+ * paragraph is part of the reply, not a separate panel. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-3);
+  min-inline-size: 0;
+}
+
+/* The overline style used by Badge and Table's header: `text.xs`, uppercase,
+   with emphasis from case and tracking instead of weight (conventions §6). */
+.heading {
+  display: inline-flex;
+  gap: var(--pm-space-1);
+  align-items: center;
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+  text-transform: uppercase;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  gap: var(--pm-space-3);
+  align-items: flex-start;
+}
+
+/* Citation's mark exactly, so a `[2]` in the prose and the `2` here look like
+   the same number. It is not a link, because the title is the row's link and
+   a second link to the same page would be redundant. */
+.index {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: calc(var(--pm-text-xs-size) * var(--pm-text-xs-line-height));
+  padding-inline: var(--pm-space-1);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+  border-radius: var(--pm-radius-detail);
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--pm-space-1);
+  min-inline-size: 0;
+}
+
+/* The title restates Link's standalone recipe (accent colour, underline on
+   hover, the shared ring) on an anchor that can wrap. Link's external style
+   does not wrap, so its glyph never ends up alone on a line. A title is a
+   sentence and wraps, and the glyph stays with the last word. */
+.title {
+  composes: focusRing from '../conventions/focus.module.css';
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  color: var(--pm-accent-text);
+  text-decoration: none;
+  letter-spacing: var(--pm-text-sm-tracking);
+  overflow-wrap: anywhere;
+  border-radius: var(--pm-radius-sm);
+}
+
+.title:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
+/* The external glyph, inline with the last word. */
+.glyph {
+  display: inline-block;
+  margin-inline-start: var(--pm-space-1);
+  vertical-align: text-bottom;
+}
+
+.domain {
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+}
+
+.snippet {
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+}

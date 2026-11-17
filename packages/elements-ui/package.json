@@ -1,0 +1,127 @@
+{
+  "name": "@polymorph/elements-ui",
+  "version": "1.0.15",
+  "description": "The polymorph vocabulary as custom elements: every member a poly-* element in the light DOM that renders the generated Solid member, for plain HTML and server-rendered pages.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./definitions": "./src/definitions.ts",
+    "./loaders": "./src/loaders.ts",
+    "./ai/*": "./src/ai/*.ts",
+    "./archetypes/*": "./src/archetypes/*.ts",
+    "./charts/*": "./src/charts/*.ts",
+    "./controls/*": "./src/controls/*.ts",
+    "./exceptions/*": "./src/exceptions/*.ts",
+    "./layout/*": "./src/layout/*.ts",
+    "./overlays/*": "./src/overlays/*.ts",
+    "./structure/*": "./src/structure/*.ts",
+    "./cdn/*": "./dist/cdn/*"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": [
+    "**/*.css",
+    "./src/index.ts",
+    "./src/*/[A-Z]*.ts",
+    "./dist/index.js",
+    "./dist/*/[A-Z]*.js",
+    "./dist/cdn/**"
+  ],
+  "scripts": {
+    "build": "NODE_ENV=production vite build --configLoader runner --config vite.build.config.ts && NODE_ENV=production vite build --configLoader runner --config vite.build.config.ts --mode cdn && NODE_ENV=production vite build --configLoader runner --config vite.build.config.ts --mode cdn-all && tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@polymorph/elements": "workspace:*",
+    "@polymorph/solid": "workspace:*",
+    "@polymorph/solid-ui": "workspace:*",
+    "@zag-js/accordion": "1.46.0",
+    "@zag-js/carousel": "1.46.0",
+    "@zag-js/checkbox": "1.46.0",
+    "@zag-js/collapsible": "1.46.0",
+    "@zag-js/color-picker": "1.46.0",
+    "@zag-js/combobox": "1.46.0",
+    "@zag-js/date-picker": "1.46.0",
+    "@zag-js/dialog": "1.46.0",
+    "@zag-js/hover-card": "1.46.0",
+    "@zag-js/menu": "1.46.0",
+    "@zag-js/number-input": "1.46.0",
+    "@zag-js/popover": "1.46.0",
+    "@zag-js/radio-group": "1.46.0",
+    "@zag-js/scroll-area": "1.46.0",
+    "@zag-js/select": "1.46.0",
+    "@zag-js/slider": "1.46.0",
+    "@zag-js/solid": "1.46.0",
+    "@zag-js/switch": "1.46.0",
+    "@zag-js/tabs": "1.46.0",
+    "@zag-js/tooltip": "1.46.0",
+    "solid-js": "^1.9.17"
+  },
+  "devDependencies": {
+    "@polymorph/conformance": "workspace:*",
+    "@polymorph/engine": "workspace:*",
+    "@polymorph/recipes": "workspace:*",
+    "@polymorph/registry": "workspace:*",
+    "@polymorph/rules": "workspace:*",
+    "@polymorph/shells": "workspace:*",
+    "@testing-library/dom": "^10.4.1",
+    "axe-core": "^4.12.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.5",
+    "vite-plugin-solid": "^2.11.14"
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "exports": {
+      ".": {
+        "types": "./dist/types/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./definitions": {
+        "types": "./dist/types/definitions.d.ts",
+        "import": "./dist/definitions.js"
+      },
+      "./loaders": {
+        "types": "./dist/types/loaders.d.ts",
+        "import": "./dist/loaders.js"
+      },
+      "./ai/*": {
+        "types": "./dist/types/ai/*.d.ts",
+        "import": "./dist/ai/*.js"
+      },
+      "./archetypes/*": {
+        "types": "./dist/types/archetypes/*.d.ts",
+        "import": "./dist/archetypes/*.js"
+      },
+      "./charts/*": {
+        "types": "./dist/types/charts/*.d.ts",
+        "import": "./dist/charts/*.js"
+      },
+      "./controls/*": {
+        "types": "./dist/types/controls/*.d.ts",
+        "import": "./dist/controls/*.js"
+      },
+      "./exceptions/*": {
+        "types": "./dist/types/exceptions/*.d.ts",
+        "import": "./dist/exceptions/*.js"
+      },
+      "./layout/*": {
+        "types": "./dist/types/layout/*.d.ts",
+        "import": "./dist/layout/*.js"
+      },
+      "./overlays/*": {
+        "types": "./dist/types/overlays/*.d.ts",
+        "import": "./dist/overlays/*.js"
+      },
+      "./structure/*": {
+        "types": "./dist/types/structure/*.d.ts",
+        "import": "./dist/structure/*.js"
+      },
+      "./cdn/*": "./dist/cdn/*"
+    }
+  },
+  "license": "MIT"
+}

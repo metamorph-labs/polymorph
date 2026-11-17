@@ -1,0 +1,52 @@
+{
+  "turns": [
+    {
+      "usage": { "input_tokens": 1800, "output_tokens": 60 },
+      "content": [{ "type": "tool_use", "name": "get_system_card", "input": {} }]
+    },
+    {
+      "usage": {
+        "input_tokens": 40,
+        "cache_creation_input_tokens": 7300,
+        "cache_read_input_tokens": 1800,
+        "output_tokens": 1900
+      },
+      "content": [
+        {
+          "type": "tool_use",
+          "name": "validate",
+          "input": { "code": { "$file": "list-incidents/attempt-1.tsx" } }
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 40,
+        "cache_creation_input_tokens": 3100,
+        "cache_read_input_tokens": 9100,
+        "output_tokens": 1950
+      },
+      "content": [
+        {
+          "type": "tool_use",
+          "name": "validate",
+          "input": { "code": { "$file": "list-incidents/attempt-2.tsx" } }
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 40,
+        "cache_creation_input_tokens": 2500,
+        "cache_read_input_tokens": 12200,
+        "output_tokens": 1900
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": ["Lawful.\n\n```tsx\n", { "$file": "list-incidents/attempt-2.tsx" }, "```\n"]
+        }
+      ]
+    }
+  ]
+}

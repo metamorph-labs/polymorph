@@ -1,0 +1,181 @@
+/**
+ * Relay's new-ticket form — one card of fields under a page header, with a guarded discard.
+ *
+ * Emitted from a screen spec (`polymorph-screen/1`). Composition and bindings only:
+ * this file holds no state, computes nothing, and expresses no style — the
+ * container that renders it owns all three.
+ */
+import { Component, input } from '@angular/core'
+import {
+  Button,
+  Card,
+  Combobox,
+  ConfirmDialog,
+  DatePicker,
+  FormField,
+  FormPage,
+  Grid,
+  Input,
+  Select,
+  Stack,
+  Switch,
+} from '@polymorph/angular-ui'
+import type { CalendarDate } from '@internationalized/date'
+
+export interface NewTicketViewProps {
+  /** The archetype owns the <form> and has already prevented the default. */
+  onSubmit: () => void
+  /** Whether the discard confirmation is open. */
+  confirming: boolean
+  onConfirmingChange: (open: boolean) => void
+  onDiscard: () => void
+  onConfirmDiscard: () => void
+  subject: string
+  onSubjectChange: (value: string) => void
+  subjectError: string | undefined
+  requester: string
+  onRequesterChange: (value: string) => void
+  requesterError: string | undefined
+  priority: string
+  priorityOptions: { value: string; label: string }[]
+  onPriorityChange: (value: string | null) => void
+  assignee: string | null
+  assigneeOptions: { value: string; label: string }[]
+  onAssigneeChange: (value: string | null) => void
+  due: CalendarDate | null
+  /** Today — a due date in the past is not a due date. */
+  minDue: CalendarDate
+  onDueChange: (value: CalendarDate | null) => void
+  notify: boolean
+  onNotifyChange: (next: boolean) => void
+}
+
+@Component({
+  selector: 'app-new-ticket-view',
+  imports: [
+    Button,
+    Card,
+    Combobox,
+    ConfirmDialog,
+    DatePicker,
+    FormField,
+    FormPage,
+    Grid,
+    Input,
+    Select,
+    Stack,
+    Switch,
+  ],
+  template: `
+    <pm-form-page
+      title="New ticket"
+      description="Raise a conversation on someone's behalf — a phone call, or an email that never reached the queue."
+      (submit)="onSubmit()()"
+    >
+      <ng-container ngProjectAs="[slot=actions]">
+        <pm-confirm-dialog
+          [open]="confirming()"
+          (openChange)="onConfirmingChange()($event)"
+          title="Discard this ticket?"
+          description="The subject and requester you have typed will be lost."
+          confirmLabel="Discard"
+          (confirm)="onConfirmDiscard()()"
+        >
+          <ng-container ngProjectAs="[slot=trigger]">
+            <pm-button variant="ghost" tone="neutral" label="Discard" (click)="onDiscard()()" />
+          </ng-container>
+        </pm-confirm-dialog>
+        <pm-button type="submit" icon="confirm" label="Create ticket" />
+      </ng-container>
+      <pm-card>
+        <pm-stack [gap]="5">
+          <pm-form-field
+            label="Subject"
+            [required]="true"
+            description="One line. It is what the queue is scanned by."
+            [error]="subjectError()"
+          >
+            <pm-input
+              [value]="subject()"
+              (change)="onSubjectChange()($event)"
+              placeholder="Webhook retries stop after the first 5xx"
+              [maxLength]="120"
+            />
+          </pm-form-field>
+          <pm-grid [columns]="2" [gap]="5">
+            <pm-form-field
+              label="Requester"
+              [required]="true"
+              description="Where the confirmation and replies go."
+              [error]="requesterError()"
+            >
+              <pm-input
+                type="email"
+                autoComplete="email"
+                [value]="requester()"
+                (change)="onRequesterChange()($event)"
+                [placeholder]="'dana\\u0040northwind.example'"
+              />
+            </pm-form-field>
+            <pm-form-field label="Priority" description="Urgent pages the on-call engineer.">
+              <pm-select
+                [options]="priorityOptions()"
+                [value]="priority()"
+                (change)="onPriorityChange()($event)"
+              />
+            </pm-form-field>
+          </pm-grid>
+          <pm-grid [columns]="2" [gap]="5">
+            <pm-form-field label="Assignee" description="Who picks this up, if anyone.">
+              <pm-combobox
+                [clearable]="true"
+                [options]="assigneeOptions()"
+                placeholder="Search the team…"
+                [value]="assignee()"
+                (change)="onAssigneeChange()($event)"
+              />
+            </pm-form-field>
+            <pm-form-field label="Due date" description="The day it has to be answered.">
+              <pm-date-picker
+                [clearable]="true"
+                [minValue]="minDue()"
+                [value]="due()"
+                (change)="onDueChange()($event)"
+              />
+            </pm-form-field>
+          </pm-grid>
+          <pm-form-field
+            label="Notify the requester"
+            description="Sends a confirmation with the ticket number."
+          >
+            <pm-switch [checked]="notify()" (checkedChange)="onNotifyChange()($event)" />
+          </pm-form-field>
+        </pm-stack>
+      </pm-card>
+    </pm-form-page>
+  `,
+})
+export class NewTicketView {
+  readonly onSubmit = input.required<NewTicketViewProps['onSubmit']>()
+  readonly confirming = input.required<NewTicketViewProps['confirming']>()
+  readonly onConfirmingChange = input.required<NewTicketViewProps['onConfirmingChange']>()
+  readonly onDiscard = input.required<NewTicketViewProps['onDiscard']>()
+  readonly onConfirmDiscard = input.required<NewTicketViewProps['onConfirmDiscard']>()
+  readonly subject = input.required<NewTicketViewProps['subject']>()
+  readonly onSubjectChange = input.required<NewTicketViewProps['onSubjectChange']>()
+  readonly subjectError = input.required<NewTicketViewProps['subjectError']>()
+  readonly requester = input.required<NewTicketViewProps['requester']>()
+  readonly onRequesterChange = input.required<NewTicketViewProps['onRequesterChange']>()
+  readonly requesterError = input.required<NewTicketViewProps['requesterError']>()
+  readonly priority = input.required<NewTicketViewProps['priority']>()
+  readonly priorityOptions = input.required<NewTicketViewProps['priorityOptions']>()
+  readonly onPriorityChange = input.required<NewTicketViewProps['onPriorityChange']>()
+  readonly assignee = input.required<NewTicketViewProps['assignee']>()
+  readonly assigneeOptions = input.required<NewTicketViewProps['assigneeOptions']>()
+  readonly onAssigneeChange = input.required<NewTicketViewProps['onAssigneeChange']>()
+  readonly due = input.required<NewTicketViewProps['due']>()
+  readonly minDue = input.required<NewTicketViewProps['minDue']>()
+  readonly onDueChange = input.required<NewTicketViewProps['onDueChange']>()
+  readonly notify = input.required<NewTicketViewProps['notify']>()
+  readonly onNotifyChange = input.required<NewTicketViewProps['onNotifyChange']>()
+}

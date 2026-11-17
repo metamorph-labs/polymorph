@@ -1,0 +1,257 @@
+{
+  "spec": "polymorph-screen/1",
+  "name": "SettingsView",
+  "purpose": "Relay's settings screen — appearance and notifications, as two labelled groups.",
+  "platform": "ios",
+  "types": {
+    "@polymorph/react-ui": ["CheckedState", "SelectOption", "SelectOptionGroup"]
+  },
+  "inputs": [
+    {
+      "name": "system",
+      "type": "string | null",
+      "doc": "The system currently worn."
+    },
+    {
+      "name": "onSystemChange",
+      "type": "(value: string | null) => void"
+    },
+    {
+      "name": "palette",
+      "type": "string | null",
+      "doc": "The palette painting it."
+    },
+    {
+      "name": "onPaletteChange",
+      "type": "(value: string | null) => void"
+    },
+    {
+      "name": "mode",
+      "type": "string",
+      "doc": "The stored preference, which may be `system`."
+    },
+    {
+      "name": "onModeChange",
+      "type": "(value: string | null) => void"
+    },
+    {
+      "name": "density",
+      "type": "string | null"
+    },
+    {
+      "name": "onDensityChange",
+      "type": "(value: string | null) => void"
+    },
+    {
+      "name": "motion",
+      "type": "string"
+    },
+    {
+      "name": "onMotionChange",
+      "type": "(value: string | null) => void"
+    },
+    {
+      "name": "systemOptions",
+      "type": "(SelectOption | SelectOptionGroup)[]"
+    },
+    {
+      "name": "paletteOptions",
+      "type": "(SelectOption | SelectOptionGroup)[]"
+    },
+    {
+      "name": "modeOptions",
+      "type": "(SelectOption | SelectOptionGroup)[]"
+    },
+    {
+      "name": "densityOptions",
+      "type": "(SelectOption | SelectOptionGroup)[]"
+    },
+    {
+      "name": "motionOptions",
+      "type": "(SelectOption | SelectOptionGroup)[]"
+    },
+    {
+      "name": "digest",
+      "type": "boolean"
+    },
+    {
+      "name": "onDigestChange",
+      "type": "(next: boolean) => void"
+    },
+    {
+      "name": "signature",
+      "type": "CheckedState"
+    },
+    {
+      "name": "onSignatureChange",
+      "type": "(next: CheckedState) => void"
+    }
+  ],
+  "root": {
+    "component": "SettingsPage",
+    "props": {
+      "title": "Settings",
+      "description": "Appearance applies to every screen in Relay the moment it changes."
+    },
+    "children": [
+      {
+        "component": "SettingsRow.Group",
+        "props": {
+          "title": "Appearance"
+        },
+        "children": [
+          {
+            "component": "SettingsRow",
+            "props": {
+              "label": "System",
+              "description": "Type, shape and spacing — how the product is built.",
+              "control": {
+                "component": "Select",
+                "props": {
+                  "options": {
+                    "$": "systemOptions"
+                  },
+                  "value": {
+                    "$": "system"
+                  },
+                  "onChange": {
+                    "$": "onSystemChange"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "component": "SettingsRow",
+            "props": {
+              "label": "Palette",
+              "description": "The colour it is painted with. Any palette, any system.",
+              "control": {
+                "component": "Select",
+                "props": {
+                  "options": {
+                    "$": "paletteOptions"
+                  },
+                  "value": {
+                    "$": "palette"
+                  },
+                  "onChange": {
+                    "$": "onPaletteChange"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "component": "SettingsRow",
+            "props": {
+              "label": "Mode",
+              "description": "Follow the operating system, or pin one.",
+              "control": {
+                "component": "Select",
+                "props": {
+                  "options": {
+                    "$": "modeOptions"
+                  },
+                  "value": {
+                    "$": "mode"
+                  },
+                  "onChange": {
+                    "$": "onModeChange"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "component": "SettingsRow",
+            "props": {
+              "label": "Density",
+              "description": "Space and control sizes. Never the type scale.",
+              "control": {
+                "component": "Select",
+                "props": {
+                  "options": {
+                    "$": "densityOptions"
+                  },
+                  "emptyOption": "theme default",
+                  "value": {
+                    "$": "density"
+                  },
+                  "onChange": {
+                    "$": "onDensityChange"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "component": "SettingsRow",
+            "props": {
+              "label": "Motion",
+              "description": "How much the interface moves. None is a full stop, not a slower version.",
+              "control": {
+                "component": "Select",
+                "props": {
+                  "options": {
+                    "$": "motionOptions"
+                  },
+                  "value": {
+                    "$": "motion"
+                  },
+                  "onChange": {
+                    "$": "onMotionChange"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "component": "SettingsRow.Group",
+        "props": {
+          "title": "Notifications"
+        },
+        "children": [
+          {
+            "component": "SettingsRow",
+            "props": {
+              "label": "Daily digest",
+              "description": "One summary each morning instead of a notification per reply.",
+              "control": {
+                "component": "Switch",
+                "props": {
+                  "checked": {
+                    "$": "digest"
+                  },
+                  "onCheckedChange": {
+                    "$": "onDigestChange"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "component": "SettingsRow",
+            "props": {
+              "label": "Append my signature",
+              "description": "Added to the end of every reply you send.",
+              "control": {
+                "component": "Checkbox",
+                "props": {
+                  "checked": {
+                    "$": "signature"
+                  },
+                  "onCheckedChange": {
+                    "$": "onSignatureChange"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,191 @@
+/* FileUpload — `design/components/file-upload.md`.
+ *
+ * This is the only dashed border in the system, and it means one thing: *not yet content*.
+ * Everything else here is a list of rows that happen to be files. They deliberately use ordinary
+ * surface styling, because the meaningful state is in `data-status` and in what the app put
+ * there. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-3);
+  inline-size: 100%;
+}
+
+.zone {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+  align-items: center;
+  inline-size: 100%;
+  padding: var(--pm-space-6);
+  color: var(--pm-text-muted);
+  cursor: pointer;
+  background: var(--pm-bg-subtle);
+  border: 1px dashed var(--pm-border-strong);
+  border-radius: var(--pm-radius-lg);
+}
+
+.title {
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+}
+
+.hint {
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+}
+
+/* The real input, opened by the zone. It is out of the tab order and the accessibility tree, where
+   the button stands for it, and is still posted with the form. */
+.picker {
+  display: none;
+}
+
+/* the list ----------------------------------------------------------------- */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+}
+
+.row {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  padding: var(--pm-space-2) var(--pm-space-3);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-control);
+}
+
+.rowIcon {
+  display: inline-flex;
+  flex: none;
+  color: var(--pm-text-muted);
+}
+
+/* `min-inline-size: 0` lets the name truncate with an ellipsis instead of pushing the trailing
+   controls off the row, because a flex item's minimum size is its content by default. */
+.details {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.name {
+  overflow: hidden;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+}
+
+/* The app's text, under the file name it refers to. */
+.message {
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-danger-text);
+}
+
+.trailing {
+  display: inline-flex;
+  flex: none;
+  gap: var(--pm-space-2);
+  align-items: center;
+}
+
+/* A bar this short only gives a rough idea. The percentage beside it shows the exact progress. */
+.progress {
+  inline-size: var(--pm-space-9);
+}
+
+.percent {
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+
+  /* Tabular figures keep the width steady as the number rises. */
+  font-variant-numeric: var(--pm-font-numeric);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+}
+
+.done {
+  display: inline-flex;
+  flex: none;
+  color: var(--pm-success-text);
+}
+
+/* Text for screen readers only: what just finished, and what just failed. */
+.reader {
+  composes: visuallyHidden from '../conventions/a11y.module.css';
+}
+
+/* states ------------------------------------------------------------------- */
+
+/* A pending drop is as active as focus, so it uses the focus halo. A theme with ornament `none`
+   derives no glow, and the border alone shows the state. */
+.zone[data-state='dragover'] {
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+  border-color: var(--pm-accent-bg);
+  box-shadow: var(--pm-glow-focus);
+}
+
+/* FormField's error provides the text. The zone only changes its border colour. */
+.zone[data-invalid] {
+  border-color: var(--pm-danger-border);
+}
+
+.zone[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  border-color: var(--pm-border-subtle);
+}
+
+.zone[data-disabled] .title {
+  color: var(--pm-text-disabled);
+}
+
+/* Invalid is excluded rather than overridden, as in Input. A dashed border that changed colour
+   under the pointer would hide the error state. */
+.zone:enabled:hover:not([data-invalid], [data-state='dragover']) {
+  background: var(--pm-bg-surface);
+  border-color: var(--pm-accent-bg);
+}
+
+/* The row shows the failure. The message under the name says what happened, and the border makes
+   the row easy to find in a longer list. */
+.row[data-status='error'] {
+  border-color: var(--pm-danger-border);
+}

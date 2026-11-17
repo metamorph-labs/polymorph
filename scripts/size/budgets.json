@@ -1,0 +1,54 @@
+{
+  "react-floor": {
+    "js": 59,
+    "css": 1
+  },
+  "button": {
+    "js": 66,
+    "css": 6
+  },
+  "list-page": {
+    "js": 76,
+    "css": 8
+  },
+  "dialog": {
+    "js": 87,
+    "css": 7
+  },
+  "runtime-engine": {
+    "js": 53,
+    "css": 1
+  },
+  "vue-button": {
+    "js": 33,
+    "css": 6
+  },
+  "svelte-button": {
+    "js": 28,
+    "css": 6
+  },
+  "solid-button": {
+    "js": 17,
+    "css": 6
+  },
+  "angular-button": {
+    "js": 108,
+    "css": 5
+  },
+  "agent-bridge": {
+    "js": 76,
+    "css": 7
+  },
+  "elements-button": {
+    "js": 41,
+    "css": 49
+  },
+  "elements-all": {
+    "js": 412,
+    "css": 49
+  },
+  "elements-agent": {
+    "js": 45,
+    "css": 49
+  }
+}

@@ -1,0 +1,82 @@
+/* Textarea — `design/components/textarea.md`, with Input's container rules copied.
+ *
+ * Input is split into a styled container and a transparent field so its embedded icon
+ * and clear button can take their colour from the same state as the border. A textarea
+ * embeds nothing, so it keeps its own border and needs no split. */
+
+.textarea {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: block;
+  inline-size: 100%;
+  min-block-size: var(--pm-control-height-md);
+  padding: var(--pm-space-3) var(--pm-space-4);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+
+  /* The field's vertical rhythm comes from the line box, not from a padding step. */
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-field);
+  border-radius: var(--pm-radius-control);
+
+  /* The control seat shadow, from Input, used by every field in the family. */
+  box-shadow: var(--pm-shadow-seat);
+}
+
+/* Firefox dims placeholders by default. The muted colour already marks them, so the
+   opacity is reset to avoid dimming twice. */
+.textarea::placeholder {
+  color: var(--pm-text-muted);
+  opacity: 1;
+}
+
+.textarea[data-resize='vertical'] {
+  resize: vertical;
+}
+
+/* Horizontal resize is never offered, because dragging a column narrower would override
+   the layout's line length, which the layout owns. */
+.textarea[data-resize='none'] {
+  resize: none;
+}
+
+/* states ------------------------------------------------------------------- */
+
+.textarea[data-invalid] {
+  border-color: var(--pm-danger-border);
+}
+
+.textarea[data-readonly] {
+  color: var(--pm-text-secondary);
+}
+
+.textarea[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-subtle);
+
+  /* The seat shadow signals a ready control, so disabled removes it (as in Input). */
+  box-shadow: none;
+}
+
+/* Invalid is excluded rather than overridden, so the error border stays on hover. */
+.textarea:hover:not([data-disabled], [data-readonly], [data-invalid]) {
+  border-color: var(--pm-border-strong);
+}
+
+/* The conventions' focus-zoom floor for phones. Below `30rem` the `<textarea>` uses the
+   text-entry floor's size and line height so iOS does not zoom the page on focus. Only those metrics
+   change. Colour, weight and tracking stay the same. The line box sets the field's
+   vertical rhythm (see above), so the rhythm changes with it. That is intended, because
+   these metrics belong to the element itself. */
+@media (width < 30rem) {
+  .textarea {
+    font-size: var(--pm-text-entry-size);
+    line-height: var(--pm-text-entry-line-height);
+  }
+}

@@ -1,0 +1,393 @@
+/* Command — `design/components/command.md`.
+ *
+ * The motion engine animates the panel (`command.panel`), for Dialog's reason:
+ * an exit that can be interrupted needs presence coordination, and CSS cannot
+ * keep a leaving node mounted. This file handles the box, the rows, and the
+ * cascade the rows enter with.
+ *
+ * Two recipes are borrowed on purpose and named where they are used: the panel
+ * surface is Dialog's, and the row grammar is Menu's. The palette differs from
+ * a menu only in the highlight, and a law requires it. The active row of a
+ * palette is the pending selection, so it uses the selection family, while a
+ * menu's transient hover keeps the accent wash (the selection treatment,
+ * `design/components/README.md`). */
+
+/* `overlay` in the stacking order: every portalled overlay surface uses one
+   layer. This scrim restates Dialog's rather than composing it, so it sets the
+   layer itself. */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--pm-z-overlay);
+  background: var(--pm-bg-scrim);
+}
+
+/* The palette sits high, so results grow downward into free space. `15vh` is
+   structural: a fraction of the viewport, not a length chosen off the space
+   scale. */
+.positioner {
+  position: fixed;
+  inset: 0;
+  z-index: var(--pm-z-overlay);
+  display: grid;
+  place-items: start center;
+  padding-block-start: 15vh;
+  pointer-events: none;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  inline-size: min(100%, calc(var(--pm-space-10) * 6));
+  pointer-events: auto;
+  background: var(--pm-bg-overlay);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-surface);
+  box-shadow: var(--pm-shadow-transient);
+}
+
+/* No body padding: rows run edge to edge, and the search row's rule is the
+   only horizontal line in the surface. */
+.body {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+}
+
+/* Radix focuses the panel itself when it opens, and a ring around a whole modal
+   adds no information. This is the standard exception for a programmatically
+   focused container. */
+.panel:focus-visible {
+  outline: none;
+}
+
+/* search row ---------------------------------------------------------------- */
+
+.search {
+  display: flex;
+  flex: none;
+  gap: var(--pm-space-3);
+  align-items: center;
+  block-size: var(--pm-control-height-lg);
+  padding-inline: var(--pm-space-4);
+  color: var(--pm-text-muted);
+  border-block-end: 1px solid var(--pm-border-subtle);
+}
+
+/* The panel acts as the field, so the input has no border or ring of its own.
+   A second frame inside the surface would look like a field inside a field. */
+.input {
+  flex: 1;
+  min-inline-size: 0;
+  padding: 0;
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+  color: var(--pm-text-primary);
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+.input:focus-visible {
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--pm-text-muted);
+  opacity: 1;
+}
+
+/* The only live region. Loading, the result count and the empty message are
+   all announced here, so the visible empty row is `aria-hidden`. */
+.status {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* list ---------------------------------------------------------------------- */
+
+/* The cap is measured in `dvh`, like the rest of the overlay family, because on
+   phones `100vh` includes the collapsed browser chrome (`docs/layout.md`). The
+   `vh` base is here and the `dvh` override is in the `@supports` block after
+   this rule, because a dedupe minifier deletes a same-property pair. */
+.listbox {
+  max-block-size: min(60vh, calc(var(--pm-space-10) * 4));
+  padding: var(--pm-space-2);
+  margin: 0;
+  overflow-y: auto;
+  list-style: none;
+  outline: none;
+}
+
+@supports (height: 1dvh) {
+  .listbox {
+    max-block-size: min(60dvh, calc(var(--pm-space-10) * 4));
+  }
+}
+
+.section {
+  display: block;
+}
+
+.group {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+/* Menu's `groupLabel`, unchanged. */
+.groupLabel {
+  display: block;
+  padding: var(--pm-space-2) var(--pm-space-3);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+  text-transform: uppercase;
+}
+
+/* Menu's item grammar. */
+.item {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-3);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  cursor: pointer;
+  border-radius: var(--pm-radius-sm);
+  outline: none;
+}
+
+.glyph {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--pm-text-muted);
+}
+
+.label {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* At the far edge, so hints line up down the panel whatever the label length. */
+.hint {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  margin-inline-start: auto;
+  color: var(--pm-text-muted);
+}
+
+/* The pending selection, not a hover (the selection treatment). Enter runs this
+   row, which makes it a selection rather than a pointer highlight. */
+.item[data-highlighted] {
+  color: var(--pm-selection-text);
+  background: var(--pm-selection-bg);
+}
+
+.item[data-highlighted] .glyph,
+.item[data-highlighted] .hint {
+  color: inherit;
+}
+
+.item[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  background: transparent;
+}
+
+.item[data-disabled] .glyph {
+  color: var(--pm-text-disabled);
+}
+
+/* async rows — Combobox's recipes, unchanged --------------------------------- */
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-1);
+  padding: var(--pm-space-2);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-3);
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  block-size: var(--pm-control-height-lg);
+  padding-inline: var(--pm-space-3);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-muted);
+}
+
+/* While the query is pending the list is a placeholder, and a scrollbar on a
+   placeholder would misstate how many results are coming. */
+.panel[data-loading] .listbox {
+  overflow: hidden;
+}
+
+/* The palette below 30rem ----------------------------------------------------
+ *
+ * Command adopts Dialog's full-screen rule: a palette is a takeover surface
+ * with a text input, and full height gives the list room above the virtual
+ * keyboard. It uses `@media` under the overlay exemption, because the panel is
+ * portalled and `fixed` and the viewport is its only container (as
+ * `dialog.md` explains). There is no `presentation` prop, because a palette has
+ * no compact phone form to choose.
+ *
+ * The `15vh` offset becomes `0` and the panel fills the screen: stretched,
+ * radius `0`, border `0`, and block padding that clears the notch (added to
+ * this member's zero body padding, per Dialog's full-screen cell). The
+ * listbox's `min(60vh, …)` cap gives way to the flex fill: the list is the
+ * panel's body and scrolls below the fixed search row, as above the threshold.
+ * The search row, item grammar and highlight recipes are unchanged, and the
+ * input takes the text-entry floor's metrics (conventions §13). */
+@media (width < 30rem) {
+  /* One explicit row, as Dialog's positioner has. An implicit `auto` row grows
+     to the panel's content, so a stretched panel with a long list would run
+     past the bottom of the window and the list would never scroll.
+     `minmax(0, 1fr)` makes the row the window height. */
+  .positioner {
+    grid-template-rows: minmax(0, 1fr);
+    padding-block-start: 0;
+  }
+
+  .input {
+    font-size: var(--pm-text-entry-size);
+    line-height: var(--pm-text-entry-line-height);
+  }
+
+  .panel {
+    place-self: stretch;
+    inline-size: auto;
+    block-size: auto;
+    padding-block: env(safe-area-inset-top, 0) env(safe-area-inset-bottom, 0);
+    border: 0;
+    border-radius: 0;
+  }
+
+  .body {
+    flex: 1;
+  }
+
+  .listbox {
+    flex: 1;
+    max-block-size: none;
+  }
+}
+
+/* the cascade — Menu's `menu.items` cascade, reused --------------------------- */
+
+/* The same delay steps, clamps and twelve-step ceiling as Menu, scoped to the
+   list for the same reason Menu scopes its own to the open panel. The list is
+   keyed on the committed query in `Command.tsx`, so the rows are new elements
+   when results arrive and the cascade runs again. Arrow keys only move the
+   highlight and do not replace elements. A group restarts the steps, so each
+   group reads as its own arrival rather than a continuation. */
+.listbox .item {
+  animation: command-item-enter var(--pm-motion-duration-control) var(--pm-motion-easing-enter)
+    backwards;
+}
+
+.listbox .item:nth-child(2) {
+  animation-delay: min(calc(1 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.listbox .item:nth-child(3) {
+  animation-delay: min(calc(2 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.listbox .item:nth-child(4) {
+  animation-delay: min(calc(3 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.listbox .item:nth-child(5) {
+  animation-delay: min(calc(4 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.listbox .item:nth-child(6) {
+  animation-delay: min(calc(5 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.listbox .item:nth-child(7) {
+  animation-delay: min(calc(6 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.listbox .item:nth-child(8) {
+  animation-delay: min(calc(7 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.listbox .item:nth-child(9) {
+  animation-delay: min(calc(8 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.listbox .item:nth-child(10) {
+  animation-delay: min(calc(9 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.listbox .item:nth-child(11) {
+  animation-delay: min(calc(10 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.listbox .item:nth-child(n + 12) {
+  animation-delay: var(--pm-motion-stagger-max);
+}
+
+@keyframes command-item-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+/* The cascade projects to presence (`docs/motion.md`). A delay counts as motion
+   even when the delayed element does not move, so rows arrive with their panel. */
+@media (prefers-reduced-motion: reduce) {
+  .listbox .item {
+    animation: none;
+  }
+}
+
+/* Glass (`depth: glass`): the pane uses the surface role at the engine's mix
+   (`--pm-material-surface`), and the material provides the lift that the
+   overlay stacking order provides elsewhere. The backdrop shows through the
+   pane as a blurred, saturated wash, so the surface stands apart by its
+   material rather than by a lighter step. The mix is a contrast decision that
+   the glass law measures over worst-case backdrops; a recipe only applies it. */
+@container style(--pm-axis-depth: glass) {
+  .panel {
+    background: var(--pm-material-surface);
+    backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  }
+}

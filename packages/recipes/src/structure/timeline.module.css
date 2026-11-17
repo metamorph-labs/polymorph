@@ -1,0 +1,176 @@
+/* Timeline — `design/components/timeline.md`.
+ *
+ * Tone is emphasis, never meaning: the marker column is `aria-hidden`, so every
+ * rule below shows something the title already says in words.
+ *
+ * No motion, on purpose. Nothing here changes state, and the state-feedback
+ * convention would suggest interactivity this component does not offer. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event {
+  display: flex;
+  gap: var(--pm-space-3);
+}
+
+/* The space between events is the text's bottom padding, not a list gap,
+   because a gap sits outside the rule (a child) and would stop it short of the
+   next mark. */
+.copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-inline-size: 0;
+  padding-block-end: var(--pm-space-5);
+}
+
+.event:last-child .copy {
+  padding-block-end: 0;
+}
+
+/* The marker column ------------------------------------------------------- */
+
+.marker {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  inline-size: var(--pm-space-6);
+}
+
+/* The connecting rule, with no element of its own: the column's last flex child,
+   taking the remaining height, so it reaches the next mark however tall the
+   text beside it is. */
+.marker::after {
+  flex: 1;
+  inline-size: 1px;
+  margin-block-start: var(--pm-space-2);
+  content: '';
+  background: var(--pm-border-subtle);
+}
+
+/* No rule after the last event. */
+.event:last-child .marker::after {
+  content: none;
+}
+
+.mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--pm-radius-pill);
+}
+
+.mark[data-mark='icon'] {
+  inline-size: var(--pm-space-6);
+  block-size: var(--pm-space-6);
+  color: var(--pm-text-secondary);
+  background: var(--pm-bg-subtle);
+  border: 1px solid var(--pm-border-default);
+}
+
+/* A dot is smaller than its box, so it is moved down to the centre. A calc, not
+   the step it equals today, because density rounds the two values differently. */
+.mark[data-mark='dot'] {
+  inline-size: var(--pm-space-3);
+  block-size: var(--pm-space-3);
+  margin-block-start: calc((var(--pm-space-6) - var(--pm-space-3)) / 2);
+  background: var(--pm-border-strong);
+}
+
+/* The copy ---------------------------------------------------------------- */
+
+.title {
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+}
+
+.time {
+  margin-block-start: 2px;
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+}
+
+/* The event's content, so it uses the reading step rather than the metadata
+   step. A reply is content, while a Stepper's description is a hint. */
+.detail {
+  margin-block-start: var(--pm-space-2);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+}
+
+/* Tones — the status roles, which exist for exactly this --------------------
+ *
+ * An icon mark is a lit surface (subtle fill, its own border and glyph colour).
+ * A dot has room for one role and takes the solid, which the subtle fill derives
+ * from. Neutral is the default tone: the base rule above, with no selector here
+ * because it sets no attribute. */
+
+.event[data-tone='accent'] .mark[data-mark='icon'] {
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+  border-color: var(--pm-accent-bg);
+}
+
+.event[data-tone='accent'] .mark[data-mark='dot'] {
+  background: var(--pm-accent-bg);
+}
+
+.event[data-tone='info'] .mark[data-mark='icon'] {
+  color: var(--pm-info-text);
+  background: var(--pm-info-subtle);
+  border-color: var(--pm-info-border);
+}
+
+.event[data-tone='info'] .mark[data-mark='dot'] {
+  background: var(--pm-info-solid);
+}
+
+.event[data-tone='success'] .mark[data-mark='icon'] {
+  color: var(--pm-success-text);
+  background: var(--pm-success-subtle);
+  border-color: var(--pm-success-border);
+}
+
+.event[data-tone='success'] .mark[data-mark='dot'] {
+  background: var(--pm-success-solid);
+}
+
+.event[data-tone='warning'] .mark[data-mark='icon'] {
+  color: var(--pm-warning-text);
+  background: var(--pm-warning-subtle);
+  border-color: var(--pm-warning-border);
+}
+
+.event[data-tone='warning'] .mark[data-mark='dot'] {
+  background: var(--pm-warning-solid);
+}
+
+.event[data-tone='danger'] .mark[data-mark='icon'] {
+  color: var(--pm-danger-text);
+  background: var(--pm-danger-subtle);
+  border-color: var(--pm-danger-border);
+}
+
+.event[data-tone='danger'] .mark[data-mark='dot'] {
+  background: var(--pm-danger-solid);
+}

@@ -1,0 +1,22 @@
+/* Every application Stylelint rule, violated once. See ./README.md: this file is data. */
+
+/* The root's font size rescales every rem token. */
+:root {
+  font-size: 81.25%;
+}
+
+/* A token re-declared for one pairing: a second palette no contrast law checks. */
+[data-palette='petrol'][data-mode='dark'] {
+  --pm-accent-bg: #0b7a75;
+  --pm-border-focus: #0b7a75;
+}
+
+/* A member restyled from outside, through its identity attribute. */
+[data-member='button'][data-variant='ghost']:hover {
+  background: transparent;
+}
+
+/* Motion declared outside the vocabulary. */
+.banner {
+  transition: opacity 200ms ease;
+}

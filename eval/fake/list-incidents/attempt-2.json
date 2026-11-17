@@ -1,0 +1,135 @@
+{
+  "spec": "polymorph-screen/1",
+  "name": "IncidentsView",
+  "purpose": "The incidents a team's services raised, narrowed by search and filters, with a delete that asks first.",
+  "types": {
+    "@polymorph/react-ui": ["DataTableColumn", "DataTableSort"],
+    "./incidents": ["Incident"]
+  },
+  "inputs": [
+    { "name": "incidents", "type": "Incident[]", "doc": "Already filtered and sorted." },
+    {
+      "name": "columns",
+      "type": "DataTableColumn<Incident>[]",
+      "doc": "Cell renderers are code, so they arrive as an input; the last column holds each row's delete action."
+    },
+    { "name": "getRowId", "type": "(incident: Incident) => string" },
+    { "name": "sort", "type": "DataTableSort" },
+    { "name": "onSortChange", "type": "(sort: DataTableSort) => void" },
+    { "name": "isEmpty", "type": "boolean", "doc": "No incidents at all, before any filter." },
+    { "name": "isFiltered", "type": "boolean" },
+    { "name": "onClearFilters", "type": "() => void" },
+    { "name": "resultCount", "type": "{ shown: number; total: number }" },
+    { "name": "query", "type": "string" },
+    { "name": "onQueryChange", "type": "(query: string) => void" },
+    { "name": "severity", "type": "string | null" },
+    { "name": "severityOptions", "type": "{ value: string; label: string }[]" },
+    { "name": "onSeverityChange", "type": "(value: string | null) => void" },
+    { "name": "state", "type": "string | null" },
+    { "name": "stateOptions", "type": "{ value: string; label: string }[]" },
+    { "name": "onStateChange", "type": "(value: string | null) => void" },
+    { "name": "deleting", "type": "boolean", "doc": "Whether the delete confirmation is open." },
+    {
+      "name": "deletingDescription",
+      "type": "string",
+      "doc": "Names the incident being deleted and says that it cannot be undone."
+    },
+    { "name": "onDeletingChange", "type": "(open: boolean) => void" },
+    { "name": "onConfirmDelete", "type": "() => void" }
+  ],
+  "root": {
+    "component": "ListPage",
+    "props": {
+      "title": "Incidents",
+      "description": "Everything your services raised, newest first.",
+      "empty": { "$": "isEmpty" },
+      "emptyState": {
+        "$object": {
+          "icon": "inbox",
+          "title": "No incidents",
+          "description": "When one of your services raises an incident, it appears here."
+        }
+      },
+      "filters": {
+        "component": "FilterBar",
+        "props": {
+          "isFiltered": { "$": "isFiltered" },
+          "onClear": { "$": "onClearFilters" },
+          "resultCount": { "$": "resultCount" },
+          "search": {
+            "component": "SearchInput",
+            "props": {
+              "placeholder": "Search incidents…",
+              "aria-label": "Search incidents",
+              "value": { "$": "query" },
+              "onChange": { "$": "onQueryChange" }
+            }
+          }
+        },
+        "children": [
+          {
+            "component": "Select",
+            "props": {
+              "options": { "$": "severityOptions" },
+              "emptyOption": "Any severity",
+              "aria-label": "Filter by severity",
+              "value": { "$": "severity" },
+              "onChange": { "$": "onSeverityChange" }
+            }
+          },
+          {
+            "component": "Select",
+            "props": {
+              "options": { "$": "stateOptions" },
+              "emptyOption": "Open or resolved",
+              "aria-label": "Filter by open or resolved",
+              "value": { "$": "state" },
+              "onChange": { "$": "onStateChange" }
+            }
+          }
+        ]
+      }
+    },
+    "children": [
+      {
+        "component": "DataTable",
+        "props": {
+          "label": "Incidents",
+          "columns": { "$": "columns" },
+          "data": { "$": "incidents" },
+          "getRowId": { "$": "getRowId" },
+          "sort": { "$": "sort" },
+          "onSortChange": { "$": "onSortChange" },
+          "emptyState": {
+            "$object": {
+              "icon": "search",
+              "title": "No incidents match these filters",
+              "description": "Every incident is still here; the filters are hiding them.",
+              "secondaryAction": {
+                "component": "Button",
+                "props": {
+                  "variant": "ghost",
+                  "tone": "neutral",
+                  "label": "Clear filters",
+                  "onClick": { "$": "onClearFilters" }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "component": "ConfirmDialog",
+        "props": {
+          "open": { "$": "deleting" },
+          "onOpenChange": { "$": "onDeletingChange" },
+          "tone": "danger",
+          "title": "Delete this incident?",
+          "description": { "$": "deletingDescription" },
+          "confirmLabel": "Delete incident",
+          "onConfirm": { "$": "onConfirmDelete" }
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,181 @@
+/* Tree — `design/components/tree.md`.
+ *
+ * Nested lists of rows. An item is the focusable element and its row is what a
+ * reader sees: the fill, the indent and the focus ring are the row's, because
+ * an open branch's item also holds the rows under it.
+ *
+ * A row spans the tree's width at every level, so a fill reads as one band, and
+ * the level indents the row's content. */
+
+.root {
+  /* The level a row sits at, set inline on each row by the member as geometry.
+     It defaults to zero, so a row without one sits at the top level. */
+  --pm-tree-level: 0;
+
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  padding: 0;
+  margin: 0;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  list-style: none;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+/* The item takes focus and draws nothing. Its UA ring is suppressed because the
+   row draws the ring. */
+.item {
+  outline: none;
+}
+
+/* row ----------------------------------------------------------------------- */
+
+.row {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: flex;
+  align-items: center;
+  min-block-size: var(--pm-control-height-sm);
+  padding-inline: calc(var(--pm-tree-level) * var(--pm-space-5)) var(--pm-space-3);
+  cursor: pointer;
+  border-radius: var(--pm-radius-sm);
+}
+
+/* The chevron's target, and the same width before a leaf's label, so a leaf
+   aligns with a branch at its level. It is as tall as the row and as wide as
+   the smallest target, because a press on it is a different act from a press
+   on the row. */
+.toggle,
+.slot {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  align-self: stretch;
+  justify-content: center;
+  inline-size: var(--pm-control-height-sm);
+  color: var(--pm-text-muted);
+}
+
+.chevron {
+  display: inline-flex;
+  transition: transform var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+/* The icon set has no directional pairs, so a closed branch's chevron is
+   mirrored where the page reads right to left. An open one points down in both. */
+[dir='rtl'] .chevron {
+  transform: scaleX(-1);
+}
+
+.item[aria-expanded='true'] > .row .chevron {
+  transform: rotate(90deg);
+}
+
+/* A flex item is as wide as its content at least. With no minimum the column
+   shrinks, and a long word breaks, so a label never widens the tree. */
+.text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-inline-size: 0;
+  padding-block: var(--pm-space-2);
+  overflow-wrap: anywhere;
+}
+
+.label {
+  color: var(--pm-text-primary);
+}
+
+.description,
+.status {
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-secondary);
+}
+
+/* The row that asks for more of a level is an action, in the colour of a link. */
+.more {
+  color: var(--pm-accent-text);
+}
+
+/* states -------------------------------------------------------------------- */
+
+/* A busy row and a disabled row answer no press. While its level loads, the
+   row that asks is no action, so its words leave the colour of a link. */
+.row[data-busy] {
+  cursor: default;
+}
+
+.row[data-busy] .more {
+  color: var(--pm-text-secondary);
+}
+
+.item[data-disabled] > .row {
+  cursor: not-allowed;
+}
+
+.item[data-disabled] > .row .label,
+.item[data-disabled] > .row .description,
+.item[data-disabled] > .row .toggle {
+  color: var(--pm-text-disabled);
+}
+
+/* The focus ring on the row, with the shared rule's tokens. Restated because
+   the focusable element is the item, which holds the rows under it too, and
+   the ring belongs around one row. It is drawn inside the row's edge: rows
+   share their edges, and an outer ring would be cut by the surface around the
+   tree. */
+.item:focus-visible > .row {
+  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline-offset: calc(var(--pm-focus-width) * -1);
+}
+
+/* The selected item uses the selection colours, not the hover colours
+   (`design/components/README.md`). Its fill is the selected surface, not the
+   selection fill: a row holds a label and a description, and the contrast law
+   holds every text role on the selected surface. With a hue the selected
+   surface has a hover step, so pointing at the selected row still gives
+   feedback. A system with no hue has none, as in List. */
+.item[data-selected] > .row {
+  background: var(--pm-selection-surface);
+}
+
+.item[data-selected] > .row:hover {
+  background: var(--pm-selection-surface-hover);
+}
+
+/* After selection and excluding it, because the state the reader chose wins
+   over the pointer position. A disabled row and a busy row show no hover. */
+.item:not([data-selected], [data-disabled]) > .row:hover:not([data-busy]) {
+  background: var(--pm-bg-subtle);
+}
+
+/* Fixture box for the spec's long labels at a narrow width: narrower than a
+   phone, built from tokens (96 × 2 = 192px at standard density) because the CSS
+   law covers every file in this package, fixtures included. */
+.harness {
+  inline-size: calc(var(--pm-space-10) * 2);
+  max-inline-size: 100%;
+}
+
+/* Reduced-motion projection (`design/motion/motion.md`): the chevron's turn is
+   instant. The row's colour feedback stays. */
+@media (prefers-reduced-motion: reduce) {
+  .chevron {
+    transition: none;
+  }
+}

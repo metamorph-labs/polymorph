@@ -1,0 +1,350 @@
+{
+  "spec": "polymorph-screen/1",
+  "name": "NewTicketScreen",
+  "purpose": "Relay's new-ticket form — one card of fields under a page header, with a guarded discard.",
+  "platform": "android",
+  "types": {
+    "@internationalized/date": ["CalendarDate"],
+    "@polymorph/react-ui": [
+      "ComboboxOption",
+      "ErrorSummaryError",
+      "SelectOption",
+      "SelectOptionGroup"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "onSubmit",
+      "type": "() => void",
+      "doc": "FormPage calls it on Return in a field and on a submit Button in its actions."
+    },
+    {
+      "name": "confirming",
+      "type": "boolean",
+      "doc": "Whether the discard confirmation is open."
+    },
+    {
+      "name": "onConfirmingChange",
+      "type": "(open: boolean) => void"
+    },
+    {
+      "name": "onDiscard",
+      "type": "() => void"
+    },
+    {
+      "name": "onConfirmDiscard",
+      "type": "() => void"
+    },
+    {
+      "name": "errors",
+      "type": "ErrorSummaryError[]",
+      "doc": "What the last submit refused, each naming its field; empty while nothing is refused."
+    },
+    {
+      "name": "subject",
+      "type": "string"
+    },
+    {
+      "name": "onSubjectChange",
+      "type": "(value: string) => void"
+    },
+    {
+      "name": "subjectError",
+      "type": "string | undefined"
+    },
+    {
+      "name": "requester",
+      "type": "string"
+    },
+    {
+      "name": "onRequesterChange",
+      "type": "(value: string) => void"
+    },
+    {
+      "name": "requesterError",
+      "type": "string | undefined"
+    },
+    {
+      "name": "priority",
+      "type": "string"
+    },
+    {
+      "name": "priorityOptions",
+      "type": "(SelectOption | SelectOptionGroup)[]"
+    },
+    {
+      "name": "onPriorityChange",
+      "type": "(value: string | null) => void"
+    },
+    {
+      "name": "assignee",
+      "type": "string | null"
+    },
+    {
+      "name": "assigneeOptions",
+      "type": "ComboboxOption[]"
+    },
+    {
+      "name": "onAssigneeChange",
+      "type": "(value: string | null) => void"
+    },
+    {
+      "name": "due",
+      "type": "CalendarDate | null"
+    },
+    {
+      "name": "minDue",
+      "type": "CalendarDate",
+      "doc": "Today — a due date in the past is not a due date."
+    },
+    {
+      "name": "onDueChange",
+      "type": "(value: CalendarDate | null) => void"
+    },
+    {
+      "name": "notify",
+      "type": "boolean"
+    },
+    {
+      "name": "onNotifyChange",
+      "type": "(next: boolean) => void"
+    }
+  ],
+  "root": {
+    "component": "FormPage",
+    "props": {
+      "title": "New ticket",
+      "description": "Raise a conversation on someone's behalf — a phone call, or an email that never reached the queue.",
+      "onSubmit": {
+        "$": "onSubmit"
+      },
+      "actions": [
+        {
+          "component": "ConfirmDialog",
+          "props": {
+            "open": {
+              "$": "confirming"
+            },
+            "onOpenChange": {
+              "$": "onConfirmingChange"
+            },
+            "title": "Discard this ticket?",
+            "description": "The subject and requester you have typed will be lost.",
+            "confirmLabel": "Discard",
+            "onConfirm": {
+              "$": "onConfirmDiscard"
+            },
+            "trigger": {
+              "component": "Button",
+              "props": {
+                "variant": "ghost",
+                "tone": "neutral",
+                "label": "Discard",
+                "onClick": {
+                  "$": "onDiscard"
+                }
+              }
+            }
+          }
+        },
+        {
+          "component": "Button",
+          "props": {
+            "type": "submit",
+            "icon": "confirm",
+            "label": "Create ticket"
+          }
+        }
+      ]
+    },
+    "children": [
+      {
+        "component": "ErrorSummary",
+        "props": {
+          "title": "The ticket can’t be raised yet",
+          "errors": {
+            "$": "errors"
+          }
+        }
+      },
+      {
+        "component": "Card",
+        "children": [
+          {
+            "component": "Stack",
+            "props": {
+              "gap": 5
+            },
+            "children": [
+              {
+                "component": "FormField",
+                "props": {
+                  "label": "Subject",
+                  "required": true,
+                  "description": "One line. It is what the queue is scanned by.",
+                  "error": {
+                    "$": "subjectError"
+                  },
+                  "id": "subject"
+                },
+                "children": [
+                  {
+                    "component": "Input",
+                    "props": {
+                      "value": {
+                        "$": "subject"
+                      },
+                      "onChange": {
+                        "$": "onSubjectChange"
+                      },
+                      "placeholder": "Webhook retries stop after the first 5xx",
+                      "maxLength": 120
+                    }
+                  }
+                ]
+              },
+              {
+                "component": "Grid",
+                "props": {
+                  "columns": 2,
+                  "gap": 5
+                },
+                "children": [
+                  {
+                    "component": "FormField",
+                    "props": {
+                      "label": "Requester",
+                      "required": true,
+                      "description": "Where the confirmation and replies go.",
+                      "error": {
+                        "$": "requesterError"
+                      },
+                      "id": "requester"
+                    },
+                    "children": [
+                      {
+                        "component": "Input",
+                        "props": {
+                          "type": "email",
+                          "autoComplete": "email",
+                          "value": {
+                            "$": "requester"
+                          },
+                          "onChange": {
+                            "$": "onRequesterChange"
+                          },
+                          "placeholder": "dana@northwind.example"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "component": "FormField",
+                    "props": {
+                      "label": "Priority",
+                      "description": "Urgent pages the on-call engineer."
+                    },
+                    "children": [
+                      {
+                        "component": "Select",
+                        "props": {
+                          "options": {
+                            "$": "priorityOptions"
+                          },
+                          "value": {
+                            "$": "priority"
+                          },
+                          "onChange": {
+                            "$": "onPriorityChange"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "component": "Grid",
+                "props": {
+                  "columns": 2,
+                  "gap": 5
+                },
+                "children": [
+                  {
+                    "component": "FormField",
+                    "props": {
+                      "label": "Assignee",
+                      "description": "Who picks this up, if anyone."
+                    },
+                    "children": [
+                      {
+                        "component": "Combobox",
+                        "props": {
+                          "clearable": true,
+                          "options": {
+                            "$": "assigneeOptions"
+                          },
+                          "placeholder": "Search the team…",
+                          "value": {
+                            "$": "assignee"
+                          },
+                          "onChange": {
+                            "$": "onAssigneeChange"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "component": "FormField",
+                    "props": {
+                      "label": "Due date",
+                      "description": "The day it has to be answered."
+                    },
+                    "children": [
+                      {
+                        "component": "DatePicker",
+                        "props": {
+                          "clearable": true,
+                          "minValue": {
+                            "$": "minDue"
+                          },
+                          "value": {
+                            "$": "due"
+                          },
+                          "onChange": {
+                            "$": "onDueChange"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "component": "FormField",
+                "props": {
+                  "label": "Notify the requester",
+                  "description": "Sends a confirmation with the ticket number."
+                },
+                "children": [
+                  {
+                    "component": "Switch",
+                    "props": {
+                      "checked": {
+                        "$": "notify"
+                      },
+                      "onCheckedChange": {
+                        "$": "onNotifyChange"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

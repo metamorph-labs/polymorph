@@ -1,0 +1,57 @@
+/* ChartAnnotations — the shared annotation layer (the shared grammar,
+ * `docs/charts.md`).
+ *
+ * Annotations use axis and text colours, never data colours: rules and band
+ * edges in `--pm-chart-axis`, the band wash in `--pm-chart-other`, and labels in
+ * text tokens. An annotation never re-centres colour, and a band is a
+ * de-emphasis wash with no sentiment. The dashed rule is the baseline's style,
+ * so `baseline` (shorthand for a `line` annotation) and a `line` look the
+ * same. */
+
+/* The layers ignore the pointer. Annotations sit over or under the marks, and
+   an SVG path is a hit target by default, so a rule crossing a bar would take
+   the pointerover from the mark's target whenever the pointer touched it. */
+.washes,
+.ink {
+  pointer-events: none;
+}
+
+/* A neutral de-emphasis wash at 0.08, below the marks' 0.1, so a reference zone
+   is always lighter than the lightest data wash. */
+.span {
+  fill: var(--pm-chart-other);
+  opacity: 0.08;
+  stroke: none;
+}
+
+/* Hairline edges mark exactly where the zone starts and stops. With the wash
+   alone, the reader would have to guess the boundary. */
+.edge {
+  fill: none;
+  stroke: var(--pm-chart-axis);
+  stroke-width: 1;
+}
+
+/* A reference rule, in the baseline's style, used by every `line` annotation. */
+.rule {
+  fill: none;
+  stroke: var(--pm-chart-axis);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+/* A named point uses the annotation colour at the tier's marker size, with the
+   2px surface ring every point mark has. It stays legible over data without
+   looking like a series. */
+.mark {
+  fill: var(--pm-chart-axis);
+  stroke: var(--pm-bg-surface);
+  stroke-width: 2;
+}
+
+.label {
+  fill: var(--pm-text-muted);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-variant-numeric: var(--pm-font-numeric);
+}

@@ -1,0 +1,21 @@
+{
+  "name": "polymorph-next-app",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@polymorph/engine": "*",
+    "@polymorph/react": "*",
+    "@polymorph/react-ui": "*",
+    "next": "*",
+    "react": "*",
+    "react-dom": "*"
+  },
+  "devDependencies": {
+    "@polymorph/rules": "*",
+    "@types/node": "*",
+    "@types/react": "*",
+    "@types/react-dom": "*",
+    "eslint": "*",
+    "typescript": "*"
+  }
+}

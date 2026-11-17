@@ -1,0 +1,145 @@
+/* Diff — `design/components/diff.md`.
+ *
+ * Two forms. The inline form is text inside other text: it sets no font, size
+ * or colour, so it reads as the sentence or cell around it reads. The lines
+ * form is a code surface, as CodeBlock is: mono at the `text.sm` step on the
+ * subtle background.
+ *
+ * Colour is never the only mark. The inline form strikes the old value through
+ * and sets no colour at all. The lines form writes `+` or `−` in a marker
+ * cell, and the cell's status wash repeats what the glyph says. */
+
+/* The words a screen reader hears: "from", "to", "added", "removed". Browsers
+   do not announce `del` and `ins` reliably, so the member writes them. */
+.spoken {
+  composes: visuallyHidden from '../conventions/a11y.module.css';
+}
+
+/* inline -------------------------------------------------------------------
+ *
+ * No colour. The form sits on fills the contrast law holds only for the text
+ * around it (an Alert's wash, a selected row), so it takes that text's colour,
+ * and the strike is the mark.
+ *
+ * The form and each value are bidi isolates. The old value, the arrow and the
+ * new value then follow the direction of the line they are in, whatever script
+ * the values are written in: without it, two Latin values on a right-to-left
+ * page would stay left to right around an arrow that points the other way. */
+
+.inline {
+  unicode-bidi: isolate;
+}
+
+.before {
+  text-decoration: line-through;
+  unicode-bidi: isolate;
+}
+
+/* A browser underlines `ins`, and an underline in running text reads as a link. */
+.after {
+  text-decoration: none;
+  unicode-bidi: isolate;
+}
+
+/* An addition's `+`. The new value is not struck through and takes no colour,
+   so without the sign an addition would look like a value that did not change. */
+.sign {
+  margin-inline-end: var(--pm-space-1);
+}
+
+/* The arrow stands clear of both values by one space of the text around it. */
+.arrow {
+  margin-inline: var(--pm-space-2);
+}
+
+/* The glyph has no right-to-left form of its own, so it is mirrored where the
+   line runs right to left. An inline box takes no transform, so it is an
+   inline block there. `:dir()` is not used, as in Tabs. */
+[dir='rtl'] .arrow {
+  display: inline-block;
+  transform: scaleX(-1);
+}
+
+/* lines --------------------------------------------------------------------- */
+
+.lines {
+  overflow: hidden;
+  font-family: var(--pm-font-mono);
+  font-size: var(--pm-text-sm-size);
+  line-height: var(--pm-text-sm-line-height);
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-subtle);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-md);
+}
+
+.rows {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+/* The marker's column and the text's. The text's track may shrink to nothing,
+   so a long line wraps inside the row and the member never widens its
+   container. */
+.row {
+  display: grid;
+  grid-template-columns: var(--pm-space-6) minmax(0, 1fr);
+}
+
+/* One line tall when the line is empty, so an empty line is still a row. */
+.marker {
+  min-block-size: calc(var(--pm-text-sm-size) * var(--pm-text-sm-line-height));
+  text-align: center;
+  user-select: none;
+}
+
+/* Law-checked pairings: the glyph is `{tone}.text` on `{tone}.subtle`. The
+   wash stops at the marker cell, because the law holds `text.primary` on no
+   status wash. */
+.row[data-kind='added'] > .marker {
+  color: var(--pm-success-text);
+  background: var(--pm-success-subtle);
+}
+
+.row[data-kind='removed'] > .marker {
+  color: var(--pm-danger-text);
+  background: var(--pm-danger-subtle);
+}
+
+/* Whitespace is content, as in CodeBlock, but a line wraps: a diff is read
+   down its rows, and a row that scrolled sideways would hide its change. An
+   unchanged line is context, one step quieter than a line that changed. */
+.text {
+  padding-inline: var(--pm-space-3);
+  overflow-wrap: anywhere;
+  color: var(--pm-text-secondary);
+  white-space: pre-wrap;
+}
+
+.row[data-kind] > .text {
+  color: var(--pm-text-primary);
+}
+
+/* A collapsed run: its Button, and under it the lines once they are shown.
+   The rule on each side says the rows around it are not adjacent lines. */
+.fold {
+  display: flex;
+  padding: var(--pm-space-1) var(--pm-space-2);
+  border-block: 1px solid var(--pm-border-subtle);
+}
+
+.run:first-child > .fold {
+  border-block-start: none;
+}
+
+.run:last-child > .fold:last-child {
+  border-block-end: none;
+}
+
+/* Fixture box for the spec's narrow entry, built from tokens (96 + 96 = 192px
+   at standard density) because the CSS law covers every file in this package,
+   fixtures included (see FixtureBox). */
+.harnessNarrow {
+  inline-size: calc(var(--pm-space-10) * 2);
+}

@@ -1,0 +1,22 @@
+/* Code — `design/components/code.md`.
+ *
+ * Padding on the inline axis only. Block-axis padding would grow the line box of
+ * any paragraph containing a chip, so lines with code would sit further from
+ * their neighbours than lines without. */
+
+.code {
+  padding-inline: var(--pm-space-1);
+  font-family: var(--pm-font-mono);
+  font-size: var(--pm-text-sm-size);
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-subtle);
+  border-radius: var(--pm-radius-sm);
+
+  /* A string with no break in it, such as a URI or a key, breaks inside the chip
+   * where it would overflow, so it never widens what holds it. Each line's part
+   * of the chip keeps the padding and the radius, where the engine supports
+   * the unprefixed declaration. Elsewhere the chip's ends are on its first and
+   * last lines. */
+  overflow-wrap: anywhere;
+  box-decoration-break: clone;
+}

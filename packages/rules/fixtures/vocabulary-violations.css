@@ -1,0 +1,72 @@
+/* Every Stylelint red rule, violated once. See ./README.md — this file is data. */
+
+.button {
+  gap: 8px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  background: rgb(64 135 222);
+  border: 1px solid darkgray;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+  transition: background 120ms ease;
+}
+
+.buttonNested {
+  padding: var(--pm-space-3, 10px);
+  color: var(--brand-accent);
+}
+
+.leaked {
+  height: var(--pm-shell-topbar-height);
+  padding-inline: var(--pm-page-padding-x);
+}
+
+@keyframes pulse {
+  from {
+    opacity: 0;
+  }
+}
+
+/* A recipe may never know which house system it is in,
+   nor which palette it is painted with. Both shapes of each — the named value
+   and the bare attribute a "scope it to themed pages" edit reaches for on its
+   way to becoming one. */
+[data-system='terminal'] .card {
+  background: var(--pm-bg-surface);
+}
+
+[data-system] .rail {
+  background: var(--pm-bg-subtle);
+}
+
+[data-palette='petrol'] .accentBar {
+  background: var(--pm-accent-bg);
+}
+
+[data-palette] .wash {
+  background: var(--pm-accent-subtle);
+}
+
+/* The retired attribute stays on the list: `data-theme` is what the pairing replaced, and
+   a resurrected one must still be illegal — nothing else in the tree would
+   notice it coming back. */
+[data-theme='terminal'] .plate {
+  background: var(--pm-bg-raised);
+}
+
+[data-theme] .frame {
+  background: var(--pm-bg-app);
+}
+
+/* The identity attribute is the exception seam's address, written by every
+   root and read only by the emitter — a recipe selecting it is a component
+   branching on its own name. Named and bare, like the pairing bans above. */
+.pill[data-member='button'] {
+  border-radius: var(--pm-radius-pill);
+}
+
+[data-member] .badge {
+  background: var(--pm-accent-subtle);
+}

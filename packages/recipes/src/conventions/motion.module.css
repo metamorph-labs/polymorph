@@ -1,0 +1,149 @@
+/* CSS state feedback and ambient loops.
+ *
+ * Everything here uses transitions on purpose. A CSS transition is
+ * interruptible: reversed mid-flight, it continues from the current computed
+ * value. So the cheap, always-on part of the motion system needs no engine. The
+ * engine handles what CSS cannot: exit choreography, unmount coordination, and
+ * velocity-continuous springs.
+ *
+ * Every value is a `--pm-motion-*` token. That is why `[data-motion]` on any
+ * ancestor rescales these transitions exactly as it rescales the engine, and why
+ * `none` stops them: the tokens are already `0ms`. No rule here special-cases a
+ * temperament. */
+
+/* State feedback (`design/components/README.md`, "Motion bindings"): colour
+   and border changes on every interactive part. They are subtle and symmetric,
+   with no direction of travel, so they use `standard` easing. */
+.stateFeedback {
+  transition:
+    background-color var(--pm-motion-duration-control) var(--pm-motion-easing-standard),
+    border-color var(--pm-motion-duration-control) var(--pm-motion-easing-standard),
+    color var(--pm-motion-duration-control) var(--pm-motion-easing-standard),
+    box-shadow var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+/* Press feedback (`design/motion/motion.md`). The press is quick and uses
+   `standard`. The release is slower and decelerates, so a press does not read
+   as a flicker. The property has two transitions; the base rule is the release.
+
+   `--pm-motion-press-scale` is `1` at `none`, so the transform is a no-op and
+   colour states carry the feedback alone.
+
+   The colour list is repeated here. Every part that uses `pressable` also uses
+   `stateFeedback`, and a `transition` shorthand that names only `transform`
+   would discard the colour feedback on the members pressed most often. A
+   Button's hover would snap while an Input's fades, and the motion spec's hover
+   timing would never reach a pressable part. Both lists live in this file, so
+   the repetition stays inside one module. */
+.pressable {
+  transition:
+    background-color var(--pm-motion-duration-control) var(--pm-motion-easing-standard),
+    border-color var(--pm-motion-duration-control) var(--pm-motion-easing-standard),
+    color var(--pm-motion-duration-control) var(--pm-motion-easing-standard),
+    box-shadow var(--pm-motion-duration-control) var(--pm-motion-easing-standard),
+    transform var(--pm-motion-duration-control) var(--pm-motion-easing-enter);
+}
+
+.pressable:active {
+  transform: scale(var(--pm-motion-press-scale));
+  transition:
+    background-color var(--pm-motion-duration-control) var(--pm-motion-easing-standard),
+    border-color var(--pm-motion-duration-control) var(--pm-motion-easing-standard),
+    color var(--pm-motion-duration-control) var(--pm-motion-easing-standard),
+    box-shadow var(--pm-motion-duration-control) var(--pm-motion-easing-standard),
+    transform calc(var(--pm-motion-duration-control) * 0.5) var(--pm-motion-easing-standard);
+}
+
+/* Ambient loops (`design/motion/motion.md`, "Pattern definitions"). Periods are
+   tokens and scale inversely with temperament: a calmer theme shimmers slower,
+   not faster. */
+
+@keyframes pm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pm-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pm-shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.spin {
+  animation: pm-spin var(--pm-motion-ambient-spin) linear infinite;
+}
+
+/* A one-shot fade for content that arrives without anything unmounting, such as
+   an image that finishes loading over the initials painted beneath it
+   (`avatar.image`). Presence coordination is the engine's job, but nothing
+   leaves here, so there is nothing to coordinate. A CSS animation that runs
+   once is enough. */
+.fadeIn {
+  animation: pm-fade-in var(--pm-motion-duration-control) var(--pm-motion-easing-enter) both;
+}
+
+/* A 200%-wide sheen that moves across a clipped host. The host sets the base
+   fill; this layer only moves. */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::after {
+  position: absolute;
+  inset: 0;
+  width: 200%;
+  content: '';
+  background: linear-gradient(
+    90deg,
+    var(--pm-bg-subtle) 0%,
+    var(--pm-bg-raised) 50%,
+    var(--pm-bg-subtle) 100%
+  );
+  animation: pm-shimmer var(--pm-motion-ambient-shimmer) linear infinite;
+}
+
+/* Ambient animations stop in one place (`design/motion/motion.md`,
+   "Reduced-motion projections"), so no component special-cases it.
+ *
+ * Three routes do this on purpose. The token is already `0s` at `none`. The
+ * attribute rule covers a scope override. The media query overrides any
+ * temperament, because reduced motion is the user's decision, not the theme's. */
+:global([data-motion='none']) .spin,
+:global([data-motion='none']) .fadeIn,
+:global([data-motion='none']) .shimmer::after {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin,
+  .fadeIn,
+  .shimmer::after {
+    animation: none;
+  }
+
+  /* Reduced motion removes the transform, but the colour feedback keeps its
+     fade, as on every non-pressable member. A blanket `transition: none` here
+     would make a Button's colours snap while an Input's fade, under the setting
+     that asks for less difference. */
+  .pressable,
+  .pressable:active {
+    transform: none;
+    transition:
+      background-color var(--pm-motion-duration-control) var(--pm-motion-easing-standard),
+      border-color var(--pm-motion-duration-control) var(--pm-motion-easing-standard),
+      color var(--pm-motion-duration-control) var(--pm-motion-easing-standard),
+      box-shadow var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+  }
+}

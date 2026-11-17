@@ -1,0 +1,235 @@
+/* Toast — `design/components/toast.md`.
+ *
+ * One neutral surface for every tone. Only the icon shows the tone, because
+ * many tinted cards together look like an alarm panel, and the title carries
+ * the message in words.
+ *
+ * The motion engine handles enter, exit and reflow (see Toaster.tsx). This file
+ * handles the box, the swipe, and the rule that a leaving card is not a click
+ * target. */
+
+.viewport {
+  position: fixed;
+  inset-block-end: var(--pm-space-6);
+  inset-inline-end: var(--pm-space-6);
+
+  /* `toast`, the top of the stacking order: announcements are above surfaces,
+     which are above the frame. So a toast raised while a sheet is open paints
+     above the sheet instead of behind it. */
+  z-index: var(--pm-z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-3);
+  inline-size: calc(var(--pm-space-10) * 4);
+  max-inline-size: calc(100vw - var(--pm-space-6) * 2);
+  max-block-size: calc(100dvh - var(--pm-space-6) * 2);
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The phone register, below 30rem (toast.md) ----------------------------------
+ *
+ * A fixed-width card in the `bottom-end` corner at `space-6` insets collides
+ * with thumbs and the home indicator (`docs/layout.md`). So the viewport becomes
+ * full-width (`inset-inline: 0`, with `padding-inline` for the margins), and the
+ * bottom inset adds the safe area, which is zero where there is no notch. The
+ * cards are full-width because the viewport's width cap no longer applies and
+ * a column's items stretch. Max-visible, stack gap, ordering, timers and the
+ * x-axis swipe are unchanged.
+ *
+ * `@media` is allowed here for the overlay class's reason (`docs/layout.md`):
+ * the viewport is portalled and `fixed`, which makes it shell-class with the
+ * window as its only container. It uses the family's one `30rem` threshold, a
+ * rem literal because a breakpoint is geometry, not theme. */
+@media (width < 30rem) {
+  .viewport {
+    inset-block-end: calc(var(--pm-space-6) + env(safe-area-inset-bottom, 0px));
+    inset-inline: 0;
+    inline-size: auto;
+    max-inline-size: none;
+    padding-inline: var(--pm-space-4);
+  }
+}
+
+.toast {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  position: relative;
+  display: flex;
+  gap: var(--pm-space-3);
+  align-items: flex-start;
+  padding: var(--pm-inset-pane);
+  padding-inline-end: var(--pm-space-8);
+  background: var(--pm-bg-raised);
+  border: 1px solid var(--pm-border-default);
+  border-radius: var(--pm-radius-surface);
+  box-shadow: var(--pm-shadow-transient);
+}
+
+/* Top-aligned to the title's line box rather than centred on the card, so in a
+   toast with a description the icon stays beside the title. */
+.tone {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  block-size: calc(var(--pm-text-sm-line-height) * var(--pm-text-sm-size));
+}
+
+/* The promise's pending state: the tone slot with the loading glyph spinning
+   in it. It is applied with `.tone` (the layout primitives' two-class idiom)
+   for the slot's geometry, because a same-file `composes` would be an edge to
+   nothing in the registry's cross-file graph. `spin` is the ambient loop, and
+   its period, inverse temperament scaling and three ways of stopping all come
+   with the composition. It is muted rather than toned, because a pending
+   result has no outcome yet. */
+.wait {
+  composes: spin from '../conventions/motion.module.css';
+  color: var(--pm-text-muted);
+}
+
+.text {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.title {
+  overflow-wrap: anywhere;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+}
+
+.description {
+  margin-block-start: var(--pm-space-1);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+}
+
+.action {
+  flex: none;
+  margin-inline-start: var(--pm-space-4);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-3);
+  margin-block-start: var(--pm-space-2);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  color: var(--pm-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.content > p {
+  margin: 0;
+}
+
+/* Toast actions are always tertiary, including native or nested controls supplied
+   as content. This container contract outranks a caller's button variant and its
+   hover/pressed rules. Keep the existing focus outline, hit area and interaction. */
+.toast :is(button, [role='button'], a[data-variant]) {
+  color: var(--pm-accent-text) !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.toast :is(button, [role='button'], a[data-variant])[data-tone='neutral'] {
+  color: var(--pm-text-secondary) !important;
+}
+
+.toast :is(button, [role='button'], a[data-variant])[data-tone='danger'] {
+  color: var(--pm-danger-text) !important;
+}
+
+.toast :is(button, [role='button'], a[data-variant]):is(:disabled, [aria-disabled='true']) {
+  color: var(--pm-text-disabled) !important;
+}
+
+/* Inside the card's own padding, top-right, like Dialog's. */
+.close {
+  position: absolute;
+  inset-block-start: var(--pm-space-4);
+  inset-inline-end: var(--pm-space-4);
+}
+
+/* tones — the icon and only the icon ---------------------------------------- */
+
+.toast[data-tone='success'] .tone {
+  color: var(--pm-success-text);
+}
+
+.toast[data-tone='danger'] .tone {
+  color: var(--pm-danger-text);
+}
+
+.toast[data-tone='warning'] .tone {
+  color: var(--pm-warning-text);
+}
+
+.toast[data-tone='info'] .tone {
+  color: var(--pm-info-text);
+}
+
+/* states -------------------------------------------------------------------- */
+
+/* The pause affordance: while the pointer is on the card the timer is paused,
+   and the border changes by the same step as every other hovered surface. */
+.toast:hover {
+  border-color: var(--pm-border-strong);
+}
+
+.toast[data-state='open'] {
+  pointer-events: auto;
+}
+
+/* A closing card is not a click target. This applies the motion law "motion
+   never blocks input" (`docs/motion.md`). */
+.toast[data-state='closed'] {
+  pointer-events: none;
+}
+
+/* swipe ---------------------------------------------------------------------
+   The finger moves the card with `translate`. In React the card is a motion
+   surface: the engine animates `translate` for the enter and the exit and
+   leaves its last value inline, and an inline value outranks a rule. So the
+   two states in which the finger places the card are marked important, which
+   outranks an inline value and a running animation. A card under a finger is
+   where the finger is. `cancel` is not marked: the card returns to the rest
+   value the engine left. */
+
+.toast[data-swipe='move'] {
+  translate: var(--radix-toast-swipe-move-x) 0 !important;
+}
+
+.toast[data-swipe='cancel'] {
+  translate: 0 0;
+  transition: translate var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+/* The card leaves from where the finger let go, and fades there. */
+.toast[data-swipe='end'] {
+  translate: var(--radix-toast-swipe-end-x) 0 !important;
+}
+
+/* Reduced-motion projection (`docs/motion.md`). `move` and `end` follow the
+   finger and are not animation: in direct manipulation the reader moves the
+   card, not the system. Only `cancel` animates, moving the card back to rest,
+   and under reduced motion it returns at once. */
+@media (prefers-reduced-motion: reduce) {
+  .toast[data-swipe='cancel'] {
+    transition: none;
+  }
+}

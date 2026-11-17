@@ -1,0 +1,41 @@
+/* PhoneInput — `design/components/phone-input.md`.
+ *
+ * The member is a Combobox and an Input in one row, and each draws itself in every state with its
+ * own recipe. This file lays out the row and styles no state. */
+
+/* The row is as wide as it is given. ColorInput's gap separates a field's two parts. */
+.root {
+  display: flex;
+  gap: var(--pm-space-2);
+  align-items: center;
+  max-inline-size: 100%;
+}
+
+/* Each part is a column, so the member's frame inside it stretches to the part's width. */
+.country,
+.number {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+/* The country starts at the width ColorInput's picker takes and gives up the row's shortfall, so
+   a narrow field cuts the region's name, after the calling code, and never the number. */
+.country {
+  flex: 0 1 calc(var(--pm-space-10) * 3);
+}
+
+/* The number takes the rest of the row, and never less than seven text-entry ems and its frame's
+   padding: room for a national number's digits at the phone floor's size, the largest size the
+   field's text takes. */
+.number {
+  flex: 1 0 calc(var(--pm-text-entry-size) * 7 + var(--pm-space-5) * 2);
+}
+
+.root[data-size='sm'] .number {
+  flex-basis: calc(var(--pm-text-entry-size) * 7 + var(--pm-space-4) * 2);
+}
+
+.root[data-size='lg'] .number {
+  flex-basis: calc(var(--pm-text-entry-size) * 7 + var(--pm-space-6) * 2);
+}

@@ -1,0 +1,97 @@
+/* InlineEdit — `design/components/inline-edit.md`.
+ *
+ * Both forms of the row are one control height at the member's size: the value's padding makes
+ * its first line one control height, and the open row is an Input and two Buttons of that size.
+ * So a value that fits one line does not move the content below it when the field opens or
+ * closes. */
+
+.root {
+  display: flex;
+  gap: var(--pm-space-2);
+
+  /* The edit control stays beside the value's first line when a long value wraps. */
+  align-items: flex-start;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+/* The size's text step (conventions §2), the field's own, so the text keeps its size when the
+   field replaces it. The padding is half of the control height less one line, so the first line
+   sits on the edit control's centre line. A long value wraps, because a truncated name hides the
+   part that tells it apart. */
+.value {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  padding-block: calc(
+    (var(--pm-control-height-md) - var(--pm-text-sm-line-height) * var(--pm-text-sm-size)) / 2
+  );
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.value[data-placeholder] {
+  color: var(--pm-text-muted);
+}
+
+/* The open form: the row, then the error under it. No gap, so a row with no error is exactly the
+   row's height; the error brings its own margin. */
+.panel {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.row {
+  display: flex;
+  gap: var(--pm-space-2);
+  align-items: center;
+}
+
+/* One track that the Input fills: a grid item stretches to its track, and the track narrows to
+   the row, so the field never widens its container. */
+.field {
+  display: grid;
+  flex: 1 1 0;
+  grid-template-columns: minmax(0, 1fr);
+  min-inline-size: 0;
+}
+
+/* FormField's error, so a failed save reads as a field error reads everywhere else. */
+.error {
+  composes: error from './form-field.module.css';
+  margin-block-start: var(--pm-space-2);
+}
+
+.glyph {
+  composes: glyph from './form-field.module.css';
+}
+
+/* sizes — conventions §2 ---------------------------------------------------- */
+
+.root[data-size='sm'] .value {
+  padding-block: calc(
+    (var(--pm-control-height-sm) - var(--pm-text-xs-line-height) * var(--pm-text-xs-size)) / 2
+  );
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+}
+
+.root[data-size='lg'] .value {
+  padding-block: calc(
+    (var(--pm-control-height-lg) - var(--pm-text-md-line-height) * var(--pm-text-md-size)) / 2
+  );
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+}

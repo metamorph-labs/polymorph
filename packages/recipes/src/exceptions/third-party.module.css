@@ -1,0 +1,10 @@
+/* A ThirdParty boundary paints nothing and inherits everything.
+ *
+ * It is a boundary that the lint rules and the inventory can see, not a
+ * surface. The component it hosts is sized by an element the application
+ * writes inside it. The boundary keeps the cascade: `--pm-*` custom properties
+ * flow in, so a library styled by CSS re-themes with everything else. */
+
+.thirdParty {
+  display: contents;
+}

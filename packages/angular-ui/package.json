@@ -1,0 +1,80 @@
+{
+  "name": "@polymorph/angular-ui",
+  "version": "1.0.15",
+  "description": "The polymorph vocabulary for Angular: every member as a standalone component generated from its framework-neutral description, styled by its token-only recipe, which the published build compiles into the component's styles.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": [
+    "**/*.css",
+    "./src/index.ts"
+  ],
+  "scripts": {
+    "build": "node ../angular/scripts/package.mjs"
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/fesm2022/polymorph-angular-ui.mjs"
+      },
+      "./base.css": "./dist/base.css"
+    }
+  },
+  "dependencies": {
+    "@internationalized/date": "^3.12.2",
+    "@polymorph/angular": "workspace:*",
+    "@polymorph/engine": "workspace:*",
+    "@zag-js/accordion": "^1.46.0",
+    "@zag-js/carousel": "^1.46.0",
+    "@zag-js/checkbox": "^1.46.0",
+    "@zag-js/collapsible": "^1.46.0",
+    "@zag-js/color-picker": "^1.46.0",
+    "@zag-js/combobox": "^1.46.0",
+    "@zag-js/date-picker": "^1.46.0",
+    "@zag-js/dialog": "^1.46.0",
+    "@zag-js/hover-card": "^1.46.0",
+    "@zag-js/menu": "^1.46.0",
+    "@zag-js/number-input": "^1.46.0",
+    "@zag-js/popover": "^1.46.0",
+    "@zag-js/radio-group": "^1.46.0",
+    "@zag-js/scroll-area": "^1.46.0",
+    "@zag-js/select": "^1.46.0",
+    "@zag-js/slider": "^1.46.0",
+    "@zag-js/switch": "^1.46.0",
+    "@zag-js/tabs": "^1.46.0",
+    "@zag-js/tooltip": "^1.46.0",
+    "tslib": "^2.8.1"
+  },
+  "peerDependencies": {
+    "@angular/core": "^22.0.0"
+  },
+  "devDependencies": {
+    "@analogjs/vite-plugin-angular": "^2.8.0",
+    "@angular/build": "22.2.2",
+    "@angular/common": "22.2.2",
+    "@angular/compiler": "22.2.2",
+    "@angular/compiler-cli": "22.2.2",
+    "@angular/core": "22.2.2",
+    "@angular/platform-browser": "22.2.2",
+    "@polymorph/conformance": "workspace:*",
+    "@polymorph/recipes": "workspace:*",
+    "@polymorph/registry": "workspace:*",
+    "@polymorph/rules": "workspace:*",
+    "@polymorph/shells": "workspace:*",
+    "@testing-library/dom": "^10.4.1",
+    "axe-core": "^4.12.1",
+    "rxjs": "^7.8.2",
+    "typescript": "~6.0.3",
+    "vite": "^8.1.5"
+  },
+  "license": "MIT"
+}

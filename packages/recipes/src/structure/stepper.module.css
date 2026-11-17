@@ -1,0 +1,241 @@
+/* Stepper — `design/components/stepper.md`.
+ *
+ * Progress uses *accent*, not the selection roles: a finished step is not a
+ * selected row, and selection stays with Calendar, Command and the rails.
+ *
+ * Emphasis is by colour: completed labels are `text.primary` and upcoming ones
+ * `text.secondary`, neither bolder. Weight belongs to the type step (the
+ * mono-personality rule). */
+
+/* The row wraps. Steps that do not fit the container move to the next line,
+   in order, with the row's gap between the lines. A step's label is content,
+   so a narrow container changes where the steps sit and never cuts or covers
+   one (`docs/layout.md`). */
+.root {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--pm-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Every step but the last flexes, so the connectors take the spare space, not
+   the labels. A step is never narrower than its indicator, the longest word of
+   its copy and its connector's minimum: that floor is what the row wraps on.
+   With a floor of zero a step shrinks under its own label, and the label is
+   drawn over the step after it. */
+.step {
+  display: flex;
+  flex: 1;
+  gap: var(--pm-space-4);
+  align-items: flex-start;
+  min-inline-size: min-content;
+}
+
+.step:last-child {
+  flex: none;
+}
+
+/* One class for both forms of a step: a `button` when it is revisitable and a
+   `span` when it is not. Neither adds its own type or colour. It shrinks to
+   the step's width, so a label of several words takes a second line inside its
+   step before the step takes a line of its own. */
+.control {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: flex;
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  gap: var(--pm-space-3);
+  align-items: flex-start;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  background: transparent;
+  border: 0;
+}
+
+.indicator {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--pm-space-6);
+  block-size: var(--pm-space-6);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  font-variant-numeric: var(--pm-font-numeric);
+  border-radius: var(--pm-radius-pill);
+}
+
+.copy {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.label {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+}
+
+.description {
+  margin-block-start: 2px;
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+}
+
+/* Read aloud, never shown: "step 2 of 4, current" is what the circle means, and
+   the circle itself is not announced. */
+.spoken {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+  clip-path: inset(50%);
+}
+
+/* The connector ------------------------------------------------------------- */
+
+.connector {
+  flex: 1;
+  min-inline-size: var(--pm-space-6);
+  block-size: 1px;
+
+  /* Centred on the indicator rather than the step. Otherwise a two-line label
+     would push the line below the circles it joins. */
+  margin-block-start: calc(var(--pm-space-6) / 2);
+  background: var(--pm-border-default);
+
+  /* The fill is a colour change over `surface` × `standard`. Nothing moves, so
+     reduced motion has nothing to change. */
+  transition: background-color var(--pm-motion-duration-surface) var(--pm-motion-easing-standard);
+}
+
+/* states -------------------------------------------------------------------- */
+
+/* A completed step is a lit object. In a flat system the shadow tokens are flat,
+   so no branch is needed: a recipe never knows its house system. */
+.step[data-state='completed'] .indicator {
+  color: var(--pm-accent-contrast);
+  background: var(--pm-accent-bg);
+  box-shadow: var(--pm-shadow-seat), var(--pm-shadow-inset-top);
+}
+
+/* The connector *after* a completed step is filled. It keys on its own
+   attribute, not the step's `data-state`, because the fill follows position and
+   the state may be the error flag. */
+.connector[data-filled] {
+  background: var(--pm-accent-bg);
+}
+
+.step[data-state='active'] .indicator {
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+  border: 1px solid var(--pm-accent-bg);
+}
+
+.step[data-state='upcoming'] .indicator {
+  color: var(--pm-text-muted);
+  background: transparent;
+  border: 1px solid var(--pm-border-default);
+}
+
+/* The danger family, like the completed check but in Toast's danger tone: the
+   `error` glyph replaces the number. */
+.step[data-state='error'] .indicator {
+  color: var(--pm-danger-text);
+  background: var(--pm-danger-subtle);
+  border: 1px solid var(--pm-danger-border);
+}
+
+/* As in Timeline, the indicator shows the error and the label keeps its walk
+   colour, the visited one, because only a completed or active step can have
+   failed data. */
+.step[data-state='completed'] .label,
+.step[data-state='active'] .label,
+.step[data-state='error'] .label {
+  color: var(--pm-text-primary);
+}
+
+.step[data-state='upcoming'] .label {
+  color: var(--pm-text-secondary);
+}
+
+/* Only revisitable steps get a pointer and hover. An upcoming step is not a
+   control. */
+.step[data-interactive] .control {
+  cursor: pointer;
+}
+
+.step[data-interactive] .control:hover .label {
+  color: var(--pm-accent-text);
+}
+
+/* `stepper.indicator`: `spring-pop` on the newly completed step. The CSS version
+   is the same 0.5 scale on the enter curve, not spring `snappy`, as in Checkbox:
+   the check swaps in rather than entering through the engine's presence
+   wrapper, and at this size a bezier and a spring look alike. It is a wizard's
+   one pop: expressive amplifies it and `none` removes it, through the tokens. */
+.check {
+  display: inline-flex;
+  animation: pm-stepper-pop var(--pm-motion-duration-control) var(--pm-motion-easing-enter);
+}
+
+@keyframes pm-stepper-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+/* Reduced-motion projection (`design/motion/motion.md`): spring-pop becomes fade. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes pm-stepper-pop {
+    from {
+      opacity: 0;
+    }
+  }
+}
+
+/* vertical — the same DOM, with the connector below its indicator ------------ */
+
+.root[data-orientation='vertical'] {
+  flex-flow: column nowrap;
+  align-items: stretch;
+  gap: 0;
+}
+
+.root[data-orientation='vertical'] .step {
+  flex: none;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+}
+
+.root[data-orientation='vertical'] .connector {
+  flex: none;
+  min-inline-size: 0;
+  inline-size: 1px;
+  min-block-size: var(--pm-space-6);
+  block-size: auto;
+  margin-block: 0;
+  margin-inline-start: calc(var(--pm-space-6) / 2);
+}

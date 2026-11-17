@@ -1,0 +1,75 @@
+{
+  "name": "@polymorph/elements",
+  "version": "1.0.15",
+  "description": "The foundation of the Web Components renderer: the light-DOM element base class that renders a generated Solid member into each poly-* element, the attribute codecs, the poly-* events, and the engine re-exported.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./codecs": "./src/codecs.ts",
+    "./definition": "./src/definition.ts",
+    "./icon": "./src/icon/Icon.ts",
+    "./loader": "./src/loader.ts",
+    "./temporal": "./src/temporal.ts",
+    "./host.css": "./src/host.css",
+    "./pending.css": "./src/pending.css"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": [
+    "**/*.css",
+    "./src/index.ts",
+    "./src/icon/Icon.ts",
+    "./dist/index.js",
+    "./dist/icon/Icon.js"
+  ],
+  "scripts": {
+    "build": "NODE_ENV=production vite build --config vite.build.config.ts && tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@polymorph/engine": "workspace:*",
+    "@polymorph/recipes": "workspace:*",
+    "@polymorph/solid": "workspace:*",
+    "solid-js": "^1.9.17"
+  },
+  "devDependencies": {
+    "@polymorph/conformance": "workspace:*",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.5"
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "exports": {
+      ".": {
+        "types": "./dist/types/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./codecs": {
+        "types": "./dist/types/codecs.d.ts",
+        "import": "./dist/codecs.js"
+      },
+      "./definition": {
+        "types": "./dist/types/definition.d.ts",
+        "import": "./dist/definition.js"
+      },
+      "./icon": {
+        "types": "./dist/types/icon/Icon.d.ts",
+        "import": "./dist/icon/Icon.js"
+      },
+      "./loader": {
+        "types": "./dist/types/loader.d.ts",
+        "import": "./dist/loader.js"
+      },
+      "./temporal": {
+        "types": "./dist/types/temporal.d.ts",
+        "import": "./dist/temporal.js"
+      },
+      "./host.css": "./dist/host.css",
+      "./pending.css": "./dist/pending.css"
+    }
+  },
+  "license": "MIT"
+}

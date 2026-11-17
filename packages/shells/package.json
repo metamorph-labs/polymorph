@@ -1,0 +1,24 @@
+{
+  "name": "@polymorph/shells",
+  "version": "1.0.15",
+  "description": "The framework-neutral member descriptions and the generators that render them into each framework's shell.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./dsl": "./src/dsl.ts"
+  },
+  "bin": {
+    "polymorph-shells": "./bin/shells.js"
+  },
+  "dependencies": {
+    "@polymorph/elements": "workspace:*",
+    "@polymorph/engine": "workspace:*",
+    "@polymorph/registry": "workspace:*",
+    "jiti": "^2.7.0",
+    "lucide": "^1.27.0",
+    "prettier": "^3.9.6",
+    "typescript": "^5.9.3"
+  },
+  "license": "MIT"
+}

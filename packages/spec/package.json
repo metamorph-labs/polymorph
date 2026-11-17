@@ -1,0 +1,28 @@
+{
+  "name": "@polymorph/spec",
+  "version": "1.0.15",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema.ts",
+    "./validate": "./src/validate.ts"
+  },
+  "dependencies": {
+    "@polymorph/registry": "workspace:*",
+    "@polymorph/rules": "workspace:*",
+    "jiti": "^2.7.0",
+    "prettier": "^3.9.6",
+    "typescript": "^5.9.3"
+  },
+  "bin": {
+    "polymorph-emit": "./bin/emit.js"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@internationalized/date": "^3.12.2",
+    "@polymorph/react-ui": "workspace:*",
+    "@types/react": "^19.2.7",
+    "react": "^19.2.8"
+  }
+}

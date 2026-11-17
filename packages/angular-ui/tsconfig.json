@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": [],
+    // The Angular compiler plugin emits through this program in the browser
+    // project, and `ngc --noEmit` checks it (`scripts/typecheck.mjs`).
+    "noEmit": false,
+    "rootDir": "..",
+    "outDir": "../../node_modules/.cache/angular-ui-out"
+  },
+  "angularCompilerOptions": {
+    "strictTemplates": true,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true
+  },
+  // The foundation's source is compiled with the vocabulary in the browser
+  // project, its adapter test's components included.
+  "include": ["src/**/*.ts", "../angular/src/**/*.ts"]
+}

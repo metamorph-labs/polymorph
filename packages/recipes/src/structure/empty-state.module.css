@@ -1,0 +1,52 @@
+/* EmptyState — `design/components/empty-state.md`.
+ *
+ * Guidance, not an alarm: a muted glyph on a subtle wash, always.
+ *
+ * `emptystate.enter` is not implemented here, on purpose. The fade belongs to
+ * whatever swapped the content out (ListPage's body swap), because fading in on
+ * first paint would animate a page load. */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-4);
+  align-items: center;
+  padding: var(--pm-space-8) var(--pm-space-6);
+  text-align: center;
+}
+
+.well {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--pm-space-4);
+  color: var(--pm-text-muted);
+  background: var(--pm-bg-subtle);
+  border-radius: var(--pm-radius-pill);
+}
+
+.title {
+  font-family: var(--pm-text-lg-family);
+  font-size: var(--pm-text-lg-size);
+  font-weight: var(--pm-text-lg-weight);
+  line-height: var(--pm-text-lg-line-height);
+  letter-spacing: var(--pm-text-lg-tracking);
+  color: var(--pm-text-primary);
+}
+
+/* A maximum line length, not a width, because longer lines are hard to read. */
+.description {
+  max-inline-size: calc(var(--pm-space-10) * 5);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+}
+
+/* The actions get one extra space step beyond the gap, to separate them from the
+   text. */
+.actions {
+  margin-block-start: var(--pm-space-2);
+}

@@ -1,0 +1,53 @@
+/* Text — `design/components/text.md`.
+ *
+ * Two sizes and two tones as four rules, not custom properties, so the contrast
+ * law can check each pairing, as in Badge's grid. */
+
+.text {
+  margin: 0;
+}
+
+.text[data-size='sm'] {
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+}
+
+.text[data-size='md'] {
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+}
+
+.text[data-tone='primary'] {
+  color: var(--pm-text-primary);
+}
+
+.text[data-tone='secondary'] {
+  color: var(--pm-text-secondary);
+}
+
+/* Emphasis takes a heavier weight and the primary text colour whatever the
+   tone, because in secondary text it would otherwise be only heavier grey. */
+.text strong {
+  font-weight: var(--pm-text-xl-weight);
+  color: var(--pm-text-primary);
+}
+
+/* `lines`: the paragraph draws at most `--pm-text-clamp` lines, which the member
+   sets from the prop, and the last ends with an ellipsis. A word longer than the
+   line breaks, so a long id or address is cut at the last line and never widens
+   what holds it. Only the drawing is cut: the text stays in the document. */
+.text[data-lines] {
+  --pm-text-clamp: 1;
+
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--pm-text-clamp);
+}

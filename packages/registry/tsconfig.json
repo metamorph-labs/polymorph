@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/registry.tsbuildinfo",
+    // DOM is here for `@polymorph/theme`'s `runtime.ts`, which this package
+    // pulls in by importing the engine as workspace source. Nothing in the
+    // registry touches the DOM; `registry.test.ts` is a node test.
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"]
+}

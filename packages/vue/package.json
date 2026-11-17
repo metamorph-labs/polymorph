@@ -1,0 +1,50 @@
+{
+  "name": "@polymorph/vue",
+  "version": "1.0.15",
+  "description": "The Vue foundation a consumer installs: the engine re-exported, the icon gateway, the motion presence composable, the control-ref composable, the toast store and the page-transition convention. Vue members import this and nothing deeper.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./motion": "./src/motion/index.ts"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "scripts": {
+    "build": "NODE_ENV=production vite build && vue-tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@polymorph/engine": "workspace:*"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.10",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.5",
+    "vue": "^3.5.43",
+    "vue-tsc": "^3.3.13"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "restricted",
+    "exports": {
+      ".": {
+        "types": "./dist/types/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./motion": {
+        "types": "./dist/types/motion/index.d.ts",
+        "import": "./dist/motion.js"
+      },
+      "./style.css": "./dist/vue.css"
+    }
+  }
+}

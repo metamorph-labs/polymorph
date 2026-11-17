@@ -1,0 +1,5 @@
+.build/
+.swiftpm/
+# The rendering harness writes each states fixture entry here as PNGs, for a
+# person to look at (`Tests/PolymorphUITests/RenderingTests.swift`).
+.snapshots/

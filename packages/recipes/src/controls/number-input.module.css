@@ -1,0 +1,173 @@
+/* NumberInput — `design/components/number-input.md`.
+ *
+ * Input's container, holding a parsed number instead of a string. The rules are copied
+ * rather than shared, for the same reason as in DatePicker: the completeness law checks
+ * each component's own stylesheet, and the browser test compares the computed styles of
+ * the two, which is the stronger check.
+ *
+ * The steppers are the only new part. Each uses the clear button's embedded-adornment
+ * recipe. The clear button is a square the field's height, which suits a single
+ * embedded action. Two such squares would take a third of an `lg` field. So each stepper
+ * is exactly the minimum target size in its narrow dimension: `--pm-control-height-sm`
+ * wide and the field's height tall. */
+
+.field {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  max-inline-size: 100%;
+  block-size: var(--pm-control-height-md);
+  padding-inline: var(--pm-space-5);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  cursor: text;
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-field);
+  border-radius: var(--pm-radius-control);
+
+  /* The control seat shadow, from Input, used by every field in the family. */
+  box-shadow: var(--pm-shadow-seat);
+}
+
+/* Transparent, borderless, with the container's type, copied from Input's inner
+   element. Digits keep their width as they change. */
+.input {
+  flex: 1;
+  min-inline-size: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-variant-numeric: var(--pm-font-numeric);
+}
+
+/* Firefox dims placeholders by default. The muted colour already marks them, so the
+   opacity is reset to avoid dimming twice. */
+.input::placeholder {
+  color: var(--pm-text-muted);
+  opacity: 1;
+}
+
+/* The static affix, next to the value at the same size step and muted so it does not
+   compete with the value. */
+.affix {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  flex: none;
+  color: var(--pm-text-muted);
+}
+
+/* The stepper pair, at the end inside the frame. The buttons touch so the pair reads as
+   one control with two ends, not two separate buttons. */
+.steppers {
+  display: inline-flex;
+  flex: none;
+  align-self: stretch;
+  align-items: stretch;
+}
+
+/* The clear button's embedded-adornment recipe, on each stepper. Muted at rest. On hover
+   it turns primary on a `bg-subtle` background, with its own `sm` radius inside the
+   field's `md`. It has press feedback and the focus ring. */
+.stepper {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback pressable from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--pm-control-height-sm);
+  padding: 0;
+  color: var(--pm-text-muted);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--pm-radius-sm);
+}
+
+/* At a limit, the substrate disables the stepper that cannot move, and the other keeps
+   working. The disabled one has no hover background and no press feedback. This rule
+   comes before hover and still applies, because the hover rule below uses
+   `:not(:disabled)` instead of relying on higher specificity (as in Button). */
+.stepper:disabled {
+  color: var(--pm-text-disabled);
+  cursor: default;
+  background: transparent;
+}
+
+.stepper:hover:not(:disabled) {
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-subtle);
+}
+
+/* sizes — the conventions' size system -------------------------------------- */
+
+.field[data-size='sm'] {
+  gap: var(--pm-space-2);
+  block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-4);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+}
+
+.field[data-size='lg'] {
+  block-size: var(--pm-control-height-lg);
+  padding-inline: var(--pm-space-6);
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+}
+
+/* states -------------------------------------------------------------------- */
+
+.field[data-invalid] {
+  border-color: var(--pm-danger-border);
+}
+
+.field[data-readonly] {
+  color: var(--pm-text-secondary);
+}
+
+/* Input's disabled rule. The steppers are disabled with the field, and the frame keeps
+   its shape (PasswordInput's law). */
+.field[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-subtle);
+
+  /* The seat shadow signals a ready control, so disabled removes it (as in Input). */
+  box-shadow: none;
+}
+
+.field[data-disabled] .affix {
+  color: var(--pm-text-disabled);
+}
+
+/* Invalid is excluded rather than overridden, so the error border stays on hover. */
+.field:hover:not([data-disabled], [data-readonly], [data-invalid]) {
+  border-color: var(--pm-border-strong);
+}
+
+/* The conventions' focus-zoom floor for phones. Below `30rem` the `<input>` uses the md
+   size and line height so iOS does not zoom the page on focus. Only those two metrics
+   change. Colour, weight and tracking stay the same, and nothing else moves. The
+   steppers are buttons, so they do not change. */
+@media (width < 30rem) {
+  .input {
+    font-size: var(--pm-text-entry-size);
+    line-height: var(--pm-text-entry-line-height);
+  }
+}

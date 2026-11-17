@@ -1,0 +1,59 @@
+{
+  "name": "@polymorph/angular",
+  "version": "1.0.15",
+  "description": "The Angular foundation a consumer installs: the engine re-exported, a Zag adapter driven by signals, the icon gateway, the presence and control-ref primitives, the slot conventions, the toast store and the page-transition convention. Angular members import this and nothing deeper.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./motion": "./src/motion/index.ts"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "node scripts/package.mjs"
+  },
+  "dependencies": {
+    "@polymorph/engine": "workspace:*",
+    "@zag-js/core": "^1.46.0",
+    "@zag-js/dom-query": "^1.46.0",
+    "@zag-js/types": "^1.46.0",
+    "@zag-js/utils": "^1.46.0",
+    "tslib": "^2.8.1"
+  },
+  "peerDependencies": {
+    "@angular/core": "^22.0.0"
+  },
+  "devDependencies": {
+    "@angular/common": "22.2.2",
+    "@angular/compiler": "22.2.2",
+    "@angular/compiler-cli": "22.2.2",
+    "@angular/core": "22.2.2",
+    "@angular/platform-browser": "22.2.2",
+    "@polymorph/conformance": "workspace:*",
+    "@zag-js/checkbox": "^1.46.0",
+    "@zag-js/dialog": "^1.46.0",
+    "@zag-js/menu": "^1.46.0",
+    "rxjs": "^7.8.2",
+    "typescript": "~6.0.3",
+    "vite": "^8.1.5"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "restricted",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/fesm2022/polymorph-angular.mjs"
+      },
+      "./motion": {
+        "types": "./dist/motion/index.d.ts",
+        "default": "./dist/fesm2022/polymorph-angular-motion.mjs"
+      }
+    }
+  }
+}

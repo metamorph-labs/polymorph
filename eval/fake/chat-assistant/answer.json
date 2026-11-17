@@ -1,0 +1,61 @@
+{
+  "spec": "polymorph-screen/1",
+  "name": "DeploymentAssistant",
+  "purpose": "A conversation with a deployment assistant that can read logs and restart a service, with in-thread approval and a composer.",
+  "inputs": [
+    {
+      "name": "turns",
+      "type": "ReactNode",
+      "doc": "The conversation's turns, oldest first. The container renders each as a ChatMessage (role and author set) whose children hold its content, including a ToolCall per tool call and an ApprovalCard before any restart. Empty when there are none."
+    },
+    { "name": "streaming", "type": "boolean", "doc": "A reply is still arriving." },
+    { "name": "draft", "type": "string", "doc": "The message being written." },
+    { "name": "onDraftChange", "type": "(value: string) => void" },
+    { "name": "onSend", "type": "(value: string) => void" },
+    { "name": "onStop", "type": "() => void", "doc": "Stops the reply that is arriving." },
+    { "name": "attachments", "type": "PromptAttachment[]", "doc": "Files attached to the draft." },
+    { "name": "onAttach", "type": "(files: File[]) => void" },
+    { "name": "onReject", "type": "(rejections: FileRejection[]) => void" },
+    { "name": "onRemoveAttachment", "type": "(id: string) => void" }
+  ],
+  "types": { "@polymorph/react-ui": ["PromptAttachment", "FileRejection"] },
+  "root": {
+    "component": "ConversationPage",
+    "props": {
+      "title": "Deployment assistant",
+      "description": "Ask about your deployment. The assistant can read logs and restart a service, and asks before it restarts anything.",
+      "thread": {
+        "component": "ChatThread",
+        "props": {
+          "label": "Conversation",
+          "streaming": { "$": "streaming" },
+          "empty": {
+            "component": "EmptyState",
+            "props": {
+              "icon": "tool",
+              "title": "Ask about your deployment",
+              "description": "I can read your service logs to find out what went wrong, and restart a service once you allow it."
+            }
+          }
+        },
+        "children": [{ "$": "turns" }]
+      },
+      "composer": {
+        "component": "PromptInput",
+        "props": {
+          "label": "Message the deployment assistant",
+          "placeholder": "Ask about your deployment",
+          "value": { "$": "draft" },
+          "onChange": { "$": "onDraftChange" },
+          "onSubmit": { "$": "onSend" },
+          "onStop": { "$": "onStop" },
+          "streaming": { "$": "streaming" },
+          "attachments": { "$": "attachments" },
+          "onAttach": { "$": "onAttach" },
+          "onReject": { "$": "onReject" },
+          "onRemoveAttachment": { "$": "onRemoveAttachment" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "turns": [
+    {
+      "usage": { "input_tokens": 2500, "output_tokens": 70 },
+      "content": [{ "type": "tool_use", "name": "get_system_card", "input": {} }]
+    },
+    {
+      "usage": {
+        "input_tokens": 30,
+        "cache_creation_input_tokens": 7300,
+        "cache_read_input_tokens": 2500,
+        "output_tokens": 90
+      },
+      "content": [
+        { "type": "tool_use", "name": "get_component", "input": { "name": "DetailPage" } },
+        { "type": "tool_use", "name": "get_component", "input": { "name": "Timeline" } }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 30,
+        "cache_creation_input_tokens": 2600,
+        "cache_read_input_tokens": 9800,
+        "output_tokens": 2400
+      },
+      "content": [
+        {
+          "type": "tool_use",
+          "name": "validate",
+          "input": { "spec": { "$file": "detail-order/answer.json" } }
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 30,
+        "cache_creation_input_tokens": 2500,
+        "cache_read_input_tokens": 12400,
+        "output_tokens": 2300
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": [
+            "The order, its facts, its history, its comments and a refund that asks first.\n\n```json\n",
+            { "$file": "detail-order/answer.json" },
+            "```\n"
+          ]
+        }
+      ]
+    }
+  ]
+}

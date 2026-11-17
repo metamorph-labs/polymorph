@@ -1,0 +1,29 @@
+{
+  "name": "dew",
+  "register": "The morning register. Warm paper and one clear teal spent only where action or state lives, a serif that speaks at display size alone, and glass reserved for the surfaces that float — vibrancy, not decoration, on a runtime built to be glanced at and left.",
+  "axes": {
+    "geometry": "soft",
+    "depth": "glass",
+    "density": "standard",
+    "contrastTemperament": "standard",
+    "typePersonality": "grotesque",
+    "colorStrategy": "quiet",
+    "motionTemperament": "subtle",
+    "ornament": "none"
+  },
+  "fonts": {
+    "body": {
+      "family": "Geist Variable"
+    },
+    "display": {
+      "family": "Fraunces Variable",
+      "fallback": "serif"
+    },
+    "mono": {
+      "family": "Geist Mono Variable"
+    }
+  },
+  "defaultPalette": "verdigris",
+  "defaultMode": "light",
+  "kind": "designed"
+}

@@ -1,0 +1,77 @@
+/* ErrorSummary — `design/components/error-summary.md`.
+ *
+ * Alert's danger recipe plus the list. No variants, sizes or tone: danger is the
+ * subject. No enter animation, as in Alert (`role="alert"` already announces
+ * it), and no exit: it unmounts with the app's render. */
+
+.root {
+  display: flex;
+  gap: var(--pm-space-3);
+  align-items: flex-start;
+  padding: var(--pm-space-4);
+  background: var(--pm-danger-subtle);
+  border: 1px solid var(--pm-danger-border);
+  border-radius: var(--pm-radius-lg);
+}
+
+/* One text line tall and top-aligned, exactly as Alert's glyph. */
+.glyph {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  block-size: calc(var(--pm-text-sm-line-height) * var(--pm-text-sm-size));
+  color: var(--pm-danger-text);
+}
+
+.body {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+/* Hierarchy comes from colour, not a heavier weight (Alert's rule). */
+.title {
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+}
+
+/* No list markers, because the links are the rows and bullets would add
+   clutter. Screen readers still announce the count because the <ul> is real. */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+  padding: 0;
+  margin: 0;
+  margin-block-start: var(--pm-space-2);
+  list-style: none;
+}
+
+/* The danger text role, not accent, which would mix two tones on a danger wash.
+   Always underlined, so colour is never the only signal, with Link's metrics.
+   `danger.text` on `danger.subtle` is the law-checked pairing Alert uses. */
+.link {
+  composes: focusRing from '../conventions/focus.module.css';
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-danger-text);
+
+  /* Full-strength underline on purpose. The muted resting underline
+     (`accent.underline`) is for prose links, and an error link must stand out. */
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  border-radius: var(--pm-radius-sm);
+}
+
+/* Hover thickens the underline rather than changing colour, as Link does (there
+   is no danger hover role). No transition, because thickness does not animate. */
+.link:hover {
+  text-decoration-thickness: 2px;
+}

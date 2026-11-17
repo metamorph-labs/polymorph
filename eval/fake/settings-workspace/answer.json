@@ -1,0 +1,178 @@
+{
+  "spec": "polymorph-screen/1",
+  "name": "WorkspaceSettingsView",
+  "purpose": "How a team workspace behaves for everyone in it, in titled sections, ending with the actions that cannot be undone.",
+  "inputs": [
+    { "name": "workspaceName", "type": "string" },
+    { "name": "onWorkspaceNameChange", "type": "(value: string) => void" },
+    { "name": "timeZone", "type": "string | null" },
+    { "name": "timeZoneOptions", "type": "{ value: string; label: string }[]" },
+    { "name": "onTimeZoneChange", "type": "(value: string | null) => void" },
+    { "name": "digest", "type": "boolean" },
+    { "name": "onDigestChange", "type": "(next: boolean) => void" },
+    { "name": "digestFrequency", "type": "string | null" },
+    { "name": "digestFrequencyOptions", "type": "{ value: string; label: string }[]" },
+    { "name": "onDigestFrequencyChange", "type": "(value: string | null) => void" },
+    { "name": "membersMayInvite", "type": "boolean" },
+    { "name": "onMembersMayInviteChange", "type": "(next: boolean) => void" },
+    { "name": "onTransferOwnership", "type": "() => void" },
+    { "name": "onDeleteWorkspace", "type": "() => void", "doc": "Opens the confirmation." },
+    { "name": "deleting", "type": "boolean", "doc": "Whether the delete confirmation is open." },
+    {
+      "name": "deletingDescription",
+      "type": "string",
+      "doc": "Names the workspace and says that every project in it is deleted too."
+    },
+    { "name": "onDeletingChange", "type": "(open: boolean) => void" },
+    { "name": "onConfirmDelete", "type": "() => void" }
+  ],
+  "root": {
+    "component": "SettingsPage",
+    "props": {
+      "title": "Workspace settings",
+      "description": "Changes apply to everyone in the workspace as soon as you make them."
+    },
+    "children": [
+      {
+        "component": "SettingsRow.Group",
+        "props": { "title": "General" },
+        "children": [
+          {
+            "component": "SettingsRow",
+            "props": {
+              "label": "Workspace name",
+              "description": "Shown to members and in every email the workspace sends.",
+              "control": {
+                "component": "Input",
+                "props": {
+                  "value": { "$": "workspaceName" },
+                  "onChange": { "$": "onWorkspaceNameChange" }
+                }
+              }
+            }
+          },
+          {
+            "component": "SettingsRow",
+            "props": {
+              "label": "Time zone",
+              "description": "The time zone dates and times are shown in.",
+              "control": {
+                "component": "Select",
+                "props": {
+                  "options": { "$": "timeZoneOptions" },
+                  "value": { "$": "timeZone" },
+                  "onChange": { "$": "onTimeZoneChange" }
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "component": "SettingsRow.Group",
+        "props": { "title": "Notifications" },
+        "children": [
+          {
+            "component": "SettingsRow",
+            "props": {
+              "label": "Email digest",
+              "description": "Sends members a summary of activity instead of one email per change.",
+              "control": {
+                "component": "Switch",
+                "props": {
+                  "checked": { "$": "digest" },
+                  "onCheckedChange": { "$": "onDigestChange" }
+                }
+              }
+            }
+          },
+          {
+            "component": "SettingsRow",
+            "props": {
+              "label": "Digest frequency",
+              "description": "How often the digest is sent: daily or weekly.",
+              "control": {
+                "component": "Select",
+                "props": {
+                  "options": { "$": "digestFrequencyOptions" },
+                  "value": { "$": "digestFrequency" },
+                  "onChange": { "$": "onDigestFrequencyChange" }
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "component": "SettingsRow.Group",
+        "props": { "title": "Access" },
+        "children": [
+          {
+            "component": "SettingsRow",
+            "props": {
+              "label": "Members may invite",
+              "description": "Lets every member invite other people, not only the owner.",
+              "control": {
+                "component": "Switch",
+                "props": {
+                  "checked": { "$": "membersMayInvite" },
+                  "onCheckedChange": { "$": "onMembersMayInviteChange" }
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "component": "SettingsRow.Group",
+        "props": { "title": "Danger zone" },
+        "children": [
+          {
+            "component": "SettingsRow",
+            "props": {
+              "label": "Transfer ownership",
+              "description": "Makes another member the owner. You stay on as a member.",
+              "control": {
+                "component": "Button",
+                "props": {
+                  "variant": "outline",
+                  "tone": "danger",
+                  "label": "Transfer ownership",
+                  "onClick": { "$": "onTransferOwnership" }
+                }
+              }
+            }
+          },
+          {
+            "component": "SettingsRow",
+            "props": {
+              "label": "Delete workspace",
+              "description": "Deletes the workspace and every project in it. This cannot be undone.",
+              "control": {
+                "component": "Button",
+                "props": {
+                  "variant": "solid",
+                  "tone": "danger",
+                  "label": "Delete workspace",
+                  "onClick": { "$": "onDeleteWorkspace" }
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "component": "ConfirmDialog",
+        "props": {
+          "open": { "$": "deleting" },
+          "onOpenChange": { "$": "onDeletingChange" },
+          "tone": "danger",
+          "title": "Delete this workspace?",
+          "description": { "$": "deletingDescription" },
+          "confirmLabel": "Delete workspace",
+          "onConfirm": { "$": "onConfirmDelete" }
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,284 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the generated Kotlin contracts (platforms/android/ui/src/generated/kotlin/dev/polymorph/ui) > Button's contract 1`] = `
+"// Button
+
+/**
+ * Button's lawful variant × tone cells, and only those: the grid the web types as \`LawfulVariants\`.
+ * \`lawful\` lists them in grid order.
+ */
+enum class PMButtonAppearance(
+    val value: String,
+    val variant: PMButtonVariant,
+    val tone: PMButtonTone,
+) {
+    SolidAccent("solid/accent", PMButtonVariant.Solid, PMButtonTone.Accent),
+    SolidDanger("solid/danger", PMButtonVariant.Solid, PMButtonTone.Danger),
+    SoftAccent("soft/accent", PMButtonVariant.Soft, PMButtonTone.Accent),
+    SoftDanger("soft/danger", PMButtonVariant.Soft, PMButtonTone.Danger),
+    OutlineNeutral("outline/neutral", PMButtonVariant.Outline, PMButtonTone.Neutral),
+    OutlineAccent("outline/accent", PMButtonVariant.Outline, PMButtonTone.Accent),
+    OutlineDanger("outline/danger", PMButtonVariant.Outline, PMButtonTone.Danger),
+    GhostNeutral("ghost/neutral", PMButtonVariant.Ghost, PMButtonTone.Neutral),
+    GhostAccent("ghost/accent", PMButtonVariant.Ghost, PMButtonTone.Accent),
+    GhostDanger("ghost/danger", PMButtonVariant.Ghost, PMButtonTone.Danger),
+    ;
+
+    companion object {
+        /** Every lawful cell, in grid order. */
+        val lawful: List<PMButtonAppearance> = listOf(
+            SolidAccent,
+            SolidDanger,
+            SoftAccent,
+            SoftDanger,
+            OutlineNeutral,
+            OutlineAccent,
+            OutlineDanger,
+            GhostNeutral,
+            GhostAccent,
+            GhostDanger,
+        )
+
+        /** The cell for a variant and a tone, or null when the grid excludes the pair. */
+        fun of(variant: PMButtonVariant, tone: PMButtonTone): PMButtonAppearance? =
+            entries.firstOrNull { it.variant == variant && it.tone == tone }
+    }
+}
+
+/** \`Button.variant\`. Paired with a tone only through \`PMButtonAppearance\`. */
+enum class PMButtonVariant(val value: String) {
+    Solid("solid"),
+    Soft("soft"),
+    Outline("outline"),
+    Ghost("ghost"),
+}
+
+/** \`Button.tone\`. Paired with a variant only through \`PMButtonAppearance\`. */
+enum class PMButtonTone(val value: String) {
+    Accent("accent"),
+    Danger("danger"),
+    Neutral("neutral"),
+}
+
+/** \`Button.type\`. */
+enum class PMButtonType(val value: String) {
+    Button("button"),
+    Submit("submit"),
+}
+
+/** Button's props (\`design/components/button.md\`): The action primitive. */
+data class PMButtonProps(
+    /**
+     * The id of the region the button shows and hides. Set it only while the region is in the
+     * document, because an id that names nothing is a broken reference.
+     */
+    val ariaControls: String? = null,
+    /** Associates supporting status or help copy with the action. */
+    val ariaDescribedby: String? = null,
+    /** Overrides the visible label as the accessible action name when context must be explicit. */
+    val ariaLabel: String? = null,
+    /**
+     * The id of a label elsewhere that names the button, as when \`SettingsRow\` labels a whole row.
+     * \`label\` is still the visible text. This prop sets the accessible name.
+     */
+    val ariaLabelledby: String? = null,
+    /**
+     * A count on the button's corner, with the name that says it. Above zero, the count shows as a
+     * Badge and \`count.label\` is the accessible name. At zero, neither shows and \`label\` names the
+     * button.
+     */
+    val count: PMButtonCount? = null,
+    /**
+     * Marks the button as the current location with \`aria-current="page"\`. It sets one attribute
+     * and changes no styling. Pagination uses it, because its current page is a \`soft/accent\`
+     * Button that must also announce that it is current. Without this prop, a component would have
+     * to render its own \`<button>\` and repeat this recipe to add one attribute.
+     */
+    val current: Boolean? = null,
+    val disabled: Boolean? = null,
+    /**
+     * Makes the button a disclosure's trigger. \`aria-expanded\` mirrors it. When it is omitted, the
+     * button discloses nothing and the attribute does not render. It changes no styling: the icon
+     * the caller passes shows the state.
+     */
+    val expanded: Boolean? = null,
+    /** Leading icon. It is decorative, because the label names the action. */
+    val icon: PMIconRole? = null,
+    /** Square (width = control height). \`label\` is still required as the accessible name. */
+    val iconOnly: Boolean? = null,
+    /** Required. Visible text, or the accessible name when \`iconOnly\`. */
+    val label: String,
+    val loading: Boolean? = null,
+    val onClick: (() -> Unit)? = null,
+    /**
+     * Makes the button a toggle. \`aria-pressed\` mirrors it and \`data-state="on|off"\` exposes it to
+     * CSS. When it is omitted, the button is not a toggle and neither attribute renders. \`loading\`
+     * takes precedence in \`data-state\`, so a busy toggle reports busy, while \`aria-pressed\` still
+     * reports the toggle state.
+     */
+    val pressed: Boolean? = null,
+    val size: PMControlSize? = null,
+    /**
+     * \`variant\` and \`tone\` on the web, as one lawful cell of the grid, as \`LawfulVariants\` types
+     * them: a pair the grid excludes cannot be written.
+     */
+    val appearance: PMButtonAppearance? = null,
+    val trailingIcon: PMIconRole? = null,
+    val type: PMButtonType? = null,
+)
+
+/**
+ * Draws Button from its props. The member's file declares \`PMButton\`, an object that implements it.
+ */
+fun interface PMButtonRendering {
+    @Composable
+    fun Render(props: PMButtonProps)
+}"
+`;
+
+exports[`the generated Kotlin contracts (platforms/android/ui/src/generated/kotlin/dev/polymorph/ui) > DataTable's contract, generic over its row type 1`] = `
+"// DataTable
+
+/**
+ * DataTable's props (\`design/components/data-table.md\`): Table with sorting, selection, pagination,
+ * loading and empty states. On Android it is adapted: a list on phones, a table on tablets. Generic
+ * over \`Row\`, the web's type parameter.
+ */
+data class PMDataTableProps<Row>(
+    /** Shown only while something is selected. */
+    val bulkActions: PMContent? = null,
+    val columns: List<PMDataTableColumn<Row>>,
+    val data: List<Row>,
+    /**
+     * The rows open at first, while the table holds the set. The set keeps the id of a row that
+     * leaves \`data\`, so a row that comes back with its page is still open.
+     */
+    val defaultExpanded: Set<String>? = null,
+    /** Required, because a list without a designed empty state has a bug. */
+    val emptyState: PMEmptyStateProps,
+    /** The open rows by id. Controlled when given; without it the table holds the set. */
+    val expanded: Set<String>? = null,
+    val getRowId: (Row) -> String,
+    /**
+     * The whole name of a row's checkbox ("Select Invoice 12"), so a screen reader does not hear
+     * "Select row" on every row. Only the checkbox reads it.
+     */
+    val getRowLabel: ((Row) -> String)? = null,
+    /**
+     * The row's own name ("Invoice 12"). \`messages.detailsLabel\` names the row's disclosure from it
+     * ("Details for Invoice 12"). It is not \`getRowLabel\`, which is a whole control's name: a
+     * disclosure named from it would read "Details for Select Invoice 12".
+     */
+    val getRowName: ((Row) -> String)? = null,
+    /**
+     * Whether a row has a detail. A row it refuses has an empty cell in the expansion column and
+     * never draws a detail row, whatever \`expanded\` holds. A function that draws cannot report that
+     * it drew nothing, so the table asks this before it draws the disclosure. Without it every row
+     * has one.
+     */
+    val isRowExpandable: ((Row) -> Boolean)? = null,
+    val label: String,
+    val loading: Boolean? = null,
+    /** Omit for the generic English defaults; localized hosts pass their own. */
+    val messages: PMDataTableMessages? = null,
+    /** Called with the next set of open rows, controlled or not. */
+    val onExpandedChange: ((Set<String>) -> Unit)? = null,
+    /**
+     * Opens the row. Per the "row \`interactive\` handlers" rule in \`data-table.md\`, a click on the
+     * checkbox selects and does *not* open.
+     */
+    val onRowClick: ((Row) -> Unit)? = null,
+    val onSelectionChange: ((Set<String>) -> Unit)? = null,
+    val onSortChange: ((PMDataTableSort) -> Unit)? = null,
+    /** A \`Pagination\` or a \`CursorPagination\`, rendered below the table. */
+    val pagination: PMContent? = null,
+    /**
+     * Passing it turns expansion on: each row gets a disclosure, and an open row draws what this
+     * returns in a full-width row under itself. It takes one object, so every renderer hands the
+     * same named values, \`row\` and \`close\`. A detail closes itself with \`close\`: a caller that only
+     * removes the id from \`expanded\` while focus is inside the detail leaves focus on the page.
+     */
+    val rowDetail: (@Composable (PMDataTableRowDetail<Row>) -> Unit)? = null,
+    /** Passing it turns selection on, even as an empty set. */
+    val selection: Set<String>? = null,
+    /** Controlled; the type allows exactly one sorted column. */
+    val sort: PMDataTableSort? = null,
+    val stickyHeader: Boolean? = null,
+)
+
+/**
+ * Draws DataTable from its props. The member's file declares \`PMDataTable\`, an object that
+ * implements it. Not a \`fun interface\`: its function is generic over the row.
+ */
+interface PMDataTableRendering {
+    @Composable
+    fun <Row> Render(props: PMDataTableProps<Row>)
+}"
+`;
+
+exports[`the generated Kotlin contracts (platforms/android/ui/src/generated/kotlin/dev/polymorph/ui) > Dialog's contract 1`] = `
+"// Dialog
+
+/** \`Dialog.initialFocus\`. */
+enum class PMDialogInitialFocus(val value: String) {
+    Primary("primary"),
+    Dismiss("dismiss"),
+}
+
+/** \`Dialog.presentation\`. */
+enum class PMDialogPresentation(val value: String) {
+    Auto("auto"),
+    Sheet("sheet"),
+}
+
+/**
+ * Dialog's props (\`design/components/dialog.md\`): Modal interruption of the page. On Android it is
+ * adapted: a full-screen dialog on phones, centred on tablets.
+ */
+data class PMDialogProps(
+    /**
+     * Uses \`alertdialog\` rather than \`dialog\`, for an interruption the reader must answer.
+     * ConfirmDialog sets it for its danger tone.
+     */
+    val alert: Boolean? = null,
+    val children: PMContent? = null,
+    val closeLabel: String? = null,
+    val defaultOpen: Boolean? = null,
+    val description: String? = null,
+    /** \`false\` removes ✕ and ignores Escape and outside clicks, forcing a choice. */
+    val dismissible: Boolean? = null,
+    /** Actions. One primary (\`solid\`), rightmost; dismiss is outline or ghost. */
+    val footer: PMContent? = null,
+    /**
+     * Which footer control has focus on open; \`dismiss\` suits a panel that asks whether you meant
+     * it (see \`initialFocus\`).
+     */
+    val initialFocus: PMDialogInitialFocus? = null,
+    val onOpenChange: ((Boolean) -> Unit)? = null,
+    val open: Boolean? = null,
+    /**
+     * \`'auto'\` is the card, and the whole screen below \`30rem\` (the overlay class's viewport
+     * exemption). \`'sheet'\` keeps the card above \`30rem\` and becomes a bottom sheet below it (the
+     * sheet presentation, \`design/components/README.md\`). It is for content-light confirm and pick
+     * dialogs, where a full-screen takeover is too heavy. Only the shape changes: scrim, trap,
+     * \`dismissible\`, initial focus and return focus are Dialog's in both forms, which is why it can
+     * be a prop.
+     */
+    val presentation: PMDialogPresentation? = null,
+    val size: PMControlSize? = null,
+    val title: String,
+    /**
+     * A governed control, usually a Button, cloned to receive \`onClick\`, which also tells the panel
+     * where it was opened from.
+     */
+    val trigger: PMContent? = null,
+)
+
+/**
+ * Draws Dialog from its props. The member's file declares \`PMDialog\`, an object that implements it.
+ */
+fun interface PMDialogRendering {
+    @Composable
+    fun Render(props: PMDialogProps)
+}"
+`;

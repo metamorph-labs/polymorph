@@ -1,0 +1,99 @@
+/* Histogram — `design/components/histogram.md`.
+ *
+ * One paint: `--pm-chart-1`, the palette's first slot. A histogram has one
+ * measure and no series, so the slot is set here once instead of per mark. A
+ * palette change repaints every bin without this file knowing the palette.
+ *
+ * The component lays out **contiguous bins**, with no band padding and no
+ * thickness cap. The 2px surface gap is the only separator, and the component
+ * leaves it as space; it is never drawn as a stroke. */
+
+.surface {
+  composes: plotSurface from './frame/chart-frame.module.css';
+}
+
+.marks {
+  display: block;
+
+  /* The zero line's position, set inline by the component. It is geometry, not
+     a design value, as in BarChart. The default is the plot's floor, where zero
+     sits on every count axis. */
+  --pm-chart-zero: 100%;
+}
+
+/* Hairlines on the count axis only. The measure's axis has edge labels and
+   nothing else. */
+.grid path {
+  fill: none;
+  stroke: var(--pm-chart-grid);
+  stroke-width: 1;
+}
+
+.bar {
+  fill: var(--pm-chart-1);
+
+  /* No stroke. A border adds heavy ink that is not data, and on contiguous bins
+     it would draw the dividing line the gap is there to avoid. */
+  stroke: none;
+}
+
+/* The only axis stroke. */
+.zero {
+  fill: none;
+  stroke: var(--pm-chart-axis);
+  stroke-width: 1;
+}
+
+/* The invisible pointer target: the bin's full width through the plot, at
+   least 24px wide (set by the component). */
+.hit {
+  fill: transparent;
+}
+
+/* Transient emphasis (as in `bar-chart.md`): the active bin keeps full opacity
+   and the rest fade back. There is only one series, so this is feedback for
+   the reading position only. */
+.marks[data-reading] .bins g:not([data-active]) .bar {
+  opacity: 0.8;
+  transition: opacity var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+/* The `chart.marks` binding: bars `scaleY` from the zero line, staggered bin by
+   bin with the shared stagger, as in `bar-chart.md`. `transform-box: view-box`
+   puts the origin on the plot's zero rule instead of each group's own box. */
+.bins g {
+  transform-box: view-box;
+  transform-origin: center var(--pm-chart-zero);
+  animation: histogram-bins-rise var(--pm-motion-duration-surface) var(--pm-motion-easing-enter)
+    backwards;
+}
+
+.bins g:nth-child(2) {
+  animation-delay: var(--pm-motion-stagger-step);
+}
+
+.bins g:nth-child(3) {
+  animation-delay: calc(var(--pm-motion-stagger-step) * 2);
+}
+
+/* `n + 4`, not `4`: the stagger is capped and later bins share its last step
+   (the stagger primitive in motion.md). With `4` alone, bins five onwards would
+   get no delay, and a dense sample would enter back to front. */
+.bins g:nth-child(n + 4) {
+  animation-delay: calc(var(--pm-motion-stagger-step) * 3);
+}
+
+@keyframes histogram-bins-rise {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+/* Reduced motion (reduced-motion projection, `docs/motion.md`): no animation or transition. */
+@media (prefers-reduced-motion: reduce) {
+  .bins g,
+  .marks[data-reading] .bins g:not([data-active]) .bar {
+    animation: none;
+    transition: none;
+  }
+}

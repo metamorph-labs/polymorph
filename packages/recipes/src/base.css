@@ -1,0 +1,70 @@
+/* The vocabulary's base layer. The package root imports it once, so every
+   consumer gets it and no application declares it.
+ *
+ * It is a plain stylesheet, not a CSS module, because it declares no local
+ * classes. A production bundler drops a CSS module's side-effect import, so
+ * every built page would run on UA defaults (content-box, Times fallback, 8px
+ * body margin) while the tests, which import the file directly, still pass. The
+ * phone lane's box assertions catch that.
+ *
+ * It has two jobs, both mechanical rather than aesthetic:
+ *
+ * 1. Bind the page to the theme. Body type and colour come from tokens, so a
+ *    theme change reaches text that no component wraps.
+ *
+ * 2. Remove every off-scale value the user agent supplies. A UA margin on `<h2>`
+ *    adds to a Stack's gap, so vertical rhythm would no longer come only from
+ *    the space scale.
+ *
+ * It does not size headings. That is a typographic decision, no spec assigns
+ * one to a bare `<h1>`, and the base layer makes no visual choices. Titles
+ * belong to Heading, PageHeader and Card. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-app);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Flow content has no margin of its own. Spacing between siblings comes from
+   the parent's `gap`, which is always a token step. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+figure,
+blockquote,
+dl,
+dd,
+pre,
+ul,
+ol {
+  margin: 0;
+}
+
+/* Both colours. Without `color` the selected text keeps its own, and a system
+   may draw the selection fill as its ink, the colour of primary text. */
+::selection {
+  color: var(--pm-selection-text);
+  background: var(--pm-selection-bg);
+}

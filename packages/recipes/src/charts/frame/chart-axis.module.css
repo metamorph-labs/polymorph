@@ -1,0 +1,91 @@
+/* ChartAxis — `docs/charts.md`.
+ *
+ * Tick text is muted: `text.xs`, `--pm-text-muted`, and the numeric feature
+ * settings so a column of figures lines up. The axis draws no line. A chart's
+ * only stroke is the zero baseline, which the member draws into the plot at the
+ * value it marks. */
+
+.axis {
+  position: relative;
+  block-size: 100%;
+  color: var(--pm-text-muted);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  line-height: var(--pm-text-xs-line-height);
+  font-weight: var(--pm-text-xs-weight);
+  letter-spacing: var(--pm-text-xs-tracking);
+
+  /* Tabular figures, so 1 and 7 have the same width and a stack of tick labels
+     lines up instead of looking ragged. */
+  font-variant-numeric: var(--pm-font-numeric);
+}
+
+.tick {
+  white-space: nowrap;
+}
+
+/* The y axis is a one-cell grid with every tick stacked in it.
+ *
+ * This makes the gutter work. The frame's `auto` column takes the width of this
+ * element's content, so the ticks must be **in flow** to have a width.
+ * Absolutely positioned labels contribute nothing, and the column would
+ * collapse to zero. Stacked in one grid area they overlap harmlessly, the cell
+ * sizes to the widest, and each is offset to its value with
+ * `position: relative`, which moves a box without taking it out of flow. The
+ * frame test checks this width. */
+.axis[data-orientation='y'] {
+  display: grid;
+  align-content: start;
+  justify-items: end;
+}
+
+/* A y tick is centred on the value it names and sits to its inline start. */
+.axis[data-orientation='y'] .tick {
+  grid-area: 1 / 1;
+  position: relative;
+  transform: translateY(-50%);
+}
+
+/* An x tick is centred on its band. It is absolute because the row's height is
+   set below, not derived from content. Labels are never clipped and never
+   rotated (`docs/charts.md`). */
+.axis[data-orientation='x'] .tick {
+  position: absolute;
+  inset-block-start: var(--pm-space-1);
+  transform: translateX(-50%);
+}
+
+/* A label that centred would be drawn past an end of the plot is anchored at
+   that end (`align` on the engine's tick): its start on a tick at the plot's
+   start, its end on a tick at the plot's end. The ticks and the marks are laid
+   out in physical pixels, so the anchor is physical in either direction. */
+.axis[data-orientation='x'] .tick[data-align='start'] {
+  transform: none;
+}
+
+.axis[data-orientation='x'] .tick[data-align='end'] {
+  transform: translateX(-100%);
+}
+
+/* The x axis has no intrinsic height, because its ticks are absolute. It takes
+   one line box, which is the band the frame's height includes. */
+.axis[data-orientation='x'] {
+  block-size: calc(var(--pm-text-xs-size) * var(--pm-text-xs-line-height) + var(--pm-space-1));
+}
+
+/* The axis name, muted like its ticks. */
+.name {
+  position: absolute;
+  color: var(--pm-text-muted);
+}
+
+.axis[data-orientation='y'] .name {
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  transform: translateY(-100%);
+}
+
+.axis[data-orientation='x'] .name {
+  inset-block-end: 0;
+  inset-inline-end: 0;
+}

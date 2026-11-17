@@ -1,0 +1,28 @@
+{
+  "name": "desktop",
+  "register": "The desk register. Soft corners over real elevation, the standard working rhythm, motion that confirms — the same azure paint as pebble, on a different skeleton.",
+  "axes": {
+    "geometry": "soft",
+    "depth": "elevated",
+    "density": "standard",
+    "contrastTemperament": "standard",
+    "typePersonality": "grotesque",
+    "colorStrategy": "quiet",
+    "motionTemperament": "standard",
+    "ornament": "minimal"
+  },
+  "fonts": {
+    "body": {
+      "family": "Inter Variable"
+    },
+    "display": {
+      "family": "Inter Variable"
+    },
+    "mono": {
+      "family": "JetBrains Mono Variable"
+    }
+  },
+  "defaultPalette": "azure",
+  "defaultMode": "light",
+  "kind": "designed"
+}

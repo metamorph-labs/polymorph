@@ -1,0 +1,346 @@
+# Component design language — shared conventions
+
+Each `<name>.md` in this directory specifies one *member* of the vocabulary, the closed
+set of components every renderer ships: React, Vue, Svelte, Solid and Angular on the web,
+and SwiftUI and Compose on phones. Page archetypes are specified the same way in
+`design/archetypes/`, and `pnpm new:member` scaffolds a new spec. These conventions apply
+to every spec, and each spec states only where it differs.
+An implementer who reads a spec and this file makes **zero visual choices**. If a choice
+comes up anyway, the spec is defective: stop and flag it.
+
+Px values in specs are at **standard density** and are for orientation only. The token is
+always authoritative. The emitted density variants (`compact`/`comfortable`) rescale
+automatically.
+
+## 1. Attribute contract
+
+Components expose state only as data attributes. CSS keys off them, tests assert them, and
+there is no class-name API:
+
+| Attribute | Values | Notes |
+| --- | --- | --- |
+| `data-variant` | per component | e.g. Button `solid\|soft\|outline\|ghost` |
+| `data-size` | `sm\|md\|lg` | only when the component has sizes |
+| `data-tone` | per component | e.g. `neutral\|accent\|danger` |
+| `data-state` | per component | Radix-style: `open\|closed\|checked\|unchecked\|indeterminate\|on\|off\|loading\|visible\|hidden` |
+| `data-disabled` | present/absent | alongside native `disabled` where the element supports it |
+| `data-invalid` | present/absent | alongside `aria-invalid` |
+| `data-required` | present/absent | row-labelled controls only (Checkbox, Switch), mirrored from injected `aria-required` so the label can render the required marker (see `form-field.md`) |
+
+The rest state is the *absence* of `data-state`. Hover, active and focus are
+pseudo-classes, never attributes. They appear in a spec's `requiredSelectors`, so the
+selectors law (`packages/react-ui/src/selectors.test.ts`) can assert them in each member's
+stylesheet.
+
+## 2. Size system (all controls)
+
+Every sized control follows this one table. Heights come from `--pm-control-height-*`
+(density-scoped). A control never computes its own height.
+
+| Size | Height | Text step | Padding-x | Icon size | Icon–label gap |
+| --- | --- | --- | --- | --- | --- |
+| `sm` | `--pm-control-height-sm` (32) | `text.xs` | `--pm-space-4` (12) | `--pm-icon-size-sm` | `--pm-space-2` (4) |
+| `md` | `--pm-control-height-md` (36) | `text.sm` | `--pm-space-5` (16) | `--pm-icon-size-md` | `--pm-space-3` (8) |
+| `lg` | `--pm-control-height-lg` (40) | `text.md` | `--pm-space-6` (24) | `--pm-icon-size-lg` | `--pm-space-3` (8) |
+
+`md` is every component's default size. Text inside controls uses the step's full quartet
+(`size`/`line-height`/`weight`/`tracking` + `family: body`).
+
+**Minimum target:** every interactive element's hit area is at least
+`--pm-control-height-sm` in both dimensions. That is 28, 32 and 36px at compact, standard
+and comfortable density, all at or above WCAG 2.5.8's 24px. Small visuals (Checkbox box,
+Switch track) sit centred inside a label row that provides the target floor.
+
+## 3. Radius assignment
+
+**The map is data.** Each class below is an emitted *reference* token (the shell pattern).
+The engine derives `--pm-radius-control: var(--pm-radius-md)` and so on. A system may
+re-point a class through `overrides.assign.radius` (`docs/theming.md`). The recipes named
+here read the class token, not the step. Reads that this table does not assign stay on
+step tokens. An unassigned read is a decision this section has not made, not a bug.
+
+| Component class | Class token | Default |
+| --- | --- | --- |
+| Controls — every interactive control's own box (Button, Input, Textarea, Select/Combobox/MultiSelect/picker triggers, NumberInput, TimeInput, DurationInput, MonthInput, TagInput, OTP cells, SegmentedControl track, FileUpload row, AttachmentChip, ToolCall's row) | `--pm-radius-control` | `--pm-radius-md` |
+| Detail furniture — Checkbox box, Badge, Tooltip, Skeleton `text` | `--pm-radius-detail` | `--pm-radius-sm` |
+| Surfaces — Card (default; its `data-radius` API stays explicit), Dialog/Drawer/Sheet panels, Select/Combobox/MultiSelect/picker content, Menu, ContextMenu, Popover, HoverCard, Command, SplitButton dropdown, Toast, PromptInput's frame, ArtifactPane, ChatMessage's bubble | `--pm-radius-surface` | `--pm-radius-lg` |
+| Switch track/thumb, Skeleton `circle` | `--pm-radius-pill`; the capsule shape is part of the meaning, so it is not assigned | fixed |
+
+Two reads sit outside the map. Skeleton `rect` reads the `--pm-radius-md` step directly
+(an unassigned read). Table has no row, because `table.module.css` sets no outer radius: a
+sticky header has no corners to assign.
+
+Sharp geometry derives sm/md/lg to 0. The assignment above varies radius *between*
+components, and the geometry axis varies it between themes. A system may also override the
+assignment itself.
+
+### Shadow assignment
+
+The classes are named by *grammar*, not by step, because `control` is already the name of
+a shadow step. The class names describe the physical role. Re-pointable via
+`overrides.assign.shadow`.
+
+| Class | Token | Default | Wearers |
+| --- | --- | --- | --- |
+| A control's contact seat | `--pm-shadow-seat` | `--pm-shadow-control` | every control's own box (plus Stepper's lit seat) |
+| A resting surface's lift | `--pm-shadow-resting` | `--pm-shadow-raised` | Card (default), list-page panel, shell chrome that seats |
+| A transient surface's float | `--pm-shadow-transient` | `--pm-shadow-overlay` | every floating panel: dialogs, menus, pickers' content, toast, the elevated Card variant, the drawer-mode rail |
+
+Switch's thumb and Tooltip are outside the map on purpose. Both use `raised` instead of
+their class's token: a thumb rests on its track, and a tooltip is a label, not a surface.
+
+### Container-inset assignment
+
+This map sets which step of the space ladder each container class uses as its inset. The
+scale and the density multiplier set the step's value; the map only chooses the step.
+Re-pointable via `overrides.assign.inset`. Row and control insets belong to each member's
+recipe and stay outside the map.
+
+| Class | Token | Default | Wearers |
+| --- | --- | --- | --- |
+| The room-sized surface | `--pm-inset-surface` | `--pm-space-6` | Card body, Dialog panel (and its sheet form) |
+| The hand-sized floating pane | `--pm-inset-pane` | `--pm-space-5` | Popover (and its sheet form), HoverCard, Toast |
+| The row-bearing list | `--pm-inset-list` | `--pm-space-2` | Menu, ContextMenu, Select content (and their sheet forms) |
+
+## 4. Focus ring
+
+Every focusable part composes one shared CSS module
+(`packages/recipes/src/conventions/focus.module.css`):
+
+```css
+.focusRing:focus-visible {
+  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline-offset: var(--pm-focus-offset);
+  box-shadow: var(--pm-glow-focus);
+}
+```
+
+Never use `:focus`, because it fires on mouse press and teaches people to ignore the ring.
+Never write per-component ring styles. Composite fields (Input) put the same class on
+their styled container, which shows the ring when its direct native-field child is
+focused.
+
+The **outline is the accessibility surface**. It appears alone wherever a theme derives no
+glow. The `--pm-glow-focus` halo under it is decorative. When a recipe's rest state sets
+its own `box-shadow` (Button's solid), the halo loses that cascade and the recipe does not
+restate it. A bordered part also recolours its border to `--pm-border-focus-solid` while
+focused. The exception is a border that carries state (`data-invalid`, a selected or
+range-endpoint cell), where the state colour wins over the focus recolour. Nothing
+overrides the ring itself. Ring width and offset are tokens derived from the axes: width
+from contrast temperament, offset from geometry (a hugging ring everywhere except
+`round`). A system file may re-value them. No component tunes its own.
+
+A system may also choose where a focused field draws the outline (`overrides.focus.field`,
+the flag `--pm-focus-field`). Under `border`, a field (the composite form, a textarea, a
+combobox trigger) draws it inside its edge at the same width, in `--pm-border-focus-solid`,
+and keeps its seat shadow instead of the halo. An invalid field keeps the ring. The shared
+module branches on the flag, so no member restates it, except the two that draw their ring
+by hand outside it: PromptInput's frame, whose field is a `<textarea>` child the module's
+`> input` selector does not reach, and OTPInput's caret cell, which stands in for an invisible
+input. Each recipe repeats the same branch beside its own ring. The contrast law holds both
+focus colours to the focus floor on every surface (`docs/theming.md`).
+
+## 5. Disabled, loading, invalid
+
+- **Disabled:** text and icons use `--pm-text-disabled`. Fills collapse to
+  `--pm-bg-subtle` and borders to `--pm-border-subtle`. Ghost and soft fills become
+  transparent. The root gets `cursor: not-allowed` and has no hover or active response. A
+  disabled control is **never** still focusable (native `disabled`). The exception is
+  Toast/Tooltip triggers, which cannot be disabled-but-focusable.
+- **Loading:** `data-state="loading"` + `aria-busy="true"`. Pointer events are off. Layout
+  width must not change: the spinner replaces the leading icon slot or joins the label.
+  Spinner = `<Icon name="loading" />` bound to the `spin` pattern (§7).
+- **Invalid (inputs):** `data-invalid` + `aria-invalid="true"`. The border becomes
+  `--pm-danger-border`. FormField wires the message. The ring colour never changes.
+
+## 6. Type usage
+
+| Context | Step |
+| --- | --- |
+| Control labels, table cells, toast description | `text.sm` |
+| Metadata, badges, table headers, tooltip body, field descriptions/errors | `text.xs` |
+| Body copy, lg-control labels | `text.md` |
+| Card titles, toast titles, section headings | `text.lg` |
+| Dialog titles | `text.xl` |
+| Page titles (PageHeader) | `text.2xl` |
+| Hero/display moments only | `display.*` |
+
+Emphasis at small sizes uses **case and tracking, never an invented weight**.
+Overline-style labels (Badge, Table header) use `text.xs` + `text-transform: uppercase` +
+the step's own tracking token. `font-weight` may only be `var(--pm-text-*-weight)` /
+`var(--pm-display-*-weight)`, because the scale owns weight. Stylelint enforces this.
+
+## 7. Motion bindings
+
+Patterns a spec may bind (`design/motion/motion.md` supplies every number, and
+`packages/engine/src/motion/patterns.ts` implements them):
+`fade · scale-fade · slide-fade · collapse · spring-pop · shimmer · spin · sheet`, plus
+the `press-feedback` micro-pattern (pure CSS, below).
+
+- `spin` and `shimmer` are **ambient** patterns (loading affordances). Button and Input
+  loading states bind `spin`. Its reduced-motion projection is a static glyph, and the
+  state stays legible through `aria-busy` and the glyph.
+- `sheet` is the bottom sheet's edge entrance (§12).
+- Duration and easing tokens by element class: controls use `--pm-motion-duration-control`
+  (+`-exit`), surfaces `-surface`, overlays `-overlay`. Enters use
+  `--pm-motion-easing-enter`, exits `-exit`, and symmetric state changes `-standard`.
+- CSS state feedback (hover/press tints, border changes) transitions
+  `background-color, border-color, color, box-shadow` over `duration-control` ×
+  `easing-standard`. `box-shadow` is in the list so that a seat change animates like a
+  border change. The shared state-feedback class in
+  `packages/recipes/src/conventions/motion.module.css` owns this list.
+- Press feedback: the `press-feedback` micro-pattern, a transform scale to
+  `--pm-motion-press-scale` that releases on the `snappy` spring. `design/motion/motion.md`
+  ("Press feedback") defines the press scale per temperament. At `none` there is no scale,
+  and the state stays legible by colour.
+- Every enter has an exit at the exit duration and easing. `data-motion="none"` sets all
+  durations to zero at the token layer, and no component may special-case it.
+
+## 8. Iconography
+
+Components reference icon **roles** (meanings, not glyph names) from `design/icons.json`
+only, through `<Icon name>`. The role set is closed, so an invented icon name is a type
+error, and remapping a glyph changes no call site. Colour is always `currentColor`. Sizes
+come from §2's table. Decorative icons are `aria-hidden`; meaningful ones require `label`.
+Each spec lists its glyph usage, and `design/icons.md` mirrors it.
+
+## 9. A11y baseline
+
+Each renderer's substrate supplies primitive semantics: React Aria and Radix in React, Zag
+machines in Vue, Svelte, Solid and Angular, and the platform's own views in SwiftUI and
+Compose. Specs add: visible focus per §4, target sizes per §2, `prefers-reduced-motion`
+honoured through pattern projections (`design/motion/motion.md`, "Reduced-motion
+projections"), and text content only through props and slots. The vocabulary invents no
+`aria-label` when visible text exists. Tooltips are never the only carrier of essential
+information.
+
+## 10. Fixture derivation
+
+Each spec's **States** table is the source for the member's *states fixture*,
+`<name>.states.tsx` in React. The other web frameworks' fixtures are generated from the
+member's description (`docs/shells.md`). The gallery renders the fixture and the
+completeness law checks it. Each table row becomes one entry (`name`, `render`, `expect`),
+and the spec's `requiredSelectors` list is copied verbatim. A state that cannot be
+rendered from public props (hover/active/focus) goes in `requiredSelectors` instead of
+`entries`.
+
+## 11. Selection treatment
+
+**Selected is a distinct state, not a held hover.** If a member uses the hover wash to
+show something permanent, the reader cannot tell "pointing at" from "chosen". So there are
+two kinds of selection. *Content* selection (table rows, calendar dates, items picked from
+a collection) uses its own `--pm-selection-*` family. That family has two fills. A selected
+part that holds one label and nothing else (a day, a nav item, a command) fills with
+`--pm-selection-bg` and sets `--pm-selection-text`, the one text colour the contrast law
+holds on it. A selected part that holds content of its own (a table row's cells, a list
+item with a trailing control, a bar of actions) fills with `--pm-selection-surface`, and
+its content keeps its colours: the law holds every text role on that fill, as on a
+background. The split exists because an achromatic system draws `--pm-selection-bg` as its
+ink, the colour of primary text. That system has no hue to mark the selected surface with,
+so the surface is a neutral wash, and a law holds it a lightness step from the hover fill
+and from every surface (`docs/theming.md`). The **choice controls**, whose job
+is to say "this one is chosen" (SegmentedControl's active segment, ChoiceCard's checked
+card, DateRangePicker's in-range cells), all use the recipe below so that no member
+improvises one:
+
+- **Surface:** the `--pm-accent-subtle` wash. **Border:** `--pm-accent-bg`, at the
+  control's existing border width. The colour changes and the width does not. There is no
+  layout shift, so a selected item is not *bigger* either.
+- **The second channel is structural, never colour alone:** a `confirm` glyph in
+  `--pm-accent-text` where the anatomy has room (ChoiceCard), or the raised position
+  itself where it does not (SegmentedControl's raised segment, which carries the whole
+  signal alone; its spec explains why the accent pair sits there).
+- **Hover on an *unselected* item is the ghost wash (`--pm-bg-subtle`) only.** Demoting
+  hover to the ghost wash is what allows the accent wash here. Because hover is neutral,
+  `--pm-accent-subtle` can only mean *chosen*, and the wash never means two things.
+  **Hover on a *selected* item changes nothing**, because there is nothing to preview.
+- **Focus stays the shared ring (§4)**, composed and never restyled per member.
+- **Ink budget:** under `chromaBudget: 'none'` the accent family derives from the neutral
+  ramp (`design/palettes/README.md`). The accent is then ink, so selection reads as an ink
+  wash with an ink border, which is the quiet default's own selected look. The recipe
+  degrades to the `plain` house system's register and no further.
+
+## 12. The sheet presentation
+
+**At phone width the popper pattern does not work well for list-shaped overlays**
+(`docs/layout.md`). Below `30rem` an anchored panel lands under the thumb, the virtual
+keyboard halves the viewport, and available-height maths produces a cramped scroll region
+where the reader is aiming. The phone's own pattern for choosing from a list is the bottom
+sheet. This section defines that surface once. It is Drawer `side="bottom"` promoted to
+shared status: specified once and cited by other members, as the chart frame is, while
+`drawer.md` still owns the drawn details. Each member's own `presentation` row says
+whether it uses the sheet by default or by opt-in. The anatomy is this one wherever it
+appears, cited and never re-derived.
+
+**The breakpoint is `30rem`, the one line for the overlay class.** This is the viewport
+exemption that overlays share with the shell, for the reason given in `dialog.md`: an
+overlay is portalled and `fixed`, so there is no box between the panel and the window to
+query. The viewport is the only container there is. The whole family uses one line,
+because a second threshold would let two members disagree about what a phone is. It is a
+rem literal because breakpoints are geometry, not theme (`docs/layout.md`).
+
+**The attribute contract: `data-presentation="sheet"` on the panel while the sheet
+presentation is active.** It reflects resolved state, not the prop value. It is present
+exactly while the surface is drawn as a sheet, and absent in the member's anchored or card
+form (§1's rest-is-absence rule). CSS keys the sheet anatomy off it. Fixtures and the
+phone proof lane assert it. The member sets it from the same `30rem` line its geometry
+already watches. Every member that uses the sheet spells it exactly this way, and no
+member adds a second spelling.
+
+**Anatomy — Drawer bottom's, promoted:**
+
+| Part | Tokens |
+| --- | --- |
+| scrim | Same as Dialog's: bg `--pm-bg-scrim`, `fade` binding. It is the dismiss surface. Focus handling belongs to the member, not the scrim (below) |
+| panel | attached to the bottom edge, full-width · bg `--pm-bg-overlay` · shadow `--pm-shadow-transient` (default `--pm-shadow-overlay`; flat systems still give it this shadow, because a transient surface detaches in every system) · border-block-start only, `1px solid --pm-border-subtle` · top corners `--pm-radius-surface` (default `--pm-radius-lg`), bottom corners `0` |
+| height | as tall as its content, up to drawer-bottom's own `md` cap: `66vh` → `66dvh`. The `vh` base comes first, then the `dvh` override in an `@supports (height: 1dvh)` gate right after it, so engines without `dvh` keep the `vh` behaviour. The fallback is a `@supports` gate and not a pair of declarations, because a deduplicating minifier (esbuild included) deletes the pair and ships `dvh` alone. On phones `100vh` includes collapsed browser chrome, so a cap measured against it hides the sheet's last row behind the URL bar (`docs/layout.md`) |
+| safe area | `padding-block-end` adds `env(safe-area-inset-bottom, 0px)` to the member's own edge padding; it is zero where there is no notch. Without it the home indicator hides the last row, and adaptation may degrade composition but never content (`docs/layout.md`) |
+| motion | the `sheet` pattern (`design/motion/motion.md`, Drawer's edge entrance): `translateY(100%)` → 0, opacity 1 throughout, `overlay` class, structural distance. Reduced motion **snaps**: the panel fades in place (Drawer's projection, because a surface held off-screen by a transform cannot appear from nowhere at opacity 0). At `none`: instant |
+
+**No drag-to-dismiss, so no grabber handle.** A handle that cannot be dragged promises
+something the surface does not do. Dismissal is the scrim, Escape, the member's own close
+controls, and, for menus, selection itself. Velocity-based dragging would need a gesture
+dependency and its own design pass, so the sheet does not offer it.
+
+**Semantics must survive re-anchoring, or the sheet does not ship.** A menu in a sheet is
+still a menu: `role="menu"`, roving focus, typeahead, Escape. A combobox's listbox is
+still driven by `aria-activedescendant` from an input that keeps DOM focus. The focus
+boundary in `README-substrates.md` ("Focus-management interplay") still applies, so a
+combobox-lane sheet takes no focus scope and its scrim is only a dismiss target, while
+Dialog-lane sheets keep their trap. The sheet does not work against the popper primitives. Three things are ruled out:
+`:global` overrides, `!important` against popper wrappers, and `fixed` positioning inside
+a transformed ancestor (the CSS spec breaks that, not this repo). In React, where a Radix
+primitive ties its semantics to its popper (dropdown-menu, select), sheet mode carries the
+semantics on the **react-aria lane** instead. The `README-substrates.md` focus boundary
+splits this way (react-aria for in-panel semantics, Radix for positioning), and Command
+runs the composed-listbox lane. Each member's own cell says whether it changes substrate or
+only restyles, based on its actual DOM. The Zag-based frameworks keep one machine at every
+width and change only the drawing (`docs/shells.md`, "The sheet presentation").
+
+## 13. The focus-zoom floor
+
+**Text-entry surfaces use the sm step (§2's `md` row), and a system may set its sm step and
+its base under 16px. iOS zooms the viewport when a focused field's font-size is under
+16px**, so the page jumps on every field focus. The floor is met directly, with a token of
+its own:
+
+**Below `30rem`, text-entry elements step their `font-size` to `--pm-text-entry-size` and
+their `line-height` to `--pm-text-entry-line-height`. Metrics only.** The engine derives the
+size as the md step or 16px, whichever is larger, so no system can put a field under the
+floor and no application needs a viewport or CSS zoom to stop one. The colour, weight and
+tracking families do not change. This is only a size floor, and nothing outside the focused
+element's own metrics moves.
+
+- **Text-entry elements means real `<input>`/`<textarea>` only.** Trigger buttons, painted
+  cells and ARIA spinbutton segments do not trigger the UA zoom and do not step. The
+  members that apply the floor: Input, Textarea, SearchInput, PasswordInput, TagInput's
+  inline input, Combobox's input, MultiSelect's input, Command's input, NumberInput's
+  input, OTPInput's one real input (invisible but focused, and the UA reads its computed
+  size), and PromptInput's field. Each spec has one line referencing this section and does not restate it.
+- **`@media` is allowed here.** The zoom is a UA behaviour keyed to the *window*, so no
+  container can detect it, and the window is the only box the UA reads. This is a
+  viewport-keyed exception with its reasoning written down, to the same standard as the
+  overlay exemption, at the overlay class's `30rem` line.
+- **Never via the viewport meta.** `maximum-scale` / `user-scalable=no` also stops the
+  zoom, but only by disabling the reader's own zoom, which harms accessibility
+  (`docs/layout.md`).

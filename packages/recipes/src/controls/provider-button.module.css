@@ -1,0 +1,43 @@
+/* ProviderButton — `design/components/provider-button.md`.
+ *
+ * Composes Button `outline`/`neutral` instead of copying it, as Link's button variant
+ * and CopyButton do. `composes` brings the base, the conventions' sizing, the rest,
+ * hover, press, loading and disabled styles, the press feedback and the focus ring. This
+ * file adds only what Button has no slot for: a mark that is not a glyph. */
+
+.button {
+  composes: button from './button.module.css';
+}
+
+/* Button's content slots, repeated here for layout only. Colours, sizes and states all
+   come with `.button` above. */
+.label {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mark,
+.spinner {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The `button.spinner` binding, composed. The motion module owns the period, the
+   temperament scaling and the three ways it is switched off. */
+.spinner {
+  composes: spin from '../conventions/motion.module.css';
+}
+
+/* A disabled control dims through Button's disabled style, which sets text and border.
+   A brand mark has its own fills, so it would stay at full strength next to a grey
+   label and look like the only active part of a disabled button. It is desaturated and
+   faded as a whole rather than recoloured, so the provider's mark is never painted in
+   our colours. */
+.button[data-disabled] .mark {
+  filter: grayscale(1);
+  opacity: 0.5;
+}

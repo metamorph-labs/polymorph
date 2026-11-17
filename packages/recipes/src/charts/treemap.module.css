@@ -1,0 +1,129 @@
+/* Treemap — `design/components/treemap.md`.
+ *
+ * `--pm-chart-mark` holds the tile's paint: slot 1 in a treemap of one level,
+ * its group's slot in a treemap of two. Its value is always another custom
+ * property (`var(--pm-chart-2)`), never a colour, so a palette change repaints
+ * every tile without this file knowing the palette. Its default is the
+ * de-emphasis grey, because an unresolvable custom property invalidates its
+ * whole declaration and an unpainted tile would not be drawn.
+ *
+ * No axes and no gridlines: the gaps between tiles are the only lines. */
+
+.surface {
+  composes: plotSurface from './frame/chart-frame.module.css';
+}
+
+.marks {
+  display: block;
+
+  --pm-chart-mark: var(--pm-chart-other);
+}
+
+/* The engine lays the tiles out from the top left, largest first. In a
+   right-to-left document the marks turn over, so the largest sits at the
+   inline start, where the labels already sit by their logical positions. */
+.marks:dir(rtl) {
+  transform: scaleX(-1);
+}
+
+/* The `chart.marks` binding: tiles fade in, capped at the fourth step of the
+   stagger. A tile does not grow, because its area is its value. */
+.tile {
+  fill: var(--pm-chart-mark);
+
+  /* No stroke. Tiles are separated by the gap the layout leaves, 2px between
+     the items of a group and 4px between groups. */
+  stroke: none;
+
+  /* The emphasis transition is declared on the mark, not in the reading rule
+     below, so it animates both in and out. */
+  transition: opacity var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+  animation: treemap-tiles-enter var(--pm-motion-duration-surface) var(--pm-motion-easing-enter)
+    backwards;
+}
+
+.tile:nth-child(2) {
+  animation-delay: var(--pm-motion-stagger-step);
+}
+
+.tile:nth-child(3) {
+  animation-delay: calc(var(--pm-motion-stagger-step) * 2);
+}
+
+.tile:nth-child(n + 4) {
+  animation-delay: calc(var(--pm-motion-stagger-step) * 3);
+}
+
+@keyframes treemap-tiles-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Transient emphasis: the tile under the reading position keeps full opacity
+   and the others fade back. The colour does not change, because it names the
+   group. */
+.marks[data-reading] .tile:not([data-active]) {
+  opacity: 0.8;
+}
+
+/* The invisible pointer target: the tile, at least 24px each way. */
+.hit {
+  fill: transparent;
+}
+
+/* The labels: HTML over the marks, placed by logical properties from the
+   engine's numbers. */
+.text {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* A label sits on a plate of the surface colour, never on the tile's fill, so
+   its contrast is the theme's own text on its surface in every palette. The
+   plate is drawn only where the engine finds room for the label and the value;
+   a word wider than the estimate ends in an ellipsis inside it. */
+.plate {
+  --pm-chart-text-x: 0;
+  --pm-chart-text-y: 0;
+  --pm-chart-text-width: 100%;
+
+  position: absolute;
+  inset-inline-start: var(--pm-chart-text-x);
+  inset-block-start: var(--pm-chart-text-y);
+  display: flex;
+  flex-direction: column;
+  max-inline-size: var(--pm-chart-text-width);
+  padding: 2px var(--pm-space-1);
+  background: var(--pm-bg-surface);
+  border-radius: var(--pm-radius-sm);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  line-height: var(--pm-text-xs-line-height);
+  font-weight: var(--pm-text-xs-weight);
+  letter-spacing: var(--pm-text-xs-tracking);
+}
+
+.plateLabel,
+.plateValue {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plateLabel {
+  color: var(--pm-text-primary);
+}
+
+.plateValue {
+  color: var(--pm-text-secondary);
+  font-variant-numeric: var(--pm-font-numeric);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile {
+    animation: none;
+    transition: none;
+  }
+}

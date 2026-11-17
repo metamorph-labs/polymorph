@@ -1,0 +1,4 @@
+/* Only a margin, which is the parent's spacing. See ../README.md. */
+.card {
+  margin-top: 8px;
+}

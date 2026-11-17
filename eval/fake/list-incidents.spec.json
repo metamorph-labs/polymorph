@@ -1,0 +1,77 @@
+{
+  "turns": [
+    {
+      "usage": { "input_tokens": 2600, "cache_creation_input_tokens": 0, "output_tokens": 80 },
+      "content": [
+        { "type": "text", "text": "I will read the system card first." },
+        { "type": "tool_use", "name": "get_system_card", "input": {} }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 40,
+        "cache_creation_input_tokens": 7400,
+        "cache_read_input_tokens": 2600,
+        "output_tokens": 120
+      },
+      "content": [
+        { "type": "tool_use", "name": "search_components", "input": { "query": "filter" } },
+        { "type": "tool_use", "name": "get_component", "input": { "name": "FilterBar" } },
+        { "type": "tool_use", "name": "get_component", "input": { "name": "list-page" } }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 40,
+        "cache_creation_input_tokens": 3200,
+        "cache_read_input_tokens": 10000,
+        "output_tokens": 2300
+      },
+      "content": [
+        { "type": "text", "text": "A first draft of the incidents screen." },
+        {
+          "type": "tool_use",
+          "name": "validate",
+          "input": { "spec": { "$file": "list-incidents/attempt-1.json" } }
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 40,
+        "cache_creation_input_tokens": 2900,
+        "cache_read_input_tokens": 13200,
+        "output_tokens": 2250
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "Four faults: no className, a lawful cell for the button, a real icon role, and ConfirmDialog instead of Modal."
+        },
+        {
+          "type": "tool_use",
+          "name": "validate",
+          "input": { "spec": { "$file": "list-incidents/attempt-2.json" } }
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 40,
+        "cache_creation_input_tokens": 600,
+        "cache_read_input_tokens": 16100,
+        "output_tokens": 2200
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": [
+            "`validate` reports the screen lawful.\n\n```json\n",
+            { "$file": "list-incidents/attempt-2.json" },
+            "```\n"
+          ]
+        }
+      ]
+    }
+  ]
+}

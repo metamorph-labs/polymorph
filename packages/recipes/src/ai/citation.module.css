@@ -1,0 +1,72 @@
+/* Citation — `design/components/citation.md`.
+ *
+ * A mark after a sentence, styled like Badge (`text.xs`, a subtle wash, the
+ * detail radius) but as a link with a hover, a focus ring and a destination.
+ * The preview is HoverCard's panel. This sheet styles only the three source
+ * lines inside it. */
+
+.mark {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  /* At least as wide as it is tall, so `1` and `12` look like the same kind
+     of mark. The minimum width is the step's line box, as in Badge. */
+  min-inline-size: calc(var(--pm-text-xs-size) * var(--pm-text-xs-line-height));
+  padding-inline: var(--pm-space-1);
+  margin-inline-start: var(--pm-space-1);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-accent-text);
+  text-decoration: none;
+  vertical-align: top;
+  background: var(--pm-accent-subtle);
+  border-radius: var(--pm-radius-detail);
+}
+
+/* Hover moves the wash one step, as Button's soft cell does, because the mark
+   is a control and responds to the pointer. */
+.mark:hover {
+  background: var(--pm-accent-subtle-hover);
+}
+
+/* The preview's three lines. HoverCard owns the panel's inset, and this sheet
+   styles the lines inside it. */
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-1);
+}
+
+.previewTitle {
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-xl-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+}
+
+.previewDomain {
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+}
+
+.previewSnippet {
+  margin-block-start: var(--pm-space-1);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+}

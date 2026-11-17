@@ -1,0 +1,94 @@
+/* SettingsRow — `design/components/settings-row.md`.
+ *
+ * The group is a Card whose padding the rows replace, because the group is one
+ * ruled surface and the rules must reach its edges. This is done here, not with
+ * a call-site patch: the exception ladder is for screens, not for a component's
+ * own contents. */
+
+.group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* The overline style (`design/components/README.md`, "Type usage"). This *is*
+   the section-heading recipe for any surface that needs one. */
+.groupTitle {
+  padding-block-end: var(--pm-space-2);
+  margin: 0;
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-secondary);
+  text-transform: uppercase;
+}
+
+/* Negative margins rather than a Card patch, so the rules between rows reach the
+   Card's border. Rules that stopped short would look like a mistake. */
+.rows {
+  display: flex;
+  flex-direction: column;
+  margin: calc(var(--pm-space-6) * -1);
+}
+
+/* The row wraps. A control that cannot share the line with the text column's
+   basis moves under the text, at the start of its own line. Without the wrap a
+   wide control (a NumberInput with a suffix, an Input) takes the whole row in a
+   narrow group, and the text column is left no width. */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-3) var(--pm-space-6);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--pm-space-4) var(--pm-space-6);
+}
+
+/* The Card's own border is the outer boundary, so the first row draws none. */
+.row + .row {
+  border-block-start: 1px solid var(--pm-border-subtle);
+}
+
+/* Grows from a basis of twice `--pm-space-9`, not from its content. The basis
+   is the narrowest text column a control may sit beside, and it decides when
+   the row wraps: a Switch stays beside its label in a 320px window, and a text
+   field does not. A basis of `auto` would wrap the control under any
+   description longer than the line. */
+.text {
+  display: flex;
+  flex: 1 1 calc(var(--pm-space-9) * 2);
+  flex-direction: column;
+  gap: var(--pm-space-1);
+  min-inline-size: 0;
+}
+
+.label {
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+}
+
+/* A maximum line length, so the description stays readable on wide pages. */
+.description {
+  max-inline-size: calc(var(--pm-space-10) * 5);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-secondary);
+}
+
+/* Never grows. The text column takes the space, so the controls line up along
+   the right edge. On a line of its own the control is at most the row's width,
+   and a field inside it narrows to fit. */
+.control {
+  display: flex;
+  flex: none;
+  align-items: center;
+  max-inline-size: 100%;
+}

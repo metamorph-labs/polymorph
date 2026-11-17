@@ -1,0 +1,80 @@
+/* AvatarButton — `design/components/avatar-button.md`.
+ *
+ * Composes Button `ghost`/`neutral` instead of copying it, as CopyButton and ProviderButton do.
+ * `composes` brings the base, the rest, hover, press, on, loading and disabled styles, the press
+ * feedback and the focus ring. This file adds only what Button has no slot for: a round box
+ * sized by the face inside it. */
+
+.button {
+  composes: button from './button.module.css';
+
+  /* The spinner is placed over the box, where the face is. */
+  position: relative;
+
+  /* A face keeps its shape. A box that shrank in a crowded row would draw an oval wash. */
+  flex: none;
+}
+
+/* The box: the face with a `space-1` gutter on every side, never smaller than the size's control
+   height, and round at every geometry, as the Avatar inside is. Button's hairline border is the
+   gutter's outer pixel, so the padding is the rest of the step, and at `md` the box is exactly
+   Button's icon-only square.
+
+   Each selector names the size and the cell: one attribute more than Button's size rules, which
+   set the block size and the inline padding this rule replaces. A built stylesheet carries its own
+   copy of every rule it composes, so a page that loads another Button preset after this member
+   loads Button's rules again. Equal specificity would let that order choose the box. */
+.button[data-size][data-variant] {
+  min-inline-size: var(--pm-control-height-md);
+  block-size: auto;
+  min-block-size: var(--pm-control-height-md);
+  padding: calc(var(--pm-space-1) - 1px);
+  border-radius: var(--pm-radius-pill);
+}
+
+.button[data-size='sm'][data-variant] {
+  min-inline-size: var(--pm-control-height-sm);
+  min-block-size: var(--pm-control-height-sm);
+}
+
+.button[data-size='lg'][data-variant] {
+  min-inline-size: var(--pm-control-height-lg);
+  min-block-size: var(--pm-control-height-lg);
+}
+
+/* The Avatar's box. The Avatar brings its own size, colours and image fade. */
+.face {
+  display: inline-flex;
+  flex: none;
+}
+
+/* While loading the face is hidden and keeps its room, so the box does not change size, and the
+   spinner is centred over it in the cell's text colour. */
+.button[data-state='loading'] .face {
+  visibility: hidden;
+}
+
+/* The `button.spinner` binding, composed. The motion module owns the period, the temperament
+   scaling and the three ways it is switched off.
+
+   The turning box is the glyph's own size, centred by its auto margins. A box the size of the
+   button would swing its corners past the round cell as it turns, and add scrollable overflow to
+   whatever holds the button. */
+.spinner {
+  composes: spin from '../conventions/motion.module.css';
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  inline-size: fit-content;
+  block-size: fit-content;
+  margin: auto;
+}
+
+/* A disabled control dims through Button's disabled style, which sets text and border. A face
+   has its own fills, so it would stay at full strength and look like the only active part of a
+   disabled control. It is desaturated and faded as a whole, as ProviderButton's mark is, rather
+   than repainted. */
+.button[data-disabled] .face {
+  filter: grayscale(1);
+  opacity: 0.5;
+}

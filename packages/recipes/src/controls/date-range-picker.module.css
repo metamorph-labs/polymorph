@@ -1,0 +1,450 @@
+/* DateRangePicker — `design/components/date-range-picker.md`.
+ *
+ * Three recipes are combined here, each restated rather than shared, because the completeness law
+ * checks a component's own stylesheet source. The field and popup are `date-picker.md`'s rows
+ * unchanged, and the grid is `calendar.md`'s. The range cells are this member's own and apply the
+ * conventions' selection treatment.
+ *
+ * The selection mapping: **in-range uses the accent wash, and endpoints use the full selection
+ * treatment**. Endpoints use `calendar.md`'s day-selected recipe unchanged, so the ends of a range
+ * look exactly like the chosen day in DatePicker's popup. Because the accent wash marks the range,
+ * hover inside this member uses the ghost wash (`--pm-bg-subtle`) instead. `--pm-accent-subtle`
+ * then always means *in the range*, never hover. */
+
+.field {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  max-inline-size: 100%;
+  block-size: var(--pm-control-height-md);
+  padding-inline: var(--pm-space-5);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  cursor: text;
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-field);
+  border-radius: var(--pm-radius-control);
+
+  /* The control seat shadow, from Input's recipe, used by every field in the family. */
+  box-shadow: var(--pm-shadow-seat);
+}
+
+/* Two rows share one line, so neither stretches. The spacer below takes the remaining space and
+   keeps the halves close to the dash. The `2px` gap around separators matches DatePicker. */
+.segments {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  align-items: center;
+  min-inline-size: 0;
+  outline: none;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.segment {
+  padding-inline: 2px;
+  color: var(--pm-text-primary);
+  border-radius: var(--pm-radius-sm);
+  outline: none;
+  font-variant-numeric: var(--pm-font-numeric);
+
+  /* A segment is editable text so a phone shows its keyboard, and every change is the field's
+     own, so no caret is drawn in it. */
+  caret-color: transparent;
+}
+
+/* The unfilled placeholder, such as `dd`, `mm`, `yyyy`, localized, on both halves. */
+.segment[data-placeholder] {
+  color: var(--pm-text-muted);
+}
+
+/* Marks the current position, not a selection, with the temporary wash family. */
+.segment:focus {
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+}
+
+.separator {
+  color: var(--pm-text-muted);
+}
+
+/* The en-dash between the halves: muted and `aria-hidden`, because React Aria names the halves for
+   screen readers, not the punctuation. */
+.dash {
+  color: var(--pm-text-muted);
+}
+
+/* Input's embedded-adornment convention, unchanged. */
+.clear {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback pressable from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-self: stretch;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  padding: 0;
+  color: var(--pm-text-muted);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--pm-radius-sm);
+  animation: date-range-picker-clear-enter var(--pm-motion-duration-control)
+    var(--pm-motion-easing-enter);
+}
+
+@keyframes date-range-picker-clear-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+.clear:hover {
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-subtle);
+}
+
+/* sizes — the conventions' size system -------------------------------------- */
+
+.field[data-size='sm'] {
+  gap: var(--pm-space-2);
+  block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-4);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+}
+
+.field[data-size='lg'] {
+  block-size: var(--pm-control-height-lg);
+  padding-inline: var(--pm-space-6);
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+}
+
+/* field states -------------------------------------------------------------- */
+
+.field[data-invalid] {
+  border-color: var(--pm-danger-border);
+}
+
+.field[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-subtle);
+
+  /* The seat shadow signals "ready", so disabled removes it (as in Input). */
+  box-shadow: none;
+}
+
+.field[data-disabled] .segment,
+.field[data-disabled] .separator,
+.field[data-disabled] .dash {
+  color: var(--pm-text-disabled);
+}
+
+/* Open keeps the hover border, and the invalid border stays in both states. */
+.field[data-state='open']:not([data-invalid]) {
+  border-color: var(--pm-border-strong);
+}
+
+.field:hover:not([data-disabled], [data-invalid]) {
+  border-color: var(--pm-border-strong);
+}
+
+/* popup --------------------------------------------------------------------- */
+
+/* Select's panel surface with no padding of its own, because the grid has its own `--pm-space-3`
+   (as in DatePicker). */
+.content {
+  /* `overlay` from the stacking scale. The popper moves it onto its wrapper (menu.module.css
+     explains how). */
+  z-index: var(--pm-z-overlay);
+  padding: 0;
+  overflow: hidden;
+  background: var(--pm-bg-overlay);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-surface);
+  box-shadow: var(--pm-shadow-transient);
+  transform-origin: var(--radix-popover-content-transform-origin);
+}
+
+.content[data-state='open'] {
+  animation: date-range-picker-content-enter var(--pm-motion-duration-surface)
+    var(--pm-motion-easing-enter);
+}
+
+.content[data-state='closed'] {
+  animation: date-range-picker-content-exit var(--pm-motion-duration-surface-exit)
+    var(--pm-motion-easing-exit);
+}
+
+@keyframes date-range-picker-content-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes date-range-picker-content-exit {
+  to {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+/* The sheet, below 30rem (the conventions' sheet presentation). This is DatePicker's sheet
+   container unchanged: zero inset (the grid has its own `--pm-space-3`), centred in the full-width
+   sheet, and scrolling within the sheet's maximum height. The sheet's safe-area padding adds to
+   this member's own (zero) edge padding. The popover alignment rules no longer apply. */
+.sheetBody {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-block-size: 0;
+  padding-block-end: env(safe-area-inset-bottom, 0);
+  overflow-y: auto;
+}
+
+/* grid — `calendar.md` unchanged -------------------------------------------- */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+  inline-size: fit-content;
+  padding: var(--pm-space-3);
+}
+
+.header {
+  display: flex;
+  gap: var(--pm-space-2);
+  align-items: center;
+  justify-content: space-between;
+  block-size: var(--pm-control-height-sm);
+}
+
+.title {
+  flex: 1;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  text-align: center;
+  font-variant-numeric: var(--pm-font-numeric);
+}
+
+.grid {
+  border-collapse: collapse;
+}
+
+.grid th {
+  padding: 0;
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+  text-align: center;
+}
+
+.cell {
+  padding: 0;
+}
+
+.day {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback pressable from '../conventions/motion.module.css';
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--pm-control-height-sm);
+  block-size: var(--pm-control-height-sm);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid transparent;
+  border-radius: var(--pm-radius-sm);
+  outline: none;
+  font-variant-numeric: var(--pm-font-numeric);
+}
+
+/* day states — ascending, so the range wins over hover ----------------------- */
+
+/* Today is not a selection. It gets a border and a colour, never a fill. Inside the range wash the
+   border stays. At an endpoint, the selection styling below wins and `aria-current` still marks
+   today. */
+.day[data-today] {
+  color: var(--pm-accent-text);
+  border-color: var(--pm-accent-bg);
+}
+
+/* This deliberately replaces `calendar.md`'s accent-wash hover *inside this member* with the ghost
+   wash, so the accent wash only ever means in the range. Hover on an in-range middle day changes
+   nothing, because it is already in the range. */
+.day:hover:not(
+    [data-range-start],
+    [data-range-middle],
+    [data-range-end],
+    [data-unavailable],
+    [data-disabled]
+  ) {
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-subtle);
+}
+
+/* Button's ghost/neutral press cell. The accent steps were dropped along with the accent hover.
+   The press transform comes from `pressable`, composed above. */
+.day:active:not(
+    [data-range-start],
+    [data-range-middle],
+    [data-range-end],
+    [data-unavailable],
+    [data-disabled]
+  ) {
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-subtle);
+}
+
+/* Struck through and muted, but still focusable. An unavailable day has a reason, and a screen
+   reader user must be able to reach the day to hear it. */
+.day[data-unavailable] {
+  color: var(--pm-text-disabled);
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+
+.day[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+}
+
+/* In-range: only the selection treatment's wash. Text stays primary, because the wash is the whole
+   change. The radius is 0 between neighbours, so the range reads as one band rather than separate
+   chips, and the grid's collapsed cells keep it contiguous. The anchored preview uses this same
+   cell, because the preview *is* the range being made. */
+.day[data-range-middle] {
+  background: var(--pm-accent-subtle);
+  border-radius: 0;
+}
+
+/* Endpoints: `calendar.md`'s day-selected recipe unchanged. This is the full selection treatment,
+   so the ends of a range look exactly like the chosen day in DatePicker's popup. A one-day range
+   has both attributes on one cell. */
+.day[data-range-start],
+.day[data-range-end] {
+  color: var(--pm-selection-text);
+  background: var(--pm-selection-bg);
+  border-color: var(--pm-selection-border);
+  border-radius: var(--pm-radius-sm);
+}
+
+/* Selection has its own hover step (Table's law, as in `calendar.md`). */
+.day[data-range-start]:hover,
+.day[data-range-end]:hover {
+  background: var(--pm-selection-bg-hover);
+}
+
+/* month change — `calendar.md` unchanged ------------------------------------- */
+
+.grid[data-travel='next'] {
+  animation: date-range-picker-grid-next var(--pm-motion-duration-surface)
+    var(--pm-motion-easing-enter);
+}
+
+.grid[data-travel='previous'] {
+  animation: date-range-picker-grid-previous var(--pm-motion-duration-surface)
+    var(--pm-motion-easing-enter);
+}
+
+@keyframes date-range-picker-grid-next {
+  from {
+    opacity: 0;
+    transform: translateX(var(--pm-space-2));
+  }
+}
+
+@keyframes date-range-picker-grid-previous {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--pm-space-2) * -1));
+  }
+}
+
+/* RTL mirrors navigation, the chevrons and the band's direction. The attributes still describe
+   time order (`data-range-start` is the earlier date), so only the drawing flips. */
+[dir='rtl'] .grid[data-travel='next'] {
+  animation-name: date-range-picker-grid-previous;
+}
+
+[dir='rtl'] .grid[data-travel='previous'] {
+  animation-name: date-range-picker-grid-next;
+}
+
+[dir='rtl'] .header svg {
+  transform: scaleX(-1);
+}
+
+/* Reduced motion (motion.md): `scale-fade` and `slide-fade` reduce to the fade they build on, and
+   keep their durations. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes date-range-picker-content-enter {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes date-range-picker-content-exit {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes date-range-picker-grid-next {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes date-range-picker-grid-previous {
+    from {
+      opacity: 0;
+    }
+  }
+}
+
+/* Glass (`depth: glass`): the pane uses the surface role at the engine's mix
+   (`--pm-material-surface`). The material provides the separation that the overlay elevation
+   steps provide elsewhere. The backdrop shows through the pane as a blurred, saturated wash, so the
+   surface stands apart by its material rather than by a lighter step. The mix is a contrast
+   decision that the glass law measures over worst-case backdrops. A recipe only applies it. */
+@container style(--pm-axis-depth: glass) {
+  .content {
+    background: var(--pm-material-surface);
+    backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  }
+}

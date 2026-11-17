@@ -1,0 +1,158 @@
+/* Slider — `design/components/slider.md`.
+ *
+ * The track matches Progress (same height, pill shape and gradient), so a slider looks
+ * like a progress bar you can drag. The thumb is what Progress lacks, and most of the
+ * recipe is about it. It has the lit treatment (seat shadow plus top light), it shows the
+ * focus ring, and it is the only part that grows while dragged.
+ *
+ * Nothing about the value is ever transitioned. The fill and the thumb's position follow
+ * the user's pointer directly, and a thumb that lags behind is the worst slider bug.
+ * Keyboard steps also apply instantly for the same reason. Only the grab feedback (scale,
+ * border, glow) has a duration. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+  inline-size: 100%;
+}
+
+/* At the row's end, so the number sits opposite the label FormField puts above it.
+   `--pm-font-numeric` sets the theme's tabular figures, so digits keep their width while
+   the value changes. */
+.readout {
+  align-self: flex-end;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  font-variant-numeric: var(--pm-font-numeric);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+}
+
+/* The Radix root, which is also the pointer target: a press anywhere on this row moves
+   the value. Its height is `control-height-sm` so the target meets the minimum size (the
+   conventions' size system) while the track inside stays 4px. Checkbox's box and Switch's
+   track use the same technique with a pseudo-element. Here the row itself is used,
+   because the whole row is interactive. */
+.control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  inline-size: 100%;
+  block-size: var(--pm-control-height-sm);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+.track {
+  position: relative;
+  flex: 1;
+  block-size: var(--pm-space-2);
+  background: var(--pm-bg-subtle);
+  border-radius: var(--pm-radius-pill);
+}
+
+/* The gradient role, used exactly as in Progress. A theme without a gradient partner
+   resolves it to the same solid colour as `accent.bg`, so nothing changes there. A
+   gradient system's fill blends its two hues. */
+.range {
+  position: absolute;
+  block-size: 100%;
+  background: var(--pm-accent-gradient);
+  border-radius: var(--pm-radius-pill);
+}
+
+/* The lit treatment: a seat shadow plus an inset top light, in one list. The coherence
+   law requires both tokens to be `none` together or both real, so a flat system's thumb
+   is just a bordered disc.
+ *
+ * The `slider.thumb` binding is a `snappy` spring in the registry but a token-timed
+ * transition here, as in Switch. A CSS transition keeps its velocity when reversed
+ * (motion.md's first interruption law), which matters for something people grab and
+ * release. It also means `stateFeedback` cannot be composed. That class sets a
+ * `transition` shorthand, and with two shorthands on one rule one is silently dropped.
+ * So the colour feedback is repeated here in the same list as the grab. */
+.thumb {
+  composes: focusRing from '../conventions/focus.module.css';
+  display: block;
+  inline-size: var(--pm-space-5);
+  block-size: var(--pm-space-5);
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-strong);
+  border-radius: var(--pm-radius-pill);
+  box-shadow: var(--pm-shadow-seat), var(--pm-shadow-inset-top);
+  transition:
+    border-color var(--pm-motion-duration-control) var(--pm-motion-easing-standard),
+    box-shadow var(--pm-motion-duration-control) var(--pm-motion-easing-standard),
+    transform var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+/* states ------------------------------------------------------------------- */
+
+/* Dragging shows the thumb as active. The glow replaces the lit list instead of adding to
+   it. Under a halo the 1px seat is not visible, and a mixed list with an
+   ornament-`none` glow would make the whole value invalid. An ornament-`none` theme has
+   no glow and no seat, so its dragging thumb uses only scale and border.
+ *
+ * The selector goes through `.control` so it is more specific than the focus glow the
+ * focus module composes in. The outline is the accessible focus indicator and is a
+ * different property, so changing the halo under it loses nothing. */
+.control .thumb[data-state='dragging'] {
+  box-shadow: var(--pm-glow-hover);
+  transform: scale(1.12);
+}
+
+/* The thumb shows the error, never the fill, because a red bar would look like a danger
+   level rather than an invalid value. */
+.root[data-invalid] .thumb {
+  border-color: var(--pm-danger-border);
+}
+
+.root[data-disabled] .control {
+  cursor: not-allowed;
+}
+
+/* Grey, not tinted. A disabled slider still shows its value, in a colour that does not
+   invite interaction. */
+.root[data-disabled] .range {
+  background: var(--pm-border-default);
+}
+
+.root[data-disabled] .thumb {
+  border-color: var(--pm-border-subtle);
+  box-shadow: none;
+}
+
+/* Hover and drag both use the accent border, except when the border already shows an
+   error. As in Input, the error border stays on hover. It also stays while dragging,
+   because the drag still shows through scale and glow. This is the last state rule, so
+   specificity increases down the file. */
+.root:not([data-invalid], [data-disabled]) .thumb:hover,
+.root:not([data-invalid], [data-disabled]) .thumb[data-state='dragging'] {
+  border-color: var(--pm-accent-bg);
+}
+
+/* motion projections ------------------------------------------------------- */
+
+/* The scale is removed, not just its duration. A duration token can make the change
+   instant but cannot change the end value, and the spec says that with motion off the
+   thumb stays at scale 1. Border and glow show dragging on their own. motion.module.css
+   does the same for the ambient loops, for the same reason: tokens cannot express
+   turning off a value, only a time. It is last in the file, so it overrides the state
+   rules it undoes. */
+:global([data-motion='none']) .control .thumb[data-state='dragging'] {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thumb {
+    transition: none;
+  }
+
+  .control .thumb[data-state='dragging'] {
+    transform: none;
+  }
+}

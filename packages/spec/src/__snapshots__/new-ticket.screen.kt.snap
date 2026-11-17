@@ -1,0 +1,194 @@
+// Emitted from a screen spec (`polymorph-screen/1`): `NewTicketScreen`, for Android. The screen is
+// the spec's tree and nothing more: it holds no state, launches nothing and navigates nowhere. The
+// app renders it from a store that owns the model, its coroutines and its router, and implements
+// the actions (`design/native/screen-contract.md`).
+
+import androidx.compose.runtime.Composable
+import dev.polymorph.ui.PMButton
+import dev.polymorph.ui.PMButtonAppearance
+import dev.polymorph.ui.PMButtonType
+import dev.polymorph.ui.PMCalendarDate
+import dev.polymorph.ui.PMCard
+import dev.polymorph.ui.PMCombobox
+import dev.polymorph.ui.PMComboboxOption
+import dev.polymorph.ui.PMConfirmDialog
+import dev.polymorph.ui.PMDatePicker
+import dev.polymorph.ui.PMErrorSummary
+import dev.polymorph.ui.PMErrorSummaryError
+import dev.polymorph.ui.PMFormField
+import dev.polymorph.ui.PMFormPage
+import dev.polymorph.ui.PMGrid
+import dev.polymorph.ui.PMGridColumns
+import dev.polymorph.ui.PMIconRole
+import dev.polymorph.ui.PMInput
+import dev.polymorph.ui.PMInputType
+import dev.polymorph.ui.PMLoadStatus
+import dev.polymorph.ui.PMSelect
+import dev.polymorph.ui.PMSelectOptionEntry
+import dev.polymorph.ui.PMSome
+import dev.polymorph.ui.PMSpaceStep
+import dev.polymorph.ui.PMStack
+import dev.polymorph.ui.PMSwitch
+
+/** What `NewTicketScreen` shows. `loadStatus` says which of the four load states it is in. */
+data class NewTicketModel(
+    val loadStatus: PMLoadStatus,
+    /** Whether the discard confirmation is open. */
+    val confirming: Boolean,
+    /** What the last submit refused, each naming its field; empty while nothing is refused. */
+    val errors: List<PMErrorSummaryError>,
+    val subject: String,
+    val subjectError: String?,
+    val requester: String,
+    val requesterError: String?,
+    val priority: String,
+    val priorityOptions: List<PMSelectOptionEntry>,
+    val assignee: String?,
+    val assigneeOptions: List<PMComboboxOption>,
+    val due: PMCalendarDate?,
+    /** Today — a due date in the past is not a due date. */
+    val minDue: PMCalendarDate,
+    val notify: Boolean,
+) {
+    /**
+     * The app extends it with values of its own: `NewTicketModel.placeholder`, the model before
+     * anything loads.
+     */
+    companion object
+}
+
+/** The code the app supplies to `NewTicketScreen`, one function per action. */
+interface NewTicketActions {
+    /** FormPage calls it on Return in a field and on a submit Button in its actions. */
+    fun onSubmit()
+    fun onConfirmingChange(open: Boolean)
+    fun onDiscard()
+    fun onConfirmDiscard()
+    fun onSubjectChange(value: String)
+    fun onRequesterChange(value: String)
+    fun onPriorityChange(value: String?)
+    fun onAssigneeChange(value: String?)
+    fun onDueChange(value: PMCalendarDate?)
+    fun onNotifyChange(next: Boolean)
+}
+
+/** Relay's new-ticket form — one card of fields under a page header, with a guarded discard. */
+@Composable
+fun NewTicketScreen(model: NewTicketModel, actions: NewTicketActions) {
+    PMFormPage(
+        loadStatus = model.loadStatus,
+        actions = {
+            PMConfirmDialog(
+                confirmLabel = "Discard",
+                description = "The subject and requester you have typed will be lost.",
+                onConfirm = actions::onConfirmDiscard,
+                onOpenChange = actions::onConfirmingChange,
+                open = model.confirming,
+                title = "Discard this ticket?",
+                trigger = {
+                    PMButton(
+                        label = "Discard",
+                        onClick = actions::onDiscard,
+                        appearance = PMButtonAppearance.GhostNeutral,
+                    )
+                },
+            )
+            PMButton(icon = PMIconRole.Confirm, label = "Create ticket", type = PMButtonType.Submit)
+        },
+        description = "Raise a conversation on someone's behalf — a phone call, or an email that never reached the queue.",
+        onSubmit = actions::onSubmit,
+        title = "New ticket",
+    ) {
+        PMErrorSummary(errors = model.errors, title = "The ticket can’t be raised yet")
+        PMCard {
+            PMStack(gap = PMSpaceStep.S5) {
+                PMFormField(
+                    description = "One line. It is what the queue is scanned by.",
+                    error = model.subjectError,
+                    id = "subject",
+                    label = "Subject",
+                    required = true,
+                ) {
+                    PMInput(
+                        maxLength = 120.0,
+                        onChange = actions::onSubjectChange,
+                        placeholder = "Webhook retries stop after the first 5xx",
+                        value = model.subject,
+                    )
+                }
+                PMGrid(columns = PMGridColumns.Columns2, gap = PMSpaceStep.S5) {
+                    PMFormField(
+                        description = "Where the confirmation and replies go.",
+                        error = model.requesterError,
+                        id = "requester",
+                        label = "Requester",
+                        required = true,
+                    ) {
+                        PMInput(
+                            autoComplete = "email",
+                            onChange = actions::onRequesterChange,
+                            placeholder = "dana@northwind.example",
+                            type = PMInputType.Email,
+                            value = model.requester,
+                        )
+                    }
+                    PMFormField(
+                        description = "Urgent pages the on-call engineer.",
+                        label = "Priority",
+                    ) {
+                        PMSelect(
+                            onChange = actions::onPriorityChange,
+                            options = model.priorityOptions,
+                            value = PMSome(model.priority),
+                        )
+                    }
+                }
+                PMGrid(columns = PMGridColumns.Columns2, gap = PMSpaceStep.S5) {
+                    PMFormField(description = "Who picks this up, if anyone.", label = "Assignee") {
+                        PMCombobox(
+                            clearable = true,
+                            onChange = actions::onAssigneeChange,
+                            options = model.assigneeOptions,
+                            placeholder = "Search the team…",
+                            value = PMSome(model.assignee),
+                        )
+                    }
+                    PMFormField(
+                        description = "The day it has to be answered.",
+                        label = "Due date",
+                    ) {
+                        PMDatePicker(
+                            clearable = true,
+                            minValue = model.minDue,
+                            onChange = actions::onDueChange,
+                            value = PMSome(model.due),
+                        )
+                    }
+                }
+                PMFormField(
+                    description = "Sends a confirmation with the ticket number.",
+                    label = "Notify the requester",
+                ) {
+                    PMSwitch(checked = model.notify, onCheckedChange = actions::onNotifyChange)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Every action doing nothing, so an app compiles against the screen before it wires its store. An
+ * action that answers returns the empty value of its result.
+ */
+object NewTicketInert : NewTicketActions {
+    override fun onSubmit() {}
+    override fun onConfirmingChange(open: Boolean) {}
+    override fun onDiscard() {}
+    override fun onConfirmDiscard() {}
+    override fun onSubjectChange(value: String) {}
+    override fun onRequesterChange(value: String) {}
+    override fun onPriorityChange(value: String?) {}
+    override fun onAssigneeChange(value: String?) {}
+    override fun onDueChange(value: PMCalendarDate?) {}
+    override fun onNotifyChange(next: Boolean) {}
+}

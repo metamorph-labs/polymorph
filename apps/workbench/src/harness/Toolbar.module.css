@@ -1,0 +1,88 @@
+/* Harness chrome. It reads --pm-* tokens so it follows the theme, but its layout values are
+   local. See ./README.md. */
+
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-5);
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: var(--pm-space-3) var(--pm-space-5);
+  background: var(--pm-bg-raised);
+  border-bottom: 1px solid var(--pm-border-default);
+  box-shadow: var(--pm-shadow-raised);
+}
+
+.nav {
+  display: flex;
+
+  /* Five sections. On a phone the row must wrap, otherwise the document scrolls sideways and the
+     proof's geometry lane fails. */
+  flex-wrap: wrap;
+  gap: var(--pm-space-2);
+}
+
+.navLink {
+  padding: var(--pm-space-2) var(--pm-space-4);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  color: var(--pm-text-secondary);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--pm-radius-md);
+}
+
+.navLink:hover {
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-subtle);
+}
+
+.navLink[aria-current='page'] {
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+  border-color: var(--pm-accent-subtle-hover);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-1);
+}
+
+.fieldLabel {
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+  text-transform: uppercase;
+}
+
+.select {
+  height: var(--pm-control-height-sm);
+  padding: 0 var(--pm-space-3);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-default);
+  border-radius: var(--pm-radius-sm);
+}
+
+.navLink:focus-visible,
+.select:focus-visible {
+  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline-offset: var(--pm-focus-offset);
+}

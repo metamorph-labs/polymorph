@@ -1,0 +1,23 @@
+name: Proposal
+description: A new member, variant, token, rule or change to the system — plans live here, not in the repository.
+labels: [proposal]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: The need
+      description: What a screen needs that the vocabulary cannot express today, and where it recurs. Members are admitted on recurrence.
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: What you do today
+      description: The exception-ladder rung or workaround you are using now (docs/rules.md).
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: The decision you propose — a variant, a token, a member — and what it changes for existing consumers.
+    validations:
+      required: true

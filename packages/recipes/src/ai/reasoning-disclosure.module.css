@@ -1,0 +1,158 @@
+/* ReasoningDisclosure — `design/components/reasoning-disclosure.md`.
+ *
+ * Collapsible's recipe with two additions: a leading mark on the trigger, and
+ * a rule along the start edge of the revealed content. The rule matches
+ * Markdown's quote rule, so quoted text and reasoning share one quieter style
+ * beside the answer. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Collapsible's trigger, copied exactly: as wide as its label, aligned with
+   the content, at the minimum target height. */
+.trigger {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  align-self: start;
+  gap: var(--pm-space-2);
+  align-items: center;
+  min-block-size: var(--pm-control-height-sm);
+  padding: 0;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+  text-align: start;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--pm-text-muted);
+}
+
+/* While thinking, the mark is the `loading` glyph on the spin loop. This is
+   `button.spinner`'s binding, composed from the motion module so its
+   temperament scaling and reduced-motion stop come with it. It is a separate
+   class because `composes` works only on a bare class, never on a compound
+   selector. The component applies it while `streaming`. */
+.spinning {
+  composes: spin from '../conventions/motion.module.css';
+}
+
+.label {
+  min-inline-size: 0;
+}
+
+.chevron {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--pm-text-muted);
+  transition: transform var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+/* states -------------------------------------------------------------------- */
+
+.trigger:hover {
+  color: var(--pm-accent-text);
+}
+
+.trigger:hover .chevron {
+  color: var(--pm-text-secondary);
+}
+
+.trigger[data-state='open'] .chevron {
+  transform: rotate(180deg);
+}
+
+/* the region ----------------------------------------------------------------
+ *
+ * `collapsible.content`, reused by reference: the same `collapse` in
+ * persistent mode at the surface class, with the Radix measured height as the
+ * input. */
+
+.content {
+  overflow: hidden;
+}
+
+/* The gap sits inside the animated region. The rule matches the quote's. */
+.inner {
+  margin-block-start: var(--pm-space-3);
+  margin-inline-start: var(--pm-space-2);
+  padding-inline-start: var(--pm-space-4);
+  border-inline-start: 2px solid var(--pm-border-strong);
+}
+
+@keyframes pm-reasoning-open {
+  from {
+    block-size: 0;
+  }
+
+  to {
+    block-size: var(--radix-collapsible-content-height);
+  }
+}
+
+@keyframes pm-reasoning-close {
+  from {
+    block-size: var(--radix-collapsible-content-height);
+  }
+
+  to {
+    block-size: 0;
+  }
+}
+
+@keyframes pm-reasoning-reveal {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pm-reasoning-conceal {
+  to {
+    opacity: 0;
+  }
+}
+
+.content[data-state='open'] {
+  animation: pm-reasoning-open var(--pm-motion-duration-surface) var(--pm-motion-easing-standard);
+}
+
+.content[data-state='closed'] {
+  animation: pm-reasoning-close var(--pm-motion-duration-surface) var(--pm-motion-easing-standard);
+}
+
+.content[data-state='open'] .inner {
+  animation: pm-reasoning-reveal calc(var(--pm-motion-duration-surface) * 0.5)
+    var(--pm-motion-easing-standard) calc(var(--pm-motion-duration-surface) * 0.5) both;
+}
+
+.content[data-state='closed'] .inner {
+  animation: pm-reasoning-conceal calc(var(--pm-motion-duration-surface) * 0.5)
+    var(--pm-motion-easing-standard) both;
+}
+
+/* Reduced motion (`design/motion/motion.md`): `collapse` becomes an instant
+   size change and keeps the fade. The chevron stops rotating. The motion
+   module stops the spin itself. */
+@media (prefers-reduced-motion: reduce) {
+  .content[data-state='open'],
+  .content[data-state='closed'] {
+    animation: none;
+  }
+
+  .chevron {
+    transition: none;
+  }
+}

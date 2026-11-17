@@ -1,0 +1,68 @@
+/* FilterBar — `design/components/filter-bar.md`.
+ *
+ * The row is an `Inline`. This file places the count and animates the clear
+ * button. Controls are `sm` by convention, so filters do not compete with the
+ * page's primary action or look like a second toolbar. */
+
+/* The toolbar member ---------------------------------------------------------
+ *
+ * There is no `Toolbar` component. This is the row the container-first toolbar
+ * rule (`docs/layout.md`) describes. It wraps, because `Inline` with `wrap` uses
+ * one gap for both axes, which is half the rule.
+ *
+ * The bar is a size container for the other half. `inline-size: 100%` is
+ * required: containment stops the width coming from the contents, so in a flex
+ * row the bar would collapse to zero. */
+.bar {
+  container-type: inline-size;
+  inline-size: 100%;
+}
+
+/* Below `36rem` each cluster takes a full line, because a search field, a
+   `Select` and a count side by side in a 340px row are too cramped.
+ *
+ * `> * > *` reaches the children of the bar's own `Inline`, whose closed props
+ * expose no class. That is the cost of closure. The alternative is an escape
+ * hatch on every layout primitive.
+ *
+ * `36rem` is a rem literal (`docs/layout.md`): a breakpoint is geometry, not
+ * theme, and a density-scaled one would restack the row when only control
+ * density changed. */
+@container (width < 36rem) {
+  .bar > * > * {
+    flex: 1 0 100%;
+  }
+}
+
+/* Pushed to the far end, so the count sits opposite the controls however many
+   there are. */
+.count {
+  margin-inline-start: auto;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-muted);
+  white-space: nowrap;
+}
+
+/* When filters are set, the count reports the result of the reader's change, so
+   it uses a stronger colour. */
+.bar[data-filtered] .count {
+  color: var(--pm-text-secondary);
+}
+
+/* `filterbar.clear`: `fade`, control class. Enter only, because the button
+   unmounts when the filters clear and CSS cannot animate that. The overlays'
+   presence coordination is not worth it for one button. */
+.clear {
+  display: inline-flex;
+  animation: filter-bar-clear-enter var(--pm-motion-duration-control) var(--pm-motion-easing-enter);
+}
+
+@keyframes filter-bar-clear-enter {
+  from {
+    opacity: 0;
+  }
+}

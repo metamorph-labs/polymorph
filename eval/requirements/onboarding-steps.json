@@ -1,0 +1,85 @@
+{
+  "requirements": [
+    {
+      "id": "steps-shown",
+      "says": "All four steps are shown, with the current one and the finished ones marked.",
+      "check": {
+        "element": {
+          "component": "Stepper",
+          "props": {
+            "steps": "given",
+            "activeIndex": "given"
+          }
+        }
+      }
+    },
+    {
+      "id": "name",
+      "says": "The name is asked for.",
+      "check": {
+        "element": {
+          "component": "Input"
+        }
+      }
+    },
+    {
+      "id": "role",
+      "says": "The role is chosen from a short list.",
+      "check": {
+        "element": {
+          "kind": "choice"
+        }
+      }
+    },
+    {
+      "id": "optional-photo",
+      "says": "A photo can be added.",
+      "check": {
+        "element": {
+          "component": ["FileUpload", "ImageEditor"]
+        }
+      }
+    },
+    {
+      "id": "continue-gated",
+      "says": "Continue is unavailable until the name and the role are filled in.",
+      "check": {
+        "element": {
+          "component": "Button",
+          "props": {
+            "disabled": "dynamic"
+          }
+        }
+      }
+    },
+    {
+      "id": "finish-later",
+      "says": "A control leaves setup, to finish it later.",
+      "check": {
+        "any": [
+          {
+            "count": {
+              "kind": "action"
+            },
+            "min": 3
+          },
+          {
+            "element": {
+              "component": "Link"
+            }
+          },
+          {
+            "element": {
+              "component": ["Button", "SplitButton"],
+              "props": {
+                "label": {
+                  "matches": "later|leave|exit|skip|save|close|quit"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

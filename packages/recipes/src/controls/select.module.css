@@ -1,0 +1,349 @@
+/* Select — `design/components/select.md`.
+ *
+ * The trigger copies Input's recipe instead of sharing it. The completeness law checks
+ * each component's own stylesheet, and that check only means something with one
+ * stylesheet per component. A test prevents drift instead: `select.test.tsx` compares
+ * the two controls' computed values, which is the stronger check.
+ *
+ * `var(--radix-*)` values are measured by the positioning engine at runtime (anchor
+ * width, available height, transform origin). No one chooses them, so the token law
+ * allows them (packages/rules/src/stylelint/values.js). */
+
+.trigger {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  justify-content: space-between;
+  max-inline-size: 100%;
+  block-size: var(--pm-control-height-md);
+  padding-inline: var(--pm-space-5);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  cursor: pointer;
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-field);
+  border-radius: var(--pm-radius-control);
+
+  /* The control seat shadow, from Input, used by every field in the family. */
+  box-shadow: var(--pm-shadow-seat);
+}
+
+.value {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--pm-text-muted);
+
+  /* The `select.chevron` binding: transform, control class, `standard` easing, because
+     the change is symmetric with no direction of travel. */
+  transition: transform var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+/* trigger sizes — the conventions' size system ------------------------------ */
+
+.trigger[data-size='sm'] {
+  gap: var(--pm-space-2);
+  block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-4);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+}
+
+.trigger[data-size='lg'] {
+  block-size: var(--pm-control-height-lg);
+  padding-inline: var(--pm-space-6);
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+}
+
+/* trigger states ------------------------------------------------------------ */
+
+.trigger[data-placeholder] {
+  color: var(--pm-text-muted);
+}
+
+.trigger[data-invalid] {
+  border-color: var(--pm-danger-border);
+}
+
+.trigger[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-subtle);
+
+  /* The seat shadow signals a ready control, so disabled removes it (as in Input). */
+  box-shadow: none;
+}
+
+/* While open, the trigger keeps the hover border so it does not flicker back to rest.
+   Invalid is excluded from both rules rather than overridden, so the error border stays
+   on hover and while the panel is open. */
+.trigger[data-state='open']:not([data-invalid]) {
+  border-color: var(--pm-border-strong);
+}
+
+.trigger:hover:not([data-disabled], [data-invalid]) {
+  border-color: var(--pm-border-strong);
+}
+
+.trigger[data-state='open'] .chevron {
+  transform: rotate(180deg);
+}
+
+.trigger[data-disabled] .chevron {
+  color: var(--pm-text-disabled);
+}
+
+/* panel --------------------------------------------------------------------- */
+
+.content {
+  display: flex;
+  flex-direction: column;
+
+  /* `overlay` from the stacking scale. The popper copies it onto its wrapper
+     (menu.module.css explains how). */
+  z-index: var(--pm-z-overlay);
+  min-inline-size: var(--radix-select-trigger-width);
+  max-block-size: var(--radix-select-content-available-height);
+  padding: var(--pm-inset-list);
+  overflow: hidden;
+  background: var(--pm-bg-overlay);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-surface);
+  box-shadow: var(--pm-shadow-transient);
+  transform-origin: var(--radix-select-content-transform-origin);
+}
+
+/* Radix sets the viewport's `flex: 1` and scrolling inline. This rule adds the gap and
+   the minimum size for shrinking. */
+.viewport {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-1);
+  min-block-size: 0;
+}
+
+/* The sheet, below 30rem (the conventions' sheet presentation) ---------------
+ *
+ * The panel box is the shared anatomy (`sheet.module.css`, used by the sheet partial).
+ * This member styles only the list inside it: the same `--pm-space-2` inset as the
+ * popper panel, on a listbox that scrolls under the sheet's height cap. The popper rules
+ * (trigger min-width, available height, `sideOffset`) do not apply, because a sheet has
+ * no anchor. The safe-area inset comes from the sheet. It adds to this member's edge
+ * padding and is zero on devices without a notch. */
+.sheetList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-1);
+  min-block-size: 0;
+  padding: var(--pm-space-2);
+  padding-block-end: calc(var(--pm-space-2) + env(safe-area-inset-bottom, 0px));
+  margin: 0;
+  overflow-y: auto;
+  list-style: none;
+  outline: none;
+}
+
+/* `scale-fade`, surface class (motion.md's duration scale: a dropdown is a transient
+   anchored surface, not a modal). Radix keeps the node mounted for the closed animation,
+   so the exit animates instead of cutting. */
+.content[data-state='open'] {
+  animation: select-content-enter var(--pm-motion-duration-surface) var(--pm-motion-easing-enter);
+}
+
+.content[data-state='closed'] {
+  animation: select-content-exit var(--pm-motion-duration-surface-exit) var(--pm-motion-easing-exit);
+}
+
+@keyframes select-content-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes select-content-exit {
+  to {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+/* items --------------------------------------------------------------------- */
+
+.item {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: flex;
+  gap: var(--pm-space-2);
+  align-items: center;
+
+  /* A minimum, not a fixed height. A two-line item grows to fit its description while
+     the check column stays in place (as in Combobox). */
+  min-block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-3);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  cursor: pointer;
+  user-select: none;
+  border-radius: var(--pm-radius-sm);
+  outline: none;
+}
+
+/* The check column is reserved on every item, so labels do not shift as the selection
+   moves. */
+.check {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--pm-icon-size-sm);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-inline-size: 0;
+}
+
+/* Combobox's second line, copied: muted `text.xs` under the label. */
+.description {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+}
+
+/* One class for two elements: Radix's Group div in the popover, and the sheet's
+   `role="group"` list with its `<li>` wrapper. The list resets do nothing on the div and
+   are needed on the `<ul>`, because the browser's default list marker is not part of
+   any recipe. */
+.group {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+/* Menu's label-entry recipe, copied, so every anchored list uses the same label style. */
+.groupLabel {
+  padding: var(--pm-space-2) var(--pm-space-3);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+  text-transform: uppercase;
+}
+
+/* Radix uses one attribute for both the keyboard and the pointer position, so hover
+   needs no separate rule here. */
+.item[data-highlighted] {
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+}
+
+.item[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  background: transparent;
+}
+
+/* Both containers. The sheet uses the same rows with the same size steps. */
+.content[data-size='sm'] .item,
+.sheetList[data-size='sm'] .item {
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+}
+
+.content[data-size='lg'] .item,
+.sheetList[data-size='lg'] .item {
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+}
+
+/* The label keeps the primary colour when selected. The check shows the selection, and a
+   recoloured label would look like a second, competing signal. */
+.item[data-state='checked'] .check {
+  color: var(--pm-accent-text);
+}
+
+/* The second line follows the row's state. It stays legible on the accent background
+   and turns disabled with a disabled row (Combobox's rules). */
+.item[data-highlighted] .description {
+  color: inherit;
+}
+
+.item[data-disabled] .description {
+  color: var(--pm-text-disabled);
+}
+
+/* Reduced-motion versions (motion.md). The motion engine handles its own bindings.
+   These two run in CSS, so their reduced versions are defined here. */
+@media (prefers-reduced-motion: reduce) {
+  /* The rotation stays, because it shows open or closed. Removing it would remove state,
+     not just motion. Only the transition is removed. */
+  .chevron {
+    transition: none;
+  }
+
+  @keyframes select-content-enter {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes select-content-exit {
+    to {
+      opacity: 0;
+    }
+  }
+}
+
+/* Glass (`depth: glass`). The pane uses the surface role at the engine's mix
+   (`--pm-material-surface`). The material separates the pane from the page instead of
+   a lighter overlay step: the backdrop shows through as a blurred, saturated tint. The
+   glass law checks the mix's contrast over worst-case backdrops, and recipes only
+   apply it. */
+@container style(--pm-axis-depth: glass) {
+  .content {
+    background: var(--pm-material-surface);
+    backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  }
+}

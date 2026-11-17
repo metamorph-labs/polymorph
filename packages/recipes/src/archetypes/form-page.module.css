@@ -1,0 +1,51 @@
+/* FormPage — `design/archetypes/form-page.md`.
+ *
+ * The narrowest page in the set. A form is a reading column. In a field wider
+ * than the reading measure, the eye loses the left edge when returning from the
+ * right, which makes long forms tiring. */
+
+.page {
+  --pm-page-padding-x: var(--pm-space-7);
+  --pm-page-padding-y: var(--pm-space-6);
+  --pm-page-max-width: calc(var(--pm-space-10) * 7);
+  --pm-content-gutter: var(--pm-space-6);
+
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--pm-content-gutter);
+  max-inline-size: var(--pm-page-max-width);
+  margin-inline: auto;
+  padding: var(--pm-page-padding-y) var(--pm-page-padding-x);
+}
+
+/* The page scope's narrow step, explained in `list-page.module.css`. The page
+   is the container its own contents measure, and the surrounding region is the
+   container this query reads. `40rem` is a rem literal because a breakpoint is
+   geometry, not theme (`docs/layout.md`). One space step smaller.
+ *
+ * This matters most here. A form is already the narrowest page, and a field
+ * cannot adapt to less width by rewrapping, so all width the padding gives up
+ * goes to the inputs. */
+@container (width < 40rem) {
+  .page {
+    --pm-page-padding-x: var(--pm-space-6);
+    --pm-page-padding-y: var(--pm-space-5);
+  }
+}
+
+/* The form uses the same spacing as the page, so wrapping the body in a form
+   changes only what Enter does, not how it looks. */
+.form {
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--pm-content-gutter);
+}
+
+/* A rule anchors the submit row, so it reads as the column's footer, not as
+   loose buttons below it. The space above the rule is the page's own gutter,
+   so the rule adds no margin of its own. */
+.actions {
+  padding-block-start: var(--pm-space-5);
+  border-block-start: 1px solid var(--pm-border-subtle);
+}

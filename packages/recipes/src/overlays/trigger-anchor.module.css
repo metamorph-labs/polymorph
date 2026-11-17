@@ -1,0 +1,8 @@
+/* The anchor Radix clones. It must add no box of its own, because the layout
+   should see only the trigger inside it. `display: contents` would leave the
+   primitive no rectangle to position against, so it is an inline-flex wrapper
+   that is exactly the size of its child. */
+
+.anchor {
+  display: inline-flex;
+}

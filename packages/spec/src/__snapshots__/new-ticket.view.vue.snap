@@ -1,0 +1,143 @@
+<script setup lang="ts">
+/**
+ * Relay's new-ticket form — one card of fields under a page header, with a guarded discard.
+ *
+ * Emitted from a screen spec (`polymorph-screen/1`). Composition and bindings only:
+ * this file holds no state, computes nothing, and expresses no style — the
+ * container that renders it owns all three.
+ */
+import {
+  Button,
+  Card,
+  Combobox,
+  ConfirmDialog,
+  DatePicker,
+  FormField,
+  FormPage,
+  Grid,
+  Input,
+  Select,
+  Stack,
+  Switch,
+} from '@polymorph/vue-ui'
+import type { CalendarDate } from '@internationalized/date'
+
+export interface NewTicketViewProps {
+  /** The archetype owns the <form> and has already prevented the default. */
+  onSubmit: () => void
+  /** Whether the discard confirmation is open. */
+  confirming: boolean
+  onConfirmingChange: (open: boolean) => void
+  onDiscard: () => void
+  onConfirmDiscard: () => void
+  subject: string
+  onSubjectChange: (value: string) => void
+  subjectError: string | undefined
+  requester: string
+  onRequesterChange: (value: string) => void
+  requesterError: string | undefined
+  priority: string
+  priorityOptions: { value: string; label: string }[]
+  onPriorityChange: (value: string | null) => void
+  assignee: string | null
+  assigneeOptions: { value: string; label: string }[]
+  onAssigneeChange: (value: string | null) => void
+  due: CalendarDate | null
+  /** Today — a due date in the past is not a due date. */
+  minDue: CalendarDate
+  onDueChange: (value: CalendarDate | null) => void
+  notify: boolean
+  onNotifyChange: (next: boolean) => void
+}
+
+const props = defineProps<NewTicketViewProps>()
+</script>
+
+<template>
+  <FormPage
+    title="New ticket"
+    description="Raise a conversation on someone's behalf — a phone call, or an email that never reached the queue."
+    @submit="props.onSubmit"
+  >
+    <template #actions>
+      <ConfirmDialog
+        :open="props.confirming"
+        @openChange="props.onConfirmingChange"
+        title="Discard this ticket?"
+        description="The subject and requester you have typed will be lost."
+        confirmLabel="Discard"
+        @confirm="props.onConfirmDiscard"
+      >
+        <template #trigger>
+          <Button variant="ghost" tone="neutral" label="Discard" @click="props.onDiscard" />
+        </template>
+      </ConfirmDialog>
+      <Button type="submit" icon="confirm" label="Create ticket" />
+    </template>
+    <Card>
+      <Stack :gap="5">
+        <FormField
+          label="Subject"
+          :required="true"
+          description="One line. It is what the queue is scanned by."
+          :error="props.subjectError"
+        >
+          <Input
+            :value="props.subject"
+            @change="props.onSubjectChange"
+            placeholder="Webhook retries stop after the first 5xx"
+            :maxLength="120"
+          />
+        </FormField>
+        <Grid :columns="2" :gap="5">
+          <FormField
+            label="Requester"
+            :required="true"
+            description="Where the confirmation and replies go."
+            :error="props.requesterError"
+          >
+            <Input
+              type="email"
+              autoComplete="email"
+              :value="props.requester"
+              @change="props.onRequesterChange"
+              placeholder="dana@northwind.example"
+            />
+          </FormField>
+          <FormField label="Priority" description="Urgent pages the on-call engineer.">
+            <Select
+              :options="props.priorityOptions"
+              :value="props.priority"
+              @change="props.onPriorityChange"
+            />
+          </FormField>
+        </Grid>
+        <Grid :columns="2" :gap="5">
+          <FormField label="Assignee" description="Who picks this up, if anyone.">
+            <Combobox
+              :clearable="true"
+              :options="props.assigneeOptions"
+              placeholder="Search the team…"
+              :value="props.assignee"
+              @change="props.onAssigneeChange"
+            />
+          </FormField>
+          <FormField label="Due date" description="The day it has to be answered.">
+            <DatePicker
+              :clearable="true"
+              :minValue="props.minDue"
+              :value="props.due"
+              @change="props.onDueChange"
+            />
+          </FormField>
+        </Grid>
+        <FormField
+          label="Notify the requester"
+          description="Sends a confirmation with the ticket number."
+        >
+          <Switch :checked="props.notify" @checkedChange="props.onNotifyChange" />
+        </FormField>
+      </Stack>
+    </Card>
+  </FormPage>
+</template>

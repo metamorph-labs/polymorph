@@ -1,0 +1,111 @@
+/* A page fade and a thin navigation ribbon, using the active theme. */
+.page {
+  animation: page-enter-a var(--pm-motion-duration-surface) var(--pm-motion-easing-enter) backwards;
+}
+
+.page[data-page-transition='b'] {
+  animation-name: page-enter-b;
+}
+
+/* Alternating names replay an arrival without remounting children or their inputs. */
+@keyframes page-enter-a {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes page-enter-b {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.page[data-page-transition-state='pending'] {
+  animation: none;
+}
+
+.page[data-page-transition-state='exiting'] {
+  animation: none;
+  opacity: 0;
+  transition: opacity var(--pm-motion-duration-surface-exit) var(--pm-motion-easing-exit);
+}
+
+.indicator {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline: 0;
+  block-size: var(--pm-space-1);
+  overflow: hidden;
+  pointer-events: none;
+  z-index: var(--pm-z-toast);
+  opacity: 0;
+  transition: opacity var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+.indicator::before {
+  content: '';
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  background: var(--pm-accent-bg);
+  transform-origin: left;
+}
+
+/* The document's direction, from `dir` on the root element or the body.
+   `:dir()` is not used, because the minifier rewrites it as a list of
+   languages, and a language is not the page's direction. */
+[dir='rtl'] .indicator::before {
+  transform-origin: right;
+}
+
+.indicator[data-page-progress='visible'] {
+  opacity: 1;
+}
+
+.indicator[data-page-progress='visible']::before {
+  animation: navigation-progress var(--pm-motion-ambient-shimmer) linear infinite;
+}
+
+@keyframes navigation-progress {
+  0% {
+    transform: scaleX(0);
+  }
+
+  85%,
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+:global([data-motion='none']) .page,
+:global([data-motion='none']) .indicator,
+:global([data-motion='none']) .indicator::before {
+  animation: none;
+  transition: none;
+}
+
+:global([data-motion='none']) .page[data-page-transition-state='exiting'] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page[data-page-transition],
+  .page[data-page-transition-state='exiting'],
+  .indicator,
+  .indicator[data-page-progress='visible']::before {
+    animation: none;
+    transition: none;
+  }
+
+  .page[data-page-transition-state='exiting'] {
+    opacity: 1;
+  }
+}

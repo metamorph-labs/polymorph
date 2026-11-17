@@ -1,0 +1,28 @@
+{
+  "name": "terminal",
+  "register": "The precision instrument. Graphite and hairlines, one electric cyan spent only where state or action lives; a ruled substrate; glow means live.",
+  "axes": {
+    "geometry": "sharp",
+    "depth": "flat",
+    "density": "compact",
+    "contrastTemperament": "stark",
+    "typePersonality": "mono",
+    "colorStrategy": "quiet",
+    "motionTemperament": "subtle",
+    "ornament": "grid"
+  },
+  "fonts": {
+    "body": {
+      "family": "Space Grotesk Variable"
+    },
+    "display": {
+      "family": "Space Grotesk Variable"
+    },
+    "mono": {
+      "family": "JetBrains Mono Variable"
+    }
+  },
+  "defaultPalette": "petrol",
+  "defaultMode": "dark",
+  "kind": "designed"
+}

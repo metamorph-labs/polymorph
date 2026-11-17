@@ -1,0 +1,142 @@
+/* DurationInput — `design/components/duration-input.md`.
+ *
+ * Every style but two is TimeInput's, which cites `date-picker.md`. The rules are copied
+ * rather than shared, for the reason TimeInput copies DatePicker's: the completeness law
+ * checks each member's own stylesheet, and the browser test compares the computed styles.
+ *
+ * The two new parts are the quantity, one count with its unit word, and the unit word.
+ *
+ * The conventions' focus-zoom floor for phones does not apply to this member, for TimeInput's
+ * reason: entry uses `role="spinbutton"` counts, not a real `<input>`, and the browser zoom
+ * that floor prevents happens only on real text-entry elements. */
+
+.field {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  max-inline-size: 100%;
+  block-size: var(--pm-control-height-md);
+  padding-inline: var(--pm-space-5);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  cursor: text;
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-field);
+  border-radius: var(--pm-radius-control);
+
+  /* The control seat shadow, from Input, used by every field in the family. */
+  box-shadow: var(--pm-shadow-seat);
+}
+
+/* The quantities, largest first in reading order, at the field's own gap, so
+   "7 days 0 hr" reads as two quantities and not four words. */
+.segments {
+  display: flex;
+  flex: 1;
+  gap: var(--pm-space-3);
+  align-items: center;
+  min-inline-size: 0;
+}
+
+/* One count and its unit word, closer to each other than to the next quantity. */
+.quantity {
+  display: inline-flex;
+  gap: var(--pm-space-1);
+  align-items: baseline;
+}
+
+.segment {
+  padding-inline: 2px;
+  color: var(--pm-text-primary);
+  border-radius: var(--pm-radius-sm);
+  outline: none;
+  font-variant-numeric: var(--pm-font-numeric);
+
+  /* A count is editable text so a phone shows its keyboard, and every change is the field's
+     own, so no caret is drawn in it. */
+  caret-color: transparent;
+}
+
+/* The unfilled placeholder. */
+.segment[data-placeholder] {
+  color: var(--pm-text-muted);
+}
+
+/* Shows where focus is, not a selection, so it uses the hover tint, not the selection
+   style. Colour changes only, so nothing around the count moves. */
+.segment:focus {
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+}
+
+/* The unit word: Input's affix colour, decoration beside a count that says its unit to
+   assistive software. */
+.unit {
+  color: var(--pm-text-muted);
+}
+
+/* sizes — the conventions' size system -------------------------------------- */
+
+.field[data-size='sm'] {
+  gap: var(--pm-space-2);
+  block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-4);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+}
+
+.field[data-size='lg'] {
+  block-size: var(--pm-control-height-lg);
+  padding-inline: var(--pm-space-6);
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+}
+
+/* states -------------------------------------------------------------------- */
+
+.field[data-invalid] {
+  border-color: var(--pm-danger-border);
+}
+
+/* Input's readOnly style: the value is muted. The counts stay focusable, but arrows and
+   digits do not edit. */
+.field[data-readonly] {
+  color: var(--pm-text-secondary);
+}
+
+.field[data-readonly] .segment {
+  color: var(--pm-text-secondary);
+}
+
+.field[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-subtle);
+
+  /* The seat shadow signals a ready control, so disabled removes it (as in Input). */
+  box-shadow: none;
+}
+
+.field[data-disabled] .segment,
+.field[data-disabled] .unit {
+  color: var(--pm-text-disabled);
+}
+
+/* Invalid is excluded rather than overridden, so the error border stays on hover. This is
+   the same selector as Input's. */
+.field:hover:not([data-disabled], [data-readonly], [data-invalid]) {
+  border-color: var(--pm-border-strong);
+}

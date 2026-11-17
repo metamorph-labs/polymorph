@@ -1,0 +1,105 @@
+/* ChartLegend — `docs/charts.md`.
+ *
+ * `--pm-chart-key` is not a scoped token in the owner map's sense. The
+ * component sets it on the element from a *token reference* the theme produced
+ * (`var(--pm-chart-3)`). The value is always another custom property, never a
+ * colour, so a palette change repaints the legend automatically. */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-3) var(--pm-space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--pm-space-2);
+
+  /* Legend text uses text tokens, never a series colour. The coloured mark
+     beside it identifies the series. A coloured label would repeat that signal
+     more weakly and could fail a contrast minimum. */
+  color: var(--pm-text-secondary);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  line-height: var(--pm-text-sm-line-height);
+}
+
+/* The key matches the mark: a filled form gets a rect, a stroked one a line.
+ *
+ * `--pm-chart-key` is declared here with the de-emphasis grey and overridden
+ * inline by the component with the series' paint. `no-ghost-tokens` requires
+ * the declaration, and the default matters: an unresolvable custom property
+ * invalidates its whole declaration, so a key with no paint would be an
+ * invisible swatch instead of a grey one. */
+.swatch {
+  flex: none;
+
+  --pm-chart-key: var(--pm-chart-other);
+
+  background: var(--pm-chart-key);
+  border-radius: var(--pm-radius-sm);
+  inline-size: var(--pm-space-3);
+  block-size: var(--pm-space-3);
+}
+
+.legend[data-key-shape='line'] .swatch {
+  inline-size: var(--pm-space-4);
+  block-size: 2px;
+  border-radius: var(--pm-radius-pill);
+}
+
+/* A series drawn as a line in a plot of fills (`BarChart`'s `lines`) marks its
+   own item, so its key is a line beside the bars' rects. */
+.item[data-key-shape='line'] .swatch {
+  inline-size: var(--pm-space-4);
+  block-size: 2px;
+  border-radius: var(--pm-radius-pill);
+}
+
+.glyph {
+  flex: none;
+  display: inline-flex;
+  color: var(--pm-text-muted);
+}
+
+.label {
+  min-inline-size: 0;
+}
+
+/* Toggle-to-isolate (the interaction rules, `docs/charts.md`): the key as a
+ * real button.
+ *
+ * The reset keeps the item's gap, colour and type, because a key looks the
+ * same when it becomes pressable; only its behaviour changes. The focus ring
+ * comes from the focus convention (`design/components/README.md`), composed as
+ * on every focusable surface. */
+.key {
+  composes: focusRing from '../../conventions/focus.module.css';
+  display: flex;
+  align-items: center;
+  gap: var(--pm-space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* The hidden key, defined once for every member with a legend. The swatch
+ * becomes a 1px inset ring in the de-emphasis grey with a transparent fill, and
+ * the label becomes muted. The state is shown by shape, not colour alone, and a
+ * hollow ring cannot be mistaken for a shown series. */
+.key[aria-pressed='false'] .swatch {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--pm-chart-other);
+}
+
+.key[aria-pressed='false'] .label {
+  color: var(--pm-text-muted);
+}

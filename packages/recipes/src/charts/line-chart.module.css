@@ -1,0 +1,133 @@
+/* LineChart — `design/components/line-chart.md`.
+ *
+ * The component sets `--pm-chart-mark` per series group. Its value is always a
+ * *token reference* (`var(--pm-chart-3)`), never a colour, so a palette change
+ * repaints every stroke and wash without this file or the component knowing the
+ * palette. Its default here is the de-emphasis grey, because an unresolvable
+ * custom property invalidates its whole declaration and an unpainted line would
+ * not be drawn. */
+
+.surface {
+  composes: plotSurface from './frame/chart-frame.module.css';
+}
+
+/* The legend is composed, not restated. The isolate keys' recipe (the hollow
+   `[aria-pressed='false']` swatch) lives in the legend's sheet. Composing its
+   base class here adds that sheet to this member's closure, where the selectors
+   law reads it (see the note in `line-chart.md`). */
+.legend {
+  composes: legend from './frame/chart-legend.module.css';
+}
+
+.marks {
+  display: block;
+
+  --pm-chart-mark: var(--pm-chart-other);
+}
+
+/* Hairline gridlines on the value axis only. The reference library turns
+   vertical gridlines off per example (`<CartesianGrid vertical={false}/>`); here
+   they are never drawn. */
+.grid path {
+  fill: none;
+  stroke: var(--pm-chart-grid);
+  stroke-width: 1;
+}
+
+/* The only axis stroke a chart draws. */
+.zero {
+  fill: none;
+  stroke: var(--pm-chart-axis);
+  stroke-width: 1;
+}
+
+/* The target line is drawn by the shared annotation layer. `baseline` is
+   shorthand for a `line` annotation, and its rule, dash and label recipes live
+   in `frame/chart-annotations.module.css`. Every member uses that one sheet for
+   reference lines, so a target on a bar chart and on a line chart look the
+   same. */
+
+.line {
+  fill: none;
+  stroke: var(--pm-chart-mark);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* A light wash, never a solid fill. The band edge is the 2px stroke above, and
+   the fill shows which side of the line the quantity is on. */
+.wash {
+  fill: var(--pm-chart-mark);
+  opacity: 0.1;
+  stroke: none;
+}
+
+/* Markers are a secondary channel to colour. The 2px ring is the surface
+   colour, and it keeps a point legible where two lines cross. */
+.marker {
+  fill: var(--pm-chart-mark);
+  stroke: var(--pm-bg-surface);
+  stroke-width: 2;
+}
+
+.marker[data-active] {
+  stroke-width: 3;
+}
+
+.crosshair {
+  fill: none;
+  stroke: var(--pm-chart-axis);
+  stroke-width: 1;
+}
+
+/* End labels are selective; the chart never puts a number on every point. */
+.endLabel {
+  fill: var(--pm-text-secondary);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-variant-numeric: var(--pm-font-numeric);
+}
+
+/* The `chart.marks` binding: strokes and washes fade in by **opacity only**.
+   There is no draw-on, because a `stroke-dashoffset` animation is decoration
+   that the restraint law rules out. The shared stagger makes a four-series
+   chart enter series by series instead of all at once.
+ *
+ * Scoped to the stroke layer so the stagger counts only series. The grid, the
+ * zero rule and the target rule are `g` elements too. A stagger on `.marks g`
+ * would count them, so the first series would enter one to three steps late,
+ * and by a different number of steps with a baseline than without. The frame's
+ * own fade covers the grid and rules. */
+.strokes g {
+  animation: chart-marks-enter var(--pm-motion-duration-surface) var(--pm-motion-easing-enter)
+    backwards;
+}
+
+.strokes g:nth-child(2) {
+  animation-delay: var(--pm-motion-stagger-step);
+}
+
+.strokes g:nth-child(3) {
+  animation-delay: calc(var(--pm-motion-stagger-step) * 2);
+}
+
+/* `n + 4`, not `4`: the stagger is **capped and later series share its last
+   step** (the stagger primitive in motion.md). With `4` alone, the fifth series
+   would get no delay, and a chart at the eight-series limit would enter back to
+   front. */
+.strokes g:nth-child(n + 4) {
+  animation-delay: calc(var(--pm-motion-stagger-step) * 3);
+}
+
+@keyframes chart-marks-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .strokes g {
+    animation: none;
+  }
+}

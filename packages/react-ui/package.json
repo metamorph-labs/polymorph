@@ -1,0 +1,92 @@
+{
+  "name": "@polymorph/react-ui",
+  "version": "1.0.15",
+  "description": "The polymorph vocabulary for React: every member as TypeScript source, styled by its token-only recipe from @polymorph/recipes.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./galleries": "./src/galleries.ts",
+    "./identity": "./src/identity.ts",
+    "./identity-signup": "./src/identity-signup.ts"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "imports": {
+    "#stylesheet/*": {
+      "react-server": "./dist/*",
+      "node": "./dist/no-stylesheet.js",
+      "default": "./dist/*"
+    }
+  },
+  "sideEffects": [
+    "**/*.css",
+    "./src/index.ts",
+    "./src/identity.ts"
+  ],
+  "scripts": {
+    "build": "NODE_ENV=production vite build --config vite.build.config.ts && tsc -p tsconfig.build.json"
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "exports": {
+      ".": {
+        "types": "./dist/types/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./galleries": {
+        "types": "./dist/types/galleries.d.ts",
+        "import": "./dist/galleries.js"
+      },
+      "./identity": {
+        "types": "./dist/types/identity.d.ts",
+        "import": "./dist/identity.js"
+      },
+      "./identity-signup": {
+        "types": "./dist/types/identity-signup.d.ts",
+        "import": "./dist/identity-signup.js"
+      }
+    }
+  },
+  "dependencies": {
+    "@internationalized/date": "^3.12.2",
+    "@polymorph/react": "workspace:*",
+    "@polymorph/recipes": "workspace:*",
+    "@radix-ui/react-accordion": "^1.2.20",
+    "@radix-ui/react-checkbox": "^1.3.11",
+    "@radix-ui/react-collapsible": "^1.1.20",
+    "@radix-ui/react-context-menu": "^2.3.7",
+    "@radix-ui/react-dialog": "^1.1.23",
+    "@radix-ui/react-dropdown-menu": "^2.1.24",
+    "@radix-ui/react-hover-card": "^1.1.23",
+    "@radix-ui/react-popover": "^1.1.23",
+    "@radix-ui/react-radio-group": "^1.4.7",
+    "@radix-ui/react-scroll-area": "^1.2.18",
+    "@radix-ui/react-select": "^2.3.7",
+    "@radix-ui/react-slider": "^1.4.7",
+    "@radix-ui/react-switch": "^1.3.7",
+    "@radix-ui/react-tabs": "^1.1.21",
+    "@radix-ui/react-toast": "^1.2.23",
+    "@radix-ui/react-tooltip": "^1.2.16",
+    "@radix-ui/react-visually-hidden": "^1.2.11",
+    "react-aria": "^3.50.0",
+    "react-stately": "^3.48.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@polymorph/conformance": "workspace:*",
+    "@polymorph/engine": "workspace:*",
+    "@polymorph/registry": "workspace:*",
+    "@testing-library/react": "^16.3.2",
+    "axe-core": "^4.12.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "license": "MIT"
+}

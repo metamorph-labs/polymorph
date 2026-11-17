@@ -1,0 +1,7 @@
+/* What an application stylesheet usually holds: flow, spacing and a colour. See ../README.md. */
+.row {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  color: #727375;
+}

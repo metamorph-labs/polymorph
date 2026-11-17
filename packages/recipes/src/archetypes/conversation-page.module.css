@@ -1,0 +1,98 @@
+/* ConversationPage — `design/archetypes/conversation-page.md`.
+ *
+ * The only page archetype that fills its region instead of flowing down it.
+ * The thread needs a box to scroll in and the composer needs a fixed position
+ * at the bottom. So the page is a column of fixed height (the content
+ * region's), with the header at the top, the composer at the bottom and the
+ * thread filling the rest. The `--pm-page-*` scope is declared here, as on
+ * every page root. The max width is larger than ListPage's because two
+ * reading columns side by side need the space. */
+
+.page {
+  --pm-page-padding-x: var(--pm-space-7);
+  --pm-page-padding-y: var(--pm-space-6);
+  --pm-page-max-width: calc(var(--pm-space-10) * 15);
+  --pm-content-gutter: var(--pm-space-5);
+
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--pm-content-gutter);
+  inline-size: 100%;
+  max-inline-size: var(--pm-page-max-width);
+  block-size: 100%;
+  min-block-size: 0;
+  margin-inline: auto;
+  padding: var(--pm-page-padding-y) var(--pm-page-padding-x);
+}
+
+/* The page scope's narrow step, explained in `list-page.module.css`: one space
+   step smaller on both axes, at the `40rem` breakpoint every page shares. */
+@container (width < 40rem) {
+  .page {
+    --pm-page-padding-x: var(--pm-space-6);
+    --pm-page-padding-y: var(--pm-space-5);
+  }
+}
+
+/* What is left after the header: the split, or the one column. */
+.body {
+  display: flex;
+  flex: 1;
+  min-block-size: 0;
+}
+
+.body > * {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+/* The thread over the composer. The thread takes the remaining space and can
+   shrink to zero. The composer takes the space it needs and never less. The
+   column is `minmax(0, 1fr)`, not the implicit `auto`, because an auto track
+   is never narrower than its content's minimum. A code line in a reply has a
+   minimum equal to its full length, which would widen the column past the
+   pane and clip the thread under the aside. */
+.conversation {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: var(--pm-space-4);
+  block-size: 100%;
+  min-block-size: 0;
+  min-inline-size: 0;
+}
+
+.thread {
+  min-inline-size: 0;
+  min-block-size: 0;
+}
+
+/* The composer uses the thread's column width (ChatThread's eight times
+   `--pm-space-10`), so the field lines up under the turns. */
+.composer {
+  inline-size: 100%;
+  max-inline-size: calc(var(--pm-space-10) * 8);
+  margin-inline: auto;
+}
+
+/* The aside in the split: the ArtifactPane fills the end pane, with the
+   split's separator as the gap. */
+.aside {
+  block-size: 100%;
+  min-block-size: 0;
+  padding-inline-start: var(--pm-space-2);
+}
+
+/* The aside in the drawer: the pane fills the drawer's body. */
+.drawerAside {
+  block-size: 100%;
+  min-block-size: 0;
+}
+
+/* Fixture harness from the spec: a fixed-height box for the page to fill, in
+   place of the shell's content region. */
+.harness {
+  inline-size: 100%;
+  block-size: calc(var(--pm-space-10) * 6);
+}

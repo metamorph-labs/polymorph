@@ -1,0 +1,100 @@
+/**
+ * `@polymorph/cli`: `polymorph init`, `add`, `diff`, `update`, `theme` and `check`.
+ *
+ * One of the registry's three thin fronts. It copies a chosen part of the
+ * system into another repository and keeps the red rules running there. This
+ * package holds no source of truth. The file closure, the version ranges, the
+ * fonts and the pre-paint script are all read from `@polymorph/registry`, and
+ * `thin-front.test.ts` checks that this package never opens the vocabulary.
+ *
+ * The model is "open code, closed usage". Open code is the vendoring: the
+ * consumer gets real source that they own and can edit. Closed usage is the
+ * second half of `add`. It extends the consumer's ESLint and Stylelint configs,
+ * so their application code is held to the same laws as this repository's.
+ * Without that half, an install would only be a copy with a manifest.
+ */
+
+export { applyPlan, freshEslintConfig, freshStylelintConfig } from './apply'
+export type { ApplyOptions, ApplyResult } from './apply'
+
+export {
+  APP_TOOLING,
+  catalogueLines,
+  checkoutHolding,
+  DEFAULT_SYSTEM,
+  InitError,
+  installApp,
+  planInit,
+  REACT_RANGE,
+  refuseDirectory,
+  writeInit,
+} from './init'
+export type { InitPlan, InitPrograms, InitStep, InstallOutcome } from './init'
+
+export { main, run } from './cli'
+export type { Cli, Outcome } from './cli'
+
+export { check, CheckError, checkLines } from './check'
+
+export {
+  addElements,
+  ELEMENTS_STATIC_DIR,
+  elementsThemeSheet,
+  NoBuildFilesError,
+  noBuildFiles,
+  planElementsInit,
+  updateElements,
+  UnshippedPageError,
+} from './elements'
+export type { ElementsInitPlan, ElementsInitStep, ElementsResult } from './elements'
+export type { CheckedFile, CheckOptions, CheckReport, CheckViolation, Verify } from './check'
+
+export {
+  BASE_IMPORT,
+  eslintFragment,
+  generatedFiles,
+  hasTheme,
+  installedEslintFragment,
+  stylelintFragment,
+  themeModule,
+} from './emit'
+export type { FragmentOptions } from './emit'
+
+export { digest, emptyManifest, MANIFEST_FILE, readManifest, writeManifest } from './manifest'
+export type { Manifest, ManifestFile } from './manifest'
+
+export {
+  addDependencies,
+  importThemes,
+  injectPrepaint,
+  linkEslintConfig,
+  linkStylelintConfig,
+  PatchError,
+} from './patch'
+
+export {
+  DEFAULT_DIR,
+  ELEMENTS_DIR,
+  ELEMENTS_THEME_SHEET,
+  elementsNote,
+  escapes,
+  EscapingDirError,
+  nearestName,
+  planInstall,
+  shipped,
+  UnknownItemError,
+  vendoredText,
+} from './plan'
+export type { InstallPlan, PaletteInstall, PlanFile, PlanOptions, SystemInstall } from './plan'
+
+export { VUE_RANGE, VUE_TOOLING } from './init-vue'
+
+export {
+  FrameworkMismatchError,
+  installFramework,
+  UnknownFrameworkError,
+  UnshippedMemberError,
+} from './vue'
+
+export { diffInstall, updateInstall } from './status'
+export type { DiffReport, FileState, FileStatus, UpdateResult } from './status'

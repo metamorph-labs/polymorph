@@ -1,0 +1,11 @@
+{
+  "name": "petrol",
+  "accentHue": 200,
+  "neutralTint": 0.006,
+  "chromaBudget": "high",
+  "chartCaps": {
+    "light": 4,
+    "dark": 3,
+    "published": 3
+  }
+}

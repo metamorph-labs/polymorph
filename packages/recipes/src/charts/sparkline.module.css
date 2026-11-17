@@ -1,0 +1,46 @@
+/* Sparkline — `design/components/sparkline.md`.
+ *
+ * Sized from the icon and control scales, not in pixels, so it fits the type
+ * grid as `Icon` does. A Stat's label row and a table cell already reserve this
+ * height. */
+
+.spark {
+  display: inline-block;
+  vertical-align: middle;
+  block-size: var(--pm-icon-size-lg);
+  inline-size: calc(var(--pm-icon-size-lg) * 4);
+}
+
+.spark[data-size='md'] {
+  block-size: var(--pm-control-height-sm);
+  inline-size: calc(var(--pm-control-height-sm) * 4);
+}
+
+.svg {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  overflow: visible;
+}
+
+/* The de-emphasis hue for every series, because the shape carries the
+   information and colour does not. `non-scaling-stroke` keeps the stroke at
+   2px through the viewBox scale. */
+.line {
+  fill: none;
+  stroke: var(--pm-chart-other);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* The end dot takes the accent, because the latest value is the point of
+   interest. */
+.end {
+  fill: var(--pm-accent-bg);
+  vector-effect: non-scaling-stroke;
+}
+
+/* No motion. An animated trend line would be ambient motion in a label row
+   with no change behind it. It appears with the surface that contains it. */

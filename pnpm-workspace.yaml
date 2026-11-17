@@ -1,0 +1,20 @@
+packages:
+  - packages/*
+  - apps/*
+
+allowBuilds:
+  '@parcel/watcher': false
+  esbuild: true
+  lmdb: false
+  msgpackr-extract: false
+
+onlyBuiltDependencies:
+  - esbuild
+
+# The Angular compiler plugin loads TypeScript without declaring it. As a peer it
+# resolves to the TypeScript of the package that installs it (6.0 in
+# `packages/angular-ui`, which Angular's compiler requires), not the root's.
+packageExtensions:
+  '@analogjs/vite-plugin-angular':
+    peerDependencies:
+      typescript: '*'

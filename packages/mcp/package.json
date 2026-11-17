@@ -1,0 +1,26 @@
+{
+  "name": "@polymorph/mcp",
+  "version": "1.0.15",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@polymorph/cli": "workspace:*",
+    "@polymorph/registry": "workspace:*",
+    "@polymorph/rules": "workspace:*",
+    "@polymorph/spec": "workspace:*",
+    "@polymorph/theme": "workspace:*",
+    "jiti": "^2.7.0",
+    "zod": "^4.4.3"
+  },
+  "optionalDependencies": {
+    "playwright": "^1.62.0"
+  },
+  "bin": {
+    "polymorph-mcp": "./bin/polymorph-mcp.js"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,348 @@
+{
+  "spec": "polymorph-screen/1",
+  "name": "InboxScreen",
+  "purpose": "Relay's ticket queue — a filtered, sortable table under a page header.",
+  "platform": "android",
+  "types": {
+    "@polymorph/react-ui": [
+      "DataTableColumn",
+      "DataTableSort",
+      "EmptyStateProps",
+      "FilterResultCount",
+      "SelectOption",
+      "SelectOptionGroup"
+    ],
+    "./tickets": ["QueueStats", "Ticket"]
+  },
+  "inputs": [
+    {
+      "name": "tickets",
+      "type": "Ticket[]",
+      "doc": "Already filtered and sorted."
+    },
+    {
+      "name": "summary",
+      "type": "QueueStats",
+      "doc": "The queue's four numbers, derived by the container from the whole collection rather than from the filtered view — which is why the band outlives the empty story."
+    },
+    {
+      "name": "columns",
+      "type": "DataTableColumn<Ticket>[]",
+      "doc": "Cell renderers are code, so they arrive as an input."
+    },
+    {
+      "name": "sort",
+      "type": "DataTableSort"
+    },
+    {
+      "name": "onSortChange",
+      "type": "(sort: DataTableSort) => void"
+    },
+    {
+      "name": "getRowId",
+      "type": "(ticket: Ticket) => string"
+    },
+    {
+      "name": "onRowClick",
+      "type": "(ticket: Ticket) => void"
+    },
+    {
+      "name": "onNewTicket",
+      "type": "() => void"
+    },
+    {
+      "name": "onRetry",
+      "type": "() => void",
+      "doc": "Loads the queue again after a load failed."
+    },
+    {
+      "name": "isFiltered",
+      "type": "boolean"
+    },
+    {
+      "name": "onClearFilters",
+      "type": "() => void"
+    },
+    {
+      "name": "resultCount",
+      "type": "FilterResultCount"
+    },
+    {
+      "name": "query",
+      "type": "string"
+    },
+    {
+      "name": "onQueryChange",
+      "type": "(query: string) => void"
+    },
+    {
+      "name": "status",
+      "type": "string | null"
+    },
+    {
+      "name": "statusOptions",
+      "type": "(SelectOption | SelectOptionGroup)[]"
+    },
+    {
+      "name": "onStatusChange",
+      "type": "(value: string | null) => void"
+    },
+    {
+      "name": "priority",
+      "type": "string | null"
+    },
+    {
+      "name": "priorityOptions",
+      "type": "(SelectOption | SelectOptionGroup)[]"
+    },
+    {
+      "name": "onPriorityChange",
+      "type": "(value: string | null) => void"
+    },
+    {
+      "name": "emptyState",
+      "type": "EmptyStateProps"
+    }
+  ],
+  "root": {
+    "component": "ListPage",
+    "props": {
+      "title": "Inbox",
+      "summary": {
+        "component": "Grid",
+        "props": {
+          "columns": 4,
+          "gap": 6
+        },
+        "children": [
+          {
+            "component": "Card",
+            "children": [
+              {
+                "component": "Stat",
+                "props": {
+                  "label": {
+                    "$": "summary.open.label"
+                  },
+                  "value": {
+                    "$": "summary.open.value"
+                  },
+                  "trend": {
+                    "$": "summary.open.trend"
+                  },
+                  "footer": {
+                    "$": "summary.open.footer"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "component": "Card",
+            "children": [
+              {
+                "component": "Stat",
+                "props": {
+                  "label": {
+                    "$": "summary.urgent.label"
+                  },
+                  "value": {
+                    "$": "summary.urgent.value"
+                  },
+                  "trend": {
+                    "$": "summary.urgent.trend"
+                  },
+                  "footer": {
+                    "$": "summary.urgent.footer"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "component": "Card",
+            "children": [
+              {
+                "component": "Stat",
+                "props": {
+                  "label": {
+                    "$": "summary.response.label"
+                  },
+                  "value": {
+                    "$": "summary.response.value"
+                  },
+                  "trend": {
+                    "$": "summary.response.trend"
+                  },
+                  "footer": {
+                    "$": "summary.response.footer"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "component": "Card",
+            "children": [
+              {
+                "component": "Stat",
+                "props": {
+                  "label": {
+                    "$": "summary.solved.label"
+                  },
+                  "value": {
+                    "$": "summary.solved.value"
+                  },
+                  "trend": {
+                    "$": "summary.solved.trend"
+                  },
+                  "footer": {
+                    "$": "summary.solved.footer"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "emptyState": {
+        "$object": {
+          "icon": "search",
+          "title": "No tickets match these filters",
+          "description": "Every conversation is still here — the filters are hiding them.",
+          "secondaryAction": {
+            "component": "Button",
+            "props": {
+              "variant": "ghost",
+              "tone": "neutral",
+              "label": "Clear filters",
+              "onClick": {
+                "$": "onClearFilters"
+              }
+            }
+          }
+        }
+      },
+      "actions": {
+        "component": "Button",
+        "props": {
+          "icon": "add",
+          "label": "New ticket",
+          "onClick": {
+            "$": "onNewTicket"
+          }
+        }
+      },
+      "onRetry": {
+        "$": "onRetry"
+      },
+      "filters": {
+        "component": "FilterBar",
+        "props": {
+          "isFiltered": {
+            "$": "isFiltered"
+          },
+          "onClear": {
+            "$": "onClearFilters"
+          },
+          "resultCount": {
+            "$": "resultCount"
+          },
+          "search": {
+            "component": "SearchInput",
+            "props": {
+              "size": "sm",
+              "placeholder": "Search tickets…",
+              "aria-label": "Search tickets",
+              "value": {
+                "$": "query"
+              },
+              "onChange": {
+                "$": "onQueryChange"
+              }
+            }
+          }
+        },
+        "children": [
+          {
+            "component": "Select",
+            "props": {
+              "size": "sm",
+              "options": {
+                "$": "statusOptions"
+              },
+              "emptyOption": "Any status",
+              "aria-label": "Filter by status",
+              "value": {
+                "$": "status"
+              },
+              "onChange": {
+                "$": "onStatusChange"
+              }
+            }
+          },
+          {
+            "component": "Select",
+            "props": {
+              "size": "sm",
+              "options": {
+                "$": "priorityOptions"
+              },
+              "emptyOption": "Any priority",
+              "aria-label": "Filter by priority",
+              "value": {
+                "$": "priority"
+              },
+              "onChange": {
+                "$": "onPriorityChange"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "children": [
+      {
+        "component": "DensityScope",
+        "exception": {
+          "rung": 2,
+          "because": "A queue is scanned rather than read, so more rows in the same viewport is worth more here than the breathing room the rest of the product gets. Nothing new is invented: this is the same theme in its compact variant, applied to a region."
+        },
+        "props": {
+          "value": "compact",
+          "as": "section"
+        },
+        "children": [
+          {
+            "component": "DataTable",
+            "props": {
+              "label": "Tickets",
+              "stickyHeader": true,
+              "columns": {
+                "$": "columns"
+              },
+              "data": {
+                "$": "tickets"
+              },
+              "getRowId": {
+                "$": "getRowId"
+              },
+              "sort": {
+                "$": "sort"
+              },
+              "onSortChange": {
+                "$": "onSortChange"
+              },
+              "emptyState": {
+                "$": "emptyState"
+              },
+              "onRowClick": {
+                "$": "onRowClick"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

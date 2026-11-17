@@ -1,0 +1,29 @@
+/* Colour swatches for the token page. Every painted value is a token
+   reference. The chip's own border is the vocabulary's 1px hairline. */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--pm-space-10) * 2), 1fr));
+  gap: var(--pm-space-3);
+}
+
+.swatch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-1);
+}
+
+.chip {
+  block-size: var(--pm-space-7);
+  background: var(--pm-swatch, transparent);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-sm);
+}
+
+.name {
+  font-family: var(--pm-font-mono);
+  font-size: var(--pm-text-xs-size);
+  line-height: var(--pm-text-xs-line-height);
+  color: var(--pm-text-secondary);
+  overflow-wrap: anywhere;
+}

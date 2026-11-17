@@ -1,0 +1,12 @@
+{
+  "name": "verdigris",
+  "accentHue": 178,
+  "neutralHue": 80,
+  "neutralTint": 0.006,
+  "chromaBudget": "medium",
+  "chartCaps": {
+    "light": 4,
+    "dark": 3,
+    "published": 3
+  }
+}

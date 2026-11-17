@@ -1,0 +1,100 @@
+/* HoverCard — `design/components/hover-card.md`.
+ *
+ * Popover's panel recipe, restated rather than composed, because the laws check
+ * a member's own stylesheet in source: one stylesheet per member, with drift
+ * caught by comparison. The only thing this stylesheet adds to Popover's is the
+ * side-keyed origin. The spec binds the motion origin to `data-side`, so a
+ * collision flip moves the growth with it. */
+
+/* The anchor Radix needs and nothing else. It is Tooltip's span, for the same
+   reason: a box exactly the size of the trigger inside it, so the card is
+   positioned against the trigger's own edges. */
+.anchor {
+  display: inline-flex;
+}
+
+.panel {
+  /* `overlay` in the stacking order. The popper copies it onto its wrapper
+     (menu.module.css explains how). */
+  z-index: var(--pm-z-overlay);
+  inline-size: max-content;
+  max-inline-size: calc(var(--pm-space-10) * 4);
+  padding: var(--pm-inset-pane);
+  background: var(--pm-bg-overlay);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-surface);
+  box-shadow: var(--pm-shadow-transient);
+}
+
+/* The anchored origin, from the side the card was placed on. The panel grows
+   from the trigger's edge, and a collision flip changes the origin. */
+.panel[data-side='top'] {
+  transform-origin: center bottom;
+}
+
+.panel[data-side='bottom'] {
+  transform-origin: center top;
+}
+
+.panel[data-side='left'] {
+  transform-origin: right center;
+}
+
+.panel[data-side='right'] {
+  transform-origin: left center;
+}
+
+/* The `popover.panel` binding: `scale-fade`, surface class, and exits at the
+   surface-exit duration with the exit easing. The provider delays still apply
+   at `none`, because delay is interaction design, not motion (Tooltip's rule). */
+.panel[data-state='open'] {
+  animation: hover-card-enter var(--pm-motion-duration-surface) var(--pm-motion-easing-enter);
+}
+
+.panel[data-state='closed'] {
+  animation: hover-card-exit var(--pm-motion-duration-surface-exit) var(--pm-motion-easing-exit);
+}
+
+@keyframes hover-card-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes hover-card-exit {
+  to {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+/* Reduced-motion projection (`docs/motion.md`): `scale-fade` projects to
+   `fade` with the same durations, so the transient surfaces stay consistent
+   under reduced motion too. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes hover-card-enter {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes hover-card-exit {
+    to {
+      opacity: 0;
+    }
+  }
+}
+
+/* Glass (`depth: glass`): the pane uses the surface role at the engine's mix
+   (`--pm-material-surface`), and the material provides the lift that the
+   overlay stacking order provides elsewhere. The backdrop shows through the
+   pane as a blurred, saturated wash, so the surface stands apart by its
+   material rather than by a lighter step. The mix is a contrast decision that
+   the glass law measures over worst-case backdrops; a recipe only applies it. */
+@container style(--pm-axis-depth: glass) {
+  .panel {
+    background: var(--pm-material-surface);
+    backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  }
+}

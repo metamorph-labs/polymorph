@@ -1,0 +1,235 @@
+/* TagInput — `design/components/tag-input.md`.
+ *
+ * The container copies Input's recipe in every state instead of composing it. Input's
+ * field is a fixed `control-height` box, and this field grows in height. Composing would
+ * mean overriding the most important rule and relying on cascade order. Textarea copies
+ * the same rules for the same reason.
+ *
+ * The rest of this file styles the chip. It is a pill at every geometry, so that even in
+ * Terminal, where little else is rounded, a tag still looks like a tag. */
+
+.container {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-1);
+  align-items: center;
+  min-block-size: var(--pm-control-height-md);
+  padding: var(--pm-space-1) var(--pm-space-2);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  cursor: text;
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-field);
+  border-radius: var(--pm-radius-control);
+
+  /* The control seat shadow, from Input, used by every field in the family. */
+  box-shadow: var(--pm-shadow-seat);
+}
+
+/* The chips are a real `<ul>` of `<li>`, which screen readers announce, but not a layout
+   box. `display: contents` puts them into the container's flex flow, so the text input
+   continues after the last chip instead of starting a new block under the list. */
+.chips {
+  display: contents;
+}
+
+.chip {
+  display: inline-flex;
+  gap: var(--pm-space-1);
+  align-items: center;
+  block-size: calc(var(--pm-control-height-sm) - var(--pm-space-2));
+  padding-inline: var(--pm-space-2);
+  background: var(--pm-bg-subtle);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-pill);
+}
+
+/* A long value such as an email address is truncated with an ellipsis so the field does
+   not grow a third row. */
+.label {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  max-inline-size: calc(var(--pm-space-10) * 2);
+  overflow: hidden;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A chip contains a label and one labelled button, so the button has its own focus ring
+   rather than the whole chip being highlighted. It is square at the chip's full height,
+   which is `control-height-sm` minus the padding: 24px, the minimum target size, at
+   every density. */
+.remove {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback pressable from '../conventions/motion.module.css';
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  aspect-ratio: 1;
+  padding: 0;
+  color: var(--pm-text-muted);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--pm-radius-pill);
+}
+
+/* The minimum target size without affecting layout, as in checkbox.module.css. A chip is
+   deliberately smaller than a control (`control-height-sm` minus its padding), so the
+   button inside reaches the minimum with a negative inset instead of making the chip as
+   large as a control. */
+.remove::before {
+  position: absolute;
+  inset: calc((100% - var(--pm-control-height-sm)) / 2);
+  content: '';
+}
+
+.remove:hover {
+  color: var(--pm-danger-text);
+}
+
+/* Keyboard navigation: ←/→ from the field move through the chips, and the chip with
+   focus shows it on its own border rather than on the button's ring. */
+.chip:focus-within {
+  border-color: var(--pm-border-focus-solid);
+}
+
+/* Unstyled, with the container's type. `font: inherit` keeps the caret on the type scale
+   at every size without repeating the text properties. */
+.input {
+  flex: 1;
+  min-inline-size: calc(var(--pm-space-10) / 2);
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+/* Firefox dims placeholders by default. The muted colour already marks them, so the
+   opacity is reset to avoid dimming twice. */
+.input::placeholder {
+  color: var(--pm-text-muted);
+  opacity: 1;
+}
+
+/* Screen-reader-only text: the chip count in this field's description, and the live
+   region that announces removals. */
+.reader {
+  composes: visuallyHidden from '../conventions/a11y.module.css';
+}
+
+/* sizes — the conventions' size system -------------------------------------- */
+
+/* Chips are the same size at every field size. Chips that changed height with the field
+   would look like a different component. */
+
+.container[data-size='sm'] {
+  min-block-size: var(--pm-control-height-sm);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+}
+
+.container[data-size='lg'] {
+  min-block-size: var(--pm-control-height-lg);
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+}
+
+/* states ------------------------------------------------------------------- */
+
+.container[data-invalid] {
+  border-color: var(--pm-danger-border);
+}
+
+.container[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-subtle);
+
+  /* The seat shadow signals a ready control, so disabled removes it (as in Input). */
+  box-shadow: none;
+}
+
+.container[data-disabled] .label {
+  color: var(--pm-text-disabled);
+}
+
+/* At the maximum. The field stays and still takes focus, because it is read-only rather
+   than removed. No more values can be typed, so the container no longer shows the text
+   cursor. */
+.container[data-state='at-max'] {
+  cursor: default;
+}
+
+/* Invalid is excluded rather than overridden, so the error border stays on hover. */
+.container:hover:not([data-disabled], [data-invalid]) {
+  border-color: var(--pm-border-strong);
+}
+
+/* A chip that is being removed cannot be clicked again. The motion engine keeps it in the
+   tree for one exit animation, and this rule blocks input during that time (motion.md's
+   third interruption law: never longer than an exit, never on enter). */
+.chip[data-removing] {
+  pointer-events: none;
+}
+
+/* the two flashes ---------------------------------------------------------- */
+
+/* Both give feedback without a message. A duplicate flashes the existing chip, and a
+   refusal flashes the field. They change colour only, once and back, over the control
+   duration. That duration is a token, so at `none` there is no flash, like every other
+   motion, and the refusal shows only as the tag not appearing. */
+
+@keyframes tag-input-duplicate {
+  50% {
+    border-color: var(--pm-accent-bg);
+  }
+}
+
+@keyframes tag-input-refusal {
+  50% {
+    border-color: var(--pm-danger-border);
+  }
+}
+
+.chip[data-flash] {
+  animation: tag-input-duplicate var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+.container[data-refused] {
+  animation: tag-input-refusal var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+/* The conventions' focus-zoom floor for phones. Below `30rem` the inline `<input>` uses
+   the text-entry floor's size and line height so iOS does not zoom the page on focus. Only those metrics
+   change. The chips do not change, because they are not text entry (tag-input.md's
+   cell), so the row keeps its shape around the larger caret. */
+@media (width < 30rem) {
+  .input {
+    font-size: var(--pm-text-entry-size);
+    line-height: var(--pm-text-entry-line-height);
+  }
+}

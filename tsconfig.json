@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "./node_modules/.cache/tsbuildinfo/root.tsbuildinfo",
+    "types": ["node"],
+    // `eslint.config.ts` reads the catalogue's values through
+    // `@polymorph/rules/stylelint/emitted`, which imports the engine, and the
+    // engine re-exports the theme runtime, whose types are DOM types.
+    "lib": ["ES2023", "DOM"]
+  },
+  "include": ["*.config.ts", "eslint.config.ts", "*.config.js"]
+}

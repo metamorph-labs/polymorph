@@ -1,0 +1,256 @@
+/* Table — `design/components/table.md`.
+ *
+ * No zebra striping, because row borders set the rhythm at every density. No
+ * outer border or radius, because the page decides the surface.
+ *
+ * Selection wins over hover: the reader's choice matters more than the
+ * pointer's position. */
+
+/* The wrapper is the container as well as the scroll port --------------------
+ *
+ * The box that decides whether the table scrolls, and the container the table
+ * responds to. Nothing here measures the viewport: a table in a narrow dashboard
+ * column is cramped even on a 27-inch monitor, which a media query cannot see
+ * (`docs/layout.md`). */
+.wrapper {
+  composes: focusRing from '../conventions/focus.module.css';
+  container-type: inline-size;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+/* Scrollable only when there is something to scroll, which the sticky header
+   needs.
+ *
+ * `overflow-x: auto` forces the *block* axis to `auto` too (CSS overflow §3), so
+ * an always-scrollable wrapper would be the sticky header's scroll container,
+ * and with no height the header would never stick. With overflow visible it
+ * sticks to the page's scroller, which in an AppShell is the content region. */
+.wrapper[data-overflowing] {
+  overflow-x: auto;
+}
+
+.table {
+  inline-size: 100%;
+  border-collapse: collapse;
+}
+
+/* The table's own name -------------------------------------------------------
+ *
+ * Two classes, not one with a state attribute, because the forms share nothing:
+ * one is the clip recipe and the other a line of text. Composing
+ * `visuallyHidden` and undoing five declarations would read backwards.
+ *
+ * `.captionHidden` is the default, because a table's name is usually already
+ * above it. `text-align: start` overrides the UA's centred caption. */
+.captionHidden {
+  composes: visuallyHidden from '../conventions/a11y.module.css';
+}
+
+.caption {
+  padding-block-end: var(--pm-space-3);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+  text-align: start;
+}
+
+/* Pan, do not crush ----------------------------------------------------------
+ *
+ * Without a minimum width, a narrow table wraps every cell to one word per line.
+ * `max-content` keeps the columns at their needed width, the wrapper scrolls,
+ * and no content is hidden (`docs/layout.md`).
+ *
+ * Only in the narrow range, which is the key decision: an unconditional
+ * `max-content` would stop prose columns wrapping and make a table that fits
+ * scroll sideways on a desktop. `36rem` matches the toolbar's stacking point, a
+ * rem literal because a breakpoint is geometry, not theme. */
+@container (width < 36rem) {
+  .table {
+    min-inline-size: max-content;
+  }
+}
+
+.head {
+  /* The header's bottom edge. A shadow here would add elevation that a flat theme
+     does not have. */
+  border-block-end: 1px solid var(--pm-border-default);
+}
+
+/* Headers and cells always compose the focus ring. Outside a grid it never
+   shows, because a `<td>` without `tabindex` is never `:focus-visible`. In a
+   grid it shows where focus is. Composing it, rather than an outline under
+   `[role='grid']`, keeps one focus ring in the system. */
+.header {
+  composes: focusRing from '../conventions/focus.module.css';
+  padding: var(--pm-space-3) var(--pm-space-4);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-secondary);
+  text-align: start;
+  text-transform: uppercase;
+}
+
+.cell {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  padding: var(--pm-space-3) var(--pm-space-4);
+  max-inline-size: calc(var(--pm-space-10) * 5);
+  overflow-wrap: anywhere;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+
+  /* Every body row keeps its border, including the last, because the table needs
+     a bottom edge as well as the dividers. */
+  border-block-end: 1px solid var(--pm-border-subtle);
+}
+
+/* Totals: styled like headers, with the rule mirrored to the top and no bottom
+   border, because the foot *is* the table's edge. `numeric` cells keep their
+   style, because a total is the column's own figure. */
+.foot .cell {
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-secondary);
+  text-transform: uppercase;
+  border-block-start: 1px solid var(--pm-border-default);
+  border-block-end: 0;
+}
+
+/* The whole header is the target, and it is a real button. */
+.sortButton {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  gap: var(--pm-space-1);
+  align-items: center;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+/* `table.sorticon`: `fade`, control class, on an always-mounted glyph, so
+   `stateFeedback` covers it.
+
+   The glyph appears only on approach (hover, keyboard focus, or the sorted
+   column), because permanent ↑↓ pairs on every header are noise. */
+.sortIcon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--pm-text-muted);
+  opacity: 0;
+
+  /* The glyph *fades* in, because an instant change would pop. Colour also
+     transitions for the change to active. Opacity is not movement, so reduced
+     motion leaves it. */
+  transition:
+    opacity var(--pm-motion-duration-control) var(--pm-motion-easing-standard),
+    color var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+.sortButton:focus-visible .sortIcon,
+.header[data-sortable]:hover .sortIcon,
+.sortIcon[data-active] {
+  opacity: 1;
+}
+
+/* numeric — right-aligned, figures that line up in a column ------------------
+   Tabular figures from the numeric token, in the column's own font. A mono
+   family would change every figure column regardless of the theme. */
+
+.header[data-numeric],
+.cell[data-numeric] {
+  font-variant-numeric: var(--pm-font-numeric);
+  text-align: end;
+}
+
+/* states -------------------------------------------------------------------- */
+
+.row[data-interactive] {
+  cursor: pointer;
+}
+
+/* A selected row uses the selection colours, not the hover colours. Its fill is
+   the selected surface, not the selection fill: a row's cells hold text in
+   every role, and controls, and a system may draw the selection fill as its
+   ink. With a hue the selected surface has a hover step, so pointing at a
+   selected row still gives feedback. A system with no hue has none: its two
+   selected surfaces are one colour, because secondary text is at its floor on
+   it, and a selected row looks the same under the pointer. */
+.row[data-selected] .cell {
+  background: var(--pm-selection-surface);
+}
+
+/* The last body row keeps its border except above a foot, whose stronger top
+   rule is the edge, so the lines do not double (as with the header's single
+   rule). */
+tbody:has(+ .foot) .row:last-child .cell {
+  border-block-end: 0;
+}
+
+.row[data-interactive][data-selected]:hover .cell {
+  background: var(--pm-selection-surface-hover);
+}
+
+.sortIcon[data-active] {
+  color: var(--pm-accent-text);
+}
+
+.header[data-sortable]:hover .sortButton {
+  color: var(--pm-text-primary);
+}
+
+/* After selection and excluding it, because the state the reader chose wins over
+   the pointer position. */
+.row[data-interactive]:hover:not([data-selected]) .cell {
+  background: var(--pm-bg-subtle);
+}
+
+/* sticky header — the border-bottom carries the edge, and the fill has to be
+   opaque or the rows scroll through it ----------------------------------------
+ *
+ * The header is raised over the rows. A positioned box paints above an earlier
+ * positioned box, and the rows come after the header: a Checkbox's box in a
+ * cell is `relative`, and DataTable's detail is `sticky`, so without the lift
+ * each one is drawn across the header as it scrolls under it. `raise` is the
+ * stacking scale's step for a lift inside one member (`docs/layout.md`).
+ *
+ * The wrapper isolates the table, so the lift stays inside it. Without that
+ * the header would also be raised over whatever shares the page's stacking
+ * context with the table, such as the shell's skip link, which is on `raise`
+ * too.
+ *
+ * The row groups after the header are isolated too. A member in a cell may
+ * lift a part of itself on `raise`, as SplitButton lifts its focused half. A
+ * later box on the header's own step paints above the header, and inside an
+ * isolated row group that lift is over the rows only. */
+
+.wrapper[data-sticky-header],
+.wrapper[data-sticky-header] .head ~ * {
+  isolation: isolate;
+}
+
+.wrapper[data-sticky-header] .head {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: var(--pm-z-raise);
+  background: var(--pm-bg-surface);
+}

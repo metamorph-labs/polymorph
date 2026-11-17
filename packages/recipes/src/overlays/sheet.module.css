@@ -1,0 +1,110 @@
+/* The sheet presentation (`design/components/README.md`).
+ *
+ * Drawer `side="bottom"`'s anatomy, promoted to a shared recipe. `drawer.md`
+ * remains the owner of the visual spec. Every member with a sheet form
+ * (Dialog's `presentation="sheet"`, Menu's phone form, Popover's opt-in, and
+ * ContextMenu and SplitButton through Menu's lane) composes these classes
+ * instead of re-deriving them.
+ *
+ * The anatomy is keyed on `data-presentation="sheet"`, the sheet
+ * presentation's attribute contract. It is resolved state: present exactly
+ * while the surface is drawn as a sheet, and absent in the member's anchored or
+ * card form. CSS keys the anatomy off it, the browser tests assert it, and the
+ * member sets it from the same `30rem` threshold its geometry uses.
+ *
+ * The scrim is Dialog's, unchanged (as the sheet presentation specifies), but
+ * restated here rather than composed, on purpose. Dialog's sheet form composes
+ * `panel` from this file, and a `composes` edge back into `dialog.module.css`
+ * would make each file depend on the other. The cost is three structural
+ * declarations, and the bg token is the same token.
+ *
+ * Safe-area padding is not here. The sheet presentation adds
+ * `env(safe-area-inset-bottom)` to the member's own edge padding, and members
+ * pad differently (a menu list pads `--pm-space-2`, a dialog `--pm-space-6`).
+ * Each member adds its own safe-area padding; only the box is shared. */
+
+/* `overlay` in the stacking order: every portalled overlay surface uses one
+   layer, above shell chrome and below toasts. This puts a sheet's scrim above a
+   drawer-mode rail (`--pm-z-shell`) instead of below it. */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--pm-z-overlay);
+  background: var(--pm-bg-scrim);
+}
+
+/* Pins the panel to the bottom edge and takes no clicks itself, so a click that
+   misses the panel lands on the scrim and dismisses. Drawer's bottom
+   positioner, unchanged. */
+.positioner {
+  position: fixed;
+  inset: 0;
+  z-index: var(--pm-z-overlay);
+  display: flex;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+/* Drawer bottom's panel, promoted (the sheet presentation's anatomy table):
+   attached to the bottom edge, full-width, top corners `--pm-radius-surface`, top
+   border only, and the flat-overlay rule applies, so a transient surface stands
+   apart in every system.
+
+   Height: as tall as its content, up to drawer-bottom's `md` cap. The `vh` base
+   is here and the `dvh` override is in the `@supports` block after this rule,
+   because a dedupe minifier deletes a same-property pair. On phones `100vh`
+   includes the collapsed browser chrome, and a cap measured against it hides
+   the sheet's last row behind the URL bar (`docs/layout.md`). */
+.panel[data-presentation='sheet'] {
+  display: flex;
+  flex-direction: column;
+  inline-size: 100%;
+  max-block-size: 66vh;
+  pointer-events: auto;
+  background: var(--pm-bg-overlay);
+  border-block-start: 1px solid var(--pm-border-subtle);
+  border-start-start-radius: var(--pm-radius-surface);
+  border-start-end-radius: var(--pm-radius-surface);
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
+  box-shadow: var(--pm-shadow-transient);
+}
+
+@supports (height: 1dvh) {
+  .panel[data-presentation='sheet'] {
+    max-block-size: 66dvh;
+  }
+}
+
+/* A programmatically focused panel is the focus convention's standard
+   exception: the ring belongs on the control the reader will use, never on a
+   whole sheet. */
+.panel:focus-visible {
+  outline: none;
+}
+
+/* A closing surface is no longer a click target. This applies the motion law
+   "motion never blocks input" (`docs/motion.md`): an overlay that is closing
+   must not capture the next click. Both parts, because the scrim is the dismiss
+   surface. */
+.scrim[data-state='closed'],
+.panel[data-state='closed'] {
+  pointer-events: none;
+}
+
+.panel[data-state='open'] {
+  pointer-events: auto;
+}
+
+/* Glass (`depth: glass`): the pane uses the surface role at the engine's mix
+   (`--pm-material-surface`), and the material provides the lift that the
+   overlay stacking order provides elsewhere. The backdrop shows through the
+   pane as a blurred, saturated wash, so the surface stands apart by its
+   material rather than by a lighter step. The mix is a contrast decision that
+   the glass law measures over worst-case backdrops; a recipe only applies it. */
+@container style(--pm-axis-depth: glass) {
+  .panel[data-presentation='sheet'] {
+    background: var(--pm-material-surface);
+    backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  }
+}

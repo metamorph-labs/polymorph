@@ -1,0 +1,187 @@
+/* LogView — `design/components/log-view.md`.
+ *
+ * ChatThread's frame around CodeBlock's surface. The member fills the box it is
+ * given and scrolls inside it, and the viewport is a code surface: mono at the
+ * `text.sm` step on the subtle background, inside a hairline.
+ *
+ * Colour is never the only mark of a level. A line with a level carries an
+ * icon in its marker cell and a hidden word, and the cell's wash repeats what
+ * the icon says. */
+
+.root {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+/* The scroll region, on both axes, because an unwrapped line scrolls
+   sideways. It sets no `overscroll-behavior`, unlike ChatThread's: a log sits
+   in a page that may scroll, and `contain` would stop the wheel over a log
+   with nothing to scroll from reaching the page. */
+.viewport {
+  composes: focusRing from '../conventions/focus.module.css';
+  flex: 1;
+  min-block-size: 0;
+  overflow: auto;
+  font-family: var(--pm-font-mono);
+  font-size: var(--pm-text-sm-size);
+  line-height: var(--pm-text-sm-line-height);
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-subtle);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-md);
+}
+
+/* The lines. Unwrapped, the list is as wide as its longest line, so every row
+   and its marker cell reach the same edge when the log scrolls sideways. */
+.lines {
+  min-inline-size: 100%;
+  padding: var(--pm-space-2) 0;
+  margin: 0;
+  list-style: none;
+}
+
+.root:not([data-wrap]) .lines {
+  inline-size: max-content;
+}
+
+/* One grid per line, so a line that arrives lays out only itself. The columns
+   are the marker, the time and the text. A line with no time leaves its column
+   empty, so the text starts where every other line's text starts. */
+.line {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--pm-space-6) auto minmax(0, 1fr);
+}
+
+/* One line tall when the cell is empty, so a line with no level is still a row.
+   The cell spans every row a wrapped line takes, so its wash marks the whole
+   line, and the icon sits centred in the first row, beside where the line
+   starts. */
+.marker {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-block-size: calc(var(--pm-text-sm-size) * var(--pm-text-sm-line-height));
+  padding-block-start: calc(
+    (var(--pm-text-sm-size) * var(--pm-text-sm-line-height) - var(--pm-icon-size-sm)) / 2
+  );
+  user-select: none;
+}
+
+/* Law-checked pairings: the icon is `{tone}.text` on `{tone}.subtle`, and the
+   wash stops at the marker cell, because the law holds `text.primary` on no
+   status wash. `info` is the quiet level: a muted icon on the log's own
+   surface, which the law holds too. */
+.line[data-level='info'] > .marker {
+  color: var(--pm-text-muted);
+}
+
+.line[data-level='warning'] > .marker {
+  color: var(--pm-warning-text);
+  background: var(--pm-warning-subtle);
+}
+
+.line[data-level='error'] > .marker {
+  color: var(--pm-danger-text);
+  background: var(--pm-danger-subtle);
+}
+
+/* The time and the source are metadata, one step quieter than the line. The
+   space after the time is for a screen reader; `nowrap` keeps the time on one
+   row and lets that space hang at its end, so it draws no width. */
+.time {
+  grid-column: 2;
+  padding-inline-start: var(--pm-space-3);
+  color: var(--pm-text-muted);
+  white-space: nowrap;
+}
+
+.source {
+  color: var(--pm-text-muted);
+}
+
+/* Whitespace is content, as in CodeBlock. Unwrapped, a long line stays on its
+   row and the log scrolls sideways. Wrapped, which is the default, a long line
+   breaks inside its row, as Diff's do, and `anywhere` breaks an unbroken token
+   too, so the log never widens its container. */
+.text {
+  grid-column: 3;
+  padding-inline: var(--pm-space-3);
+  white-space: pre;
+}
+
+.root[data-wrap] .text {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* The word a screen reader hears for a level. Its line is positioned, so the
+   hidden box sits inside the scroll region and scrolls with its line. */
+.spoken {
+  composes: visuallyHidden from '../conventions/a11y.module.css';
+}
+
+/* Where the next line will appear while more are coming: a row with
+   StreamingText's steady caret at the text's start. The caret is a 2px stroke
+   (a structural literal) one character tall, in the accent fill. It does not
+   blink, because a loop needs a pattern and this one has none. */
+.end {
+  display: flex;
+  align-items: center;
+  min-block-size: calc(var(--pm-text-sm-size) * var(--pm-text-sm-line-height));
+  padding-inline-start: calc(var(--pm-space-6) + var(--pm-space-3));
+}
+
+.caret {
+  inline-size: 2px;
+  block-size: var(--pm-text-sm-size);
+  background: var(--pm-accent-bg);
+  border-radius: 1px;
+}
+
+/* ChatThread's jump control: it floats, centred, over the bottom of the log,
+   one step up the stacking scale. The reader's state shows it. Otherwise it is
+   hidden with `display: none`, so it leaves the tab order and the
+   accessibility tree as well as the screen. */
+.jump {
+  position: absolute;
+  inset-block-end: var(--pm-space-4);
+  inset-inline: 0;
+  z-index: var(--pm-z-raise);
+  display: none;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.root[data-state='detached'] .jump {
+  display: flex;
+}
+
+/* An outline Button is transparent, and the control floats over lines of
+   text, so it sits on a raised surface of its own shape. The law holds the
+   Button's text on `bg.raised`. */
+.backing {
+  display: inline-flex;
+  pointer-events: auto;
+  background: var(--pm-bg-raised);
+  border-radius: var(--pm-radius-control);
+  box-shadow: var(--pm-shadow-raised);
+}
+
+/* Fixture harness from the spec: a fixed-height box for the log to fill
+   (ScrollArea's pattern), built from tokens because the CSS law covers every
+   file in this package. */
+.harness {
+  inline-size: 100%;
+  block-size: calc(var(--pm-space-10) * 3);
+}
+
+/* The spec's narrow entry: a phone's column, where a long line must wrap. */
+.harnessNarrow {
+  inline-size: calc(var(--pm-space-10) * 3);
+  block-size: calc(var(--pm-space-10) * 3);
+}

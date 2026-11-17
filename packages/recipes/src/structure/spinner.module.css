@@ -1,0 +1,33 @@
+/* Spinner — `design/components/spinner.md`.
+ *
+ * `spin` is composed, bringing its period, inverse temperament scaling and the
+ * three ways it stops at `none`. No reduced-motion rule, on purpose: a stopped
+ * three-quarter arc under `role="status"` still means "loading". */
+
+.spinner {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
+
+/* The `spinner.glyph` binding: `spin`, ambient. Only the glyph rotates, not the
+   whole element, so the label does not rotate with it. */
+.glyph {
+  composes: spin from '../conventions/motion.module.css';
+  display: inline-flex;
+}
+
+/* Visually hidden but read by screen readers, because the glyph shows the word
+   but has no text. */
+.label {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+  clip-path: inset(50%);
+}

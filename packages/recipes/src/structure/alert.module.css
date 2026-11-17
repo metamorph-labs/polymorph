@@ -1,0 +1,154 @@
+/* Alert — `design/components/alert.md`.
+ *
+ * Toast keeps one neutral surface because a corner of tinted cards looks like an
+ * alarm panel. An Alert sits among page content, so it takes the tinted wash to
+ * stand out from it.
+ *
+ * Two elements: the root owns the collapse and the panel owns the wash. A box
+ * that animated its own height would animate its padding too, and the text
+ * would shift against the border. */
+
+.alert {
+  display: grid;
+  grid-template-rows: 1fr;
+
+  /* Both parts of the motion spec's interruption law on size
+     (`design/motion/motion.md`): no scrolling while the size animates, and the
+     panel is clipped rather than pushed out. */
+  overflow: hidden;
+}
+
+.panel {
+  display: flex;
+  gap: var(--pm-space-3);
+  align-items: flex-start;
+  min-block-size: 0;
+  padding: var(--pm-space-4);
+  overflow: hidden;
+  border: 1px solid;
+  border-radius: var(--pm-radius-lg);
+}
+
+/* One text line tall and top-aligned, not centred on the panel, so a multi-line
+   alert keeps the glyph beside its first line. */
+.glyph {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  block-size: calc(var(--pm-text-sm-line-height) * var(--pm-text-sm-size));
+}
+
+.body {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+/* Hierarchy comes from colour, not a heavier weight. This is Toast's rule, for
+   the same reason: title and body differ by one step of importance, not two. */
+.title {
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+}
+
+.text {
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+}
+
+/* The gap applies only between title and body, so a body without a title starts
+   at the top of the panel. */
+.title + .text {
+  margin-block-start: var(--pm-space-1);
+}
+
+/* `action`, then `secondaryAction`, in one row that wraps on a narrow Alert.
+   One class for the row whether it holds one action or two, so a vendored copy
+   of the member that renders one action still finds it. */
+.action {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-2);
+  align-items: center;
+  margin-block-start: var(--pm-space-2);
+}
+
+.close {
+  flex: none;
+}
+
+/* tones — the wash, its edge, and the glyph ---------------------------------
+ *
+ * Law-checked pairings: the glyph is `{tone}.text` on `{tone}.subtle`, and the
+ * title and body use `text.primary`/`text.secondary`, which are lawful on every
+ * `bg.*`, the `subtle` steps included. */
+
+.alert[data-tone='info'] .panel {
+  background: var(--pm-info-subtle);
+  border-color: var(--pm-info-border);
+}
+
+.alert[data-tone='info'] .glyph {
+  color: var(--pm-info-text);
+}
+
+.alert[data-tone='success'] .panel {
+  background: var(--pm-success-subtle);
+  border-color: var(--pm-success-border);
+}
+
+.alert[data-tone='success'] .glyph {
+  color: var(--pm-success-text);
+}
+
+.alert[data-tone='warning'] .panel {
+  background: var(--pm-warning-subtle);
+  border-color: var(--pm-warning-border);
+}
+
+.alert[data-tone='warning'] .glyph {
+  color: var(--pm-warning-text);
+}
+
+.alert[data-tone='danger'] .panel {
+  background: var(--pm-danger-subtle);
+  border-color: var(--pm-danger-border);
+}
+
+.alert[data-tone='danger'] .glyph {
+  color: var(--pm-danger-text);
+}
+
+/* the departure --------------------------------------------------------------
+ *
+ * `alert.dismiss`: `collapse` in exit mode, the toast stack's gap-close in page
+ * flow. The content fades over the first half and the row closes over the
+ * second. No entrance animation: the one hero transition per view
+ * (`docs/motion.md`) is not spent on a paragraph.
+ *
+ * `0fr` closes the row without a measured height, so CSS can do this. The
+ * component still reads the binding to know when the row has closed. */
+.alert[data-state='closed'] {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    opacity calc(var(--pm-motion-duration-surface-exit) * 0.5) var(--pm-motion-easing-exit),
+    grid-template-rows calc(var(--pm-motion-duration-surface-exit) * 0.5)
+      var(--pm-motion-easing-exit) calc(var(--pm-motion-duration-surface-exit) * 0.5);
+}
+
+/* Reduced-motion projection (`design/motion/motion.md`): the size change is
+   instant (left out of the transition list) and the content still fades. */
+@media (prefers-reduced-motion: reduce) {
+  .alert[data-state='closed'] {
+    transition: opacity calc(var(--pm-motion-duration-surface-exit) * 0.5)
+      var(--pm-motion-easing-exit);
+  }
+}

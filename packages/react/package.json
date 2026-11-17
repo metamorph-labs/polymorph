@@ -1,0 +1,62 @@
+{
+  "name": "@polymorph/react",
+  "version": "1.0.15",
+  "description": "The React foundation a consumer installs: the engine re-exported, the icon gateway, the motion presence components and the control hook. Vendored members import this and nothing deeper.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./motion": "./src/motion/index.ts",
+    "./icon.module.css": "./src/icon/icon.module.css"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "imports": {
+    "#stylesheet/*": {
+      "react-server": "./dist/*",
+      "node": "./dist/no-stylesheet.js",
+      "default": "./dist/*"
+    }
+  },
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "scripts": {
+    "build": "NODE_ENV=production vite build && tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@polymorph/engine": "workspace:*",
+    "lucide": "^1.27.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@polymorph/conformance": "workspace:*",
+    "@testing-library/react": "^16.3.2",
+    "@vitejs/plugin-react": "^6.0.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.5"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "restricted",
+    "exports": {
+      ".": {
+        "types": "./dist/types/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./motion": {
+        "types": "./dist/types/motion/index.d.ts",
+        "import": "./dist/motion.js"
+      },
+      "./style.css": "./dist/react.css"
+    }
+  }
+}

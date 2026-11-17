@@ -1,0 +1,144 @@
+/* ChoiceCard — `design/components/choice-card.md`.
+ *
+ * This borrows Card's *geometry* (border, radius, padding) but deliberately not its elevation. A
+ * choice sits in the page, not above it. Its hover is the selection treatment's ghost wash, never
+ * Card's lift, because elevation on hover signals navigation and would imply a destination.
+ *
+ * Checked applies the conventions' selection treatment to this anatomy: the accent wash on the
+ * surface, the border *colour* changed to the accent at the same 1px, and the `confirm` glyph at
+ * the top right. The colour changes and the width never does. Selection is never shown by colour
+ * alone. The glyph stays visible to a user who cannot see the tint, and the wash and border
+ * reinforce it rather than replace it. */
+
+/* The option grid. The *container* resolves the column maximum on Grid's own scale, composed
+   rather than restated. `data-columns` means the same here as on a Grid, so the two cannot drift
+   apart. */
+.grid {
+  composes: grid from '../layout/layout.module.css';
+  gap: var(--pm-space-4);
+}
+
+/* The whole area is one label. The card is the hit target, and the hidden control inside receives
+   focus. `stateFeedback` is composed so the wash and border colours use the conventions' shared
+   state-feedback transitions. At `none` the tokens are 0 and colours change instantly. */
+.option {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  position: relative;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: var(--pm-space-6);
+  cursor: pointer;
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-lg);
+}
+
+/* Visually hidden but real: a true form control that the card wraps as its label, never a styled
+   div with a hand-set `aria-checked`. Radix keeps ownership of state, keyboard and serialization. */
+.control {
+  composes: visuallyHidden from '../conventions/a11y.module.css';
+}
+
+.icon {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  margin-block-end: var(--pm-space-3);
+  color: var(--pm-text-secondary);
+}
+
+/* The text column reserves space for the glyph in **both** states. The glyph appears in space that
+   was always reserved, so nothing shifts and the first line never runs under it. */
+.label {
+  padding-inline-end: calc(var(--pm-icon-size-md) + var(--pm-space-2));
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+}
+
+/* The two-line item style (`combobox.md`, as CheckboxGroup uses it). */
+.description {
+  margin-block-start: 2px;
+  padding-inline-end: calc(var(--pm-icon-size-md) + var(--pm-space-2));
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+}
+
+/* The `choiceCard.glyph` binding, identical to Checkbox's indicator binding. `spring-pop` in, run
+   on the enter curve for the same reasons as Checkbox: the glyph unmounts, so the presence wrapper
+   cannot hold it, and at icon size the curve difference is not visible. The exit is the unmount. */
+.glyph {
+  position: absolute;
+  inset-block-start: var(--pm-space-4);
+  inset-inline-end: var(--pm-space-4);
+  display: inline-flex;
+  color: var(--pm-accent-text);
+  animation: choice-card-pop var(--pm-motion-duration-control) var(--pm-motion-easing-enter);
+}
+
+@keyframes choice-card-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+/* states -------------------------------------------------------------------- */
+
+/* The focus ring is drawn on the card. The hidden control receives focus, but the card is what the
+   user watches. This mirrors `card.md`'s interactive rules, including the glow. It comes first
+   among the state rules only for the specificity law. It shares no property with them, so nothing
+   overrides the ring. */
+.option:has(:focus-visible) {
+  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline-offset: var(--pm-focus-offset);
+  box-shadow: var(--pm-glow-focus);
+}
+
+/* Only the selection treatment's ghost wash. Border and elevation do not change. Hover on a
+   *selected* card changes nothing, because there is nothing to preview. */
+.option:hover:not([data-state='checked'], [data-disabled]) {
+  background: var(--pm-bg-subtle);
+}
+
+/* Label, description and icon colours do not change. The selection indicators (wash, border
+   colour, glyph) are the whole change. */
+.option[data-state='checked'] {
+  background: var(--pm-accent-subtle);
+  border-color: var(--pm-accent-bg);
+}
+
+/* The conventions' disabled treatment. It comes after `checked`, so a checked and disabled card
+   loses its accent colours while the glyph still shows the state. */
+.option[data-disabled] {
+  cursor: not-allowed;
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-subtle);
+}
+
+.option[data-disabled] .icon,
+.option[data-disabled] .label,
+.option[data-disabled] .description,
+.option[data-disabled] .glyph {
+  color: var(--pm-text-disabled);
+}
+
+/* Reduced motion (motion.md): spring-pop becomes a fade. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes choice-card-pop {
+    from {
+      opacity: 0;
+    }
+  }
+}

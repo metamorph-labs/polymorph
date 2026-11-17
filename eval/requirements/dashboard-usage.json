@@ -1,0 +1,163 @@
+{
+  "requirements": [
+    {
+      "id": "headline-numbers",
+      "says": "Four headline numbers are shown.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": "Dashboard",
+              "props": {
+                "stats": {
+                  "items": {
+                    "min": 4
+                  }
+                }
+              }
+            }
+          },
+          {
+            "count": {
+              "component": "Stat"
+            },
+            "min": 4
+          }
+        ]
+      }
+    },
+    {
+      "id": "direction-of-change",
+      "says": "Each headline number says which way it moved since the previous period.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": "Dashboard",
+              "props": {
+                "stats": {
+                  "items": {
+                    "min": 4,
+                    "anyField": {
+                      "delta": "given",
+                      "trend": "given"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "count": {
+              "component": "Stat",
+              "anyProp": {
+                "delta": "given",
+                "trend": "given"
+              }
+            },
+            "min": 4
+          }
+        ]
+      }
+    },
+    {
+      "id": "chart",
+      "says": "One chart shows requests per day across the period.",
+      "check": {
+        "element": {
+          "kind": "chart",
+          "props": {
+            "data": "given"
+          }
+        }
+      }
+    },
+    {
+      "id": "period-switch",
+      "says": "The period can be switched between this month and last month.",
+      "check": {
+        "element": {
+          "component": ["SegmentedControl", "Tabs", "Select", "RadioGroup"],
+          "props": {
+            "onChange": "given"
+          }
+        }
+      }
+    },
+    {
+      "id": "holds-layout-while-loading",
+      "says": "The layout holds while the numbers load.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "kind": "chart",
+              "props": {
+                "loading": "dynamic"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Skeleton"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "download",
+      "says": "A control downloads the period's usage as a file.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": ["Button", "SplitButton"],
+              "props": {
+                "icon": {
+                  "is": "download"
+                }
+              }
+            }
+          },
+          {
+            "element": {
+              "component": ["Button", "SplitButton"],
+              "props": {
+                "label": {
+                  "matches": "download|export|csv"
+                }
+              }
+            }
+          },
+          {
+            "element": {
+              "component": ["Button", "SplitButton"],
+              "props": {
+                "label": "dynamic"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Link",
+              "props": {
+                "children": {
+                  "matches": "download|export|csv"
+                }
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Link",
+              "props": {
+                "children": "dynamic"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

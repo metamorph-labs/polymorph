@@ -1,0 +1,65 @@
+/* AudioPlayer — `design/components/audio-player.md`.
+ *
+ * One row: the play Button, the scrubber and the time. The Button and the
+ * Slider bring their own recipes, so this file lays out the row and draws the
+ * time and the failure words. The player draws no surface of its own: a voice
+ * message sits in a ChatMessage's bubble, and a recorded call in a Card. */
+
+.root {
+  display: flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+/* The scrubber takes the room the Button and the time leave. Its basis gives a
+   player in a box that sizes to its content a track a reader can aim at. */
+.scrubber {
+  display: flex;
+  flex: 1 1 var(--pm-space-10);
+  min-inline-size: 0;
+}
+
+/* The elapsed and the total time, as Slider's readout draws a value: the
+   theme's tabular figures keep the digits' width while the clock moves. */
+.time {
+  display: inline-flex;
+  flex: none;
+  gap: var(--pm-space-1);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  font-variant-numeric: var(--pm-font-numeric);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+  white-space: nowrap;
+}
+
+.divider {
+  color: var(--pm-text-muted);
+}
+
+/* The words in place of the scrubber and the time when the file cannot be
+   loaded. The glyph takes the danger text colour, which the pairing checks
+   hold on every `bg.*` surface, and the words stay secondary. */
+.failure {
+  display: inline-flex;
+  flex: 1 1 auto;
+  gap: var(--pm-space-2);
+  align-items: center;
+  min-inline-size: 0;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+}
+
+.failureGlyph {
+  display: inline-flex;
+  flex: none;
+  color: var(--pm-danger-text);
+}

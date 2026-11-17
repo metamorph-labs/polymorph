@@ -1,0 +1,232 @@
+{
+  "spec": "polymorph-screen/1",
+  "name": "SignInUp",
+  "purpose": "One screen where a returning customer signs in and a new one signs up, with Google, GitHub or email.",
+  "inputs": [
+    {
+      "name": "mode",
+      "type": "'signin' | 'signup'",
+      "doc": "Which form is showing; the container sets the opening one."
+    },
+    { "name": "onModeChange", "type": "(mode: string) => void" },
+    { "name": "name", "type": "string", "doc": "Sign-up name field value." },
+    { "name": "onNameChange", "type": "(value: string) => void" },
+    { "name": "email", "type": "string" },
+    { "name": "onEmailChange", "type": "(value: string) => void" },
+    { "name": "password", "type": "string" },
+    { "name": "onPasswordChange", "type": "(value: string) => void" },
+    {
+      "name": "pending",
+      "type": "boolean",
+      "doc": "A submission is in flight. Disables the fields and providers and puts the submit Button in its loading state, which ignores presses."
+    },
+    {
+      "name": "error",
+      "type": "string",
+      "doc": "Message for a rejected sign-in; deliberately does not say whether email or password was wrong."
+    },
+    { "name": "onSignIn", "type": "() => void" },
+    { "name": "onSignUp", "type": "() => void" },
+    { "name": "onGoogle", "type": "() => void" },
+    { "name": "onGitHub", "type": "() => void" },
+    { "name": "resetHref", "type": "string", "doc": "Where the forgotten-password flow lives." },
+    {
+      "name": "labels",
+      "type": "{ title: string; description: string; signInTab: string; signUpTab: string; google: string; github: string; name: string; email: string; password: string; showPassword: string; passwordRule: string; forgot: string; signInSubmit: string; signUpSubmit: string }",
+      "doc": "All user-facing text, in the app's language."
+    }
+  ],
+  "root": {
+    "component": "AuthPage",
+    "props": {
+      "title": { "$": "labels.title" },
+      "description": { "$": "labels.description" },
+      "pending": { "$": "pending" },
+      "transitionKey": { "$": "mode" }
+    },
+    "children": [
+      {
+        "component": "Stack",
+        "props": { "gap": 4 },
+        "children": [
+          { "component": "Alert", "props": { "tone": "danger", "title": { "$": "error" } } },
+          {
+            "component": "Stack",
+            "props": { "gap": 3 },
+            "children": [
+              {
+                "component": "ProviderButton",
+                "props": {
+                  "provider": "google",
+                  "label": { "$": "labels.google" },
+                  "onClick": { "$": "onGoogle" },
+                  "disabled": { "$": "pending" }
+                }
+              },
+              {
+                "component": "ProviderButton",
+                "props": {
+                  "provider": "github",
+                  "label": { "$": "labels.github" },
+                  "onClick": { "$": "onGitHub" },
+                  "disabled": { "$": "pending" }
+                }
+              }
+            ]
+          },
+          { "component": "Separator" },
+          {
+            "component": "Tabs",
+            "props": {
+              "value": { "$": "mode" },
+              "onChange": { "$": "onModeChange" },
+              "tabs": [
+                { "$object": { "value": "signin", "label": { "$": "labels.signInTab" } } },
+                { "$object": { "value": "signup", "label": { "$": "labels.signUpTab" } } }
+              ]
+            },
+            "children": [
+              {
+                "component": "Tabs.Content",
+                "props": { "value": "signin" },
+                "children": [
+                  {
+                    "component": "Stack",
+                    "props": { "gap": 4 },
+                    "children": [
+                      {
+                        "component": "FormField",
+                        "props": { "label": { "$": "labels.email" }, "required": true },
+                        "children": [
+                          {
+                            "component": "Input",
+                            "props": {
+                              "type": "email",
+                              "autoComplete": "email",
+                              "value": { "$": "email" },
+                              "onChange": { "$": "onEmailChange" },
+                              "disabled": { "$": "pending" }
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "component": "FormField",
+                        "props": {
+                          "label": { "$": "labels.password" },
+                          "required": true,
+                          "labelEnd": {
+                            "component": "Link",
+                            "props": { "href": { "$": "resetHref" } },
+                            "children": [{ "$": "labels.forgot" }]
+                          }
+                        },
+                        "children": [
+                          {
+                            "component": "PasswordInput",
+                            "props": {
+                              "toggleLabel": { "$": "labels.showPassword" },
+                              "autoComplete": "current-password",
+                              "value": { "$": "password" },
+                              "onChange": { "$": "onPasswordChange" },
+                              "disabled": { "$": "pending" }
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "component": "Button",
+                        "props": {
+                          "label": { "$": "labels.signInSubmit" },
+                          "type": "submit",
+                          "variant": "solid",
+                          "tone": "accent",
+                          "loading": { "$": "pending" },
+                          "onClick": { "$": "onSignIn" }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "component": "Tabs.Content",
+                "props": { "value": "signup" },
+                "children": [
+                  {
+                    "component": "Stack",
+                    "props": { "gap": 4 },
+                    "children": [
+                      {
+                        "component": "FormField",
+                        "props": { "label": { "$": "labels.name" }, "required": true },
+                        "children": [
+                          {
+                            "component": "Input",
+                            "props": {
+                              "autoComplete": "name",
+                              "value": { "$": "name" },
+                              "onChange": { "$": "onNameChange" },
+                              "disabled": { "$": "pending" }
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "component": "FormField",
+                        "props": { "label": { "$": "labels.email" }, "required": true },
+                        "children": [
+                          {
+                            "component": "Input",
+                            "props": {
+                              "type": "email",
+                              "autoComplete": "email",
+                              "value": { "$": "email" },
+                              "onChange": { "$": "onEmailChange" },
+                              "disabled": { "$": "pending" }
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "component": "FormField",
+                        "props": {
+                          "label": { "$": "labels.password" },
+                          "description": { "$": "labels.passwordRule" },
+                          "required": true
+                        },
+                        "children": [
+                          {
+                            "component": "PasswordInput",
+                            "props": {
+                              "toggleLabel": { "$": "labels.showPassword" },
+                              "autoComplete": "new-password",
+                              "value": { "$": "password" },
+                              "onChange": { "$": "onPasswordChange" },
+                              "disabled": { "$": "pending" }
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "component": "Button",
+                        "props": {
+                          "label": { "$": "labels.signUpSubmit" },
+                          "type": "submit",
+                          "variant": "solid",
+                          "tone": "accent",
+                          "loading": { "$": "pending" },
+                          "onClick": { "$": "onSignUp" }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

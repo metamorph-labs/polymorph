@@ -1,0 +1,145 @@
+/* Radio — `design/components/radio.md`, written as deltas from Checkbox.
+ *
+ * Round at every size, and checked shown as a dot inside a ring rather than a filled
+ * disc. A filled circle looks like a checkbox at a glance. The dot inside a ring
+ * signals "one of several". */
+
+.group {
+  display: flex;
+  gap: var(--pm-space-3);
+  flex-direction: column;
+}
+
+.group[data-orientation='horizontal'] {
+  flex-direction: row;
+  gap: var(--pm-space-5);
+}
+
+.row {
+  display: inline-flex;
+  gap: var(--pm-space-3);
+  align-items: flex-start;
+  min-block-size: var(--pm-control-height-sm);
+  padding-block: calc(
+    (var(--pm-control-height-sm) - var(--pm-text-sm-line-height) * var(--pm-text-sm-size)) / 2
+  );
+  cursor: pointer;
+}
+
+.circle {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--pm-icon-size-md);
+  block-size: var(--pm-icon-size-md);
+  padding: 0;
+  background: var(--pm-bg-surface);
+
+  /* `border.field`, not `strong`, for Checkbox's reason: it is an interactive edge. */
+  border: 1px solid var(--pm-border-field);
+  border-radius: var(--pm-radius-pill);
+}
+
+/* The minimum target size without affecting layout, the same technique as Checkbox. */
+.circle::before {
+  position: absolute;
+  inset: calc((var(--pm-icon-size-md) - var(--pm-control-height-sm)) / 2);
+  content: '';
+}
+
+/* The `radio.indicator` binding: `spring-pop`, using the enter curve for the same
+   reason as Checkbox. Radix unmounts the indicator, so the presence animation has
+   nothing to keep mounted, and at half an icon's size the curve difference is not
+   visible. */
+.dot {
+  display: inline-flex;
+  inline-size: calc(var(--pm-icon-size-md) / 2);
+  block-size: calc(var(--pm-icon-size-md) / 2);
+  background: var(--pm-accent-bg);
+  border-radius: var(--pm-radius-pill);
+  animation: radio-pop var(--pm-motion-duration-control) var(--pm-motion-easing-enter);
+}
+
+@keyframes radio-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+.label {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+}
+
+/* Aligned to the label's first line (the conventions' size system). */
+.row .circle {
+  margin-block-start: calc(
+    (var(--pm-text-sm-line-height) * var(--pm-text-sm-size) - var(--pm-icon-size-md)) / 2
+  );
+}
+
+/* states ------------------------------------------------------------------- */
+
+.circle[data-state='checked'] {
+  border-color: var(--pm-accent-bg);
+}
+
+.group[data-invalid] .circle {
+  border-color: var(--pm-danger-border);
+}
+
+.circle[data-disabled] {
+  cursor: not-allowed;
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-subtle);
+}
+
+.circle[data-disabled][data-state='checked'] {
+  border-color: var(--pm-border-subtle);
+}
+
+.circle[data-disabled] .dot {
+  background: var(--pm-border-subtle);
+}
+
+.circle:hover:not([data-disabled], [data-state='checked']) {
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-strong);
+}
+
+.circle[data-state='checked']:hover:not([data-disabled]) {
+  border-color: var(--pm-accent-bg-hover);
+}
+
+.circle[data-state='checked']:hover:not([data-disabled]) .dot {
+  background: var(--pm-accent-bg-hover);
+}
+
+.group[data-disabled] .row,
+.row:has(.circle[data-disabled]) {
+  cursor: not-allowed;
+}
+
+.group[data-disabled] .label,
+.row:has(.circle[data-disabled]) .label {
+  color: var(--pm-text-disabled);
+}
+
+/* Reduced-motion version (motion.md): spring-pop becomes fade. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes radio-pop {
+    from {
+      opacity: 0;
+    }
+  }
+}

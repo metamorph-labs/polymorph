@@ -1,0 +1,186 @@
+/* Input — `design/components/input.md`.
+ *
+ * The container is styled, and the native `<input>` is transparent and fills it. This split lets
+ * the leading icon, the clear button and the trailing slot take their colour from the same state
+ * as the border, instead of each deriving it separately.
+ *
+ * Selectors ascend in specificity, as in button.module.css. Hover is excluded from the states it
+ * must not override, rather than being out-specified by them. */
+
+.field {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  max-inline-size: 100%;
+  block-size: var(--pm-control-height-md);
+  padding-inline: var(--pm-space-5);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  cursor: text;
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-field);
+  border-radius: var(--pm-radius-control);
+
+  /* The control seat shadow, the same token Button's fill uses. A field on a surface of its own
+     colour would be outlined by its border alone, and a single hairline looks like a wireframe.
+     Flat systems resolve the token to `none` and rely on the border alone, by design. */
+  box-shadow: var(--pm-shadow-seat);
+}
+
+/* Transparent, borderless, and using the container's type. `font: inherit` keeps the text on the
+   type scale without restating the text tokens. */
+.input {
+  flex: 1;
+  min-inline-size: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+/* Firefox dims placeholders by default. The muted role already makes them lighter, so they must
+   not be dimmed twice. */
+.input::placeholder {
+  color: var(--pm-text-muted);
+  opacity: 1;
+}
+
+.leading,
+.trailing {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+.leading {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  color: var(--pm-text-muted);
+}
+
+/* The static affix, at adornment strength like the leading icon: beside the value at the size's
+   own text step, never competing with it. The gap to the value is the container's
+   (`--pm-space-3`, `--pm-space-2` at `sm`), the same gap as the leading icon's. */
+.affix {
+  flex: none;
+  color: var(--pm-text-muted);
+}
+
+/* Square, at the field's own height, so the target floor holds at every size.
+ *
+ * The embedded-adornment convention (input.md): muted at rest to match the leading icon and not
+ * compete with the value, primary on a `bg-subtle` wash on hover, its own `radius-sm` inside the
+ * field's `md`, press feedback, and the focus ring. The ring may overflow the field's frame, and
+ * should, because it marks the inner target. Never `--pm-danger-*` in an invalid field, because it
+ * is an action, not a status. */
+.clear {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback pressable from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-self: stretch;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  padding: 0;
+  color: var(--pm-text-muted);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--pm-radius-sm);
+  animation: input-clear-enter var(--pm-motion-duration-control) var(--pm-motion-easing-enter);
+}
+
+/* The `input.clear` binding: `fade`, control class. Only the entrance animates, because an
+   unmounting node cannot animate its exit. Wrapping a field's clear button in presence
+   coordination would gain one frame at the cost of as much machinery as a portal. `fade` is
+   unchanged under reduced motion (motion.md), and at temperament `none` the duration token is 0s,
+   so this needs no reduced-motion rule and no switch-off of its own. */
+@keyframes input-clear-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+.clear:hover {
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-subtle);
+}
+
+/* sizes — the conventions' size system -------------------------------------- */
+
+.field[data-size='sm'] {
+  gap: var(--pm-space-2);
+  block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-4);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+}
+
+.field[data-size='lg'] {
+  block-size: var(--pm-control-height-lg);
+  padding-inline: var(--pm-space-6);
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+}
+
+/* states ------------------------------------------------------------------- */
+
+.field[data-invalid] {
+  border-color: var(--pm-danger-border);
+}
+
+.field[data-readonly] {
+  color: var(--pm-text-secondary);
+}
+
+.field[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-subtle);
+
+  /* The seat shadow signals "ready", so disabled removes it. */
+  box-shadow: none;
+}
+
+/* Invalid is excluded rather than overridden, because an error border must stay visible when the
+   pointer passes over it. */
+.field:hover:not([data-disabled], [data-readonly], [data-invalid]) {
+  border-color: var(--pm-border-strong);
+}
+
+.field[data-invalid] .leading {
+  color: var(--pm-danger-text);
+}
+
+.field[data-disabled] .leading,
+.field[data-disabled] .affix {
+  color: var(--pm-text-disabled);
+}
+
+/* The phone minimum (the conventions' focus-zoom floor). Below `30rem` the inner `<input>` uses
+   the text-entry floor's size and line height, so iOS does not zoom the page on focus. Only those metrics change.
+   Colour, weight and tracking stay the same, and the container keeps its own size's text tokens,
+   so the leading icon, affix and clear button do not move. One rule covers every `data-size`,
+   because it overrides the inherited size whatever the container sets. SearchInput and
+   PasswordInput render this Input, so this rule applies to them too (one line in each spec). */
+@media (width < 30rem) {
+  .input {
+    font-size: var(--pm-text-entry-size);
+    line-height: var(--pm-text-entry-line-height);
+  }
+}

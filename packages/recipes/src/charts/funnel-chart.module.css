@@ -1,0 +1,141 @@
+/* FunnelChart — `design/components/funnel-chart.md`.
+ *
+ * `--pm-chart-mark` holds the one series' paint. Its value is always another
+ * custom property (`var(--pm-chart-1)`), never a colour, so a palette change
+ * repaints every bar without this file knowing the palette. Its default is the
+ * de-emphasis grey, because an unresolvable custom property invalidates its
+ * whole declaration and an unpainted bar would not be drawn.
+ *
+ * No axes and no gridlines: every stage prints its own value, so a value axis
+ * would state each number twice. */
+
+.surface {
+  composes: plotSurface from './frame/chart-frame.module.css';
+}
+
+.marks {
+  display: block;
+
+  --pm-chart-mark: var(--pm-chart-other);
+
+  /* Where the bars start, set inline by the component because it is geometry,
+     not a design value. The default is the plot's inline start. */
+  --pm-chart-zero: 0;
+}
+
+/* The engine lays the bars out from the left. In a right-to-left document the
+   marks turn over, so the bars start at the inline start, where the labels and
+   the values already sit by their logical positions. */
+.marks:dir(rtl) {
+  transform: scaleX(-1);
+}
+
+.bar {
+  fill: var(--pm-chart-mark);
+
+  /* No stroke. A border adds ink that is not data. */
+  stroke: none;
+}
+
+/* The invisible pointer target: the stage's whole row, never only the bar. */
+.hit {
+  fill: transparent;
+}
+
+/* Transient emphasis: the stage under the reading position keeps full opacity
+   and the others fade back. The colour does not change. */
+.marks[data-reading] .bars g:not([data-active]) .bar {
+  opacity: 0.8;
+  transition: opacity var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+/* The `chart.marks` binding: bars grow from where they start, stage by stage,
+   with the shared stagger. The entrance animates a transform, because the
+   length is data. `transform-box: view-box` puts the origin in plot
+   coordinates, where `--pm-chart-zero` is measured. */
+.bars g {
+  transform-box: view-box;
+  transform-origin: var(--pm-chart-zero) center;
+  animation: funnel-bars-reach var(--pm-motion-duration-surface) var(--pm-motion-easing-enter)
+    backwards;
+}
+
+.bars g:nth-child(2) {
+  animation-delay: var(--pm-motion-stagger-step);
+}
+
+.bars g:nth-child(3) {
+  animation-delay: calc(var(--pm-motion-stagger-step) * 2);
+}
+
+/* `n + 4`, so the stagger is capped and later stages share its last step. */
+.bars g:nth-child(n + 4) {
+  animation-delay: calc(var(--pm-motion-stagger-step) * 3);
+}
+
+@keyframes funnel-bars-reach {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* The words on the plot: each stage's label, its value and share, and the step
+   between two stages. HTML over the marks, positioned by logical properties
+   from the engine's numbers, so they sit at the inline start in either
+   direction. */
+.text {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.label,
+.value,
+.step {
+  --pm-chart-text-x: 0;
+  --pm-chart-text-y: 0;
+
+  position: absolute;
+  inset-inline-start: var(--pm-chart-text-x);
+  inset-block-start: var(--pm-chart-text-y);
+  transform: translateY(-50%);
+  white-space: nowrap;
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  line-height: var(--pm-text-xs-line-height);
+  font-weight: var(--pm-text-xs-weight);
+  letter-spacing: var(--pm-text-xs-tracking);
+}
+
+/* A label longer than its column ends in an ellipsis. The column is at most two
+   fifths of the plot, so a long stage name never takes the bars' room. */
+.label {
+  --pm-chart-text-width: 100%;
+
+  max-inline-size: var(--pm-chart-text-width);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--pm-text-secondary);
+}
+
+.value {
+  color: var(--pm-text-primary);
+  font-variant-numeric: var(--pm-font-numeric);
+}
+
+/* The step rate is quieter than the values it joins. */
+.step {
+  color: var(--pm-text-muted);
+  font-variant-numeric: var(--pm-font-numeric);
+}
+
+/* Reduced motion: the bars are drawn at their length at once, and the emphasis
+   changes without a transition. The selectors match the rules above, so the
+   projection wins the cascade. */
+@media (prefers-reduced-motion: reduce) {
+  .bars g,
+  .marks[data-reading] .bars g:not([data-active]) .bar {
+    animation: none;
+    transition: none;
+  }
+}

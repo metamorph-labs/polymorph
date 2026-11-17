@@ -1,0 +1,30 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Types only. Vite emits the JavaScript. No declaration maps: the tarball
+    // ships `dist` without `src`, so a map would point at a file no consumer has.
+    //
+    // Output goes to its own scratch directory, because `tsc` nests its output
+    // under the common root of its inputs and the icon rule reads its role map
+    // from `design/` (see `scripts/emit-types.mjs`). Sharing `dist/` with the
+    // bundler's output would mix declarations and modules in one tree, and the
+    // flattening step could not tell them apart.
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "declarationMap": false,
+    "outDir": "dist/.tsc",
+
+    // Not the typecheck's cache file. This config inherits `"incremental"`
+    // from `tsconfig.json`. A `.tsbuildinfo` from that config's `--noEmit` run
+    // would tell this program its declarations are up to date, so tsc would
+    // emit nothing and `emit-types.mjs` would fail. This build's buildinfo
+    // lives in the scratch directory, which `emit-types.mjs` deletes after
+    // flattening, so this build always starts cold.
+    "tsBuildInfoFile": "./dist/.tsc/rules.build.tsbuildinfo"
+  },
+  // The published source only. The rule tester is test support, and the files
+  // at the package root are the build config and the packaging law.
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts", "src/rules/rule-tester.ts"]
+}

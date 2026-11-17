@@ -1,0 +1,116 @@
+/* ArtifactPane — `design/components/artifact-pane.md`.
+ *
+ * Card's surface as a column that fills its box: a header above a hairline and
+ * a scrolling body. The surface recipe matches Card exactly (card.md's four
+ * tokens with the top light), so a pane beside a thread and a card on a page
+ * look like the same material. Unlike Card, the pane's body has a fixed height
+ * and scrolls. */
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  min-block-size: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  overflow: hidden;
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-surface);
+  box-shadow: var(--pm-shadow-resting), var(--pm-shadow-inset-top);
+}
+
+/* The header: mark, heading, switch, the app's controls and close, on one
+   wrapping row above a hairline, at the row inset. */
+.header {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: var(--pm-space-2) var(--pm-space-3);
+  align-items: center;
+  padding: var(--pm-space-3) var(--pm-space-4);
+  border-block-end: 1px solid var(--pm-border-subtle);
+}
+
+.mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--pm-text-muted);
+}
+
+/* The heading grows to fill the row from a basis of twice `--pm-space-10`, not
+   from zero. A flex item with a zero basis shrinks before the row wraps, which
+   truncates the title to "delive…" while the switch keeps its full labels.
+   With a basis, the controls wrap under the title in a narrow pane and the
+   title stays readable. */
+.heading {
+  display: flex;
+  flex: 1 1 calc(var(--pm-space-10) * 2);
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+/* Body size at the emphasis weight, matching Heading level 4. A pane's name is
+   a section title, not a page title, and the thread beside it already carries
+   strong visual weight. */
+.title {
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-xl-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+  color: var(--pm-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  margin: 0;
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+}
+
+.views,
+.actions,
+.close {
+  display: inline-flex;
+  flex: none;
+  gap: var(--pm-space-1);
+  align-items: center;
+}
+
+/* The only scroll region. */
+.body {
+  composes: focusRing from '../conventions/focus.module.css';
+  flex: 1;
+  min-block-size: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.content {
+  padding: var(--pm-space-4);
+}
+
+/* Glass (`depth: glass`): the pane uses the surface material, as HoverCard and
+   Popover do, so a pane beside a glass thread matches the overlays. */
+@container style(--pm-axis-depth: glass) {
+  .pane {
+    background: var(--pm-material-surface);
+    backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  }
+}
+
+/* Fixture harness from the spec (ScrollArea's pattern): a fixed-height box for
+   the pane to fill. */
+.harness {
+  inline-size: 100%;
+  block-size: calc(var(--pm-space-10) * 4);
+}

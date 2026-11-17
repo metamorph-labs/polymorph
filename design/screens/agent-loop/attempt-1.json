@@ -1,0 +1,80 @@
+{
+  "spec": "polymorph-screen/1",
+  "name": "ApiKeysView",
+  "purpose": "The API keys screen, first attempt — rejected.",
+  "inputs": [
+    {
+      "name": "keys",
+      "type": "ApiKey[]"
+    },
+    {
+      "name": "columns",
+      "type": "DataTableColumn<ApiKey>[]"
+    },
+    {
+      "name": "onCreate",
+      "type": "() => void"
+    },
+    {
+      "name": "revoking",
+      "type": "ApiKey | null"
+    },
+    {
+      "name": "onRevokingChange",
+      "type": "(open: boolean) => void"
+    },
+    {
+      "name": "onConfirmRevoke",
+      "type": "() => void"
+    }
+  ],
+  "root": {
+    "component": "ListPage",
+    "props": {
+      "title": "API keys",
+      "className": "keys-page",
+      "actions": {
+        "component": "Button",
+        "props": {
+          "variant": "solid",
+          "tone": "neutral",
+          "label": "Create key",
+          "onClick": {
+            "$": "onCreate"
+          }
+        }
+      },
+      "emptyState": {
+        "$object": {
+          "icon": "api-key",
+          "title": "No API keys yet",
+          "description": "Create one to let an integration authenticate as you."
+        }
+      }
+    },
+    "children": [
+      {
+        "component": "DataTable",
+        "props": {
+          "label": "API keys",
+          "columns": {
+            "$": "columns"
+          },
+          "data": {
+            "$": "keys"
+          },
+          "getRowId": {
+            "$": "getRowId"
+          }
+        }
+      },
+      {
+        "component": "Modal",
+        "props": {
+          "open": true,
+          "title": "Revoke this key?"
+        }
+      }
+    ]
+  }
+}

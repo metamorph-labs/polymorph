@@ -1,0 +1,12 @@
+/* The host rule of `@polymorph/elements`.
+ *
+ * A page-written `poly-*` element keeps its place in the page and draws no
+ * box, so its member's rendering lays out as content of the element's parent.
+ * The element is marked by the custom state `poly-host` rather than an
+ * attribute, because a morphing swap removes the attributes the server did not
+ * send. The rule is a stylesheet rule and not an inline style, so the user
+ * agent's `[hidden] { display: none }` still hides a hidden element. */
+
+:state(poly-host):not([hidden]) {
+  display: contents;
+}

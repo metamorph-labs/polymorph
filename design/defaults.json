@@ -1,0 +1,4 @@
+{
+  "$comment": "Product defaults that are decisions, not code. Changing the default system is a one-word edit here and nothing in apps/ moves (the churn guarantee, docs/verification.md); the default palette is the system's own to declare, in design/systems/<name>.json.",
+  "system": "plain"
+}

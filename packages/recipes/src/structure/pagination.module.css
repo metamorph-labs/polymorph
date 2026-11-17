@@ -1,0 +1,33 @@
+/* Pagination — `design/components/pagination.md`.
+ *
+ * The controls are Buttons and the row is an Inline. This file only keeps each
+ * button at least square, so the row does not shift from page 9 to 10. */
+
+/* The root takes focus when the app's hold disables the button that had it
+   (`pagination.md`, A11y), so it draws the one focus ring. It has the
+   controls' corners, so the ring follows the row it surrounds. */
+.pagination {
+  composes: focusRing from '../conventions/focus.module.css';
+  display: inline-flex;
+  border-radius: var(--pm-radius-control);
+}
+
+.pagination button {
+  min-inline-size: var(--pm-control-height-sm);
+}
+
+/* Stands for pages that are not offered. Sized like a number button so the row
+   spacing stays even. */
+.ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--pm-control-height-sm);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-muted);
+  user-select: none;
+}

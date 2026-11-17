@@ -1,0 +1,5 @@
+# The rendering harness writes each states fixture entry here as PNGs, for a
+# person to look at (`ui/src/test/kotlin/dev/polymorph/ui/RenderingTest.kt`).
+.snapshots/
+# Where an Android SDK is, when one is installed: the machine's, not the project's.
+local.properties

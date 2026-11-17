@@ -1,0 +1,70 @@
+/* CheckboxGroup — `design/components/checkbox-group.md`, written as differences from
+ * `checkbox.md`. The box, its states and its motion are Checkbox's, **unchanged**, reached through
+ * `composes` rather than restated. This follows the chart-frame precedent, so the box's states are
+ * tested once. This file adds only what a group needs: the arrangement, the two-line description,
+ * and the group-level invalid border on every box (the same difference RadioGroup makes). */
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-3);
+}
+
+.group[data-orientation='horizontal'] {
+  flex-direction: row;
+  gap: var(--pm-space-5);
+}
+
+/* One option: the row, and its description under the label. */
+.item {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Checkbox's whole row: target floor, padding, cursor, the baseline-aligned box, the disabled
+   dimming, and the required marker for a required row. This group's rows are never marked
+   required. The group root carries `data-required`, and FormField's label row draws the marker. */
+.row {
+  composes: row from './checkbox.module.css';
+}
+
+.box {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  composes: box from './checkbox.module.css';
+}
+
+/* The `checkbox.indicator` binding comes with the class: `spring-pop` in, `fade` out, and the
+   reduced-motion version defined with the keyframes. */
+.indicator {
+  composes: indicator from './checkbox.module.css';
+}
+
+.label {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  composes: label from './checkbox.module.css';
+}
+
+/* The two-line item recipe (`combobox.md`): the xs type tokens, muted. It starts where the label
+   starts, keeping the box column clear. So the inset is the box's width plus the row's gap,
+   written as that sum rather than a fixed value. */
+.description {
+  margin-block-start: 2px;
+  margin-inline-start: calc(var(--pm-icon-size-md) + var(--pm-space-3));
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+}
+
+.item[data-disabled] .description {
+  color: var(--pm-text-disabled);
+}
+
+/* Group-level invalid recolours every box's border, as in RadioGroup. The boxes carry no
+   `aria-invalid`, because the error belongs to the question. It is stated once on the root, not
+   repeated per option. */
+.group[data-invalid] .box {
+  border-color: var(--pm-danger-border);
+}

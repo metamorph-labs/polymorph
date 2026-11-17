@@ -1,0 +1,82 @@
+/* Link — `design/components/link.md`.
+ *
+ * Underline is never the only signal. `inline` has an underline at rest and thickens it on hover.
+ * `standalone` gets one on hover. So both variants pair the accent colour with a non-colour cue,
+ * and neither depends on the user seeing the accent hue.
+ *
+ * `text-decoration-thickness` is not animatable, and the recipe accepts that: text cues change
+ * instantly, and only surfaces transition. */
+
+.link {
+  composes: focusRing from '../conventions/focus.module.css';
+  display: inline;
+  gap: var(--pm-space-1);
+  color: var(--pm-accent-text);
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+
+  /* The rest underline uses the temperament's strength. The line is the required signal, so it
+     stays. Its full colour is only the browser default, not a design decision. Hover restores the
+     full colour together with the thickness. */
+  text-decoration-color: var(--pm-accent-underline);
+  border-radius: var(--pm-radius-sm);
+}
+
+/* An inline link inherits the text step around it, because a sentence does not change size where
+   part of it is a link. */
+.link[data-variant='inline'] {
+  text-decoration-line: underline;
+}
+
+.link[data-variant='standalone'] {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  text-decoration-line: none;
+}
+
+/* An external inline link must be a flex row to align its glyph with the text, so it cannot wrap
+   mid-sentence. That is the better trade-off: external links are short by convention, and a glyph
+   left alone on its own line is worse than a link that cannot wrap. */
+.link[data-external] {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.link:hover {
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--pm-accent-text);
+}
+
+/* The button costume: Button's recipe cells by reference, never re-derived. Composing `.button`
+   brings the base, the conventions' sizing, every rest/hover/active cell, the press feedback and
+   the focus ring. All of them are keyed off the `data-variant` × `data-tone` × `data-size`
+   attributes this element sets. This rule only handles what an `<a>` has and a `<button>` does
+   not: the browser's default underline, which the frame replaces as the clickable cue. */
+.costume {
+  composes: button from './button.module.css';
+  text-decoration: none;
+}
+
+/* Button's two content slots, restated as anatomy: the label that truncates with an ellipsis, and
+   the trailing glyph's flex container. The recipe cells (colours, sizes, states) all come with
+   `.costume` above. */
+.costumeLabel {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.costumeGlyph {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}

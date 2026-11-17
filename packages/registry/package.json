@@ -1,0 +1,26 @@
+{
+  "name": "@polymorph/registry",
+  "version": "1.0.15",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./search": "./src/search.ts",
+    "./exceptions": "./src/exceptions.ts",
+    "./shape": "./src/shape.ts",
+    "./platforms": "./src/platforms.ts",
+    "./frameworks": "./src/frameworks.ts",
+    "./behaviour": "./src/behaviour.ts",
+    "./agent": "./src/agent.ts"
+  },
+  "dependencies": {
+    "@polymorph/rules": "workspace:*",
+    "@polymorph/theme": "workspace:*",
+    "jiti": "^2.7.0",
+    "typescript": "^5.9.3"
+  },
+  "bin": {
+    "polymorph-registry": "./bin/registry.js"
+  },
+  "license": "MIT"
+}

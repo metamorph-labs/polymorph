@@ -1,0 +1,170 @@
+/* DataTable — `design/components/data-table.md`.
+ *
+ * Table, Checkbox, Button, Skeleton and EmptyState draw everything visible.
+ * This file styles the bulk bar, the selection and expansion columns' geometry,
+ * and the detail row. */
+
+/* The size container for the bulk bar and pager. The table's scroll port is a
+   second, narrower one for the columns. Both are elements, not the viewport. */
+.table {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  inline-size: 100%;
+}
+
+/* `datatable.bulkbar`: `slide-fade`, control class, one space step from the
+   top. Enter only: the bar unmounts on the last deselect, and CSS cannot animate
+   an unmounting node. */
+.bulkBar {
+  margin-block-end: var(--pm-space-3);
+  padding: var(--pm-space-2) var(--pm-space-4);
+
+  /* The bar represents the selection, so it uses the selection colour family,
+     including the border. It holds buttons, so its fill is the selected
+     surface, which every text role can be read on. */
+  background: var(--pm-selection-surface);
+  border: 1px solid var(--pm-selection-border);
+  border-radius: var(--pm-radius-sm);
+  animation: data-table-bulk-enter var(--pm-motion-duration-control) var(--pm-motion-easing-enter);
+}
+
+@keyframes data-table-bulk-enter {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--pm-space-2) * -1));
+  }
+}
+
+.bulkCount {
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+
+  /* The accent's text colour, which the contrast law holds on the selected
+     surface. `selection.text` is held on the selection fill only. */
+  color: var(--pm-accent-text);
+  white-space: nowrap;
+}
+
+/* The expansion column is exactly as wide as its control. Otherwise the table
+   would give an equal share of width to a column holding one small button.
+   `:has()` reads the assembly's own hooks, because a Table cell takes no
+   class. */
+.table th:has(> .expandLabel),
+.table td:has(> .expandCell) {
+  inline-size: var(--pm-control-height-sm);
+}
+
+/* The selection column is as wide as its control too, a 16px box. */
+.table th:first-child:has(button[role='checkbox']),
+.table td:first-child:has(button[role='checkbox']) {
+  inline-size: var(--pm-control-height-sm);
+}
+
+/* A wrapper that stops the click before it reaches the row. */
+.selectCell,
+.expandCell {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* The expansion column's name: announced, not drawn. */
+.expandLabel {
+  composes: visuallyHidden from '../conventions/a11y.module.css';
+}
+
+/* The detail row ------------------------------------------------------------
+ *
+ * One cell across every column, under its row. It is a body cell in
+ * everything but its fill: the same padding, type and rule, so the rows keep
+ * one rhythm. The subtle fill sets the detail apart from the rows, which are
+ * drawn on the surface. It is the wash an interactive row takes under the
+ * pointer, and a detail row never takes a pointer state of its own.
+ *
+ * No animation: a row that grows moves every row under it.
+ *
+ * It composes the focus ring as Table's cells do: in the grid the arrow keys
+ * reach it, and the ring shows where focus is. */
+.detailCell {
+  composes: focusRing from '../conventions/focus.module.css';
+  padding: var(--pm-space-3) var(--pm-space-4);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-subtle);
+  border-block-end: 1px solid var(--pm-border-subtle);
+}
+
+/* A container, so what the detail holds responds to the detail's width. Inline
+   containment also keeps a long detail out of the table's own width: below
+   `36rem` the table is as wide as its content (`table.module.css`), and a
+   paragraph in a spanning cell would otherwise make it one line wide.
+ *
+ * The detail is as wide as the part of the table a reader sees. Below `36rem`
+ * the table is wider than its wrapper and pans inside it, and a detail as wide
+ * as the table would run past the visible edge: a reader would pan to finish a
+ * sentence. `100cqi` is the width of Table's wrapper, the nearest container
+ * above the detail, and the cell's padding comes off both sides. `sticky`
+ * keeps the detail at the wrapper's inline start while the table pans, one
+ * padding in, where it sits when the table does not pan.
+ *
+ * A sticky box is positioned, and it comes after the header. Table raises its
+ * sticky header over the rows, so the detail scrolls under it
+ * (`table.module.css`). */
+.detail {
+  position: sticky;
+  inset-inline-start: var(--pm-space-4);
+  max-inline-size: calc(100cqi - var(--pm-space-4) * 2);
+  container-type: inline-size;
+}
+
+.pagination {
+  padding-block-start: var(--pm-space-4);
+}
+
+/* The toolbar rows stack -----------------------------------------------------
+ *
+ * Both rows already wrap (`Inline` with `wrap`, one gap for both axes). Below
+ * `36rem` a count and buttons on one line leave neither enough room, so each
+ * cluster takes the full row.
+ *
+ * `> * > *` reaches the bar's own `Inline` children: an assembly may rely on its
+ * own structure, and `Inline` has no class to expose because its props are
+ * closed. `36rem` is a rem literal because a breakpoint is geometry, not theme
+ * (`docs/layout.md`). */
+@container (width < 36rem) {
+  .bulkBar > * > * {
+    flex: 1 0 100%;
+  }
+}
+
+/* A loading table has nothing to interact with yet. The rows are placeholders,
+   and the header's sort controls would re-sort data that has not arrived. */
+.table[data-loading] {
+  cursor: progress;
+}
+
+.table[data-loading] thead {
+  pointer-events: none;
+}
+
+/* An EmptyState in place of the table needs vertical space. Flush against the
+   surface above, it would look like a failed render. */
+.table[data-empty] {
+  padding-block: var(--pm-space-6);
+}
+
+/* Reduced motion: the bar fades in without moving. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes data-table-bulk-enter {
+    from {
+      opacity: 0;
+    }
+  }
+}

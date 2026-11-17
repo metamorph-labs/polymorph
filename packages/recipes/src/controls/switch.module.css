@@ -1,0 +1,160 @@
+/* Switch — `design/components/switch.md`.
+ *
+ * The pill shape is deliberate at every geometry, including sharp. A rectangular switch
+ * looks like a button, and `radius.pill` is an allowed constant, not derived from the
+ * geometry axis. In Terminal, whose `sharp` geometry sets every derived radius to 0, the
+ * switch stays rounded, like every other part that reads `radius.pill`. That is intended
+ * and is not a theme bug.
+ *
+ * The travel calculation subtracts the two 1px borders because the global reset makes
+ * everything `border-box`. The track's 1px border reduces the space the thumb moves in,
+ * so the travel is reduced to keep the end positions symmetric. */
+
+.row {
+  display: inline-flex;
+  gap: var(--pm-space-3);
+  align-items: flex-start;
+  min-block-size: var(--pm-control-height-sm);
+  padding-block: calc(
+    (var(--pm-control-height-sm) - var(--pm-text-sm-line-height) * var(--pm-text-sm-size)) / 2
+  );
+  cursor: pointer;
+}
+
+.track {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  inline-size: calc(var(--pm-icon-size-md) * 2 + var(--pm-space-2));
+  block-size: calc(var(--pm-icon-size-md) + var(--pm-space-2));
+  padding: calc(var(--pm-space-2) / 2);
+  cursor: pointer;
+  background: var(--pm-bg-subtle);
+
+  /* `border.field`, for Checkbox's reason: the track is an interactive edge. The thumb
+     below is not interactive on its own, so it uses `default`. */
+  border: 1px solid var(--pm-border-field);
+  border-radius: var(--pm-radius-pill);
+}
+
+/* The minimum target size without changing the layout. See checkbox.module.css. */
+.track::before {
+  position: absolute;
+  inset-block: calc((var(--pm-icon-size-md) + var(--pm-space-2) - var(--pm-control-height-sm)) / 2);
+  inset-inline: 0;
+  content: '';
+}
+
+/* The `switch.thumb` binding is spring `snappy` in the registry but a token-timed CSS
+   transition here. A CSS transition keeps its velocity when reversed (motion.md's first
+   interruption law), which matters for a control people toggle rapidly. It has no
+   overshoot. The motion engine can take over this binding if a thumb ever needs one.
+
+   Position is the primary signal and colour the secondary, so the state stays readable
+   at temperament `none`, where the duration token is 0s and the thumb jumps. */
+.thumb {
+  inline-size: var(--pm-icon-size-md);
+  block-size: var(--pm-icon-size-md);
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-default);
+  border-radius: var(--pm-radius-pill);
+  box-shadow: var(--pm-shadow-raised);
+  transition: transform var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+.label {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+}
+
+/* Centred on the label's first line, so with a wrapping label the control stays at the
+   top instead of moving to the middle of the paragraph. */
+.row .track {
+  margin-block-start: calc(
+    (
+        var(--pm-text-sm-line-height) * var(--pm-text-sm-size) - var(--pm-icon-size-md) -
+          var(--pm-space-2)
+      ) /
+      2
+  );
+}
+
+/* states ------------------------------------------------------------------- */
+
+.track[data-state='on'] {
+  background: var(--pm-accent-bg);
+  border-color: var(--pm-accent-bg);
+}
+
+.track[data-disabled] {
+  cursor: not-allowed;
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-subtle);
+}
+
+.track[data-disabled][data-state='on'] {
+  background: var(--pm-border-subtle);
+  border-color: var(--pm-border-subtle);
+}
+
+.track:hover:not([data-disabled], [data-state='on']) {
+  background: var(--pm-bg-surface);
+  border-color: var(--pm-border-strong);
+}
+
+.track[data-state='on']:hover:not([data-disabled]) {
+  background: var(--pm-accent-bg-hover);
+  border-color: var(--pm-accent-bg-hover);
+}
+
+.thumb[data-state='on'] {
+  transform: translateX(calc(var(--pm-icon-size-md) - 2px));
+}
+
+.track[data-state='on'] .thumb {
+  background: var(--pm-accent-contrast);
+  border-color: transparent;
+}
+
+.track[data-disabled] .thumb {
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-subtle);
+  box-shadow: none;
+}
+
+.track[data-disabled][data-state='on'] .thumb {
+  background: var(--pm-bg-surface);
+  border-color: var(--pm-border-subtle);
+}
+
+.row[data-disabled] {
+  cursor: not-allowed;
+}
+
+.row[data-disabled] .label {
+  color: var(--pm-text-disabled);
+}
+
+/* Reduced-motion version (motion.md): the thumb jumps. Position shows the state, so
+   removing the transition loses nothing. */
+@media (prefers-reduced-motion: reduce) {
+  .thumb {
+    transition: none;
+  }
+}
+
+/* The required marker, rendered here because a row-labelled field has no field-level
+   label row to show it. Generated content with empty alternative text, so assistive
+   tech ignores it (it already announces `aria-required`) and sighted users see it. */
+.row[data-required] .label::after {
+  color: var(--pm-danger-text);
+  content: ' *' / '';
+}

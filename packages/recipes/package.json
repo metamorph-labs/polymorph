@@ -1,0 +1,22 @@
+{
+  "name": "@polymorph/recipes",
+  "version": "1.0.15",
+  "description": "The polymorph recipes: every member's styling as a token-only CSS Module, with no framework in it, and the base layer.",
+  "private": true,
+  "exports": {
+    "./base.css": "./src/base.css",
+    "./*.module.css": "./src/*.module.css"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "license": "MIT"
+}

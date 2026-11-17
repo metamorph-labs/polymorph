@@ -1,0 +1,309 @@
+/* ContextMenu — `design/components/context-menu.md`.
+ *
+ * Menu's full recipe, restated rather than composed, because the laws check a
+ * member's own stylesheet in source (Combobox does the same with Select). The
+ * one difference is positioning: the panel anchors to the press point, so
+ * there is no `sideOffset` and no trigger border to keep a seam from.
+ *
+ * The danger tone is quiet, as in Menu: red text on a red wash, never a red
+ * fill. The ConfirmDialog carries the strong warning. */
+
+/* The surface is the wrapped child, with no box of its own. The trigger span
+   has the gesture handlers but no box, so a wrapped Table.Row still renders as
+   a row, and the panel anchors to the press point, not to this element. */
+.surface {
+  display: contents;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+
+  /* `overlay` in the stacking order. The popper copies it onto its wrapper
+     (menu.module.css explains how). */
+  z-index: var(--pm-z-overlay);
+  min-inline-size: calc(var(--pm-space-10) * 2);
+  max-block-size: var(--radix-context-menu-content-available-height);
+  padding: var(--pm-inset-list);
+  overflow: hidden;
+  background: var(--pm-bg-overlay);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-surface);
+  box-shadow: var(--pm-shadow-transient);
+  transform-origin: var(--radix-context-menu-content-transform-origin);
+}
+
+/* Menu's `scale-fade`, surface class, anchored origin. Here the origin is the
+   press point, from the substrate's transform-origin variable. Radix keeps the
+   node mounted for the closed animation, so the exit animates. */
+.content[data-state='open'] {
+  animation: context-menu-content-enter var(--pm-motion-duration-surface)
+    var(--pm-motion-easing-enter);
+}
+
+.content[data-state='closed'] {
+  animation: context-menu-content-exit var(--pm-motion-duration-surface-exit)
+    var(--pm-motion-easing-exit);
+}
+
+@keyframes context-menu-content-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes context-menu-content-exit {
+  to {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+/* Reduced-motion projection (`docs/motion.md`): `scale-fade` projects to
+   `fade`, and the item cascade projects to presence, because a delay counts as
+   motion even when the delayed element does not move. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes context-menu-content-enter {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes context-menu-content-exit {
+    to {
+      opacity: 0;
+    }
+  }
+
+  .sheetList .item,
+  .content[data-state='open'] .item {
+    animation: none;
+  }
+}
+
+/* The sheet, below 30rem (the sheet presentation): Menu's sheet form,
+ * unchanged. The panel box is the shared anatomy (`sheet.module.css`, used by
+ * the sheet partial). The press point no longer affects geometry, because a
+ * sheet has no anchor, but the gesture still opens it. This member styles its
+ * rows' container inside it with Menu's recipe: a `--pm-space-2` inset, and the
+ * sheet presentation's safe-area padding added to the member's edge padding. */
+.sheetList {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+  padding: var(--pm-inset-list);
+  padding-block-end: calc(var(--pm-inset-list) + env(safe-area-inset-bottom, 0px));
+  margin: 0;
+  overflow-y: auto;
+  list-style: none;
+  outline: none;
+}
+
+/* items — Menu's grammar, unchanged ------------------------------------------ */
+
+.item {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-3);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  cursor: pointer;
+  border-radius: var(--pm-radius-sm);
+  outline: none;
+}
+
+/* The checkbox entry: the item recipe plus Select's check column. It is
+   applied with `.item` (the two-class idiom) rather than composed, because the
+   registry's extractor reads `composes` as a cross-file graph. */
+.checkbox {
+  gap: var(--pm-space-2);
+}
+
+/* Select's check column, unchanged: reserved whether or not this row is
+   checked, so labels stay aligned as checks change. */
+.check {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--pm-icon-size-sm);
+}
+
+.glyph {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--pm-text-muted);
+}
+
+.label {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* At the far edge, so hints line up down the panel. A submenu's chevron also
+   sits here; a row never has both. */
+.hint {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  margin-inline-start: auto;
+  color: var(--pm-text-muted);
+}
+
+/* The hint follows the row's colour, so it stays legible on the highlight. */
+.item[data-highlighted] .hint {
+  color: inherit;
+}
+
+.separator {
+  margin-block: var(--pm-space-2);
+  border-block-start: 1px solid var(--pm-border-subtle);
+}
+
+.groupLabel {
+  padding: var(--pm-space-2) var(--pm-space-3);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+  text-transform: uppercase;
+}
+
+/* The `menu.items` cascade: items appear during the panel's enter, each
+   delayed by the stagger step and clamped to the ceiling. Temperament changes
+   it only through the tokens. It runs on enter only; lists do not reverse it.
+   The index steps stop at twelve, and every later item shares the ceiling. */
+.sheetList .item,
+.content[data-state='open'] .item {
+  animation: context-menu-item-enter var(--pm-motion-duration-control) var(--pm-motion-easing-enter)
+    backwards;
+}
+
+.sheetList[role='menu'] .item:nth-child(2),
+.content[data-state='open'] .item:nth-child(2) {
+  animation-delay: min(calc(1 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(3),
+.content[data-state='open'] .item:nth-child(3) {
+  animation-delay: min(calc(2 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(4),
+.content[data-state='open'] .item:nth-child(4) {
+  animation-delay: min(calc(3 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(5),
+.content[data-state='open'] .item:nth-child(5) {
+  animation-delay: min(calc(4 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(6),
+.content[data-state='open'] .item:nth-child(6) {
+  animation-delay: min(calc(5 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(7),
+.content[data-state='open'] .item:nth-child(7) {
+  animation-delay: min(calc(6 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(8),
+.content[data-state='open'] .item:nth-child(8) {
+  animation-delay: min(calc(7 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(9),
+.content[data-state='open'] .item:nth-child(9) {
+  animation-delay: min(calc(8 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(10),
+.content[data-state='open'] .item:nth-child(10) {
+  animation-delay: min(calc(9 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(11),
+.content[data-state='open'] .item:nth-child(11) {
+  animation-delay: min(calc(10 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(n + 12),
+.content[data-state='open'] .item:nth-child(n + 12) {
+  animation-delay: var(--pm-motion-stagger-max);
+}
+
+@keyframes context-menu-item-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+/* states — Menu's, unchanged ------------------------------------------------- */
+
+.item[data-tone='danger'] {
+  color: var(--pm-danger-text);
+}
+
+/* Radix sets `data-highlighted` from both pointer and keyboard: one state
+   covers both, with no `:hover` rule. */
+.item[data-highlighted] {
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+}
+
+.item[data-tone='danger'][data-highlighted] {
+  color: var(--pm-danger-text);
+  background: var(--pm-danger-subtle);
+}
+
+.item[data-highlighted] .glyph {
+  color: inherit;
+}
+
+.item[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  background: transparent;
+}
+
+.item[data-disabled] .glyph {
+  color: var(--pm-text-disabled);
+}
+
+/* Select's rule, unchanged: the check shows selection in the accent, and the
+   label keeps the row's colour. */
+.checkbox[data-state='checked'] .check {
+  color: var(--pm-accent-text);
+}
+
+/* Glass (`depth: glass`): the pane uses the surface role at the engine's mix
+   (`--pm-material-surface`), and the material provides the lift that the
+   overlay stacking order provides elsewhere. The backdrop shows through the
+   pane as a blurred, saturated wash, so the surface stands apart by its
+   material rather than by a lighter step. The mix is a contrast decision that
+   the glass law measures over worst-case backdrops; a recipe only applies it. */
+@container style(--pm-axis-depth: glass) {
+  .content {
+    background: var(--pm-material-surface);
+    backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  }
+}

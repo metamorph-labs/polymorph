@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/elements-node.tsbuildinfo",
+    // The node files at this package's root, and nothing else. Separate from
+    // `tsconfig.json` so the foundation itself keeps `"types": []`.
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"]
+  },
+  "include": ["*.test.ts", "dist-lock.ts", "vite.build.config.ts"]
+}

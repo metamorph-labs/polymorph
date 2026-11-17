@@ -1,0 +1,100 @@
+/* Card — `design/components/card.md`.
+ *
+ * Padding is composed from `layout`, so `data-p`, `data-px` and `data-py` share
+ * Stack's table of steps. Card adds the surface and the radius patch, which
+ * layout primitives lack because they paint nothing. */
+
+.card {
+  composes: layout from '../layout/layout.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+
+  /* Containing block for the stretched link. Every card is positioned, so a
+     linked card differs only in its states, not its layout. */
+  position: relative;
+  display: block;
+  padding: var(--pm-inset-surface);
+  background: var(--pm-bg-surface);
+
+  /* Present at every depth. With a shadow it defines the edge. Without one it is
+     the only separation. */
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-surface);
+
+  /* The lit fill's top highlight, shared with controls so buttons and cards have
+     one light source. It matters most in dark mode, where a black shadow cannot
+     separate a panel from the background. Flat systems resolve both values to
+     `none` together (the coherence law pairs them). */
+  box-shadow: var(--pm-shadow-resting), var(--pm-shadow-inset-top);
+}
+
+/* The title: the section-heading recipe, which SettingsRow.Group's title
+   matches and Dashboard.Panel's title is, because a product has one style for
+   section headings. The same at every level, so the outline can follow the
+   page. */
+.title {
+  margin: 0 0 var(--pm-space-4);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-secondary);
+  text-transform: uppercase;
+}
+
+/* The stretched link: covers the surface, named by `label`, paints nothing. Its
+   UA ring is suppressed because the card draws the ring. */
+.cover {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  outline: none;
+}
+
+/* radius patch — an instance patch, rung 3 of the exception ladder. Stated
+   after the base, so a patch wins. */
+
+.card[data-radius='none'] {
+  border-radius: var(--pm-radius-none);
+}
+
+.card[data-radius='sm'] {
+  border-radius: var(--pm-radius-sm);
+}
+
+.card[data-radius='md'] {
+  border-radius: var(--pm-radius-md);
+}
+
+.card[data-radius='lg'] {
+  border-radius: var(--pm-radius-lg);
+}
+
+.card[data-radius='pill'] {
+  border-radius: var(--pm-radius-pill);
+}
+
+/* the interactive card ------------------------------------------------------
+ *
+ * Hover: the shadow moves up one elevation step and the border one step
+ * stronger, as on Input. In flat systems the border is the whole hover.
+ * `stateFeedback` on the base transitions `box-shadow` with the colours. */
+
+.card[data-interactive] {
+  cursor: pointer;
+}
+
+.card[data-interactive]:hover {
+  border-color: var(--pm-border-default);
+  box-shadow: var(--pm-shadow-transient), var(--pm-shadow-inset-top);
+}
+
+/* The focus ring on the card via `:has()`, with the composed rule's tokens.
+   Restated because the focusable element is the covering link, and the
+   delegating selector in `focus.module.css` covers only composite fields. Last
+   state rule, so keyboard focus wins over hover. */
+.card[data-interactive]:has(:focus-visible) {
+  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline-offset: var(--pm-focus-offset);
+  box-shadow: var(--pm-glow-focus);
+}

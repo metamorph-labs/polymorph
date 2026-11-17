@@ -1,0 +1,99 @@
+/* PageHeader — `design/components/page-header.md`.
+ *
+ * No bottom border: the page body separates it, and a rule here would double up
+ * with the Table header's rule one gutter below. */
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-4) var(--pm-space-5);
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-block-end: var(--pm-space-6);
+}
+
+.text {
+  min-inline-size: 0;
+}
+
+.title {
+  font-family: var(--pm-text-2xl-family);
+  font-size: var(--pm-text-2xl-size);
+  font-weight: var(--pm-text-2xl-weight);
+  line-height: var(--pm-text-2xl-line-height);
+  letter-spacing: var(--pm-text-2xl-tracking);
+  color: var(--pm-text-primary);
+}
+
+/* A title edited in place (`titleEdit`) ------------------------------------
+ *
+ * The InlineEdit is beside the `<h1>`, at the `lg` step the app gives it. Both forms of the
+ * row are one title line or one `lg` control height, whichever is taller, so a title on one line
+ * keeps the header's height when the field opens. */
+
+/* Grows from DetailPage's identity basis rather than from its content, so the field takes the
+   width the column already has, and the actions keep their place when it opens. */
+.text:has(> .titleRow) {
+  flex: 1 1 calc(var(--pm-space-10) * 3);
+}
+
+.titleRow {
+  position: relative;
+  display: flex;
+  gap: var(--pm-space-2);
+  align-items: flex-start;
+  min-inline-size: 0;
+}
+
+/* The first line is centred on the edit control: half of the row's height less one line. */
+.titleRow > .title {
+  min-inline-size: 0;
+  padding-block: calc(
+    (
+        max(var(--pm-control-height-lg), var(--pm-text-2xl-line-height) * var(--pm-text-2xl-size)) -
+          var(--pm-text-2xl-line-height) * var(--pm-text-2xl-size)
+      ) /
+      2
+  );
+}
+
+/* A grid, so the InlineEdit fills the width this box has, and its field the row while it is
+   open. Its one line is centred in a box one title line or one `lg` control high. */
+.titleEdit {
+  display: grid;
+  flex: 0 0 auto;
+  align-items: center;
+  min-inline-size: 0;
+  min-block-size: max(
+    var(--pm-control-height-lg),
+    var(--pm-text-2xl-line-height) * var(--pm-text-2xl-size)
+  );
+}
+
+/* While the field is open the `<h1>` keeps the saved title for assistive technology and leaves
+   the layout (the conventions' `visuallyHidden` clip), and the field takes the row. */
+.titleRow:has([data-editing]) > .title {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.titleRow:has([data-editing]) > .titleEdit {
+  flex: 1 1 0;
+}
+
+/* Limited to about 75 characters, because longer lines are hard to read. */
+.description {
+  max-inline-size: calc(var(--pm-space-10) * 6);
+  margin-block-start: var(--pm-space-2);
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+  color: var(--pm-text-secondary);
+}

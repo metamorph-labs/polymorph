@@ -1,0 +1,108 @@
+import { fileURLToPath } from 'node:url'
+
+import react from '@vitejs/plugin-react'
+import { defineConfig, type Plugin } from 'vite'
+
+// Imported by path rather than by package name so Vite's config loader inlines
+// the TypeScript source instead of handing it to Node. The workbench does the same.
+import { PREPAINT_SCRIPT } from '../../packages/theme/src/runtime'
+import { LLMS_PATHS, readLlmsFiles } from './src/llms'
+
+const src = (p: string) => fileURLToPath(new URL(p, import.meta.url))
+
+/** Resolves the persisted theme and mode before first paint, so no unthemed flash shows. */
+function prepaintTheme(): Plugin {
+  return {
+    name: 'pm-prepaint-theme',
+    transformIndexHtml() {
+      return [{ tag: 'script', children: PREPAINT_SCRIPT, injectTo: 'head-prepend' }]
+    },
+  }
+}
+
+/**
+ * Serves `/llms.txt`, `/llms-full.txt` and `/system-card.md` (`src/llms.ts`).
+ *
+ * They are built from `registry/registry.json`, `registry/system-card.md` and
+ * `docs/rules.md` and never written to the source tree. The dev server builds
+ * each one when it is requested, so it reflects the registry `predev` (or a
+ * later `pnpm registry`) wrote. The build writes them into `dist/` beside the
+ * pages, after `prebuild` has regenerated the registry.
+ */
+function llmsFiles(): Plugin {
+  const root = src('../..')
+  return {
+    name: 'pm-llms-files',
+    configureServer(server) {
+      server.middlewares.use((request, response, next) => {
+        const path = request.url?.split('?')[0] ?? ''
+        if (!Object.values<string>(LLMS_PATHS).includes(path)) return next()
+        const file = readLlmsFiles(root)[path]!
+        response.setHeader('Content-Type', `${file.type}; charset=utf-8`)
+        response.end(file.body)
+      })
+    },
+    generateBundle() {
+      for (const [path, file] of Object.entries(readLlmsFiles(root))) {
+        this.emitFile({ type: 'asset', fileName: path.slice(1), source: file.body })
+      }
+    },
+  }
+}
+
+/**
+ * The docs site consumes `@polymorph/*` as workspace source, as the workbench does. Its
+ * content comes from the registry. `predev`/`prebuild` run the registry generator into
+ * `/registry`, which is gitignored and never committed, and the pages import that JSON. The site
+ * only reshapes the registry and computes nothing the registry does not hold. `llmsFiles` also
+ * serves the system card and the rules page as plain text for agents.
+ */
+export default defineConfig({
+  plugins: [react(), prepaintTheme(), llmsFiles()],
+  /**
+   * Pre-scans the lazy pages and the frame document. The workbench config explains why in
+   * full. With a cold cache, the optimizer finds a lazy graph's dependencies after the page
+   * loads and re-bundles, so one document can hold two copies of React and a `lazy()` never
+   * resolves. The pages glob covers only the routes directory. `frame.html` covers the specimen
+   * entry.
+   */
+  optimizeDeps: {
+    entries: ['index.html', 'frame.html', 'src/pages/*.tsx'],
+  },
+  server: {
+    // The second half of the same fix, as in the workbench config. Files warmed together
+    // get the same browser hash, so no document loads modules from both sides of a hash change.
+    warmup: {
+      clientFiles: ['./src/main.tsx', './src/frame.tsx', './src/pages/*.tsx'],
+    },
+  },
+  build: {
+    rolldownOptions: {
+      /**
+       * Two HTML entries. `index.html` is the docs application. `frame.html` is the fixture
+       * specimen document that `FixtureFrame` embeds. The frame is a separate HTML entry, not an
+       * app route, for two reasons. It must be its own browsing context: Radix portals resolve
+       * against `globalThis.document`, so only a separate realm contains an open overlay's
+       * modality. And booting `main.tsx` per specimen would load the whole site (shell, registry,
+       * pages) into every frame.
+       */
+      input: {
+        main: src('./index.html'),
+        frame: src('./frame.html'),
+      },
+    },
+  },
+  resolve: {
+    // Forces a single copy of React. The workbench config explains why. The aliased source and
+    // pnpm's per-package links are the same here, so without this the same stuck `lazy()` occurs.
+    dedupe: ['react', 'react-dom'],
+    alias: [
+      { find: /^@polymorph\/theme$/, replacement: src('../../packages/theme/src/index.ts') },
+      { find: /^@polymorph\/react-ui$/, replacement: src('../../packages/react-ui/src/index.ts') },
+      {
+        find: /^@polymorph\/react-ui\/galleries$/,
+        replacement: src('../../packages/react-ui/src/galleries.ts'),
+      },
+    ],
+  },
+})

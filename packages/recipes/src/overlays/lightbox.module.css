@@ -1,0 +1,190 @@
+/* Lightbox — `design/components/lightbox.md`.
+ *
+ * The scrim is Dialog's, composed rather than restated, because it is the same
+ * surface. The panel is the lightbox's own: it fills the window and draws
+ * nothing, so the picture lies on the scrim. The controls float over the
+ * picture, each on a backing, so they keep their contrast over any picture.
+ *
+ * The motion engine animates the scrim and the panel (see Lightbox.tsx), as it
+ * animates Dialog's. This file handles the boxes, and the rule that a leaving
+ * surface stops taking clicks. */
+
+.scrim {
+  composes: scrim from './dialog.module.css';
+
+  /* A press beside the picture lands here and closes. A modal substrate turns
+     pointer events off on the body, and a scrim that inherited that would pass
+     the press to the page. Dialog's rule for a closing scrim is more specific,
+     so a leaving scrim still takes no clicks. */
+  pointer-events: auto;
+}
+
+.positioner {
+  position: fixed;
+  inset: 0;
+
+  /* `overlay` in the stacking order. The scrim gets the same layer through
+     `composes`. */
+  z-index: var(--pm-z-overlay);
+  pointer-events: none;
+}
+
+/* The panel fills the window. Its own box takes no clicks, so a press beside
+   the picture and the controls lands on the scrim and closes, as a press beside
+   Dialog's card does. The substrate writes `pointer-events: auto` on the panel
+   as an inline style while it is modal, so this rule is important. Each part
+   that takes clicks says so below. */
+.panel {
+  position: relative;
+  display: grid;
+  grid-template:
+    'close close close' auto
+    'previous . next' minmax(0, 1fr)
+    '. position .' auto / auto minmax(0, 1fr) auto;
+  inline-size: 100%;
+  block-size: 100%;
+
+  /* The panel's edges are the window's, so the padding clears the notch and the
+     home indicator, as Dialog's full-screen form does. */
+  padding: calc(var(--pm-space-4) + env(safe-area-inset-top, 0px))
+    calc(var(--pm-space-4) + env(safe-area-inset-right, 0px))
+    calc(var(--pm-space-4) + env(safe-area-inset-bottom, 0px))
+    calc(var(--pm-space-4) + env(safe-area-inset-left, 0px));
+  pointer-events: none !important;
+}
+
+/* The substrate focuses the panel when a press lands on a part that takes no
+   focus, such as the picture. A ring around the whole window adds nothing, as
+   on Dialog's panel. */
+.panel:focus-visible {
+  outline: none;
+}
+
+.title {
+  composes: visuallyHidden from '../conventions/a11y.module.css';
+}
+
+/* The picture's area is the whole panel, under the controls. */
+.stage {
+  display: grid;
+  grid-area: 1 / 1 / -1 / -1;
+  place-items: center;
+  min-inline-size: 0;
+  min-block-size: 0;
+}
+
+/* The picture takes clicks, so a press on it does not close. `> *` is Image's
+   frame: the stage holds exactly one element, and Image's classes are Image's. */
+.stage > * {
+  pointer-events: auto;
+}
+
+/* Fitted inside the window with nothing cropped, and never drawn larger than
+   the picture's own size. Both bounds are lengths, because Image's frame has no
+   height for a percentage to resolve against. An overlay's container is the
+   window (`dialog.md`), so its bounds are viewport units, less the panel's
+   padding. The `vh` base is here and the `dvh` override is in the `@supports`
+   block after this rule, as in Dialog. */
+.stage img {
+  max-inline-size: calc(
+    100vw - var(--pm-space-4) * 2 - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)
+  );
+  max-block-size: calc(
+    100vh - var(--pm-space-4) * 2 - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
+  );
+}
+
+@supports (height: 1dvh) {
+  .stage img {
+    max-block-size: calc(
+      100dvh - var(--pm-space-4) * 2 - env(safe-area-inset-top, 0px) -
+        env(safe-area-inset-bottom, 0px)
+    );
+  }
+}
+
+/* A control's backing: Dialog's panel surface behind a ghost Button or the
+   position line. The picture under it can be any colour, and the backing
+   gives the control the surface its contrast is measured on. */
+.close,
+.previous,
+.next,
+.position {
+  /* Positioned, so each paints over the picture, whose frame is positioned
+     too and comes first in the document. */
+  position: relative;
+  display: flex;
+  pointer-events: auto;
+  background: var(--pm-bg-overlay);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-control);
+  box-shadow: var(--pm-shadow-transient);
+}
+
+.close {
+  grid-area: close;
+  justify-self: end;
+}
+
+.previous {
+  grid-area: previous;
+  align-self: center;
+}
+
+.next {
+  grid-area: next;
+  align-self: center;
+}
+
+/* The icon set has no directional pairs, so the travel controls are mirrored
+   where the page reads right to left. Each is a square on a symmetric backing,
+   so only its arrow changes. `:dir()` is not used, as in Tabs. */
+[dir='rtl'] .previous {
+  transform: scaleX(-1);
+}
+
+[dir='rtl'] .next {
+  transform: scaleX(-1);
+}
+
+/* "2 of 5", on a backing as the controls are. Tabular figures keep the line's
+   width while the position changes. */
+.position {
+  grid-area: position;
+  justify-self: center;
+  margin: 0;
+  padding: var(--pm-space-1) var(--pm-space-3);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  font-variant-numeric: tabular-nums;
+  color: var(--pm-text-primary);
+}
+
+/* A closing surface is no longer a click target: the scrim through Dialog's
+   rule, and here every part of the panel that takes clicks. */
+.panel[data-state='closed'] .close,
+.panel[data-state='closed'] .previous,
+.panel[data-state='closed'] .next,
+.panel[data-state='closed'] .position {
+  pointer-events: none;
+}
+
+.panel[data-state='closed'] .stage > * {
+  pointer-events: none;
+}
+
+/* Glass (`depth: glass`): each backing is Dialog's glass pane, the surface role
+   at the engine's mix with the material's blur, measured by the glass law over
+   worst-case backdrops. */
+@container style(--pm-axis-depth: glass) {
+  .close,
+  .previous,
+  .next,
+  .position {
+    background: var(--pm-material-surface);
+    backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/vue.tsbuildinfo",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "preserve",
+    "types": []
+  },
+  "vueCompilerOptions": {
+    "checkUnknownComponents": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.vue"]
+}

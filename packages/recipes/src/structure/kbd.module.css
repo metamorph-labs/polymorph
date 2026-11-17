@@ -1,0 +1,21 @@
+/* Kbd — `design/components/kbd.md`.
+ *
+ * The thicker bottom border makes the keycap look raised. At 2px it is a lawful
+ * hairline, so the cue survives `sharp` geometry and `flat` depth, which remove
+ * every other depth cue. */
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: var(--pm-icon-size-md);
+  padding: 0 var(--pm-space-2);
+  font-family: var(--pm-font-mono);
+  font-size: var(--pm-text-xs-size);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-secondary);
+  background: var(--pm-bg-subtle);
+  border: 1px solid var(--pm-border-default);
+  border-block-end-width: 2px;
+  border-radius: var(--pm-radius-sm);
+}

@@ -1,0 +1,748 @@
+{
+  "schema": "polymorph-eval/1",
+  "at": "2026-11-16T19:57:45.061Z",
+  "model": "claude-sonnet-5-5",
+  "mode": "spec",
+  "runner": "api",
+  "cliVersion": null,
+  "fake": false,
+  "partial": false,
+  "stopped": null,
+  "polymorph": { "version": "1.0.14", "commit": "7c3703a9eab14657ac24217e6068afbdce1d51a0" },
+  "briefs": [
+    "auth-sign-in-up",
+    "chat-assistant",
+    "dashboard-usage",
+    "detail-order",
+    "form-booking",
+    "list-incidents",
+    "onboarding-steps",
+    "settings-workspace"
+  ],
+  "settings": {
+    "briefs": "eval/briefs/*.md",
+    "runs": 1,
+    "maxIterations": 5,
+    "maxTurns": 40,
+    "maxTokens": 64000,
+    "effort": "high",
+    "maxTokensPerRun": 1000000,
+    "maxTokensTotal": 10000000
+  },
+  "outputs": "2026-11-16-claude-sonnet-5-5-spec.outputs.json",
+  "requirements": [
+    {
+      "brief": "auth-sign-in-up",
+      "digest": "70653b501895",
+      "requirements": [
+        {
+          "id": "both-forms",
+          "says": "Signing in and signing up are on one screen, and the container chooses which one shows first."
+        },
+        { "id": "email-and-password", "says": "An email address and a password are asked for." },
+        { "id": "name-on-sign-up", "says": "Signing up also asks for a name." },
+        { "id": "password-rule", "says": "Signing up says what the password has to be." },
+        {
+          "id": "two-providers",
+          "says": "Signing in with Google and with GitHub are both offered."
+        },
+        { "id": "pending", "says": "A pending submission is shown, and cannot be sent twice." },
+        {
+          "id": "error-message",
+          "says": "A wrong email address or password is reported in one message for the whole form."
+        },
+        { "id": "reset-password", "says": "A forgotten password can be reset from here." }
+      ]
+    },
+    {
+      "brief": "chat-assistant",
+      "digest": "fbb03250263a",
+      "requirements": [
+        { "id": "thread", "says": "The conversation is a log that follows the newest turn." },
+        {
+          "id": "composer",
+          "says": "A message can be written and sent from the bottom of the screen."
+        },
+        { "id": "attach", "says": "A file can be attached to a message." },
+        {
+          "id": "stop-while-streaming",
+          "says": "While a reply is arriving, sending gives way to stopping it."
+        },
+        {
+          "id": "empty-conversation",
+          "says": "An empty conversation says what the assistant can help with."
+        }
+      ]
+    },
+    {
+      "brief": "dashboard-usage",
+      "digest": "539b3a67ddb0",
+      "requirements": [
+        { "id": "headline-numbers", "says": "Four headline numbers are shown." },
+        {
+          "id": "direction-of-change",
+          "says": "Each headline number says which way it moved since the previous period."
+        },
+        { "id": "chart", "says": "One chart shows requests per day across the period." },
+        {
+          "id": "period-switch",
+          "says": "The period can be switched between this month and last month."
+        },
+        { "id": "holds-layout-while-loading", "says": "The layout holds while the numbers load." },
+        { "id": "download", "says": "A control downloads the period's usage as a file." }
+      ]
+    },
+    {
+      "brief": "detail-order",
+      "digest": "4467e31a83d7",
+      "requirements": [
+        { "id": "status", "says": "The order's standing is shown beside its name." },
+        { "id": "way-back", "says": "There is a way back to the list of orders." },
+        { "id": "facts", "says": "The facts about the order are listed as labelled values." },
+        {
+          "id": "history-and-comments",
+          "says": "What happened to the order and the team's comments are two lists."
+        },
+        { "id": "write-a-comment", "says": "A new comment can be written." },
+        { "id": "refund-from-the-top", "says": "The refund is offered from the top of the page." },
+        { "id": "refund-asks-first", "says": "Refunding asks for confirmation first." },
+        {
+          "id": "confirmation-states-the-amount",
+          "says": "The confirmation states the amount being refunded, so its words come from the order."
+        }
+      ]
+    },
+    {
+      "brief": "form-booking",
+      "digest": "7e5e61e8f775",
+      "requirements": [
+        {
+          "id": "room-and-length",
+          "says": "The room and the length are each chosen from a fixed list."
+        },
+        {
+          "id": "date-not-in-the-past",
+          "says": "A date is asked for, and a past one cannot be chosen."
+        },
+        { "id": "start-time", "says": "A start time is asked for." },
+        { "id": "invitees", "says": "The email addresses of the people invited can be entered." },
+        { "id": "note", "says": "A note for the invitation can be written." },
+        {
+          "id": "errors-beside-fields",
+          "says": "Each required field can say what is wrong beside it."
+        },
+        { "id": "error-summary", "says": "A summary at the top lists every problem." },
+        { "id": "book-and-cancel", "says": "One action books the room, and another cancels." },
+        {
+          "id": "pending",
+          "says": "While the booking is being made the screen says so, and it cannot be made twice."
+        }
+      ]
+    },
+    {
+      "brief": "list-incidents",
+      "digest": "88589ab219b4",
+      "requirements": [
+        { "id": "table", "says": "The incidents are shown as the rows of a table." },
+        { "id": "sortable", "says": "The list can be sorted." },
+        { "id": "search", "says": "A search narrows the list." },
+        {
+          "id": "two-filters",
+          "says": "Two filters narrow the list: one by severity, one by open or resolved."
+        },
+        { "id": "match-count", "says": "The screen says how many incidents match." },
+        { "id": "clear-filters", "says": "One control clears every filter at once." },
+        { "id": "delete-asks-first", "says": "Deleting an incident asks for confirmation first." },
+        {
+          "id": "confirmation-names-the-incident",
+          "says": "The confirmation names the incident being deleted, so its words come from the incident."
+        },
+        {
+          "id": "two-empty-states",
+          "says": "No incidents at all and no incident matching the filters are two different messages."
+        }
+      ]
+    },
+    {
+      "brief": "onboarding-steps",
+      "digest": "d704d3abcde7",
+      "requirements": [
+        {
+          "id": "steps-shown",
+          "says": "All four steps are shown, with the current one and the finished ones marked."
+        },
+        { "id": "name", "says": "The name is asked for." },
+        { "id": "role", "says": "The role is chosen from a short list." },
+        { "id": "optional-photo", "says": "A photo can be added." },
+        {
+          "id": "continue-gated",
+          "says": "Continue is unavailable until the name and the role are filled in."
+        },
+        { "id": "finish-later", "says": "A control leaves setup, to finish it later." }
+      ]
+    },
+    {
+      "brief": "settings-workspace",
+      "digest": "440c18d293fa",
+      "requirements": [
+        {
+          "id": "four-sections",
+          "says": "The settings are in titled sections: general, notifications, access, and a danger zone apart from them."
+        },
+        {
+          "id": "settings-described",
+          "says": "Each of the five settings says, beside its control, what it changes."
+        },
+        { "id": "name-field", "says": "The workspace name can be edited." },
+        {
+          "id": "two-switches",
+          "says": "The email digest and member invitations are each switched on or off."
+        },
+        {
+          "id": "two-choices",
+          "says": "The time zone and how often the digest is sent are each chosen from a list."
+        },
+        {
+          "id": "delete-asks-first",
+          "says": "Deleting the workspace asks for confirmation first."
+        },
+        {
+          "id": "confirmation-names-the-workspace",
+          "says": "The confirmation names the workspace, so its words come from the workspace."
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "overall": {
+      "runs": 8,
+      "measured": 8,
+      "endings": {
+        "answered": 8,
+        "cap": 0,
+        "turns": 0,
+        "max_tokens": 0,
+        "refusal": 0,
+        "harness": 0
+      },
+      "firstShotRate": 0.625,
+      "firstShotInterval": { "low": 0.3057, "high": 0.8632 },
+      "lawfulRate": 1,
+      "lawfulInterval": { "low": 0.6756, "high": 1 },
+      "meetsBriefRate": 0.75,
+      "meetsBriefInterval": { "low": 0.4093, "high": 0.9285 },
+      "lawfulAndMeetsBriefRate": 0.75,
+      "lawfulAndMeetsBriefInterval": { "low": 0.4093, "high": 0.9285 },
+      "failedRequirements": {
+        "auth-sign-in-up/error-message": 1,
+        "detail-order/history-and-comments": 1
+      },
+      "meanIterations": 1.38,
+      "lawfulWithoutValidate": 0,
+      "meanInputTokens": 221215,
+      "meanOutputTokens": 6348,
+      "meanWallMs": 42740,
+      "retries": 0,
+      "backoffMs": 0,
+      "discardedTokens": 0
+    },
+    "briefs": [
+      {
+        "brief": "auth-sign-in-up",
+        "runs": 1,
+        "measured": 1,
+        "endings": {
+          "answered": 1,
+          "cap": 0,
+          "turns": 0,
+          "max_tokens": 0,
+          "refusal": 0,
+          "harness": 0
+        },
+        "firstShotRate": 1,
+        "firstShotInterval": { "low": 0.2065, "high": 1 },
+        "lawfulRate": 1,
+        "lawfulInterval": { "low": 0.2065, "high": 1 },
+        "meetsBriefRate": 0,
+        "meetsBriefInterval": { "low": 0, "high": 0.7935 },
+        "lawfulAndMeetsBriefRate": 0,
+        "lawfulAndMeetsBriefInterval": { "low": 0, "high": 0.7935 },
+        "failedRequirements": { "auth-sign-in-up/error-message": 1 },
+        "meanIterations": 1,
+        "lawfulWithoutValidate": 0,
+        "meanInputTokens": 238742,
+        "meanOutputTokens": 8032,
+        "meanWallMs": 52981,
+        "retries": 0,
+        "backoffMs": 0,
+        "discardedTokens": 0
+      },
+      {
+        "brief": "chat-assistant",
+        "runs": 1,
+        "measured": 1,
+        "endings": {
+          "answered": 1,
+          "cap": 0,
+          "turns": 0,
+          "max_tokens": 0,
+          "refusal": 0,
+          "harness": 0
+        },
+        "firstShotRate": 1,
+        "firstShotInterval": { "low": 0.2065, "high": 1 },
+        "lawfulRate": 1,
+        "lawfulInterval": { "low": 0.2065, "high": 1 },
+        "meetsBriefRate": 1,
+        "meetsBriefInterval": { "low": 0.2065, "high": 1 },
+        "lawfulAndMeetsBriefRate": 1,
+        "lawfulAndMeetsBriefInterval": { "low": 0.2065, "high": 1 },
+        "failedRequirements": {},
+        "meanIterations": 1,
+        "lawfulWithoutValidate": 0,
+        "meanInputTokens": 177151,
+        "meanOutputTokens": 4511,
+        "meanWallMs": 34274,
+        "retries": 0,
+        "backoffMs": 0,
+        "discardedTokens": 0
+      },
+      {
+        "brief": "dashboard-usage",
+        "runs": 1,
+        "measured": 1,
+        "endings": {
+          "answered": 1,
+          "cap": 0,
+          "turns": 0,
+          "max_tokens": 0,
+          "refusal": 0,
+          "harness": 0
+        },
+        "firstShotRate": 0,
+        "firstShotInterval": { "low": 0, "high": 0.7935 },
+        "lawfulRate": 1,
+        "lawfulInterval": { "low": 0.2065, "high": 1 },
+        "meetsBriefRate": 1,
+        "meetsBriefInterval": { "low": 0.2065, "high": 1 },
+        "lawfulAndMeetsBriefRate": 1,
+        "lawfulAndMeetsBriefInterval": { "low": 0.2065, "high": 1 },
+        "failedRequirements": {},
+        "meanIterations": 2,
+        "lawfulWithoutValidate": 0,
+        "meanInputTokens": 387910,
+        "meanOutputTokens": 4991,
+        "meanWallMs": 40074,
+        "retries": 0,
+        "backoffMs": 0,
+        "discardedTokens": 0
+      },
+      {
+        "brief": "detail-order",
+        "runs": 1,
+        "measured": 1,
+        "endings": {
+          "answered": 1,
+          "cap": 0,
+          "turns": 0,
+          "max_tokens": 0,
+          "refusal": 0,
+          "harness": 0
+        },
+        "firstShotRate": 0,
+        "firstShotInterval": { "low": 0, "high": 0.7935 },
+        "lawfulRate": 1,
+        "lawfulInterval": { "low": 0.2065, "high": 1 },
+        "meetsBriefRate": 0,
+        "meetsBriefInterval": { "low": 0, "high": 0.7935 },
+        "lawfulAndMeetsBriefRate": 0,
+        "lawfulAndMeetsBriefInterval": { "low": 0, "high": 0.7935 },
+        "failedRequirements": { "detail-order/history-and-comments": 1 },
+        "meanIterations": 2,
+        "lawfulWithoutValidate": 0,
+        "meanInputTokens": 242827,
+        "meanOutputTokens": 7283,
+        "meanWallMs": 48967,
+        "retries": 0,
+        "backoffMs": 0,
+        "discardedTokens": 0
+      },
+      {
+        "brief": "form-booking",
+        "runs": 1,
+        "measured": 1,
+        "endings": {
+          "answered": 1,
+          "cap": 0,
+          "turns": 0,
+          "max_tokens": 0,
+          "refusal": 0,
+          "harness": 0
+        },
+        "firstShotRate": 1,
+        "firstShotInterval": { "low": 0.2065, "high": 1 },
+        "lawfulRate": 1,
+        "lawfulInterval": { "low": 0.2065, "high": 1 },
+        "meetsBriefRate": 1,
+        "meetsBriefInterval": { "low": 0.2065, "high": 1 },
+        "lawfulAndMeetsBriefRate": 1,
+        "lawfulAndMeetsBriefInterval": { "low": 0.2065, "high": 1 },
+        "failedRequirements": {},
+        "meanIterations": 1,
+        "lawfulWithoutValidate": 0,
+        "meanInputTokens": 158785,
+        "meanOutputTokens": 6428,
+        "meanWallMs": 41016,
+        "retries": 0,
+        "backoffMs": 0,
+        "discardedTokens": 0
+      },
+      {
+        "brief": "list-incidents",
+        "runs": 1,
+        "measured": 1,
+        "endings": {
+          "answered": 1,
+          "cap": 0,
+          "turns": 0,
+          "max_tokens": 0,
+          "refusal": 0,
+          "harness": 0
+        },
+        "firstShotRate": 1,
+        "firstShotInterval": { "low": 0.2065, "high": 1 },
+        "lawfulRate": 1,
+        "lawfulInterval": { "low": 0.2065, "high": 1 },
+        "meetsBriefRate": 1,
+        "meetsBriefInterval": { "low": 0.2065, "high": 1 },
+        "lawfulAndMeetsBriefRate": 1,
+        "lawfulAndMeetsBriefInterval": { "low": 0.2065, "high": 1 },
+        "failedRequirements": {},
+        "meanIterations": 1,
+        "lawfulWithoutValidate": 0,
+        "meanInputTokens": 198597,
+        "meanOutputTokens": 6409,
+        "meanWallMs": 42580,
+        "retries": 0,
+        "backoffMs": 0,
+        "discardedTokens": 0
+      },
+      {
+        "brief": "onboarding-steps",
+        "runs": 1,
+        "measured": 1,
+        "endings": {
+          "answered": 1,
+          "cap": 0,
+          "turns": 0,
+          "max_tokens": 0,
+          "refusal": 0,
+          "harness": 0
+        },
+        "firstShotRate": 1,
+        "firstShotInterval": { "low": 0.2065, "high": 1 },
+        "lawfulRate": 1,
+        "lawfulInterval": { "low": 0.2065, "high": 1 },
+        "meetsBriefRate": 1,
+        "meetsBriefInterval": { "low": 0.2065, "high": 1 },
+        "lawfulAndMeetsBriefRate": 1,
+        "lawfulAndMeetsBriefInterval": { "low": 0.2065, "high": 1 },
+        "failedRequirements": {},
+        "meanIterations": 1,
+        "lawfulWithoutValidate": 0,
+        "meanInputTokens": 147585,
+        "meanOutputTokens": 3839,
+        "meanWallMs": 27394,
+        "retries": 0,
+        "backoffMs": 0,
+        "discardedTokens": 0
+      },
+      {
+        "brief": "settings-workspace",
+        "runs": 1,
+        "measured": 1,
+        "endings": {
+          "answered": 1,
+          "cap": 0,
+          "turns": 0,
+          "max_tokens": 0,
+          "refusal": 0,
+          "harness": 0
+        },
+        "firstShotRate": 0,
+        "firstShotInterval": { "low": 0, "high": 0.7935 },
+        "lawfulRate": 1,
+        "lawfulInterval": { "low": 0.2065, "high": 1 },
+        "meetsBriefRate": 1,
+        "meetsBriefInterval": { "low": 0.2065, "high": 1 },
+        "lawfulAndMeetsBriefRate": 1,
+        "lawfulAndMeetsBriefInterval": { "low": 0.2065, "high": 1 },
+        "failedRequirements": {},
+        "meanIterations": 2,
+        "lawfulWithoutValidate": 0,
+        "meanInputTokens": 218120,
+        "meanOutputTokens": 9291,
+        "meanWallMs": 54636,
+        "retries": 0,
+        "backoffMs": 0,
+        "discardedTokens": 0
+      }
+    ]
+  },
+  "records": [
+    {
+      "brief": "auth-sign-in-up",
+      "run": 1,
+      "firstShotLawful": true,
+      "iterations": 1,
+      "lawful": true,
+      "meetsBrief": false,
+      "failedRequirements": ["error-message"],
+      "ended": "answered",
+      "harnessFault": null,
+      "inputTokens": 238742,
+      "cacheReadTokens": 177236,
+      "cacheWriteTokens": 61492,
+      "outputTokens": 8032,
+      "discardedTokens": 0,
+      "wallMs": 52981,
+      "retries": 0,
+      "backoffMs": 0,
+      "turns": 6,
+      "toolCalls": {
+        "get_system_card": 1,
+        "search_components": 1,
+        "get_component": 7,
+        "validate": 1
+      },
+      "violationsSeen": {},
+      "misses": []
+    },
+    {
+      "brief": "chat-assistant",
+      "run": 1,
+      "firstShotLawful": true,
+      "iterations": 1,
+      "lawful": true,
+      "meetsBrief": true,
+      "failedRequirements": [],
+      "ended": "answered",
+      "harnessFault": null,
+      "inputTokens": 177151,
+      "cacheReadTokens": 98948,
+      "cacheWriteTokens": 78193,
+      "outputTokens": 4511,
+      "discardedTokens": 0,
+      "wallMs": 34274,
+      "retries": 0,
+      "backoffMs": 0,
+      "turns": 4,
+      "toolCalls": {
+        "get_system_card": 1,
+        "search_components": 1,
+        "get_component": 6,
+        "validate": 1
+      },
+      "violationsSeen": {},
+      "misses": []
+    },
+    {
+      "brief": "dashboard-usage",
+      "run": 1,
+      "firstShotLawful": false,
+      "iterations": 2,
+      "lawful": true,
+      "meetsBrief": true,
+      "failedRequirements": [],
+      "ended": "answered",
+      "harnessFault": null,
+      "inputTokens": 387910,
+      "cacheReadTokens": 320481,
+      "cacheWriteTokens": 67411,
+      "outputTokens": 4991,
+      "discardedTokens": 0,
+      "wallMs": 40074,
+      "retries": 0,
+      "backoffMs": 0,
+      "turns": 8,
+      "toolCalls": {
+        "get_system_card": 1,
+        "search_components": 3,
+        "get_component": 6,
+        "validate": 2
+      },
+      "violationsSeen": { "spec: no component called `…`": 1 },
+      "misses": [
+        {
+          "call": 1,
+          "fatal": null,
+          "faults": ["no component called `Dashboard.Panel` — did you mean `Dashboard`?"],
+          "violations": [],
+          "contract": []
+        }
+      ]
+    },
+    {
+      "brief": "detail-order",
+      "run": 1,
+      "firstShotLawful": false,
+      "iterations": 2,
+      "lawful": true,
+      "meetsBrief": false,
+      "failedRequirements": ["history-and-comments"],
+      "ended": "answered",
+      "harnessFault": null,
+      "inputTokens": 242827,
+      "cacheReadTokens": 183719,
+      "cacheWriteTokens": 59094,
+      "outputTokens": 7283,
+      "discardedTokens": 0,
+      "wallMs": 48967,
+      "retries": 0,
+      "backoffMs": 0,
+      "turns": 6,
+      "toolCalls": {
+        "get_system_card": 1,
+        "search_components": 0,
+        "get_component": 6,
+        "validate": 2
+      },
+      "violationsSeen": { "fatal": 1 },
+      "misses": [
+        {
+          "call": 1,
+          "fatal": "the spec is not JSON: Expected ',' or '}' after property value in JSON at position 3619 (line 1 column 3620)",
+          "faults": [],
+          "violations": [],
+          "contract": []
+        }
+      ]
+    },
+    {
+      "brief": "form-booking",
+      "run": 1,
+      "firstShotLawful": true,
+      "iterations": 1,
+      "lawful": true,
+      "meetsBrief": true,
+      "failedRequirements": [],
+      "ended": "answered",
+      "harnessFault": null,
+      "inputTokens": 158785,
+      "cacheReadTokens": 111180,
+      "cacheWriteTokens": 47593,
+      "outputTokens": 6428,
+      "discardedTokens": 0,
+      "wallMs": 41016,
+      "retries": 0,
+      "backoffMs": 0,
+      "turns": 5,
+      "toolCalls": {
+        "get_system_card": 1,
+        "search_components": 2,
+        "get_component": 4,
+        "validate": 1
+      },
+      "violationsSeen": {},
+      "misses": []
+    },
+    {
+      "brief": "list-incidents",
+      "run": 1,
+      "firstShotLawful": true,
+      "iterations": 1,
+      "lawful": true,
+      "meetsBrief": true,
+      "failedRequirements": [],
+      "ended": "answered",
+      "harnessFault": null,
+      "inputTokens": 198597,
+      "cacheReadTokens": 134232,
+      "cacheWriteTokens": 64353,
+      "outputTokens": 6409,
+      "discardedTokens": 0,
+      "wallMs": 42580,
+      "retries": 0,
+      "backoffMs": 0,
+      "turns": 5,
+      "toolCalls": {
+        "get_system_card": 1,
+        "search_components": 0,
+        "get_component": 6,
+        "validate": 1
+      },
+      "violationsSeen": {},
+      "misses": []
+    },
+    {
+      "brief": "onboarding-steps",
+      "run": 1,
+      "firstShotLawful": true,
+      "iterations": 1,
+      "lawful": true,
+      "meetsBrief": true,
+      "failedRequirements": [],
+      "ended": "answered",
+      "harnessFault": null,
+      "inputTokens": 147585,
+      "cacheReadTokens": 102305,
+      "cacheWriteTokens": 45268,
+      "outputTokens": 3839,
+      "discardedTokens": 0,
+      "wallMs": 27394,
+      "retries": 0,
+      "backoffMs": 0,
+      "turns": 5,
+      "toolCalls": {
+        "get_system_card": 1,
+        "search_components": 0,
+        "get_component": 4,
+        "validate": 1
+      },
+      "violationsSeen": {},
+      "misses": []
+    },
+    {
+      "brief": "settings-workspace",
+      "run": 1,
+      "firstShotLawful": false,
+      "iterations": 2,
+      "lawful": true,
+      "meetsBrief": true,
+      "failedRequirements": [],
+      "ended": "answered",
+      "harnessFault": null,
+      "inputTokens": 218120,
+      "cacheReadTokens": 162003,
+      "cacheWriteTokens": 56103,
+      "outputTokens": 9291,
+      "discardedTokens": 0,
+      "wallMs": 54636,
+      "retries": 0,
+      "backoffMs": 0,
+      "turns": 6,
+      "toolCalls": {
+        "get_system_card": 1,
+        "search_components": 0,
+        "get_component": 5,
+        "validate": 2
+      },
+      "violationsSeen": {
+        "spec: `…` binds to \"…\", which the screen does not declare as an input": 3
+      },
+      "misses": [
+        {
+          "call": 1,
+          "fatal": null,
+          "faults": [
+            "`digestDisabled` binds to \"digestDisabled\", which the screen does not declare as an input",
+            "`onTransferCancel` binds to \"onTransferCancel\", which the screen does not declare as an input",
+            "`transferBlocked` binds to \"transferBlocked\", which the screen does not declare as an input"
+          ],
+          "violations": [],
+          "contract": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+/* Text that only assistive technology reads.
+ *
+ * Two cases need it, and neither is a design decision a recipe could carry: a
+ * live region that announces a change, and a description that a field owns but
+ * does not draw (TagInput's "3 added"). Both are content for assistive tech, so
+ * they must stay in the accessibility tree and out of the layout.
+ *
+ * This is the modern clip recipe, without the `-1px` margin of the older one.
+ * The box is one structural pixel, its paint is clipped, and `white-space` stops
+ * a long sentence from wrapping into a scrollbar. `display: none` and
+ * `visibility: hidden` are not used because they also remove the text from the
+ * accessibility tree. */
+
+.visuallyHidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
+}

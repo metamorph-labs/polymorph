@@ -1,0 +1,88 @@
+/* ScatterChart — `design/components/scatter-chart.md`.
+ *
+ * The component sets `--pm-chart-mark` per series group. It always holds a
+ * *token reference* (`var(--pm-chart-3)`), never a colour, so a palette change
+ * repaints every mark without this file knowing the palette. Its default is the
+ * de-emphasis grey, because an unresolvable custom property invalidates its
+ * whole declaration and an unpainted dot would not be drawn. */
+
+.surface {
+  composes: plotSurface from './frame/chart-frame.module.css';
+}
+
+/* The legend is composed, not restated. The isolate keys' recipe (the hollow
+   `[aria-pressed='false']` swatch) lives in the legend's sheet. Composing its
+   base class here adds that sheet to this member's closure, where the selectors
+   law reads it (see the note in `scatter-chart.md`). */
+.legend {
+  composes: legend from './frame/chart-legend.module.css';
+}
+
+.marks {
+  display: block;
+
+  --pm-chart-mark: var(--pm-chart-other);
+
+  /* The per-dot stagger index, set inline by the component as geometry. It
+     defaults to zero, so a dot without an index enters first. */
+  --pm-chart-dot: 0;
+}
+
+/* Hairlines on **both** axes, because both are value axes and gridlines belong
+   only on value axes. */
+.grid path {
+  fill: none;
+  stroke: var(--pm-chart-grid);
+  stroke-width: 1;
+}
+
+/* Zero rules, one per axis when zero is in that axis's domain. With `auto`
+   domains a plot may have none. */
+.zero {
+  fill: none;
+  stroke: var(--pm-chart-axis);
+  stroke-width: 1;
+}
+
+/* The mark: a filled circle in the series paint with a 2px surface ring. The
+   ring is part of the mark and keeps a dot legible where marks overlap. Bubble
+   radii come from the component's sqrt scale, and the ring stays 2px.
+ *
+ * The animation is the `chart.marks` binding: dots fade in, staggered dot by
+ * dot and **capped at the stagger maximum**. The cap keeps a dense plot (up to
+ * about 1k points) from taking long to enter. The delay comes from the
+ * component's per-dot index; both values are the shared stagger tokens. */
+.dot {
+  fill: var(--pm-chart-mark);
+  stroke: var(--pm-bg-surface);
+  stroke-width: 2;
+  animation: scatter-dots-enter var(--pm-motion-duration-surface) var(--pm-motion-easing-enter)
+    backwards;
+  animation-delay: min(
+    calc(var(--pm-chart-dot) * var(--pm-motion-stagger-step)),
+    var(--pm-motion-stagger-max)
+  );
+}
+
+/* Transient emphasis: the active mark's series keeps full opacity and the other
+   series fade back. Marks keep their own paint, so the plot stays stable while
+   the reader moves. */
+.marks[data-reading] .points > g:not([data-active]) .dot {
+  opacity: 0.8;
+  transition: opacity var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+@keyframes scatter-dots-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Reduced motion (reduced-motion projection, `docs/motion.md`): no animation or transition. */
+@media (prefers-reduced-motion: reduce) {
+  .dot,
+  .marks[data-reading] .points > g:not([data-active]) .dot {
+    animation: none;
+    transition: none;
+  }
+}

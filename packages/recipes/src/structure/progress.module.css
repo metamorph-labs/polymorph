@@ -1,0 +1,119 @@
+/* Progress — `design/components/progress.md`.
+ *
+ * The pill radius is kept at every geometry, including `sharp`, because a 4px
+ * bar with square ends looks like a rendering artifact. The spec says so
+ * explicitly. */
+
+.track {
+  position: relative;
+  block-size: var(--pm-space-2);
+  overflow: hidden;
+  background: var(--pm-bg-subtle);
+  border-radius: var(--pm-radius-pill);
+}
+
+/* The `progress.fill` binding: transform over the surface duration, standard
+   easing. Always full width and scaled down from the start edge, so it grows
+   the way text runs.
+ *
+ * `stateFeedback` is not composed: its `transition` shorthand would silently
+ * override this one or be overridden. `none` still stops this through the
+ * duration token. */
+.fill {
+  inline-size: 100%;
+  block-size: 100%;
+
+  /* The gradient role. Without a partner colour it resolves to the same pinned
+     step-9 solid as `accent.bg`. In a gradient system the fill shows both hues,
+     and with a single state it needs no hover steps. */
+  background: var(--pm-accent-gradient);
+  border-radius: var(--pm-radius-pill);
+  transform-origin: left center;
+  transition: transform var(--pm-motion-duration-surface) var(--pm-motion-easing-standard);
+}
+
+/* A right-to-left line starts at the right edge, so the fill grows from there.
+   `:dir()` is not used, as in Tabs. */
+[dir='rtl'] .fill {
+  transform-origin: right center;
+}
+
+.track[data-tone='danger'] .fill {
+  background: var(--pm-danger-solid);
+}
+
+/* The ring: the same value at Spinner's box, the icon size for `size`, for the
+   place a Spinner sits once the task knows how far it has got. The padding is
+   half the stroke, so the stroke, centred on the dial's own radius, ends at the
+   box's edge. */
+.ring {
+  display: inline-flex;
+  flex: none;
+  box-sizing: border-box;
+  inline-size: var(--pm-icon-size-md);
+  block-size: var(--pm-icon-size-md);
+  padding: calc(var(--pm-space-1) / 2);
+}
+
+.ring[data-size='sm'] {
+  inline-size: var(--pm-icon-size-sm);
+  block-size: var(--pm-icon-size-sm);
+}
+
+.ring[data-size='lg'] {
+  inline-size: var(--pm-icon-size-lg);
+  block-size: var(--pm-icon-size-lg);
+}
+
+/* Turned a quarter back, so the arc starts at the top and runs clockwise. A
+   ring is a clock face, which a right-to-left page does not mirror. */
+.dial {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  overflow: visible;
+  transform: rotate(-90deg);
+}
+
+/* The groove is a line, so it takes the line role, not the bar's wash. The
+   contrast law holds `border.default` a hairline's lightness from every
+   surface in every pairing. `bg.subtle` sits within that distance of the page
+   and of a card in both modes: a 4px band across its container still shows
+   it, and a 2px line around an icon-sized dial does not. */
+.groove {
+  fill: none;
+  stroke: var(--pm-border-default);
+  stroke-width: var(--pm-space-1);
+}
+
+/* The arc is 100 long, so its dash offset is the part not done. A stroke takes
+   no gradient, so the accent fill is `accent.bg`, the solid the gradient
+   resolves to in a theme with no partner hue.
+ *
+ * The offset eases as the bar's scale does. No transform can lengthen an arc;
+ * the offset repaints the ring's own small box and moves no layout. */
+.arc {
+  fill: none;
+  stroke: var(--pm-accent-bg);
+  stroke-width: var(--pm-space-1);
+  stroke-dasharray: 100;
+  transition: stroke-dashoffset var(--pm-motion-duration-surface) var(--pm-motion-easing-standard);
+}
+
+.ring[data-tone='danger'] .arc {
+  stroke: var(--pm-danger-solid);
+}
+
+/* Reduced-motion projection (`design/motion/motion.md`): the bar takes its new
+   value instantly. This is the `collapse` projection through a transform: the
+   size is the information and the movement is decoration, as with Switch's
+   thumb and Select's chevron. */
+@media (prefers-reduced-motion: reduce) {
+  .fill {
+    transition: none;
+  }
+
+  .arc {
+    transition: none;
+  }
+}

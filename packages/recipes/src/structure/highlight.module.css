@@ -1,0 +1,30 @@
+/* Highlight — `design/components/highlight.md`.
+ *
+ * The root is phrasing content: it sets no font, size or colour and draws no box,
+ * so it takes the text it sits in. A mark brings its own fill and its own text
+ * colour, `warning.text` on `warning.subtle`, a pair the contrast law measures in
+ * every pairing and mode, so a mark is readable on any surface it lands on: a
+ * page, a selected row, a raised panel. The accent wash means "chosen" and the
+ * selection fills mean "selected" (`design/components/README.md`, "Selection
+ * treatment"), so neither marks a match.
+ *
+ * Colour is not the only mark. A mark is set at the emphasis weight too, which
+ * stays where its fill matches the surface under it, as in a warning Alert, and in
+ * forced colours, where the browser repaints the fill. */
+
+/* A bidi isolate, as Diff's inline form is: the text is data in any script, and its
+   direction must not reorder the words around it. A mark is not one, because it
+   may cut a word, and the word keeps its own order across it. */
+.highlight {
+  unicode-bidi: isolate;
+}
+
+.mark {
+  font-weight: var(--pm-text-xl-weight);
+  color: var(--pm-warning-text);
+  background: var(--pm-warning-subtle);
+  border-radius: var(--pm-radius-sm);
+
+  /* A mark that wraps keeps its rounded ends on every line. */
+  box-decoration-break: clone;
+}

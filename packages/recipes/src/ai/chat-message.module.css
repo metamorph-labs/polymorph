@@ -1,0 +1,185 @@
+/* ChatMessage — `design/components/chat-message.md`.
+ *
+ * Two layouts from one anatomy. The model's turn is a column of content with a
+ * mark at the start edge. The reader's turn is the same column mirrored to the
+ * end edge and wrapped in a bubble. `data-role` picks the layout and no prop
+ * changes it, so every product's conversation has the same orientation. The
+ * actions row appears on hover, which is the only animation in this sheet: an
+ * opacity fade over the control duration. The buttons stay in the tab order
+ * throughout. */
+
+.message {
+  display: flex;
+  gap: var(--pm-space-3);
+  align-items: flex-start;
+  min-inline-size: 0;
+}
+
+.mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The model's mark: the `model` glyph in an accent circle the size of an md
+   Avatar, so both speakers' marks align. */
+.model {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--pm-space-7);
+  block-size: var(--pm-space-7);
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+  border: 1px solid var(--pm-accent-bg);
+  border-radius: var(--pm-radius-pill);
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+  min-inline-size: 0;
+}
+
+.meta {
+  display: flex;
+  gap: var(--pm-space-2);
+  align-items: baseline;
+}
+
+/* The speaker in the primary colour at the emphasis weight (Text's `strong`
+   cell), with the time beside it in the metadata step. */
+.author {
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-xl-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+}
+
+.time {
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+}
+
+/* The content column: the turn's children, stacked at the reply's spacing. */
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-3);
+  min-inline-size: 0;
+}
+
+/* The notice for a stopped or failed turn, in the metadata step with a
+   matching glyph. */
+.notice {
+  display: inline-flex;
+  gap: var(--pm-space-2);
+  align-items: center;
+  margin: 0;
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-secondary);
+}
+
+.noticeGlyph {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--pm-warning-text);
+}
+
+.message[data-status='error'] .noticeGlyph {
+  color: var(--pm-danger-text);
+}
+
+/* The hover row. It is transparent at rest and shown on hover or on keyboard
+   focus within it. The opacity fade uses the control duration, and the
+   reduced-motion law allows it because nothing moves. It uses opacity, never
+   `display`, so the buttons stay in the tab order and a reader who cannot
+   hover reaches them the same way. */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-1);
+  opacity: 0;
+  transition: opacity var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+.message:hover .actions,
+.message:focus-within .actions {
+  opacity: 1;
+}
+
+/* Without hover, the row is always visible. */
+@media (hover: none) {
+  .actions {
+    opacity: 1;
+  }
+}
+
+/* the reader's turn: a bubble at the end edge --------------------------------- */
+
+.message[data-role='user'] {
+  flex-direction: row-reverse;
+}
+
+.message[data-role='user'] .body {
+  align-items: flex-end;
+}
+
+.message[data-role='user'] .meta {
+  flex-direction: row-reverse;
+}
+
+/* The bubble is at most six times `--pm-space-10` wide (576 at standard
+   density, about three quarters of ChatThread's reading measure). A one-word
+   prompt stays small and a paragraph still reads as the reader's. In a
+   narrower column the bubble fills the column. The bubble uses the surface
+   radius, with the corner nearest the mark reduced to the control radius.
+   That is the only asymmetry, and it shows which side spoke. */
+.message[data-role='user'] .content {
+  max-inline-size: calc(var(--pm-space-10) * 6);
+  padding: var(--pm-space-3) var(--pm-space-4);
+  background: var(--pm-bg-subtle);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-surface);
+  border-end-end-radius: var(--pm-radius-control);
+}
+
+.message[data-role='user'] .actions {
+  justify-content: flex-end;
+}
+
+/* the system notice: a centred line ------------------------------------------ */
+
+.message[data-role='system'] {
+  justify-content: center;
+}
+
+.message[data-role='system'] .body {
+  flex: none;
+  align-items: center;
+  max-inline-size: 100%;
+}
+
+.message[data-role='system'] .content {
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  color: var(--pm-text-muted);
+  text-align: center;
+  letter-spacing: var(--pm-text-xs-tracking);
+}

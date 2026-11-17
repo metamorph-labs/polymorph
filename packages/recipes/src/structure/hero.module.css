@@ -1,0 +1,70 @@
+/* Hero — `design/components/hero.md`.
+ *
+ * Two rows of text and a row of controls. The display type step and the extra
+ * vertical padding set it apart from a header. */
+
+.hero {
+  /* The title's query container (container-first, `docs/layout.md`). A Hero in a
+     page column and one in a narrow docs rail differ in width, and only the
+     container knows. */
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-5);
+
+  /* The recipe's one exception. Other assemblies leave vertical inset to the
+     page (PageHeader has only `padding-block-end`, and archetypes own
+     `--pm-page-padding-y`). A display block adds its own, as AuthPage does on
+     top of Card's. More above than below, because the hero opens the page and
+     leads into the content. */
+  padding-block: var(--pm-space-8) var(--pm-space-7);
+}
+
+.hero[data-align='center'] {
+  text-align: center;
+}
+
+/* `display.lg` in the display family (a serif system's serif, an instrument's
+   grotesk) with the slot's own style, italic included. Hero is the display
+   scale's only consumer. */
+.title {
+  margin: 0;
+  font-family: var(--pm-display-lg-family);
+  font-size: var(--pm-display-lg-size);
+  font-style: var(--pm-display-lg-style);
+  font-weight: var(--pm-display-lg-weight);
+  line-height: var(--pm-display-lg-line-height);
+  letter-spacing: var(--pm-display-lg-tracking);
+  color: var(--pm-text-primary);
+
+  /* A fallback, not a design decision: at this size one long word can be wider
+     than a phone, and by default a word that does not fit is *clipped*. The step
+     swap below covers the usual case, and this covers widths no breakpoint
+     anticipates, because a clipped word is lost content (`docs/layout.md`). */
+  overflow-wrap: break-word;
+}
+
+/* Container-first (`docs/layout.md`): below a 26rem container the title drops
+   one display step. A rem literal, because a density-scaled breakpoint would
+   change the type when only control density changed. The whole step swaps,
+   because tracking and style belong to their step. */
+@container (width < 26rem) {
+  .title {
+    font-family: var(--pm-display-md-family);
+    font-size: var(--pm-display-md-size);
+    font-style: var(--pm-display-md-style);
+    font-weight: var(--pm-display-md-weight);
+    line-height: var(--pm-display-md-line-height);
+    letter-spacing: var(--pm-display-md-tracking);
+  }
+}
+
+.lede {
+  margin: 0;
+  font-family: var(--pm-text-lg-family);
+  font-size: var(--pm-text-lg-size);
+  font-weight: var(--pm-text-lg-weight);
+  line-height: var(--pm-text-lg-line-height);
+  letter-spacing: var(--pm-text-lg-tracking);
+  color: var(--pm-text-secondary);
+}

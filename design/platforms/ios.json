@@ -1,0 +1,493 @@
+{
+  "platform": "ios",
+  "members": {
+    "Accordion": {
+      "status": "native"
+    },
+    "Alert": {
+      "status": "native"
+    },
+    "ApprovalCard": {
+      "status": "native"
+    },
+    "AppShell": {
+      "status": "native",
+      "reason": "Its tooltip names a collapsed rail\u2019s glyphs for pointer users only. On a phone the rail is a drawer that never collapses, so every item keeps its visible label."
+    },
+    "AreaChart": {
+      "status": "native",
+      "as": "Swift Charts"
+    },
+    "ArtifactPane": {
+      "status": "native"
+    },
+    "AttachmentChip": {
+      "status": "native"
+    },
+    "AudioPlayer": {
+      "status": "native"
+    },
+    "AuthPage": {
+      "status": "native"
+    },
+    "Avatar": {
+      "status": "native"
+    },
+    "AvatarButton": {
+      "status": "native"
+    },
+    "Badge": {
+      "status": "native"
+    },
+    "Banner": {
+      "status": "native"
+    },
+    "BarChart": {
+      "status": "native",
+      "as": "Swift Charts"
+    },
+    "Bespoke": {
+      "status": "native"
+    },
+    "Breadcrumbs": {
+      "status": "native"
+    },
+    "Button": {
+      "status": "native"
+    },
+    "Calendar": {
+      "status": "native"
+    },
+    "Card": {
+      "status": "native"
+    },
+    "Carousel": {
+      "status": "native"
+    },
+    "ChatMessage": {
+      "status": "native",
+      "reason": "Touch has no hover, so its action row always shows, as the spec has it on any screen without hover."
+    },
+    "ChatThread": {
+      "status": "native"
+    },
+    "Checkbox": {
+      "status": "native"
+    },
+    "CheckboxGroup": {
+      "status": "native"
+    },
+    "ChoiceCard": {
+      "status": "native"
+    },
+    "Citation": {
+      "status": "adapted",
+      "as": "a plain link; no hover preview"
+    },
+    "Code": {
+      "status": "native"
+    },
+    "CodeBlock": {
+      "status": "native"
+    },
+    "Collapsible": {
+      "status": "native"
+    },
+    "ColorInput": {
+      "status": "native",
+      "as": "UIColorWell and the system colour picker"
+    },
+    "Combobox": {
+      "status": "adapted",
+      "as": "a text field; suggestions in a sheet on iPhone, anchored on iPad",
+      "reason": "iOS has no combobox control."
+    },
+    "Command": {
+      "status": "absent",
+      "reason": "A keyboard-summoned palette has no phone form. The same commands are found through a search field.",
+      "substitute": "SearchInput"
+    },
+    "CommentThread": {
+      "status": "native"
+    },
+    "ConfirmDialog": {
+      "status": "adapted",
+      "as": "a confirmation action sheet, or a sheet with the field of a typed phrase"
+    },
+    "ContextMenu": {
+      "status": "adapted",
+      "as": "a long-press action sheet"
+    },
+    "ConversationPage": {
+      "status": "native",
+      "reason": "On a phone the aside opens in a Drawer from the header, the spec\u2019s own form below 48rem, and the thread keeps the whole width."
+    },
+    "CopyButton": {
+      "status": "native"
+    },
+    "Countdown": {
+      "status": "native"
+    },
+    "CursorPagination": {
+      "status": "native"
+    },
+    "Dashboard": {
+      "status": "native"
+    },
+    "DataTable": {
+      "status": "adapted",
+      "as": "a list on iPhone, a table on iPad"
+    },
+    "DatePicker": {
+      "status": "native",
+      "reason": "SwiftUI\u2019s DatePicker is the platform\u2019s own, with its own phone form, so the web\u2019s sheet below 30rem does not apply."
+    },
+    "DateRangePicker": {
+      "status": "adapted",
+      "as": "two date fields, one range calendar; a sheet on iPhone, anchored on iPad",
+      "reason": "iOS has no range date picker."
+    },
+    "DensityScope": {
+      "status": "native"
+    },
+    "DescriptionList": {
+      "status": "native"
+    },
+    "DetailPage": {
+      "status": "native"
+    },
+    "Dialog": {
+      "status": "adapted",
+      "as": "a modal sheet"
+    },
+    "Diff": {
+      "status": "native"
+    },
+    "DonutChart": {
+      "status": "native",
+      "as": "Swift Charts"
+    },
+    "Drawer": {
+      "status": "adapted",
+      "as": "a sheet from the bottom on iPhone, a side panel on iPad"
+    },
+    "DurationInput": {
+      "status": "native"
+    },
+    "EmptyState": {
+      "status": "native"
+    },
+    "ErrorSummary": {
+      "status": "native"
+    },
+    "FileUpload": {
+      "status": "native"
+    },
+    "FilterBar": {
+      "status": "native"
+    },
+    "FormField": {
+      "status": "native"
+    },
+    "FormPage": {
+      "status": "native"
+    },
+    "FunnelChart": {
+      "status": "native",
+      "as": "Swift Charts"
+    },
+    "Grid": {
+      "status": "native"
+    },
+    "Heading": {
+      "status": "native"
+    },
+    "Heatmap": {
+      "status": "native",
+      "as": "Swift Charts"
+    },
+    "Hero": {
+      "status": "native"
+    },
+    "Highlight": {
+      "status": "native"
+    },
+    "Histogram": {
+      "status": "native",
+      "as": "Swift Charts"
+    },
+    "HoverCard": {
+      "status": "absent",
+      "reason": "Touch has no hover, and the preview is never load-bearing. The trigger stays a link, and only the preview is lost.",
+      "substitute": "Link"
+    },
+    "Icon": {
+      "status": "native"
+    },
+    "Image": {
+      "status": "native"
+    },
+    "ImageEditor": {
+      "status": "native"
+    },
+    "Inline": {
+      "status": "native"
+    },
+    "InlineEdit": {
+      "status": "native"
+    },
+    "Input": {
+      "status": "native"
+    },
+    "JsonTree": {
+      "status": "native"
+    },
+    "Kbd": {
+      "status": "native"
+    },
+    "Lightbox": {
+      "status": "native"
+    },
+    "LineChart": {
+      "status": "native",
+      "as": "Swift Charts"
+    },
+    "Link": {
+      "status": "native"
+    },
+    "List": {
+      "status": "native"
+    },
+    "ListPage": {
+      "status": "native"
+    },
+    "LogView": {
+      "status": "native"
+    },
+    "Markdown": {
+      "status": "native",
+      "reason": "Its citations render as Citation does here: links to the source, without the hover preview."
+    },
+    "MasterDetailPage": {
+      "status": "native",
+      "reason": "SplitPane’s split from 48rem of the page’s own width, and below it one pane, as on the web: a NavigationSplitView inside AppShell’s navigation stack does not push its detail on an iPhone."
+    },
+    "Menu": {
+      "status": "adapted",
+      "as": "an action sheet on iPhone, a pull-down on iPad"
+    },
+    "Menubar": {
+      "status": "absent",
+      "reason": "An iPhone has no menubar. On iPad and Mac the system draws the command menus an app declares, so a view never draws one. A screen keeps the same commands in a Menu.",
+      "substitute": "Menu"
+    },
+    "Meter": {
+      "status": "native"
+    },
+    "ModeSwitch": {
+      "status": "absent",
+      "reason": "Settings owns appearance on iOS, and the Human Interface Guidelines ask an app not to offer its own appearance setting. A native screen follows the system’s mode.",
+      "substitute": "none"
+    },
+    "MonthInput": {
+      "status": "native"
+    },
+    "MultiSelect": {
+      "status": "adapted",
+      "as": "a tag field; checklist in a sheet on iPhone, anchored on iPad",
+      "reason": "iOS has no multi-select control."
+    },
+    "NumberInput": {
+      "status": "native"
+    },
+    "OTPInput": {
+      "status": "native"
+    },
+    "PageHeader": {
+      "status": "native"
+    },
+    "Pagination": {
+      "status": "native"
+    },
+    "PasswordInput": {
+      "status": "native"
+    },
+    "PhoneInput": {
+      "status": "native"
+    },
+    "Plan": {
+      "status": "native"
+    },
+    "Popover": {
+      "status": "adapted",
+      "as": "a sheet on iPhone, anchored on iPad"
+    },
+    "Progress": {
+      "status": "native"
+    },
+    "PromptInput": {
+      "status": "native"
+    },
+    "ProviderButton": {
+      "status": "native"
+    },
+    "QRCode": {
+      "status": "native"
+    },
+    "RadarChart": {
+      "status": "adapted",
+      "as": "SwiftUI shapes",
+      "reason": "Swift Charts has no radial scale."
+    },
+    "RadioGroup": {
+      "status": "native"
+    },
+    "Rating": {
+      "status": "native",
+      "reason": "SwiftUI has no rating control, so a set rating is a row of buttons drawing the star and star.fill symbols, and a shown rating is one image with an accessibility label."
+    },
+    "ReasoningDisclosure": {
+      "status": "native"
+    },
+    "RecordButton": {
+      "status": "native"
+    },
+    "RelativeTime": {
+      "status": "native"
+    },
+    "ScatterChart": {
+      "status": "native",
+      "as": "Swift Charts"
+    },
+    "ScrollArea": {
+      "status": "native"
+    },
+    "SearchInput": {
+      "status": "native"
+    },
+    "SearchPage": {
+      "status": "native"
+    },
+    "SectionNav": {
+      "status": "native"
+    },
+    "SegmentedControl": {
+      "status": "native"
+    },
+    "Select": {
+      "status": "native",
+      "reason": "SwiftUI\u2019s Picker is the platform\u2019s own select, with its own phone form, so the web\u2019s sheet below 30rem does not apply."
+    },
+    "Separator": {
+      "status": "native"
+    },
+    "SettingsPage": {
+      "status": "native"
+    },
+    "SettingsRow": {
+      "status": "native"
+    },
+    "Skeleton": {
+      "status": "native"
+    },
+    "Slider": {
+      "status": "native"
+    },
+    "SourceList": {
+      "status": "native"
+    },
+    "Sparkline": {
+      "status": "native",
+      "as": "Swift Charts"
+    },
+    "Spinner": {
+      "status": "native"
+    },
+    "SplitButton": {
+      "status": "native",
+      "reason": "The two halves stay buttons, and the menu half opens Menu as it renders here, a sheet of actions on iPhone."
+    },
+    "SplitPane": {
+      "status": "adapted",
+      "as": "iPad side by side; one pane at a time on iPhone"
+    },
+    "Stack": {
+      "status": "native"
+    },
+    "Stat": {
+      "status": "native"
+    },
+    "Stepper": {
+      "status": "native"
+    },
+    "StreamingText": {
+      "status": "native"
+    },
+    "Switch": {
+      "status": "native"
+    },
+    "Table": {
+      "status": "adapted",
+      "as": "a list on iPhone, a table on iPad"
+    },
+    "TableOfContents": {
+      "status": "native"
+    },
+    "Tabs": {
+      "status": "native"
+    },
+    "TagInput": {
+      "status": "native"
+    },
+    "Text": {
+      "status": "native"
+    },
+    "Textarea": {
+      "status": "native"
+    },
+    "ThirdParty": {
+      "status": "absent",
+      "reason": "The boundary\u2019s rules are lint rules for web code. A native screen hosts another library\u2019s view through UIViewRepresentable, and declares it as a Bespoke zone.",
+      "substitute": "Bespoke"
+    },
+    "TimeInput": {
+      "status": "native"
+    },
+    "Timeline": {
+      "status": "native"
+    },
+    "Toast": {
+      "status": "adapted",
+      "as": "an in-app banner above the home indicator",
+      "reason": "iOS has no system toast."
+    },
+    "ToneScope": {
+      "status": "native"
+    },
+    "ToolCall": {
+      "status": "native"
+    },
+    "Tooltip": {
+      "status": "absent",
+      "reason": "Touch has no hover, and a tooltip never carries the only copy of a meaning. A hint that matters goes in visible text.",
+      "substitute": "Text"
+    },
+    "Tour": {
+      "status": "adapted",
+      "as": "a sheet per step, pointing at no part of the screen"
+    },
+    "Tree": {
+      "status": "native",
+      "as": "a DisclosureGroup for each branch, nested by level"
+    },
+    "Treemap": {
+      "status": "adapted",
+      "as": "SwiftUI shapes",
+      "reason": "Swift Charts has no mark that tiles a box by area."
+    },
+    "TreeSelect": {
+      "status": "native",
+      "as": "a field row that opens Tree in a sheet, and in a popover on iPad"
+    }
+  }
+}

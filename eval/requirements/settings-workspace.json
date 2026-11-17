@@ -1,0 +1,151 @@
+{
+  "requirements": [
+    {
+      "id": "four-sections",
+      "says": "The settings are in titled sections: general, notifications, access, and a danger zone apart from them.",
+      "check": {
+        "count": [
+          {
+            "component": "SettingsRow.Group",
+            "props": {
+              "title": "given"
+            }
+          },
+          {
+            "component": "Card",
+            "props": {
+              "title": "given"
+            }
+          },
+          {
+            "component": "Alert",
+            "props": {
+              "title": "given"
+            }
+          },
+          {
+            "component": "Heading"
+          }
+        ],
+        "min": 4
+      }
+    },
+    {
+      "id": "settings-described",
+      "says": "Each of the five settings says, beside its control, what it changes.",
+      "check": {
+        "count": {
+          "component": ["SettingsRow", "FormField"],
+          "props": {
+            "description": "given"
+          }
+        },
+        "min": 5
+      }
+    },
+    {
+      "id": "name-field",
+      "says": "The workspace name can be edited.",
+      "check": {
+        "element": {
+          "component": "Input"
+        }
+      }
+    },
+    {
+      "id": "two-switches",
+      "says": "The email digest and member invitations are each switched on or off.",
+      "check": {
+        "count": {
+          "kind": "toggle"
+        },
+        "min": 2
+      }
+    },
+    {
+      "id": "two-choices",
+      "says": "The time zone and how often the digest is sent are each chosen from a list.",
+      "check": {
+        "count": {
+          "kind": "choice"
+        },
+        "min": 2
+      }
+    },
+    {
+      "id": "delete-asks-first",
+      "says": "Deleting the workspace asks for confirmation first.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": "ConfirmDialog"
+            }
+          },
+          {
+            "element": {
+              "component": "Dialog",
+              "props": {
+                "alert": "given"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Dialog",
+              "props": {
+                "footer": "given"
+              },
+              "has": {
+                "component": "Button",
+                "props": {
+                  "tone": {
+                    "is": "danger"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "confirmation-names-the-workspace",
+      "says": "The confirmation names the workspace, so its words come from the workspace.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": "ConfirmDialog",
+              "anyProp": {
+                "title": "dynamic",
+                "description": "dynamic",
+                "confirmWith": "dynamic"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Dialog",
+              "anyProp": {
+                "title": "dynamic",
+                "description": "dynamic"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Dialog",
+              "has": {
+                "component": ["Text", "Heading"],
+                "props": {
+                  "children": "dynamic"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

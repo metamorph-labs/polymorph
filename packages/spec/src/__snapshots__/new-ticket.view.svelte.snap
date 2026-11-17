@@ -1,0 +1,150 @@
+<script module lang="ts">
+/**
+ * Relay's new-ticket form — one card of fields under a page header, with a guarded discard.
+ *
+ * Emitted from a screen spec (`polymorph-screen/1`). Composition and bindings only:
+ * this file holds no state, computes nothing, and expresses no style — the
+ * container that renders it owns all three.
+ */
+import {
+  Button,
+  Card,
+  Combobox,
+  ConfirmDialog,
+  DatePicker,
+  FormField,
+  FormPage,
+  Grid,
+  Input,
+  Select,
+  Stack,
+  Switch,
+} from '@polymorph/svelte-ui'
+import type { CalendarDate } from '@internationalized/date'
+
+export interface NewTicketViewProps {
+  /** The archetype owns the <form> and has already prevented the default. */
+  onSubmit: () => void
+  /** Whether the discard confirmation is open. */
+  confirming: boolean
+  onConfirmingChange: (open: boolean) => void
+  onDiscard: () => void
+  onConfirmDiscard: () => void
+  subject: string
+  onSubjectChange: (value: string) => void
+  subjectError: string | undefined
+  requester: string
+  onRequesterChange: (value: string) => void
+  requesterError: string | undefined
+  priority: string
+  priorityOptions: { value: string; label: string }[]
+  onPriorityChange: (value: string | null) => void
+  assignee: string | null
+  assigneeOptions: { value: string; label: string }[]
+  onAssigneeChange: (value: string | null) => void
+  due: CalendarDate | null
+  /** Today — a due date in the past is not a due date. */
+  minDue: CalendarDate
+  onDueChange: (value: CalendarDate | null) => void
+  notify: boolean
+  onNotifyChange: (next: boolean) => void
+}
+</script>
+
+<script lang="ts">
+let {
+  onSubmit,
+  confirming,
+  onConfirmingChange,
+  onDiscard,
+  onConfirmDiscard,
+  subject,
+  onSubjectChange,
+  subjectError,
+  requester,
+  onRequesterChange,
+  requesterError,
+  priority,
+  priorityOptions,
+  onPriorityChange,
+  assignee,
+  assigneeOptions,
+  onAssigneeChange,
+  due,
+  minDue,
+  onDueChange,
+  notify,
+  onNotifyChange,
+}: NewTicketViewProps = $props()
+</script>
+
+<FormPage
+  title="New ticket"
+  description="Raise a conversation on someone's behalf — a phone call, or an email that never reached the queue."
+  onSubmit={onSubmit}
+  >{#snippet actions()
+    }<ConfirmDialog
+      open={confirming}
+      onOpenChange={onConfirmingChange}
+      title="Discard this ticket?"
+      description="The subject and requester you have typed will be lost."
+      confirmLabel="Discard"
+      onConfirm={onConfirmDiscard}
+      >{#snippet trigger()
+        }<Button variant="ghost" tone="neutral" label="Discard" onClick={onDiscard}
+        />{/snippet
+      }</ConfirmDialog
+    ><Button type="submit" icon="confirm" label="Create ticket"
+    />{/snippet
+  }<Card
+    ><Stack gap={5}
+      ><FormField
+        label="Subject"
+        required
+        description="One line. It is what the queue is scanned by."
+        error={subjectError}
+        ><Input
+          value={subject}
+          onChange={onSubjectChange}
+          placeholder="Webhook retries stop after the first 5xx"
+          maxLength={120}
+        /></FormField
+      ><Grid columns={2} gap={5}
+        ><FormField
+          label="Requester"
+          required
+          description="Where the confirmation and replies go."
+          error={requesterError}
+          ><Input
+            type="email"
+            autoComplete="email"
+            value={requester}
+            onChange={onRequesterChange}
+            placeholder="dana@northwind.example"
+          /></FormField
+        ><FormField label="Priority" description="Urgent pages the on-call engineer."
+          ><Select options={priorityOptions} value={priority} onChange={onPriorityChange}
+          /></FormField
+        ></Grid
+      ><Grid columns={2} gap={5}
+        ><FormField label="Assignee" description="Who picks this up, if anyone."
+          ><Combobox
+            clearable
+            options={assigneeOptions}
+            placeholder="Search the team…"
+            value={assignee}
+            onChange={onAssigneeChange}
+          /></FormField
+        ><FormField label="Due date" description="The day it has to be answered."
+          ><DatePicker clearable minValue={minDue} value={due} onChange={onDueChange}
+          /></FormField
+        ></Grid
+      ><FormField
+        label="Notify the requester"
+        description="Sends a confirmation with the ticket number."
+        ><Switch checked={notify} onCheckedChange={onNotifyChange}
+        /></FormField
+      ></Stack
+    ></Card
+  ></FormPage
+>

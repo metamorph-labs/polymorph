@@ -1,0 +1,196 @@
+/* The mood board. Harness chrome with a poster layout. Every colour, length and face reads a
+ * --pm-* token, so the board follows the pairing. */
+
+.board {
+  display: grid;
+  gap: var(--pm-space-7);
+  max-width: 1160px;
+  padding: var(--pm-space-7);
+  margin-inline: auto;
+}
+
+.masthead {
+  display: grid;
+  gap: var(--pm-space-4);
+  padding-block-end: var(--pm-space-6);
+  border-block-end: 1px solid var(--pm-border-default);
+}
+
+.eyebrow {
+  margin: 0;
+  font-family: var(--pm-font-mono);
+  font-size: var(--pm-text-sm-size);
+  color: var(--pm-text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--pm-display-lg-family);
+  font-size: var(--pm-display-lg-size);
+  font-weight: var(--pm-display-lg-weight);
+  font-style: var(--pm-display-lg-style);
+  line-height: var(--pm-display-lg-line-height);
+  letter-spacing: var(--pm-display-lg-tracking);
+  color: var(--pm-text-primary);
+}
+
+.direction {
+  margin: 0;
+  max-width: 64ch;
+  font-family: var(--pm-font-body);
+  font-size: var(--pm-text-lg-size);
+  line-height: var(--pm-text-lg-line-height);
+  color: var(--pm-text-secondary);
+}
+
+.axes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-2);
+}
+
+.axisChip {
+  padding: var(--pm-space-1) var(--pm-space-3);
+  font-family: var(--pm-font-mono);
+  font-size: var(--pm-text-xs-size);
+  color: var(--pm-text-secondary);
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-default);
+  border-radius: var(--pm-radius-pill);
+}
+
+.voice {
+  display: grid;
+  gap: var(--pm-space-5);
+}
+
+.displaySpecimen {
+  margin: 0;
+  font-family: var(--pm-display-md-family);
+  font-size: var(--pm-display-md-size);
+  font-weight: var(--pm-display-md-weight);
+  font-style: var(--pm-display-md-style);
+  line-height: var(--pm-display-md-line-height);
+  letter-spacing: var(--pm-display-md-tracking);
+  color: var(--pm-text-primary);
+}
+
+.bodySpecimen {
+  margin: 0;
+  max-width: 58ch;
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  line-height: var(--pm-text-md-line-height);
+  color: var(--pm-text-secondary);
+}
+
+.monoSpecimen {
+  margin: 0;
+  font-family: var(--pm-font-mono);
+  font-size: var(--pm-text-sm-size);
+  color: var(--pm-text-muted);
+}
+
+.strip {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: var(--pm-space-3);
+}
+
+.swatch {
+  display: flex;
+  align-items: flex-end;
+  min-height: 84px;
+  padding: var(--pm-space-3);
+  color: var(--pm-text-primary);
+  border: 1px solid var(--pm-border-default);
+  border-radius: var(--pm-radius-md);
+}
+
+.swatchLabel {
+  font-family: var(--pm-font-mono);
+  font-size: var(--pm-text-xs-size);
+}
+
+.shape {
+  display: grid;
+  gap: var(--pm-space-5);
+}
+
+.shapeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-5);
+  align-items: center;
+}
+
+.radiusChip,
+.shadowChip,
+.focusChip {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 64px;
+  font-family: var(--pm-font-mono);
+  font-size: var(--pm-text-xs-size);
+  color: var(--pm-text-secondary);
+  background: var(--pm-bg-surface);
+}
+
+.radiusChip {
+  border: 1px solid var(--pm-border-strong);
+}
+
+.shadowChip {
+  border-radius: var(--pm-radius-md);
+}
+
+.focusChip {
+  border-radius: var(--pm-radius-control);
+  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline-offset: var(--pm-focus-offset);
+}
+
+.glassStage {
+  display: grid;
+  place-items: center;
+  padding: var(--pm-space-7);
+  background: var(--pm-accent-gradient);
+  border-radius: var(--pm-radius-lg);
+}
+
+.glassPane {
+  padding: var(--pm-space-5) var(--pm-space-6);
+  font-family: var(--pm-font-body);
+  font-size: var(--pm-text-md-size);
+  color: var(--pm-text-primary);
+  background: var(--pm-material-surface);
+  backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  border-radius: var(--pm-radius-surface);
+  box-shadow: var(--pm-shadow-transient), var(--pm-shadow-inset-top);
+}
+
+.modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--pm-space-5);
+}
+
+.modePane {
+  overflow: hidden;
+  background: var(--pm-bg-app);
+  border: 1px solid var(--pm-border-default);
+  border-radius: var(--pm-radius-surface);
+}
+
+@media (width <= 900px) {
+  .strip {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .modes {
+    grid-template-columns: 1fr;
+  }
+}

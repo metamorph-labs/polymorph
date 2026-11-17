@@ -1,0 +1,438 @@
+{
+  "framework": "elements",
+  "members": {
+    "Accordion": {
+      "status": "native"
+    },
+    "Alert": {
+      "status": "native"
+    },
+    "ApprovalCard": {
+      "status": "native"
+    },
+    "AppShell": {
+      "status": "native"
+    },
+    "AreaChart": {
+      "status": "native"
+    },
+    "ArtifactPane": {
+      "status": "native"
+    },
+    "AttachmentChip": {
+      "status": "native"
+    },
+    "AudioPlayer": {
+      "status": "native"
+    },
+    "AuthPage": {
+      "status": "native"
+    },
+    "Avatar": {
+      "status": "native"
+    },
+    "AvatarButton": {
+      "status": "native"
+    },
+    "Badge": {
+      "status": "native"
+    },
+    "Banner": {
+      "status": "native"
+    },
+    "BarChart": {
+      "status": "native"
+    },
+    "Bespoke": {
+      "status": "native"
+    },
+    "Breadcrumbs": {
+      "status": "native"
+    },
+    "Button": {
+      "status": "native"
+    },
+    "Calendar": {
+      "status": "native"
+    },
+    "Card": {
+      "status": "native"
+    },
+    "Carousel": {
+      "status": "native"
+    },
+    "ChatMessage": {
+      "status": "native"
+    },
+    "ChatThread": {
+      "status": "native"
+    },
+    "Checkbox": {
+      "status": "native"
+    },
+    "CheckboxGroup": {
+      "status": "native"
+    },
+    "ChoiceCard": {
+      "status": "native"
+    },
+    "Citation": {
+      "status": "native"
+    },
+    "Code": {
+      "status": "native"
+    },
+    "CodeBlock": {
+      "status": "native"
+    },
+    "Collapsible": {
+      "status": "native"
+    },
+    "ColorInput": {
+      "status": "native"
+    },
+    "Combobox": {
+      "status": "native"
+    },
+    "Command": {
+      "status": "native"
+    },
+    "CommentThread": {
+      "status": "native"
+    },
+    "ConfirmDialog": {
+      "status": "native"
+    },
+    "ContextMenu": {
+      "status": "native"
+    },
+    "ConversationPage": {
+      "status": "native"
+    },
+    "CopyButton": {
+      "status": "native"
+    },
+    "Countdown": {
+      "status": "native"
+    },
+    "CursorPagination": {
+      "status": "native"
+    },
+    "Dashboard": {
+      "status": "native"
+    },
+    "DataTable": {
+      "status": "native"
+    },
+    "DatePicker": {
+      "status": "native"
+    },
+    "DateRangePicker": {
+      "status": "native"
+    },
+    "DensityScope": {
+      "status": "native"
+    },
+    "DescriptionList": {
+      "status": "native"
+    },
+    "DetailPage": {
+      "status": "native"
+    },
+    "Dialog": {
+      "status": "native"
+    },
+    "Diff": {
+      "status": "native"
+    },
+    "DonutChart": {
+      "status": "native"
+    },
+    "Drawer": {
+      "status": "native"
+    },
+    "DurationInput": {
+      "status": "native"
+    },
+    "EmptyState": {
+      "status": "native"
+    },
+    "ErrorSummary": {
+      "status": "native"
+    },
+    "FileUpload": {
+      "status": "native"
+    },
+    "FilterBar": {
+      "status": "native"
+    },
+    "FormField": {
+      "status": "native"
+    },
+    "FormPage": {
+      "status": "native"
+    },
+    "FunnelChart": {
+      "status": "native"
+    },
+    "Grid": {
+      "status": "native"
+    },
+    "Heading": {
+      "status": "native"
+    },
+    "Heatmap": {
+      "status": "native"
+    },
+    "Hero": {
+      "status": "native"
+    },
+    "Highlight": {
+      "status": "native"
+    },
+    "Histogram": {
+      "status": "native"
+    },
+    "HoverCard": {
+      "status": "native"
+    },
+    "Icon": {
+      "status": "native"
+    },
+    "Image": {
+      "status": "native"
+    },
+    "ImageEditor": {
+      "status": "absent",
+      "reason": "no description draws it: its crop geometry (`image-editor.geometry.ts`) is the React vocabulary's, not the engine's, so a description cannot share it"
+    },
+    "Inline": {
+      "status": "native"
+    },
+    "InlineEdit": {
+      "status": "native"
+    },
+    "Input": {
+      "status": "native"
+    },
+    "JsonTree": {
+      "status": "native"
+    },
+    "Kbd": {
+      "status": "native"
+    },
+    "Lightbox": {
+      "status": "native"
+    },
+    "LineChart": {
+      "status": "native"
+    },
+    "Link": {
+      "status": "native"
+    },
+    "List": {
+      "status": "native"
+    },
+    "ListPage": {
+      "status": "native"
+    },
+    "LogView": {
+      "status": "native"
+    },
+    "Markdown": {
+      "status": "native"
+    },
+    "MasterDetailPage": {
+      "status": "native"
+    },
+    "Menu": {
+      "status": "native"
+    },
+    "Menubar": {
+      "status": "native"
+    },
+    "Meter": {
+      "status": "native"
+    },
+    "ModeSwitch": {
+      "status": "native"
+    },
+    "MonthInput": {
+      "status": "native"
+    },
+    "MultiSelect": {
+      "status": "native"
+    },
+    "NumberInput": {
+      "status": "native"
+    },
+    "OTPInput": {
+      "status": "native"
+    },
+    "PageHeader": {
+      "status": "native"
+    },
+    "Pagination": {
+      "status": "native"
+    },
+    "PasswordInput": {
+      "status": "native"
+    },
+    "PhoneInput": {
+      "status": "native"
+    },
+    "Plan": {
+      "status": "native"
+    },
+    "Popover": {
+      "status": "native"
+    },
+    "Progress": {
+      "status": "native"
+    },
+    "PromptInput": {
+      "status": "native"
+    },
+    "ProviderButton": {
+      "status": "native"
+    },
+    "QRCode": {
+      "status": "native"
+    },
+    "RadarChart": {
+      "status": "native"
+    },
+    "RadioGroup": {
+      "status": "native"
+    },
+    "Rating": {
+      "status": "native"
+    },
+    "ReasoningDisclosure": {
+      "status": "native"
+    },
+    "RecordButton": {
+      "status": "native"
+    },
+    "RelativeTime": {
+      "status": "native"
+    },
+    "ScatterChart": {
+      "status": "native"
+    },
+    "ScrollArea": {
+      "status": "native"
+    },
+    "SearchInput": {
+      "status": "native"
+    },
+    "SearchPage": {
+      "status": "native"
+    },
+    "SectionNav": {
+      "status": "native"
+    },
+    "SegmentedControl": {
+      "status": "native"
+    },
+    "Select": {
+      "status": "native"
+    },
+    "Separator": {
+      "status": "native"
+    },
+    "SettingsPage": {
+      "status": "native"
+    },
+    "SettingsRow": {
+      "status": "native"
+    },
+    "Skeleton": {
+      "status": "native"
+    },
+    "Slider": {
+      "status": "native"
+    },
+    "SourceList": {
+      "status": "native"
+    },
+    "Sparkline": {
+      "status": "native"
+    },
+    "Spinner": {
+      "status": "native"
+    },
+    "SplitButton": {
+      "status": "native"
+    },
+    "SplitPane": {
+      "status": "native"
+    },
+    "Stack": {
+      "status": "native"
+    },
+    "Stat": {
+      "status": "native"
+    },
+    "Stepper": {
+      "status": "native"
+    },
+    "StreamingText": {
+      "status": "native"
+    },
+    "Switch": {
+      "status": "native"
+    },
+    "Table": {
+      "status": "native"
+    },
+    "TableOfContents": {
+      "status": "native"
+    },
+    "Tabs": {
+      "status": "native"
+    },
+    "TagInput": {
+      "status": "native"
+    },
+    "Text": {
+      "status": "native"
+    },
+    "Textarea": {
+      "status": "native"
+    },
+    "ThirdParty": {
+      "status": "native"
+    },
+    "TimeInput": {
+      "status": "native"
+    },
+    "Timeline": {
+      "status": "native"
+    },
+    "Toast": {
+      "status": "native"
+    },
+    "ToneScope": {
+      "status": "native"
+    },
+    "ToolCall": {
+      "status": "native"
+    },
+    "Tooltip": {
+      "status": "native"
+    },
+    "Tour": {
+      "status": "native"
+    },
+    "Tree": {
+      "status": "native"
+    },
+    "Treemap": {
+      "status": "native"
+    },
+    "TreeSelect": {
+      "status": "native"
+    }
+  }
+}

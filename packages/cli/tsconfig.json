@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/cli.tsbuildinfo",
+    // DOM for the same reason as the registry's: importing the engine as
+    // workspace source pulls in `@polymorph/theme`'s `runtime.ts`. Nothing in
+    // the *installer* touches a DOM — but `scratch.test.ts` drives a browser
+    // over the built app and evaluates measurements inside the page, and one of
+    // them walks `querySelectorAll`, which is what `DOM.Iterable` is for.
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "*.test.ts", "consumer-app.ts"]
+}

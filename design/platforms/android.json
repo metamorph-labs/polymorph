@@ -1,0 +1,501 @@
+{
+  "platform": "android",
+  "members": {
+    "Accordion": {
+      "status": "native"
+    },
+    "Alert": {
+      "status": "native"
+    },
+    "ApprovalCard": {
+      "status": "native"
+    },
+    "AppShell": {
+      "status": "native",
+      "reason": "Its tooltip names a collapsed rail’s glyphs for pointer users only. On a phone the rail is a drawer that never collapses, so every item keeps its visible label."
+    },
+    "AreaChart": {
+      "status": "absent",
+      "reason": "Android has no first-party charting framework, where iOS has Swift Charts. The chart’s table twin carries the same data.",
+      "substitute": "Table"
+    },
+    "ArtifactPane": {
+      "status": "native"
+    },
+    "AttachmentChip": {
+      "status": "native"
+    },
+    "AudioPlayer": {
+      "status": "native"
+    },
+    "AuthPage": {
+      "status": "native"
+    },
+    "Avatar": {
+      "status": "native"
+    },
+    "AvatarButton": {
+      "status": "native"
+    },
+    "Badge": {
+      "status": "native"
+    },
+    "Banner": {
+      "status": "native"
+    },
+    "BarChart": {
+      "status": "absent",
+      "reason": "Android has no first-party charting framework, where iOS has Swift Charts. The chart’s table twin carries the same data.",
+      "substitute": "Table"
+    },
+    "Bespoke": {
+      "status": "native"
+    },
+    "Breadcrumbs": {
+      "status": "native"
+    },
+    "Button": {
+      "status": "native"
+    },
+    "Calendar": {
+      "status": "native"
+    },
+    "Card": {
+      "status": "native"
+    },
+    "Carousel": {
+      "status": "adapted",
+      "as": "dots a 48dp touch target apart, because a dot’s touch area must be its own; a rail with more dots than fit between the buttons shows whole dots and snaps to them"
+    },
+    "ChatMessage": {
+      "status": "native",
+      "reason": "Touch has no hover, so its action row always shows, as the spec has it on any screen without hover."
+    },
+    "ChatThread": {
+      "status": "native"
+    },
+    "Checkbox": {
+      "status": "native"
+    },
+    "CheckboxGroup": {
+      "status": "native"
+    },
+    "ChoiceCard": {
+      "status": "native"
+    },
+    "Citation": {
+      "status": "adapted",
+      "as": "a link to the source; touch loses only the hover preview"
+    },
+    "Code": {
+      "status": "native"
+    },
+    "CodeBlock": {
+      "status": "native"
+    },
+    "Collapsible": {
+      "status": "native"
+    },
+    "ColorInput": {
+      "status": "adapted",
+      "as": "the hex field, with the picker in a bottom sheet on phones and anchored on tablets; Android has no system colour picker"
+    },
+    "Combobox": {
+      "status": "native",
+      "reason": "Material’s exposed dropdown menu over an editable field is the platform’s own combobox, anchored to the field on phones too."
+    },
+    "Command": {
+      "status": "absent",
+      "reason": "A keyboard-summoned palette has no phone form. The same commands are found through a search field.",
+      "substitute": "SearchInput"
+    },
+    "CommentThread": {
+      "status": "native"
+    },
+    "ConfirmDialog": {
+      "status": "adapted",
+      "as": "a modal bottom sheet"
+    },
+    "ContextMenu": {
+      "status": "adapted",
+      "as": "a long-press menu, shown as a bottom sheet on phones"
+    },
+    "ConversationPage": {
+      "status": "native",
+      "reason": "On a phone the aside opens in a Drawer from the header, the spec’s own form below 48rem, and the thread keeps the whole width."
+    },
+    "CopyButton": {
+      "status": "native"
+    },
+    "Countdown": {
+      "status": "native"
+    },
+    "CursorPagination": {
+      "status": "native"
+    },
+    "Dashboard": {
+      "status": "native",
+      "reason": "Its stats render as Stat does on Android, without the spark, and the trend chip carries the direction."
+    },
+    "DataTable": {
+      "status": "adapted",
+      "as": "a list on phones, a table on tablets"
+    },
+    "DatePicker": {
+      "status": "native",
+      "reason": "Material’s date picker is the platform’s own, a modal dialog on phones, so the web’s sheet below 30rem does not apply."
+    },
+    "DateRangePicker": {
+      "status": "native",
+      "reason": "Material’s date range picker is the platform’s own, full screen on phones, so the web’s sheet below 30rem does not apply."
+    },
+    "DensityScope": {
+      "status": "native"
+    },
+    "DescriptionList": {
+      "status": "native"
+    },
+    "DetailPage": {
+      "status": "native"
+    },
+    "Dialog": {
+      "status": "adapted",
+      "as": "a full-screen dialog on phones, centred on tablets"
+    },
+    "Diff": {
+      "status": "native"
+    },
+    "DonutChart": {
+      "status": "absent",
+      "reason": "Android has no first-party charting framework, where iOS has Swift Charts. The chart’s table twin carries the same data.",
+      "substitute": "Table"
+    },
+    "Drawer": {
+      "status": "adapted",
+      "as": "a bottom sheet on phones, a side sheet on tablets"
+    },
+    "DurationInput": {
+      "status": "native"
+    },
+    "EmptyState": {
+      "status": "native"
+    },
+    "ErrorSummary": {
+      "status": "native"
+    },
+    "FileUpload": {
+      "status": "native"
+    },
+    "FilterBar": {
+      "status": "native"
+    },
+    "FormField": {
+      "status": "native"
+    },
+    "FormPage": {
+      "status": "native"
+    },
+    "FunnelChart": {
+      "status": "absent",
+      "reason": "Android has no first-party charting framework, where iOS has Swift Charts. The chart’s table twin carries the same data.",
+      "substitute": "Table"
+    },
+    "Grid": {
+      "status": "native"
+    },
+    "Heading": {
+      "status": "native"
+    },
+    "Heatmap": {
+      "status": "absent",
+      "reason": "Android has no first-party charting framework, where iOS has Swift Charts. The chart’s table twin carries the same data.",
+      "substitute": "Table"
+    },
+    "Hero": {
+      "status": "native"
+    },
+    "Highlight": {
+      "status": "native"
+    },
+    "Histogram": {
+      "status": "absent",
+      "reason": "Android has no first-party charting framework, where iOS has Swift Charts. The chart’s table twin carries the same data.",
+      "substitute": "Table"
+    },
+    "HoverCard": {
+      "status": "absent",
+      "reason": "Touch has no hover, and the preview is never load-bearing. The trigger stays a link, and only the preview is lost.",
+      "substitute": "Link"
+    },
+    "Icon": {
+      "status": "native"
+    },
+    "Image": {
+      "status": "native"
+    },
+    "ImageEditor": {
+      "status": "native"
+    },
+    "Inline": {
+      "status": "native"
+    },
+    "InlineEdit": {
+      "status": "native"
+    },
+    "Input": {
+      "status": "native"
+    },
+    "JsonTree": {
+      "status": "native"
+    },
+    "Kbd": {
+      "status": "native"
+    },
+    "Lightbox": {
+      "status": "native"
+    },
+    "LineChart": {
+      "status": "absent",
+      "reason": "Android has no first-party charting framework, where iOS has Swift Charts. The chart’s table twin carries the same data.",
+      "substitute": "Table"
+    },
+    "Link": {
+      "status": "native"
+    },
+    "List": {
+      "status": "native"
+    },
+    "ListPage": {
+      "status": "native"
+    },
+    "LogView": {
+      "status": "native"
+    },
+    "Markdown": {
+      "status": "native",
+      "reason": "Its citations render as Citation does here: links to the source, without the hover preview."
+    },
+    "MasterDetailPage": {
+      "status": "native",
+      "reason": "A list-detail layout: two panes from 48rem of the page’s own width, as on the web, and below it one pane, with the system Back from the detail to the list."
+    },
+    "Menu": {
+      "status": "adapted",
+      "as": "a bottom sheet of actions on phones, a dropdown menu on tablets"
+    },
+    "Menubar": {
+      "status": "absent",
+      "reason": "An Android phone has no menubar, and Material has no menubar component. A screen keeps the same commands in a Menu.",
+      "substitute": "Menu"
+    },
+    "Meter": {
+      "status": "native"
+    },
+    "ModeSwitch": {
+      "status": "native",
+      "reason": "Android’s dark theme guidance has an app offer Light, Dark and System default, and the Compose foundation draws the mode the app provides, so it is a segmented button row the app applies."
+    },
+    "MonthInput": {
+      "status": "native"
+    },
+    "MultiSelect": {
+      "status": "adapted",
+      "as": "a field of the chosen chips whose options are a checklist in a modal bottom sheet on phones and anchored on tablets, because Material has no multi-select field"
+    },
+    "NumberInput": {
+      "status": "native"
+    },
+    "OTPInput": {
+      "status": "native"
+    },
+    "PageHeader": {
+      "status": "native"
+    },
+    "Pagination": {
+      "status": "native"
+    },
+    "PasswordInput": {
+      "status": "native"
+    },
+    "PhoneInput": {
+      "status": "native"
+    },
+    "Plan": {
+      "status": "native"
+    },
+    "Popover": {
+      "status": "adapted",
+      "as": "a modal bottom sheet on phones, anchored on tablets"
+    },
+    "Progress": {
+      "status": "native"
+    },
+    "PromptInput": {
+      "status": "native"
+    },
+    "ProviderButton": {
+      "status": "native"
+    },
+    "QRCode": {
+      "status": "native"
+    },
+    "RadarChart": {
+      "status": "absent",
+      "reason": "Android has no first-party charting framework, where iOS has Swift Charts. The chart’s table twin carries the same data.",
+      "substitute": "Table"
+    },
+    "RadioGroup": {
+      "status": "native"
+    },
+    "Rating": {
+      "status": "native",
+      "reason": "Compose has no rating control, so a set rating is a row of selectable icons in a selectableGroup, and a shown rating is one image with a content description."
+    },
+    "ReasoningDisclosure": {
+      "status": "native"
+    },
+    "RecordButton": {
+      "status": "native"
+    },
+    "RelativeTime": {
+      "status": "native",
+      "reason": "Its words are the app’s, from the platform’s formatter, because the member module reaches no time zone and no locale’s time format. Without them its phrases are English, and its absolute form writes the date and an instant’s 24-hour time in UTC, said as UTC."
+    },
+    "ScatterChart": {
+      "status": "absent",
+      "reason": "Android has no first-party charting framework, where iOS has Swift Charts. The chart’s table twin carries the same data.",
+      "substitute": "Table"
+    },
+    "ScrollArea": {
+      "status": "native"
+    },
+    "SearchInput": {
+      "status": "native"
+    },
+    "SearchPage": {
+      "status": "native"
+    },
+    "SectionNav": {
+      "status": "native"
+    },
+    "SegmentedControl": {
+      "status": "native"
+    },
+    "Select": {
+      "status": "native",
+      "reason": "Material’s exposed dropdown menu is the platform’s own select, anchored to the field on phones too."
+    },
+    "Separator": {
+      "status": "native"
+    },
+    "SettingsPage": {
+      "status": "native"
+    },
+    "SettingsRow": {
+      "status": "native"
+    },
+    "Skeleton": {
+      "status": "native"
+    },
+    "Slider": {
+      "status": "native"
+    },
+    "SourceList": {
+      "status": "native"
+    },
+    "Sparkline": {
+      "status": "absent",
+      "reason": "Android has no first-party charting framework, where iOS has Swift Charts. Stat’s trend chip says which way the number moved.",
+      "substitute": "Stat"
+    },
+    "Spinner": {
+      "status": "native"
+    },
+    "SplitButton": {
+      "status": "native",
+      "reason": "The two halves stay buttons, and the menu half opens Menu as it renders here, a bottom sheet of actions on phones."
+    },
+    "SplitPane": {
+      "status": "adapted",
+      "as": "tablet only, side by side on tablets; one pane at a time on phones"
+    },
+    "Stack": {
+      "status": "native"
+    },
+    "Stat": {
+      "status": "adapted",
+      "as": "without the spark; the trend chip carries the direction"
+    },
+    "Stepper": {
+      "status": "native"
+    },
+    "StreamingText": {
+      "status": "native"
+    },
+    "Switch": {
+      "status": "native"
+    },
+    "Table": {
+      "status": "adapted",
+      "as": "a list on phones, a table on tablets"
+    },
+    "TableOfContents": {
+      "status": "native"
+    },
+    "Tabs": {
+      "status": "native"
+    },
+    "TagInput": {
+      "status": "native"
+    },
+    "Text": {
+      "status": "native"
+    },
+    "Textarea": {
+      "status": "native"
+    },
+    "ThirdParty": {
+      "status": "absent",
+      "reason": "The boundary\u2019s rules are lint rules for web code. A native screen hosts another library\u2019s view through AndroidView, and declares it as a Bespoke zone.",
+      "substitute": "Bespoke"
+    },
+    "TimeInput": {
+      "status": "native"
+    },
+    "Timeline": {
+      "status": "native"
+    },
+    "Toast": {
+      "status": "native",
+      "reason": "Its timer pauses for the pointer and for input focus, not for TalkBack, whose focus is neither and which Compose does not report to a member. A TalkBack user’s time is the platform’s recommended timeout for a card with controls, which follows the “Time to take action” accessibility setting."
+    },
+    "ToneScope": {
+      "status": "native"
+    },
+    "ToolCall": {
+      "status": "native"
+    },
+    "Tooltip": {
+      "status": "absent",
+      "reason": "Touch has no hover, and a tooltip never carries the only copy of a meaning. A hint that matters goes in visible text.",
+      "substitute": "Text"
+    },
+    "Tour": {
+      "status": "adapted",
+      "as": "a modal bottom sheet per step, pointing at no part of the screen"
+    },
+    "Tree": {
+      "status": "native",
+      "reason": "Compose has no tree of its own, so it is a column whose rows are indented by level."
+    },
+    "Treemap": {
+      "status": "absent",
+      "reason": "Android has no first-party charting framework, where iOS has Swift Charts. The chart’s table twin carries the same data.",
+      "substitute": "Table"
+    },
+    "TreeSelect": {
+      "status": "native",
+      "reason": "An exposed dropdown holds one level, so the field opens Tree's column in a bottom sheet on a phone and in a panel anchored to the field on a wider window."
+    }
+  }
+}

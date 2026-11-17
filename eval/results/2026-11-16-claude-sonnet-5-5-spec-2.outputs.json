@@ -1,0 +1,1459 @@
+{
+  "outputs": [
+    {
+      "brief": "auth-sign-in-up",
+      "run": 1,
+      "document": {
+        "spec": "polymorph-screen/1",
+        "name": "SignInSignUp",
+        "purpose": "One screen where a returning customer signs in and a new customer signs up, by email and password or with Google or GitHub.",
+        "inputs": [
+          {
+            "name": "mode",
+            "type": "string",
+            "doc": "Which form is showing: 'sign-in' or 'sign-up'. The screen opens on the one the container asks for."
+          },
+          {
+            "name": "onModeChange",
+            "type": "(mode: string) => void",
+            "doc": "Called when the person switches between the sign-in and sign-up forms."
+          },
+          { "name": "name", "type": "string", "doc": "Sign-up name field value." },
+          { "name": "onNameChange", "type": "(value: string) => void" },
+          { "name": "email", "type": "string", "doc": "Email address field value." },
+          { "name": "onEmailChange", "type": "(value: string) => void" },
+          { "name": "password", "type": "string", "doc": "Password field value." },
+          { "name": "onPasswordChange", "type": "(value: string) => void" },
+          {
+            "name": "pending",
+            "type": "boolean",
+            "doc": "True while a submission or provider sign-in is in flight."
+          },
+          {
+            "name": "error",
+            "type": "string",
+            "doc": "Message for a rejected sign-in or sign-up, empty while there is nothing to say. For a wrong email or password it must not say which was wrong."
+          },
+          { "name": "onSignIn", "type": "() => void", "doc": "Submit the sign-in form." },
+          { "name": "onSignUp", "type": "() => void", "doc": "Submit the sign-up form." },
+          { "name": "onGoogle", "type": "() => void", "doc": "Start sign-in with Google." },
+          { "name": "onGithub", "type": "() => void", "doc": "Start sign-in with GitHub." },
+          {
+            "name": "resetPasswordHref",
+            "type": "string",
+            "doc": "Where a forgotten password is reset."
+          }
+        ],
+        "root": {
+          "component": "AuthPage",
+          "props": {
+            "title": "Welcome",
+            "description": "Sign in to your account or create a new one.",
+            "pending": { "$": "pending" }
+          },
+          "children": [
+            {
+              "component": "Tabs",
+              "props": {
+                "value": { "$": "mode" },
+                "onChange": { "$": "onModeChange" },
+                "tabs": [
+                  { "$object": { "value": "sign-in", "label": "Sign in" } },
+                  { "$object": { "value": "sign-up", "label": "Sign up" } }
+                ]
+              },
+              "children": [
+                {
+                  "component": "Tabs.Content",
+                  "props": { "value": "sign-in" },
+                  "children": [
+                    {
+                      "component": "Stack",
+                      "props": { "gap": 4 },
+                      "children": [
+                        {
+                          "component": "Alert",
+                          "props": { "tone": "danger", "title": { "$": "error" } }
+                        },
+                        {
+                          "component": "ProviderButton",
+                          "props": {
+                            "provider": "google",
+                            "label": "Continue with Google",
+                            "onClick": { "$": "onGoogle" },
+                            "disabled": { "$": "pending" }
+                          }
+                        },
+                        {
+                          "component": "ProviderButton",
+                          "props": {
+                            "provider": "github",
+                            "label": "Continue with GitHub",
+                            "onClick": { "$": "onGithub" },
+                            "disabled": { "$": "pending" }
+                          }
+                        },
+                        { "component": "Separator", "props": { "label": "or" } },
+                        {
+                          "component": "FormField",
+                          "props": { "label": "Email address", "required": true },
+                          "children": [
+                            {
+                              "component": "Input",
+                              "props": {
+                                "type": "email",
+                                "autoComplete": "email",
+                                "value": { "$": "email" },
+                                "onChange": { "$": "onEmailChange" },
+                                "disabled": { "$": "pending" }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "component": "FormField",
+                          "props": {
+                            "label": "Password",
+                            "required": true,
+                            "labelEnd": {
+                              "component": "Link",
+                              "props": { "href": { "$": "resetPasswordHref" } },
+                              "children": ["Forgot your password?"]
+                            }
+                          },
+                          "children": [
+                            {
+                              "component": "PasswordInput",
+                              "props": {
+                                "autoComplete": "current-password",
+                                "toggleLabel": "Show password",
+                                "value": { "$": "password" },
+                                "onChange": { "$": "onPasswordChange" },
+                                "disabled": { "$": "pending" }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "component": "Button",
+                          "props": {
+                            "type": "submit",
+                            "label": "Sign in",
+                            "tone": "accent",
+                            "variant": "solid",
+                            "loading": { "$": "pending" },
+                            "onClick": { "$": "onSignIn" }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "component": "Tabs.Content",
+                  "props": { "value": "sign-up" },
+                  "children": [
+                    {
+                      "component": "Stack",
+                      "props": { "gap": 4 },
+                      "children": [
+                        {
+                          "component": "Alert",
+                          "props": { "tone": "danger", "title": { "$": "error" } }
+                        },
+                        {
+                          "component": "ProviderButton",
+                          "props": {
+                            "provider": "google",
+                            "label": "Sign up with Google",
+                            "onClick": { "$": "onGoogle" },
+                            "disabled": { "$": "pending" }
+                          }
+                        },
+                        {
+                          "component": "ProviderButton",
+                          "props": {
+                            "provider": "github",
+                            "label": "Sign up with GitHub",
+                            "onClick": { "$": "onGithub" },
+                            "disabled": { "$": "pending" }
+                          }
+                        },
+                        { "component": "Separator", "props": { "label": "or" } },
+                        {
+                          "component": "FormField",
+                          "props": { "label": "Name", "required": true },
+                          "children": [
+                            {
+                              "component": "Input",
+                              "props": {
+                                "type": "text",
+                                "autoComplete": "name",
+                                "value": { "$": "name" },
+                                "onChange": { "$": "onNameChange" },
+                                "disabled": { "$": "pending" }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "component": "FormField",
+                          "props": { "label": "Email address", "required": true },
+                          "children": [
+                            {
+                              "component": "Input",
+                              "props": {
+                                "type": "email",
+                                "autoComplete": "email",
+                                "value": { "$": "email" },
+                                "onChange": { "$": "onEmailChange" },
+                                "disabled": { "$": "pending" }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "component": "FormField",
+                          "props": {
+                            "label": "Password",
+                            "required": true,
+                            "description": "At least 12 characters."
+                          },
+                          "children": [
+                            {
+                              "component": "PasswordInput",
+                              "props": {
+                                "autoComplete": "new-password",
+                                "toggleLabel": "Show password",
+                                "value": { "$": "password" },
+                                "onChange": { "$": "onPasswordChange" },
+                                "disabled": { "$": "pending" }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "component": "Button",
+                          "props": {
+                            "type": "submit",
+                            "label": "Create account",
+                            "tone": "accent",
+                            "variant": "solid",
+                            "loading": { "$": "pending" },
+                            "onClick": { "$": "onSignUp" }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "brief": "chat-assistant",
+      "run": 1,
+      "document": {
+        "spec": "polymorph-screen/1",
+        "name": "DeploymentAssistant",
+        "purpose": "A conversation with a deployment assistant: the turns above, a composer below, an empty state that says what the assistant can do.",
+        "inputs": [
+          { "name": "turns", "type": "ChatTurn[]", "doc": "The conversation, oldest first." },
+          { "name": "streaming", "type": "boolean", "doc": "True while a reply is arriving." },
+          { "name": "draft", "type": "string", "doc": "The composer text." },
+          {
+            "name": "attachments",
+            "type": "PromptAttachment[]",
+            "doc": "Files attached to the draft."
+          },
+          { "name": "onDraftChange", "type": "(value: string) => void" },
+          { "name": "onSubmit", "type": "(value: string) => void" },
+          { "name": "onStop", "type": "() => void" },
+          { "name": "onAttach", "type": "(files: File[]) => void" },
+          { "name": "onReject", "type": "(rejections: FileRejection[]) => void" },
+          { "name": "onRemoveAttachment", "type": "(id: string) => void" }
+        ],
+        "types": {
+          "@polymorph/react-ui": ["PromptAttachment", "FileRejection"],
+          "./deployment-assistant.types": ["ChatTurn"]
+        },
+        "root": {
+          "component": "ConversationPage",
+          "props": {
+            "title": "Deployment assistant",
+            "description": "Ask about your deployment. The assistant can read logs and, with your permission, restart a service.",
+            "thread": {
+              "component": "ChatThread",
+              "props": {
+                "label": "Conversation",
+                "streaming": { "$": "streaming" },
+                "empty": {
+                  "component": "EmptyState",
+                  "props": {
+                    "icon": "terminal",
+                    "title": "Ask about your deployment",
+                    "description": "The assistant can read your service logs to find what went wrong, and restart a service once you allow it."
+                  }
+                }
+              },
+              "children": [{ "$": "turns" }]
+            },
+            "composer": {
+              "component": "PromptInput",
+              "props": {
+                "label": "Message the assistant",
+                "placeholder": "Ask about your deployment",
+                "value": { "$": "draft" },
+                "onChange": { "$": "onDraftChange" },
+                "onSubmit": { "$": "onSubmit" },
+                "onStop": { "$": "onStop" },
+                "streaming": { "$": "streaming" },
+                "attachments": { "$": "attachments" },
+                "onAttach": { "$": "onAttach" },
+                "onReject": { "$": "onReject" },
+                "onRemoveAttachment": { "$": "onRemoveAttachment" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "brief": "dashboard-usage",
+      "run": 1,
+      "document": {
+        "spec": "polymorph-screen/1",
+        "name": "UsageOverview",
+        "purpose": "Shows a team lead how much of their plan the team has used in a chosen period.",
+        "types": { "@polymorph/react-ui": ["StatProps"], "./usage": ["DailyRequests"] },
+        "inputs": [
+          {
+            "name": "period",
+            "type": "string",
+            "doc": "The selected period value: this month or last month."
+          },
+          {
+            "name": "periodOptions",
+            "type": "{ value: string; label: string }[]",
+            "doc": "The two options for the period switch."
+          },
+          {
+            "name": "onPeriodChange",
+            "type": "(value: string) => void",
+            "doc": "Called when the reader picks a period."
+          },
+          {
+            "name": "stats",
+            "type": "StatProps[]",
+            "doc": "Requests, error rate, median latency, seats used of seats bought; pre-formatted, each with a delta carrying direction and whether it is good. While loading, placeholder values holding the same four cards."
+          },
+          {
+            "name": "daily",
+            "type": "DailyRequests[]",
+            "doc": "Requests per day across the period, one row per day."
+          },
+          { "name": "loading", "type": "boolean", "doc": "True while the numbers load." },
+          {
+            "name": "onDownload",
+            "type": "() => void",
+            "doc": "Downloads the period's usage as a file."
+          }
+        ],
+        "root": {
+          "component": "Dashboard",
+          "props": {
+            "title": "Usage overview",
+            "description": "How much of your plan the team has used this period.",
+            "stats": { "$": "stats" },
+            "actions": {
+              "component": "Inline",
+              "props": { "gap": 3, "align": "center" },
+              "children": [
+                {
+                  "component": "SegmentedControl",
+                  "props": {
+                    "label": "Period",
+                    "options": { "$": "periodOptions" },
+                    "value": { "$": "period" },
+                    "onChange": { "$": "onPeriodChange" }
+                  }
+                },
+                {
+                  "component": "Button",
+                  "props": {
+                    "label": "Download CSV",
+                    "icon": "download",
+                    "variant": "outline",
+                    "tone": "neutral",
+                    "onClick": { "$": "onDownload" }
+                  }
+                }
+              ]
+            },
+            "primary": {
+              "component": "Card",
+              "props": { "title": "Requests per day" },
+              "children": [
+                {
+                  "component": "LineChart",
+                  "props": {
+                    "label": "Requests per day",
+                    "data": { "$": "daily" },
+                    "x": { "$object": { "key": "day", "scale": "time" } },
+                    "series": [{ "$object": { "key": "requests", "label": "Requests" } }],
+                    "variant": "area",
+                    "loading": { "$": "loading" }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "brief": "detail-order",
+      "run": 1,
+      "document": {
+        "spec": "polymorph-screen/1",
+        "name": "OrderPage",
+        "purpose": "One customer's order for a support agent: its status and facts, its history, the team's comments with a composer, and a confirmed refund.",
+        "types": {
+          "@polymorph/react-ui": ["TimelineEvent"],
+          "./order": ["Order"],
+          "react": ["ReactNode"]
+        },
+        "inputs": [
+          {
+            "name": "order",
+            "type": "Order",
+            "doc": "The order. Carries name, statusLabel, statusTone ('neutral'|'accent'|'info'|'success'|'warning'|'danger'), customer, placedAt (already formatted), total, paymentMethod, shippingAddress."
+          },
+          {
+            "name": "events",
+            "type": "TimelineEvent[]",
+            "doc": "The order's events, newest first. Each title says what happened and who did it; time is already formatted."
+          },
+          {
+            "name": "comments",
+            "type": "ReactNode",
+            "doc": "The CommentThread.Comment members for the support team's comments, each with author, avatar, time (how long ago) and body, in reading order."
+          },
+          { "name": "draft", "type": "string", "doc": "The text of the comment being written." },
+          {
+            "name": "postDisabled",
+            "type": "boolean",
+            "doc": "True while the draft is empty or a post is in flight."
+          },
+          {
+            "name": "refundDescription",
+            "type": "string",
+            "doc": "States what is at stake, including the amount, e.g. 'Refund $120.00 to the Visa ending 4242. This cannot be undone.'"
+          },
+          {
+            "name": "refundLabel",
+            "type": "string",
+            "doc": "The confirm verb with the amount, e.g. 'Refund $120.00'."
+          },
+          {
+            "name": "refundDisabled",
+            "type": "boolean",
+            "doc": "True when the order cannot be refunded (already refunded)."
+          },
+          { "name": "onBack", "type": "() => void", "doc": "Returns to the list of orders." },
+          {
+            "name": "onRefund",
+            "type": "() => void | Promise<void>",
+            "doc": "Issues the refund once confirmed."
+          },
+          { "name": "onDraftChange", "type": "(value: string) => void" },
+          { "name": "onPostComment", "type": "() => void" }
+        ],
+        "root": {
+          "component": "DetailPage",
+          "props": {
+            "title": { "$": "order.name" },
+            "backLabel": "Orders",
+            "onBack": { "$": "onBack" },
+            "meta": {
+              "component": "Badge",
+              "props": { "tone": { "$": "order.statusTone" } },
+              "children": [{ "$": "order.statusLabel" }]
+            },
+            "actions": {
+              "component": "ConfirmDialog",
+              "props": {
+                "title": "Refund this order?",
+                "description": { "$": "refundDescription" },
+                "confirmLabel": { "$": "refundLabel" },
+                "tone": "danger",
+                "onConfirm": { "$": "onRefund" },
+                "trigger": {
+                  "component": "Button",
+                  "props": {
+                    "label": "Refund",
+                    "variant": "outline",
+                    "tone": "danger",
+                    "icon": "undo",
+                    "disabled": { "$": "refundDisabled" }
+                  }
+                }
+              }
+            },
+            "aside": {
+              "component": "Card",
+              "props": { "title": "Order details" },
+              "children": [
+                {
+                  "component": "DescriptionList",
+                  "props": {
+                    "items": [
+                      { "$object": { "term": "Customer", "detail": { "$": "order.customer" } } },
+                      { "$object": { "term": "Placed", "detail": { "$": "order.placedAt" } } },
+                      { "$object": { "term": "Total", "detail": { "$": "order.total" } } },
+                      {
+                        "$object": {
+                          "term": "Payment method",
+                          "detail": { "$": "order.paymentMethod" }
+                        }
+                      },
+                      {
+                        "$object": {
+                          "term": "Shipping address",
+                          "detail": { "$": "order.shippingAddress" }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          "children": [
+            {
+              "component": "Stack",
+              "props": { "gap": 6 },
+              "children": [
+                {
+                  "component": "Stack",
+                  "props": { "gap": 3 },
+                  "children": [
+                    { "component": "Heading", "props": { "level": 2 }, "children": ["History"] },
+                    {
+                      "component": "Timeline",
+                      "props": {
+                        "label": "Order history, newest first",
+                        "events": { "$": "events" }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "component": "Stack",
+                  "props": { "gap": 3 },
+                  "children": [
+                    { "component": "Heading", "props": { "level": 2 }, "children": ["Comments"] },
+                    {
+                      "component": "CommentThread",
+                      "props": { "label": "Comments" },
+                      "children": [{ "$": "comments" }]
+                    },
+                    {
+                      "component": "FormField",
+                      "props": { "label": "Add a comment" },
+                      "children": [
+                        {
+                          "component": "Textarea",
+                          "props": {
+                            "value": { "$": "draft" },
+                            "onChange": { "$": "onDraftChange" },
+                            "rows": 3
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "component": "Inline",
+                      "props": { "justify": "end" },
+                      "children": [
+                        {
+                          "component": "Button",
+                          "props": {
+                            "label": "Post comment",
+                            "variant": "solid",
+                            "tone": "accent",
+                            "icon": "send",
+                            "disabled": { "$": "postDisabled" },
+                            "onClick": { "$": "onPostComment" }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "brief": "form-booking",
+      "run": 1,
+      "document": {
+        "spec": "polymorph-screen/1",
+        "name": "BookRoomScreen",
+        "purpose": "Lets an employee book a meeting room by choosing room, date, start time, length, invitees and an optional note, with errors reported beside each field and in a summary.",
+        "types": {
+          "@internationalized/date": ["CalendarDate", "Time"],
+          "@polymorph/react-ui": ["ErrorSummaryError"],
+          "./booking": ["RoomOption", "DurationOption", "BookingErrors"]
+        },
+        "inputs": [
+          { "name": "rooms", "type": "RoomOption[]", "doc": "The known rooms, as Select options." },
+          {
+            "name": "durations",
+            "type": "DurationOption[]",
+            "doc": "The lengths on offer: 30, 60 and 90 minutes, as Select options."
+          },
+          { "name": "room", "type": "string", "doc": "Chosen room value; empty string when none." },
+          { "name": "date", "type": "CalendarDate | null", "doc": "Chosen date." },
+          { "name": "startTime", "type": "Time | null", "doc": "Chosen start time." },
+          {
+            "name": "duration",
+            "type": "string",
+            "doc": "Chosen length value; empty string when none."
+          },
+          {
+            "name": "invitees",
+            "type": "string[]",
+            "doc": "Email addresses of the people invited."
+          },
+          { "name": "note", "type": "string", "doc": "Optional note for the invitation." },
+          {
+            "name": "today",
+            "type": "CalendarDate",
+            "doc": "Today's date, the earliest bookable date."
+          },
+          {
+            "name": "errors",
+            "type": "BookingErrors",
+            "doc": "Per-field error text after a failed submit; each is undefined when the field is valid."
+          },
+          {
+            "name": "summaryErrors",
+            "type": "ErrorSummaryError[]",
+            "doc": "Every problem in form order, each with the id of its field; empty until a submit fails."
+          },
+          { "name": "summaryTitle", "type": "string", "doc": "Title of the error summary." },
+          {
+            "name": "submitting",
+            "type": "boolean",
+            "doc": "True while the booking is being made."
+          },
+          {
+            "name": "submitLabel",
+            "type": "string",
+            "doc": "Label for the primary action: the booking label, or the in-progress label while submitting."
+          },
+          { "name": "onRoomChange", "type": "(value: string) => void" },
+          { "name": "onDateChange", "type": "(value: CalendarDate | null) => void" },
+          { "name": "onStartTimeChange", "type": "(value: Time | null) => void" },
+          { "name": "onDurationChange", "type": "(value: string) => void" },
+          { "name": "onInviteesChange", "type": "(values: string[]) => void" },
+          {
+            "name": "onNoteChange",
+            "type": "(event: React.ChangeEvent<HTMLTextAreaElement>) => void"
+          },
+          {
+            "name": "validateInvitee",
+            "type": "(raw: string) => string | null",
+            "doc": "Normalises an email address or rejects it with null."
+          },
+          { "name": "onSubmit", "type": "() => void", "doc": "Validates and books the room." },
+          { "name": "onCancel", "type": "() => void", "doc": "Leaves the screen without booking." }
+        ],
+        "root": {
+          "component": "FormPage",
+          "props": {
+            "title": "Book a room",
+            "description": "Choose a room and a time, then invite the people who should come.",
+            "onSubmit": { "$": "onSubmit" },
+            "actions": {
+              "component": "Inline",
+              "props": { "gap": 3, "justify": "end" },
+              "children": [
+                {
+                  "component": "Button",
+                  "props": {
+                    "label": "Cancel",
+                    "variant": "ghost",
+                    "tone": "neutral",
+                    "type": "button",
+                    "disabled": { "$": "submitting" },
+                    "onClick": { "$": "onCancel" }
+                  }
+                },
+                {
+                  "component": "Button",
+                  "props": {
+                    "label": { "$": "submitLabel" },
+                    "variant": "solid",
+                    "tone": "accent",
+                    "type": "submit",
+                    "loading": { "$": "submitting" },
+                    "disabled": { "$": "submitting" }
+                  }
+                }
+              ]
+            }
+          },
+          "children": [
+            {
+              "component": "ErrorSummary",
+              "props": { "title": { "$": "summaryTitle" }, "errors": { "$": "summaryErrors" } }
+            },
+            {
+              "component": "Card",
+              "children": [
+                {
+                  "component": "Stack",
+                  "props": { "gap": 5 },
+                  "children": [
+                    {
+                      "component": "FormField",
+                      "props": {
+                        "id": "room",
+                        "label": "Room",
+                        "required": true,
+                        "error": { "$": "errors.room" }
+                      },
+                      "children": [
+                        {
+                          "component": "Select",
+                          "props": {
+                            "options": { "$": "rooms" },
+                            "placeholder": "Choose a room",
+                            "value": { "$": "room" },
+                            "onChange": { "$": "onRoomChange" }
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "component": "Grid",
+                      "props": { "columns": 2, "gap": 4 },
+                      "children": [
+                        {
+                          "component": "FormField",
+                          "props": {
+                            "id": "date",
+                            "label": "Date",
+                            "required": true,
+                            "error": { "$": "errors.date" }
+                          },
+                          "children": [
+                            {
+                              "component": "DatePicker",
+                              "props": {
+                                "minValue": { "$": "today" },
+                                "value": { "$": "date" },
+                                "onChange": { "$": "onDateChange" }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "component": "FormField",
+                          "props": {
+                            "id": "startTime",
+                            "label": "Start time",
+                            "required": true,
+                            "error": { "$": "errors.startTime" }
+                          },
+                          "children": [
+                            {
+                              "component": "TimeInput",
+                              "props": {
+                                "value": { "$": "startTime" },
+                                "onChange": { "$": "onStartTimeChange" }
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "component": "FormField",
+                      "props": {
+                        "id": "duration",
+                        "label": "Length",
+                        "required": true,
+                        "error": { "$": "errors.duration" }
+                      },
+                      "children": [
+                        {
+                          "component": "Select",
+                          "props": {
+                            "options": { "$": "durations" },
+                            "placeholder": "Choose a length",
+                            "value": { "$": "duration" },
+                            "onChange": { "$": "onDurationChange" }
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "component": "FormField",
+                      "props": {
+                        "id": "invitees",
+                        "label": "Invitees",
+                        "required": true,
+                        "description": "Type an email address and press Enter or comma.",
+                        "error": { "$": "errors.invitees" }
+                      },
+                      "children": [
+                        {
+                          "component": "TagInput",
+                          "props": {
+                            "value": { "$": "invitees" },
+                            "onChange": { "$": "onInviteesChange" },
+                            "validate": { "$": "validateInvitee" },
+                            "placeholder": "name@example.com"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "component": "FormField",
+                      "props": {
+                        "id": "note",
+                        "label": "Note",
+                        "description": "Optional. Added to the invitation."
+                      },
+                      "children": [
+                        {
+                          "component": "Textarea",
+                          "props": {
+                            "value": { "$": "note" },
+                            "onChange": { "$": "onNoteChange" },
+                            "rows": 3
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "brief": "list-incidents",
+      "run": 1,
+      "document": {
+        "spec": "polymorph-screen/1",
+        "name": "IncidentsScreen",
+        "purpose": "Lets an on-call engineer search, filter, sort and delete the incidents their services raised.",
+        "types": {
+          "@polymorph/react-ui": ["DataTableColumn", "DataTableSort"],
+          "./incidents": ["Incident"]
+        },
+        "inputs": [
+          {
+            "name": "incidents",
+            "type": "Incident[]",
+            "doc": "The incidents that match the current filters, already ordered by the container."
+          },
+          {
+            "name": "hasNoIncidents",
+            "type": "boolean",
+            "doc": "True only when there are no incidents at all, before any filter."
+          },
+          {
+            "name": "columns",
+            "type": "DataTableColumn<Incident>[]",
+            "doc": "Title, service, severity, status, opened (sortable) and a delete action that calls onRequestDelete."
+          },
+          { "name": "getIncidentId", "type": "(incident: Incident) => string" },
+          {
+            "name": "sort",
+            "type": "DataTableSort",
+            "doc": "Controlled sort; defaults to opened, descending."
+          },
+          { "name": "onSortChange", "type": "(sort: DataTableSort) => void" },
+          { "name": "search", "type": "string" },
+          { "name": "onSearchChange", "type": "(value: string) => void" },
+          { "name": "severity", "type": "string | null" },
+          { "name": "severityOptions", "type": "{ value: string; label: string }[]" },
+          { "name": "onSeverityChange", "type": "(value: string | null) => void" },
+          { "name": "status", "type": "string | null", "doc": "Open or resolved; null is both." },
+          { "name": "statusOptions", "type": "{ value: string; label: string }[]" },
+          { "name": "onStatusChange", "type": "(value: string | null) => void" },
+          { "name": "isFiltered", "type": "boolean" },
+          { "name": "resultCount", "type": "{ shown: number; total?: number }" },
+          { "name": "onClearFilters", "type": "() => void" },
+          {
+            "name": "deleteOpen",
+            "type": "boolean",
+            "doc": "Whether the delete confirmation is showing."
+          },
+          {
+            "name": "deleteTitle",
+            "type": "string",
+            "doc": "Question naming the incident, e.g. Delete “DB failover”?"
+          },
+          {
+            "name": "deleteDescription",
+            "type": "string",
+            "doc": "Consequence naming the incident, and that it cannot be undone."
+          },
+          { "name": "onDeleteOpenChange", "type": "(open: boolean) => void" },
+          { "name": "onConfirmDelete", "type": "() => void | Promise<void>" }
+        ],
+        "root": {
+          "component": "Stack",
+          "children": [
+            {
+              "component": "ListPage",
+              "props": {
+                "title": "Incidents",
+                "description": "Incidents raised by your services, newest first.",
+                "empty": { "$": "hasNoIncidents" },
+                "emptyState": {
+                  "$object": {
+                    "icon": "inbox",
+                    "title": "No incidents",
+                    "description": "None of your services has raised an incident."
+                  }
+                },
+                "filters": {
+                  "component": "FilterBar",
+                  "props": {
+                    "isFiltered": { "$": "isFiltered" },
+                    "onClear": { "$": "onClearFilters" },
+                    "resultCount": { "$": "resultCount" },
+                    "search": {
+                      "component": "SearchInput",
+                      "props": {
+                        "size": "sm",
+                        "placeholder": "Search incident titles",
+                        "value": { "$": "search" },
+                        "onChange": { "$": "onSearchChange" }
+                      }
+                    }
+                  },
+                  "children": [
+                    {
+                      "component": "Select",
+                      "props": {
+                        "size": "sm",
+                        "aria-label": "Severity",
+                        "emptyOption": "All severities",
+                        "options": { "$": "severityOptions" },
+                        "value": { "$": "severity" },
+                        "onChange": { "$": "onSeverityChange" }
+                      }
+                    },
+                    {
+                      "component": "Select",
+                      "props": {
+                        "size": "sm",
+                        "aria-label": "Status",
+                        "emptyOption": "Open and resolved",
+                        "options": { "$": "statusOptions" },
+                        "value": { "$": "status" },
+                        "onChange": { "$": "onStatusChange" }
+                      }
+                    }
+                  ]
+                }
+              },
+              "children": [
+                {
+                  "component": "DataTable",
+                  "props": {
+                    "label": "Incidents",
+                    "columns": { "$": "columns" },
+                    "data": { "$": "incidents" },
+                    "getRowId": { "$": "getIncidentId" },
+                    "sort": { "$": "sort" },
+                    "onSortChange": { "$": "onSortChange" },
+                    "emptyState": {
+                      "$object": {
+                        "icon": "search",
+                        "title": "No incidents match",
+                        "description": "Try a different search, or clear the filters to see every incident.",
+                        "secondaryAction": {
+                          "component": "Button",
+                          "props": {
+                            "label": "Clear filters",
+                            "variant": "ghost",
+                            "tone": "neutral",
+                            "onClick": { "$": "onClearFilters" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "component": "ConfirmDialog",
+              "props": {
+                "open": { "$": "deleteOpen" },
+                "onOpenChange": { "$": "onDeleteOpenChange" },
+                "title": { "$": "deleteTitle" },
+                "description": { "$": "deleteDescription" },
+                "confirmLabel": "Delete incident",
+                "tone": "danger",
+                "onConfirm": { "$": "onConfirmDelete" }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "brief": "onboarding-steps",
+      "run": 1,
+      "document": {
+        "spec": "polymorph-screen/1",
+        "name": "OnboardingProfileStep",
+        "purpose": "The first of four setup steps, collecting the new customer's name, role and optional photo, with a way to leave and finish later.",
+        "types": { "@polymorph/react-ui": ["FileUploadItem"] },
+        "inputs": [
+          {
+            "name": "activeIndex",
+            "type": "number",
+            "doc": "Zero-based index of the current step; earlier steps are shown finished."
+          },
+          { "name": "name", "type": "string", "doc": "The name entered so far." },
+          {
+            "name": "onNameChange",
+            "type": "(event: React.ChangeEvent<HTMLInputElement>) => void"
+          },
+          {
+            "name": "nameError",
+            "type": "string | undefined",
+            "doc": "Error for the name field; empty while there is none."
+          },
+          {
+            "name": "role",
+            "type": "string",
+            "doc": "The selected role value, empty until chosen."
+          },
+          { "name": "onRoleChange", "type": "(value: string) => void" },
+          {
+            "name": "roleOptions",
+            "type": "{ value: string; label: string }[]",
+            "doc": "The short list of roles to choose from."
+          },
+          {
+            "name": "roleError",
+            "type": "string | undefined",
+            "doc": "Error for the role field; empty while there is none."
+          },
+          {
+            "name": "photoFiles",
+            "type": "FileUploadItem[]",
+            "doc": "The photo as an upload row; empty when none chosen."
+          },
+          { "name": "onPhotoAdd", "type": "(files: File[]) => void" },
+          {
+            "name": "onPhotoReject",
+            "type": "(rejections: { file: File; reason: 'type' | 'size' | 'count' }[]) => void"
+          },
+          { "name": "onPhotoRemove", "type": "(id: string) => void" },
+          {
+            "name": "onBack",
+            "type": "() => void",
+            "doc": "Unused while Back is unavailable on the first step."
+          },
+          { "name": "onContinue", "type": "() => void" },
+          {
+            "name": "continueDisabled",
+            "type": "boolean",
+            "doc": "True until both name and role are filled in."
+          },
+          {
+            "name": "onSaveAndExit",
+            "type": "() => void",
+            "doc": "Leaves setup, keeping everything entered so far."
+          },
+          { "name": "pending", "type": "boolean", "doc": "True while the container is saving." }
+        ],
+        "root": {
+          "component": "AuthPage",
+          "props": {
+            "title": "Set up your account",
+            "description": "Tell us a little about yourself. This is step 1 of 4.",
+            "pending": { "$": "pending" },
+            "cardFooter": {
+              "component": "Button",
+              "props": {
+                "label": "Save and finish later",
+                "variant": "ghost",
+                "tone": "neutral",
+                "onClick": { "$": "onSaveAndExit" }
+              }
+            }
+          },
+          "children": [
+            {
+              "component": "Stepper",
+              "props": {
+                "activeIndex": { "$": "activeIndex" },
+                "steps": [
+                  { "$object": { "label": "Profile" } },
+                  { "$object": { "label": "Team" } },
+                  { "$object": { "label": "Integrations" } },
+                  { "$object": { "label": "Done" } }
+                ]
+              }
+            },
+            {
+              "component": "FormField",
+              "props": { "label": "Name", "required": true, "error": { "$": "nameError" } },
+              "children": [
+                {
+                  "component": "Input",
+                  "props": {
+                    "value": { "$": "name" },
+                    "onChange": { "$": "onNameChange" },
+                    "autoComplete": "name"
+                  }
+                }
+              ]
+            },
+            {
+              "component": "FormField",
+              "props": { "label": "Role", "required": true, "error": { "$": "roleError" } },
+              "children": [
+                {
+                  "component": "Select",
+                  "props": {
+                    "value": { "$": "role" },
+                    "onChange": { "$": "onRoleChange" },
+                    "options": { "$": "roleOptions" },
+                    "placeholder": "Choose your role"
+                  }
+                }
+              ]
+            },
+            {
+              "component": "FileUpload",
+              "props": {
+                "aria-label": "Photo (optional)",
+                "title": "Add a photo (optional)",
+                "hint": "PNG or JPG",
+                "accept": "image/*",
+                "multiple": false,
+                "files": { "$": "photoFiles" },
+                "onFilesAdd": { "$": "onPhotoAdd" },
+                "onReject": { "$": "onPhotoReject" },
+                "onRemove": { "$": "onPhotoRemove" }
+              }
+            },
+            {
+              "component": "Inline",
+              "props": { "justify": "between", "align": "center" },
+              "children": [
+                {
+                  "component": "Button",
+                  "props": {
+                    "label": "Back",
+                    "variant": "ghost",
+                    "tone": "neutral",
+                    "icon": "back",
+                    "disabled": true,
+                    "onClick": { "$": "onBack" }
+                  }
+                },
+                {
+                  "component": "Button",
+                  "props": {
+                    "label": "Continue",
+                    "variant": "solid",
+                    "tone": "accent",
+                    "trailingIcon": "next",
+                    "disabled": { "$": "continueDisabled" },
+                    "onClick": { "$": "onContinue" }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "brief": "settings-workspace",
+      "run": 1,
+      "document": {
+        "spec": "polymorph-screen/1",
+        "name": "WorkspaceSettings",
+        "purpose": "Lets a workspace owner adjust general, notification and access settings that apply instantly, with a separate danger zone for transferring or deleting the workspace.",
+        "types": { "@polymorph/react-ui": ["SelectOption"], "./workspace": ["Member"] },
+        "inputs": [
+          { "name": "workspaceName", "type": "string", "doc": "Current workspace name." },
+          {
+            "name": "onWorkspaceNameChange",
+            "type": "(value: string) => void",
+            "doc": "Applies the new name at once."
+          },
+          { "name": "timeZone", "type": "string | null", "doc": "Selected IANA time zone." },
+          {
+            "name": "timeZoneOptions",
+            "type": "SelectOption[]",
+            "doc": "Time zones to choose from."
+          },
+          { "name": "onTimeZoneChange", "type": "(value: string | null) => void" },
+          {
+            "name": "digestEnabled",
+            "type": "boolean",
+            "doc": "Whether members get the email digest."
+          },
+          { "name": "onDigestEnabledChange", "type": "(checked: boolean) => void" },
+          { "name": "digestFrequency", "type": "string | null", "doc": "'daily' or 'weekly'." },
+          {
+            "name": "digestFrequencyOptions",
+            "type": "SelectOption[]",
+            "doc": "Daily and weekly."
+          },
+          {
+            "name": "digestFrequencyDisabled",
+            "type": "boolean",
+            "doc": "True while the digest is off, so the frequency cannot be set."
+          },
+          { "name": "onDigestFrequencyChange", "type": "(value: string | null) => void" },
+          {
+            "name": "membersMayInvite",
+            "type": "boolean",
+            "doc": "Whether members may invite other people."
+          },
+          { "name": "onMembersMayInviteChange", "type": "(checked: boolean) => void" },
+          {
+            "name": "transferOpen",
+            "type": "boolean",
+            "doc": "Whether the transfer dialog is open."
+          },
+          { "name": "onTransferOpenChange", "type": "(open: boolean) => void" },
+          {
+            "name": "transferCandidateOptions",
+            "type": "SelectOption[]",
+            "doc": "Other members who could become owner."
+          },
+          { "name": "transferCandidate", "type": "string | null", "doc": "Chosen new owner." },
+          { "name": "onTransferCandidateChange", "type": "(value: string | null) => void" },
+          {
+            "name": "onTransferConfirm",
+            "type": "() => void",
+            "doc": "Transfers ownership to the chosen member."
+          },
+          {
+            "name": "deleteOpen",
+            "type": "boolean",
+            "doc": "Whether the delete confirmation is open."
+          },
+          { "name": "onDeleteOpenChange", "type": "(open: boolean) => void" },
+          {
+            "name": "deleteDescription",
+            "type": "string",
+            "doc": "Names the workspace and says that deleting is irreversible and deletes every project in it."
+          },
+          {
+            "name": "onDeleteConfirm",
+            "type": "() => void | Promise<void>",
+            "doc": "Deletes the workspace."
+          }
+        ],
+        "root": {
+          "component": "SettingsPage",
+          "props": {
+            "title": "Workspace settings",
+            "description": "Changes apply as soon as you make them."
+          },
+          "children": [
+            {
+              "component": "SettingsRow.Group",
+              "props": { "title": "General" },
+              "children": [
+                {
+                  "component": "SettingsRow",
+                  "props": {
+                    "label": "Workspace name",
+                    "description": "Shown to every member and in invitations.",
+                    "control": {
+                      "component": "Input",
+                      "props": {
+                        "value": { "$": "workspaceName" },
+                        "onChange": { "$": "onWorkspaceNameChange" }
+                      }
+                    }
+                  }
+                },
+                {
+                  "component": "SettingsRow",
+                  "props": {
+                    "label": "Time zone",
+                    "description": "Sets the time zone in which dates are shown.",
+                    "control": {
+                      "component": "Select",
+                      "props": {
+                        "options": { "$": "timeZoneOptions" },
+                        "value": { "$": "timeZone" },
+                        "onChange": { "$": "onTimeZoneChange" }
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "component": "SettingsRow.Group",
+              "props": { "title": "Notifications" },
+              "children": [
+                {
+                  "component": "SettingsRow",
+                  "props": {
+                    "label": "Email digest",
+                    "description": "Sends members a summary of workspace activity by email.",
+                    "control": {
+                      "component": "Switch",
+                      "props": {
+                        "checked": { "$": "digestEnabled" },
+                        "onCheckedChange": { "$": "onDigestEnabledChange" }
+                      }
+                    }
+                  }
+                },
+                {
+                  "component": "SettingsRow",
+                  "props": {
+                    "label": "Digest frequency",
+                    "description": "Sets how often the digest is sent.",
+                    "control": {
+                      "component": "Select",
+                      "props": {
+                        "options": { "$": "digestFrequencyOptions" },
+                        "value": { "$": "digestFrequency" },
+                        "onChange": { "$": "onDigestFrequencyChange" },
+                        "disabled": { "$": "digestFrequencyDisabled" }
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "component": "SettingsRow.Group",
+              "props": { "title": "Access" },
+              "children": [
+                {
+                  "component": "SettingsRow",
+                  "props": {
+                    "label": "Members can invite",
+                    "description": "Lets any member invite other people to the workspace.",
+                    "control": {
+                      "component": "Switch",
+                      "props": {
+                        "checked": { "$": "membersMayInvite" },
+                        "onCheckedChange": { "$": "onMembersMayInviteChange" }
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "component": "SettingsRow.Group",
+              "props": { "title": "Danger zone" },
+              "children": [
+                {
+                  "component": "SettingsRow",
+                  "props": {
+                    "label": "Transfer ownership",
+                    "description": "Makes another member the owner of this workspace.",
+                    "control": {
+                      "component": "Dialog",
+                      "props": {
+                        "title": "Transfer ownership",
+                        "description": "Choose the member who will become the owner of this workspace.",
+                        "open": { "$": "transferOpen" },
+                        "onOpenChange": { "$": "onTransferOpenChange" },
+                        "trigger": {
+                          "component": "Button",
+                          "props": {
+                            "label": "Transfer ownership",
+                            "variant": "outline",
+                            "tone": "danger"
+                          }
+                        },
+                        "footer": {
+                          "component": "Button",
+                          "props": {
+                            "label": "Transfer ownership",
+                            "variant": "solid",
+                            "tone": "danger",
+                            "onClick": { "$": "onTransferConfirm" }
+                          }
+                        }
+                      },
+                      "children": [
+                        {
+                          "component": "Select",
+                          "props": {
+                            "aria-label": "New owner",
+                            "placeholder": "Choose a member",
+                            "options": { "$": "transferCandidateOptions" },
+                            "value": { "$": "transferCandidate" },
+                            "onChange": { "$": "onTransferCandidateChange" }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "component": "SettingsRow",
+                  "props": {
+                    "label": "Delete workspace",
+                    "description": "Permanently deletes the workspace and every project in it.",
+                    "control": {
+                      "component": "ConfirmDialog",
+                      "props": {
+                        "title": "Delete this workspace?",
+                        "description": { "$": "deleteDescription" },
+                        "confirmLabel": "Delete workspace",
+                        "tone": "danger",
+                        "confirmWith": { "$": "workspaceName" },
+                        "open": { "$": "deleteOpen" },
+                        "onOpenChange": { "$": "onDeleteOpenChange" },
+                        "onConfirm": { "$": "onDeleteConfirm" },
+                        "trigger": {
+                          "component": "Button",
+                          "props": {
+                            "label": "Delete workspace",
+                            "variant": "outline",
+                            "tone": "danger"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+/* DonutChart — `design/components/donut-chart.md`.
+ *
+ * `--pm-chart-mark` holds the segment's paint. It is always another custom
+ * property (`var(--pm-chart-3)`), never a colour, so a palette change repaints
+ * every ring without this file knowing the palette. Its default is the
+ * de-emphasis grey, because an unresolvable custom property invalidates its
+ * whole declaration and an unpainted segment would not be drawn.
+ *
+ * No axes and no gridlines, because a ring has no scale. */
+
+.surface {
+  composes: plotSurface from './frame/chart-frame.module.css';
+}
+
+.marks {
+  display: block;
+
+  --pm-chart-mark: var(--pm-chart-other);
+}
+
+/* The `chart.marks` binding: segments fade in with the series stagger, in draw
+   order. There is no sweep-in, because a growing arc is decoration that adds
+   nothing to the data. */
+.segment {
+  fill: var(--pm-chart-mark);
+
+  /* No stroke. The 2px separation is a pad angle in the geometry, so the gap
+     shows the surface instead of ink drawn over the mark. */
+  stroke: none;
+
+  /* The emphasis transition is declared on the mark, not in the reading rule
+     below, so it animates both in and out. */
+  transition: opacity var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+  animation: chart-segments-enter var(--pm-motion-duration-surface) var(--pm-motion-easing-enter)
+    backwards;
+}
+
+.segment:nth-child(2) {
+  animation-delay: var(--pm-motion-stagger-step);
+}
+
+.segment:nth-child(3) {
+  animation-delay: calc(var(--pm-motion-stagger-step) * 2);
+}
+
+.segment:nth-child(4) {
+  animation-delay: calc(var(--pm-motion-stagger-step) * 3);
+}
+
+.segment:nth-child(5) {
+  animation-delay: calc(var(--pm-motion-stagger-step) * 4);
+}
+
+/* `n + 6`, so the stagger is capped and every segment past the sixth shares its
+   last step instead of getting no delay. This member warns above six segments;
+   a seventh segment still enters last. */
+.segment:nth-child(n + 6) {
+  animation-delay: calc(var(--pm-motion-stagger-step) * 5);
+}
+
+/* Transient emphasis: the segment under the reading position keeps full opacity
+   and the others fade back. The colour does not change, because a segment's
+   hue identifies it. */
+.marks[data-reading] .segment:not([data-active]) {
+  opacity: 0.8;
+}
+
+@keyframes chart-segments-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The invisible pointer target. A 4% segment is a sliver, so the engine grows
+   its target to at least 24px along the ring and across it. The targets sit over
+   the paint so the pointer reaches them first. */
+.hit {
+  fill: transparent;
+}
+
+/* The figure in the hole. It is real text, so it needs no relief channel. The
+   app pre-formats it, because the app owns the total. */
+.center text {
+  fill: var(--pm-text-primary);
+  font-family: var(--pm-text-2xl-family);
+  font-size: var(--pm-text-2xl-size);
+  font-weight: var(--pm-text-2xl-weight);
+  font-variant-numeric: var(--pm-font-numeric);
+  dominant-baseline: middle;
+}
+
+/* Scoped under `.center` so it outranks the figure's recipe above instead of
+   tying with it. A label that inherited `text.2xl` would look like a second
+   headline in the hole. */
+.center .centerLabel {
+  fill: var(--pm-text-muted);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segment {
+    animation: none;
+    transition: none;
+  }
+}

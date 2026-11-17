@@ -1,0 +1,16 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "../node_modules/.cache/tsbuildinfo/eval.tsbuildinfo",
+    // DOM for the same reason as the spec package's: the registry, imported as
+    // workspace source, reaches `@polymorph/theme`'s `runtime.ts`.
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"],
+    // The test imports `report.mjs`, which is plain JS run by node. Its types
+    // are inferred, not checked.
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": ["*.ts"]
+}

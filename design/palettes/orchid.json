@@ -1,0 +1,12 @@
+{
+  "name": "orchid",
+  "accentHue": 335,
+  "gradientHue": 295,
+  "neutralTint": 0.014,
+  "chromaBudget": "high",
+  "chartCaps": {
+    "light": 3,
+    "dark": 2,
+    "published": 2
+  }
+}

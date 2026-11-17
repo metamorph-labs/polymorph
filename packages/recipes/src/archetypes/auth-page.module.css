@@ -1,0 +1,355 @@
+/* AuthPage — `design/archetypes/auth-page.md`.
+ *
+ * It declares two `--pm-page-*` tokens, not four. There is no content gutter
+ * because there is one region, and no vertical page padding because the card
+ * is centred in the viewport instead of flowing from the top. */
+
+.page {
+  --pm-page-padding-x: var(--pm-space-5);
+  --pm-page-max-width: calc(var(--pm-space-10) * 4 + var(--pm-space-6));
+
+  display: grid;
+  min-inline-size: 0;
+  inline-size: 100%;
+  overflow-wrap: anywhere;
+
+  /* One explicit track. An implicit `auto` track is sized by its item's
+     intrinsic contribution. On a narrow screen (375px) the column's
+     min-content, clamped up to `--pm-page-max-width`, grows the track past the
+     page and the card slides off the right edge. `minmax(0, 1fr)` limits the
+     track to the available space. The column still centres in it and still
+     stops at its max width.
+
+     The container rule (`docs/layout.md`) does not apply here, because the
+     archetype does not query the viewport. It only declares its own grid. */
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+
+  /* On phones `100vh` includes the collapsed browser chrome
+     (`docs/layout.md`). The fallback pattern (auth-page.md's root cell) puts
+     the `vh` base here and the `dvh` override in the `@supports` block after
+     this rule, because a deduplicating minifier would merge two declarations
+     of the same property. */
+  min-block-size: 100vh;
+  padding: var(--pm-page-padding-x);
+
+  /* The theme owns the page treatment. Texture resolves to none when ornament
+     is disabled. Without a gradient seed, the wash resolves to bg.app. */
+  background: var(--pm-texture-page), var(--pm-bg-wash);
+}
+
+@supports (height: 1dvh) {
+  .page {
+    min-block-size: 100dvh;
+  }
+}
+
+.body {
+  inline-size: 100%;
+  min-inline-size: 0;
+  display: grid;
+  place-items: center;
+}
+
+.column,
+.formColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-6);
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: var(--pm-page-max-width);
+}
+
+.brand {
+  display: flex;
+  justify-content: center;
+}
+
+/* The archetype adds its own inset on top of Card's, because an auth card
+   stands alone on the page and is not a list row. The extra space is the
+   archetype's decision, so Card keeps its default inset for denser uses. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-6);
+  padding: var(--pm-space-3);
+  min-inline-size: 0;
+}
+
+/* Setup images retain their proportions inside the narrowest auth card. */
+.card img {
+  max-inline-size: 100%;
+  block-size: auto;
+}
+
+/* Start-aligned, as in the common login-card composition.
+
+   A centred heading might seem right for the one screen that addresses the
+   user directly. It is not used, because the card itself is already centred.
+   Inside it, a centred title over start-aligned labels gives the card two
+   left edges: the title's, which moves with its length, and the fields',
+   which does not. One shared edge makes the card read as a single object. */
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-3);
+  text-align: start;
+}
+
+.titleRow {
+  min-inline-size: 0;
+}
+
+.withBack {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--pm-space-2);
+}
+
+.backAction {
+  display: flex;
+  align-items: center;
+}
+
+/* `text.2xl`, not a display step, for a measurable reason.
+ *
+ * A display step seems the natural choice for the product's one prominent
+ * title. But the card's content width is 344px (408 minus Card's inset and the
+ * archetype's own). At `display.md` that fits about nine characters before
+ * wrapping, and at `display.sm` twelve. "Reset your password" is nineteen. A
+ * title style that only fits unrealistically short copy does not work. The
+ * common login card sets its title at twice the body step on one line, so the
+ * card reads as a named form, not a hero with a form below it.
+ *
+ * The display scale is used elsewhere. `Hero` uses `md`/`lg`, where a display
+ * step has enough width.
+ *
+ * `text.2xl` is also PageHeader's title step, so card titles and page titles
+ * share one tier. That consistency is intended. */
+.title {
+  margin: 0;
+  font-family: var(--pm-text-2xl-family);
+  font-size: var(--pm-text-2xl-size);
+  font-weight: var(--pm-text-2xl-weight);
+  line-height: var(--pm-text-2xl-line-height);
+  letter-spacing: var(--pm-text-2xl-tracking);
+  color: var(--pm-text-primary);
+}
+
+.description {
+  margin: 0;
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+  color: var(--pm-text-secondary);
+}
+
+/* The only place a Button stretches by design. The card sets the width, and a
+   content-width submit button under full-width fields looks detached. So the
+   archetype's layout stretches it, instead of Button adding an API for it. */
+.card button[type='submit'] {
+  inline-size: 100%;
+}
+
+/* The in-card line. It is centred, unlike the heading, because it is one short
+   sentence at the end of the card with no column beside it to align to. It is
+   `text.sm` secondary, so it reads as an aside to the actions above, not as a
+   third action. */
+.cardFooter {
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+  text-align: center;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-3);
+  justify-content: center;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+}
+
+/* Public account composition: the illustration and frame share one entrance,
+   and the masthead stays in place. */
+.illustrated {
+  --pm-page-max-width: calc(var(--pm-space-6) * 23);
+  --pm-page-padding-x: var(--pm-space-6);
+  --pm-page-enter-order: 0;
+  --pm-page-enter-step: calc(var(--pm-motion-duration-control) * 0.9);
+  --pm-page-enter-duration: calc(var(--pm-motion-duration-surface) * 1.7);
+  --pm-control-height-md: calc(var(--pm-space-6) + var(--pm-space-5) + var(--pm-space-1));
+
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.topbar {
+  align-self: stretch;
+  padding: calc(var(--pm-space-6) + var(--pm-space-2));
+  font-family: var(--pm-text-lg-family);
+  font-size: var(--pm-text-lg-size);
+  font-weight: var(--pm-text-lg-weight);
+  line-height: var(--pm-text-lg-line-height);
+  color: var(--pm-text-primary);
+}
+
+.illustrated .body {
+  flex: 1;
+  padding: var(--pm-page-padding-x);
+}
+
+.illustrated .column {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--pm-space-6) * 5 - var(--pm-space-2));
+  max-inline-size: none;
+}
+
+.illustration {
+  flex: 0 1 calc(var(--pm-space-6) * 18);
+  min-inline-size: 0;
+}
+
+.illustration img {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+}
+
+.illustrated .formColumn {
+  flex: 0 1 var(--pm-page-max-width);
+}
+
+.frame {
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: calc(var(--pm-radius-lg) * 2);
+  padding: calc(var(--pm-space-6) + var(--pm-space-5) + var(--pm-space-1));
+}
+
+.illustrated .card {
+  padding: 0;
+  gap: calc(var(--pm-space-6) + var(--pm-space-2));
+}
+
+.illustrated .heading {
+  text-align: center;
+}
+
+.illustrated .title {
+  font-size: calc(var(--pm-space-6) + var(--pm-space-2));
+  line-height: var(--pm-text-sm-line-height);
+  text-wrap: balance;
+  padding-inline: var(--pm-space-6);
+}
+
+.illustrated .withBack {
+  grid-template-columns: var(--pm-control-height-md) minmax(0, 1fr) var(--pm-control-height-md);
+}
+
+.illustrated .withBack .title {
+  padding-inline: 0;
+}
+
+.illustrated [data-auth-enter] {
+  animation: auth-enter-a var(--pm-page-enter-duration) var(--pm-motion-easing-enter) backwards;
+  animation-delay: calc(var(--pm-page-enter-order) * var(--pm-page-enter-step));
+}
+
+.illustrated [data-page-transition='b'] [data-auth-enter] {
+  animation-name: auth-enter-b;
+}
+
+.illustrated [data-page-transition-state='pending'] [data-auth-enter] {
+  animation: none;
+}
+
+.illustrated [data-page-transition-state='exiting'] {
+  transform: translateY(calc(var(--pm-space-8) * -1));
+  transition:
+    opacity var(--pm-page-enter-duration) var(--pm-motion-easing-exit),
+    transform var(--pm-page-enter-duration) var(--pm-motion-easing-exit);
+}
+
+@keyframes auth-enter-a {
+  from {
+    opacity: 0;
+    transform: translateY(var(--pm-space-8));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes auth-enter-b {
+  from {
+    opacity: 0;
+    transform: translateY(var(--pm-space-8));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (width <= 980px) {
+  .illustrated .column {
+    gap: calc(var(--pm-space-6) * 2 + var(--pm-space-3));
+  }
+
+  .illustration {
+    flex-basis: calc(var(--pm-space-6) * 14);
+  }
+}
+
+@media (width <= 680px) {
+  .illustration {
+    display: none;
+  }
+
+  .illustrated .formColumn {
+    flex-basis: 100%;
+    max-inline-size: 100%;
+  }
+
+  .frame {
+    border: 0;
+    padding: var(--pm-space-6) 0;
+  }
+}
+
+:global([data-motion='none']) .illustrated [data-auth-enter],
+:global([data-motion='none']) .illustrated [data-page-transition='b'] [data-auth-enter],
+:global([data-motion='none']) .illustrated [data-page-transition-state] {
+  animation: none;
+  transition: none;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .illustrated [data-auth-enter],
+  .illustrated [data-page-transition='b'] [data-auth-enter],
+  .illustrated [data-page-transition-state='exiting'] {
+    animation: none;
+    transition: none;
+    transform: none;
+  }
+}

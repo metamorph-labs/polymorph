@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/vue-node.tsbuildinfo",
+    "types": ["node"]
+  },
+  "include": ["*.test.ts", "vite.config.ts"]
+}

@@ -1,0 +1,58 @@
+/* StreamingText — `design/components/streaming-text.md`.
+ *
+ * Text's two recipes with one addition: a caret at the end of the last line.
+ * The caret is a painted block, not a glyph, so its colour is a role (the
+ * accent fill, the same colour as a focused field's border) and its height
+ * does not depend on a font. It does not blink. See the component's note and
+ * the motion spec's rule that a loop needs a pattern. */
+
+.root {
+  min-inline-size: 0;
+}
+
+/* Whitespace is content, because collapsing a reply's line breaks would change
+   the reply. `anywhere` stops an unbroken token (a URL, a hash) from widening
+   the thread past its column. */
+.text {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--pm-text-primary);
+  white-space: pre-wrap;
+}
+
+.root[data-size='sm'] .text {
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+}
+
+.root[data-size='md'] .text {
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+}
+
+/* The caret: a 2px stroke as tall as the step's font size, on the baseline
+   where the next character would be. `2px` is a structural literal (a stroke
+   width, not a measure). The height is the text step's size token, so the
+   mark is one character tall at either step. */
+.caret {
+  display: inline-block;
+  inline-size: 2px;
+  margin-inline-start: var(--pm-space-1);
+  vertical-align: text-bottom;
+  background: var(--pm-accent-bg);
+  border-radius: 1px;
+}
+
+.root[data-size='sm'] .caret {
+  block-size: var(--pm-text-sm-size);
+}
+
+.root[data-size='md'] .caret {
+  block-size: var(--pm-text-md-size);
+}

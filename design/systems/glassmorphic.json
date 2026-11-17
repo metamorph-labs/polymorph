@@ -1,0 +1,28 @@
+{
+  "name": "glassmorphic",
+  "register": "The material register. Transient panes are translucent over a blurred, saturated backdrop — azure paint on a third skeleton — with a worst-case contrast law deciding exactly how translucent.",
+  "axes": {
+    "geometry": "round",
+    "depth": "glass",
+    "density": "standard",
+    "contrastTemperament": "soft",
+    "typePersonality": "grotesque",
+    "colorStrategy": "tinted",
+    "motionTemperament": "expressive",
+    "ornament": "minimal"
+  },
+  "fonts": {
+    "body": {
+      "family": "Inter Variable"
+    },
+    "display": {
+      "family": "Inter Variable"
+    },
+    "mono": {
+      "family": "JetBrains Mono Variable"
+    }
+  },
+  "defaultPalette": "azure",
+  "defaultMode": "light",
+  "kind": "designed"
+}

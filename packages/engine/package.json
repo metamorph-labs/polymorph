@@ -1,0 +1,105 @@
+{
+  "name": "@polymorph/engine",
+  "version": "1.0.15",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./motion": "./src/motion/index.ts",
+    "./qr": "./src/qr/index.ts",
+    "./charts": "./src/charts/index.ts",
+    "./markdown": "./src/markdown/index.ts",
+    "./agent": "./src/agent/index.ts",
+    "./webmcp": "./src/webmcp.ts",
+    "./testing": "./src/testing.ts",
+    "./runtime": "./src/runtime.ts",
+    "./vite": "./src/vite.ts",
+    "./vite-env": {
+      "types": "./src/vite-env.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "dependencies": {
+    "@internationalized/date": "^3.12.2",
+    "@polymorph/theme": "workspace:*",
+    "apca-w3": "^0.1.9",
+    "culori": "^4.0.2",
+    "d3-array": "^3.2.4",
+    "d3-scale": "^4.0.2",
+    "d3-shape": "^3.2.0",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "vite": ">=6"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/d3-array": "^3.2.2",
+    "@types/d3-scale": "^4.0.9",
+    "@types/d3-shape": "^3.1.8",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.5"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "NODE_ENV=production vite build && tsc -p tsconfig.build.json && node scripts/emit-types.mjs"
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "exports": {
+      ".": {
+        "types": "./dist/types/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./motion": {
+        "types": "./dist/types/motion/index.d.ts",
+        "import": "./dist/motion.js"
+      },
+      "./qr": {
+        "types": "./dist/types/qr/index.d.ts",
+        "import": "./dist/qr.js"
+      },
+      "./charts": {
+        "types": "./dist/types/charts/index.d.ts",
+        "import": "./dist/charts.js"
+      },
+      "./markdown": {
+        "types": "./dist/types/markdown/index.d.ts",
+        "import": "./dist/markdown.js"
+      },
+      "./agent": {
+        "types": "./dist/types/agent/index.d.ts",
+        "import": "./dist/agent.js"
+      },
+      "./webmcp": {
+        "types": "./dist/types/webmcp.d.ts",
+        "import": "./dist/webmcp.js"
+      },
+      "./testing": {
+        "types": "./dist/types/testing.d.ts",
+        "import": "./dist/testing.js"
+      },
+      "./runtime": {
+        "types": "./dist/types/runtime.d.ts",
+        "import": "./dist/runtime.js"
+      },
+      "./vite": {
+        "types": "./dist/types/vite.d.ts",
+        "import": "./dist/vite.js"
+      },
+      "./vite-env": {
+        "types": "./dist/types/vite-env.d.ts"
+      }
+    }
+  },
+  "description": "The polymorph decision layer: the theme engine and its laws, the token emitters, the conventions, the motion engine and the runtime. No framework, no DOM assumptions beyond the runtime.",
+  "sideEffects": false
+}

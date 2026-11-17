@@ -1,0 +1,207 @@
+{
+  "requirements": [
+    {
+      "id": "status",
+      "says": "The order's standing is shown beside its name.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": "Badge"
+            }
+          },
+          {
+            "element": {
+              "component": "DetailPage",
+              "props": {
+                "meta": "given"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "way-back",
+      "says": "There is a way back to the list of orders.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": "DetailPage",
+              "props": {
+                "onBack": "given"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Breadcrumbs"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "facts",
+      "says": "The facts about the order are listed as labelled values.",
+      "check": {
+        "element": {
+          "component": ["DescriptionList", "Table", "DataTable"]
+        }
+      }
+    },
+    {
+      "id": "history-and-comments",
+      "says": "What happened to the order and the team's comments are two lists.",
+      "check": {
+        "any": [
+          {
+            "all": [
+              {
+                "element": {
+                  "component": "DescriptionList"
+                }
+              },
+              {
+                "count": {
+                  "kind": "record-list"
+                },
+                "min": 2
+              }
+            ]
+          },
+          {
+            "count": {
+              "kind": "record-list"
+            },
+            "min": 3
+          },
+          {
+            "all": [
+              {
+                "element": {
+                  "component": "Timeline"
+                }
+              },
+              {
+                "count": {
+                  "component": ["RelativeTime", "Avatar"]
+                },
+                "min": 2
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "write-a-comment",
+      "says": "A new comment can be written.",
+      "check": {
+        "element": {
+          "component": ["Textarea", "Input", "PromptInput"]
+        }
+      }
+    },
+    {
+      "id": "refund-from-the-top",
+      "says": "The refund is offered from the top of the page.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": "DetailPage",
+              "props": {
+                "actions": "given"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "PageHeader",
+              "props": {
+                "actions": "given"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "refund-asks-first",
+      "says": "Refunding asks for confirmation first.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": "ConfirmDialog"
+            }
+          },
+          {
+            "element": {
+              "component": "Dialog",
+              "props": {
+                "alert": "given"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Dialog",
+              "props": {
+                "footer": "given"
+              },
+              "has": {
+                "component": "Button",
+                "props": {
+                  "tone": {
+                    "is": "danger"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "confirmation-states-the-amount",
+      "says": "The confirmation states the amount being refunded, so its words come from the order.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": "ConfirmDialog",
+              "anyProp": {
+                "title": "dynamic",
+                "description": "dynamic",
+                "confirmLabel": "dynamic"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Dialog",
+              "anyProp": {
+                "title": "dynamic",
+                "description": "dynamic"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Dialog",
+              "has": {
+                "component": ["Text", "Heading"],
+                "props": {
+                  "children": "dynamic"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

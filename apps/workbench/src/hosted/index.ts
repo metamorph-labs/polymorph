@@ -1,0 +1,1 @@
+export { HostedPage } from './HostedPage'

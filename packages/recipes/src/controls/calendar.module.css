@@ -1,0 +1,186 @@
+/* Calendar — `design/components/calendar.md`.
+ *
+ * This file uses two colour families that must stay distinct, which is why the selection roles
+ * exist. The **accent wash** shows where the pointer is. The **selection family** shows what the
+ * user chose. A day that used `accent.subtle` for both would look the same hovered and selected.
+ *
+ * Figures are tabular throughout, so the columns do not shift between one-digit and two-digit
+ * days. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+  inline-size: fit-content;
+  padding: var(--pm-space-3);
+}
+
+.header {
+  display: flex;
+  gap: var(--pm-space-2);
+  align-items: center;
+  justify-content: space-between;
+  block-size: var(--pm-control-height-sm);
+}
+
+.title {
+  flex: 1;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  text-align: center;
+
+  /* Keeps the year's digits in place as the month changes. */
+  font-variant-numeric: var(--pm-font-numeric);
+}
+
+/* grid ---------------------------------------------------------------------- */
+
+.grid {
+  border-collapse: collapse;
+}
+
+.grid th {
+  padding: 0;
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+  text-align: center;
+}
+
+.cell {
+  padding: 0;
+}
+
+.day {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback pressable from '../conventions/motion.module.css';
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--pm-control-height-sm);
+  block-size: var(--pm-control-height-sm);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid transparent;
+  border-radius: var(--pm-radius-sm);
+  outline: none;
+  font-variant-numeric: var(--pm-font-numeric);
+}
+
+/* day states — ascending specificity, so selection wins over hover ---------- */
+
+/* Today is not a selection. It gets a border and a colour, never a fill. */
+.day[data-today] {
+  color: var(--pm-accent-text);
+  border-color: var(--pm-accent-bg);
+}
+
+.day:hover:not([data-selected], [data-unavailable], [data-disabled]) {
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+}
+
+/* The wash's third step. */
+.day:active:not([data-selected], [data-unavailable], [data-disabled]) {
+  background: var(--pm-accent-subtle-active);
+}
+
+/* Struck through and muted, but still focusable. An unavailable day has a reason, and a screen
+   reader user must be able to reach the day to hear it. */
+.day[data-unavailable] {
+  color: var(--pm-text-disabled);
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+
+.day[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+}
+
+/* The selection family comes last. A selected day stays selected when the pointer leaves. It
+   overrides today's border because `aria-current` already marks the date as today. */
+.day[data-selected] {
+  color: var(--pm-selection-text);
+  background: var(--pm-selection-bg);
+  border-color: var(--pm-selection-border);
+}
+
+/* Selection has its own hover step, as Table's law requires. */
+.day[data-selected]:hover {
+  background: var(--pm-selection-bg-hover);
+}
+
+/* month change -------------------------------------------------------------- */
+
+/* The `calendar.month` binding: `slide-fade` `sm` at the surface class, entering from the
+   direction of travel. Only the entrance animates. The outgoing month is replaced, not dismissed,
+   and fading it out before the new month arrived would leave a gap where the dates are.
+   `--pm-space-2` is the `sm` distance in CSS, as `formfield.error` writes it. */
+.grid[data-travel='next'] {
+  animation: calendar-grid-next var(--pm-motion-duration-surface) var(--pm-motion-easing-enter);
+}
+
+.grid[data-travel='previous'] {
+  animation: calendar-grid-previous var(--pm-motion-duration-surface) var(--pm-motion-easing-enter);
+}
+
+@keyframes calendar-grid-next {
+  from {
+    opacity: 0;
+    transform: translateX(var(--pm-space-2));
+  }
+}
+
+@keyframes calendar-grid-previous {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--pm-space-2) * -1));
+  }
+}
+
+/* RTL mirrors navigation. "Next" is to the left, so the incoming month arrives from the left and
+   the chevrons point the other way. The icon set has no directional pairs of its own, so the two
+   navigation glyphs are mirrored here. The roles still mean previous and next, as the icon rules
+   require: an icon name is a meaning, not a glyph. */
+[dir='rtl'] .grid[data-travel='next'] {
+  animation-name: calendar-grid-previous;
+}
+
+[dir='rtl'] .grid[data-travel='previous'] {
+  animation-name: calendar-grid-next;
+}
+
+[dir='rtl'] .header svg {
+  transform: scaleX(-1);
+}
+
+/* Reduced motion (motion.md): `slide-fade` reduces to the plain `fade` it builds on. The duration
+   stays, because an opacity change is vestibular-safe and the new month should still be seen to
+   arrive. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes calendar-grid-next {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes calendar-grid-previous {
+    from {
+      opacity: 0;
+    }
+  }
+}

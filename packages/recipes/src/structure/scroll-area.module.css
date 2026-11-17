@@ -1,0 +1,140 @@
+/* ScrollArea — `design/components/scroll-area.md`.
+ *
+ * A scrollbar is geometry. The styled region keeps its own recipe, and this adds
+ * the rail, the thumb and the `always` gutter. The thumb uses the ramp's
+ * strongest step, like Timeline's neutral dot, because the guardrail needs it
+ * visible at *rest*. No hover step: the only step above `--pm-border-strong` is
+ * text colour, which chrome never uses. */
+
+.root {
+  inline-size: 100%;
+  block-size: 100%;
+  overflow: hidden;
+}
+
+/* The scroll container. The substrate sets its overflow axes and hides the native
+   scrollbars, so the drawn rail is the only bar. */
+.viewport {
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+/* The `always` gutter (container-first: content is never covered, as in
+   CodeBlock). While an `always` rail is drawn, the viewport reserves its width
+   so the last line clears the thumb, flipping under RTL. The `hover` type
+   cannot reserve, because a gutter appearing on hover shifts layout, which is
+   one reason it is not the default. */
+.root:has(.always[data-orientation='vertical']) .viewport {
+  padding-inline-end: var(--pm-space-3);
+}
+
+.root:has(.always[data-orientation='horizontal']) .viewport {
+  padding-block-end: var(--pm-space-3);
+}
+
+/* A transparent rail: it is the region's edge, not a control (track paging is
+   substrate behaviour). The padding keeps the thumb off the edges. */
+.rail {
+  display: flex;
+  padding: var(--pm-space-1);
+  touch-action: none;
+  user-select: none;
+  background: transparent;
+}
+
+.rail[data-orientation='vertical'] {
+  inline-size: var(--pm-space-3);
+}
+
+.rail[data-orientation='horizontal'] {
+  flex-direction: column;
+  block-size: var(--pm-space-3);
+}
+
+/* One class per type: `always` rails reserve space (above), and `hover` rails
+   fade (below). Both are the same rail. */
+.always {
+  background: transparent;
+}
+
+/* The `hover` type fades at control duration, like Input's clear button. It is
+   force-mounted, so `hidden` is a real state held by opacity and reached
+   through the exit animation. */
+.hover[data-state='visible'] {
+  animation: scroll-area-rail-enter var(--pm-motion-duration-control) var(--pm-motion-easing-enter);
+}
+
+.hover[data-state='hidden'] {
+  opacity: 0;
+  animation: scroll-area-rail-exit var(--pm-motion-duration-control-exit)
+    var(--pm-motion-easing-exit);
+}
+
+@keyframes scroll-area-rail-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes scroll-area-rail-exit {
+  from {
+    opacity: 1;
+  }
+}
+
+/* The thumb: the ramp's strongest step, pill radius, and a `--pm-hit-target`
+   minimum so a very long document still leaves a handle at every density. Position and length are the
+   substrate's. Movement never transitions: Slider's law covers a thumb that
+   *reports* position as much as one that sets it.
+
+   The minimum keys on the *rail's* `data-orientation`, because the substrate
+   sets none on the thumb. */
+.thumb {
+  position: relative;
+  flex: 1;
+  background: var(--pm-border-strong);
+  border-radius: var(--pm-radius-pill);
+}
+
+.rail[data-orientation='vertical'] .thumb {
+  min-block-size: var(--pm-hit-target);
+}
+
+.rail[data-orientation='horizontal'] .thumb {
+  min-inline-size: var(--pm-hit-target);
+}
+
+/* `'both'` only. Transparent, because two rails meeting is not a surface. */
+.corner {
+  background: transparent;
+}
+
+/* Fixture boxes for the spec's "16rem-tall harness box", built from tokens
+   (96 + 96 + 64 = 256px at standard density) because the CSS law covers every
+   file in this package, fixtures included (see FixtureBox). */
+.harness {
+  inline-size: 100%;
+  block-size: calc(var(--pm-space-10) * 2 + var(--pm-space-9));
+}
+
+.harnessNarrow {
+  inline-size: calc(var(--pm-space-10) * 2);
+  block-size: auto;
+}
+
+.harnessSquare {
+  inline-size: calc(var(--pm-space-10) * 2);
+  block-size: calc(var(--pm-space-10) * 2);
+}
+
+/* Reduced-motion projection (`design/motion/motion.md`): rails appear
+   instantly, and thumb movement never animates. */
+@media (prefers-reduced-motion: reduce) {
+  .hover[data-state='visible'] {
+    animation: none;
+  }
+
+  .hover[data-state='hidden'] {
+    animation: none;
+  }
+}

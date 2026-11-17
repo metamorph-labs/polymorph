@@ -1,0 +1,21 @@
+/* Fixture apparatus (see ./FixtureBox.tsx). It uses only tokens, because the
+   vocabulary's CSS law applies to every file in this package. */
+
+.box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--pm-space-8);
+  padding: var(--pm-space-2) var(--pm-space-3);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  line-height: var(--pm-text-xs-line-height);
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+  border: 1px solid var(--pm-accent-subtle-hover);
+  border-radius: var(--pm-radius-sm);
+}
+
+.box[data-tall] {
+  min-height: var(--pm-space-9);
+}

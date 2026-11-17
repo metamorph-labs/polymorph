@@ -1,0 +1,76 @@
+{
+  "name": "@polymorph/vue-ui",
+  "version": "1.0.15",
+  "description": "The polymorph vocabulary for Vue: every member as a single-file component generated from its framework-neutral description, styled by its token-only recipe from @polymorph/recipes.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": [
+    "**/*.css",
+    "./src/index.ts",
+    "./dist/index.js"
+  ],
+  "scripts": {
+    "build": "NODE_ENV=production vite build --config vite.build.config.ts && vue-tsc -p tsconfig.build.json"
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "exports": {
+      ".": {
+        "types": "./dist/types/index.d.ts",
+        "node": "./dist/node/index.js",
+        "import": "./dist/index.js"
+      }
+    }
+  },
+  "dependencies": {
+    "@polymorph/recipes": "workspace:*",
+    "@polymorph/vue": "workspace:*",
+    "@zag-js/accordion": "^1.46.0",
+    "@zag-js/carousel": "^1.46.0",
+    "@zag-js/checkbox": "^1.46.0",
+    "@zag-js/collapsible": "^1.46.0",
+    "@zag-js/color-picker": "^1.46.0",
+    "@zag-js/combobox": "^1.46.0",
+    "@zag-js/date-picker": "^1.46.0",
+    "@zag-js/dialog": "^1.46.0",
+    "@zag-js/hover-card": "^1.46.0",
+    "@zag-js/menu": "^1.46.0",
+    "@zag-js/number-input": "^1.46.0",
+    "@zag-js/popover": "^1.46.0",
+    "@zag-js/radio-group": "^1.46.0",
+    "@zag-js/scroll-area": "^1.46.0",
+    "@zag-js/select": "^1.46.0",
+    "@zag-js/slider": "^1.46.0",
+    "@zag-js/switch": "^1.46.0",
+    "@zag-js/tabs": "^1.46.0",
+    "@zag-js/tooltip": "^1.46.0",
+    "@zag-js/vue": "^1.46.0"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@polymorph/conformance": "workspace:*",
+    "@polymorph/engine": "workspace:*",
+    "@polymorph/registry": "workspace:*",
+    "@polymorph/rules": "workspace:*",
+    "@polymorph/shells": "workspace:*",
+    "@testing-library/dom": "^10.4.1",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "@vue/compiler-sfc": "^3.5.43",
+    "axe-core": "^4.12.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.5",
+    "vue": "^3.5.43",
+    "vue-tsc": "^3.3.13"
+  },
+  "license": "MIT"
+}

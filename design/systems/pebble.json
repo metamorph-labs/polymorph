@@ -1,0 +1,28 @@
+{
+  "name": "pebble",
+  "register": "The touch register. Round corners, comfortable controls sized for a thumb near the 44px tap floor, springs that overshoot — and it shares every colour with desktop: two skeletons, one paint.",
+  "axes": {
+    "geometry": "round",
+    "depth": "elevated",
+    "density": "comfortable",
+    "contrastTemperament": "standard",
+    "typePersonality": "grotesque",
+    "colorStrategy": "quiet",
+    "motionTemperament": "expressive",
+    "ornament": "minimal"
+  },
+  "fonts": {
+    "body": {
+      "family": "Inter Variable"
+    },
+    "display": {
+      "family": "Inter Variable"
+    },
+    "mono": {
+      "family": "JetBrains Mono Variable"
+    }
+  },
+  "defaultPalette": "azure",
+  "defaultMode": "light",
+  "kind": "designed"
+}

@@ -1,0 +1,140 @@
+/* TimeInput — `design/components/time-input.md`.
+ *
+ * Every style comes from `date-picker.md`, which the spec cites rather than defining new
+ * ones. The rules are copied rather than shared, for the same reason DatePicker copies
+ * Input's container: the completeness law checks each component's own stylesheet, and
+ * the browser test compares the computed styles, which is the stronger check.
+ *
+ * The only difference is something missing: there is no trigger slot and no popup, so
+ * the segments are the whole control. The dayPeriod segment uses the segment recipe
+ * unchanged. A word among digits needs no change (`font-variant-numeric` has no effect
+ * on letters), and sharing the style is intended: AM is a segment, not a badge.
+ *
+ * The conventions' focus-zoom floor for phones does not apply to this member. Entry
+ * uses `role="spinbutton"` segments, not a real `<input>`/`<textarea>`, and the browser
+ * zoom that floor prevents happens only on real text-entry elements. Nothing changes
+ * size. This comment records that the omission is deliberate. */
+
+.field {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  max-inline-size: 100%;
+  block-size: var(--pm-control-height-md);
+  padding-inline: var(--pm-space-5);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  cursor: text;
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-field);
+  border-radius: var(--pm-radius-control);
+
+  /* The control seat shadow, from Input, used by every field in the family. */
+  box-shadow: var(--pm-shadow-seat);
+}
+
+/* The segment row holds the value, aligned to the start, with `2px` around the
+   separators so `09:30` never reads as one number. */
+.segments {
+  display: flex;
+  flex: 1;
+  gap: 2px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.segment {
+  padding-inline: 2px;
+  color: var(--pm-text-primary);
+  border-radius: var(--pm-radius-sm);
+  outline: none;
+  font-variant-numeric: var(--pm-font-numeric);
+
+  /* A segment is editable text so a phone shows its keyboard, and every change is the field's
+     own, so no caret is drawn in it. */
+  caret-color: transparent;
+}
+
+/* The unfilled placeholder pattern, from the locale, including day periods. */
+.segment[data-placeholder] {
+  color: var(--pm-text-muted);
+}
+
+/* Shows where focus is, not a selection, so it uses the hover tint, not the selection
+   style. Focus on the minute does not mean the minute is chosen. Colour changes only,
+   so nothing around the caret moves. */
+.segment:focus {
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+}
+
+/* The locale's separator, `:` here. */
+.separator {
+  color: var(--pm-text-muted);
+}
+
+/* sizes — the conventions' size system -------------------------------------- */
+
+.field[data-size='sm'] {
+  gap: var(--pm-space-2);
+  block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-4);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+}
+
+.field[data-size='lg'] {
+  block-size: var(--pm-control-height-lg);
+  padding-inline: var(--pm-space-6);
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+}
+
+/* states -------------------------------------------------------------------- */
+
+.field[data-invalid] {
+  border-color: var(--pm-danger-border);
+}
+
+/* Input's readOnly style: the value is muted. The segments stay focusable and
+   selectable, but arrows and digits do not edit (the substrate's behaviour). */
+.field[data-readonly] {
+  color: var(--pm-text-secondary);
+}
+
+.field[data-readonly] .segment {
+  color: var(--pm-text-secondary);
+}
+
+.field[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-subtle);
+
+  /* The seat shadow signals a ready control, so disabled removes it (as in Input). */
+  box-shadow: none;
+}
+
+.field[data-disabled] .segment,
+.field[data-disabled] .separator {
+  color: var(--pm-text-disabled);
+}
+
+/* Invalid is excluded rather than overridden, so the error border stays on hover. This is
+   the same selector as Input's. */
+.field:hover:not([data-disabled], [data-readonly], [data-invalid]) {
+  border-color: var(--pm-border-strong);
+}

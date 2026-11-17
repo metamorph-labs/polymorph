@@ -1,0 +1,152 @@
+/* TableOfContents — `design/components/table-of-contents.md`.
+ *
+ * A column of links under an overline. A subsection's link sits one step in,
+ * on the inline-start side, which logical properties mirror in a right-to-left
+ * page. The current item takes SectionNav's selection treatment, so a current
+ * location looks the same in the rail, in a section's row and in a page's
+ * index.
+ *
+ * Nothing slides between items when the current one changes: the mark follows
+ * the reader's scroll, and a moving mark beside moving text would draw the eye
+ * away from what is read. Colour and press feedback come from `stateFeedback`
+ * and `pressable`. */
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+  min-inline-size: 0;
+}
+
+/* The overline: the system's one section-heading recipe (SettingsRow.Group's,
+   and the AppShell rail's group label). It is text, not a heading element,
+   because the page's headings are its sections, and the list names them. */
+.label {
+  margin: 0;
+  padding-inline: var(--pm-space-3);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+  text-transform: uppercase;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A section's subsections, one step in. */
+.sublist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-1);
+  margin: 0;
+  margin-block-start: var(--pm-space-1);
+  padding: 0;
+  padding-inline-start: var(--pm-space-4);
+  list-style: none;
+}
+
+.item {
+  min-inline-size: 0;
+}
+
+/* A label wraps onto further lines, because the words that tell two sections
+   apart are often at the end of a long heading. */
+.link {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback pressable from '../conventions/motion.module.css';
+  display: flex;
+  align-items: center;
+  min-block-size: var(--pm-control-height-sm);
+  padding-block: var(--pm-space-2);
+  padding-inline: var(--pm-space-3);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+  overflow-wrap: anywhere;
+
+  /* The list is navigation, not prose, so the user agent's underline is removed. */
+  text-decoration: none;
+  border-radius: var(--pm-radius-md);
+}
+
+/* states -------------------------------------------------------------------- */
+
+/* The selection treatment (`design/components/README.md`): a filled shape as
+   well as a colour, so the current item is not marked by colour alone. */
+.link[aria-current='location'] {
+  color: var(--pm-selection-text);
+  background: var(--pm-selection-bg);
+}
+
+/* Selection takes precedence over hover, so the current item does not flicker
+   with the pointer. */
+.link:hover:not([aria-current='location']) {
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-subtle);
+}
+
+/* Fixture boxes ------------------------------------------------------------- */
+
+/* The states fixture's page: the list beside a box that scrolls, holding the
+   sections the items name. The box is the page the list follows. It is built
+   from tokens because the CSS law covers every file in this package. The list
+   is 216px wide (96 + 96 + 24) and the page at least 288px, so in a column
+   narrower than both the list sits above the page. */
+.harness {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--pm-space-6);
+  inline-size: 100%;
+}
+
+.harness > .nav {
+  flex: 0 0 calc(var(--pm-space-10) * 2 + var(--pm-space-6));
+}
+
+/* The same box at a phone's width, 360px (288 + 48 + 24). */
+.harnessNarrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--pm-space-6);
+  inline-size: calc(var(--pm-space-10) * 3 + var(--pm-space-8) + var(--pm-space-6));
+  max-inline-size: 100%;
+}
+
+.harnessNarrow > .nav {
+  flex: 0 0 calc(var(--pm-space-10) * 2 + var(--pm-space-6));
+}
+
+/* 384px tall (96 × 4). A scroll region that holds no control is a tab stop,
+   so a keyboard reader can scroll it. */
+.harnessPage {
+  composes: focusRing from '../conventions/focus.module.css';
+  flex: 1 1 calc(var(--pm-space-10) * 3);
+  min-inline-size: 0;
+  block-size: calc(var(--pm-space-10) * 4);
+  padding-inline: var(--pm-space-5);
+  overflow-y: auto;
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-md);
+}
+
+.harnessSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-3);
+  min-block-size: calc(var(--pm-space-10) * 2);
+  padding-block: var(--pm-space-5);
+}

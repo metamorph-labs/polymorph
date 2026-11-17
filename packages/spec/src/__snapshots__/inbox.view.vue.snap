@@ -1,0 +1,161 @@
+<script setup lang="ts">
+/**
+ * Relay's ticket queue — a filtered, sortable table under a page header.
+ *
+ * Emitted from a screen spec (`polymorph-screen/1`). Composition and bindings only:
+ * this file holds no state, computes nothing, and expresses no style — the
+ * container that renders it owns all three.
+ */
+import { h } from 'vue'
+import {
+  Button,
+  Card,
+  DataTable,
+  DensityScope,
+  FilterBar,
+  Grid,
+  ListPage,
+  SearchInput,
+  Select,
+  Stat,
+  type DataTableColumn,
+  type DataTableSort,
+  type EmptyStateProps,
+  type StatProps,
+} from '@polymorph/vue-ui'
+import type { Ticket } from './tickets'
+
+export interface InboxViewProps {
+  /** Already filtered and sorted. */
+  tickets: Ticket[]
+  /** The queue's four numbers, derived by the container from the whole collection rather than from the filtered view — which is why the band outlives the empty story. */
+  summary: { open: StatProps; urgent: StatProps; response: StatProps; solved: StatProps }
+  /** Cell renderers are code, so they arrive as an input. */
+  columns: DataTableColumn<Ticket>[]
+  sort: DataTableSort
+  onSortChange: (sort: DataTableSort) => void
+  getRowId: (ticket: Ticket) => string
+  onRowClick: (ticket: Ticket) => void
+  onNewTicket: () => void
+  isFiltered: boolean
+  onClearFilters: () => void
+  resultCount: { shown: number; total: number }
+  query: string
+  onQueryChange: (query: string) => void
+  status: string | null
+  statusOptions: { value: string; label: string }[]
+  onStatusChange: (value: string | null) => void
+  priority: string | null
+  priorityOptions: { value: string; label: string }[]
+  onPriorityChange: (value: string | null) => void
+  isEmpty: boolean
+  emptyState: EmptyStateProps
+}
+
+const props = defineProps<InboxViewProps>()
+</script>
+
+<template>
+  <ListPage
+    title="Inbox"
+    :empty="props.isEmpty"
+    :emptyState="{
+      icon: 'search',
+      title: 'No tickets match these filters',
+      description: 'Every conversation is still here — the filters are hiding them.',
+      secondaryAction: h(Button, {
+        variant: 'ghost',
+        tone: 'neutral',
+        label: 'Clear filters',
+        onClick: props.onClearFilters,
+      }),
+    }"
+  >
+    <template #summary>
+      <Grid :columns="4" :gap="6">
+        <Card>
+          <Stat
+            :label="props.summary.open.label"
+            :value="props.summary.open.value"
+            :trend="props.summary.open.trend"
+            :footer="props.summary.open.footer"
+          />
+        </Card>
+        <Card>
+          <Stat
+            :label="props.summary.urgent.label"
+            :value="props.summary.urgent.value"
+            :trend="props.summary.urgent.trend"
+            :footer="props.summary.urgent.footer"
+          />
+        </Card>
+        <Card>
+          <Stat
+            :label="props.summary.response.label"
+            :value="props.summary.response.value"
+            :trend="props.summary.response.trend"
+            :footer="props.summary.response.footer"
+          />
+        </Card>
+        <Card>
+          <Stat
+            :label="props.summary.solved.label"
+            :value="props.summary.solved.value"
+            :trend="props.summary.solved.trend"
+            :footer="props.summary.solved.footer"
+          />
+        </Card>
+      </Grid>
+    </template>
+    <template #actions>
+      <Button icon="add" label="New ticket" @click="props.onNewTicket" />
+    </template>
+    <template #filters>
+      <FilterBar
+        :isFiltered="props.isFiltered"
+        @clear="props.onClearFilters"
+        :resultCount="props.resultCount"
+      >
+        <template #search>
+          <SearchInput
+            size="sm"
+            placeholder="Search tickets…"
+            aria-label="Search tickets"
+            :value="props.query"
+            @change="props.onQueryChange"
+          />
+        </template>
+        <Select
+          size="sm"
+          :options="props.statusOptions"
+          emptyOption="Any status"
+          aria-label="Filter by status"
+          :value="props.status"
+          @change="props.onStatusChange"
+        />
+        <Select
+          size="sm"
+          :options="props.priorityOptions"
+          emptyOption="Any priority"
+          aria-label="Filter by priority"
+          :value="props.priority"
+          @change="props.onPriorityChange"
+        />
+      </FilterBar>
+    </template>
+    <!-- Rung 2, declared: A queue is scanned rather than read, so more rows in the same viewport is worth more here than the breathing room the rest of the product gets. Nothing new is invented: this is the same theme in its compact variant, applied to a region. -->
+    <DensityScope value="compact" as="section">
+      <DataTable
+        label="Tickets"
+        :stickyHeader="true"
+        :columns="props.columns"
+        :data="props.tickets"
+        :getRowId="props.getRowId"
+        :sort="props.sort"
+        @sortChange="props.onSortChange"
+        :emptyState="props.emptyState"
+        @rowClick="props.onRowClick"
+      />
+    </DensityScope>
+  </ListPage>
+</template>

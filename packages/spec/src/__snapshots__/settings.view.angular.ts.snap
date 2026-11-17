@@ -1,0 +1,152 @@
+/**
+ * Relay's settings screen — appearance and notifications, as two labelled groups.
+ *
+ * Emitted from a screen spec (`polymorph-screen/1`). Composition and bindings only:
+ * this file holds no state, computes nothing, and expresses no style — the
+ * container that renders it owns all three.
+ */
+import { Component, input } from '@angular/core'
+import {
+  Checkbox,
+  Select,
+  SettingsPage,
+  SettingsRow,
+  SettingsRowGroup,
+  Switch,
+} from '@polymorph/angular-ui'
+
+export interface SettingsViewProps {
+  /** The system currently worn. */
+  system: string | null
+  onSystemChange: (value: string | null) => void
+  /** The palette painting it. */
+  palette: string | null
+  onPaletteChange: (value: string | null) => void
+  /** The stored preference, which may be `system`. */
+  mode: string
+  onModeChange: (value: string | null) => void
+  density: string | null
+  onDensityChange: (value: string | null) => void
+  motion: string
+  onMotionChange: (value: string | null) => void
+  systemOptions: { value: string; label: string }[]
+  paletteOptions: { value: string; label: string }[]
+  modeOptions: { value: string; label: string }[]
+  densityOptions: { value: string; label: string }[]
+  motionOptions: { value: string; label: string }[]
+  digest: boolean
+  onDigestChange: (next: boolean) => void
+  signature: boolean
+  onSignatureChange: (next: boolean | 'indeterminate') => void
+}
+
+@Component({
+  selector: 'app-settings-view',
+  imports: [Checkbox, Select, SettingsPage, SettingsRow, SettingsRowGroup, Switch],
+  template: `
+    <pm-settings-page
+      title="Settings"
+      description="Appearance applies to every screen in Relay the moment it changes."
+    >
+      <pm-settings-row-group title="Appearance">
+        <pm-settings-row
+          label="System"
+          description="Type, shape and spacing — how the product is built."
+        >
+          <ng-container ngProjectAs="[slot=control]">
+            <pm-select
+              [options]="systemOptions()"
+              [value]="system()"
+              (change)="onSystemChange()($event)"
+            />
+          </ng-container>
+        </pm-settings-row>
+        <pm-settings-row
+          label="Palette"
+          description="The colour it is painted with. Any palette, any system."
+        >
+          <ng-container ngProjectAs="[slot=control]">
+            <pm-select
+              [options]="paletteOptions()"
+              [value]="palette()"
+              (change)="onPaletteChange()($event)"
+            />
+          </ng-container>
+        </pm-settings-row>
+        <pm-settings-row label="Mode" description="Follow the operating system, or pin one.">
+          <ng-container ngProjectAs="[slot=control]">
+            <pm-select
+              [options]="modeOptions()"
+              [value]="mode()"
+              (change)="onModeChange()($event)"
+            />
+          </ng-container>
+        </pm-settings-row>
+        <pm-settings-row
+          label="Density"
+          description="Space and control sizes. Never the type scale."
+        >
+          <ng-container ngProjectAs="[slot=control]">
+            <pm-select
+              [options]="densityOptions()"
+              emptyOption="theme default"
+              [value]="density()"
+              (change)="onDensityChange()($event)"
+            />
+          </ng-container>
+        </pm-settings-row>
+        <pm-settings-row
+          label="Motion"
+          description="How much the interface moves. None is a full stop, not a slower version."
+        >
+          <ng-container ngProjectAs="[slot=control]">
+            <pm-select
+              [options]="motionOptions()"
+              [value]="motion()"
+              (change)="onMotionChange()($event)"
+            />
+          </ng-container>
+        </pm-settings-row>
+      </pm-settings-row-group>
+      <pm-settings-row-group title="Notifications">
+        <pm-settings-row
+          label="Daily digest"
+          description="One summary each morning instead of a notification per reply."
+        >
+          <ng-container ngProjectAs="[slot=control]">
+            <pm-switch [checked]="digest()" (checkedChange)="onDigestChange()($event)" />
+          </ng-container>
+        </pm-settings-row>
+        <pm-settings-row
+          label="Append my signature"
+          description="Added to the end of every reply you send."
+        >
+          <ng-container ngProjectAs="[slot=control]">
+            <pm-checkbox [checked]="signature()" (checkedChange)="onSignatureChange()($event)" />
+          </ng-container>
+        </pm-settings-row>
+      </pm-settings-row-group>
+    </pm-settings-page>
+  `,
+})
+export class SettingsView {
+  readonly system = input.required<SettingsViewProps['system']>()
+  readonly onSystemChange = input.required<SettingsViewProps['onSystemChange']>()
+  readonly palette = input.required<SettingsViewProps['palette']>()
+  readonly onPaletteChange = input.required<SettingsViewProps['onPaletteChange']>()
+  readonly mode = input.required<SettingsViewProps['mode']>()
+  readonly onModeChange = input.required<SettingsViewProps['onModeChange']>()
+  readonly density = input.required<SettingsViewProps['density']>()
+  readonly onDensityChange = input.required<SettingsViewProps['onDensityChange']>()
+  readonly motion = input.required<SettingsViewProps['motion']>()
+  readonly onMotionChange = input.required<SettingsViewProps['onMotionChange']>()
+  readonly systemOptions = input.required<SettingsViewProps['systemOptions']>()
+  readonly paletteOptions = input.required<SettingsViewProps['paletteOptions']>()
+  readonly modeOptions = input.required<SettingsViewProps['modeOptions']>()
+  readonly densityOptions = input.required<SettingsViewProps['densityOptions']>()
+  readonly motionOptions = input.required<SettingsViewProps['motionOptions']>()
+  readonly digest = input.required<SettingsViewProps['digest']>()
+  readonly onDigestChange = input.required<SettingsViewProps['onDigestChange']>()
+  readonly signature = input.required<SettingsViewProps['signature']>()
+  readonly onSignatureChange = input.required<SettingsViewProps['onSignatureChange']>()
+}

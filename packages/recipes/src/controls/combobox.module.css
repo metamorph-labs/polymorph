@@ -1,0 +1,468 @@
+/* Combobox — `design/components/combobox.md`.
+ *
+ * Two recipes, both restated rather than shared: the field is Input's and the panel is Select's.
+ * The completeness law checks a component's *own* stylesheet source, and that check is only
+ * meaningful with one stylesheet per component. So a test prevents drift instead:
+ * `combobox.test.tsx` compares the two controls' resolved values, which is a stronger guarantee.
+ *
+ * `var(--radix-popover-*)` are measurements the positioning engine takes at runtime: the anchor's
+ * width, the space left below it, and the origin the panel grows from. No one authors them, so the
+ * token law allows the namespace (packages/rules/src/stylelint/values.js). */
+
+.field {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  position: relative;
+  display: inline-flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  max-inline-size: 100%;
+  block-size: var(--pm-control-height-md);
+  padding-inline: var(--pm-space-5);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  cursor: text;
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-field);
+  border-radius: var(--pm-radius-control);
+
+  /* The control seat shadow, from Input's recipe, used by every field in the family. */
+  box-shadow: var(--pm-shadow-seat);
+}
+
+.input {
+  flex: 1;
+  min-inline-size: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+/* Firefox dims placeholders by default. The muted role already makes them lighter, so they must
+   not be dimmed twice. */
+.input::placeholder {
+  color: var(--pm-text-muted);
+  opacity: 1;
+}
+
+/* The one live region (see Combobox.tsx). It is hidden by clipping rather than `display: none`,
+   which would remove it and its announcements from the accessibility tree. */
+.status {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Input's embedded-adornment convention, unchanged: muted at rest to match the field's other
+   glyphs, primary on a `bg-subtle` wash on hover, its own `radius-sm` inside the field's `md`, and
+   the focus ring on the inner target. */
+.clear {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback pressable from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-self: stretch;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  padding: 0;
+  color: var(--pm-text-muted);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--pm-radius-sm);
+  animation: combobox-clear-enter var(--pm-motion-duration-control) var(--pm-motion-easing-enter);
+}
+
+@keyframes combobox-clear-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+.clear:hover {
+  color: var(--pm-text-primary);
+  background: var(--pm-bg-subtle);
+}
+
+/* Select's chevron: muted, and rotated while the panel is open. */
+.chevron {
+  composes: focusRing from '../conventions/focus.module.css';
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--pm-text-muted);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--pm-radius-sm);
+
+  /* The `select.chevron` binding: transform, control class, `standard` easing, because the state
+     change is symmetric with no direction of travel. */
+  transition: transform var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+/* The `combobox.glyph` binding: `fade`, control class. The glyph element is replaced when loading
+   starts and ends, so only the entrance animates. No old node is left to fade out. `fade` is
+   unchanged under reduced motion and resolves to 0s at temperament `none`, so it needs no
+   reduced-motion rule of its own. The selector is a descendant, not a child, because the loading
+   glyph sits inside its spinner wrapper. */
+.chevron svg {
+  animation: combobox-glyph-enter var(--pm-motion-duration-control) var(--pm-motion-easing-enter);
+}
+
+@keyframes combobox-glyph-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The loading glyph spins with the ambient pattern, as Button's spinner does. The motion module
+   owns its period, inverse temperament scaling and three switch-offs. This restates MultiSelect's
+   tested implementation. */
+.spinner {
+  composes: spin from '../conventions/motion.module.css';
+  display: inline-flex;
+}
+
+/* sizes — the conventions' size system -------------------------------------- */
+
+.field[data-size='sm'] {
+  gap: var(--pm-space-2);
+  block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-4);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+}
+
+.field[data-size='lg'] {
+  block-size: var(--pm-control-height-lg);
+  padding-inline: var(--pm-space-6);
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+}
+
+/* field states -------------------------------------------------------------- */
+
+.field[data-invalid] {
+  border-color: var(--pm-danger-border);
+}
+
+.field[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-subtle);
+
+  /* The seat shadow signals "ready", so disabled removes it (as in Input). */
+  box-shadow: none;
+}
+
+/* Open keeps the hover border, so the field does not flicker back to rest while its panel is
+   shown. Invalid is excluded from both rules rather than overridden, because an error border must
+   stay visible under the pointer and while the panel is open. */
+.field[data-state='open']:not([data-invalid]) {
+  border-color: var(--pm-border-strong);
+}
+
+.field:hover:not([data-disabled], [data-invalid]) {
+  border-color: var(--pm-border-strong);
+}
+
+.field[data-state='open'] .chevron {
+  transform: rotate(180deg);
+}
+
+.field[data-disabled] .chevron {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+}
+
+/* While the query is in progress the glyph is a spinner, and it does not rotate with the panel.
+   Rotating *and* spinning would signal two different things about one control. */
+.field[data-loading] .chevron {
+  transform: none;
+}
+
+/* panel --------------------------------------------------------------------- */
+
+.content {
+  display: flex;
+  flex-direction: column;
+
+  /* `overlay` from the stacking scale. The popper moves it onto its wrapper (menu.module.css
+     explains how). */
+  z-index: var(--pm-z-overlay);
+  min-inline-size: var(--radix-popover-trigger-width);
+  max-block-size: var(--radix-popover-content-available-height);
+  padding: var(--pm-space-2);
+  overflow: hidden;
+  background: var(--pm-bg-overlay);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-surface);
+  box-shadow: var(--pm-shadow-transient);
+  transform-origin: var(--radix-popover-content-transform-origin);
+}
+
+/* The `combobox.popup` binding: `scale-fade`, surface class, anchored origin. It is Select's
+   binding unchanged, because both are dropdowns of options, however the rows were produced. Radix
+   keeps the node mounted for the closed animation, so the exit animates instead of cutting. */
+.content[data-state='open'] {
+  animation: combobox-content-enter var(--pm-motion-duration-surface) var(--pm-motion-easing-enter);
+}
+
+.content[data-state='closed'] {
+  animation: combobox-content-exit var(--pm-motion-duration-surface-exit)
+    var(--pm-motion-easing-exit);
+}
+
+@keyframes combobox-content-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes combobox-content-exit {
+  to {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+.listbox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-1);
+  min-block-size: 0;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+  list-style: none;
+  outline: none;
+}
+
+/* The sheet, below 30rem (the conventions' sheet presentation) ---------------
+ *
+ * The panel box is the shared anatomy (`sheet.module.css`). This member owns the popup's container
+ * inside it: the same `--pm-space-2` inset as the popover panel, with the listbox scrolling within
+ * the sheet's maximum height. The popover rules (trigger min-width, available height,
+ * `sideOffset`, the anchored origin) no longer apply, because a sheet has no anchor. The safe-area
+ * padding follows the sheet: it adds to this member's own edge padding and is zero without a
+ * notch. */
+.sheetBody {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+  padding: var(--pm-space-2);
+  padding-block-end: calc(var(--pm-space-2) + env(safe-area-inset-bottom, 0px));
+}
+
+/* options ------------------------------------------------------------------- */
+
+.option {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: flex;
+  gap: var(--pm-space-2);
+  align-items: center;
+  min-block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-3);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  cursor: pointer;
+  user-select: none;
+  border-radius: var(--pm-radius-sm);
+  outline: none;
+}
+
+/* Reserved whether or not this row is selected, so the label column does not shift when the
+   selection changes. */
+.check {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--pm-icon-size-sm);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  justify-content: center;
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A two-line option grows to fit. The check column is unchanged. */
+.description {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+}
+
+/* The keyboard highlight and pointer hover share one attribute. It is the temporary wash, not the
+   selection (Menu's law). */
+.option[data-highlighted] {
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+}
+
+.option[data-highlighted] .description {
+  color: inherit;
+}
+
+.option[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  background: transparent;
+}
+
+.option[data-disabled] .description {
+  color: var(--pm-text-disabled);
+}
+
+/* The label stays primary when selected. The check is the selection signal, and a recoloured label
+   would look like a second, competing signal (Select's law). */
+.option[data-state='checked'] .check {
+  color: var(--pm-accent-text);
+}
+
+/* Both containers, because the sheet's rows are the same rows with the same size steps. */
+.content[data-size='sm'] .option,
+.sheetBody[data-size='sm'] .option {
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+}
+
+.content[data-size='lg'] .option,
+.sheetBody[data-size='lg'] .option {
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+}
+
+/* async rows ---------------------------------------------------------------- */
+
+/* Three rows at option height, never a spinner in empty space. The panel must keep its size, or
+   the layout jumps when the results arrive. */
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-1);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-3);
+}
+
+/* An empty dropdown shows one line of text, not an illustration, so `EmptyState` is deliberately
+   not used here. */
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-3);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-muted);
+}
+
+/* The phone minimum (the conventions' focus-zoom floor). Below `30rem` the one real `<input>` uses
+   the text-entry floor's size and line height, so iOS does not zoom the page on focus. Only those metrics change.
+   Colour, weight and tracking stay the same, and the container and its chevron do not move. */
+@media (width < 30rem) {
+  .input {
+    font-size: var(--pm-text-entry-size);
+    line-height: var(--pm-text-entry-line-height);
+  }
+}
+
+/* Reduced motion (motion.md). The rotation stays, because it signals open or closed, and removing
+   it would remove state information rather than motion. Only the movement is removed: the chevron
+   turns without a transition, and `scale-fade` becomes a plain fade. */
+@media (prefers-reduced-motion: reduce) {
+  .chevron {
+    transition: none;
+  }
+
+  @keyframes combobox-content-enter {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes combobox-content-exit {
+    to {
+      opacity: 0;
+    }
+  }
+}
+
+/* The field above its own sheet's scrim ------------------------------------
+ *
+ * While the popup is a sheet, the portalled scrim covers the whole page, including this field,
+ * which the user is still typing into. A surface and its field form one composite, so the field
+ * is raised one intra-member step above the overlay layer. The stacking scale defines that step
+ * for this case. A tap on the field moves the caret, and the scrim receives every other tap. An
+ * equal z-index would lose, because the portal is later in tree order and ties go to the later
+ * element (verified in all three engines). */
+.field[data-sheeting] {
+  z-index: calc(var(--pm-z-overlay) + var(--pm-z-raise));
+}
+
+/* Glass (`depth: glass`): the pane uses the surface role at the engine's mix
+   (`--pm-material-surface`). The material provides the separation that the overlay elevation
+   steps provide elsewhere. The backdrop shows through the pane as a blurred, saturated wash, so the
+   surface stands apart by its material rather than by a lighter step. The mix is a contrast
+   decision that the glass law measures over worst-case backdrops. A recipe only applies it. */
+@container style(--pm-axis-depth: glass) {
+  .content {
+    background: var(--pm-material-surface);
+    backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  }
+}

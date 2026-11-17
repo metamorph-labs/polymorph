@@ -1,0 +1,12 @@
+{
+  "name": "amethyst",
+  "accentHue": 298,
+  "gradientHue": 265,
+  "neutralTint": 0.02,
+  "chromaBudget": "medium",
+  "chartCaps": {
+    "light": 4,
+    "dark": 3,
+    "published": 3
+  }
+}

@@ -1,0 +1,39 @@
+/* QRCode — `design/components/qr-code.md`.
+ *
+ * Two fills and a size. The root's `data-mode="light"` resolves every token
+ * below in the light derivation in either page mode, because scanners read dark
+ * on light. `text.primary` on `bg.surface` is the law-checked pair for that. */
+
+.symbol {
+  display: block;
+  flex: none;
+  block-size: auto;
+  aspect-ratio: 1;
+
+  /* A symbol wider than its container would have a clipped finder pattern and
+     would not scan, so it shrinks to fit the container. */
+  max-inline-size: 100%;
+  border-radius: var(--pm-radius-sm);
+}
+
+/* From space tokens, like Dialog's widths, so a roomier density gets a larger
+   symbol: 144 / 192 / 256 at standard density, quiet zone included. */
+.symbol[data-size='sm'] {
+  inline-size: calc(var(--pm-space-10) + var(--pm-space-8));
+}
+
+.symbol[data-size='md'] {
+  inline-size: calc(var(--pm-space-10) * 2);
+}
+
+.symbol[data-size='lg'] {
+  inline-size: calc(var(--pm-space-10) * 2 + var(--pm-space-9));
+}
+
+.paper {
+  fill: var(--pm-bg-surface);
+}
+
+.ink {
+  fill: var(--pm-text-primary);
+}

@@ -1,0 +1,60 @@
+{
+  "name": "@polymorph/solid",
+  "version": "1.0.15",
+  "description": "The Solid foundation a consumer installs: the engine re-exported, the icon gateway, the presence and control-ref primitives, the slot conventions, the toast store and the page-transition convention. Solid members import this and nothing deeper.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./motion": "./src/motion/index.ts",
+    "./icon.module.css": "./src/icon/icon.module.css"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "scripts": {
+    "build": "NODE_ENV=production vite build && NODE_ENV=production vite build --mode server && tsc -p tsconfig.build.json && tsc -p tsconfig.source.json && cp src/icon/icon.module.css dist/source/icon/icon.module.css && node scripts/source.mjs ."
+  },
+  "dependencies": {
+    "@polymorph/engine": "workspace:*",
+    "@solid-primitives/keyed": "^1.5.3",
+    "@zag-js/core": "1.46.0",
+    "@zag-js/utils": "1.46.0"
+  },
+  "peerDependencies": {
+    "solid-js": "^1.9.0"
+  },
+  "devDependencies": {
+    "@polymorph/conformance": "workspace:*",
+    "solid-js": "^1.9.17",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.5",
+    "vite-plugin-solid": "^2.11.14"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "restricted",
+    "exports": {
+      ".": {
+        "types": "./dist/types/index.d.ts",
+        "solid": "./dist/source/index.js",
+        "browser": "./dist/index.js",
+        "node": "./dist/server/index.js",
+        "import": "./dist/index.js"
+      },
+      "./motion": {
+        "types": "./dist/types/motion/index.d.ts",
+        "solid": "./dist/source/motion/index.js",
+        "browser": "./dist/motion.js",
+        "node": "./dist/server/motion.js",
+        "import": "./dist/motion.js"
+      },
+      "./style.css": "./dist/solid.css"
+    }
+  }
+}

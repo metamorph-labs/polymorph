@@ -1,0 +1,141 @@
+{
+  "name": "@polymorph/solid-ui",
+  "version": "1.0.15",
+  "description": "The polymorph vocabulary for Solid: every member as a component generated from its framework-neutral description, styled by its token-only recipe from @polymorph/recipes.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./ai/*": "./src/ai/*.tsx",
+    "./archetypes/*": "./src/archetypes/*.tsx",
+    "./charts/*": "./src/charts/*.tsx",
+    "./controls/*": "./src/controls/*.tsx",
+    "./exceptions/*": "./src/exceptions/*.tsx",
+    "./layout/*": "./src/layout/*.tsx",
+    "./overlays/*": "./src/overlays/*.tsx",
+    "./structure/*": "./src/structure/*.tsx"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": [
+    "**/*.css",
+    "./src/index.ts",
+    "./dist/index.js",
+    "./dist/source/index.js"
+  ],
+  "scripts": {
+    "build": "NODE_ENV=production vite build --config vite.build.config.ts && NODE_ENV=production vite build --config vite.build.config.ts --mode server && tsc -p tsconfig.build.json && tsc -p tsconfig.source.json && node ../solid/scripts/source.mjs ."
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "exports": {
+      ".": {
+        "types": "./dist/types/index.d.ts",
+        "solid": "./dist/source/index.js",
+        "browser": "./dist/index.js",
+        "node": "./dist/server/index.js",
+        "import": "./dist/index.js"
+      },
+      "./ai/*": {
+        "types": "./dist/types/ai/*.d.ts",
+        "solid": "./dist/source/ai/*.jsx",
+        "browser": "./dist/ai/*.js",
+        "node": "./dist/server/ai/*.js",
+        "import": "./dist/ai/*.js"
+      },
+      "./archetypes/*": {
+        "types": "./dist/types/archetypes/*.d.ts",
+        "solid": "./dist/source/archetypes/*.jsx",
+        "browser": "./dist/archetypes/*.js",
+        "node": "./dist/server/archetypes/*.js",
+        "import": "./dist/archetypes/*.js"
+      },
+      "./charts/*": {
+        "types": "./dist/types/charts/*.d.ts",
+        "solid": "./dist/source/charts/*.jsx",
+        "browser": "./dist/charts/*.js",
+        "node": "./dist/server/charts/*.js",
+        "import": "./dist/charts/*.js"
+      },
+      "./controls/*": {
+        "types": "./dist/types/controls/*.d.ts",
+        "solid": "./dist/source/controls/*.jsx",
+        "browser": "./dist/controls/*.js",
+        "node": "./dist/server/controls/*.js",
+        "import": "./dist/controls/*.js"
+      },
+      "./exceptions/*": {
+        "types": "./dist/types/exceptions/*.d.ts",
+        "solid": "./dist/source/exceptions/*.jsx",
+        "browser": "./dist/exceptions/*.js",
+        "node": "./dist/server/exceptions/*.js",
+        "import": "./dist/exceptions/*.js"
+      },
+      "./layout/*": {
+        "types": "./dist/types/layout/*.d.ts",
+        "solid": "./dist/source/layout/*.jsx",
+        "browser": "./dist/layout/*.js",
+        "node": "./dist/server/layout/*.js",
+        "import": "./dist/layout/*.js"
+      },
+      "./overlays/*": {
+        "types": "./dist/types/overlays/*.d.ts",
+        "solid": "./dist/source/overlays/*.jsx",
+        "browser": "./dist/overlays/*.js",
+        "node": "./dist/server/overlays/*.js",
+        "import": "./dist/overlays/*.js"
+      },
+      "./structure/*": {
+        "types": "./dist/types/structure/*.d.ts",
+        "solid": "./dist/source/structure/*.jsx",
+        "browser": "./dist/structure/*.js",
+        "node": "./dist/server/structure/*.js",
+        "import": "./dist/structure/*.js"
+      }
+    }
+  },
+  "dependencies": {
+    "@polymorph/recipes": "workspace:*",
+    "@polymorph/solid": "workspace:*",
+    "@zag-js/accordion": "1.46.0",
+    "@zag-js/carousel": "1.46.0",
+    "@zag-js/checkbox": "1.46.0",
+    "@zag-js/collapsible": "1.46.0",
+    "@zag-js/color-picker": "1.46.0",
+    "@zag-js/combobox": "1.46.0",
+    "@zag-js/date-picker": "1.46.0",
+    "@zag-js/dialog": "1.46.0",
+    "@zag-js/hover-card": "1.46.0",
+    "@zag-js/menu": "1.46.0",
+    "@zag-js/number-input": "1.46.0",
+    "@zag-js/popover": "1.46.0",
+    "@zag-js/radio-group": "1.46.0",
+    "@zag-js/scroll-area": "1.46.0",
+    "@zag-js/select": "1.46.0",
+    "@zag-js/slider": "1.46.0",
+    "@zag-js/solid": "1.46.0",
+    "@zag-js/switch": "1.46.0",
+    "@zag-js/tabs": "1.46.0",
+    "@zag-js/tooltip": "1.46.0"
+  },
+  "peerDependencies": {
+    "solid-js": "^1.9.0"
+  },
+  "devDependencies": {
+    "@polymorph/conformance": "workspace:*",
+    "@polymorph/engine": "workspace:*",
+    "@polymorph/registry": "workspace:*",
+    "@polymorph/rules": "workspace:*",
+    "@polymorph/shells": "workspace:*",
+    "@testing-library/dom": "^10.4.1",
+    "axe-core": "^4.12.1",
+    "solid-js": "^1.9.17",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.5",
+    "vite-plugin-solid": "^2.11.14"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,115 @@
+/* ChartTooltip — the interaction rules, `docs/charts.md`.
+ *
+ * A readout, not an overlay. It lives inside the plot's box, so it tracks the
+ * reading position and stays inside the `figure` that assistive technology is
+ * reading. It is `aria-hidden` because the frame's live region gives a screen
+ * reader the same content as text. */
+
+.tooltip {
+  /* Declared here and overridden inline with the reading position. The default
+     is the plot's origin, so a readout with no position sits in the corner. An
+     unresolvable custom property would invalidate the positioning
+     declarations. */
+  --pm-chart-tip-x: 0;
+  --pm-chart-tip-y: 0;
+
+  position: absolute;
+  inset-block-start: var(--pm-chart-tip-y);
+  inset-inline-start: var(--pm-chart-tip-x);
+
+  /* `raise` on the stacking scale: the readout sits above its own plot, inside
+     the member, and is never an overlay. */
+  z-index: var(--pm-z-raise);
+  pointer-events: none;
+  min-inline-size: max-content;
+  padding: var(--pm-space-3);
+  background: var(--pm-bg-overlay);
+  border: 1px solid var(--pm-border-default);
+  border-radius: var(--pm-radius-md);
+  box-shadow: var(--pm-shadow-transient);
+}
+
+/* Offset from the reading position, not centred on it, so the readout never
+   sits under the pointer. The side flips near the plot's inline end; the member
+   decides this, because it knows where the edge is. */
+.tooltip[data-side='end'] {
+  transform: translate(var(--pm-space-3), -50%);
+}
+
+.tooltip[data-side='start'] {
+  transform: translate(calc(-100% - var(--pm-space-3)), -50%);
+}
+
+.header {
+  margin: 0 0 var(--pm-space-2);
+  color: var(--pm-text-secondary);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  line-height: var(--pm-text-xs-line-height);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: var(--pm-space-2);
+}
+
+/* The row key: a dot for a point readout, a line for a stroked series. There is
+   no dashed key, because dashing reads as a projection or a forecast, and this
+   is neither. */
+.key {
+  align-self: center;
+
+  --pm-chart-key: var(--pm-chart-other);
+
+  background: var(--pm-chart-key);
+  inline-size: var(--pm-space-2);
+  block-size: var(--pm-space-2);
+  border-radius: var(--pm-radius-pill);
+}
+
+.tooltip[data-indicator='line'] .key {
+  inline-size: var(--pm-space-3);
+  block-size: 2px;
+  border-radius: 0;
+}
+
+/* The value comes first, the reverse of the legend. There the label matters
+   most; here the reader already knows the series and wants the number. */
+.value {
+  color: var(--pm-text-primary);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  line-height: var(--pm-text-sm-line-height);
+  font-variant-numeric: var(--pm-font-numeric);
+}
+
+.label {
+  color: var(--pm-text-secondary);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  line-height: var(--pm-text-sm-line-height);
+}
+
+/* Glass (`depth: glass`): the pane uses the surface role at the engine's mix
+   (`--pm-material-surface`). The material provides the separation that the
+   overlay scale provides elsewhere: the backdrop shows through as a blurred,
+   saturated wash, so the surface stands out by material instead of by a
+   lighter step. The mix is a contrast decision that the glass law measures over
+   worst-case backdrops; this recipe only applies it. */
+@container style(--pm-axis-depth: glass) {
+  .tooltip {
+    background: var(--pm-material-surface);
+    backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  }
+}

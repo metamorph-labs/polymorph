@@ -1,0 +1,148 @@
+/* FormField — `design/components/form-field.md`.
+ *
+ * The layout shift when an error appears is deliberate. Reserving blank error space under every
+ * field would break the form's vertical spacing for the sake of a rare case. */
+
+/* A field takes the width it is given, and its control fills it.
+ *
+ * `align-items: flex-start` would shrink every Input and Select to its intrinsic width, such as a
+ * 140px box under a 1100px label in a wide form. Stretching is the right default for a
+ * column-labelled control and the wrong one for a row-labelled control, and FormField already
+ * knows which kind it has. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+  align-items: stretch;
+}
+
+/* A Checkbox or Switch *is* a row: label, control and hit target together. Stretched, it would put
+   its label at one end of the field and make the space between clickable. */
+.field[data-kind='row-labelled'] {
+  align-items: flex-start;
+}
+
+/* The label's row, as in the login block.
+ *
+ * It has two ends: the label at the start and `labelEnd` at the end. It always renders, so a field
+ * with no `labelEnd` lays out as a single label at its own width, at the start.
+ *
+ * `space-between` is used rather than an auto margin on the end item, because the row should define
+ * *where the two ends are*. A margin would put that decision on whichever node happens to be
+ * second. */
+.labelRow {
+  display: flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.label {
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+}
+
+/* Decorative, because `aria-required` on the control conveys the requirement. */
+.required {
+  color: var(--pm-danger-text);
+}
+
+/* The far end of the label row. It uses `text.sm`, the label's own step, rather than a caption
+   size, because users are meant to find it. It never shrinks. On a narrow field the label shrinks
+   instead. */
+.labelEnd {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-secondary);
+}
+
+.description {
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-secondary);
+}
+
+/* The `formfield.error` binding: `slide-fade` from the top, moving one space step. Only the
+   entrance animates. The message unmounts when the field becomes valid, and an unmounting node
+   cannot animate its exit in CSS. Wrapping every field's error row in presence coordination is
+   worth the cost for overlays but not here, because what matters is that the error appears. */
+.error {
+  display: flex;
+  gap: var(--pm-space-2);
+
+  /* Aligned to the first line, not the block's middle, so a wrapped message keeps the icon beside
+     its first words. The glyph wrapper below does the centring the bare icon cannot. With
+     `flex-start` alone, the icon sits at the top of the line box, above the cap height of text one
+     size step smaller. */
+  align-items: flex-start;
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-danger-text);
+  animation: form-field-error-enter var(--pm-motion-duration-control) var(--pm-motion-easing-enter);
+}
+
+@keyframes form-field-error-enter {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--pm-space-2) * -1));
+  }
+}
+
+/* The error's icon container: one `text.xs` line box tall with the glyph centred in it, the same
+   convention as Alert, Toast and ErrorSummary. */
+.glyph {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  block-size: calc(var(--pm-text-xs-line-height) * var(--pm-text-xs-size));
+}
+
+/* states ------------------------------------------------------------------- */
+
+.field[data-invalid] .error {
+  color: var(--pm-danger-text);
+}
+
+.field[data-disabled] .label,
+.field[data-disabled] .description {
+  color: var(--pm-text-disabled);
+}
+
+/* The row must not stretch, but its messages must. They sit below the control row (form-field.md)
+   and span the full width of the field, with no indent. Aligning them under the row label's text
+   would need a per-control offset that changes with size and density, which is deliberately
+   avoided. Without this rule they inherit `flex-start` from the row above and wrap at the
+   control's width instead of the field's.
+
+   This rule is here rather than beside the `[data-kind='row-labelled']` rule it relates to,
+   because `.description` and `.error` must be declared before anything more specific selects them
+   (stylelint's `no-descending-specificity`). */
+.field[data-kind='row-labelled'] .description,
+.field[data-kind='row-labelled'] .error {
+  align-self: stretch;
+}
+
+/* Reduced motion (motion.md): slide-fade becomes a fade. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes form-field-error-enter {
+    from {
+      opacity: 0;
+    }
+  }
+}

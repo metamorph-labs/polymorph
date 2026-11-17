@@ -1,0 +1,305 @@
+{
+  "requirements": [
+    {
+      "id": "both-forms",
+      "says": "Signing in and signing up are on one screen, and the container chooses which one shows first.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": ["Tabs", "SegmentedControl"],
+              "anyProp": {
+                "value": "dynamic",
+                "defaultValue": "dynamic"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "AuthPage",
+              "props": {
+                "transitionKey": "dynamic"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "email-and-password",
+      "says": "An email address and a password are asked for.",
+      "check": {
+        "all": [
+          {
+            "element": {
+              "component": "Input"
+            }
+          },
+          {
+            "any": [
+              {
+                "element": {
+                  "component": "PasswordInput"
+                }
+              },
+              {
+                "element": {
+                  "component": "Input",
+                  "props": {
+                    "type": {
+                      "is": "password"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "name-on-sign-up",
+      "says": "Signing up also asks for a name.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": "Input",
+              "props": {
+                "autoComplete": {
+                  "matches": "^(name|given-name|family-name|nickname)$"
+                }
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Input",
+              "props": {
+                "name": {
+                  "matches": "^(name|(full|first|display)[-_ ]?name)$"
+                }
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "FormField",
+              "props": {
+                "label": {
+                  "matches": "\\bname\\b"
+                }
+              }
+            }
+          },
+          {
+            "count": {
+              "component": ["Input", "PasswordInput"]
+            },
+            "min": 5
+          }
+        ]
+      }
+    },
+    {
+      "id": "password-rule",
+      "says": "Signing up says what the password has to be.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": "FormField",
+              "props": {
+                "description": "given"
+              },
+              "has": {
+                "component": "PasswordInput"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "FormField",
+              "props": {
+                "description": "given"
+              },
+              "has": {
+                "component": "Input",
+                "props": {
+                  "type": {
+                    "is": "password"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "two-providers",
+      "says": "Signing in with Google and with GitHub are both offered.",
+      "check": {
+        "all": [
+          {
+            "any": [
+              {
+                "element": {
+                  "component": "ProviderButton",
+                  "props": {
+                    "provider": {
+                      "is": "google"
+                    }
+                  }
+                }
+              },
+              {
+                "element": {
+                  "component": "ProviderButton",
+                  "props": {
+                    "provider": "dynamic"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "any": [
+              {
+                "element": {
+                  "component": "ProviderButton",
+                  "props": {
+                    "provider": {
+                      "is": "github"
+                    }
+                  }
+                }
+              },
+              {
+                "element": {
+                  "component": "ProviderButton",
+                  "props": {
+                    "provider": "dynamic"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "pending",
+      "says": "A pending submission is shown, and cannot be sent twice.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": ["Button", "SplitButton"],
+              "props": {
+                "loading": "dynamic"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "AuthPage",
+              "props": {
+                "pending": "dynamic"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Button",
+              "props": {
+                "disabled": "dynamic",
+                "label": "dynamic"
+              }
+            }
+          },
+          {
+            "all": [
+              {
+                "element": {
+                  "component": "Button",
+                  "props": {
+                    "disabled": "dynamic"
+                  }
+                }
+              },
+              {
+                "element": {
+                  "component": ["Spinner", "Progress"]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "error-message",
+      "says": "A wrong email address or password is reported in one message for the whole form.",
+      "check": {
+        "element": {
+          "component": ["Alert", "ErrorSummary"]
+        }
+      }
+    },
+    {
+      "id": "reset-password",
+      "says": "A forgotten password can be reset from here.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": "FormField",
+              "props": {
+                "labelEnd": "given"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Link",
+              "props": {
+                "children": {
+                  "matches": "forgot|reset|recover"
+                }
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Link",
+              "props": {
+                "children": "dynamic"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Link",
+              "props": {
+                "href": {
+                  "matches": "forgot|reset|recover"
+                }
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Button",
+              "props": {
+                "label": {
+                  "matches": "forgot|reset|recover"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

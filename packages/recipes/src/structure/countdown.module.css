@@ -1,0 +1,24 @@
+/* Countdown — `design/components/countdown.md`.
+ *
+ * Inline text, like RelativeTime: the root takes the surrounding type step and
+ * colour, and draws nothing of its own.
+ *
+ * No motion: the digits change every second, which is the member's content, and
+ * nothing animates between them. Reduced motion has nothing to remove. */
+
+/* The positioned box the words for assistive technology are clipped inside, so
+   they never reach the layout of anything around the member. */
+.countdown {
+  position: relative;
+}
+
+/* `--pm-font-numeric` sets the theme's tabular figures, so every digit keeps one width and
+   the text does not shift as the seconds change. */
+.digits {
+  font-variant-numeric: var(--pm-font-numeric);
+}
+
+/* The time in words, and the announcing line: read by assistive technology, not drawn. */
+.spoken {
+  composes: visuallyHidden from '../conventions/a11y.module.css';
+}

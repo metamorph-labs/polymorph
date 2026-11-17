@@ -1,0 +1,54 @@
+node_modules/
+dist/
+coverage/
+.vite/
+*.tsbuildinfo
+.DS_Store
+.eslintcache
+*.log
+
+# Vitest browser mode writes these on a failing test — diagnostics, not sources.
+.vitest-attachments/
+__screenshots__/
+
+# `pnpm registry` writes the catalogue and the system card here. Generated at
+# publish time from the tree that is publishing, never committed — which is what
+# means there is nothing to go stale and no freshness law to write.
+/registry/
+
+# `pnpm inventory` writes this on demand; the console table is the deliverable
+# and nothing reads the file back (no generated intermediates in the tree).
+exceptions.json
+
+# `pnpm registry` also derives each app's font-loader map from the catalogue
+# (packages/registry/src/fonts-gen.ts). Generated on every install via
+# `prepare`, never committed — for the same reason as /registry/.
+apps/*/src/fonts.gen.ts
+
+# Emitted from a screen spec for one typecheck by the spec package's round-trip
+# tests (`packages/spec/*.test.ts`), then deleted.
+packages/spec/.emitted*/
+
+# The lock a package's build tests hold over its `dist/` while they own it
+# (`packages/engine/dist-lock.ts`, `packages/react/dist-lock.ts`,
+# `packages/rules/dist-lock.ts`, `packages/react-ui/dist-lock.ts`), and the file a waiter holds
+# while it breaks an abandoned lock (`.dist-lock.break`). Present only while one of them is running;
+# a stray one after a killed run is safe to delete.
+packages/*/.dist-lock
+packages/*/.dist-lock.break
+
+# `pnpm proof` writes its evidence here; it is regenerated, not versioned.
+/proof/shots/
+
+# SwiftPM's build products and Xcode's package state for `platforms/ios`.
+platforms/*/.build/
+platforms/*/.swiftpm/
+
+# Gradle's and Dart's build state for `platforms/android` and `platforms/dart`.
+# Listed here rather than in each platform's directory, because Prettier reads
+# only this file.
+platforms/**/build/
+platforms/*/.gradle/
+platforms/*/.kotlin/
+platforms/*/.dart_tool/
+platforms/dart/pubspec.lock

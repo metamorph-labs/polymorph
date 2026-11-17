@@ -1,0 +1,117 @@
+{
+  "name": "@polymorph/rules",
+  "version": "1.0.15",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./eslint": "./src/eslint.ts",
+    "./stylelint": "./src/stylelint/index.js",
+    "./stylelint/emitted": "./src/stylelint/emitted.ts",
+    "./ladder": "./src/ladder.ts",
+    "./containment": "./src/containment.ts",
+    "./inventory": "./src/inventory.js",
+    "./spec-api": "./src/spec-api.ts",
+    "./verify": "./src/verify.ts",
+    "./scoped-token-owners.json": "./scoped-token-owners.json"
+  },
+  "dependencies": {
+    "@typescript-eslint/parser": "^8.65.0",
+    "postcss-value-parser": "^4.2.0",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@polymorph/engine": "workspace:*",
+    "eslint": "^10.8.0",
+    "stylelint": "^17.14.1",
+    "typescript-eslint": "^8.65.0",
+    "vite": "^8.1.5",
+    "vue-eslint-parser": "^10.4.1"
+  },
+  "peerDependencies": {
+    "@angular-eslint/eslint-plugin-template": ">=22",
+    "@angular-eslint/template-parser": ">=22",
+    "@polymorph/engine": "workspace:*",
+    "eslint": ">=9",
+    "stylelint": ">=16",
+    "svelte-eslint-parser": ">=1",
+    "vue-eslint-parser": ">=10"
+  },
+  "license": "MIT",
+  "description": "The red rules: the ESLint and Stylelint plugins that keep application code from making design decisions, with the exception ladder and the inventory.",
+  "files": [
+    "dist",
+    "scoped-token-owners.json",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "NODE_ENV=production vite build && tsc -p tsconfig.build.json && node scripts/emit-types.mjs"
+  },
+  "peerDependenciesMeta": {
+    "@angular-eslint/eslint-plugin-template": {
+      "optional": true
+    },
+    "@angular-eslint/template-parser": {
+      "optional": true
+    },
+    "@polymorph/engine": {
+      "optional": true
+    },
+    "eslint": {
+      "optional": true
+    },
+    "stylelint": {
+      "optional": true
+    },
+    "svelte-eslint-parser": {
+      "optional": true
+    },
+    "vue-eslint-parser": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "exports": {
+      ".": {
+        "types": "./dist/types/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./eslint": {
+        "types": "./dist/types/eslint.d.ts",
+        "import": "./dist/eslint.js"
+      },
+      "./stylelint": {
+        "types": "./dist/types/stylelint/index.d.ts",
+        "import": "./dist/stylelint.js"
+      },
+      "./stylelint/emitted": {
+        "types": "./dist/types/stylelint/emitted.d.ts",
+        "import": "./dist/stylelint-emitted.js"
+      },
+      "./ladder": {
+        "types": "./dist/types/ladder.d.ts",
+        "import": "./dist/ladder.js"
+      },
+      "./containment": {
+        "types": "./dist/types/containment.d.ts",
+        "import": "./dist/containment.js"
+      },
+      "./inventory": {
+        "types": "./dist/types/inventory.d.ts",
+        "import": "./dist/inventory.js"
+      },
+      "./spec-api": {
+        "types": "./dist/types/spec-api.d.ts",
+        "import": "./dist/spec-api.js"
+      },
+      "./verify": {
+        "types": "./dist/types/verify.d.ts",
+        "import": "./dist/verify.js"
+      },
+      "./scoped-token-owners.json": "./scoped-token-owners.json"
+    }
+  }
+}

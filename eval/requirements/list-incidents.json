@@ -1,0 +1,221 @@
+{
+  "requirements": [
+    {
+      "id": "table",
+      "says": "The incidents are shown as the rows of a table.",
+      "check": {
+        "element": {
+          "component": ["DataTable", "Table"]
+        }
+      }
+    },
+    {
+      "id": "sortable",
+      "says": "The list can be sorted.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": "DataTable",
+              "props": {
+                "onSortChange": "given"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Table.Header",
+              "anyProp": {
+                "sortable": "given",
+                "onSort": "given"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "search",
+      "says": "A search narrows the list.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": "SearchInput"
+            }
+          },
+          {
+            "element": {
+              "component": "Input",
+              "props": {
+                "type": {
+                  "is": "search"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "two-filters",
+      "says": "Two filters narrow the list: one by severity, one by open or resolved.",
+      "check": {
+        "count": {
+          "kind": "filter"
+        },
+        "min": 2
+      }
+    },
+    {
+      "id": "match-count",
+      "says": "The screen says how many incidents match.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": "FilterBar",
+              "props": {
+                "resultCount": "given"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "ListPage",
+              "props": {
+                "summary": "given"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "clear-filters",
+      "says": "One control clears every filter at once.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": "FilterBar",
+              "props": {
+                "onClear": "given"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Button",
+              "props": {
+                "label": {
+                  "matches": "clear|reset"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "delete-asks-first",
+      "says": "Deleting an incident asks for confirmation first.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": "ConfirmDialog"
+            }
+          },
+          {
+            "element": {
+              "component": "Dialog",
+              "props": {
+                "alert": "given"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Dialog",
+              "props": {
+                "footer": "given"
+              },
+              "has": {
+                "component": "Button",
+                "props": {
+                  "tone": {
+                    "is": "danger"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "confirmation-names-the-incident",
+      "says": "The confirmation names the incident being deleted, so its words come from the incident.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": "ConfirmDialog",
+              "anyProp": {
+                "title": "dynamic",
+                "description": "dynamic",
+                "confirmWith": "dynamic"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Dialog",
+              "anyProp": {
+                "title": "dynamic",
+                "description": "dynamic"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Dialog",
+              "has": {
+                "component": ["Text", "Heading"],
+                "props": {
+                  "children": "dynamic"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "two-empty-states",
+      "says": "No incidents at all and no incident matching the filters are two different messages.",
+      "check": {
+        "count": [
+          {
+            "component": "ListPage",
+            "props": {
+              "empty": "dynamic",
+              "emptyState": "given"
+            }
+          },
+          {
+            "component": "DataTable",
+            "props": {
+              "emptyState": "given"
+            }
+          },
+          {
+            "component": "EmptyState"
+          }
+        ],
+        "min": 2
+      }
+    }
+  ]
+}

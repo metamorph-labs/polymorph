@@ -1,0 +1,26 @@
+{
+  "choice": ["Select", "Combobox", "RadioGroup", "SegmentedControl", "ChoiceCard"],
+  "toggle": ["Switch", "Checkbox"],
+  "filter": [
+    "Select",
+    "Combobox",
+    "MultiSelect",
+    "RadioGroup",
+    "SegmentedControl",
+    "CheckboxGroup",
+    "Checkbox",
+    "Switch",
+    "Tabs"
+  ],
+  "action": ["Button", "SplitButton", "Link"],
+  "chart": ["LineChart", "AreaChart", "BarChart"],
+  "record-list": [
+    "Timeline",
+    "DataTable",
+    "Table",
+    "List",
+    "CommentThread",
+    "ChatThread",
+    "ChatMessage"
+  ]
+}

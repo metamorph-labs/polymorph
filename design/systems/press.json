@@ -1,0 +1,29 @@
+{
+  "name": "press",
+  "register": "The broadsheet. Bright paper, near-black ink, a rose-wine spent on action and priority, a high-contrast italic masthead.",
+  "axes": {
+    "geometry": "crisp",
+    "depth": "borders",
+    "density": "standard",
+    "contrastTemperament": "stark",
+    "typePersonality": "editorial",
+    "colorStrategy": "quiet",
+    "motionTemperament": "standard",
+    "ornament": "minimal"
+  },
+  "fonts": {
+    "body": {
+      "family": "Source Serif 4 Variable"
+    },
+    "display": {
+      "family": "Fraunces Variable",
+      "style": "italic"
+    },
+    "mono": {
+      "family": "Fira Code Variable"
+    }
+  },
+  "defaultPalette": "carmine",
+  "defaultMode": "light",
+  "kind": "designed"
+}

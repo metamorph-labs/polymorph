@@ -1,0 +1,89 @@
+/* Image — `design/components/image.md`.
+ *
+ * The frame holds the box and draws nothing of its own: no border, radius,
+ * shadow or fill. A brand mark's corners must not be clipped, and a picture
+ * that needs a surface sits in a Card. The placeholder and the fallback carry
+ * the only fill, and each leaves the document when its state ends. */
+
+.frame {
+  position: relative;
+  display: block;
+
+  /* The frame clips and its children are positioned, so as a flex item it has
+     no minimum size and a row of long text would squeeze it to nothing. A
+     picture keeps its box, as Avatar and QRCode do. */
+  flex: none;
+  max-inline-size: 100%;
+  overflow: hidden;
+}
+
+/* Sized: the props gave a ratio, so the frame is a box before the picture
+   arrives. The ratio is set inline, and so is the width when the props give
+   one; without it the frame takes its container's. */
+.frame[data-sized] {
+  inline-size: 100%;
+}
+
+/* Unsized: the frame is the picture's own box, so nothing is reserved while it
+   loads and the fallback is the only thing with a size. */
+.frame:not([data-sized]) {
+  inline-size: fit-content;
+}
+
+/* Positioned, so it paints over the placeholder, which comes first in the
+   document and is positioned too. */
+.image {
+  position: relative;
+  display: block;
+  max-inline-size: 100%;
+  block-size: auto;
+}
+
+.frame[data-sized] .image {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+/* Never stretched: a frame whose ratio is not the picture's shows all of it or
+   crops it. */
+.frame[data-fit='contain'] .image {
+  object-fit: contain;
+}
+
+.frame[data-fit='cover'] .image {
+  object-fit: cover;
+}
+
+/* Skeleton's treatment: the subtle fill under the motion module's sweep, which
+   stops at `none` and under reduced motion and leaves the fill. */
+.placeholder {
+  composes: shimmer from '../conventions/motion.module.css';
+  background: var(--pm-bg-subtle);
+}
+
+/* Two classes, so this outranks the sweep's own `position: relative` in
+   whichever order the two files load. */
+.frame .placeholder {
+  position: absolute;
+  inset: 0;
+}
+
+.fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pm-text-muted);
+  background: var(--pm-bg-subtle);
+}
+
+.frame[data-sized] .fallback {
+  position: absolute;
+  inset: 0;
+}
+
+.frame:not([data-sized]) .fallback {
+  inline-size: var(--pm-space-8);
+  block-size: var(--pm-space-8);
+}

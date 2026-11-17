@@ -1,0 +1,89 @@
+{
+  "spec": "polymorph-screen/1",
+  "name": "ApiKeysView",
+  "purpose": "The keys an integration authenticates with, and the two things you do to them.",
+  "types": {
+    "@polymorph/react-ui": ["DataTableColumn", "DataTableSort"],
+    "./keys": ["ApiKey"]
+  },
+  "inputs": [
+    { "name": "keys", "type": "ApiKey[]", "doc": "Already sorted." },
+    { "name": "columns", "type": "DataTableColumn<ApiKey>[]" },
+    { "name": "getRowId", "type": "(key: ApiKey) => string" },
+    { "name": "sort", "type": "DataTableSort" },
+    { "name": "onSortChange", "type": "(sort: DataTableSort) => void" },
+    { "name": "onCreate", "type": "() => void" },
+    { "name": "isEmpty", "type": "boolean" },
+    { "name": "revoking", "type": "boolean", "doc": "Whether the revoke confirmation is open." },
+    { "name": "revokingName", "type": "string", "doc": "The key the confirmation is about." },
+    { "name": "onRevokingChange", "type": "(open: boolean) => void" },
+    { "name": "onConfirmRevoke", "type": "() => void" }
+  ],
+  "root": {
+    "component": "ListPage",
+    "props": {
+      "title": "API keys",
+      "description": "Every key that can authenticate as this integration.",
+      "empty": { "$": "isEmpty" },
+      "emptyState": {
+        "$object": {
+          "icon": "locked",
+          "title": "No API keys yet",
+          "description": "Create one to let an integration authenticate as you.",
+          "action": {
+            "component": "Button",
+            "props": {
+              "variant": "solid",
+              "tone": "accent",
+              "icon": "add",
+              "label": "Create key",
+              "onClick": { "$": "onCreate" }
+            }
+          }
+        }
+      },
+      "actions": {
+        "component": "Button",
+        "props": {
+          "variant": "solid",
+          "tone": "accent",
+          "icon": "add",
+          "label": "Create key",
+          "onClick": { "$": "onCreate" }
+        }
+      }
+    },
+    "children": [
+      {
+        "component": "DataTable",
+        "props": {
+          "label": "API keys",
+          "columns": { "$": "columns" },
+          "data": { "$": "keys" },
+          "getRowId": { "$": "getRowId" },
+          "sort": { "$": "sort" },
+          "onSortChange": { "$": "onSortChange" },
+          "emptyState": {
+            "$object": {
+              "icon": "locked",
+              "title": "No API keys yet",
+              "description": "Create one to let an integration authenticate as you."
+            }
+          }
+        }
+      },
+      {
+        "component": "ConfirmDialog",
+        "props": {
+          "open": { "$": "revoking" },
+          "onOpenChange": { "$": "onRevokingChange" },
+          "tone": "danger",
+          "title": "Revoke this key?",
+          "description": { "$": "revokingName" },
+          "confirmLabel": "Revoke",
+          "onConfirm": { "$": "onConfirmRevoke" }
+        }
+      }
+    ]
+  }
+}

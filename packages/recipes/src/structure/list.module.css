@@ -1,0 +1,168 @@
+/* List — `design/components/list.md`.
+ *
+ * A column of ruled rows. One element takes a row's press: the title's link or
+ * button, whose `::after` covers the row. A trailing control comes after the
+ * title in the document and is positioned, so it is drawn above that target and
+ * takes its own press. A trailing mark that is not a control leaves its press
+ * to the row. */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* item ---------------------------------------------------------------------- */
+
+.item {
+  composes: stateFeedback from '../conventions/motion.module.css';
+
+  /* Containing block for the title's stretched target. */
+  position: relative;
+  display: flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  min-block-size: var(--pm-control-height-lg);
+  padding: var(--pm-space-3) var(--pm-space-4);
+}
+
+/* The surface the list sits in is the outer boundary, so the first row draws no
+   rule. */
+.item + .item {
+  border-block-start: 1px solid var(--pm-border-subtle);
+}
+
+/* Never shrink: the text column gives up the width. */
+.leading,
+.trailing,
+.meta {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+
+/* Positioned, and later in the document than the title, so it paints above the
+   stretched target without a `z-index`. A box that holds no control takes no
+   press of its own: the row shows its hover fill under a Badge as under its
+   text, so a press on a mark that is not a control reaches the row's target
+   below it. */
+.trailing {
+  position: relative;
+  pointer-events: none;
+}
+
+/* A box that holds a control takes every press inside it. The box takes them,
+   and not only the control, because a control turns its own pointer events off
+   in some states: a Button does while it is loading. A press on it then lands
+   on the box and goes no further, where a rule on the control alone would let
+   it through to the row's target, and a second press on a busy "Revoke" would
+   follow the row's link. `label` is here for a control drawn with its own
+   label, whose whole row is its target.
+
+   Each kind of control is a selector of its own. A list inside one `:has()`
+   reads the same, but the law that holds every recipe rule above the base
+   layer splits a rule at its commas (`packages/react-ui/packaging.test.ts`). */
+.trailing:has(a),
+.trailing:has(button),
+.trailing:has(input),
+.trailing:has(select),
+.trailing:has(textarea),
+.trailing:has(label),
+.trailing:has(summary),
+.trailing:has([tabindex]) {
+  pointer-events: auto;
+}
+
+/* A flex item is as wide as its content at least. With no minimum the column
+   shrinks, and a long word breaks, so an item never widens its container. */
+.text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--pm-space-1);
+  align-items: flex-start;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.title {
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  text-align: start;
+}
+
+/* The link or the button that takes the row's press. A list is not prose, so a
+   link's underline is removed, and a button's own box is removed so that both
+   roots draw the same title. Its UA ring is suppressed because the item draws
+   the ring. */
+.primary {
+  padding: 0;
+  text-decoration: none;
+  cursor: pointer;
+  outline: none;
+  background: transparent;
+  border: 0;
+}
+
+.primary::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+}
+
+.description,
+.meta {
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-secondary);
+}
+
+.meta {
+  white-space: nowrap;
+}
+
+/* states -------------------------------------------------------------------- */
+
+.item[data-interactive] {
+  cursor: pointer;
+}
+
+/* The current item uses the selection colours, not the hover colours
+   (`design/components/README.md`). Its fill is the selected surface, not the
+   selection fill: an item holds secondary text and a trailing control, and the
+   contrast law holds every text role on the selected surface. With a hue the
+   selected surface has a hover step, so pointing at the current item still
+   gives feedback. A system with no hue has none, as in Table. */
+.item[data-current] {
+  background: var(--pm-selection-surface);
+}
+
+.item[data-interactive][data-current]:hover {
+  background: var(--pm-selection-surface-hover);
+}
+
+/* After selection and excluding it, because the state the reader chose wins
+   over the pointer position. */
+.item[data-interactive]:hover:not([data-current]) {
+  background: var(--pm-bg-subtle);
+}
+
+/* The focus ring on the item via `:has()`, with the shared rule's tokens.
+   Restated because the focusable element is the title, and the delegating
+   selector in `focus.module.css` covers only composite fields. It is drawn
+   inside the item's edge: rows share their edges, and an outer ring would be cut
+   by the surface around the list. A focused trailing control draws its own ring. */
+.item:has(> .text > .primary:focus-visible) {
+  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline-offset: calc(var(--pm-focus-width) * -1);
+}

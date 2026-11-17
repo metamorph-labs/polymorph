@@ -1,0 +1,56 @@
+/* CodeBlock — `design/components/code-block.md`.
+ *
+ * The `<pre>` is the scroll container itself: the spec's anatomy is only
+ * `<pre><code>`, and a wrapper would split the border from the scrolling. */
+
+.block {
+  composes: focusRing from '../conventions/focus.module.css';
+  padding: var(--pm-space-4);
+  overflow-x: auto;
+  font-family: var(--pm-font-mono);
+  font-size: var(--pm-text-sm-size);
+  color: var(--pm-text-primary);
+
+  /* Whitespace is content, and wrapping a command would change it. */
+  white-space: pre;
+  background: var(--pm-bg-subtle);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-md);
+}
+
+/* With the copy control in the corner, the block reserves its width so the
+   longest line scrolls clear of it (container-first: content is never covered). */
+.block[data-copyable] {
+  padding-inline-end: calc(var(--pm-space-4) + var(--pm-control-height-sm));
+}
+
+/* The wrapper exists only when copyable. It is the containing block for the
+   corner control and paints nothing. */
+.copyable {
+  position: relative;
+}
+
+/* Corner control, placed like Dialog's close: absolute, inset from the top and
+   inline end by the block's padding step. */
+.control {
+  position: absolute;
+  inset-block-start: var(--pm-space-4);
+  inset-inline-end: var(--pm-space-4);
+}
+
+/* The `copy` → `confirm` swap fades in at control duration, as Table's sort
+   glyph does. Enter only, like Input's clear, because nobody watches the revert.
+   Opacity only, so reduced motion has nothing to remove. */
+.copyable[data-state='copied'] .control {
+  animation: code-block-swap var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+@keyframes code-block-swap {
+  from {
+    opacity: 0;
+  }
+}
+
+.reader {
+  composes: visuallyHidden from '../conventions/a11y.module.css';
+}

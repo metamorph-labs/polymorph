@@ -1,0 +1,27 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Types only. Vite emits the JavaScript. No declaration maps: the tarball
+    // ships no source for one to point at.
+    //
+    // Output goes to its own scratch directory, because `tsc` nests its output
+    // under the common root of its inputs and the engine reads its decisions
+    // from `design/` (see `scripts/emit-types.mjs`). Sharing `dist/` with the
+    // bundler's output would mix declarations and modules in one tree, and the
+    // flattening step could not tell them apart.
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "declarationMap": false,
+    "outDir": "dist/.tsc",
+
+    // Not the typecheck's cache file. This config inherits `"incremental"`
+    // from `tsconfig.json`. A `.tsbuildinfo` from that config's `--noEmit` run
+    // would tell this program its declarations are up to date, so tsc would
+    // emit nothing and `emit-types.mjs` would fail. This build's buildinfo
+    // lives in the scratch directory, which `emit-types.mjs` deletes after
+    // flattening, so this build always starts cold.
+    "tsBuildInfoFile": "./dist/.tsc/engine.build.tsbuildinfo"
+  },
+  "exclude": ["src/**/*.test.ts", "packaging.test.ts"]
+}

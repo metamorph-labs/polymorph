@@ -1,0 +1,143 @@
+/* ChartFrame — the anatomy every chart member renders (`docs/charts.md`).
+ *
+ * The `--pm-chart-height-*` scope is declared here and nowhere else
+ * (`packages/rules/scoped-token-owners.json`). It is pattern-scoped, not emitted
+ * by the theme, for the same reason as `--pm-page-*`: chart height belongs to
+ * charts, not to each pairing. */
+
+.frame {
+  /* A `figure` has a default margin in every user agent. The base layer resets
+     only the margins the vocabulary composes against, and this is not one. */
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-4);
+
+  /* Set in `bar-chart.md` and shared by the tier: 144 / 224 / 336px at
+     standard density. They derive from the space scale, as
+     `--pm-shell-sidebar-width` does, so density scales them. `lg` adds an extra
+     `space-8`, because a primary-panel chart needs more height, and 288 would
+     look like a tall `md` instead of a distinct size. */
+  --pm-chart-height-sm: calc(var(--pm-space-10) + var(--pm-space-8));
+  --pm-chart-height-md: calc(var(--pm-space-10) * 2 + var(--pm-space-7));
+  --pm-chart-height-lg: calc(var(--pm-space-10) * 3 + var(--pm-space-8));
+
+  /* The `chart.frame` binding (motion.json): fade, surface class, enter
+     easing. CSS only, with no `MotionSurface` and no JS springs, because a frame
+     appearing is a surface appearing, which this pattern covers. */
+  animation: chart-frame-enter var(--pm-motion-duration-surface) var(--pm-motion-easing-enter);
+}
+
+@keyframes chart-frame-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The plot region: y axis beside the plot, x axis beneath it.
+ *
+ * `auto 1fr` is the y gutter: the column takes the width of its widest tick
+ * label, so layout meets the gutter rule without a measuring pass. `1fr auto`
+ * does the same on the block axis. That is why the frame's height *includes*
+ * the x-axis band: the band is subtracted from the height, not added to it, so
+ * a chart never has its own scrollbar. */
+.region {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: 1fr auto;
+  gap: 0 var(--pm-space-2);
+  block-size: var(--pm-chart-height-md);
+}
+
+.frame[data-size='sm'] .region {
+  block-size: var(--pm-chart-height-sm);
+}
+
+.frame[data-size='lg'] .region {
+  block-size: var(--pm-chart-height-lg);
+}
+
+.yAxis {
+  grid-row: 1;
+  grid-column: 1;
+  position: relative;
+}
+
+.plot {
+  grid-row: 1;
+  grid-column: 2;
+  position: relative;
+
+  /* The tooltip and the reading position are positioned against this box, and
+     the marks are drawn into it at its measured size. `min-inline-size: 0` lets
+     the grid column shrink. Without it the plot stays at its content's intrinsic
+     width and a narrow panel scrolls sideways. */
+  min-inline-size: 0;
+}
+
+.xAxis {
+  grid-row: 2;
+  grid-column: 2;
+  position: relative;
+
+  /* A label is centred on its tick, and one that would then cross an end of
+     the plot is anchored at that end (`chart-axis.module.css`), so no label
+     leaves the frame. Overflow stays visible because the system never clips a
+     label. */
+  overflow: visible;
+}
+
+/* The focus stop a cartesian member places over the plot.
+ *
+ * Declared here once instead of in each member, because the plot cell belongs
+ * to the frame and members only add marks. Members compose it, which is also
+ * how the completeness law finds the states this sheet owns. `empty` and
+ * `loading` are states of a BarChart as well as of its frame; without this the
+ * law would require six members to restate them. */
+.plotSurface {
+  composes: focusRing from '../../conventions/focus.module.css';
+  position: absolute;
+  inset: 0;
+}
+
+/* The plot's empty state. The frame owns the *position*; the member supplies
+   the text from its spec, because six components mean different things by "no
+   data".
+ *
+ * Keyed on `data-state`, not just the class, on purpose. The vocabulary's rule
+ * is that state is exposed as an attribute *for CSS to key off*. A recipe that
+ * applied only because a component rendered an element would be a recipe
+ * written in JavaScript. This way the stylesheet defines how an empty chart
+ * looks, and the completeness law can read it. */
+.frame[data-state='empty'] .empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--pm-text-muted);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  line-height: var(--pm-text-sm-line-height);
+}
+
+/* A refetch shows the previous frame at reduced opacity, with no layout jump
+   and no flash, and the marks stay where the reader saw them. The first render
+   is a different state, for which the member draws a muted skeleton. */
+.frame[data-state='loading'] .region {
+  opacity: 0.5;
+  transition: opacity var(--pm-motion-duration-surface) var(--pm-motion-easing-enter);
+}
+
+/* Reduced motion (reduced-motion projection, `docs/motion.md`): no animation or
+   transition. */
+@media (prefers-reduced-motion: reduce) {
+  .frame {
+    animation: none;
+  }
+
+  .frame[data-state='loading'] .region {
+    transition: none;
+  }
+}

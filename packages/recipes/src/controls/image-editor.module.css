@@ -1,0 +1,186 @@
+/* ImageEditor — `design/components/image-editor.md`.
+ *
+ * The stage's pan, wheel zoom and slider zoom are direct manipulation and never animate (Slider's
+ * law). Rotate, mirror and reset are commands, not gestures, and share the one transition. It is
+ * gated by `data-animate`, so a gesture during a command never competes with the transition. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-4);
+  inline-size: 100%;
+}
+
+/* The empty state's dropzone, styled like FileUpload's (its spec's cell). The dashed border means
+   "not yet content", and a pending drop is as active as focus. */
+.dropzone {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+  align-items: center;
+  justify-content: center;
+  inline-size: 100%;
+  padding: var(--pm-space-6);
+  color: var(--pm-text-muted);
+  background: var(--pm-bg-subtle);
+  border: 1px dashed var(--pm-border-strong);
+  border-radius: var(--pm-radius-lg);
+}
+
+.title {
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+}
+
+.hint {
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+}
+
+/* Exists for the browse Button to open. It is never shown on the page. */
+.file {
+  display: none;
+}
+
+/* The crop viewport. `touch-action: none` lets pointer capture handle the drag on touch devices.
+   The overflow clipping is the crop. */
+.stage {
+  composes: focusRing from '../conventions/focus.module.css';
+  position: relative;
+  inline-size: 100%;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  background: var(--pm-bg-subtle);
+  border-radius: var(--pm-radius-md);
+}
+
+.stage[data-panning] {
+  cursor: grabbing;
+}
+
+/* One transform, anchored at the centre. The export repeats the same math at the natural
+   resolution. `will-change` applies only while panning. */
+.image {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  max-inline-size: none;
+  user-select: none;
+}
+
+.stage[data-panning] .image {
+  will-change: transform;
+}
+
+/* Commands (rotate, mirror, reset) animate over one control duration. Gestures clear the flag
+   before they move (the component's `hands()`), so the transition never lags behind a drag. */
+.image[data-animate] {
+  transition: transform var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+/* The mask over the crop: the surrounding area dims with the system's scrim, and the window stays
+   clear. It is visual only, and the exported rectangle is unchanged. `circle` matches how avatars
+   render. `rounded` matches cards, with corners cut at the large radius the crop is rendered
+   with. */
+.maskCircle {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle closest-side at center,
+    transparent calc(100% - 1px),
+    var(--pm-bg-scrim) 100%
+  );
+}
+
+/* An even scrim with a rounded hole. A scrim-coloured border thick enough to reach the window's
+   edge would have to change with the aspect ratio. So the hole is made with an oversized shadow
+   instead: one rounded box whose shadow spreads past the stage on every side. */
+.maskRounded {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: var(--pm-radius-lg);
+  box-shadow: 0 0 0 100cqmax var(--pm-bg-scrim);
+}
+
+/* Rule-of-thirds lines while panning: two hairlines each way at the thirds. They help with framing
+   and are not ornament, so an `ornament: none` system still shows them. Hidden at rest. */
+.grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  visibility: hidden;
+  background:
+    linear-gradient(to right, var(--pm-border-default) 1px, transparent 1px) calc(100% / 3) 0 /
+      calc(100% / 3) 100% no-repeat,
+    linear-gradient(to right, var(--pm-border-default) 1px, transparent 1px) calc(200% / 3) 0 /
+      calc(100% / 3) 100% no-repeat,
+    linear-gradient(to bottom, var(--pm-border-default) 1px, transparent 1px) 0 calc(100% / 3) /
+      100% calc(100% / 3) no-repeat,
+    linear-gradient(to bottom, var(--pm-border-default) 1px, transparent 1px) 0 calc(200% / 3) /
+      100% calc(100% / 3) no-repeat;
+  opacity: 0.6;
+}
+
+.stage[data-panning] .grid {
+  visibility: visible;
+}
+
+.tools {
+  display: flex;
+  gap: var(--pm-space-4);
+  align-items: center;
+}
+
+.zoom {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.actions {
+  display: flex;
+  gap: var(--pm-space-3);
+  justify-content: flex-end;
+}
+
+/* states ------------------------------------------------------------------- */
+
+.root[data-dragover] .dropzone {
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+  border-color: var(--pm-accent-bg);
+  box-shadow: var(--pm-glow-focus);
+}
+
+.root[data-disabled] .dropzone {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  border-color: var(--pm-border-subtle);
+}
+
+.root[data-disabled] .stage {
+  cursor: not-allowed;
+}
+
+.root[data-busy] .stage {
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Reduced motion (motion.md): every command applies instantly. */
+@media (prefers-reduced-motion: reduce) {
+  .image[data-animate] {
+    transition: none;
+  }
+}

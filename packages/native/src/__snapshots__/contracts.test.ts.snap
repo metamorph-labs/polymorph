@@ -1,0 +1,369 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the generated contracts (platforms/ios/Sources/PolymorphUI/Generated) > Button's contract 1`] = `
+"// MARK: - Button
+
+/// Button's lawful variant × tone cells, and only those: the grid the web types as
+/// \`LawfulVariants\`. \`lawful\` lists them in grid order.
+public enum PMButtonAppearance: String, CaseIterable, Sendable {
+  case solidAccent = "solid/accent"
+  case solidDanger = "solid/danger"
+  case softAccent = "soft/accent"
+  case softDanger = "soft/danger"
+  case outlineNeutral = "outline/neutral"
+  case outlineAccent = "outline/accent"
+  case outlineDanger = "outline/danger"
+  case ghostNeutral = "ghost/neutral"
+  case ghostAccent = "ghost/accent"
+  case ghostDanger = "ghost/danger"
+
+  /// Every lawful cell, in grid order.
+  public static let lawful: [PMButtonAppearance] = [
+    .solidAccent,
+    .solidDanger,
+    .softAccent,
+    .softDanger,
+    .outlineNeutral,
+    .outlineAccent,
+    .outlineDanger,
+    .ghostNeutral,
+    .ghostAccent,
+    .ghostDanger
+  ]
+
+  /// The cell for a variant and a tone, or \`nil\` when the grid excludes the pair.
+  public init?(variant: PMButtonVariant, tone: PMButtonTone) {
+    self.init(rawValue: "\\(variant.rawValue)/\\(tone.rawValue)")
+  }
+
+  public var variant: PMButtonVariant {
+    switch self {
+    case .solidAccent, .solidDanger: .solid
+    case .softAccent, .softDanger: .soft
+    case .outlineNeutral, .outlineAccent, .outlineDanger: .outline
+    case .ghostNeutral, .ghostAccent, .ghostDanger: .ghost
+    }
+  }
+
+  public var tone: PMButtonTone {
+    switch self {
+    case .solidAccent, .softAccent, .outlineAccent, .ghostAccent: .accent
+    case .solidDanger, .softDanger, .outlineDanger, .ghostDanger: .danger
+    case .outlineNeutral, .ghostNeutral: .neutral
+    }
+  }
+}
+
+/// \`Button.variant\`. Paired with a tone only through \`PMButtonAppearance\`.
+public enum PMButtonVariant: String, CaseIterable, Sendable {
+  case solid
+  case soft
+  case outline
+  case ghost
+}
+
+/// \`Button.tone\`. Paired with a variant only through \`PMButtonAppearance\`.
+public enum PMButtonTone: String, CaseIterable, Sendable {
+  case accent
+  case danger
+  case neutral
+}
+
+/// \`Button.type\`.
+public enum PMButtonType: String, CaseIterable, Sendable {
+  case button
+  case submit
+}
+
+/// Button's props (\`design/components/button.md\`): The action primitive.
+public struct PMButtonProps {
+  /// The id of the region the button shows and hides. Set it only while the region is in the
+  /// document, because an id that names nothing is a broken reference.
+  public var ariaControls: String?
+  /// Associates supporting status or help copy with the action.
+  public var ariaDescribedby: String?
+  /// Overrides the visible label as the accessible action name when context must be explicit.
+  public var ariaLabel: String?
+  /// The id of a label elsewhere that names the button, as when \`SettingsRow\` labels a whole row.
+  /// \`label\` is still the visible text. This prop sets the accessible name.
+  public var ariaLabelledby: String?
+  /// A count on the button's corner, with the name that says it. Above zero, the count shows as a
+  /// Badge and \`count.label\` is the accessible name. At zero, neither shows and \`label\` names the
+  /// button.
+  public var count: PMButtonCount?
+  /// Marks the button as the current location with \`aria-current="page"\`. It sets one attribute and
+  /// changes no styling. Pagination uses it, because its current page is a \`soft/accent\` Button
+  /// that must also announce that it is current. Without this prop, a component would have to
+  /// render its own \`<button>\` and repeat this recipe to add one attribute.
+  public var current: Bool?
+  public var disabled: Bool?
+  /// Makes the button a disclosure's trigger. \`aria-expanded\` mirrors it. When it is omitted, the
+  /// button discloses nothing and the attribute does not render. It changes no styling: the icon
+  /// the caller passes shows the state.
+  public var expanded: Bool?
+  /// Leading icon. It is decorative, because the label names the action.
+  public var icon: PMIconRole?
+  /// Square (width = control height). \`label\` is still required as the accessible name.
+  public var iconOnly: Bool?
+  /// Required. Visible text, or the accessible name when \`iconOnly\`.
+  public var label: String
+  public var loading: Bool?
+  public var onClick: (@MainActor () -> Void)?
+  /// Makes the button a toggle. \`aria-pressed\` mirrors it and \`data-state="on|off"\` exposes it to
+  /// CSS. When it is omitted, the button is not a toggle and neither attribute renders. \`loading\`
+  /// takes precedence in \`data-state\`, so a busy toggle reports busy, while \`aria-pressed\` still
+  /// reports the toggle state.
+  public var pressed: Bool?
+  public var size: PMControlSize?
+  /// \`variant\` and \`tone\` on the web, as one lawful cell of the grid, as \`LawfulVariants\` types
+  /// them: a pair the grid excludes cannot be written.
+  public var appearance: PMButtonAppearance?
+  public var trailingIcon: PMIconRole?
+  public var type: PMButtonType?
+
+  public init(
+    ariaControls: String? = nil,
+    ariaDescribedby: String? = nil,
+    ariaLabel: String? = nil,
+    ariaLabelledby: String? = nil,
+    count: PMButtonCount? = nil,
+    current: Bool? = nil,
+    disabled: Bool? = nil,
+    expanded: Bool? = nil,
+    icon: PMIconRole? = nil,
+    iconOnly: Bool? = nil,
+    label: String,
+    loading: Bool? = nil,
+    onClick: (@MainActor () -> Void)? = nil,
+    pressed: Bool? = nil,
+    size: PMControlSize? = nil,
+    appearance: PMButtonAppearance? = nil,
+    trailingIcon: PMIconRole? = nil,
+    type: PMButtonType? = nil
+  ) {
+    self.ariaControls = ariaControls
+    self.ariaDescribedby = ariaDescribedby
+    self.ariaLabel = ariaLabel
+    self.ariaLabelledby = ariaLabelledby
+    self.count = count
+    self.current = current
+    self.disabled = disabled
+    self.expanded = expanded
+    self.icon = icon
+    self.iconOnly = iconOnly
+    self.label = label
+    self.loading = loading
+    self.onClick = onClick
+    self.pressed = pressed
+    self.size = size
+    self.appearance = appearance
+    self.trailingIcon = trailingIcon
+    self.type = type
+  }
+}
+
+/// A view that renders Button from its props. The member's file declares \`PMButton\`, which conforms
+/// to it.
+public protocol PMButtonRendering: View {
+  init(props: PMButtonProps)
+}"
+`;
+
+exports[`the generated contracts (platforms/ios/Sources/PolymorphUI/Generated) > DataTable's contract, generic over its row type 1`] = `
+"// MARK: - DataTable
+
+/// DataTable's props (\`design/components/data-table.md\`): Table with sorting, selection,
+/// pagination, loading and empty states. On iOS it is adapted: a list on iPhone, a table on iPad.
+/// Generic over \`Row\`, the web's type parameter.
+public struct PMDataTableProps<Row> {
+  /// Shown only while something is selected.
+  public var bulkActions: PMContent?
+  public var columns: [PMDataTableColumn<Row>]
+  public var data: [Row]
+  /// The rows open at first, while the table holds the set. The set keeps the id of a row that
+  /// leaves \`data\`, so a row that comes back with its page is still open.
+  public var defaultExpanded: Set<String>?
+  /// Required, because a list without a designed empty state has a bug.
+  public var emptyState: PMEmptyStateProps
+  /// The open rows by id. Controlled when given; without it the table holds the set.
+  public var expanded: Set<String>?
+  public var getRowId: @MainActor (Row) -> String
+  /// The whole name of a row's checkbox ("Select Invoice 12"), so a screen reader does not hear
+  /// "Select row" on every row. Only the checkbox reads it.
+  public var getRowLabel: (@MainActor (Row) -> String)?
+  /// The row's own name ("Invoice 12"). \`messages.detailsLabel\` names the row's disclosure from it
+  /// ("Details for Invoice 12"). It is not \`getRowLabel\`, which is a whole control's name: a
+  /// disclosure named from it would read "Details for Select Invoice 12".
+  public var getRowName: (@MainActor (Row) -> String)?
+  /// Whether a row has a detail. A row it refuses has an empty cell in the expansion column and
+  /// never draws a detail row, whatever \`expanded\` holds. A function that draws cannot report that
+  /// it drew nothing, so the table asks this before it draws the disclosure. Without it every row
+  /// has one.
+  public var isRowExpandable: (@MainActor (Row) -> Bool)?
+  public var label: String
+  public var loading: Bool?
+  /// Omit for the generic English defaults; localized hosts pass their own.
+  public var messages: PMDataTableMessages?
+  /// Called with the next set of open rows, controlled or not.
+  public var onExpandedChange: (@MainActor (Set<String>) -> Void)?
+  /// Opens the row. Per the "row \`interactive\` handlers" rule in \`data-table.md\`, a click on the
+  /// checkbox selects and does *not* open.
+  public var onRowClick: (@MainActor (Row) -> Void)?
+  public var onSelectionChange: (@MainActor (Set<String>) -> Void)?
+  public var onSortChange: (@MainActor (PMDataTableSort) -> Void)?
+  /// A \`Pagination\` or a \`CursorPagination\`, rendered below the table.
+  public var pagination: PMContent?
+  /// Passing it turns expansion on: each row gets a disclosure, and an open row draws what this
+  /// returns in a full-width row under itself. It takes one object, so every renderer hands the
+  /// same named values, \`row\` and \`close\`. A detail closes itself with \`close\`: a caller that only
+  /// removes the id from \`expanded\` while focus is inside the detail leaves focus on the page.
+  public var rowDetail: (@MainActor (PMDataTableRowDetail<Row>) -> PMContent)?
+  /// Passing it turns selection on, even as an empty set.
+  public var selection: Set<String>?
+  /// Controlled; the type allows exactly one sorted column.
+  public var sort: PMDataTableSort?
+  public var stickyHeader: Bool?
+
+  public init(
+    bulkActions: PMContent? = nil,
+    columns: [PMDataTableColumn<Row>],
+    data: [Row],
+    defaultExpanded: Set<String>? = nil,
+    emptyState: PMEmptyStateProps,
+    expanded: Set<String>? = nil,
+    getRowId: @escaping @MainActor (Row) -> String,
+    getRowLabel: (@MainActor (Row) -> String)? = nil,
+    getRowName: (@MainActor (Row) -> String)? = nil,
+    isRowExpandable: (@MainActor (Row) -> Bool)? = nil,
+    label: String,
+    loading: Bool? = nil,
+    messages: PMDataTableMessages? = nil,
+    onExpandedChange: (@MainActor (Set<String>) -> Void)? = nil,
+    onRowClick: (@MainActor (Row) -> Void)? = nil,
+    onSelectionChange: (@MainActor (Set<String>) -> Void)? = nil,
+    onSortChange: (@MainActor (PMDataTableSort) -> Void)? = nil,
+    pagination: PMContent? = nil,
+    rowDetail: (@MainActor (PMDataTableRowDetail<Row>) -> PMContent)? = nil,
+    selection: Set<String>? = nil,
+    sort: PMDataTableSort? = nil,
+    stickyHeader: Bool? = nil
+  ) {
+    self.bulkActions = bulkActions
+    self.columns = columns
+    self.data = data
+    self.defaultExpanded = defaultExpanded
+    self.emptyState = emptyState
+    self.expanded = expanded
+    self.getRowId = getRowId
+    self.getRowLabel = getRowLabel
+    self.getRowName = getRowName
+    self.isRowExpandable = isRowExpandable
+    self.label = label
+    self.loading = loading
+    self.messages = messages
+    self.onExpandedChange = onExpandedChange
+    self.onRowClick = onRowClick
+    self.onSelectionChange = onSelectionChange
+    self.onSortChange = onSortChange
+    self.pagination = pagination
+    self.rowDetail = rowDetail
+    self.selection = selection
+    self.sort = sort
+    self.stickyHeader = stickyHeader
+  }
+}
+
+/// A view that renders DataTable from its props. The member's file declares \`PMDataTable\`, which
+/// conforms to it.
+public protocol PMDataTableRendering: View {
+  associatedtype Row
+  init(props: PMDataTableProps<Row>)
+}"
+`;
+
+exports[`the generated contracts (platforms/ios/Sources/PolymorphUI/Generated) > Dialog's contract 1`] = `
+"// MARK: - Dialog
+
+/// \`Dialog.initialFocus\`.
+public enum PMDialogInitialFocus: String, CaseIterable, Sendable {
+  case primary
+  case dismiss
+}
+
+/// \`Dialog.presentation\`.
+public enum PMDialogPresentation: String, CaseIterable, Sendable {
+  case auto
+  case sheet
+}
+
+/// Dialog's props (\`design/components/dialog.md\`): Modal interruption of the page. On iOS it is
+/// adapted: a modal sheet.
+public struct PMDialogProps {
+  /// Uses \`alertdialog\` rather than \`dialog\`, for an interruption the reader must answer.
+  /// ConfirmDialog sets it for its danger tone.
+  public var alert: Bool?
+  public var children: PMContent?
+  public var closeLabel: String?
+  public var defaultOpen: Bool?
+  public var description: String?
+  /// \`false\` removes ✕ and ignores Escape and outside clicks, forcing a choice.
+  public var dismissible: Bool?
+  /// Actions. One primary (\`solid\`), rightmost; dismiss is outline or ghost.
+  public var footer: PMContent?
+  /// Which footer control has focus on open; \`dismiss\` suits a panel that asks whether you meant it
+  /// (see \`initialFocus\`).
+  public var initialFocus: PMDialogInitialFocus?
+  public var onOpenChange: (@MainActor (Bool) -> Void)?
+  public var open: Bool?
+  /// \`'auto'\` is the card, and the whole screen below \`30rem\` (the overlay class's viewport
+  /// exemption). \`'sheet'\` keeps the card above \`30rem\` and becomes a bottom sheet below it (the
+  /// sheet presentation, \`design/components/README.md\`). It is for content-light confirm and pick
+  /// dialogs, where a full-screen takeover is too heavy. Only the shape changes: scrim, trap,
+  /// \`dismissible\`, initial focus and return focus are Dialog's in both forms, which is why it can
+  /// be a prop.
+  public var presentation: PMDialogPresentation?
+  public var size: PMControlSize?
+  public var title: String
+  /// A governed control, usually a Button, cloned to receive \`onClick\`, which also tells the panel
+  /// where it was opened from.
+  public var trigger: PMContent?
+
+  public init(
+    alert: Bool? = nil,
+    children: PMContent? = nil,
+    closeLabel: String? = nil,
+    defaultOpen: Bool? = nil,
+    description: String? = nil,
+    dismissible: Bool? = nil,
+    footer: PMContent? = nil,
+    initialFocus: PMDialogInitialFocus? = nil,
+    onOpenChange: (@MainActor (Bool) -> Void)? = nil,
+    open: Bool? = nil,
+    presentation: PMDialogPresentation? = nil,
+    size: PMControlSize? = nil,
+    title: String,
+    trigger: PMContent? = nil
+  ) {
+    self.alert = alert
+    self.children = children
+    self.closeLabel = closeLabel
+    self.defaultOpen = defaultOpen
+    self.description = description
+    self.dismissible = dismissible
+    self.footer = footer
+    self.initialFocus = initialFocus
+    self.onOpenChange = onOpenChange
+    self.open = open
+    self.presentation = presentation
+    self.size = size
+    self.title = title
+    self.trigger = trigger
+  }
+}
+
+/// A view that renders Dialog from its props. The member's file declares \`PMDialog\`, which conforms
+/// to it.
+public protocol PMDialogRendering: View {
+  init(props: PMDialogProps)
+}"
+`;

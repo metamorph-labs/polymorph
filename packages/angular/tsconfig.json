@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": [],
+    "rootDir": ".."
+  },
+  // Read by `ngc` (`scripts/typecheck.mjs`), which checks the templates too, with the
+  // TypeScript 6.0 this package installs, as Angular's compiler requires.
+  "angularCompilerOptions": {
+    "strictTemplates": true,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true
+  },
+  "include": ["src/**/*.ts"]
+}

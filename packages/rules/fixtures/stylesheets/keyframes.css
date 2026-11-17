@@ -1,0 +1,10 @@
+/* An animation a screen wrote for itself. See ../README.md. */
+.spinner {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

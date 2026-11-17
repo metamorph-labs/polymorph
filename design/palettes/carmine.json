@@ -1,0 +1,11 @@
+{
+  "name": "carmine",
+  "accentHue": 356,
+  "neutralTint": 0.003,
+  "chromaBudget": "medium",
+  "chartCaps": {
+    "light": 4,
+    "dark": 2,
+    "published": 2
+  }
+}

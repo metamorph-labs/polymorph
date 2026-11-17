@@ -1,0 +1,89 @@
+/* Meter — `design/components/meter.md`.
+ *
+ * The bar is Progress's: the same track, height, pill and fill, so a meter and
+ * a progress bar side by side are drawn alike and differ in what they say. The
+ * fill's tone comes from the band the value is in, which the root carries as
+ * `data-tone`. */
+
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+  min-inline-size: 0;
+}
+
+.track {
+  position: relative;
+  block-size: var(--pm-space-2);
+  overflow: hidden;
+  background: var(--pm-bg-subtle);
+  border-radius: var(--pm-radius-pill);
+}
+
+/* The `progress.fill` binding, as Progress's fill: transform over the surface
+   duration, standard easing. Full width and scaled down from the inline start,
+   so it grows the way text runs. */
+.fill {
+  inline-size: 100%;
+  block-size: 100%;
+  background: var(--pm-accent-gradient);
+  border-radius: var(--pm-radius-pill);
+  transform-origin: left center;
+  transition: transform var(--pm-motion-duration-surface) var(--pm-motion-easing-standard);
+}
+
+/* A right-to-left line starts at the right edge, so the fill grows from there.
+   `:dir()` is not used, as in Tabs. */
+[dir='rtl'] .fill {
+  transform-origin: right center;
+}
+
+.meter[data-tone='warning'] .fill {
+  background: var(--pm-warning-solid);
+}
+
+.meter[data-tone='danger'] .fill {
+  background: var(--pm-danger-solid);
+}
+
+/* The words under the bar, and the status glyph before them. */
+.readout {
+  display: flex;
+  gap: var(--pm-space-2);
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.status {
+  display: inline-flex;
+  flex: none;
+}
+
+.meter[data-tone='warning'] .status {
+  color: var(--pm-warning-text);
+}
+
+.meter[data-tone='danger'] .status {
+  color: var(--pm-danger-text);
+}
+
+/* Secondary text, with figures that keep their width as the value changes. */
+.value {
+  min-inline-size: 0;
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  font-variant-numeric: var(--pm-font-numeric);
+  line-height: var(--pm-text-sm-line-height);
+  color: var(--pm-text-secondary);
+  letter-spacing: var(--pm-text-sm-tracking);
+  overflow-wrap: anywhere;
+}
+
+/* Reduced-motion projection, as Progress's: the bar takes its new value at
+   once. The length is the information and the movement is decoration. */
+@media (prefers-reduced-motion: reduce) {
+  .fill {
+    transition: none;
+  }
+}

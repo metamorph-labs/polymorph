@@ -1,0 +1,107 @@
+/* Rating — `design/components/rating.md`.
+ *
+ * A row of marks. Each mark draws the star twice: an outline in `text.muted`, and a filled
+ * copy in `accent.text` laid over it. A filled mark shows the copy, an empty mark hides it,
+ * and a part-filled mark shows it cut to its share from the inline start, by a width the
+ * member writes. So filled and empty differ in shape, solid against outline, and both
+ * colours are text roles, which the contrast law holds at 3:1 or more on every surface.
+ *
+ * The row is written in logical properties, so in a right-to-left document it starts at the
+ * right and a part-filled mark fills from the right. */
+
+.rating {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  vertical-align: middle;
+}
+
+/* A shown rating sits in a line of text or a table cell, so its marks sit close together. */
+.rating[data-readonly] {
+  gap: var(--pm-space-1);
+}
+
+.mark {
+  composes: focusRing from '../conventions/focus.module.css';
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--pm-radius-sm);
+}
+
+/* A control's mark is a `--pm-hit-target` square at every size and density. The squares
+   touch, so each mark's hit area ends where the next one's begins, and a press never lands
+   on a neighbour. Ten marks stay inside a phone's width. */
+.rating:not([data-readonly]) .mark {
+  inline-size: var(--pm-hit-target);
+  block-size: var(--pm-hit-target);
+  cursor: pointer;
+}
+
+/* The star, at an icon size. The outline is in the flow and the filled copy lies over it. */
+.glyph {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  position: relative;
+  display: inline-flex;
+  color: var(--pm-text-muted);
+}
+
+.fill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  display: flex;
+  inline-size: 100%;
+  overflow: hidden;
+  color: var(--pm-accent-text);
+}
+
+/* The copy keeps the star's full size inside a narrower box, so a part fill cuts it. */
+.fill svg {
+  flex: none;
+  fill: currentcolor;
+}
+
+.mark[data-fill='none'] .fill {
+  visibility: hidden;
+}
+
+/* states ------------------------------------------------------------------- */
+
+/* The empty outlines take the danger text colour, as Checkbox's edge takes the danger
+   border. FormField says what is wrong. */
+.rating[data-invalid] .glyph {
+  color: var(--pm-danger-text);
+}
+
+.rating[data-disabled] .mark {
+  cursor: not-allowed;
+}
+
+.rating[data-disabled] .glyph {
+  color: var(--pm-text-disabled);
+}
+
+.rating[data-disabled] .fill {
+  color: var(--pm-text-disabled);
+}
+
+/* The reach of a press. While the pointer is on a mark, its outline and the outlines before
+   it take the accent, so a reader sees that a press sets every mark up to that one. It draws
+   no fill and changes nothing a reader hears, and a mark already filled looks the same. Only
+   a pointer that can hover shows it, because a touch leaves `:hover` set after the finger
+   lifts. */
+@media (hover: hover) {
+  .rating:not([data-readonly], [data-disabled]) .mark:hover .glyph {
+    color: var(--pm-accent-text);
+  }
+
+  .rating:not([data-readonly], [data-disabled]) .mark:has(~ .mark:hover) .glyph {
+    color: var(--pm-accent-text);
+  }
+}

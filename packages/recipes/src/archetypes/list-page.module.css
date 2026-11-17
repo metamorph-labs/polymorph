@@ -1,0 +1,81 @@
+/* ListPage — `design/archetypes/list-page.md`.
+ *
+ * The `--pm-page-*` scope is declared here. `--pm-content-gutter` is the
+ * vertical spacing between the page's regions. It is a page-pattern decision,
+ * not a space step chosen at each boundary, so it can be changed in one place.
+ *
+ * The body region is a panel, not a Table placed directly on `--pm-bg-app`.
+ * Dashboard puts its tables in panels, and the two archetypes must match,
+ * because a bare table looks unfinished beside a panelled one. The panel uses
+ * exactly Card's surface recipe (card.md §surface, the same four tokens), so
+ * the two cannot diverge unnoticed. The theme decides how a panel looks: an
+ * elevated theme gives it a seat shadow, a flat one a rule, a bordered one a
+ * hairline. */
+
+.page {
+  --pm-page-padding-x: var(--pm-space-7);
+  --pm-page-padding-y: var(--pm-space-6);
+  --pm-page-max-width: calc(var(--pm-space-10) * 13);
+  --pm-content-gutter: var(--pm-space-6);
+
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--pm-content-gutter);
+  max-inline-size: var(--pm-page-max-width);
+  margin-inline: auto;
+  padding: var(--pm-page-padding-y) var(--pm-page-padding-x);
+}
+
+/* The page is a container in two directions ----------------------------------
+ *
+ * Outward, the page uses a container query. The padding below shrinks when the
+ * region holding the page is narrow. That region (AppShell's content area)
+ * answers the query, because no element can query its own width.
+ *
+ * Inward, `container-type` here makes the page the container that everything
+ * on it measures. Its content box is exactly the space those parts have,
+ * because the padding is subtracted before the query is answered. That is the
+ * width a filter row or a stat grid actually gets. This is why the page
+ * declares the container instead of leaving its contents to query the shell
+ * four levels up. A Table on a padded page is narrower than the window, and a
+ * layout that assumes otherwise is wrong by exactly the padding.
+ *
+ * `40rem` is a rem literal, documented here (`docs/layout.md`, and the shell's
+ * reasoning). A breakpoint belongs to geometry, not the theme, and scaling it
+ * with density would move the page's margins for a reader who only changed
+ * control density. The narrow padding is one space step smaller, not a new
+ * number, because the space scale applies on phones too. */
+@container (width < 40rem) {
+  .page {
+    --pm-page-padding-x: var(--pm-space-6);
+    --pm-page-padding-y: var(--pm-space-5);
+  }
+}
+
+/* One cell, so the two bodies of a swap overlap rather than stack. */
+.bodySlot {
+  display: grid;
+  overflow: clip;
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-lg);
+
+  /* Exactly Card's surface recipe. card.md §surface includes the top light,
+     and matching it exactly keeps the two from diverging. */
+  box-shadow: var(--pm-shadow-resting), var(--pm-shadow-inset-top);
+}
+
+.body {
+  grid-area: 1 / 1;
+  min-inline-size: 0;
+}
+
+/* Empty: the state replaces the table instead of sitting where its first row
+   would be. It is content-sized and centred, because an empty state is a
+   paragraph and a button, and stretching it to the page's width would make it
+   look like the missing content. */
+.page[data-empty] .body {
+  display: grid;
+  place-items: center;
+}

@@ -1,0 +1,152 @@
+/* OTPInput — `design/components/otp-input.md`.
+ *
+ * The cells are drawn over one real input. The input is invisible, with transparent
+ * text and caret. It is never `display: none`, because it must stay focusable and
+ * receive every pointer event. Each cell draws one character of its value. Cells use
+ * the size table's `lg` row, the most comfortable touch size, because people often
+ * retype the code from memory on a phone. There is one size and no `size` prop, because
+ * the code is usually the only field on its page.
+ *
+ * There is no hover style, on purpose. All cells are one target, and a hover style on a
+ * single cell would suggest per-cell focus, which does not exist. The `cursor: text`
+ * over the group shows that it accepts input. */
+
+.root {
+  position: relative;
+  display: inline-flex;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  gap: var(--pm-space-3);
+  cursor: text;
+}
+
+/* The real input. Invisible and covering the whole group, it is the only focusable
+   element and the only pointer target. The drawn cells ignore the pointer, so every
+   press lands here. */
+.input {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  padding: 0;
+  font-size: var(--pm-text-sm-size);
+  line-height: var(--pm-text-sm-line-height);
+  color: transparent;
+  caret-color: transparent;
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+/* Input's rest style, copied: surface, default border, the control seat shadow and the
+   control radius, as a square at the lg control height. Visual only. The pointer passes
+   through to the input that covers the group. */
+.cell {
+  display: inline-flex;
+  flex: 0 1 var(--pm-control-height-lg);
+  min-inline-size: 0;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--pm-control-height-lg);
+  block-size: var(--pm-control-height-lg);
+  pointer-events: none;
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-field);
+  border-radius: var(--pm-radius-control);
+  box-shadow: var(--pm-shadow-seat);
+}
+
+/* The digit uses the md text style (the lg size's text step) and the theme's numeric
+   figures. */
+.digit {
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+  color: var(--pm-text-primary);
+  font-variant-numeric: var(--pm-font-numeric);
+}
+
+/* A new digit fades in at the control duration, like Input's clear button, which is the
+   smallest entrance the system has. The animation is keyed on the filled cell, because
+   that is what changed. Paste fills every cell in the same frame, with no stagger. The
+   caret moves with the user's keystroke and is never animated (Slider's rule for
+   direct manipulation). */
+.cell[data-filled] > .digit {
+  animation: otp-digit-enter var(--pm-motion-duration-control) var(--pm-motion-easing-enter);
+}
+
+@keyframes otp-digit-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The only allowed proxy focus ring. The focus ring's declarations are repeated on the
+   caret cell, because the focused element is invisible on purpose and the cell stands
+   in for it. It depends on the root's real focus, so the ring cannot remain after
+   focus leaves. */
+.root:focus-within .cell[data-caret] {
+  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline-offset: var(--pm-focus-offset);
+}
+
+/* The active cell also takes the ring's colour as its border. This is a separate rule
+   with the focus module's invalid guard, because the caret selector is more specific
+   than the danger rule below, and a wrong code must keep the danger border under the
+   caret too. */
+.root:focus-within:not([data-invalid]) .cell[data-caret] {
+  border-color: var(--pm-border-focus-solid);
+}
+
+/* The field style, as the focus convention draws it, where the system chooses it
+   (`overrides.focus.field: border`, the flag `--pm-focus-field`): the caret cell's outline moves
+   inside its edge by its width and takes the solid focus colour. The cell keeps its seat shadow.
+   A wrong code keeps the ring, so the danger border stays visible. */
+@container style(--pm-focus-field: border) {
+  .root:focus-within:not([data-invalid]) .cell[data-caret] {
+    outline-color: var(--pm-border-focus-solid);
+    outline-offset: calc(var(--pm-focus-width) * -1);
+  }
+}
+
+/* The whole code is wrong, not one digit, so every cell shows the error (as in Input).
+   The ring on the caret cell is unchanged. */
+.root[data-invalid] .cell {
+  border-color: var(--pm-danger-border);
+}
+
+/* Input's disabled style, copied, on each cell. */
+.root[data-disabled] {
+  cursor: not-allowed;
+}
+
+.root[data-disabled] .cell {
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-subtle);
+  box-shadow: none;
+}
+
+.root[data-disabled] .digit {
+  color: var(--pm-text-disabled);
+}
+
+/* The conventions' focus-zoom floor for phones. Below `30rem` the `<input>` uses the md
+   size and line height. It is invisible but it is focused, and the browser reads its
+   computed size to decide whether to zoom. The drawn digits stay at `text.md` and do not
+   change. */
+@media (width < 30rem) {
+  .input {
+    font-size: var(--pm-text-entry-size);
+    line-height: var(--pm-text-entry-line-height);
+  }
+}
+
+/* Reduced motion: everything is instant. The border change and FormField's error
+   message report problems, and there is deliberately no shake animation. */
+@media (prefers-reduced-motion: reduce) {
+  .cell[data-filled] > .digit {
+    animation: none;
+  }
+}

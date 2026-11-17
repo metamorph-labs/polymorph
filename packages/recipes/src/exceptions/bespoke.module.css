@@ -1,0 +1,11 @@
+/* A Bespoke zone paints nothing and inherits everything.
+ *
+ * It is a boundary that the lint rules and the inventory can see, not a
+ * surface. A zone that styled its contents would apply the design system inside
+ * the one place it agreed to stay out of. The zone keeps the cascade: `--pm-*`
+ * custom properties flow in, so bespoke work still re-themes with everything
+ * else. */
+
+.bespoke {
+  display: contents;
+}

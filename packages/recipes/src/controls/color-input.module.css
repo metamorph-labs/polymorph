@@ -1,0 +1,155 @@
+/* ColorInput — `design/components/color-input.md`.
+ *
+ * The gradients come from the colour model, and none of them is in this file. React Aria writes
+ * the plane, the hue spectrum and the alpha fade inline, and the component adds the current-colour
+ * fills through `--pm-color-input-*` (the approach chart marks use for data colours). This file
+ * owns what the theme owns: edges, radii, rings, the checker, and the feedback timing.
+ *
+ * Nothing that shows the value is transitioned. Thumb positions, the plane's hue, the swatch's
+ * fill and the rails' fades all follow the pointer directly. This is Slider's no-lag law, applied
+ * to three surfaces. */
+
+.root {
+  display: inline-flex;
+  gap: var(--pm-space-2);
+  align-items: center;
+}
+
+/* The swatch shows the value, with Button's control geometry. The checker is on the button and the
+   fill paints over it, so a translucent colour shows the checker through it and an opaque colour
+   hides it entirely. */
+.swatch {
+  composes: focusRing from '../conventions/focus.module.css';
+  composes: stateFeedback from '../conventions/motion.module.css';
+  position: relative;
+  inline-size: var(--pm-control-height-md);
+  block-size: var(--pm-control-height-md);
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-strong);
+  border-radius: var(--pm-radius-control);
+}
+
+.swatch:hover {
+  border-color: var(--pm-accent-bg);
+}
+
+/* The checker appears only with `alpha`, because only then can a translucent colour show it. */
+.root[data-alpha] .swatch {
+  background: repeating-conic-gradient(var(--pm-bg-subtle) 0% 25%, var(--pm-bg-surface) 0% 50%) 0
+    0 / var(--pm-space-4) var(--pm-space-4);
+}
+
+.root[data-size='sm'] .swatch {
+  inline-size: var(--pm-control-height-sm);
+  block-size: var(--pm-control-height-sm);
+}
+
+.root[data-size='lg'] .swatch {
+  inline-size: var(--pm-control-height-lg);
+  block-size: var(--pm-control-height-lg);
+}
+
+.swatchFill {
+  /* Declared here with a default and set by the component, as chart tips do. */
+  --pm-color-input-swatch: transparent;
+
+  position: absolute;
+  inset: 0;
+  background: var(--pm-color-input-swatch);
+}
+
+.root[data-invalid] .swatch {
+  border-color: var(--pm-danger-border);
+}
+
+.root[data-disabled] .swatch {
+  cursor: not-allowed;
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-subtle);
+}
+
+.root[data-disabled] .swatchFill {
+  background: transparent;
+}
+
+/* The hex field wrapper exists for the Enter-commit listener. The Input inside draws itself. It
+   takes the row's remaining width, so ColorInput in a FormField is as wide as any other field. */
+.field {
+  display: contents;
+}
+
+/* The picker column. The width is the one size the popover does not set. A plane needs room to be
+   usable, and `space-10 × 3` uses Popover's own max-width tokens to give a workable square. */
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-3);
+  inline-size: calc(var(--pm-space-10) * 3);
+  max-inline-size: 100%;
+}
+
+/* The saturation × brightness plane. React Aria's inline style sets the gradient and
+   `position: relative`. This rule adds the theme's frame. */
+.plane {
+  aspect-ratio: 1;
+  inline-size: 100%;
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-control);
+  forced-color-adjust: none;
+}
+
+/* A channel rail: the hue spectrum or the alpha fade. React Aria's gradient is moved onto the inner
+   layer so the checker, which the theme owns, can sit beneath the fade, which the colour model
+   owns. */
+.rail {
+  position: relative;
+  block-size: var(--pm-space-5);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-pill);
+  forced-color-adjust: none;
+}
+
+.rail[data-checker] {
+  background: repeating-conic-gradient(var(--pm-bg-subtle) 0% 25%, var(--pm-bg-surface) 0% 50%) 0
+    0 / var(--pm-space-4) var(--pm-space-4);
+}
+
+.railFill {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--pm-radius-pill);
+}
+
+/* One thumb recipe for the plane and the rails: a ringed dot filled with the value at that point.
+   React Aria positions it, setting left/top and the centring transform inline, including for RTL.
+   The focusable element is the hidden channel input inside, so the ring appears through the
+   composite-field selector. */
+.thumb {
+  /* Declared here with a default and set by the component, as chart tips do. */
+  --pm-color-input-thumb: transparent;
+
+  composes: focusRing from '../conventions/focus.module.css';
+  box-sizing: border-box;
+  display: block;
+  inline-size: var(--pm-space-5);
+  block-size: var(--pm-space-5);
+  background: var(--pm-color-input-thumb);
+  border: 2px solid var(--pm-bg-surface);
+  border-radius: var(--pm-radius-pill);
+  box-shadow: var(--pm-shadow-control);
+  transition: box-shadow var(--pm-motion-duration-control) var(--pm-motion-easing-standard);
+}
+
+/* React Aria positions a rail thumb on the main axis only (`left` plus the centring transform).
+   The recipe sets the cross axis. Half of `100%`, combined with the same transform, centres the
+   thumb exactly. */
+.rail .thumb {
+  inset-block-start: calc(100% / 2);
+}
+
+.thumb[data-state='dragging'] {
+  box-shadow: var(--pm-glow-hover);
+}

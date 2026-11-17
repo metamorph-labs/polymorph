@@ -1,0 +1,202 @@
+{
+  "requirements": [
+    {
+      "id": "room-and-length",
+      "says": "The room and the length are each chosen from a fixed list.",
+      "check": {
+        "count": {
+          "kind": "choice"
+        },
+        "min": 2
+      }
+    },
+    {
+      "id": "date-not-in-the-past",
+      "says": "A date is asked for, and a past one cannot be chosen.",
+      "check": {
+        "element": {
+          "component": ["DatePicker", "Calendar", "DateRangePicker"],
+          "anyProp": {
+            "minValue": "given",
+            "isDateUnavailable": "given"
+          }
+        }
+      }
+    },
+    {
+      "id": "start-time",
+      "says": "A start time is asked for.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": "TimeInput"
+            }
+          },
+          {
+            "element": {
+              "component": "DatePicker",
+              "props": {
+                "granularity": {
+                  "matches": "^(hour|minute)$"
+                }
+              }
+            }
+          },
+          {
+            "count": {
+              "kind": "choice"
+            },
+            "min": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "invitees",
+      "says": "The email addresses of the people invited can be entered.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": ["TagInput", "MultiSelect"]
+            }
+          },
+          {
+            "element": {
+              "component": "Input",
+              "props": {
+                "type": {
+                  "is": "email"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "note",
+      "says": "A note for the invitation can be written.",
+      "check": {
+        "count": {
+          "component": ["Textarea", "Input", "TagInput", "MultiSelect"]
+        },
+        "min": 2
+      }
+    },
+    {
+      "id": "errors-beside-fields",
+      "says": "Each required field can say what is wrong beside it.",
+      "check": {
+        "count": {
+          "component": "FormField",
+          "props": {
+            "error": "dynamic"
+          }
+        },
+        "min": 4
+      }
+    },
+    {
+      "id": "error-summary",
+      "says": "A summary at the top lists every problem.",
+      "check": {
+        "element": {
+          "component": "ErrorSummary",
+          "props": {
+            "errors": "given"
+          }
+        }
+      }
+    },
+    {
+      "id": "book-and-cancel",
+      "says": "One action books the room, and another cancels.",
+      "check": {
+        "all": [
+          {
+            "any": [
+              {
+                "element": {
+                  "component": "Button",
+                  "props": {
+                    "type": {
+                      "is": "submit"
+                    }
+                  }
+                }
+              },
+              {
+                "element": {
+                  "component": "FormPage",
+                  "props": {
+                    "onSubmit": "given"
+                  }
+                }
+              },
+              {
+                "element": {
+                  "component": "Button",
+                  "props": {
+                    "variant": {
+                      "is": "solid"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "count": {
+              "kind": "action"
+            },
+            "min": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "pending",
+      "says": "While the booking is being made the screen says so, and it cannot be made twice.",
+      "check": {
+        "any": [
+          {
+            "element": {
+              "component": ["Button", "SplitButton"],
+              "props": {
+                "loading": "dynamic"
+              }
+            }
+          },
+          {
+            "element": {
+              "component": "Button",
+              "props": {
+                "disabled": "dynamic",
+                "label": "dynamic"
+              }
+            }
+          },
+          {
+            "all": [
+              {
+                "element": {
+                  "component": "Button",
+                  "props": {
+                    "disabled": "dynamic"
+                  }
+                }
+              },
+              {
+                "element": {
+                  "component": ["Spinner", "Progress"]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

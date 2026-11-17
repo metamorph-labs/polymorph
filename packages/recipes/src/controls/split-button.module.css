@@ -1,0 +1,376 @@
+/* SplitButton — `design/components/split-button.md`.
+ *
+ * The two halves compose Button's recipe **instead of copying it**, as Link's button
+ * variant does: `composes: button` plus Button's data attributes. So every rest, hover,
+ * active, disabled and loading style is Button's own, with no copy to drift. This file
+ * styles the group: the seam, the outer-corner radii, raising the focused half, and a
+ * copy of Menu's panel. The panel is copied because the completeness law expects one
+ * stylesheet per member. ContextMenu makes the same choice. */
+
+.group {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+/* Radius on the outer corners only, so the control has one outline. Rounded inner edges
+   would look like two buttons. Logical corners, so RTL flips them. The inner border
+   widths are zero so the outline variant's two halves share one continuous border, and
+   the seam below is its middle line. This applies Select's reasoning about merged
+   borders within one control. */
+.primary {
+  composes: button from './button.module.css';
+  position: relative;
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+  border-inline-end-width: 0;
+}
+
+.chevron {
+  composes: button from './button.module.css';
+  position: relative;
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  border-inline-start-width: 0;
+}
+
+/* Two tab stops, each with the focus ring. The focused half is raised above the other so
+   the ring is not clipped at the seam. `raise` is the stacking scale's step for layers
+   within one member. */
+.primary:focus-visible {
+  z-index: var(--pm-z-raise);
+}
+
+.chevron:focus-visible {
+  z-index: var(--pm-z-raise);
+}
+
+/* The seam: 1px, full height, visual only. It uses colours the halves already use, so
+   no new tokens. For the filled variants it is the variant's `active` fill step, the
+   deepest step, which looks like a seam in the fill rather than a line on it. For
+   `outline` it is the variant's border colour, so the group's border continues through
+   the middle. */
+.seam {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  flex: none;
+  inline-size: 1px;
+  pointer-events: none;
+}
+
+.group[data-variant='solid'] .seam {
+  background: var(--pm-accent-bg-active);
+}
+
+.group[data-variant='soft'] .seam {
+  background: var(--pm-accent-subtle-active);
+}
+
+.group[data-variant='outline'][data-tone='accent'] .seam {
+  background: var(--pm-accent-bg);
+}
+
+.group[data-variant='outline'][data-tone='neutral'] .seam {
+  background: var(--pm-border-default);
+}
+
+/* Disabled follows the conventions' disabled rule and needs no style of its own. The
+   filled seams follow their fill to `--pm-bg-subtle`, so the seam disappears, which is
+   correct because disabled must not look pressable. The outline seam follows its border
+   to `--pm-border-subtle`. */
+.group[data-disabled][data-variant='solid'] .seam,
+.group[data-disabled][data-variant='soft'] .seam {
+  background: var(--pm-bg-subtle);
+}
+
+.group[data-disabled][data-variant='outline'] .seam {
+  background: var(--pm-border-subtle);
+}
+
+/* The primary half's slots, composed from Button. */
+.label {
+  composes: label from './button.module.css';
+}
+
+.glyph {
+  composes: glyph from './button.module.css';
+}
+
+.spinner {
+  composes: spinner from './button.module.css';
+}
+
+/* panel — Menu's whole recipe, copied --------------------------------------- */
+
+.content {
+  display: flex;
+  flex-direction: column;
+
+  /* `overlay` from the stacking scale. The popper copies it onto its wrapper
+     (menu.module.css explains how). It is copied with the rest of Menu's recipe, so the
+     layer matches Menu's. */
+  z-index: var(--pm-z-overlay);
+  min-inline-size: calc(var(--pm-space-10) * 2);
+  max-block-size: var(--radix-dropdown-menu-content-available-height);
+  padding: var(--pm-space-2);
+  overflow: hidden;
+  background: var(--pm-bg-overlay);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-surface);
+  box-shadow: var(--pm-shadow-transient);
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+}
+
+.content[data-state='open'] {
+  animation: split-button-content-enter var(--pm-motion-duration-surface)
+    var(--pm-motion-easing-enter);
+}
+
+.content[data-state='closed'] {
+  animation: split-button-content-exit var(--pm-motion-duration-surface-exit)
+    var(--pm-motion-easing-exit);
+}
+
+@keyframes split-button-content-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes split-button-content-exit {
+  to {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+/* Reduced-motion version (motion.md): `scale-fade` becomes `fade`, and the item cascade
+   becomes items appearing without animation. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes split-button-content-enter {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes split-button-content-exit {
+    to {
+      opacity: 0;
+    }
+  }
+
+  .sheetList .item,
+  .content[data-state='open'] .item {
+    animation: none;
+  }
+}
+
+/* The sheet below 30rem (the conventions' sheet presentation), the same as Menu's sheet.
+ * The panel box is the shared anatomy (`sheet.module.css`, used by the sheet partial),
+ * and the anchoring rules do not apply. The list inside it follows Menu's recipe: a
+ * `--pm-space-2` inset, with the sheet's safe-area inset added to this member's edge
+ * padding. */
+.sheetList {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+  padding: var(--pm-space-2);
+  padding-block-end: calc(var(--pm-space-2) + env(safe-area-inset-bottom, 0px));
+  margin: 0;
+  overflow-y: auto;
+  list-style: none;
+  outline: none;
+}
+
+/* items — copied from Menu (ContextMenu's sheet copies them too, for the same
+   reasons) ------------------------------------------------------------------ */
+
+.item {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+  block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-3);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  cursor: pointer;
+  border-radius: var(--pm-radius-sm);
+  outline: none;
+}
+
+.checkbox {
+  gap: var(--pm-space-2);
+}
+
+.check {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--pm-icon-size-sm);
+}
+
+.rowGlyph {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--pm-text-muted);
+}
+
+.rowLabel {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hint {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  margin-inline-start: auto;
+  color: var(--pm-text-muted);
+}
+
+.item[data-highlighted] .hint {
+  color: inherit;
+}
+
+.separator {
+  margin-block: var(--pm-space-2);
+  border-block-start: 1px solid var(--pm-border-subtle);
+}
+
+.groupLabel {
+  padding: var(--pm-space-2) var(--pm-space-3);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+  text-transform: uppercase;
+}
+
+/* The `menu.items` cascade, copied: enter only, each item's delay capped at the maximum,
+   and the steps stopping at twelve. */
+.sheetList .item,
+.content[data-state='open'] .item {
+  animation: split-button-item-enter var(--pm-motion-duration-control) var(--pm-motion-easing-enter)
+    backwards;
+}
+
+.sheetList[role='menu'] .item:nth-child(2),
+.content[data-state='open'] .item:nth-child(2) {
+  animation-delay: min(calc(1 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(3),
+.content[data-state='open'] .item:nth-child(3) {
+  animation-delay: min(calc(2 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(4),
+.content[data-state='open'] .item:nth-child(4) {
+  animation-delay: min(calc(3 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(5),
+.content[data-state='open'] .item:nth-child(5) {
+  animation-delay: min(calc(4 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(6),
+.content[data-state='open'] .item:nth-child(6) {
+  animation-delay: min(calc(5 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(7),
+.content[data-state='open'] .item:nth-child(7) {
+  animation-delay: min(calc(6 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(8),
+.content[data-state='open'] .item:nth-child(8) {
+  animation-delay: min(calc(7 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(9),
+.content[data-state='open'] .item:nth-child(9) {
+  animation-delay: min(calc(8 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(10),
+.content[data-state='open'] .item:nth-child(10) {
+  animation-delay: min(calc(9 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(11),
+.content[data-state='open'] .item:nth-child(11) {
+  animation-delay: min(calc(10 * var(--pm-motion-stagger-step)), var(--pm-motion-stagger-max));
+}
+
+.sheetList[role='menu'] .item:nth-child(n + 12),
+.content[data-state='open'] .item:nth-child(n + 12) {
+  animation-delay: var(--pm-motion-stagger-max);
+}
+
+@keyframes split-button-item-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+/* item states, copied from Menu. Danger items use red text, and a red tint when
+   highlighted, never a red fill. One highlight serves both pointer and keyboard. */
+.item[data-tone='danger'] {
+  color: var(--pm-danger-text);
+}
+
+.item[data-highlighted] {
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+}
+
+.item[data-tone='danger'][data-highlighted] {
+  color: var(--pm-danger-text);
+  background: var(--pm-danger-subtle);
+}
+
+.item[data-highlighted] .rowGlyph {
+  color: inherit;
+}
+
+.item[data-disabled] {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+  background: transparent;
+}
+
+.item[data-disabled] .rowGlyph {
+  color: var(--pm-text-disabled);
+}
+
+.checkbox[data-state='checked'] .check {
+  color: var(--pm-accent-text);
+}
+
+/* Glass (`depth: glass`). The pane uses the surface role at the engine's mix
+   (`--pm-material-surface`). The material separates the pane from the page instead of
+   a lighter overlay step: the backdrop shows through as a blurred, saturated tint. The
+   glass law checks the mix's contrast over worst-case backdrops, and recipes only
+   apply it. */
+@container style(--pm-axis-depth: glass) {
+  .content {
+    background: var(--pm-material-surface);
+    backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  }
+}

@@ -1,0 +1,36 @@
+/* Heading — `design/components/heading.md`.
+ *
+ * Type-scale steps and a zero margin. The margin is set here because a heading
+ * margin would add to the Stack's gap and split the vertical rhythm. */
+
+.heading {
+  margin: 0;
+  color: var(--pm-text-primary);
+}
+
+.heading[data-level='2'] {
+  font-family: var(--pm-text-xl-family);
+  font-size: var(--pm-text-xl-size);
+  font-weight: var(--pm-text-xl-weight);
+  line-height: var(--pm-text-xl-line-height);
+  letter-spacing: var(--pm-text-xl-tracking);
+}
+
+.heading[data-level='3'] {
+  font-family: var(--pm-text-lg-family);
+  font-size: var(--pm-text-lg-size);
+  font-weight: var(--pm-text-lg-weight);
+  line-height: var(--pm-text-lg-line-height);
+  letter-spacing: var(--pm-text-lg-tracking);
+}
+
+/* Level 4 matches Text's `strong` cell: below `text.lg` the sizes are body
+   sizes, so weight marks the level, using `xl`'s weight from the scale (the
+   type-usage law, `design/components/README.md`). */
+.heading[data-level='4'] {
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-xl-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+}

@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/react-ui-node.tsbuildinfo",
+    // The node tests at this package's root, and nothing else. Separate from
+    // `tsconfig.json` so the vocabulary itself keeps `"types": []` — a package a
+    // consumer vendors into their own repository must typecheck without node's
+    // globals in scope, and one config for both would quietly hand them over.
+    "types": ["node"]
+  },
+  "include": ["*.test.ts", "vite.build.config.ts"]
+}

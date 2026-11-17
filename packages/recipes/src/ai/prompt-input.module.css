@@ -1,0 +1,376 @@
+/* PromptInput — `design/components/prompt-input.md`.
+ *
+ * Input's split, one level up. The frame draws the border, seat, focus ring
+ * and drop wash, and the field inside it is transparent. So the attachments
+ * row, the toolbar and the text sit inside one edge, and the ring surrounds the
+ * whole composer instead of only the text. The frame uses a Card's corner
+ * radius (`--pm-radius-surface`), because it is the page's only field and its
+ * largest control. */
+
+.root {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+  inline-size: 100%;
+}
+
+.frame {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+  padding: var(--pm-space-3);
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-field);
+  border-radius: var(--pm-radius-surface);
+  box-shadow: var(--pm-shadow-seat);
+}
+
+/* The ring on the frame when the field inside it has keyboard focus. This
+   restates the composite-field convention (focus.module.css) for a
+   `<textarea>` child, which the convention's `> input` selector cannot reach. */
+.frame:has(> textarea:focus-visible) {
+  border-color: var(--pm-border-focus-solid);
+  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline-offset: var(--pm-focus-offset);
+  box-shadow: var(--pm-glow-focus);
+}
+
+/* The field style, as the focus convention draws it for a composite field, where the system
+   chooses it (`overrides.focus.field: border`, the flag `--pm-focus-field`): the outline moves
+   inside the frame's edge by its width and takes the solid focus colour, and the frame keeps its
+   seat shadow in place of the halo. */
+@container style(--pm-focus-field: border) {
+  .frame:has(> textarea:focus-visible) {
+    outline-color: var(--pm-border-focus-solid);
+    outline-offset: calc(var(--pm-focus-width) * -1);
+    box-shadow: var(--pm-shadow-seat);
+  }
+}
+
+.attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-2);
+}
+
+/* Transparent and borderless inside the frame, like Input's inner field, on
+   the md step: the composer is the page's primary field. Below the phone line
+   it takes the text-entry floor's metrics (conventions §13), because a system
+   may set its md step under 16px. */
+.field {
+  display: block;
+  inline-size: 100%;
+  min-block-size: calc(var(--pm-text-md-size) * var(--pm-text-md-line-height));
+  padding: var(--pm-space-1) var(--pm-space-2);
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  color: var(--pm-text-primary);
+  letter-spacing: var(--pm-text-md-tracking);
+  resize: none;
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+.field::placeholder {
+  color: var(--pm-text-muted);
+  opacity: 1;
+}
+
+/* The maximum height, in lines. Past it the field scrolls instead of pushing
+   the toolbar off the screen. The four values are written out because a line
+   count is a design decision, and an arbitrary number would be an unchosen
+   height. */
+.root[data-max-rows='4'] .field {
+  max-block-size: calc(
+    var(--pm-text-md-size) * var(--pm-text-md-line-height) * 4 + var(--pm-space-2)
+  );
+}
+
+.root[data-max-rows='6'] .field {
+  max-block-size: calc(
+    var(--pm-text-md-size) * var(--pm-text-md-line-height) * 6 + var(--pm-space-2)
+  );
+}
+
+.root[data-max-rows='8'] .field {
+  max-block-size: calc(
+    var(--pm-text-md-size) * var(--pm-text-md-line-height) * 8 + var(--pm-space-2)
+  );
+}
+
+.root[data-max-rows='12'] .field {
+  max-block-size: calc(
+    var(--pm-text-md-size) * var(--pm-text-md-line-height) * 12 + var(--pm-space-2)
+  );
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-2);
+  align-items: center;
+}
+
+/* The send button and the app's trailing slot sit at the end regardless of the
+   leading slot's content. */
+.end {
+  display: flex;
+  gap: var(--pm-space-2);
+  align-items: center;
+  margin-inline-start: auto;
+}
+
+.picker {
+  display: none;
+}
+
+.hint {
+  margin: 0;
+  padding-inline: var(--pm-space-3);
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+}
+
+/* suggestions -------------------------------------------------------------- *
+ *
+ * The list a trigger opens. Three recipes are restated here, as Combobox and
+ * Command restate theirs, because a member's stylesheet is its own: the panel
+ * is Combobox's popup panel, the option rows are Combobox's options with
+ * Command's glyph, and the active row is Command's highlight. Enter picks the
+ * active row, as it runs a palette's, so the active row is the pending
+ * selection and uses the selection family. `prompt-input.test.tsx` compares
+ * the resolved values with Combobox's and Command's.
+ *
+ * The panel is drawn inside the composer's root, not portalled, and spans the
+ * composer's width at every width, a phone's included. It opens above the
+ * composer, or below it when there is more room below in the viewport. */
+
+.suggestions {
+  position: absolute;
+  inset-inline: 0;
+
+  /* A lift inside the member: the panel paints over the thread above the composer. */
+  z-index: var(--pm-z-raise);
+  display: flex;
+  flex-direction: column;
+  max-block-size: min(40vh, calc(var(--pm-space-10) * 4));
+  padding: var(--pm-space-2);
+  overflow: hidden;
+  background: var(--pm-bg-overlay);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-surface);
+  box-shadow: var(--pm-shadow-transient);
+}
+
+/* The cap in `dvh`, as Command's list, because a phone's `vh` includes the
+   collapsed browser chrome. The `vh` base is above, for an engine without `dvh`. */
+@supports (height: 1dvh) {
+  .suggestions {
+    max-block-size: min(40dvh, calc(var(--pm-space-10) * 4));
+  }
+}
+
+.suggestions[data-side='top'] {
+  inset-block-end: calc(100% + var(--pm-space-1));
+}
+
+.suggestions[data-side='bottom'] {
+  inset-block-start: calc(100% + var(--pm-space-1));
+}
+
+.listbox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-1);
+  min-block-size: 0;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+  list-style: none;
+  outline: none;
+}
+
+/* Combobox's option, without its check column: nothing in this list stays chosen. */
+.option {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: flex;
+  flex: none;
+  gap: var(--pm-space-2);
+  align-items: center;
+  min-block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-3);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-primary);
+  cursor: pointer;
+  user-select: none;
+  border-radius: var(--pm-radius-sm);
+  outline: none;
+}
+
+/* Command's glyph: decorative, because the label carries the meaning. */
+.glyph {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--pm-text-muted);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-inline-size: 0;
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Combobox's second line. A two-line option grows to fit. */
+.description {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  letter-spacing: var(--pm-text-xs-tracking);
+  color: var(--pm-text-muted);
+}
+
+/* Command's highlight: the pending pick, which Enter makes. The pointer moves
+   it too, as it moves a palette's. */
+.option[data-highlighted] {
+  color: var(--pm-selection-text);
+  background: var(--pm-selection-bg);
+}
+
+.option[data-highlighted] .glyph,
+.option[data-highlighted] .description {
+  color: inherit;
+}
+
+/* Combobox's loading rows: three at option height, so the panel keeps its size. */
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-1);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-3);
+}
+
+/* Combobox's empty row: one line of text. */
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  block-size: var(--pm-control-height-sm);
+  padding-inline: var(--pm-space-3);
+  font-family: var(--pm-text-sm-family);
+  font-size: var(--pm-text-sm-size);
+  font-weight: var(--pm-text-sm-weight);
+  line-height: var(--pm-text-sm-line-height);
+  letter-spacing: var(--pm-text-sm-tracking);
+  color: var(--pm-text-muted);
+}
+
+/* The one live region, hidden by clipping so it stays in the accessibility tree. */
+.status {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Glass (`depth: glass`): Combobox's panel material, unchanged. */
+@container style(--pm-axis-depth: glass) {
+  .suggestions {
+    background: var(--pm-material-surface);
+    backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  }
+}
+
+/* states ------------------------------------------------------------------- */
+
+.root[data-disabled] .frame {
+  cursor: not-allowed;
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-subtle);
+  box-shadow: none;
+}
+
+.root[data-disabled] .field {
+  color: var(--pm-text-disabled);
+}
+
+/* A pending drop is styled like focus, copied exactly from FileUpload's zone. */
+.root[data-state='dragover'] .frame {
+  background: var(--pm-accent-subtle);
+  border-color: var(--pm-accent-bg);
+  box-shadow: var(--pm-glow-focus);
+}
+
+/* Hover moves the border one step, as in Input. The selector excludes the
+   states it must not overwrite, instead of relying on their higher
+   specificity. */
+.root:not([data-disabled], [data-state='dragover']) .frame:hover {
+  border-color: var(--pm-border-strong);
+}
+
+/* The focus-zoom floor (conventions §13): metrics only. The row ceiling is
+   restated with the floor's metrics, so `maxRows` still counts the lines the
+   field draws. */
+@media (width < 30rem) {
+  .field {
+    min-block-size: calc(var(--pm-text-entry-size) * var(--pm-text-entry-line-height));
+    font-size: var(--pm-text-entry-size);
+    line-height: var(--pm-text-entry-line-height);
+  }
+
+  .root[data-max-rows='4'] .field {
+    max-block-size: calc(
+      var(--pm-text-entry-size) * var(--pm-text-entry-line-height) * 4 + var(--pm-space-2)
+    );
+  }
+
+  .root[data-max-rows='6'] .field {
+    max-block-size: calc(
+      var(--pm-text-entry-size) * var(--pm-text-entry-line-height) * 6 + var(--pm-space-2)
+    );
+  }
+
+  .root[data-max-rows='8'] .field {
+    max-block-size: calc(
+      var(--pm-text-entry-size) * var(--pm-text-entry-line-height) * 8 + var(--pm-space-2)
+    );
+  }
+
+  .root[data-max-rows='12'] .field {
+    max-block-size: calc(
+      var(--pm-text-entry-size) * var(--pm-text-entry-line-height) * 12 + var(--pm-space-2)
+    );
+  }
+}

@@ -1,0 +1,5 @@
+/* Placement no member prop carries. See ../README.md. */
+.disc {
+  position: absolute;
+  transform: rotate(12deg);
+}

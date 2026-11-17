@@ -1,0 +1,84 @@
+{
+  "spec": "polymorph-screen/1",
+  "name": "UsageOverview",
+  "purpose": "Shows a team lead how much of their plan the team has used in a chosen period, with four headline numbers and requests per day.",
+  "inputs": [
+    {
+      "name": "stats",
+      "type": "StatProps[]",
+      "doc": "The four headline stats (requests, error rate, median latency, seats used of bought), already formatted, each with a delta whose direction and positive flag say which way it moved and whether that is good. While loading, the container supplies placeholder stats of the same count so the layout holds."
+    },
+    {
+      "name": "daily",
+      "type": "Record<string, string | number | null>[]",
+      "doc": "Requests per day across the period, one row per day: { date: ISO date, requests: number }."
+    },
+    {
+      "name": "period",
+      "type": "string",
+      "doc": "The selected period: 'this-month' or 'last-month'."
+    },
+    {
+      "name": "onPeriodChange",
+      "type": "(period: string) => void",
+      "doc": "Called when the reader picks the other period."
+    },
+    { "name": "loading", "type": "boolean", "doc": "True while the numbers load." },
+    { "name": "onDownload", "type": "() => void", "doc": "Downloads the period's usage as a file." }
+  ],
+  "types": { "@polymorph/react-ui": ["StatProps"] },
+  "root": {
+    "component": "Dashboard",
+    "props": {
+      "title": "Usage overview",
+      "description": "How much of your plan the team has used.",
+      "stats": { "$": "stats" },
+      "actions": {
+        "component": "Inline",
+        "props": { "gap": 3, "align": "center" },
+        "children": [
+          {
+            "component": "SegmentedControl",
+            "props": {
+              "label": "Period",
+              "value": { "$": "period" },
+              "onChange": { "$": "onPeriodChange" },
+              "options": [
+                { "$object": { "value": "this-month", "label": "This month" } },
+                { "$object": { "value": "last-month", "label": "Last month" } }
+              ]
+            }
+          },
+          {
+            "component": "Button",
+            "props": {
+              "label": "Download usage",
+              "icon": "download",
+              "variant": "outline",
+              "tone": "neutral",
+              "onClick": { "$": "onDownload" }
+            }
+          }
+        ]
+      },
+      "primary": {
+        "component": "Card",
+        "props": { "label": "Requests per day" },
+        "children": [
+          {
+            "component": "LineChart",
+            "props": {
+              "label": "Requests per day",
+              "data": { "$": "daily" },
+              "loading": { "$": "loading" },
+              "variant": "area",
+              "x": { "$object": { "key": "date", "scale": "time" } },
+              "y": { "$object": { "domain": "zero" } },
+              "series": [{ "$object": { "key": "requests", "label": "Requests" } }]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

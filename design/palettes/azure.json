@@ -1,0 +1,12 @@
+{
+  "name": "azure",
+  "accentHue": 250,
+  "neutralHue": 250,
+  "neutralTint": 0.004,
+  "chromaBudget": "high",
+  "chartCaps": {
+    "light": 4,
+    "dark": 3,
+    "published": 3
+  }
+}
