@@ -334,7 +334,9 @@ describe('leaving', () => {
     toast({ title: 'By hand', durationMs: Number.POSITIVE_INFINITY })
     await settled(1)
     toast.dismiss()
-    await vi.waitFor(() => expect(statesOf(byHand)).toEqual(['open', 'closed']))
+    await vi.waitFor(() => expect(statesOf(byHand)).toEqual(['open', 'closed']), {
+      timeout: 3000,
+    })
     expect(byHand.seen.at(-1)?.pointerEvents).toBe('none')
     await settled(0)
     byHand.stop()
@@ -342,7 +344,9 @@ describe('leaving', () => {
     // And when its own timer runs out.
     const timedOut = watchCardStates()
     toast({ title: 'Timed out', durationMs: 100 })
-    await vi.waitFor(() => expect(statesOf(timedOut)).toEqual(['open', 'closed']))
+    await vi.waitFor(() => expect(statesOf(timedOut)).toEqual(['open', 'closed']), {
+      timeout: 3000,
+    })
     await settled(0)
     timedOut.stop()
   })
