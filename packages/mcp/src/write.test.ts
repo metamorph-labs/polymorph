@@ -203,6 +203,23 @@ describe('emit_screen', () => {
     expect(tree(context.project)).toEqual(['package.json'])
   })
 
+  it('takes the document as an object as it takes its text', async () => {
+    const asText = project()
+    const asObject = project()
+    const text = await emitScreen(asText, { spec: spec(), path: 'src/SaveBar.tsx' })
+    const object = await emitScreen(asObject, { spec: { ...SPEC }, path: 'src/SaveBar.tsx' })
+    expect(object).toEqual(text)
+    expect(read(asObject, 'src/SaveBar.tsx')).toBe(read(asText, 'src/SaveBar.tsx'))
+
+    const unlawful = {
+      ...SPEC,
+      root: { component: 'Button', props: { label: 'Save', size: 'xxl' } },
+    }
+    const faults = (await validate(asObject, { spec: unlawful })).faults
+    expect(faults?.length).toBeGreaterThan(0)
+    expect(faults).toEqual((await validate(asObject, { spec: JSON.stringify(unlawful) })).faults)
+  })
+
   it('says a spec that is not JSON is not JSON', async () => {
     const context = project()
     const answer = await emitScreen(context, { spec: '{ name: SaveBar', path: 'src/SaveBar.tsx' })

@@ -50,6 +50,7 @@ import {
 import { admitTheme, type AdmittedFont } from '@polymorph/theme'
 
 import { withClimb, type Violation } from './violations'
+import { submittedDocument, type SubmittedSpec } from './submitted'
 
 /**
  * The four tools that write, as functions.
@@ -223,8 +224,8 @@ function current(project: string, path: string): string | null {
 /* -------------------------------------------------------------------------- */
 
 export interface EmitScreenArgs {
-  /** A screen spec as JSON text, the same argument `validate` takes. */
-  spec: string
+  /** A screen spec, the document or its JSON text: the argument `validate` takes. */
+  spec: SubmittedSpec
   /**
    * Where the screen is written, relative to the project: a `.tsx` file for
    * React or Solid, a `.vue` file for Vue, a `.svelte` file for Svelte, a `.ts`
@@ -338,16 +339,9 @@ export async function emitScreen(
 
   const full = placed(project, args.path, '`path`')
 
-  let document: unknown
-  try {
-    document = JSON.parse(args.spec)
-  } catch (error) {
-    return {
-      ok: false,
-      faults: [],
-      fatal: `the spec is not JSON: ${error instanceof Error ? error.message : String(error)}`,
-    }
-  }
+  const read = submittedDocument(args.spec)
+  if ('fatal' in read) return { ok: false, faults: [], fatal: read.fatal }
+  const { document } = read
 
   // The platform is the spec's own field. The framework is the caller's, or
   // the path's, or for a web spec at a TSX path the project's, as `validate`

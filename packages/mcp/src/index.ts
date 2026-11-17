@@ -89,6 +89,7 @@ export type {
   ScreenView,
   SearchArgs,
   SearchHit,
+  SubmittedSpec,
   SystemCardArgs,
   ThemeAnswer,
   ThemeArgs,

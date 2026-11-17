@@ -528,6 +528,17 @@ describe('an agent uses the system', () => {
     // the screen, so it had no chance to type a violation.
     const checked = await callJson<{ ok: boolean }>('validate', { code })
     expect(checked.ok).toBe(true)
+
+    // The document is an argument of the call as it is, with no second
+    // escaping, and the server reads it as it reads the text.
+    const document = JSON.parse(spec) as Record<string, unknown>
+    const asObject = await callJson<{ ok: boolean; kind: string }>('validate', { spec: document })
+    expect(asObject).toMatchObject({ ok: true, kind: 'spec' })
+    const again = await callJson<{ ok: boolean; outcome: string }>('emit_screen', {
+      spec: document,
+      path: 'src/screens/SaveBar.tsx',
+    })
+    expect(again).toMatchObject({ ok: true, outcome: 'unchanged' })
   })
 
   it('14. installs a component it planned in step 5', async () => {

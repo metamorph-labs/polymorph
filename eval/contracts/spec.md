@@ -24,7 +24,7 @@ that renders the screen, as declared inputs.
   content, an `ErrorSummary` with an empty `errors`. It is not an element the container builds
   and hands in as an input, because the screen would then hold no member in that place.
 
-`validate` takes the document as JSON text in `spec`. It checks the document against the
+`validate` takes the document in `spec`, as the object itself or as its JSON text. It checks the document against the
 registry, emits it as TSX, runs the red rules over that TSX, and returns every fault with its
 path and every red-rule violation with the exception-ladder rungs that answer it.
 

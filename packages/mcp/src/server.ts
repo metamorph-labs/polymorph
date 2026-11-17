@@ -162,6 +162,12 @@ const FRAMEWORK_ARGUMENT = z
   )
 
 /**
+ * A screen spec as `validate`, `render_screen` and `emit_screen` take it: the
+ * document as an object, or its JSON text (`submittedDocument`).
+ */
+const SPEC = z.union([z.string(), z.record(z.string(), z.unknown())])
+
+/**
  * The framework of the tools that read code or a spec: `validate`, `fix`,
  * `fix_file` and `emit_screen`. Omitted, each asks the project through one
  * function (`codeFrameworkOf`), so they read one fragment or spec alike.
@@ -399,10 +405,10 @@ export function createServer(context: ToolContext): McpServer {
               'TypeScript is linted as a component module, its inline template included, and ' +
               'markup as a component’s template.',
           ),
-        spec: z
-          .string()
-          .optional()
-          .describe('A screen spec as JSON text. Checked against the registry rather than linted.'),
+        spec: SPEC.optional().describe(
+          'A screen spec: the document itself as an object, or its JSON text. Checked against ' +
+            'the registry rather than linted.',
+        ),
         filename: z
           .string()
           .optional()
@@ -518,7 +524,9 @@ export function createServer(context: ToolContext): McpServer {
         'Writes nothing. It needs Playwright’s Chromium and says how to install it when it ' +
         'is missing.',
       inputSchema: {
-        spec: z.string().describe('A web screen spec as JSON text: what `validate` accepts.'),
+        spec: SPEC.describe(
+          'A web screen spec, as an object or as JSON text: what `validate` accepts.',
+        ),
         system: z
           .string()
           .describe('A shipped system, as `get_theme_axes` lists them: `plain`, `journal`, …'),
@@ -600,7 +608,9 @@ export function createServer(context: ToolContext): McpServer {
         'itself an emitted screen, hand edits to it included; state and handlers belong in a ' +
         'container that renders it, or in the app’s store for a native screen.',
       inputSchema: {
-        spec: z.string().describe('A screen spec as JSON text — the argument `validate` takes.'),
+        spec: SPEC.describe(
+          'A screen spec, as an object or as JSON text — the argument `validate` takes.',
+        ),
         path: z
           .string()
           .describe(

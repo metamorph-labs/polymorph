@@ -4,6 +4,7 @@ import { validateSpec, type ScreenSpec, type SpecFault } from '@polymorph/spec'
 import type { Browser, BrowserContext, Page } from 'playwright'
 
 import type { ToolContext } from './tools'
+import { submittedDocument, type SubmittedSpec } from './submitted'
 
 /**
  * `render_screen`: a screen spec drawn in a real browser, as pictures and as measured faults.
@@ -64,8 +65,8 @@ const WINDOWS: Record<Viewport, { width: number; height: number; deviceScaleFact
 const PICTURED_WINDOWS = 3
 
 export interface RenderScreenArgs {
-  /** A screen spec as JSON text: what `validate` accepts. */
-  spec: string
+  /** A screen spec, the document or its JSON text: what `validate` accepts. */
+  spec: SubmittedSpec
   /** A shipped system. */
   system: string
   /** A shipped palette. The system's own when omitted. */
@@ -467,14 +468,9 @@ export async function renderScreen(
   context: ToolContext,
   args: RenderScreenArgs,
 ): Promise<RenderedScreen> {
-  let document: unknown
-  try {
-    document = JSON.parse(args.spec)
-  } catch (error) {
-    return refused(
-      `the spec is not JSON: ${error instanceof Error ? error.message : String(error)}`,
-    )
-  }
+  const read = submittedDocument(args.spec)
+  if ('fatal' in read) return refused(read.fatal)
+  const { document } = read
 
   const platform = (document as { platform?: unknown } | null)?.platform
   if (platform === 'ios' || platform === 'android') {

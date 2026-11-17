@@ -28,6 +28,8 @@ import {
 } from '@polymorph/registry'
 import { readNativePackage, validateSpec, type SpecFault } from '@polymorph/spec'
 
+import { submittedDocument, type SubmittedSpec } from './submitted'
+
 import { withClimb, type Rung, type Violation } from './violations'
 import { codeFrameworkIn, installFrameworkOf, vocabularyFor } from './write'
 
@@ -123,6 +125,7 @@ export type {
  */
 export { IGNORED, PROJECTIONS, proposeTheme, vocabulary } from './propose'
 export type { Move, Projection, ProposeAnswer, ProposeArgs, RationaleEntry } from './propose'
+export type { SubmittedSpec } from './submitted'
 
 /* -------------------------------------------------------------------------- */
 /* render_screen                                                              */
@@ -443,10 +446,10 @@ export interface ValidateArgs {
   /** TSX or CSS. Omitted when a `spec` is submitted instead. */
   code?: string
   /**
-   * A screen spec, as JSON text. The tool checks submitted code **or** a spec. A
-   * spec is checked against `@polymorph/spec`'s format.
+   * A screen spec: the document, or its JSON text. The tool checks submitted
+   * code **or** a spec. A spec is checked against `@polymorph/spec`'s format.
    */
-  spec?: string
+  spec?: SubmittedSpec
   /**
    * The path to lint the code as. Several rules depend on location, so a
    * fragment linted without a path would escape them. A `.css` name also routes
@@ -555,19 +558,12 @@ export async function validate(context: ToolContext, args: ValidateArgs): Promis
  */
 async function validateSubmittedSpec(
   context: ToolContext,
-  submitted: string,
+  submitted: SubmittedSpec,
   asked: Framework | undefined,
 ): Promise<ValidateAnswer> {
-  let document: unknown
-  try {
-    document = JSON.parse(submitted)
-  } catch (error) {
-    return {
-      ok: false,
-      kind: 'spec',
-      fatal: `the spec is not JSON: ${error instanceof Error ? error.message : String(error)}`,
-    }
-  }
+  const read = submittedDocument(submitted)
+  if ('fatal' in read) return { ok: false, kind: 'spec', fatal: read.fatal }
+  const { document } = read
 
   const platform = (document as { platform?: unknown } | null)?.platform
   const native =

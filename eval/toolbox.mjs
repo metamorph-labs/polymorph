@@ -158,8 +158,8 @@ export async function loadToolbox({ registry: built } = {}) {
       case 'validate': {
         const field = mode === 'spec' ? 'spec' : 'code'
         const submitted = input[field]
-        // A model sometimes sends the document as an object, not as its text.
-        // That is a transport slip, not a design mistake, so it is accepted.
+        // The document is taken as an object or as its text, as the MCP
+        // server's `validate` takes it.
         const usable =
           typeof submitted === 'string' ||
           (mode === 'spec' && typeof submitted === 'object' && submitted !== null)
@@ -195,7 +195,10 @@ export async function loadToolbox({ registry: built } = {}) {
   }
 }
 
-const CONTRACT_FIELD = { spec: 'the document as JSON text', tsx: 'the module source' }
+const CONTRACT_FIELD = {
+  spec: 'the document, as an object or as JSON text',
+  tsx: 'the module source',
+}
 
 const json = (value) => JSON.stringify(value, null, 2)
 
@@ -249,7 +252,12 @@ function toolDefinitions(mode, tiers, platforms) {
             'then its emitted TSX against the red rules. Returns `ok`, every fault with its path, ' +
             'and every violation with the exception-ladder rungs that answer it.',
           input_schema: object(
-            { spec: { type: 'string', description: 'The whole document, as JSON text.' } },
+            {
+              spec: {
+                anyOf: [{ type: 'object' }, { type: 'string' }],
+                description: 'The whole document: the object itself, or its JSON text.',
+              },
+            },
             ['spec'],
           ),
         }
