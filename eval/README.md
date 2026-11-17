@@ -13,7 +13,7 @@ A rate from a few runs is known only loosely, so each one is printed with its 95
 rates that many runs are consistent with. Each results file’s section says which rates a
 second eval of the same size could measure without the two being told apart.
 
-**The number:** `claude-sonnet-5-5`, spec mode, high effort, through the Messages API, 1.0.15 (c205254) — 88% lawful on the first `validate` call (74% to 95%), 100% lawful at the end (91% to 100%), 98% meeting their brief (87% to 100%), 98% lawful and meeting their brief (87% to 100%), 1.1 `validate` calls to lawful, 208,167 input and 6,047 output tokens and 40.9 s per run ([2026-11-17-claude-sonnet-5-5-spec-2.json](results/2026-11-17-claude-sonnet-5-5-spec-2.json)). Each range is the 95% interval its 40 runs support.
+**The number:** `claude-sonnet-5-5`, spec mode, high effort, through the Messages API, 1.0.15 (fa7c0a9) — 98% lawful on the first `validate` call (87% to 100%), 100% lawful at the end (91% to 100%), 98% meeting their brief (87% to 100%), 98% lawful and meeting their brief (87% to 100%), 1.0 `validate` calls to lawful, 215,265 input and 6,515 output tokens and 42.3 s per run ([2026-11-17-claude-sonnet-5-5-spec-3.json](results/2026-11-17-claude-sonnet-5-5-spec-3.json)). Each range is the 95% interval its 40 runs support.
 
 **The number:** `claude-sonnet-5-5`, spec mode, high effort, through Claude Code 2.1.308, 1.0.1 (ebb2206) — 75% lawful on the first `validate` call (41% to 93%), 100% lawful at the end (68% to 100%), 1.3 `validate` calls to lawful, 174,950 input and 6,150 output tokens and 40.9 s per run ([2026-10-24-claude-sonnet-5-5-spec-cli.json](results/2026-10-24-claude-sonnet-5-5-spec-cli.json)). Each range is the 95% interval its 8 runs support. Its screens were not judged against their briefs.
 
@@ -21,11 +21,49 @@ second eval of the same size could measure without the two being told apart.
 
 | Results | Version | Runner | Effort | Briefs × runs | First shot lawful | Lawful | Meets brief | Lawful and meets brief | Calls to lawful | Lawful without validate | Input tokens | Output tokens | Wall time | Retries | Endings |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| [2026-11-17-claude-sonnet-5-5-spec-3.json](results/2026-11-17-claude-sonnet-5-5-spec-3.json) | 1.0.15 (fa7c0a9) | API | high | 8 × 5 | 98% (87–100%) | 100% (91–100%) | 98% (87–100%) | 98% (87–100%) | 1.0 | 0 | 215,265 | 6,515 | 42.3 s | 0 | 40 answered |
 | [2026-11-17-claude-sonnet-5-5-spec-2.json](results/2026-11-17-claude-sonnet-5-5-spec-2.json) | 1.0.15 (c205254) | API | high | 8 × 5 | 88% (74–95%) | 100% (91–100%) | 98% (87–100%) | 98% (87–100%) | 1.1 | 0 | 208,167 | 6,047 | 40.9 s | 0 | 40 answered |
 | [2026-11-17-claude-sonnet-5-5-spec.json](results/2026-11-17-claude-sonnet-5-5-spec.json) | 1.0.15 (fca1d1c) | API | high | 8 × 5 | 73% (57–84%) | 100% (91–100%) | 95% (83–99%) | 95% (83–99%) | 1.3 | 0 | 225,498 | 6,333 | 42.8 s | 0 | 40 answered |
 | [2026-11-16-claude-sonnet-5-5-spec-2.json](results/2026-11-16-claude-sonnet-5-5-spec-2.json) | 1.0.14 (57db696) | API | high | 8 × 1 | 63% (31–86%) | 100% (68–100%) | 100% (68–100%) | 100% (68–100%) | 1.4 | 0 | 245,829 | 6,642 | 44.9 s | 0 | 8 answered |
 | [2026-11-16-claude-sonnet-5-5-spec.json](results/2026-11-16-claude-sonnet-5-5-spec.json) | 1.0.14 (7c3703a) | API | high | 8 × 1 | 63% (31–86%) | 100% (68–100%) | 75% (41–93%) | 75% (41–93%) | 1.4 | 0 | 221,215 | 6,348 | 42.7 s | 0 | 8 answered |
 | [2026-10-24-claude-sonnet-5-5-spec-cli.json](results/2026-10-24-claude-sonnet-5-5-spec-cli.json) | 1.0.1 (ebb2206) | CLI 2.1.308 | high | 8 × 1 | 75% (41–93%) | 100% (68–100%) | — | — | 1.3 | 0 | 174,950 | 6,150 | 40.9 s | 0 | 8 answered |
+
+### 2026-11-17-claude-sonnet-5-5-spec-3.json
+
+40 runs cannot tell this eval from a second one of the same size that measures:
+
+- first shot lawful: anything from 85% to 100% (98% here)
+- lawful: anything from 90% to 100% (100% here)
+- meets brief: anything from 85% to 100% (98% here)
+- lawful and meets brief: anything from 85% to 100% (98% here)
+
+Against the run before it ([2026-11-17-claude-sonnet-5-5-spec-2.json](results/2026-11-17-claude-sonnet-5-5-spec-2.json)), with 40 runs and 40 runs:
+
+- first shot lawful: 98% against 88%, not told apart
+- lawful: 100% against 100%, not told apart
+- meets brief: 98% against 98%, not told apart
+- lawful and meets brief: 98% against 98%, not told apart
+
+| Brief | Runs | First shot lawful | Lawful | Meets brief | Lawful and meets brief | Requirements not met |
+| --- | --- | --- | --- | --- | --- | --- |
+| auth-sign-in-up | 5 | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | — |
+| chat-assistant | 5 | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | — |
+| dashboard-usage | 5 | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | — |
+| detail-order | 5 | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | — |
+| form-booking | 5 | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | — |
+| list-incidents | 5 | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | — |
+| onboarding-steps | 5 | 4 of 5 (38–96%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | — |
+| settings-workspace | 5 | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 4 of 5 (38–96%) | 4 of 5 (38–96%) | `name-field` 1 |
+
+With 5 runs a brief, two briefs are told apart only when their counts differ by 3 runs or more.
+
+Requirements a screen did not meet, most often missed first:
+
+- `settings-workspace/name-field`, 1 of 5 runs: The workspace name can be edited.
+
+First-shot misses in 2026-11-17-claude-sonnet-5-5-spec-3.json, in the validator’s words:
+
+- `onboarding-steps` #3: `cardFooter` is not in the schema — the fields here are `component`, `props`, `children` and `exception`
 
 ### 2026-11-17-claude-sonnet-5-5-spec-2.json
 
