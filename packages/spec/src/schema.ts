@@ -163,7 +163,12 @@ const ELEMENT = obj(
     children: arr(ref('Value')),
     exception: ref('Exception'),
   },
-  { optional: ['props', 'children', 'exception'] },
+  {
+    optional: ['props', 'children', 'exception'],
+    description:
+      'A member or a compound part, with its props and its children. An element has no field ' +
+      'for a note or a comment: a remark for a reader goes in `purpose` or in an input’s `doc`.',
+  },
 )
 
 /* -------------------------------------------------------------------------- */
@@ -209,26 +214,28 @@ export const SCREEN_SHAPE: Shape = defs(
           'The platform the screen is for; `web` when absent. A member the registry marks absent ' +
           'on it is a fault that names the substitute.',
       }),
-      // `root` comes before `inputs` and `types`, and the published schema lists
-      // them in this order. An author who writes the document from top to bottom
-      // then declares each input with the tree's bindings already written, and
-      // names each type with the inputs already written. In the other order an
-      // input the tree turns out to need, such as a function a member requires,
-      // is bound and never declared. A document's own key order is free.
-      root: ref('Element'),
+      types: rec(arr(str()), {
+        description:
+          'Module -> the type names the inputs mention. A screen is handed its own domain’s types ' +
+          '(`Ticket`) and some of the vocabulary’s (`DataTableColumn`), and neither can be derived ' +
+          'from the tree — the emitter writes `import type` lines from this and `tsc` checks them. ' +
+          'Each key is a module specifier and each name an identifier. There is no default or ' +
+          'namespace import: a type is imported by its own name and an input writes it bare, ' +
+          '`ReactNode` from `react` and not `React.ReactNode`.',
+      }),
       inputs: arr(INPUT, {
         description:
           'What the screen is handed: data and callbacks. Everything a binding can name, and the ' +
           'only way behaviour enters a spec. Every binding in `root` names one of these, a ' +
           'function a member requires included.',
       }),
-      types: rec(arr(str()), {
-        description:
-          'Module -> the type names the inputs mention. A screen is handed its own domain’s types ' +
-          '(`Ticket`) and some of the vocabulary’s (`DataTableColumn`), and neither can be derived ' +
-          'from the tree — the emitter writes `import type` lines from this and `tsc` checks them. ' +
-          'Each key is a module specifier and each name an identifier.',
-      }),
+      // `root` is last, after the inputs it binds. Written first, the tree would
+      // let an author declare each input with every binding already in view. But
+      // a model that writes it first must close the tree's brackets exactly, in
+      // the middle of the document, and it writes JSON that does not parse far
+      // more often: the agent eval measures this. Written last, the tree is
+      // closed by closing everything. A document's own key order is free.
+      root: ref('Element'),
     },
     { optional: ['platform', 'types'] },
   ),

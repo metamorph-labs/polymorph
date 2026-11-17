@@ -919,7 +919,7 @@ What goes wrong is kept apart from what the model did:
   output counts.
 - **A tool that throws** answers the model with an error result carrying the message, and the run
   goes on. In the API runner, a tool input that is not a JSON object is never run: the call is
-  answered as an `INVALID_JSON` error holding the raw text, and the model's turn goes back with an
+  answered as an `INVALID_JSON` error holding the raw text and the parser's reason, and the model's turn goes back with an
   empty input for that call, because the API refuses any other kind. Where the call was
   `validate`, it counts as a submission that is not lawful, as a document that is not JSON does
   when it is submitted as text. The CLI reads tool inputs itself.

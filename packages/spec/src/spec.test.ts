@@ -94,7 +94,7 @@ describe('a document of the wrong shape is told what its author wrote', () => {
         path: '$.notes',
         message:
           '`notes` is not in the schema — the fields here are `spec`, `name`, `purpose`, ' +
-          '`platform`, `root`, `inputs` and `types`',
+          '`platform`, `types`, `inputs` and `root`',
       },
     ])
     expect(
@@ -141,22 +141,34 @@ describe('a document of the wrong shape is told what its author wrote', () => {
     ])
   })
 
-  it('lists `root` before the inputs it binds and the types they mention', () => {
-    // An author who writes the document from top to bottom then declares each input with the
-    // tree's bindings already written. A document's own key order stays free.
+  it('lists `root` last, and reads a document in any key order', () => {
+    // A tree written last is closed by closing everything. Written before `inputs`, its
+    // brackets must be closed exactly in the middle of the document.
     const schema = jsonSchema(SCREEN_SHAPE) as { properties: Record<string, unknown> }
-    expect(Object.keys(schema.properties)).toEqual([
-      'spec',
-      'name',
-      'purpose',
-      'platform',
-      'root',
-      'inputs',
-      'types',
-    ])
+    expect(Object.keys(schema.properties).at(-1)).toBe('root')
     const { inputs, root, ...rest } = base()
     expect(validateSpec(registry, { ...rest, root, inputs })).toEqual({ ok: true, faults: [] })
     expect(validateSpec(registry, { inputs, root, ...rest })).toEqual({ ok: true, faults: [] })
+  })
+
+  it('says how a type is imported, where `types` holds a default or a namespace import', () => {
+    for (const entry of ['default as React', '* as React']) {
+      expect(faults((spec) => (spec['types'] = { react: [entry] }))).toEqual([
+        {
+          path: '$.types.react[0]',
+          message:
+            `\`${entry}\` is not a type name — an import names identifiers. A spec has no ` +
+            'default or namespace import: name the type itself (`ReactNode`), and write it in ' +
+            'the input’s type without the namespace (`ReactNode`, not `React.ReactNode`)',
+        },
+      ])
+    }
+    expect(faults((spec) => (spec['types'] = { './types': ['Ticket[]'] }))).toEqual([
+      {
+        path: '$.types../types[0]',
+        message: '`Ticket[]` is not a type name — an import names identifiers',
+      },
+    ])
   })
 })
 

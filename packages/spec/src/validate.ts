@@ -496,6 +496,11 @@ const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/
 /** A module specifier, as it sits between the quotes of an import. */
 const MODULE = /^[^\s'"`\\]+$/
 
+/** What a `types` entry written as a default or a namespace import is told. */
+const NO_NAMESPACE =
+  'A spec has no default or namespace import: name the type itself (`ReactNode`), and write ' +
+  'it in the input’s type without the namespace (`ReactNode`, not `React.ReactNode`)'
+
 /**
  * The `types` block, checked as the import lines it becomes.
  *
@@ -518,7 +523,9 @@ function checkTypeImports(spec: ScreenSpec, faults: SpecFault[]): void {
       if (IDENTIFIER.test(name) && !RESERVED.has(name)) return
       faults.push({
         path: `$.types.${abbreviated(module)}[${index}]`,
-        message: `\`${abbreviated(name)}\` is not a type name — an import names identifiers`,
+        message:
+          `\`${abbreviated(name)}\` is not a type name — an import names identifiers` +
+          (/\bas\b|\*/.test(name) ? `. ${NO_NAMESPACE}` : ''),
       })
     })
   }

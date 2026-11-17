@@ -1139,7 +1139,9 @@ describe('the Messages API path, against a local server', () => {
         {
           type: 'tool_result',
           tool_use_id: 'toolu_bad',
-          content: JSON.stringify({ INVALID_JSON: UNPARSEABLE }),
+          content: expect.stringMatching(
+            /^\{"INVALID_JSON":"\{\\"name\\": \\"Settings","why":".+"\}$/,
+          ),
           is_error: true,
         },
         // A repeated card call is answered from the run's own copy, and still counted.
@@ -1198,7 +1200,10 @@ describe('runs that must not count for the model', () => {
       misses: [
         {
           call: 1,
-          fatal: 'the input of the `validate` call is not a JSON object',
+          // The parser's own words follow, with where the text stopped being JSON.
+          fatal: expect.stringMatching(
+            /^the input of the `validate` call is not a JSON object: .+, in 39 characters$/,
+          ),
           faults: [],
           violations: [],
         },

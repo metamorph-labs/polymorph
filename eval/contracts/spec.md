@@ -9,8 +9,16 @@ that renders the screen, as declared inputs.
 
 - `spec` is `"polymorph-screen/1"`. `name` is the PascalCase component the emitter writes.
   `purpose` is one sentence.
+- `inputs` lists what the screen is handed, as `{ "name", "type", "doc"? }`. `type` is one
+  TypeScript type, written into the emitted props interface verbatim. Every binding in `root`
+  names one of these, a function a member requires included.
+- `types` (optional) maps a module to the type names the inputs mention: the vocabulary's own
+  from `@polymorph/react-ui`, and the screen's domain types from a module of your choosing. A
+  type is imported by its own name and an input writes it bare: `ReactNode` from `react`, not
+  `React.ReactNode`.
 - `root` is an element: `{ "component", "props"?, "children"? }`. `component` is a member or a
-  compound part (`Member.Part`).
+  compound part (`Member.Part`). An element has no field for a note: a remark for a reader goes
+  in `purpose` or in an input's `doc`.
 - A value (a prop value or a child) is a string, a number, a boolean, `null`, an element, a list
   of values, a binding `{ "$": "inputName" }`, or a structured object `{ "$object": { … } }`. A
   binding names a declared input, or a dotted path into one, and is never an expression.
@@ -19,13 +27,6 @@ that renders the screen, as declared inputs.
   on a member that draws nothing when it is given nothing: an `Alert` with no title and no
   content, an `ErrorSummary` with an empty `errors`. It is not an element the container builds
   and hands in as an input, because the screen would then hold no member in that place.
-- `inputs` lists what the screen is handed, as `{ "name", "type", "doc"? }`. `type` is one
-  TypeScript type, written into the emitted props interface verbatim. Every binding in `root`
-  names one of these, a function a member requires included.
-- `types` (optional) maps a module to the type names the inputs mention: the vocabulary's own
-  from `@polymorph/react-ui`, and the screen's domain types from a module of your choosing.
-- The fields may come in any order. Written as the schema lists them, with `root` before `inputs`
-  and `types`, each input is declared with the tree's bindings already written.
 
 `validate` takes the document in `spec`, as the object itself or as its JSON text. It checks the document against the
 registry, emits it as TSX, runs the red rules over that TSX, and returns every fault with its

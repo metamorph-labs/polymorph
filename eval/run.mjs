@@ -345,7 +345,7 @@ async function backoff(attempt, retryAfter, reason) {
  * signatures, because they go back to the model unchanged on the next turn.
  *
  * A tool input that is not a JSON object is kept as the text the model wrote
- * in `unparsed`, under the call's id, and the call's `input` is an empty
+ * in `unparsed`, under the call's id and with the reason, and the call's `input` is an empty
  * object: the API refuses an assistant turn whose call has any other kind of
  * input. The run answers that call with an `INVALID_JSON` error holding the
  * text. A
@@ -394,11 +394,9 @@ async function readEvents(body, message) {
         if (partial.has(event.index)) {
           const block = message.content[event.index]
           const raw = partial.get(event.index)
-          block.input = inputOf(raw)
-          if (block.input === null) {
-            block.input = {}
-            message.unparsed.set(block.id, raw)
-          }
+          const read = inputOf(raw)
+          block.input = read.input ?? {}
+          if (read.input === undefined) message.unparsed.set(block.id, { raw, why: read.why })
         }
         break
       case 'message_delta':
@@ -619,15 +617,19 @@ function countCall(tally, name) {
   if (Object.hasOwn(tally.toolCalls, name)) tally.toolCalls[name] += 1
 }
 
-/** A call's input from the text the model streamed: null when it is not a JSON object. */
+/** A call's input from the text the model streamed, or why that text is not a JSON object. */
 function inputOf(raw) {
-  if (raw === '') return {}
+  if (raw === '') return { input: {} }
+  let parsed
   try {
-    const parsed = JSON.parse(raw)
-    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) ? parsed : null
-  } catch {
-    return null
+    parsed = JSON.parse(raw)
+  } catch (error) {
+    return { why: error instanceof Error ? error.message : String(error) }
   }
+  if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+    return { input: parsed }
+  }
+  return { why: 'it is JSON, and not an object' }
 }
 
 function countVerdict(tally, verdict, submitted) {
@@ -792,12 +794,13 @@ const UNPARSED_CALL = 'the input of the `validate` call is not a JSON object'
  * lawful, as a document that is not JSON is when it arrives as text.
  */
 async function answerCall(toolbox, mode, block, unparsed, memo, brief, run) {
-  const raw = unparsed?.get(block.id)
-  if (raw !== undefined) {
-    const answer = { content: JSON.stringify({ INVALID_JSON: raw }), isError: true }
+  const kept = unparsed?.get(block.id)
+  if (kept !== undefined) {
+    const { raw, why } = kept
+    const answer = { content: JSON.stringify({ INVALID_JSON: raw, why }), isError: true }
     if (block.name !== 'validate') return answer
-    const verdict = { ok: false, faults: [], violations: [], fatal: UNPARSED_CALL }
-    return { ...answer, verdict, submitted: raw }
+    const fatal = `${UNPARSED_CALL}: ${why}, in ${raw.length} characters`
+    return { ...answer, verdict: { ok: false, faults: [], violations: [], fatal }, submitted: raw }
   }
   const outcome = await callTool(toolbox, mode, block, memo)
   if (outcome.failed !== undefined) {

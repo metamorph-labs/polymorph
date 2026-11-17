@@ -3,7 +3,7 @@
 '@polymorph/registry': patch
 ---
 
-**A screen spec's shape faults say what was written, and its schema lists `root` first.**
+**A screen spec's shape faults say what was written.**
 
 - A key the format does not have is reported with the fields the object does have:
   `` `optional` is not in the schema — the fields here are `name`, `type` and `doc` ``. The fault
@@ -13,7 +13,8 @@
   object`.
 - A plain object where a value goes is reported once, with the three forms an object may take and
   how a plain one is written (`{ "$object": { … } }`).
-- The published schema, the docs and the `inputs` description list `root` before `inputs` and
-  `types`. A document's own key order stays free. An author who writes one from top to bottom now
-  declares each input with the tree's bindings already written, where an input the tree turned
-  out to need was bound and never declared.
+- A `types` entry written as a default or a namespace import (`default as React`) is told that a
+  type is imported by its own name and written bare in the input's type.
+- The schema's descriptions say that every binding names a declared input, a function a member
+  requires included, that `types` has no default or namespace import, and that an element has no
+  field for a note.

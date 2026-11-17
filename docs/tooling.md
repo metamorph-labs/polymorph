@@ -843,6 +843,10 @@ The schema is `packages/spec/src/schema.ts`.
   "spec": "polymorph-screen/1",
   "name": "KeysView",
   "purpose": "The API keys an integration uses, with a way to make another.",
+  "inputs": [
+    { "name": "count", "type": "string", "doc": "How many keys exist, already formatted." },
+    { "name": "onCreate", "type": "() => void" }
+  ],
   "root": {
     "component": "Stack",
     "props": { "gap": 5 },
@@ -854,11 +858,7 @@ The schema is `packages/spec/src/schema.ts`.
         "props": { "variant": "solid", "tone": "accent", "label": "Create key", "onClick": { "$": "onCreate" } }
       }
     ]
-  },
-  "inputs": [
-    { "name": "count", "type": "string", "doc": "How many keys exist, already formatted." },
-    { "name": "onCreate", "type": "() => void" }
-  ]
+  }
 }
 ```
 
@@ -868,13 +868,14 @@ The schema is `packages/spec/src/schema.ts`.
 | `name` | PascalCase — the component the emitter writes. For a native screen, the name without a trailing `View` or `Screen` names the model, the actions and the view (`InboxView` gives `InboxModel`, `InboxActions` and `InboxView` or `InboxScreen`) |
 | `purpose` | One sentence; becomes the emitted file's doc comment |
 | `platform` | Optional. `web`, `ios` or `android`; `web` when absent. A member absent on that platform is a fault that names its substitute. A screen for `ios` or `android` is also held to the native screen contract and emits SwiftUI or Jetpack Compose (below) |
-| `root` | An element |
+| `types` | Optional. Module → type names the inputs mention, emitted as `import type` lines in TSX. A native screen maps them by the contract's type table instead: a vocabulary type is the member package's `PM` type, and a relative module's type is the app's own. There is no default or namespace import: a type is imported by its own name and an input writes it bare (`ReactNode`, not `React.ReactNode`) |
 | `inputs` | What the screen is handed: `{ name, type, doc? }`. `type` is one TypeScript type, written verbatim into the props interface. Every binding in `root` names one of these, a function a member requires included |
-| `types` | Optional. Module → type names the inputs mention, emitted as `import type` lines in TSX. A native screen maps them by the contract's type table instead: a vocabulary type is the member package's `PM` type, and a relative module's type is the app's own |
+| `root` | An element |
 
-The fields may come in any order. The schema lists `root` before `inputs` and `types`, and an
-author who writes a document from top to bottom keeps that order: each input is then declared
-with the tree's bindings already written, and each type is named with the inputs already written.
+The fields may come in any order. The schema lists `root` last: a tree written last is closed by
+closing every bracket, and one written before `inputs` has to be closed exactly in the middle of
+the document. An element has no field for a note. A remark for a reader goes in `purpose` or in
+an input's `doc`.
 
 An **element** is `{ component, props?, children?, exception? }`. `component` is a member or a
 compound part (`SettingsRow.Group`, `Dashboard.Panel`): any part the system card lists for the
