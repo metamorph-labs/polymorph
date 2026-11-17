@@ -18,11 +18,13 @@
  * Inside this repository the packages keep their `@polymorph/*` names, which
  * every import, test and doc uses. GitHub Packages requires a package's scope to
  * be the owner of the repository, so the names change only at the registry.
- * A dependency or peer dependency on another of these packages is published as
- * an `npm:` alias: `@metamorph-labs/polymorph-react` depends on
+ * A dependency on another of these packages is published as an `npm:` alias:
+ * `@metamorph-labs/polymorph-react` depends on
  * `"@polymorph/engine": "npm:@metamorph-labs/polymorph-engine@^<version>"`, and a
  * consumer installs each package under its `@polymorph/*` alias, so no import
- * changes. `docs/consuming.md` has the consumer's side.
+ * changes. A peer dependency on one is published as a range under the
+ * workspace name (`published-ranges.mjs` has both forms and the reason).
+ * `docs/consuming.md` has the consumer's side.
  *
  * Every package is published at one version, the release's, and the script
  * ends by printing the tag for it (`releaseVersion`).
@@ -61,6 +63,7 @@ import { fileURLToPath } from 'node:url'
 
 import { createJiti } from 'jiti'
 
+import { publishedRanges, rangeFaults } from './published-ranges.mjs'
 import { publishedSideEffects } from './published-side-effects.mjs'
 
 const ROOT = resolve(fileURLToPath(import.meta.url), '../..')
@@ -140,15 +143,6 @@ function fail(message) {
   process.exit(1)
 }
 
-/**
- * The registry spelling of a range on another published package. `pnpm pack`
- * has already turned `workspace:*` into the exact version and `workspace:^` into
- * a caret range, and the alias takes a caret range either way.
- */
-function alias(registryName, range) {
-  return `npm:${registryName}@^${range.replace(/^\^/, '')}`
-}
-
 /** Rewrites the packed manifest, unpacked in `directory`, for the registry. */
 function rewrite(manifest, { name, dir, bundled }, directory) {
   const published = { ...manifest, name }
@@ -156,19 +150,7 @@ function rewrite(manifest, { name, dir, bundled }, directory) {
   delete published.devDependencies
   delete published.scripts
 
-  const dependencies = { ...published.dependencies }
-  for (const dependency of bundled) delete dependencies[dependency]
-  const peerDependencies = { ...published.peerDependencies }
-  for (const [workspaceName, registryName] of Object.entries(PUBLISHED)) {
-    if (dependencies[workspaceName]) {
-      dependencies[workspaceName] = alias(registryName, dependencies[workspaceName])
-    }
-    if (peerDependencies[workspaceName]) {
-      peerDependencies[workspaceName] = alias(registryName, peerDependencies[workspaceName])
-    }
-  }
-  published.dependencies = dependencies
-  if (published.peerDependencies) published.peerDependencies = peerDependencies
+  Object.assign(published, publishedRanges(published, PUBLISHED, bundled))
   // `sideEffects` names source files for the workspace; the package ships their
   // built counterparts, or none (`published-side-effects.mjs`).
   if (Array.isArray(published.sideEffects)) {
@@ -181,14 +163,7 @@ function rewrite(manifest, { name, dir, bundled }, directory) {
 
 /** Fails on what a consumer's resolver would reject, before the upload rather than after. */
 function check(directory, manifest, { build = true } = {}) {
-  const text = JSON.stringify(manifest)
-  if (text.includes('workspace:')) fail(`${manifest.name} still has a workspace: range`)
-  const ranges = { ...manifest.dependencies, ...manifest.peerDependencies }
-  for (const [dependency, range] of Object.entries(ranges)) {
-    if (dependency.startsWith('@polymorph/') && !range.startsWith('npm:')) {
-      fail(`${manifest.name} depends on unpublished ${dependency}`)
-    }
-  }
+  for (const fault of rangeFaults(manifest)) fail(fault)
   const targets = []
   const walk = (value) => {
     if (typeof value === 'string') targets.push(value)

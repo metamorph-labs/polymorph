@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import { describe, expect, it } from 'vitest'
 
@@ -39,6 +40,26 @@ interface Manifest {
   name: string
   version: string
   publishConfig?: unknown
+  peerDependencies?: Record<string, string>
+}
+
+/** What a manifest holds of its ranges on other packages. */
+interface Ranged {
+  name: string
+  dependencies?: Record<string, string>
+  peerDependencies?: Record<string, string>
+}
+
+/** `scripts/published-ranges.mjs`, the publish step's rewrite of a manifest's ranges. */
+const { publishedRanges, rangeFaults } = (await import(
+  /* @vite-ignore */ pathToFileURL(resolve(ROOT, 'scripts/published-ranges.mjs')).href
+)) as {
+  publishedRanges: (
+    manifest: Ranged,
+    published: Record<string, string>,
+    bundled?: string[],
+  ) => Pick<Ranged, 'dependencies' | 'peerDependencies'>
+  rangeFaults: (manifest: Ranged) => string[]
 }
 
 const manifestOf = (directory: string): Manifest =>
@@ -121,6 +142,66 @@ describe('the published packages', () => {
     const script = readFileSync(resolve(ROOT, 'scripts/publish-packages.mjs'), 'utf8')
     expect(script).toContain('PUBLISHED_NAMES')
     for (const name of Object.values(PUBLISHED_NAMES)) expect(script).not.toContain(`'${name}'`)
+  })
+})
+
+describe('the ranges a package publishes on the others', () => {
+  const published = { '@polymorph/engine': '@metamorph-labs/polymorph-engine' }
+  const packed = {
+    name: '@metamorph-labs/polymorph-rules',
+    dependencies: { '@polymorph/engine': '1.2.3', '@zag-js/core': '^1.0.0', picomatch: '^4.0.0' },
+    peerDependencies: { '@polymorph/engine': '1.2.3', eslint: '>=9' },
+  }
+
+  it('gives a dependency its registry name, so the package manager can install it', () => {
+    expect(publishedRanges(packed, published, ['@zag-js/core']).dependencies).toEqual({
+      '@polymorph/engine': 'npm:@metamorph-labs/polymorph-engine@^1.2.3',
+      picomatch: '^4.0.0',
+    })
+  })
+
+  it('gives a peer a range under the name the consumer installs it by', () => {
+    // pnpm compares a peer's range as written with the version installed under
+    // that name. An alias there is an unmet peer whatever is installed.
+    expect(publishedRanges(packed, published).peerDependencies).toEqual({
+      '@polymorph/engine': '^1.2.3',
+      eslint: '>=9',
+    })
+    expect(publishedRanges({ name: 'x', dependencies: {} }, published)).toEqual({
+      dependencies: {},
+    })
+  })
+
+  it('refuses a manifest a consumer’s resolver would reject', () => {
+    const manifest = { ...packed, ...publishedRanges(packed, published) }
+    expect(rangeFaults(manifest)).toEqual([])
+    expect(rangeFaults(packed)).toEqual([
+      '@metamorph-labs/polymorph-rules depends on unpublished @polymorph/engine',
+      '@metamorph-labs/polymorph-rules has the peer @polymorph/engine at "1.2.3", which is not a version range',
+    ])
+    expect(
+      rangeFaults({
+        ...manifest,
+        peerDependencies: { '@polymorph/engine': 'npm:@metamorph-labs/polymorph-engine@^1.2.3' },
+      }),
+    ).toEqual([
+      '@metamorph-labs/polymorph-rules has the peer @polymorph/engine at ' +
+        '"npm:@metamorph-labs/polymorph-engine@^1.2.3", which is not a version range',
+    ])
+    expect(rangeFaults({ name: 'x', dependencies: { y: 'workspace:*' } })).toEqual([
+      'x still has a workspace: range',
+    ])
+  })
+
+  it('has a workspace peer to rewrite, so the rule is not about nothing', () => {
+    const peers = [...workspace]
+      .filter(([name]) => name in PUBLISHED_NAMES)
+      .flatMap(([name, directory]) =>
+        Object.keys(manifestOf(directory).peerDependencies ?? {})
+          .filter((peer) => peer in PUBLISHED_NAMES)
+          .map((peer) => `${name} -> ${peer}`),
+      )
+    expect(peers).toContain('@polymorph/rules -> @polymorph/engine')
   })
 })
 
