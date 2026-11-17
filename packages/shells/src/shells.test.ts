@@ -67,11 +67,18 @@ let registry: Registry
 let generated: Map<string, string>
 let members: MemberShell[]
 
+/**
+ * How long one generation of every target may take. Alone it takes under half
+ * a minute. It formats every generated file, so beside the whole suite on a
+ * machine in a low power mode it has taken more than two minutes.
+ */
+const GENERATION_TIMEOUT = 300_000
+
 beforeAll(async () => {
   registry = buildRegistry(ROOT)
   members = await describedMembers(registry)
   generated = await generateShells(ROOT, registry, members)
-}, 120_000)
+}, GENERATION_TIMEOUT)
 
 describe('the generated shells are fresh', () => {
   it('match what `pnpm shells` writes, with nothing missing, stale or orphaned', () => {
@@ -80,7 +87,7 @@ describe('the generated shells are fresh', () => {
   })
 
   // Every target's files, formatted again: as long as the first generation, which `beforeAll` allows.
-  it('come out the same twice', { timeout: 120_000 }, async () => {
+  it('come out the same twice', { timeout: GENERATION_TIMEOUT }, async () => {
     const again = await generateShells(ROOT, registry)
     expect([...again.entries()]).toEqual([...generated.entries()])
   })
