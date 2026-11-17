@@ -344,14 +344,16 @@ async function backoff(attempt, retryAfter, reason) {
  * the non-streaming API would have returned. Thinking blocks keep their
  * signatures, because they go back to the model unchanged on the next turn.
  *
- * A tool input that is not JSON stays the raw text the model wrote, so the
- * assistant turn goes back exactly as it came, and its id is listed in
- * `unparsed`; the run answers that call with an `INVALID_JSON` error. A
+ * A tool input that is not a JSON object is kept as the text the model wrote
+ * in `unparsed`, under the call's id, and the call's `input` is an empty
+ * object: the API refuses an assistant turn whose call has any other kind of
+ * input. The run answers that call with an `INVALID_JSON` error holding the
+ * text. A
  * failure carries the `usage` reported so far, so the tokens of an attempt
  * that broke off are still counted.
  */
 async function readStream(body) {
-  const message = { content: [], stop_reason: null, usage: {}, unparsed: new Set() }
+  const message = { content: [], stop_reason: null, usage: {}, unparsed: new Map() }
   try {
     await readEvents(body, message)
   } catch (error) {
@@ -392,11 +394,10 @@ async function readEvents(body, message) {
         if (partial.has(event.index)) {
           const block = message.content[event.index]
           const raw = partial.get(event.index)
-          try {
-            block.input = raw === '' ? {} : JSON.parse(raw)
-          } catch {
-            block.input = raw
-            message.unparsed.add(block.id)
+          block.input = inputOf(raw)
+          if (block.input === null) {
+            block.input = {}
+            message.unparsed.set(block.id, raw)
           }
         }
         break
@@ -618,6 +619,17 @@ function countCall(tally, name) {
   if (Object.hasOwn(tally.toolCalls, name)) tally.toolCalls[name] += 1
 }
 
+/** A call's input from the text the model streamed: null when it is not a JSON object. */
+function inputOf(raw) {
+  if (raw === '') return {}
+  try {
+    const parsed = JSON.parse(raw)
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
 function countVerdict(tally, verdict, submitted) {
   tally.validations += 1
   tally.lastSubmitted = submitted
@@ -768,15 +780,24 @@ async function conclude({ brief, run, mode, toolbox, tally, meter, started, turn
   return { record, document }
 }
 
+/** What a `validate` call whose input was not a JSON object is recorded as. */
+const UNPARSED_CALL = 'the input of the `validate` call is not a JSON object'
+
 /**
  * The answer to one tool call. Whatever a tool throws goes back to the model
  * as an error result with the message, and the run goes on; only `validate`
  * failing inside its check ends the run, as a harness fault. An input that was
- * not JSON is never run: it goes back as the raw text, under `INVALID_JSON`.
+ * not a JSON object is never run: it goes back as the raw text, under
+ * `INVALID_JSON`. Where the call was `validate`, it is a submission that is not
+ * lawful, as a document that is not JSON is when it arrives as text.
  */
 async function answerCall(toolbox, mode, block, unparsed, memo, brief, run) {
-  if (unparsed?.has(block.id)) {
-    return { content: JSON.stringify({ INVALID_JSON: block.input }), isError: true }
+  const raw = unparsed?.get(block.id)
+  if (raw !== undefined) {
+    const answer = { content: JSON.stringify({ INVALID_JSON: raw }), isError: true }
+    if (block.name !== 'validate') return answer
+    const verdict = { ok: false, faults: [], violations: [], fatal: UNPARSED_CALL }
+    return { ...answer, verdict, submitted: raw }
   }
   const outcome = await callTool(toolbox, mode, block, memo)
   if (outcome.failed !== undefined) {

@@ -392,6 +392,30 @@ function localApi(replies: Reply[], captured: Captured[]): Server {
         headers: request.headers,
         body: JSON.parse(raw) as Captured['body'],
       })
+      // The Messages API refuses an assistant turn whose call has an input that is not an object.
+      const body = captured.at(-1)?.body
+      const refused = (body?.messages ?? []).findIndex(
+        (message) =>
+          Array.isArray(message.content) &&
+          (message.content as { type: string; input?: unknown }[]).some(
+            (block) =>
+              block.type === 'tool_use' &&
+              (typeof block.input !== 'object' || block.input === null),
+          ),
+      )
+      if (refused !== -1) {
+        response.writeHead(400, { 'content-type': 'application/json' })
+        response.end(
+          JSON.stringify({
+            type: 'error',
+            error: {
+              type: 'invalid_request_error',
+              message: `messages.${refused}: tool_use.input: Input should be an object`,
+            },
+          }),
+        )
+        return
+      }
       const reply = replies[captured.length - 1] ?? ''
       if (typeof reply !== 'string') {
         response.writeHead(reply.status, {
@@ -474,6 +498,27 @@ const FAULT_REPLIES: Reply[] = [
   stream([text(ANSWER)], 'refusal', { input: 1000, output: 100 }),
   stream([text(ANSWER)], 'end_turn', { input: 1000, output: 100 }),
   stream([text(CUT_SHORT)], 'max_tokens', { input: 1000, output: 100 }),
+]
+
+/**
+ * One run whose first `validate` call has an input that is not JSON, as a
+ * document written as the call's input is when the model slips in it. The
+ * second call is lawful.
+ */
+const UNPARSED_REPLIES: Reply[] = [
+  stream(
+    [rawToolUse('toolu_slip', 'validate', '{"spec": {"spec": "polymorph-screen/1",')],
+    'tool_use',
+    {
+      input: 1000,
+      output: 100,
+    },
+  ),
+  stream([toolUse('toolu_check', 'validate', { spec: LAWFUL })], 'tool_use', {
+    input: 1000,
+    output: 100,
+  }),
+  stream([text(ANSWER)], 'end_turn', { input: 1000, output: 100 }),
 ]
 
 /* -------------------------------------------------------------------------- */
@@ -628,6 +673,8 @@ const captured: Captured[] = []
 const server = localApi(API_REPLIES, captured)
 const faultsCaptured: Captured[] = []
 const faultsServer = localApi(FAULT_REPLIES, faultsCaptured)
+const unparsedCaptured: Captured[] = []
+const unparsedServer = localApi(UNPARSED_REPLIES, unparsedCaptured)
 const runs: Record<string, Evaluation> = {}
 const attempts: Record<string, Awaited<ReturnType<typeof attempt>>> = {}
 let resultsBefore: string[] = []
@@ -641,7 +688,11 @@ const listen = async (target: Server) => {
 
 beforeAll(async () => {
   resultsBefore = listing()
-  const [base, faultsBase] = await Promise.all([listen(server), listen(faultsServer)])
+  const [base, faultsBase, unparsedBase] = await Promise.all([
+    listen(server),
+    listen(faultsServer),
+    listen(unparsedServer),
+  ])
   const local = { ANTHROPIC_API_KEY: 'local-key' }
 
   /** One run of the settings brief through a stand-in. */
@@ -669,6 +720,7 @@ beforeAll(async () => {
     tsx,
     api,
     faults,
+    unparsed,
     runCeiling,
     totalCeiling,
     cliTwo,
@@ -703,6 +755,14 @@ beforeAll(async () => {
       'faults',
       ['--model', 'local-model', '--runs', '4', '--briefs', 'eval/briefs/settings-workspace.md'],
       { ...local, ANTHROPIC_BASE_URL: faultsBase },
+    ),
+    evaluate(
+      'unparsed',
+      ['--model', 'local-model', '--briefs', 'eval/briefs/settings-workspace.md'],
+      {
+        ...local,
+        ANTHROPIC_BASE_URL: unparsedBase,
+      },
     ),
     evaluate('run-ceiling', [
       '--fake',
@@ -779,6 +839,7 @@ beforeAll(async () => {
     tsx,
     api,
     faults,
+    unparsed,
     runCeiling,
     totalCeiling,
     cliTwo,
@@ -792,6 +853,7 @@ beforeAll(async () => {
 afterAll(() => {
   server.close()
   faultsServer.close()
+  unparsedServer.close()
   // A stand-in the runner failed to stop would otherwise outlive the suite.
   for (const directory of [HALF_LINE, UNREADABLE]) {
     const file = resolve(directory, 'pid-1')
@@ -1054,13 +1116,15 @@ describe('the Messages API path, against a local server', () => {
     expect(captured[3]?.body).toEqual(captured[2]?.body)
   })
 
-  it('keeps an input that is not JSON as the model wrote it, and answers it as INVALID_JSON', () => {
+  it('sends an input that is not JSON back as an empty object, and answers it as INVALID_JSON', () => {
+    // The API refuses an assistant turn whose call has an input that is not an object, and the
+    // local one does too, so a run that sent the text back would have stopped here.
     const messages = captured[4]?.body.messages ?? []
     const card = ((messages[2]?.content ?? []) as { content: string }[])[0]?.content
     expect(messages[3]).toEqual({
       role: 'assistant',
       content: [
-        { type: 'tool_use', id: 'toolu_bad', name: 'get_component', input: UNPARSEABLE },
+        { type: 'tool_use', id: 'toolu_bad', name: 'get_component', input: {} },
         {
           type: 'tool_use',
           id: 'toolu_card_again',
@@ -1120,6 +1184,30 @@ describe('runs that must not count for the model', () => {
     })
     expect(record(faults(), 'settings-workspace', 1).harnessFault).toContain('`validate` failed')
     expect(faults().outputs.outputs[0]?.document).toBe(UNCHECKABLE)
+  })
+
+  it('counts a `validate` call whose input is not JSON as a submission that is not lawful', () => {
+    // Written as text, a document that is not JSON is a first shot that missed. Written as the
+    // call's input, the same slip leaves the whole input unreadable, and it counts the same.
+    expect(record(runs.unparsed as Evaluation, 'settings-workspace', 1)).toMatchObject({
+      ended: 'answered',
+      firstShotLawful: false,
+      iterations: 2,
+      lawful: true,
+      toolCalls: { validate: 2 },
+      misses: [
+        {
+          call: 1,
+          fatal: 'the input of the `validate` call is not a JSON object',
+          faults: [],
+          violations: [],
+        },
+      ],
+    })
+    expect(unparsedCaptured[1]?.body.messages[1]).toEqual({
+      role: 'assistant',
+      content: [{ type: 'tool_use', id: 'toolu_slip', name: 'validate', input: {} }],
+    })
   })
 
   it('never counts a refused or cut-off response as lawful, whatever it carried', () => {

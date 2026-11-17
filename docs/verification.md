@@ -918,9 +918,11 @@ What goes wrong is kept apart from what the model did:
   billed for what it read; those tokens are recorded as `discardedTokens`, never in the input or
   output counts.
 - **A tool that throws** answers the model with an error result carrying the message, and the run
-  goes on. In the API runner, a tool input that is not JSON is never run: the model's turn goes
-  back exactly as it wrote it, and the call is answered as an `INVALID_JSON` error holding the raw
-  text. The CLI reads tool inputs itself.
+  goes on. In the API runner, a tool input that is not a JSON object is never run: the call is
+  answered as an `INVALID_JSON` error holding the raw text, and the model's turn goes back with an
+  empty input for that call, because the API refuses any other kind. Where the call was
+  `validate`, it counts as a submission that is not lawful, as a document that is not JSON does
+  when it is submitted as text. The CLI reads tool inputs itself.
 - **`validate` failing inside its check** (the validator or the emitter throwing on a document) is
   the harness's failure, not the model's. The run ends as `harness`, with the message in
   `harnessFault` and the document kept as submitted, and is left out of every rate and mean.
