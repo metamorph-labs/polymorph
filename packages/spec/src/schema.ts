@@ -158,7 +158,9 @@ const ELEMENT = obj(
         'registry — an invented name is a fault here rather than a runtime surprise.',
     }),
     props: rec(ref('Value'), {
-      description: 'Every prop must exist on that component. That is what makes style unsayable.',
+      description:
+        'Every prop must exist on that component. That is what makes style unsayable. Every ' +
+        'prop of the element is written here, and none beside it.',
     }),
     children: arr(ref('Value')),
     exception: ref('Exception'),

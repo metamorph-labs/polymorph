@@ -123,6 +123,31 @@ describe('a document of the wrong shape is told what its author wrote', () => {
     ])
   })
 
+  it('says a prop written beside `props` is a prop, and where it goes', () => {
+    const button = { component: 'Button', props: { label: 'Save' }, onClick: { $: 'onSave' } }
+    expect(
+      faults((spec) => ((spec['root'] as { children: unknown[] }).children = [button])),
+    ).toEqual([
+      {
+        path: '$.root.children[0].onClick',
+        message:
+          '`onClick` is a prop of `Button`, written here as a field of the element — a prop goes ' +
+          'inside `props`: `{ "component": "Button", "props": { "onClick": … } }`',
+      },
+    ])
+    // A key that is no prop of the member is still a key the schema lacks.
+    const noted = { component: 'Button', props: { label: 'Save', onClick: { $: 'onSave' } } }
+    expect(
+      faults(
+        (spec) =>
+          ((spec['root'] as { children: unknown[] }).children = [{ ...noted, note: 'Primary' }]),
+      )[0]?.message,
+    ).toBe(
+      '`note` is not in the schema — the fields here are `component`, `props`, `children` and ' +
+        '`exception`',
+    )
+  })
+
   it('says how a plain object is written, where a value is one', () => {
     const props = { label: 'Save', onClick: { $: 'onSave' }, badge: { text: 'New' } }
     expect(

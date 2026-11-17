@@ -13,6 +13,8 @@
   object`.
 - A plain object where a value goes is reported once, with the three forms an object may take and
   how a plain one is written (`{ "$object": { … } }`).
+- A prop written as a field of its element, beside `props`, is told that it is a prop of that
+  member and that it goes inside `props`.
 - A `types` entry written as a default or a namespace import (`default as React`) is told that a
   type is imported by its own name and written bare in the input's type.
 - The schema's descriptions say that every binding names a declared input, a function a member

@@ -178,6 +178,18 @@ export function validateSpec(
   const expressions = bindingFaults(document, '$')
   if (expressions.length > 0) return { ok: false, faults: expressions }
 
+  const components = new Map<string, RegistryComponent>(
+    registry.components.map((component) => [component.name, component]),
+  )
+  const primitives = new Map<string, ExceptionPrimitive>(
+    registry.exceptions.primitives.map((primitive) => [primitive.name, primitive]),
+  )
+
+  // A prop written beside `props` is a key the schema lacks. The shape check
+  // would list the element's four fields. This says what the key is.
+  const outside = propsOutsideProps(document, '$', (name) =>
+    surfaceOf(name, components, primitives),
+  )
   const shapeFaults = validateShape(SCREEN_SHAPE, document).map((message) => {
     const [path = '$', ...rest] = message.split(': ')
     const said = rest.join(': ')
@@ -185,7 +197,9 @@ export function validateSpec(
     // often miswritten as is a plain one.
     return {
       path,
-      message: said.startsWith('an object here has ') ? `${said} — ${PLAIN_OBJECT}` : said,
+      message:
+        outside.get(path) ??
+        (said.startsWith('an object here has ') ? `${said} — ${PLAIN_OBJECT}` : said),
     }
   })
   if (shapeFaults.length > 0) return { ok: false, faults: shapeFaults }
@@ -214,13 +228,6 @@ export function validateSpec(
   checkInputNames(spec, faults)
   checkInputTypes(spec, faults, judges.inputType)
   checkTypeImports(spec, faults)
-
-  const components = new Map<string, RegistryComponent>(
-    registry.components.map((component) => [component.name, component]),
-  )
-  const primitives = new Map<string, ExceptionPrimitive>(
-    registry.exceptions.primitives.map((primitive) => [primitive.name, primitive]),
-  )
 
   /* ---- the walk --------------------------------------------------------- */
 
@@ -460,6 +467,49 @@ function bindingFaults(value: unknown, path: string): SpecFault[] {
   }
 
   return Object.entries(record).flatMap(([key, item]) => bindingFaults(item, `${path}.${key}`))
+}
+
+/** The fields of an element, as `ELEMENT` in the schema lists them. */
+const ELEMENT_FIELDS = new Set(['component', 'props', 'children', 'exception'])
+
+/**
+ * Every prop written as a field of its element, beside `props`, by the path
+ * the shape check reports it at, with what to say there.
+ *
+ * `{"component": "AuthPage", "props": {…}, "cardFooter": …}` closes `props` one
+ * prop early. The key is a prop the member has, so the fault can name the slip
+ * where the shape check knows only that an element has no such field.
+ *
+ * It reads plain JSON, not a spec, because it runs before the document is known
+ * to be one.
+ */
+function propsOutsideProps(
+  value: unknown,
+  path: string,
+  surface: (name: string) => Surface | null,
+  found = new Map<string, string>(),
+): Map<string, string> {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => propsOutsideProps(item, `${path}[${index}]`, surface, found))
+    return found
+  }
+  if (typeof value !== 'object' || value === null) return found
+
+  const record = value as Record<string, unknown>
+  const name = record['component']
+  const props = typeof name === 'string' ? surface(name)?.props : undefined
+  for (const [key, item] of Object.entries(record)) {
+    if (props?.has(key) === true && !ELEMENT_FIELDS.has(key)) {
+      const member = abbreviated(String(name))
+      found.set(
+        `${path}.${key}`,
+        `\`${key}\` is a prop of \`${member}\`, written here as a field of the element — a prop ` +
+          `goes inside \`props\`: \`{ "component": "${member}", "props": { "${key}": … } }\``,
+      )
+    }
+    propsOutsideProps(item, `${path}.${key}`, surface, found)
+  }
+  return found
 }
 
 /**
