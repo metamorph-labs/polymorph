@@ -206,14 +206,20 @@ public struct PMAppShell: PMAppShellRendering {
   private func bar(menu: Bool) -> some ToolbarContent {
     if menu {
       ToolbarItem(placement: Self.leading) {
-        // The label's hit target widens the bar button to it; the bar keeps
-        // the button's height its own, whatever frame the label is given.
+        // A label of a title and an icon is one the bar draws as its own
+        // button: the icon alone, at the bar's size, named by the title, and
+        // pressable anywhere on the bar's platter. The bar hosts a label of
+        // any other view at its item height, which is under the hit target,
+        // and a touch on the platter above or below that view reaches nothing.
         Button {
           drawer = true
         } label: {
-          PMIconView(.menu, size: .md).pmHitTarget()
+          Label {
+            Text(PMStrings.openNavigation)
+          } icon: {
+            PMIconView(.menu)
+          }
         }
-        .accessibilityLabel(Text(PMStrings.openNavigation))
       }
     }
     if let leading = props.topbar?.leading {
