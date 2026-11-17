@@ -213,7 +213,6 @@ export interface FrameworkDocument {
   members: Record<string, FrameworkEntry>
 }
 
-/** Where a framework's map lives, relative to the repository root. */
 /** What `shippedParts` reads of a member: its registry entry. */
 export interface PartsOwner<Part extends { name: string }> {
   name: string
@@ -259,6 +258,7 @@ export function shippedParts<Part extends { name: string; props: readonly unknow
   })
 }
 
+/** Where a framework's map lives, relative to the repository root. */
 export const frameworkFile = (framework: MappedFramework): string =>
   `design/frameworks/${framework}.json`
 

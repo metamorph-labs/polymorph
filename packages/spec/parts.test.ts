@@ -17,9 +17,9 @@ import { validateSpec } from './src/validate'
  *
  * The system card tells an agent which parts a member has in a framework or
  * on a platform (`Dashboard.Panel`, `AppShell.NavItem`). The validator reads
- * the same list (`shippedParts`), so every part the card names is a component
- * a spec may compose there, and a part it does not name is refused with the
- * parts the member does have. The first law holds the two to each other for
+ * the same list (`shippedParts`), so every part the card names whose props the
+ * registry records is a component a spec may compose there, and a part it
+ * does not name is refused with the parts the member does have. The first law holds the two to each other for
  * every member. The second emits a screen drawn from the parts no Relay
  * screen composes and checks it against the React vocabulary's own types.
  */
@@ -84,6 +84,31 @@ describe('the parts the system card lists are the parts a spec may compose', () 
       }
     })
   }
+
+  it('says so of a part a framework has and the registry records no props for', () => {
+    // The registry reads a part's props from the React member. A part only
+    // another framework's files declare is on the card and has no record, so a
+    // spec cannot be checked against it, and the fault says that.
+    const unrecorded: string[] = []
+    for (const { platform, framework, name } of PLACES) {
+      for (const component of registry.components) {
+        const recorded = new Set(component.parts.map((part) => part.name))
+        for (const part of shippedParts(component, platform, framework)) {
+          if (recorded.has(part.name)) continue
+          const written = `${component.name}.${part.name}`
+          unrecorded.push(`${written} in ${name}`)
+          expect(faultsOf(written, platform, framework), `${written} in ${name}`).toEqual([
+            `no component called \`${written}\` — it is a part in ${framework} whose props the ` +
+              'registry does not record, so a spec cannot compose it',
+          ])
+        }
+      }
+    }
+    expect(unrecorded).toContain('Toast.Viewport in vue')
+    expect(faultsOf('Toast.Viewport', 'web', 'react')).toEqual([
+      'no component called `Toast.Viewport` — `Toast` has no parts',
+    ])
+  })
 
   it('refuses a part on a platform that does not carry it, and lists the ones it does', () => {
     const [first] = faultsOf('Table.Head', 'ios', 'react')

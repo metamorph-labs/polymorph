@@ -875,7 +875,9 @@ The schema is `packages/spec/src/schema.ts`.
 An **element** is `{ component, props?, children?, exception? }`. `component` is a member or a
 compound part (`SettingsRow.Group`, `Dashboard.Panel`): any part the system card lists for the
 member in the screen's framework or on its platform. A part the member does not carry there is a
-fault that lists the parts it does. A **value** (a prop value or a child) is a
+fault that lists the parts it does. The registry reads a part's props from the React member, so a
+part only another framework's files declare (`Toast.Viewport` in Vue) has none on record: a spec
+cannot compose it, and the fault says so. A **value** (a prop value or a child) is a
 string, number, boolean, `null`, an element, a list, a binding `{ "$": "inputName" }` or a
 structured object `{ "$object": { … } }`.
 

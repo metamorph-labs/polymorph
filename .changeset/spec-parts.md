@@ -18,5 +18,8 @@ parts only where the registry also lists their props under the member (`Table.Ro
   `Table.Cell`, the parts the Swift contract declares.
 - A name that is a member and a part it does not have is answered with the member's parts in
   place of a guess at another member.
+- A part only another framework's files declare (`Toast.Viewport` in Vue) has no props on record,
+  because the registry reads a part's props from the React member. A spec cannot compose it, and
+  the fault says so.
 - The Vue, Svelte and Angular emitters read a part's props from the part, so a part's event
   (`onSelect` on `AppShell.NavItem`) is written as an event.

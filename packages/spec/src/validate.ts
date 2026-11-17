@@ -1071,10 +1071,28 @@ function surfaceOf(
   return { props: new Set(types.keys()), types, component: compound, part }
 }
 
+/**
+ * The parts of a member a screen may compose where it is drawn: the ones the
+ * framework or platform carries and the registry records the props of. The
+ * registry reads a part's props from the React member, so a part only another
+ * framework has (`Toast.Viewport`) has no record, and a spec cannot be checked
+ * against it.
+ */
+function composableParts(
+  component: RegistryComponent,
+  platform: Platform,
+  framework: Framework,
+): string[] {
+  const recorded = new Set(component.parts.map((part) => part.name))
+  return shippedParts(component, platform, framework)
+    .map((part) => part.name)
+    .filter((name) => recorded.has(name))
+}
+
 /** `Table.Row`, `Table.Cell`: the parts of a member a screen may name, as a fault lists them. */
 function partNames(component: RegistryComponent, platform: Platform, framework: Framework): string {
-  const names = shippedParts(component, platform, framework).map(
-    (part) => `\`${component.name}.${part.name}\``,
+  const names = composableParts(component, platform, framework).map(
+    (part) => `\`${component.name}.${part}\``,
   )
   return names.length === 0
     ? `\`${component.name}\` has no parts`
@@ -1100,9 +1118,7 @@ function partFault(
 ): string | null {
   const { component, part } = known
   if (component === undefined || part === undefined) return null
-  if (shippedParts(component, platform, framework).some((shipped) => shipped.name === part)) {
-    return null
-  }
+  if (composableParts(component, platform, framework).includes(part)) return null
   const where = platform === DEFAULT_PLATFORM ? `in ${framework}` : `on ${platform}`
   return `\`${name}\` is not a part ${where} — ${partNames(component, platform, framework)} there`
 }
@@ -1118,9 +1134,15 @@ function partsOfOwner(
   framework: Framework,
 ): string | null {
   const segments = name.split('.')
-  const [owner] = segments
+  const [owner, part] = segments
   const component = owner === undefined ? undefined : components.get(owner)
   if (segments.length !== 2 || component === undefined) return null
+  if (shippedParts(component, platform, framework).some((shipped) => shipped.name === part)) {
+    return (
+      ` — it is a part in ${framework} whose props the registry does not record, so a spec ` +
+      'cannot compose it'
+    )
+  }
   return ` — ${partNames(component, platform, framework)}`
 }
 
