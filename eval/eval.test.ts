@@ -1682,6 +1682,29 @@ describe('the requirements', () => {
     }
   })
 
+  it('take a value edited in place as a value that can be edited', () => {
+    // `InlineEdit` edits one value where it is shown. A settings row that holds one lets the
+    // workspace name be edited as much as a row that holds an `Input`.
+    const answer = JSON.parse(scriptedAnswer('settings-workspace')) as { root: unknown }
+    const inPlace = JSON.stringify(answer, (_key, value: unknown) => {
+      const element = value as { component?: string; props?: { value?: { $?: string } } } | null
+      if (element?.component !== 'Input' || element.props?.value?.$ !== 'workspaceName') {
+        return value
+      }
+      return {
+        component: 'InlineEdit',
+        props: {
+          label: 'Workspace name',
+          value: { $: 'workspaceName' },
+          onCommit: { $: 'onWorkspaceNameChange' },
+        },
+      }
+    })
+    expect(inPlace).toContain('InlineEdit')
+    expect(inPlace).not.toContain('"Input"')
+    expect(unmet(requirementsOf('settings-workspace'), 'spec', inPlace)).toEqual([])
+  })
+
   it('meet nothing in a document that cannot be read', () => {
     const requirements = requirementsOf('settings-workspace')
     const all = requirements.map(({ id }) => id)

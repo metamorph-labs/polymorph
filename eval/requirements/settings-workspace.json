@@ -48,7 +48,7 @@
       "says": "The workspace name can be edited.",
       "check": {
         "element": {
-          "component": "Input"
+          "component": ["Input", "InlineEdit"]
         }
       }
     },
