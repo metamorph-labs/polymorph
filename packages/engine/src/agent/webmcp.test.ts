@@ -121,9 +121,13 @@ const definition = ({ name, title, description, inputSchema, annotations }: Regi
   annotations,
 })
 
-/** Lets the modules a setting imports load, and what waits on them run. */
+/**
+ * Lets the modules a setting imports load, and what waits on them run. A test
+ * that waits for a registration calls it first, so the wait does not also cover
+ * the browser's request for `./on-call`, which has no bound on a busy machine.
+ */
 async function settled(): Promise<void> {
-  await Promise.all([import('./webmcp'), import('./index')])
+  await Promise.all([import('./webmcp'), import('./index'), import('./on-call')])
   await new Promise((resolve) => setTimeout(resolve, 20))
 }
 
@@ -315,6 +319,7 @@ describe('applyAgentSetting', () => {
     const create = vi.mocked(agent.createAgentBridge)
     create.mockClear()
     releases.push(applyAgentSetting('on-call'))
+    await settled()
     await vi.waitFor(() => expect(tools.size).toBe(3))
     expect(create).not.toHaveBeenCalled()
 
@@ -332,6 +337,7 @@ describe('applyAgentSetting', () => {
     const create = vi.mocked(agent.createAgentBridge)
     create.mockClear()
     releases.push(applyAgentSetting('eager'))
+    await settled()
     await vi.waitFor(() => expect(tools.size).toBe(3))
     await vi.waitFor(() => expect(create).toHaveBeenCalledTimes(1))
   })
