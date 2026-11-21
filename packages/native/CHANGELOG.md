@@ -1,5 +1,38 @@
 # @polymorph/native
 
+## 1.0.16
+
+### Patch Changes
+
+- e2a6f57: **AppShell's menu button on iOS takes a touch anywhere on its platter.** On a compact width class
+  the SwiftUI AppShell drew the button that opens the rail as a view of its own in the navigation
+  bar. The bar hosts such a view 36 points high, and a touch on the bar's 44-point platter above or
+  below it reached nothing. The button is now the bar's own: its label is a title and the `menu`
+  icon, so the bar draws the icon at its own size, names the button "Open navigation" and takes a
+  touch over the whole platter, as it does for a bar button in any SwiftUI app. On iOS 26 the
+  platter is 44 points wide, where it was 56. Nothing changes in an app's code.
+- 2c97c3b: **On iOS, the box that takes a text field's tap is at least 44 points on each axis.** Three
+  SwiftUI members drew a text field in a box shorter than the hit target, and now lay the box out at
+  the hit target:
+
+  - OTPInput's cells sit centred in a box 44 points tall, 4 points taller than the large control
+    height the cells keep. Its hidden field keeps the default text size, so at an accessibility text
+    size it no longer reaches past the cells and takes the taps of what lies above and below them.
+  - PromptInput's field is at least 44 points tall, its first line at the top, as on Android. An
+    empty composer is taller than one line and its padding, and a field of two lines or more keeps
+    its height.
+  - A Textarea of one row is 44 points tall. A Textarea of two rows or more keeps its height.
+
+  Every text-entry member takes the tap in its box through one foundation modifier, which publishes
+  the box for the simulator audit, so the audit holds a text field to the box a person taps rather
+  than to the editable line UIKit publishes. Nothing changes in an app's code.
+
+- Updated dependencies [2f0ddd2]
+- Updated dependencies [eadf74f]
+- Updated dependencies [860e60b]
+  - @polymorph/theme@1.0.16
+  - @polymorph/registry@1.0.16
+
 ## 1.0.15
 
 ### Patch Changes

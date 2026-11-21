@@ -1,6 +1,6 @@
 {
   "name": "@polymorph/elements",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "description": "The foundation of the Web Components renderer: the light-DOM element base class that renders a generated Solid member into each poly-* element, the attribute codecs, the poly-* events, and the engine re-exported.",
   "private": true,
   "type": "module",

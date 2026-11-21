@@ -1,5 +1,12 @@
 # @polymorph/react-ui
 
+## 1.0.16
+
+### Patch Changes
+
+- @polymorph/react@1.0.16
+- @polymorph/recipes@1.0.16
+
 ## 1.0.15
 
 ### Patch Changes

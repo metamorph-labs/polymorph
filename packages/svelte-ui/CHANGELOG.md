@@ -1,5 +1,12 @@
 # @polymorph/svelte-ui
 
+## 1.0.16
+
+### Patch Changes
+
+- @polymorph/svelte@1.0.16
+- @polymorph/recipes@1.0.16
+
 ## 1.0.15
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@polymorph/elements-ui",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "description": "The polymorph vocabulary as custom elements: every member a poly-* element in the light DOM that renders the generated Solid member, for plain HTML and server-rendered pages.",
   "private": true,
   "type": "module",

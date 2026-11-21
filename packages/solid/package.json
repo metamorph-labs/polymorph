@@ -1,6 +1,6 @@
 {
   "name": "@polymorph/solid",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "description": "The Solid foundation a consumer installs: the engine re-exported, the icon gateway, the presence and control-ref primitives, the slot conventions, the toast store and the page-transition convention. Solid members import this and nothing deeper.",
   "private": true,
   "type": "module",

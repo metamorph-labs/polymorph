@@ -1,5 +1,12 @@
 # @polymorph/react
 
+## 1.0.16
+
+### Patch Changes
+
+- Updated dependencies [2f0ddd2]
+  - @polymorph/engine@1.0.16
+
 ## 1.0.15
 
 ### Patch Changes

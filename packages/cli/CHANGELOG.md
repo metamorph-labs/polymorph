@@ -1,5 +1,17 @@
 # @polymorph/cli
 
+## 1.0.16
+
+### Patch Changes
+
+- Updated dependencies [2f0ddd2]
+- Updated dependencies [3ce48d6]
+- Updated dependencies [eadf74f]
+- Updated dependencies [860e60b]
+  - @polymorph/theme@1.0.16
+  - @polymorph/rules@1.0.16
+  - @polymorph/registry@1.0.16
+
 ## 1.0.15
 
 ### Patch Changes

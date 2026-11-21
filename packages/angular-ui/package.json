@@ -1,6 +1,6 @@
 {
   "name": "@polymorph/angular-ui",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "description": "The polymorph vocabulary for Angular: every member as a standalone component generated from its framework-neutral description, styled by its token-only recipe, which the published build compiles into the component's styles.",
   "private": true,
   "type": "module",
