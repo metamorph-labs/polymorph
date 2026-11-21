@@ -8,7 +8,7 @@ import solid from 'vite-plugin-solid'
 import { configDefaults, defineConfig } from 'vitest/config'
 
 import { angularPlugins } from './packages/angular-ui/vitest.plugins'
-import { reachThroughPlugin } from './packages/elements-ui/reach-through'
+import { ANGULAR_HOST, reachThroughPlugin } from './packages/elements-ui/reach-through'
 
 const dir = (p: string) => fileURLToPath(new URL(p, import.meta.url))
 
@@ -358,7 +358,10 @@ const svelteProject = (engine: Engine) => ({
 const angularProject = (engine: Engine) => ({
   root: dir('./packages/angular-ui'),
   define: { __PM_ENGINE__: JSON.stringify(engine) },
-  plugins: angularPlugins(),
+  // The recipes as the Angular build compiles them: each selector that reads a parent or a
+  // sibling also matches through a member's host (`ANGULAR_HOST` in
+  // `packages/elements-ui/reach-through.ts`).
+  plugins: [reachThroughPlugin(ANGULAR_HOST), ...angularPlugins()],
   resolve: { dedupe: ['@angular/core', '@angular/common', '@angular/platform-browser'] },
   optimizeDeps: {
     include: [

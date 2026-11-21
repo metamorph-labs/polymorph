@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import {
+  ANGULAR_HOST,
   reachThrough,
   reachThroughCss,
   reachThroughPlugin,
@@ -15,7 +16,8 @@ import {
  * The reach-through transform (`reach-through.ts`): the forms it adds to a
  * recipe selector so it also matches through a host that draws no box. The
  * browser half, that a recipe through a host lays out as it does without one,
- * is the parity law's box comparison (`src/parity.test.ts`).
+ * is the parity law's box comparison (`src/parity/law.ts`), and for the
+ * Angular members the host law's (`packages/angular-ui/src/conformance/hosts.ts`).
  */
 
 const HOST = ':where(:state(poly-host))'
@@ -91,6 +93,24 @@ describe('a selector that relates an element to its parent or its siblings also 
       `${HOST}:has(> .row:where(:last-child)) + ${HOST} > .row:where(:first-child)`,
     ])
     expect(reachThrough('.head ~ *')).toContain(`${HOST}:has(> .head) ~ ${HOST} > *`)
+  })
+
+  it('reads siblings that one host holds together after a child step', () => {
+    expect(reachThrough('.item > * + *')).toContain(`.item > ${HOST} > * + *`)
+    expect(reachThrough('.list > .a ~ .b')).toContain(`.list > ${HOST} > .a ~ .b`)
+    // With no child step there is no host to stand in: the siblings already match inside one.
+    expect(reachThrough('.row + .row')).not.toContain(`${HOST} > .row + .row`)
+    // A position in the run would be read inside the host, not under the parent.
+    expect(reachThrough('.a > .b:first-child + .c')).not.toContain(
+      `.a > ${HOST} > .b:first-child + .c`,
+    )
+  })
+
+  it('writes the forms with the host mark it is given', () => {
+    expect(reachThrough('.grid > *', ANGULAR_HOST)).toEqual([`.grid > ${ANGULAR_HOST} > *`])
+    expect(transformList('.cell:has(> .label)', ANGULAR_HOST)).toContain(
+      `> ${ANGULAR_HOST} > .label`,
+    )
   })
 
   it('reads a position among siblings as the host’s position', () => {

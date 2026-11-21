@@ -55,7 +55,8 @@ const CONTEXT = new InjectionToken<TransitionContext>('polymorph: page transitio
 /** One viewport ribbon for the application's navigation and loading states. */
 @Component({
   selector: 'pm-page-transitions',
-  host: { style: 'display: contents' },
+  // No box, and the host's mark, so a recipe rule reaches through it as through a member's.
+  host: { style: 'display: contents', 'data-pm-host': '' },
   providers: [{ provide: CONTEXT, useFactory: () => inject(PageTransitions).context }],
   // prettier-ignore
   template: `<ng-content />@if (ribbon(); as className) {<div

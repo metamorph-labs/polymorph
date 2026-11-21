@@ -985,7 +985,8 @@ form control's `value` and `checked` are its DOM properties.
 
 **The host element.** An Angular component renders inside an element of its own, which React, Vue,
 Svelte and Solid do not have. A member's host draws no box, carries no attribute but its
-`display: contents` style (its caller's static attributes set its inputs and are removed), and
+`display: contents` style and its mark, `data-pm-host` (its caller's static attributes set its
+inputs and are removed), and
 hears no DOM event of an output's name, so `(click)` on `<pm-button>` runs once, for the member's
 output. A compound part whose one element must be a direct child of its parent's (a list's item, a
 table's section, row or cell, a description list's term or detail) is that element:
@@ -994,8 +995,15 @@ the component's host bindings. Its listener for a DOM event an output is named f
 `click`) is not a host binding, because Angular attaches a host listener after `useMember` keeps the
 host from hearing that event: the constructor adds it through the context
 (`this.$.listen('click', …)`), which keeps the host's own `addEventListener`. A part's element takes
-no machine's prop getters, because a host binding cannot spread an object. A rule of a recipe that reads a member's element as a direct child of another's (Grid's
-column span over `.grid > *`) reads the host instead, which takes no layout.
+no machine's prop getters, because a host binding cannot spread an object.
+
+A recipe selector with a child, sibling or structural step (Grid's column span over `.grid > *`,
+SettingsRow's rule over `.row + .row`) would match the host and not the member inside it. The
+Angular members read the recipes through the reach-through transform the elements use
+(`packages/elements-ui/reach-through.ts`) with the Angular host's mark, `:where([data-pm-host])`:
+the `angular` test project through `reachThroughPlugin(ANGULAR_HOST)`, and the published build
+(`packages/angular/scripts/package.mjs`) through `reachThroughCss`. The host law holds every
+member's box to the box it has with the hosts removed.
 
 **What a slot holds.** Each slot a member renders or reads is an `ng-template` of its projection at
 the top of the template (`<ng-template pmSlot="footer" [pmSlotOf]="$">`), which an outlet renders
@@ -1070,6 +1078,7 @@ The Angular shell is held to the Vue shell's laws, through its own files.
 | Conformance | `packages/angular-ui/src/conformance.test.ts` | every contract statement of every described member holds through the Angular adapter (`src/conformance/angular.ts`), with the runner, locators and harness the React law uses, and a false statement of every kind and key and click effect fails through it |
 | The framework map | `packages/angular-ui/laws.test.ts` | a member is `native` in `design/frameworks/angular.json` exactly when it has a description |
 | Token-only | `packages/angular-ui/laws.test.ts` | a component imports only Angular's core, Zag, the foundation, its recipes and other components; its template writes no `class` or `style` of its own; every class it binds, in its template, its host or a merged object, is read from a recipe and names no class as a string; a style it binds holds no colour or length; and the file passes `no-raw-styles`. `Icon.ts` imports only Angular's core, the gateway, its stylesheet, the foundation's conventions and the engine |
+| Hosts | `packages/angular-ui/src/hosts/*.test.ts`, through `src/conformance/hosts.ts` | every entry of every states fixture draws each `[data-member]` element at the size it has in a copy of the mount with each host that draws no box replaced by its children, portals included |
 | Packaging | `packages/angular-ui/packaging.test.ts` | the package is one flat module under `fesm2022/`; every member and part ships with its declarations, as a partial declaration, and carries its recipe's rules; no module imports a stylesheet, and the base layer ships; no test tooling ships; every relative import names a shipped file; every package the build imports is declared; the source entry that imports the base layer is declared in `sideEffects`, and the published `sideEffects` names only files that exist |
 | Foundation packaging | `packages/angular/packaging.test.ts` | every export target exists; each entry point is one flat module and every module keeps its declarations; every component is a partial declaration; the Icon's rules are in its component; the engine and Angular stay external and are declared; the presences stay on `./motion` |
 | Adapter | `packages/angular/src/zag/zag.test.ts` | a checkbox, a dialog and a menu run through the adapter in a browser: a controlled and an uncontrolled value, focus moved into a modal panel and returned to its trigger, a dialog destroyed while open that shows the page's other elements again, unlocks its scroll and keeps no focus trap, keyboard navigation and a selection |
@@ -1164,9 +1173,10 @@ The recipes reach through a host. A page-written element sits between a recipe's
 child, or between two siblings, and draws no box, so a selector with a child, sibling or
 structural step (`.grid > *`, `.row + .row`, `.item:first-child`) would not match through it.
 `packages/elements-ui/reach-through.ts` adds to each such selector the forms that also match
-through one host (`.grid > :where(:state(poly-host)) > *`), at the specificity of the selector it
-comes from; the added forms match only where a host is, so a member's own anatomy reads the recipe
-unchanged. The `elements` test project and every build of the elements apply it as a Vite plugin
+through one host (`.grid > :where(:state(poly-host)) > *`), and the form in which one host holds a
+run of siblings after a child step (`.item > :where(:state(poly-host)) > * + *`), at the
+specificity of the selector it comes from; the added forms match only where a host is, so a
+member's own anatomy reads the recipe unchanged. The `elements` test project and every build of the elements apply it as a Vite plugin
 (`reachThroughPlugin`); the shared recipes are not changed. It reaches through one host, not two
 nested ones; a compound with an `-of-type` pseudo-class gets no added form, because a host's tag
 is not its member's; and a `:not()` whose argument has a combinator is left as it is.

@@ -21,8 +21,9 @@ import {
  * **The host element.** An Angular component renders inside an element of its
  * own (`<pm-button>`), which React, Vue, Svelte and Solid do not have. A
  * member's host draws no box, carries no attribute but its `display: contents`
- * style, and hears no DOM event of the same name as one of its outputs, so the
- * DOM a member renders is the React member's, and `(click)` on `<pm-button>`
+ * style and its mark (`data-pm-host`), and hears no DOM event of the same name
+ * as one of its outputs, so the DOM a member renders is the React member's,
+ * and `(click)` on `<pm-button>`
  * runs once, for the member's `click`, never again for the native click that
  * bubbles through the host. The static attributes a caller writes on a member
  * set its inputs and are removed from the host: an `id` or a `title` on
@@ -43,6 +44,15 @@ import {
  * forwards the claims, so Dialog's `onClick` reaches ConfirmDialog's caller's
  * Button.
  */
+
+/**
+ * The attribute that marks a member's host. A recipe selector that reads a
+ * parent or a sibling (`.grid > *`, `.row + .row`) would match the host and
+ * not the member inside it, so the Angular build compiles each recipe with
+ * forms that also match through an element with this attribute
+ * (`packages/elements-ui/reach-through.ts`, `ANGULAR_HOST`).
+ */
+const HOST_ATTRIBUTE = 'data-pm-host'
 
 /**
  * The member a member is created under: the one whose content or view it is.
@@ -468,7 +478,8 @@ export type PropReads<P extends object> = { readonly [K in keyof P]: () => P[K] 
  * Makes a member's context: called first in every generated member, in its
  * injection context, with its `controlKind`, the names of its outputs, and a
  * reader for each prop. It clears the host (no box, and no attribute but its
- * `display: contents` style) unless the host is the member's own element,
+ * `display: contents` style and its mark) unless the host is the member's own
+ * element,
  * keeps the host from hearing a DOM event of an output's name, and claims the
  * slot the member was created in. The context's `listen` keeps the host's own
  * `addEventListener`, so the member can still hear such an event itself.
@@ -487,6 +498,7 @@ export function useMember<P extends object>(options: {
   if (options.element === undefined) {
     for (const attribute of [...host.attributes]) host.removeAttribute(attribute.name)
     host.style.display = 'contents'
+    host.setAttribute(HOST_ATTRIBUTE, '')
   } else host.removeAttribute(options.element.toLowerCase())
   const events = new Set(options.events ?? [])
   const listen = host.addEventListener.bind(host)

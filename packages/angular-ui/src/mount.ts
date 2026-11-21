@@ -86,7 +86,8 @@ export function unmountAll(): void {
 /**
  * The first element a member renders inside a mount: below the fixture's and
  * the members' own host elements (`pm-*`), which draw no box and carry no
- * attribute, and past a member's host that renders nothing (a declared Toast).
+ * attribute but their mark, and past a member's host that renders nothing (a
+ * declared Toast).
  */
 export function rootOf(host: Element): Element | null {
   const first = (parent: Element): Element | null => {

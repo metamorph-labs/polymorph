@@ -161,6 +161,15 @@ describe('the build of @polymorph/angular-ui', () => {
     }
   })
 
+  it('compiles the recipes through the reach-through transform, so a rule reaches through a host', () => {
+    const bundle = readFileSync(BUNDLE, 'utf8')
+    // Grid's column span is read over `.grid > *`, which a member's host stands in.
+    const grid = declarationOf(bundle, 'Grid')
+    expect(grid, 'Grid’s styles reach through a host').toContain(':where([data-pm-host]) > *')
+    const row = declarationOf(bundle, 'SettingsRow')
+    expect(row, 'SettingsRow’s rule reaches through a host').toContain(':where([data-pm-host])')
+  })
+
   it('declares its source entry, which imports the base layer, as having side effects', () => {
     // Inside this repository `exports` points at `src/`, so an app here bundles the source entry.
     // A bundler that believed it had no side effects would skip it to reach the members it

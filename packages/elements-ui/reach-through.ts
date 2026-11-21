@@ -13,6 +13,9 @@
  *    `.grid > :where(:state(poly-host)) > *`;
  *  - a sibling step reads the hosts as the siblings: `.row + .row` also reads
  *    `:where(:state(poly-host)):has(> .row:where(:last-child)) + :where(:state(poly-host)) > .row:where(:first-child)`;
+ *  - siblings after a child step may share one host, a member that renders
+ *    several nodes: `.item > * + *` also reads
+ *    `.item > :where(:state(poly-host)) > * + *`;
  *  - a structural pseudo-class reads the host's position:
  *    `.item:first-child` also reads
  *    `:where(:state(poly-host)):first-child > .item:where(:first-child)`;
@@ -22,8 +25,9 @@
  * host and the position the transform adds are inside `:where()`, and a
  * pseudo-class moved to the host keeps its weight. So a rule wins and loses
  * against the same rules as it does for the other renderers. The added forms
- * match only where a host intervenes, which happens only where a page wrote an
- * element, so the members' own anatomy reads the recipe unchanged.
+ * match only where a host intervenes. For the elements that happens only where
+ * a page wrote an element, so the members' own anatomy reads the recipe
+ * unchanged.
  *
  * A compound with an `-of-type` pseudo-class has no added form: a host's tag
  * is not its member's.
@@ -32,10 +36,26 @@
  * and are not changed. The elements apply the transform when they load the
  * recipes: the `elements` test project through `reachThroughPlugin`, and the
  * elements' published build through the same plugin.
+ *
+ * The Angular members apply it too, with their own host's mark
+ * (`ANGULAR_HOST`). Every Angular member renders inside a host element, so a
+ * host stands between a recipe's parent and its child inside the members'
+ * own anatomy as well as where an application wrote a member. The `angular`
+ * test project reads the recipes through `reachThroughPlugin(ANGULAR_HOST)`,
+ * and the Angular build (`packages/angular/scripts/package.mjs`) compiles each
+ * recipe through `reachThroughCss`.
  */
 
-/** The host's mark, inside `:where()` so it adds no specificity. */
-const HOST = ':where(:state(poly-host))'
+/** An element's host mark, inside `:where()` so it adds no specificity. */
+export const ELEMENT_HOST = ':where(:state(poly-host))'
+
+/**
+ * An Angular member's host mark (`<pm-card data-pm-host>`), inside `:where()`.
+ * An Angular component renders inside a host element of its own, which
+ * `useMember` in `@polymorph/angular` clears, gives `display: contents` and
+ * marks with this attribute.
+ */
+export const ANGULAR_HOST = ':where([data-pm-host])'
 
 /** The pseudo-classes that read a position among siblings, which a host takes in its member's place. */
 const STRUCTURAL = new Set([
@@ -213,29 +233,30 @@ const positional = (simple: Simple) =>
   (simple.pseudo === 'not' && structuralNot(simple.argument ?? ''))
 
 /** A compound's text, with a list pseudo-class's argument read through the transform. */
-function write(compound: readonly Simple[]): string {
+function write(compound: readonly Simple[], host: string): string {
   return compound
     .map((simple) =>
       simple.pseudo !== undefined && LISTS.has(simple.pseudo) && simple.argument !== undefined
-        ? `:${simple.pseudo}(${transformList(simple.argument)})`
+        ? `:${simple.pseudo}(${transformList(simple.argument, host)})`
         : simple.text,
     )
     .join('')
 }
 
 /** A compound with pseudo-classes added before its pseudo-element, if it has one. */
-function withPosition(compound: readonly Simple[], added: string): string {
+function withPosition(compound: readonly Simple[], added: string, host: string): string {
   const at = compound.findIndex((simple) => simple.element === true)
   const head = at === -1 ? compound : compound.slice(0, at)
   const tail = at === -1 ? [] : compound.slice(at)
-  return `${write(head)}${added}${write(tail)}`
+  return `${write(head, host)}${added}${write(tail, host)}`
 }
 
 /**
  * The forms of one complex selector that also match through a host, each
  * with the specificity of the original. The original is not among them.
+ * `host` is the host's mark, inside `:where()`.
  */
-export function reachThrough(selector: string): string[] {
+export function reachThrough(selector: string, host: string = ELEMENT_HOST): string[] {
   const complex = parse(selector.replace(/\/\*[\s\S]*?\*\//g, ' ').trim())
   if (complex === null) return []
   const { compounds, combinators } = complex
@@ -262,7 +283,9 @@ export function reachThrough(selector: string): string[] {
     return index === 0 ? '' : before === ' ' ? ' ' : ` ${before} `
   }
   // The same selector with each list pseudo-class read through: a form of its own when it differs.
-  const inner = compounds.map((compound, index) => `${joint(index)}${write(compound)}`).join('')
+  const inner = compounds
+    .map((compound, index) => `${joint(index)}${write(compound, host)}`)
+    .join('')
   const plain = compounds
     .map((compound, index) => `${joint(index)}${compound.map((simple) => simple.text).join('')}`)
     .join('')
@@ -273,7 +296,7 @@ export function reachThrough(selector: string): string[] {
     compounds.forEach((compound, index) => {
       const before = combinators[index]
       if (!wrapped.has(index)) {
-        out += `${joint(index)}${write(compound)}`
+        out += `${joint(index)}${write(compound, host)}`
         return
       }
       const moved = compound.filter(positional)
@@ -291,22 +314,39 @@ export function reachThrough(selector: string): string[] {
             : lastOne
               ? ':where(:last-child)'
               : ''
-      const host = `${HOST}${moved.map((simple) => simple.text).join('')}`
-      const element = withPosition(kept.length === 0 ? [{ text: '*' }] : kept, position)
+      const wrapper = `${host}${moved.map((simple) => simple.text).join('')}`
+      const element = withPosition(kept.length === 0 ? [{ text: '*' }] : kept, position, host)
       out +=
         index < last && (after === '+' || after === '~')
-          ? `${joint(index)}${host}:has(> ${element})`
-          : `${joint(index)}${host} > ${element}`
+          ? `${joint(index)}${wrapper}:has(> ${element})`
+          : `${joint(index)}${wrapper} > ${element}`
     })
     forms.push(out.trim())
   }
+  // A run of siblings that one host holds together: a member that renders
+  // several nodes (`.item > * + *` over `<li><pm-blocks><p></p><ul></ul>`).
+  // The host stands at the child step, and the siblings keep their relation.
+  compounds.forEach((compound, index) => {
+    const after = combinators[index + 1]
+    if (combinators[index] !== '>' || index === last || (after !== '+' && after !== '~')) return
+    if (compound.length === 0) return
+    // A position in the run is a position inside the host, which says nothing
+    // of the host's own position under the parent, so such a run has no form.
+    if (compounds.slice(index).some((each) => each.some(positional))) return
+    const out = compounds
+      .map((each, at) =>
+        at === index ? ` > ${host} > ${write(each, host)}` : `${joint(at)}${write(each, host)}`,
+      )
+      .join('')
+    forms.push(out.trim())
+  })
   return forms
 }
 
 /** A selector list with every form `reachThrough` adds after each selector. */
-export function transformList(list: string): string {
+export function transformList(list: string, host: string = ELEMENT_HOST): string {
   return splitList(list)
-    .flatMap((selector) => [selector, ...reachThrough(selector).map((form) => ` ${form}`)])
+    .flatMap((selector) => [selector, ...reachThrough(selector, host).map((form) => ` ${form}`)])
     .join(',')
 }
 
@@ -318,7 +358,7 @@ const GROUPING = /^@(media|supports|container|layer|scope|document|starting-styl
  * is written as it is: comments, declarations, at-rule preludes, and the
  * selectors of `@keyframes`.
  */
-export function reachThroughCss(css: string): string {
+export function reachThroughCss(css: string, host: string = ELEMENT_HOST): string {
   let out = ''
   let prelude = ''
   /** For each open block, whether its rules' preludes are selectors. */
@@ -344,7 +384,7 @@ export function reachThroughCss(css: string): string {
         const lead = prelude.slice(0, prelude.length - prelude.trimStart().length)
         const body = prelude.trimStart()
         const trail = body.slice(body.trimEnd().length)
-        out += `${lead}${transformList(body.trimEnd())}${trail}{`
+        out += `${lead}${transformList(body.trimEnd(), host)}${trail}{`
         // A style rule's block holds declarations and, under nesting, rules.
         blocks.push(true)
       } else {
@@ -364,9 +404,10 @@ export function reachThroughCss(css: string): string {
 /**
  * The transform as a Vite plugin: each stylesheet `@polymorph/recipes` holds,
  * transformed before Vite reads it (and its CSS Modules classes), for a build
- * or a test project that renders the elements.
+ * or a test project that renders the elements, or, with `ANGULAR_HOST`, the
+ * Angular members.
  */
-export function reachThroughPlugin(): {
+export function reachThroughPlugin(host: string = ELEMENT_HOST): {
   name: string
   enforce: 'pre'
   transform(code: string, id: string): string | null
@@ -377,7 +418,7 @@ export function reachThroughPlugin(): {
     transform(code, id) {
       const path = id.split('?')[0] ?? id
       if (!/[\\/](packages|@polymorph)[\\/]recipes[\\/]src[\\/].+\.css$/.test(path)) return null
-      return reachThroughCss(code)
+      return reachThroughCss(code, host)
     },
   }
 }

@@ -18,7 +18,9 @@
  *  2. Compile every CSS Module a staged module imports (a recipe, the icon
  *     stylesheet), with the recipes it composes from, into a TypeScript module
  *     that exports its class names and its rules; point the import at it and
- *     add the rules to the component's `styles`.
+ *     add the rules to the component's `styles`. A recipe is compiled through
+ *     the reach-through transform, so a selector that reads a parent or a
+ *     sibling also matches through a member's host.
  *  3. Compile with `ngc` in partial mode into `dist/`, with declarations. A
  *     workspace package the source imports is read from its published
  *     declarations, so only this package is emitted.
@@ -48,7 +50,7 @@ import {
 } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
-import { fileURLToPath, URL } from 'node:url'
+import { fileURLToPath, pathToFileURL, URL } from 'node:url'
 
 const PACKAGE = process.cwd()
 const SRC = join(PACKAGE, 'src')
@@ -61,6 +63,11 @@ const ENGINE_DIST = join(ROOT, 'packages/engine/dist/types')
 
 const require = createRequire(join(PACKAGE, 'package.json'))
 const { build, preprocessCSS, resolveConfig } = await import(require.resolve('vite'))
+// The recipes as the Angular members need them: each selector that reads a
+// parent or a sibling also matches through a member's host (`data-pm-host`).
+const { ANGULAR_HOST, reachThroughCss } = await import(
+  pathToFileURL(join(ROOT, 'packages/elements-ui/reach-through.ts')).href
+)
 const manifest = JSON.parse(readFileSync(join(PACKAGE, 'package.json'), 'utf8'))
 
 /** Test tooling, which never ships. */
@@ -99,7 +106,12 @@ const sheets = new Map()
 async function sheet(path) {
   const known = sheets.get(path)
   if (known !== undefined) return known
-  const result = await preprocessCSS(readFileSync(path, 'utf8'), path, config)
+  const source = readFileSync(path, 'utf8')
+  const result = await preprocessCSS(
+    path.startsWith(RECIPES) ? reachThroughCss(source, ANGULAR_HOST) : source,
+    path,
+    config,
+  )
   const local = path.startsWith(RECIPES)
     ? join('recipes', relative(RECIPES, path))
     : join('styles', relative(SRC, path))
