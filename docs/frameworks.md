@@ -140,14 +140,14 @@ write Solid by this mapping ([below](#the-tools-in-svelte-and-solid)).
 | `<Icon name="close" />` | `<pm-icon name="close" />`; `Icon` ships in `@polymorph/angular`, and `@polymorph/angular-ui` re-exports it |
 | a compound part `<Tabs.Content>` | a component of its own, `TabsContent`, written `<pm-tabs-content>`; a part that is a list's item or a table's section, row or cell is that element with the part's attribute (`<tr pmTableRow>`, `<td pmTableCell>`) |
 | `data-member`, `data-*` | identical |
-| no `className`/`style` on members | no `class`/`style` on members: a member's host element carries no attribute but its `display: contents` style and draws no box |
+| no `className`/`style` on members | no `class`/`style` on members: a member's host element carries no attribute but its `display: contents` style and its mark, `data-pm-host`, and draws no box |
 
 The mapping differs from React's where Angular's idiom differs. An output returns nothing to the
 member that emits it, so a handler cannot hand a value back: ConfirmDialog closes when it is
 confirmed, where React's waits on an `onConfirm` that returns a promise, and a caller that saves
 first holds `open` itself. An Angular component renders inside a host element, which a member keeps
 out of the document's layout and its accessibility tree (`display: contents`, and no attribute but
-that style), and `(click)` on a member hears the member's output, never the native click that
+that style and its mark, `data-pm-host`, which the recipes' reach-through forms read), and `(click)` on a member hears the member's output, never the native click that
 bubbles through its host. The base layer ships as `@polymorph/angular-ui/base.css`, which an
 application lists among its global styles, because the Angular CLI compiles no stylesheet a module
 imports.
