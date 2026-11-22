@@ -41,6 +41,10 @@ export const ComponentsPage = page(() =>
 export const ComponentDetailPage = page(() =>
   import('./pages/ComponentDetailPage').then((module) => module.ComponentDetailPage),
 )
+export const GuidesPage = page(() =>
+  import('./pages/GuidesPage').then((module) => module.GuidesPage),
+)
+export const GuidePage = page(() => import('./pages/GuidePage').then((module) => module.GuidePage))
 export const TokensPage = page(() =>
   import('./pages/TokensPage').then((module) => module.TokensPage),
 )
@@ -65,6 +69,16 @@ export function pageFor(path: string): { preload: () => Promise<void> } {
   if (path === '/') return HomePage
   if (path === '/components') return ComponentsPage
   if (path.startsWith('/components/')) return ComponentDetailPage
+  if (path === '/guides') return GuidesPage
+  if (path.startsWith('/guides/')) {
+    // A guide's text is a chunk apart from its page, so both are loaded.
+    return {
+      preload: async () => {
+        const [module] = await Promise.all([import('./pages/GuidePage'), GuidePage.preload()])
+        await module.preloadGuide(path.slice('/guides/'.length))
+      },
+    }
+  }
   if (path === '/tokens') return TokensPage
   if (path === '/systems') return SystemsPage
   if (path === '/motion') return MotionPage

@@ -1,12 +1,14 @@
 import { getPalette, getSystem, type ModePreference } from '@polymorph/theme'
-import { AppShell, Inline, Link } from '@polymorph/react-ui'
-import { Suspense, useState, type ReactNode } from 'react'
+import { AppShell, Button, Inline, Link } from '@polymorph/react-ui'
+import { Suspense, useEffect, useState, type ReactNode } from 'react'
 
 import { ChunkBoundary } from './ChunkBoundary'
 import { Mark } from './harness/Mark'
 import {
   ComponentDetailPage,
   ComponentsPage,
+  GuidePage,
+  GuidesPage,
   HomePage,
   InstallPage,
   MotionPage,
@@ -19,11 +21,13 @@ import { useRoute } from './router'
 import { SiteFooter } from './shell/SiteFooter'
 import { ThemeControl } from './shell/ThemeControl'
 import { SITE } from './site'
+import { SiteSearch } from './SiteSearch'
 import { DEFAULT_SYSTEM, findSystem, selectPalette, selectSystem } from './themes'
 
 /** The first-level sections, in the order the top bar draws them. */
 const SECTIONS = [
   { path: '/install', label: 'Get started' },
+  { path: '/guides', label: 'Guides' },
   { path: '/components', label: 'Components' },
   { path: '/systems', label: 'Systems' },
   { path: '/tokens', label: 'Tokens' },
@@ -61,6 +65,16 @@ export function App() {
   // shell keeps no copy of the mode.
   const onModeChange = (_mode: ModePreference) => {}
 
+  const [searching, setSearching] = useState(false)
+
+  // The shell's content region is the page's scroll container, and it keeps
+  // its offset when the route changes, because the region is not remounted. A
+  // new page starts at its top. An address with a fragment is left alone: the
+  // page that owns the section scrolls to it.
+  useEffect(() => {
+    if (window.location.hash === '') document.getElementById('content')?.scrollTo(0, 0)
+  }, [path])
+
   const route = ((): Route => {
     if (path === '/') return { layout: 'page', page: <HomePage /> }
     if (path === '/components') return { layout: 'page', page: <ComponentsPage /> }
@@ -69,6 +83,10 @@ export function App() {
         layout: 'page',
         page: <ComponentDetailPage slug={path.slice('/components/'.length)} />,
       }
+    }
+    if (path === '/guides') return { layout: 'page', page: <GuidesPage /> }
+    if (path.startsWith('/guides/')) {
+      return { layout: 'full', page: <GuidePage slug={path.slice('/guides/'.length)} /> }
     }
     if (path === '/tokens') return { layout: 'page', page: <TokensPage system={system} /> }
     if (path === '/systems') return { layout: 'page', page: <SystemsPage /> }
@@ -110,6 +128,16 @@ export function App() {
       topbar={{
         trailing: (
           <>
+            <Button
+              variant="ghost"
+              tone="neutral"
+              icon="search"
+              iconOnly
+              label="Search"
+              onClick={() => {
+                setSearching(true)
+              }}
+            />
             <ThemeControl
               system={system}
               palette={palette}
@@ -136,6 +164,7 @@ export function App() {
         ),
       }}
     >
+      <SiteSearch open={searching} onOpenChange={setSearching} />
       <ChunkBoundary>
         <Suspense fallback={null}>
           {route.page}
