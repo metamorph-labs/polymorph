@@ -47,7 +47,7 @@ describe('the install page', () => {
         .filter((line) => /^#{2,3} /.test(line))
         .map((line) => anchorOf(line.replace(/^#+ /, ''))),
     )
-    expect(GUIDE).toMatch(/\/docs\/consuming\.md$/)
+    expect(GUIDE).toBe('/guides/consuming')
     for (const target of TARGETS) expect(headings, target.value).toContain(target.anchor)
   })
 

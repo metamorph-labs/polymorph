@@ -112,7 +112,7 @@ export function InstallPage() {
         title="Get started"
         description={`Start a new app with one command, or add Polymorph to an app you already have. These steps install release ${RELEASE}.`}
         actions={
-          <Link variant="button" buttonVariant="outline" tone="neutral" href={GUIDE} external>
+          <Link variant="button" buttonVariant="outline" tone="neutral" href={GUIDE}>
             Full setup guide
           </Link>
         }
@@ -174,7 +174,7 @@ export function InstallPage() {
                     <CopyStep key={step.title} step={step} index={index} />
                   ))}
                 </Stack>
-                <Link variant="standalone" href={`${GUIDE}${target.anchor}`} external>
+                <Link variant="standalone" href={`${GUIDE}${target.anchor}`}>
                   {`Read the full ${target.label} guide`}
                 </Link>
               </Stack>

@@ -98,6 +98,53 @@ function emittedScreen(): Plugin {
   }
 }
 
+const COUNTS = 'virtual:polymorph-docs/counts'
+
+/**
+ * Serves the few facts the landing page states, read from the registry when the
+ * site is built or served.
+ *
+ * The page shows four counts and offers the designed systems by name. Importing
+ * the registry for them would send the whole catalogue to every first visit, so
+ * they are counted here from `registry/registry.json`, which `predev` and
+ * `prebuild` have just regenerated.
+ */
+function registryCounts(): Plugin {
+  const file = src('../../registry/registry.json')
+  const resolved = `\0${COUNTS}`
+  return {
+    name: 'pm-registry-counts',
+    resolveId(id) {
+      return id === COUNTS ? resolved : undefined
+    },
+    load(id) {
+      if (id !== resolved) return undefined
+      this.addWatchFile(file)
+      const registry = JSON.parse(readFileSync(file, 'utf8')) as {
+        components: unknown[]
+        frameworks: string[]
+        platforms: string[]
+        theme: { systems: { name: string; kind: string }[]; palettes: unknown[] }
+      }
+      const designed = registry.theme.systems
+        .filter((system) => system.kind === 'designed')
+        .map((system) => system.name)
+      const counts = {
+        components: registry.components.length,
+        // Every renderer: the web frameworks, and each platform that is not the web.
+        renderers:
+          registry.frameworks.length +
+          registry.platforms.filter((platform) => platform !== 'web').length,
+        palettes: registry.theme.palettes.length,
+      }
+      return [
+        `export const COUNTS = ${JSON.stringify(counts)}`,
+        `export const DESIGNED_SYSTEMS = ${JSON.stringify(designed)}`,
+      ].join('\n')
+    },
+  }
+}
+
 /**
  * The docs site consumes `@polymorph/*` as workspace source, as the workbench does. Its
  * content comes from the registry. `predev`/`prebuild` run the registry generator into
@@ -106,7 +153,7 @@ function emittedScreen(): Plugin {
  * serves the system card and the rules page as plain text for agents.
  */
 export default defineConfig({
-  plugins: [react(), prepaintTheme(), llmsFiles(), emittedScreen()],
+  plugins: [react(), prepaintTheme(), llmsFiles(), emittedScreen(), registryCounts()],
   /**
    * Pre-scans the lazy pages and the frame document. The workbench config explains why in
    * full. With a cold cache, the optimizer finds a lazy graph's dependencies after the page

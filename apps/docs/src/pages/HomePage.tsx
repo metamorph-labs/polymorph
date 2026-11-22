@@ -15,18 +15,12 @@ import {
 import { EmittedCode } from '../home/EmittedCode'
 import { LookPicker } from '../home/LookPicker'
 import { useMeta } from '../meta'
-import { REGISTRY } from '../registry'
+import { COUNTS, DESIGNED_SYSTEMS } from 'virtual:polymorph-docs/counts'
 
 /**
  * The landing page. Its words are hand-written, and every number it shows comes
  * from the registry, so the numbers always match the tree that published them.
  */
-
-const DESIGNED = REGISTRY.theme.systems.filter((system) => system.kind === 'designed')
-
-/** Every renderer: the web frameworks, and each platform that is not the web. */
-const RENDERERS =
-  REGISTRY.frameworks.length + REGISTRY.platforms.filter((platform) => platform !== 'web').length
 
 /**
  * What the validator prints for a screen spec that names a prop the member
@@ -65,7 +59,7 @@ export function HomePage() {
       <Hero
         align="center"
         title="One design system. Any look you want."
-        lede={`Polymorph gives you ${REGISTRY.components.length} components that behave the same in React, Vue, Svelte, Solid, Angular, plain HTML, SwiftUI and Jetpack Compose. Restyle all of them at once by changing a couple of small files.`}
+        lede={`Polymorph gives you ${COUNTS.components} components that behave the same in React, Vue, Svelte, Solid, Angular, plain HTML, SwiftUI and Jetpack Compose. Restyle all of them at once by changing a couple of small files.`}
         actions={
           <>
             <Link variant="button" buttonVariant="solid" size="lg" href="/install">
@@ -174,19 +168,19 @@ export function HomePage() {
       >
         <Grid columns={4} gap={4}>
           <Card>
-            <Stat label="Components" value={String(REGISTRY.components.length)} />
+            <Stat label="Components" value={String(COUNTS.components)} />
           </Card>
           <Card>
-            <Stat label="Frameworks and platforms" value={String(RENDERERS)} />
+            <Stat label="Frameworks and platforms" value={String(COUNTS.renderers)} />
           </Card>
           <Card>
             {/* Counted apart from palettes because they are different things: a
                 system is how things are built and a palette is colour. Any
                 palette works on any system. */}
-            <Stat label="Ready-made looks" value={String(DESIGNED.length)} />
+            <Stat label="Ready-made looks" value={String(DESIGNED_SYSTEMS.length)} />
           </Card>
           <Card>
-            <Stat label="Colour palettes" value={String(REGISTRY.theme.palettes.length)} />
+            <Stat label="Colour palettes" value={String(COUNTS.palettes)} />
           </Card>
         </Grid>
       </Section>

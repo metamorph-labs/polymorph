@@ -1,18 +1,16 @@
 import { Button, Inline, SegmentedControl, Select, Stack } from '@polymorph/react-ui'
 import { useEffect, useState } from 'react'
+import { DESIGNED_SYSTEMS } from 'virtual:polymorph-docs/counts'
 
 import { loadSystemFonts } from '../fonts'
 import { Stage } from '../harness/Stage'
-import { REGISTRY } from '../registry'
 import { ensurePairing, findSystem, PALETTES } from '../themes'
 import { DemoScreen } from './DemoScreen'
 
 type Mode = 'light' | 'dark'
 
 /** The designed systems. A guest system is a product's own and is not offered here. */
-const SYSTEMS = REGISTRY.theme.systems
-  .filter((system) => system.kind === 'designed')
-  .map((system) => system.name)
+const SYSTEMS = DESIGNED_SYSTEMS
 
 const PALETTE_OPTIONS = PALETTES.map((palette) => ({ value: palette.name, label: palette.name }))
 

@@ -9,6 +9,9 @@
   overflow-x: auto;
   font-family: var(--pm-font-mono);
   font-size: var(--pm-text-sm-size);
+
+  /* Stated, not inherited, because the copy control is sized in lines. */
+  line-height: var(--pm-text-sm-line-height);
   color: var(--pm-text-primary);
 
   /* Whitespace is content, and wrapping a command would change it. */
@@ -18,10 +21,11 @@
   border-radius: var(--pm-radius-md);
 }
 
-/* With the copy control in the corner, the block reserves its width so the
-   longest line scrolls clear of it (container-first: content is never covered). */
+/* With the copy control in the corner, the block reserves the corner's width so
+   the longest line scrolls clear of it (container-first: content is never
+   covered at rest). */
 .block[data-copyable] {
-  padding-inline-end: calc(var(--pm-space-4) + var(--pm-control-height-sm));
+  padding-inline-end: calc(var(--pm-space-2) + var(--pm-control-height-sm) + var(--pm-space-4));
 }
 
 /* The wrapper exists only when copyable. It is the containing block for the
@@ -30,12 +34,29 @@
   position: relative;
 }
 
-/* Corner control, placed like Dialog's close: absolute, inset from the top and
-   inline end by the block's padding step. */
+/* Corner control, placed like Dialog's close: the button sits inset from the
+   top and inline end by the block's padding step. The control itself reaches
+   the block's corner, inside its border, and paints the block's surface, so a
+   line that runs into the corner before it is scrolled is cut off at one edge
+   and never shows through or beside the glyph.
+
+   It is two lines of code tall, which is the least that holds the button, so
+   it never covers part of a line. A one-line block is shorter than that, and
+   the maximum keeps the control inside the block's border there. */
 .control {
   position: absolute;
-  inset-block-start: var(--pm-space-4);
-  inset-inline-end: var(--pm-space-4);
+  inset-block-start: 1px;
+  inset-inline-end: 1px;
+  box-sizing: border-box;
+  block-size: calc(
+    var(--pm-space-4) - 1px + 2 * var(--pm-text-sm-line-height) * var(--pm-text-sm-size)
+  );
+  max-block-size: calc(100% - 2px);
+  padding-block-start: calc(var(--pm-space-4) - 1px);
+  padding-inline: var(--pm-space-2) calc(var(--pm-space-4) - 1px);
+  background: var(--pm-bg-subtle);
+  border-start-end-radius: var(--pm-radius-md);
+  border-end-end-radius: var(--pm-radius-md);
 }
 
 /* The `copy` → `confirm` swap fades in at control duration, as Table's sort

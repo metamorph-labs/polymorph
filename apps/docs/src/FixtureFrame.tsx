@@ -1,5 +1,5 @@
 import { DATA_ATTRS } from '@polymorph/theme'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 /**
  * The page side of the fixture frame: the `<iframe>` a contained gallery entry
@@ -21,11 +21,55 @@ import { useEffect, useRef } from 'react'
  * `width` is the legacy dimension attribute and `frameBorder` the legacy border
  * switch. They are attributes rather than styles because an app file may not
  * express a style (a red rule), and the element must be full-width with no UA
- * border to look like part of the page. `loading="lazy"` stops a long gallery
- * from booting every specimen document at once.
+ * border to look like part of the page.
+ *
+ * Frames boot one or two at a time, and only near the visible part of the
+ * page. Each frame boots the whole vocabulary. The dev server serves it as
+ * about a thousand modules per document, and a page that booted a dozen frames
+ * at once ran out of browser resources and left frames empty. A frame that
+ * finishes loading lets the next one start, and the modules it fetched are
+ * then cached for the rest.
  */
 
 const MIRRORED = Object.values(DATA_ATTRS)
+
+/** How many frames may be loading at once. */
+const MAX_LOADING = 2
+/** How long a frame may hold a loading slot, in case its `load` never arrives. */
+const SLOT_TIMEOUT_MS = 15000
+/** How far outside the visible part of the page a frame starts to load: one screen. */
+const NEAR = '100%'
+
+let loading = 0
+const waiting: (() => void)[] = []
+
+/**
+ * Takes a loading slot, now or when one frees up, and calls `start` then. The
+ * returned function gives the slot back, or leaves the queue if `start` has
+ * not run yet. Calling it twice does nothing.
+ */
+function takeSlot(start: () => void): () => void {
+  let started = false
+  let done = false
+  const begin = () => {
+    started = true
+    loading++
+    start()
+  }
+  if (loading < MAX_LOADING) begin()
+  else waiting.push(begin)
+  return () => {
+    if (done) return
+    done = true
+    if (!started) {
+      const index = waiting.indexOf(begin)
+      if (index >= 0) waiting.splice(index, 1)
+      return
+    }
+    loading--
+    waiting.shift()?.()
+  }
+}
 
 export function FixtureFrame({
   component,
@@ -40,6 +84,39 @@ export function FixtureFrame({
   name: string
 }) {
   const ref = useRef<HTMLIFrameElement>(null)
+  const url = `/frame.html?component=${encodeURIComponent(component)}&entry=${index}`
+  // No `src` until the frame is near the visible part of the page and has a
+  // loading slot. An iframe without one holds an empty document.
+  const [src, setSrc] = useState<string | null>(null)
+
+  useEffect(() => {
+    const frame = ref.current
+    if (!frame) return
+    let release: (() => void) | null = null
+    let timer = 0
+    const loaded = () => {
+      if (frame.contentWindow?.location.pathname === '/frame.html') release?.()
+    }
+    const observer = new IntersectionObserver(
+      (records) => {
+        if (!records.some((record) => record.isIntersecting)) return
+        observer.disconnect()
+        release = takeSlot(() => {
+          setSrc(url)
+          timer = window.setTimeout(() => release?.(), SLOT_TIMEOUT_MS)
+        })
+      },
+      { rootMargin: NEAR },
+    )
+    observer.observe(frame)
+    frame.addEventListener('load', loaded)
+    return () => {
+      observer.disconnect()
+      frame.removeEventListener('load', loaded)
+      window.clearTimeout(timer)
+      release?.()
+    }
+  }, [url])
 
   useEffect(() => {
     const frame = ref.current
@@ -72,7 +149,6 @@ export function FixtureFrame({
     }
   }, [])
 
-  const src = `/frame.html?component=${encodeURIComponent(component)}&entry=${index}`
   // `height` here is the initial viewport, not a size decision. A
   // popper-positioned Select sizes its panel against the viewport it opens into.
   // The element's 150px default would force the panel into internal scroll
@@ -82,12 +158,11 @@ export function FixtureFrame({
   return (
     <iframe
       ref={ref}
-      src={src}
+      src={src ?? undefined}
       title={name}
       width="100%"
       height={240}
       frameBorder="0"
-      loading="lazy"
     />
   )
 }

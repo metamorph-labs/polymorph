@@ -64,10 +64,17 @@ The landing page's code sample is real output. A plugin in `vite.config.ts` runs
 `scripts/emit-screens.mjs` over `src/home/inbox.screen.json` and serves the spec and what the
 emitter writes for each web framework as the module `virtual:polymorph-docs/emitted-screen`.
 
-A component page renders the member's states fixture (`*.states.tsx`) live. When an entry opens a
-modal overlay, the page moves every entry into its own iframe so the overlay's modality cannot
-make the page inert. `frame.html` is a second Vite entry, booted by `src/frame.tsx`.
-`src/FixtureFrame.tsx` is the iframe, and it mirrors the page's theme attributes into the frame.
+A component page renders the member's states fixture (`*.states.tsx`) live. An entry may reach
+outside the page: a modal overlay makes the page inert, an open panel renders outside the page's
+root, and a fixed-position element sits over the page. When any entry does one of these, the page
+moves every entry into its own iframe. `frame.html` is a second Vite entry, booted by
+`src/frame.tsx`. `src/FixtureFrame.tsx` is the iframe. It mirrors the page's theme attributes
+into the frame, and it loads a frame only when it is near the screen, two at a time, because a
+page of frames loaded at once exhausts the browser's connections.
+
+`src/components/` holds what the two component pages share: the catalogue the index lists and
+filters (`catalogue.ts`), the words the site uses for each tier and each component (`tiers.ts`,
+`blurbs.ts`), and the sections of a component's page.
 
 ## The static site
 

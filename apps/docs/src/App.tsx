@@ -84,7 +84,7 @@ export function App() {
     if (path === '/components') return { layout: 'page', page: <ComponentsPage /> }
     if (path.startsWith('/components/')) {
       return {
-        layout: 'page',
+        layout: 'full',
         page: <ComponentDetailPage slug={path.slice('/components/'.length)} />,
       }
     }

@@ -17,8 +17,8 @@ export const RELEASE = REGISTRY.version
 /** The repository, as a reader clones it. */
 export const CLONE = `git clone ${SITE.repository}`
 
-/** `docs/consuming.md` on the repository, which the page links for the full setup. */
-export const GUIDE = `${SITE.repository}/blob/main/docs/consuming.md`
+/** The guide the page links for the full setup: `docs/consuming.md`, as the site publishes it. */
+export const GUIDE = '/guides/consuming'
 
 /** The system `polymorph init` themes a new app with (`packages/cli/src/plan.ts`). */
 export const INIT_SYSTEM = 'plain'

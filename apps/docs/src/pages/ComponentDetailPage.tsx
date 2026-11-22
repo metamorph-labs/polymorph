@@ -1,347 +1,462 @@
+import type { RegistryComponent } from '@polymorph/registry'
 import { GALLERIES } from '@polymorph/react-ui/galleries'
 import {
+  Alert,
   Badge,
-  Breadcrumbs,
   Card,
   Code,
   CodeBlock,
+  Collapsible,
+  DescriptionList,
+  DetailPage,
   EmptyState,
+  Grid,
   Heading,
   Inline,
-  Kbd,
-  PageHeader,
+  Link,
   Stack,
   Table,
+  TableOfContents,
   Text,
 } from '@polymorph/react-ui'
-import { useEffect, useState } from 'react'
+import { Fragment, type ReactNode } from 'react'
 
+import {
+  FOUNDATION_PACKAGE,
+  importLine,
+  importNames,
+  neighbours,
+  ownProps,
+  reachNote,
+  repositoryFile,
+  series,
+} from '../components/catalogue'
+import { Contract } from '../components/Contract'
+import { useContainment, useFitsGrid } from '../components/fixtures'
+import { BLURBS } from '../components/blurbs'
+import { PropList } from '../components/PropList'
+import { Reach } from '../components/Reach'
+import { Section } from '../components/Section'
+import { TIER_COPY } from '../components/tiers'
 import { FixtureFrame } from '../FixtureFrame'
-import { componentBySlug } from '../registry'
+import { useMeta } from '../meta'
+import { componentBySlug, componentSlug, findComponent, type TIERS } from '../registry'
+import { navigate } from '../router'
 
-/**
- * Fixture containment, on the page side.
- *
- * An entry whose overlay opens modally on mount (a `defaultOpen` Select, Menu,
- * or an open Drawer) makes Radix mark `#root` `aria-hidden` and turn off
- * `<body>` pointer-events. The whole docs page is then inert to assistive
- * technology while the gallery is on screen. The page keeps those entries,
- * because an overlay fixture must include its open state, and moves them into
- * their own documents: one `FixtureFrame` per entry, so the modality applies to
- * a frame instead of the page.
- *
- * Which pages get frames is decided by rendering, not by a list. Framing every
- * entry on every page is too heavy. Each frame is an extra document boot, and it
- * would give a screen reader a document boundary per entry on the sixty-odd
- * pages that do not need one. There is no declarative fact to key on instead
- * (Menu's and Drawer's open entries carry no `expect`, and the registry records
- * no modality). The defect itself is mechanical, though. Entries render live,
- * and if `#root` has Radix's marking once they are mounted, the page switches
- * every entry into frames. The result is cached per session, so a return visit
- * uses frames from the first paint.
- *
- * The observer stays on briefly after mount for overlays that arrive a chunk
- * late (the DatePicker pattern). The cost of that window is that a user opening
- * a modal by hand inside it also switches the page to frames. That is rare, a
- * new session detects again, and the framed page still works fully.
- */
-const VERDICT_PREFIX = 'pm-docs:contained:'
-const DETECT_WINDOW_MS = 1500
-
-function readVerdict(name: string): boolean {
+/** A slug as typed in the address. A malformed escape is shown as it is. */
+function readable(slug: string): string {
   try {
-    return window.sessionStorage.getItem(VERDICT_PREFIX + name) === '1'
+    return decodeURIComponent(slug)
   } catch {
-    // Storage denied: detection simply re-runs on the next visit.
-    return false
+    return slug
   }
 }
 
-function writeVerdict(name: string): void {
-  try {
-    window.sessionStorage.setItem(VERDICT_PREFIX + name, '1')
-  } catch {
-    // Same degradation as above.
-  }
-}
+/** The tiers whose states are drawn one per row: overlays, charts and whole pages. */
+const WIDE_TIERS: ReadonlySet<string> = new Set<(typeof TIERS)[number]>([
+  'overlays',
+  'charts',
+  'archetypes',
+])
+
+/** The ids of the page's sections, which its TableOfContents links to. */
+const SECTION = {
+  usage: 'usage',
+  reach: 'renderers',
+  props: 'props',
+  states: 'states',
+  anatomy: 'anatomy',
+  tokens: 'tokens',
+  selectors: 'selectors',
+  behaviour: 'behaviour',
+  agents: 'agents',
+} as const
 
 /**
- * One page per component. It shows the registry's schema (anatomy, props, the
- * lawful grid, states, selectors, data attributes, dependencies) and the live
- * states fixture entries. These are the same fixtures the completeness law
- * renders, so the page shows what the tests test.
+ * One page per component, for the shell's `'full'` layout: a DetailPage whose
+ * aside holds the page's TableOfContents and stays in view.
  *
- * The page renders the whole schema on purpose. A published field that the page
- * does not show would make it an incomplete view of the registry entry. The
- * fields easiest to leave out describe the API rather than the call site: the
- * tree a recipe styles, which prop pairings compile, what the fixture
- * enumerates, and the attributes the CSS keys on. A field nobody reads goes
- * stale unnoticed. So the rule is that the registry has no private fields:
- * whatever the registry publishes, this site shows.
+ * The order is the order a reader needs it in. First what the member is and a
+ * live example, then how to import it and where it runs, then its props, then
+ * every other entry of its states fixture. The reference follows: anatomy, the
+ * tokens it reads (collapsed), the selectors and attributes its styles key on,
+ * the behaviour contract and the agent contract.
+ *
+ * The page still shows every field the registry publishes about the member. A
+ * field nobody reads goes stale unnoticed, so the registry has no private
+ * fields: the declared state list is checked against the rendered entries, and
+ * a mismatch is shown rather than hidden.
  */
 export function ComponentDetailPage({ slug }: { slug: string }) {
   const component = componentBySlug(slug)
-  const name = component?.name ?? null
-
-  // Every entry, never a subset. The paragraph below says these are the entries
-  // the completeness and axe laws run. A subset would make that false for the
-  // components with the most states, which are the ones readers open this page
-  // for. A component with many states gets a long gallery.
-  const fixture = name === null ? undefined : GALLERIES.find((states) => states.component === name)
-  const entries = fixture?.entries ?? []
-
-  // The entry names the gallery rendered. The declared-states table compares the
-  // registry's published list against them. Entry names are unique within a
-  // fixture, so a set loses nothing.
-  const rendered = new Set(entries.map((entry) => entry.name))
-
-  // Keyed by name rather than a boolean because the page is not remounted per
-  // slug. A result for Select must not carry over to the next component visited.
-  const [containedFor, setContainedFor] = useState<string | null>(null)
-  const contained = name !== null && (containedFor === name || readVerdict(name))
-
-  useEffect(() => {
-    if (name === null || contained || entries.length === 0) return
-    const root = document.getElementById('root')
-    if (!root) return
-
-    // Radix's modality marker, in both forms. The `aria-hidden` package writes
-    // `aria-hidden="true"` and its own `data-aria-hidden` bookkeeping attribute.
-    const marked = () =>
-      root.getAttribute('aria-hidden') === 'true' || root.hasAttribute('data-aria-hidden')
-
-    const flip = () => {
-      writeVerdict(name)
-      setContainedFor(name)
-    }
-
-    if (marked()) {
-      flip()
-      return
-    }
-
-    const observer = new MutationObserver(() => {
-      if (marked()) {
-        observer.disconnect()
-        flip()
-      }
-    })
-    observer.observe(root, {
-      attributes: true,
-      attributeFilter: ['aria-hidden', 'data-aria-hidden'],
-    })
-    const timer = window.setTimeout(() => observer.disconnect(), DETECT_WINDOW_MS)
-
-    return () => {
-      window.clearTimeout(timer)
-      observer.disconnect()
-    }
-  }, [name, contained, entries.length])
-
+  // An address with no component is marked, so a search engine does not keep
+  // it and the site step reports the link that led to it.
+  useMeta(
+    component
+      ? { title: component.name, description: BLURBS[component.name] ?? component.purpose }
+      : { title: 'Component not found', noindex: true },
+  )
   if (!component) {
     return (
-      <Stack gap={7} p={7}>
+      <Stack p={7}>
         <EmptyState
           icon="search"
-          title="No such component"
-          description="The registry has no member by that name — the index on the Components page is the source of truth."
+          title="We couldn’t find that component"
+          description={`There’s no component called “${readable(slug)}”. Have a look through the full list instead.`}
+          action={
+            <Link variant="button" buttonVariant="soft" href="/components">
+              See all components
+            </Link>
+          }
         />
       </Stack>
     )
   }
+  // Keyed, so each member starts with fresh containment and layout decisions.
+  return <MemberPage key={component.name} component={component} />
+}
+
+function MemberPage({ component }: { component: RegistryComponent }) {
+  const fixture = GALLERIES.find((states) => states.component === component.name)
+  const entries = fixture?.entries ?? []
+  const contained = useContainment(component.name, entries.length > 0)
+  // Overlays staged in frames, charts and whole pages need the column's
+  // width, so they are drawn one per row. Other entries share a grid while
+  // they fit its cells.
+  const wide = contained || WIDE_TIERS.has(component.tier)
+  const { fits, cell } = useFitsGrid(!wide)
+
+  /** One fixture entry, live in a box the grid measures, or in its own document. */
+  const specimen = (index: number, measured: boolean): ReactNode => {
+    const entry = entries[index]
+    if (!entry) return null
+    if (contained) {
+      return <FixtureFrame component={component.name} index={index} name={entry.name} />
+    }
+    return <div ref={measured ? cell : undefined}>{entry.render()}</div>
+  }
+
+  const first = entries[0]
+  const rest = entries.slice(1)
+  const rendered = new Set(entries.map((entry) => entry.name))
+  const undrawn = component.states.filter((state) => !rendered.has(state))
+  const props = ownProps(component)
+  const { previous, next } = neighbours(component)
+  const tier = TIER_COPY[component.tier as (typeof TIERS)[number]]
+
+  const sections: { id: string; label: string; shown: boolean }[] = [
+    { id: SECTION.usage, label: 'How to use it', shown: true },
+    { id: SECTION.reach, label: 'Where it works', shown: true },
+    {
+      id: SECTION.props,
+      label: 'Props',
+      shown: props.length > 0 || component.parts.length > 0 || component.exports.length > 0,
+    },
+    { id: SECTION.states, label: 'States', shown: rest.length > 0 || undrawn.length > 0 },
+    { id: SECTION.anatomy, label: 'Anatomy', shown: component.anatomy !== null },
+    { id: SECTION.tokens, label: 'Theme tokens', shown: component.tokens.length > 0 },
+    {
+      id: SECTION.selectors,
+      label: 'Styling hooks',
+      shown: component.requiredSelectors.length > 0 || component.dataAttributes.length > 0,
+    },
+    { id: SECTION.behaviour, label: 'Accessibility', shown: component.behaviour.length > 0 },
+    { id: SECTION.agents, label: 'For AI agents', shown: component.agent !== null },
+  ]
+  const shown = (id: string) => sections.some((section) => section.id === id && section.shown)
 
   return (
-    <Stack gap={6} p={7}>
-      <Breadcrumbs
-        items={[{ label: 'Components', href: '/components' }, { label: component.name }]}
-      />
-      <PageHeader title={component.name} description={component.purpose} />
-
-      <Inline gap={2} wrap>
-        <Badge variant="outline" tone="accent">
-          {component.tier}
-        </Badge>
-        <Badge>{component.origin}</Badge>
-        {component.spec ? <Code>{component.spec}</Code> : null}
-      </Inline>
-
-      {/* Placed before the states because the rest of the page refers to this
-          tree. A reader who sees it first knows what "trigger" and "viewport"
-          mean when a selector or an attribute mentions them. A `CodeBlock`
-          because the indentation shows the nesting, and it has its own scroll
-          container for a tree wider than the column (`Text` would reflow it).
-          Absent for the twelve members whose specs have no tree. */}
-      {component.anatomy ? (
-        <Stack gap={3}>
-          <Stack gap={1}>
-            <Heading>Anatomy</Heading>
-            <Text size="sm" tone="secondary">
-              The spec&rsquo;s element tree, verbatim: the parts a recipe styles and the order they
-              nest in.
-            </Text>
-          </Stack>
-          <CodeBlock label={`${component.name} anatomy`}>{component.anatomy}</CodeBlock>
-        </Stack>
-      ) : null}
-
-      {component.tokens.length > 0 ? (
-        <Stack gap={3}>
-          <Stack gap={1}>
-            <Heading>Tokens it reads</Heading>
-            <Text size="sm" tone="secondary">
-              Every token this component&rsquo;s stylesheet reads. Changing one of these in a system
-              changes this component. Class tokens (<Code>--pm-radius-control</Code>,{' '}
-              <Code>--pm-shadow-seat</Code>, <Code>--pm-inset-*</Code>) point to different values
-              per system. The rest resolve from the axes and seeds.
-            </Text>
-          </Stack>
-          <Inline gap={2} wrap>
-            {component.tokens.map((token) => (
-              <Code key={token}>{token}</Code>
-            ))}
-          </Inline>
-        </Stack>
-      ) : null}
-
-      {entries.length > 0 ? (
-        <Stack gap={4}>
-          <Stack gap={1}>
-            <Heading>States</Heading>
-            <Text size="sm" tone="secondary">
-              Live renders of all {entries.length} entries in the component&rsquo;s states fixture.
-              These are the entries the completeness and axe laws run, shown in the theme and mode
-              the toolbar has set.
-            </Text>
-          </Stack>
-          {entries.map((entry, index) => (
-            <Card key={entry.name}>
-              <Stack gap={3}>
-                <Text size="sm" tone="secondary">
-                  {entry.name}
-                </Text>
-                {/* A contained page renders every entry in its own document,
-                    not only the modal ones, so the gallery is consistent
-                    within a page. See the containment note above. */}
-                {contained ? (
-                  <FixtureFrame component={component.name} index={index} name={entry.name} />
-                ) : (
-                  <div>{entry.render()}</div>
-                )}
-              </Stack>
-            </Card>
-          ))}
-        </Stack>
-      ) : null}
-
-      {/* The registry's own state list. It is separate from the gallery above
-          even when the two match.
-
-          Both come from the states fixture, so on a healthy member the names
-          match entry for entry. They are still two different facts. The gallery
-          is what this app imported and rendered. This list is what the
-          published registry gives an installer or the MCP server. Rendering
-          only the gallery would hide the published list on every page, and if
-          the two ever differ, showing both is what reveals it. Every member
-          declares states, so this section appears on every member's page. The
-          gallery above is conditional, so a member with no live entries still
-          shows this. */}
-      {component.states.length > 0 ? (
-        <Stack gap={4}>
-          <Stack gap={1}>
-            <Heading>Declared states</Heading>
-            <Text size="sm" tone="secondary">
-              Every state the spec enumerates, read from the states fixture at publish time and
-              checked against what this page rendered above.
-            </Text>
-          </Stack>
-          {/* A table rather than a row of chips, for two reasons. The names are
-              prose ("grouped, open — group labels present, options selectable"
-              is a sentence), and Badge is a small label that uppercases its
-              text, so long names would render in capitals. The second column is
-              the point of the section: printing the published list beside the
-              rendered one makes a mismatch visible. */}
-          <Table caption={`${component.name} declared states`}>
-            <Table.Head>
-              <Table.Row>
-                <Table.Header>State</Table.Header>
-                <Table.Header>Rendered above</Table.Header>
-              </Table.Row>
-            </Table.Head>
-            <Table.Body>
-              {component.states.map((state) => (
-                <Table.Row key={state}>
-                  <Table.Cell>{state}</Table.Cell>
-                  <Table.Cell>
-                    {rendered.has(state) ? (
-                      <Badge tone="success">yes</Badge>
-                    ) : (
-                      <Badge tone="warning">no fixture entry</Badge>
-                    )}
-                  </Table.Cell>
-                </Table.Row>
-              ))}
-            </Table.Body>
-          </Table>
-        </Stack>
-      ) : null}
-
-      <Stack gap={4}>
-        <Stack gap={1}>
-          <Heading>Props</Heading>
+    <DetailPage
+      title={component.name}
+      backLabel="All components"
+      onBack={() => navigate('/components')}
+      meta={
+        <>
+          {tier ? <Badge>{tier.title}</Badge> : null}
           <Text size="sm" tone="secondary">
-            Extracted from the exported types at publish time. The spec-staleness law keeps them in
-            agreement with the design spec.
+            {reachNote(component) ?? 'Web, iOS and Android'}
           </Text>
+        </>
+      }
+      actions={
+        <>
+          {component.spec === null ? null : (
+            <Link
+              variant="button"
+              buttonVariant="outline"
+              size="sm"
+              external
+              href={repositoryFile(component.spec)}
+            >
+              Read the spec
+            </Link>
+          )}
+          <Link
+            variant="button"
+            buttonVariant="ghost"
+            size="sm"
+            external
+            href={repositoryFile(component.files.source)}
+          >
+            View the source
+          </Link>
+        </>
+      }
+      aside={
+        <TableOfContents
+          label="On this page"
+          items={sections
+            .filter((section) => section.shown)
+            .map(({ id, label }) => ({ id, label }))}
+        />
+      }
+      stickyAside
+    >
+      <Stack gap={9}>
+        <Stack gap={5}>
+          <Text>{BLURBS[component.name] ?? component.purpose}</Text>
+          {first === undefined ? null : (
+            <Stack gap={2}>
+              <Card>{specimen(0, false)}</Card>
+              <Text size="sm" tone="secondary">
+                {first.name}
+              </Text>
+            </Stack>
+          )}
         </Stack>
-        {/* Captioned with the component name, not the heading above it. A
-            reader listing this page's tables hears "Button props", which
-            identifies the table. "Props" alone would not. */}
-        <Table caption={`${component.name} props`}>
-          {/* `Table.Head` is the `<thead>` section and `Table.Header` is the
-              `<th>` cell. */}
-          <Table.Head>
-            <Table.Row>
-              <Table.Header>Prop</Table.Header>
-              <Table.Header>Type</Table.Header>
-              <Table.Header>Notes</Table.Header>
-            </Table.Row>
-          </Table.Head>
-          <Table.Body>
-            {component.props.map((prop) => (
-              <Table.Row key={prop.name}>
-                <Table.Cell>
-                  <Code>{`${prop.name}${prop.optional ? '?' : ''}`}</Code>
-                </Table.Cell>
-                <Table.Cell>
-                  <Code>{prop.type}</Code>
-                </Table.Cell>
-                <Table.Cell>{prop.doc ?? ''}</Table.Cell>
-              </Table.Row>
-            ))}
-          </Table.Body>
-        </Table>
+
+        <Usage component={component} />
+
+        <Section
+          id={SECTION.reach}
+          title="Where it works"
+          lede={`Every place you can use ${component.name}, on the web and on phones.`}
+        >
+          <Reach component={component} />
+        </Section>
+
+        {shown(SECTION.props) ? <Props component={component} /> : null}
+
+        {shown(SECTION.states) ? (
+          <Section
+            id={SECTION.states}
+            title="States"
+            lede={
+              rest.length === 0
+                ? undefined
+                : `${component.name} comes with ${entries.length} states. You saw the first one above, and here are the rest, drawn live in the theme you’ve picked.`
+            }
+          >
+            {undrawn.length === 0 ? null : (
+              <Alert tone="warning" title="Some states aren’t drawn here">
+                {`The spec lists ${series(undrawn.map((state) => `“${state}”`))}, and the page found no example for ${undrawn.length === 1 ? 'it' : 'them'}.`}
+              </Alert>
+            )}
+            {rest.length === 0 ? null : wide || !fits ? (
+              <Stack gap={6}>
+                {rest.map((entry, offset) => (
+                  <Specimen key={entry.name} name={entry.name}>
+                    {specimen(offset + 1, false)}
+                  </Specimen>
+                ))}
+              </Stack>
+            ) : (
+              <Grid columns={3} gap={4}>
+                {rest.map((entry, offset) => (
+                  <Specimen key={entry.name} name={entry.name}>
+                    {specimen(offset + 1, true)}
+                  </Specimen>
+                ))}
+              </Grid>
+            )}
+          </Section>
+        ) : null}
+
+        {component.anatomy === null ? null : (
+          <Section
+            id={SECTION.anatomy}
+            title="Anatomy"
+            lede={`How ${component.name} is put together, part by part.`}
+          >
+            <CodeBlock label={`${component.name} anatomy`}>{component.anatomy}</CodeBlock>
+          </Section>
+        )}
+
+        {shown(SECTION.tokens) ? (
+          <Section
+            id={SECTION.tokens}
+            title="Theme tokens"
+            lede={`${component.name} takes its colours, spacing and type from ${component.tokens.length === 1 ? 'one token' : `${component.tokens.length} tokens`}. Change one in your theme and ${component.name} follows, with no CSS of your own.`}
+          >
+            <Collapsible
+              label={
+                component.tokens.length === 1
+                  ? 'Show the token'
+                  : `Show all ${component.tokens.length} tokens`
+              }
+            >
+              <Inline gap={2} wrap>
+                {component.tokens.map((token) => (
+                  <Code key={token}>{token}</Code>
+                ))}
+              </Inline>
+            </Collapsible>
+          </Section>
+        ) : null}
+
+        {shown(SECTION.selectors) ? <Selectors component={component} /> : null}
+
+        {shown(SECTION.behaviour) ? (
+          <Section
+            id={SECTION.behaviour}
+            title="Keyboard and accessibility"
+            lede={`What ${component.name} promises about roles, names, keys and focus. Every web version is tested against these lines.`}
+          >
+            <Contract component={component} />
+          </Section>
+        ) : null}
+
+        {component.agent === null ? null : <Agents component={component} />}
+
+        {previous === null && next === null ? null : (
+          <Grid columns={2} gap={4}>
+            {previous === null ? (
+              <Stack />
+            ) : (
+              <Neighbour component={previous} direction="Previous" tier={tier?.title ?? null} />
+            )}
+            {next === null ? null : (
+              <Neighbour component={next} direction="Next" tier={tier?.title ?? null} />
+            )}
+          </Grid>
+        )}
       </Stack>
+    </DetailPage>
+  )
+}
 
-      {/* Directly under the props table, because it completes it. The props
-          table lists the values of `variant` and `tone`, and this table says
-          which pairings exist. A cell missing from this table is a type error
-          at the call site, not a runtime warning, so this is part of the
-          published API, not a style note.
+/** The words before the item at `index` of a spoken list: none, a comma, or "and". */
+function separator(index: number, length: number): string {
+  if (index === 0) return ''
+  return index === length - 1 ? ' and ' : ', '
+}
 
-          One member has a grid (Button, whose neutral fills are unlawful). The
-          section is written for the field, not for that case. Nothing here
-          names a variant or a tone, so a second member with a grid renders
-          correctly with no edit. */}
-      {component.grid ? (
+/** One entry of the states gallery: the live render with its name under it. */
+function Specimen({ name, children }: { name: string; children: ReactNode }) {
+  return (
+    <Stack gap={2}>
+      <Card>{children}</Card>
+      <Text size="sm" tone="secondary">
+        {name}
+      </Text>
+    </Stack>
+  )
+}
+
+function Usage({ component }: { component: RegistryComponent }) {
+  const names = importNames(component)
+  const slug = componentSlug(component.name)
+  const built = component.dependencies.components
+    .map((dependency) => findComponent(dependency))
+    .filter((dependency) => dependency !== undefined)
+
+  return (
+    <Section id={SECTION.usage} title="How to use it" lede="Import it from the React package:">
+      {names.length === 0 ? null : (
+        <CodeBlock copyable copyLabel="Copy the import" label="Import">
+          {importLine(names)}
+        </CodeBlock>
+      )}
+      {component.origin === 'vendored' ? (
+        <Text>
+          {'Want to own the code instead? Run '}
+          <Code>{`polymorph add ${slug}`}</Code>
+          {` and it copies ${component.name} into your project, ${component.dependencies.files.length} files in all, ready for you to change.`}
+        </Text>
+      ) : (
+        <Text>
+          {`${component.name} comes with `}
+          <Code>{FOUNDATION_PACKAGE}</Code>
+          {', the React foundation, so there’s nothing to copy.'}
+        </Text>
+      )}
+      {built.length === 0 ? null : (
+        <Text>
+          {'It’s built with '}
+          {built.map((dependency, index) => (
+            <Fragment key={dependency.name}>
+              {separator(index, built.length)}
+              <Link href={`/components/${componentSlug(dependency.name)}`}>{dependency.name}</Link>
+            </Fragment>
+          ))}
+          {built.length === 1 ? ', which comes along with it.' : ', which come along with it.'}
+        </Text>
+      )}
+      <Text tone="secondary">
+        {'New to Polymorph? '}
+        <Link href="/install">Get started</Link>
+        {' walks you through the setup.'}
+      </Text>
+    </Section>
+  )
+}
+
+function Props({ component }: { component: RegistryComponent }) {
+  const props = ownProps(component)
+  return (
+    <Section
+      id={SECTION.props}
+      title="Props"
+      lede={`Everything you can pass to ${component.name}. This list is read from its TypeScript types, so it always matches the code.`}
+    >
+      {props.length === 0 ? null : <PropList props={props} />}
+
+      {component.parts.map((part) => (
+        <Stack key={part.name} gap={4}>
+          <Heading level={3}>{`${component.name}.${part.name}`}</Heading>
+          {part.props.length === 0 ? (
+            <Text tone="secondary">It takes no props.</Text>
+          ) : (
+            <PropList props={part.props} />
+          )}
+        </Stack>
+      ))}
+
+      {component.exports.map((entry) => (
+        <Stack key={entry.name} gap={4}>
+          <Heading level={3}>{entry.kind === 'function' ? `${entry.name}()` : entry.name}</Heading>
+          {entry.members.length === 0 ? null : (
+            <Text tone="secondary">
+              {'Also there as '}
+              {entry.members.map((member, index) => (
+                <Fragment key={member}>
+                  {separator(index, entry.members.length)}
+                  <Code>{`${entry.name}.${member}()`}</Code>
+                </Fragment>
+              ))}
+              .
+            </Text>
+          )}
+          {entry.props.length === 0 ? (
+            <Text tone="secondary">
+              {entry.kind === 'function' ? 'It takes no options.' : 'It takes no props.'}
+            </Text>
+          ) : (
+            <PropList props={entry.props} />
+          )}
+        </Stack>
+      ))}
+
+      {component.grid === null ? null : (
         <Stack gap={4}>
-          <Stack gap={1}>
-            <Heading>Lawful combinations</Heading>
-            <Text size="sm" tone="secondary">
-              The variant × tone cells the types allow. A pairing absent from this table does not
-              compile.
+          <Stack gap={2}>
+            <Heading level={3}>Variant and tone pairs</Heading>
+            <Text tone="secondary">
+              Only these pairs compile. Any other pair is a type error, so you find out in your
+              editor.
             </Text>
           </Stack>
-          <Table caption={`${component.name} lawful variant and tone combinations`}>
+          <Table caption={`${component.name} variant and tone pairs`}>
             <Table.Head>
               <Table.Row>
                 <Table.Header>Variant</Table.Header>
@@ -366,46 +481,31 @@ export function ComponentDetailPage({ slug }: { slug: string }) {
             </Table.Body>
           </Table>
         </Stack>
-      ) : null}
+      )}
+    </Section>
+  )
+}
 
-      {component.requiredSelectors.length > 0 ? (
+function Selectors({ component }: { component: RegistryComponent }) {
+  return (
+    <Section
+      id={SECTION.selectors}
+      title="Styling hooks"
+      lede="The states and attributes its styles respond to. Handy when you’re reading its CSS or writing a test."
+    >
+      {component.requiredSelectors.length === 0 ? null : (
         <Stack gap={3}>
-          <Stack gap={1}>
-            <Heading>Required selectors</Heading>
-            <Text size="sm" tone="secondary">
-              States no prop can reach. The law checks the component&rsquo;s CSS source for each
-              one.
-            </Text>
-          </Stack>
+          <Heading level={3}>States its styles cover</Heading>
           <Inline gap={2} wrap>
             {component.requiredSelectors.map((selector) => (
-              <Kbd key={selector}>{selector}</Kbd>
+              <Code key={selector}>{selector}</Code>
             ))}
           </Inline>
         </Stack>
-      ) : null}
-
-      {/* Placed next to the selectors because the schema describes the two
-          together, and a reader needs to see both to tell them apart.
-          `requiredSelectors` is the short list of states no prop can reach.
-          This table covers the whole styled surface: the stylesheet plus every
-          convention it composes. It is a superset, and a reader who saw only
-          the first list would think the styled surface was three selectors
-          wide.
-
-          Absent values are a fact, not a gap. `[data-icon-only]` is matched on
-          presence, so the cell says so instead of showing an empty list that
-          would look incomplete. */}
-      {component.dataAttributes.length > 0 ? (
-        <Stack gap={4}>
-          <Stack gap={1}>
-            <Heading>Data attributes</Heading>
-            <Text size="sm" tone="secondary">
-              The <Code>data-*</Code> attributes the styling keys on, derived from the stylesheet
-              and the conventions it composes. This is the whole styled surface, which is wider than
-              what the props can reach.
-            </Text>
-          </Stack>
+      )}
+      {component.dataAttributes.length === 0 ? null : (
+        <Stack gap={3}>
+          <Heading level={3}>Data attributes</Heading>
           <Table caption={`${component.name} data attributes`}>
             <Table.Head>
               <Table.Row>
@@ -428,7 +528,7 @@ export function ComponentDetailPage({ slug }: { slug: string }) {
                       </Inline>
                     ) : (
                       <Text size="sm" tone="secondary">
-                        matched on presence
+                        On or off
                       </Text>
                     )}
                   </Table.Cell>
@@ -437,26 +537,127 @@ export function ComponentDetailPage({ slug }: { slug: string }) {
             </Table.Body>
           </Table>
         </Stack>
-      ) : null}
+      )}
+    </Section>
+  )
+}
 
-      {component.dependencies.components.length > 0 ? (
-        <Stack gap={3}>
-          <Stack gap={1}>
-            <Heading>Composition</Heading>
-            <Text size="sm" tone="secondary">
-              What an install brings with it, resolved from the import graph, not from
-              documentation.
-            </Text>
-          </Stack>
+function Agents({ component }: { component: RegistryComponent }) {
+  const agent = component.agent
+  if (agent === null) return null
+
+  const lines = [
+    ...agent.states,
+    ...agent.actions,
+    ...agent.destructive,
+    ...agent.destructiveOptions,
+  ].map((statement) => statement.text)
+  if (agent.destructiveNever) lines.push('destructive never')
+  if (agent.withholdsContents) lines.push('withholds contents')
+
+  const asks: ReactNode[] = [
+    ...agent.destructive.map((entry) => (
+      <Text key={entry.text} size="sm">
+        {'When '}
+        <Code>{`${entry.prop}="${entry.value}"`}</Code>
+      </Text>
+    )),
+    ...agent.destructiveOptions.map((entry) => (
+      <Text key={entry.text} size="sm">
+        {'For a choice whose '}
+        <Code>{entry.field}</Code>
+        {' is '}
+        <Code>{entry.value}</Code>
+      </Text>
+    )),
+  ]
+  if (agent.destructiveNever) {
+    asks.push(
+      <Text key="never" size="sm">
+        Never. Its danger colour is about what it says, not what it does.
+      </Text>,
+    )
+  }
+
+  const items: { term: string; detail: ReactNode }[] = [
+    {
+      term: 'It can',
+      detail:
+        agent.actions.length === 0 ? (
+          <Text size="sm">Only look. It has nothing to press or fill.</Text>
+        ) : (
           <Inline gap={2} wrap>
-            {component.dependencies.components.map((name) => (
-              <Badge key={name} tone="accent">
-                {name}
-              </Badge>
+            {agent.actions.map((action) => (
+              <Code key={action.text}>{action.name}</Code>
             ))}
           </Inline>
-        </Stack>
-      ) : null}
-    </Stack>
+        ),
+    },
+  ]
+  if (agent.states.length > 0) {
+    items.push({
+      term: 'It reads',
+      detail: (
+        <Inline gap={2} wrap>
+          {agent.states.map((state) => (
+            <Code key={state.text}>
+              {state.secret ? `${state.name} (kept private)` : state.name}
+            </Code>
+          ))}
+        </Inline>
+      ),
+    })
+  }
+  if (asks.length > 0) {
+    items.push({ term: 'Asks you first', detail: <Stack gap={1}>{asks}</Stack> })
+  }
+  if (agent.withholdsContents) {
+    items.push({
+      term: 'Inside it',
+      detail: <Text size="sm">Components inside it are kept out of an agent’s reach.</Text>,
+    })
+  }
+
+  return (
+    <Section
+      id={SECTION.agents}
+      title="For AI agents"
+      lede={`What an AI agent on your page can see in ${component.name} and do with it.`}
+    >
+      <DescriptionList orientation="horizontal" items={items} />
+      <Collapsible label="Show the full agent contract">
+        <CodeBlock label={`${component.name} agent contract`}>{lines.join('\n')}</CodeBlock>
+      </Collapsible>
+      <Text tone="secondary">
+        {
+          'Agents reach it through the agent bridge, not by clicking around or reading screenshots. '
+        }
+        <Link href="/guides/agents">Read how the bridge works</Link>
+      </Text>
+    </Section>
+  )
+}
+
+function Neighbour({
+  component,
+  direction,
+  tier,
+}: {
+  component: RegistryComponent
+  direction: 'Previous' | 'Next'
+  tier: string | null
+}) {
+  return (
+    <Card
+      href={`/components/${componentSlug(component.name)}`}
+      label={`${direction}: ${component.name}`}
+    >
+      <Stack gap={1}>
+        <Text size="sm" tone="secondary">
+          {tier === null ? direction : `${direction} in ${tier}`}
+        </Text>
+        <Text>{component.name}</Text>
+      </Stack>
+    </Card>
   )
 }
