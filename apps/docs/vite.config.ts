@@ -1,4 +1,7 @@
+import { execFile } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { promisify } from 'node:util'
 
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
@@ -50,6 +53,50 @@ function llmsFiles(): Plugin {
   }
 }
 
+const EMITTED_SCREEN = 'virtual:polymorph-docs/emitted-screen'
+const EMITTED_FRAMEWORKS = ['react', 'vue', 'svelte', 'solid', 'angular'] as const
+
+/**
+ * Serves the landing page's screen spec and the source the emitter writes from
+ * it, one per web framework, as a virtual module.
+ *
+ * The page shows one spec beside its React, Vue, Svelte, Solid and Angular
+ * output. The output comes from `packages/spec/bin/emit.js`, the command behind
+ * `pnpm emit`, run here once per framework. So the page cannot show code the
+ * emitter does not write, and an unlawful spec fails the build with the
+ * validator's own message. A child process is used, not an import, because the
+ * emitter reads the registry from the checkout through its own loader.
+ */
+function emittedScreen(): Plugin {
+  const spec = src('./src/home/inbox.screen.json')
+  const bin = src('../../packages/spec/bin/emit.js')
+  const run = promisify(execFile)
+  const resolved = `\0${EMITTED_SCREEN}`
+  return {
+    name: 'pm-emitted-screen',
+    resolveId(id) {
+      return id === EMITTED_SCREEN ? resolved : undefined
+    },
+    async load(id) {
+      if (id !== resolved) return undefined
+      this.addWatchFile(spec)
+      const sources = await Promise.all(
+        EMITTED_FRAMEWORKS.map(async (framework) => {
+          const { stdout } = await run(process.execPath, [bin, spec, '--framework', framework])
+          // The emitter opens every file with a comment that repeats the spec's
+          // purpose and says the file was emitted. The page says both beside
+          // the code, so the comment is left out to keep the sample short.
+          return [framework, stdout.replace(/\/\*\*[\s\S]*?\*\/\n+/, '').trimEnd()] as const
+        }),
+      )
+      return [
+        `export const SCREEN_SPEC = ${JSON.stringify(readFileSync(spec, 'utf8').trimEnd())}`,
+        `export const EMITTED = ${JSON.stringify(Object.fromEntries(sources))}`,
+      ].join('\n')
+    },
+  }
+}
+
 /**
  * The docs site consumes `@polymorph/*` as workspace source, as the workbench does. Its
  * content comes from the registry. `predev`/`prebuild` run the registry generator into
@@ -58,7 +105,7 @@ function llmsFiles(): Plugin {
  * serves the system card and the rules page as plain text for agents.
  */
 export default defineConfig({
-  plugins: [react(), prepaintTheme(), llmsFiles()],
+  plugins: [react(), prepaintTheme(), llmsFiles(), emittedScreen()],
   /**
    * Pre-scans the lazy pages and the frame document. The workbench config explains why in
    * full. With a cold cache, the optimizer finds a lazy graph's dependencies after the page

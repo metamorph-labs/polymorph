@@ -1,29 +1,25 @@
-import { DATA_ATTRS, getModePreference, setMode, type ModePreference } from '@polymorph/theme'
-import { AppShell, Badge, Select } from '@polymorph/react-ui'
-import { lazy, Suspense, useState } from 'react'
+import { getPalette, getSystem, type ModePreference } from '@polymorph/theme'
+import { AppShell, Inline, Link } from '@polymorph/react-ui'
+import { lazy, Suspense, useState, type ReactNode } from 'react'
 
 import { ChunkBoundary } from './ChunkBoundary'
+import { Mark } from './harness/Mark'
 import { useRoute } from './router'
-import {
-  DEFAULT_SYSTEM,
-  findSystem,
-  PALETTES,
-  selectPalette,
-  selectSystem,
-  SYSTEMS,
-} from './themes'
+import { SiteFooter } from './shell/SiteFooter'
+import { ThemeControl } from './shell/ThemeControl'
+import { SITE } from './site'
+import { DEFAULT_SYSTEM, findSystem, selectPalette, selectSystem } from './themes'
 
 /*
- * Route-level code splitting. The boot bundle is the shell: `AppShell`, the
- * topbar selects, and the theme engine that `themes.ts` runs at startup. Each
+ * Route-level code splitting. The boot bundle is the shell: `AppShell`, the top
+ * bar's controls, and the theme engine that `themes.ts` runs at startup. Each
  * page is a chunk that loads when its route is visited. The largest is the
  * component detail page. It renders the live states fixtures, so it imports
- * `@polymorph/react-ui/galleries` and through it every member of the vocabulary. The
- * other pages carry the registry JSON and the page archetypes they compose. The
- * Suspense fallback is `null`, not a styled placeholder, because a fallback is
- * a style decision and the red rules give application code nowhere to make one.
- * The shell stays mounted, so a loading page shows only a brief empty content
- * region, already themed by the `<html>` attributes.
+ * `@polymorph/react-ui/galleries` and through it every member of the vocabulary.
+ * The Suspense fallback is `null`, not a styled placeholder, because a fallback
+ * is a style decision and the red rules give application code nowhere to make
+ * one. The shell stays mounted, so a loading page shows only a brief empty
+ * content region, already themed by the `<html>` attributes.
  */
 const ComponentDetailPage = lazy(() =>
   import('./pages/ComponentDetailPage').then((module) => ({ default: module.ComponentDetailPage })),
@@ -40,6 +36,9 @@ const InstallPage = lazy(() =>
 const MotionPage = lazy(() =>
   import('./pages/MotionPage').then((module) => ({ default: module.MotionPage })),
 )
+const NotFoundPage = lazy(() =>
+  import('./pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })),
+)
 const PrinciplesPage = lazy(() =>
   import('./pages/PrinciplesPage').then((module) => ({ default: module.PrinciplesPage })),
 )
@@ -50,76 +49,87 @@ const TokensPage = lazy(() =>
   import('./pages/TokensPage').then((module) => ({ default: module.TokensPage })),
 )
 
+/** The first-level sections, in the order the top bar draws them. */
 const SECTIONS = [
-  { path: '/', label: 'Overview', icon: 'home' },
-  { path: '/components', label: 'Components', icon: 'folder' },
-  { path: '/tokens', label: 'Tokens', icon: 'tag' },
-  { path: '/systems', label: 'Systems', icon: 'mode-system' },
-  // `refresh` is the replay glyph. The motion page is for replaying: every
-  // pattern can be re-triggered by hand.
-  { path: '/motion', label: 'Motion', icon: 'refresh' },
-  { path: '/principles', label: 'Principles', icon: 'locked' },
-  { path: '/install', label: 'Install', icon: 'download' },
+  { path: '/install', label: 'Get started' },
+  { path: '/components', label: 'Components' },
+  { path: '/systems', label: 'Systems' },
+  { path: '/tokens', label: 'Tokens' },
+  { path: '/motion', label: 'Motion' },
+  { path: '/principles', label: 'Principles' },
 ] as const
 
-const MODES = [
-  { value: 'system', label: 'System' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-]
+/**
+ * What a route draws and which content layout the shell gives it. `'page'` is
+ * the shell's bounded reading surface, for a page composed from members with no
+ * archetype around it. `'full'` gives the region to a page archetype, which
+ * brings its own measure and padding.
+ */
+interface Route {
+  layout: 'page' | 'full'
+  page: ReactNode
+}
 
 function initialSystem(): string {
-  return document.documentElement.getAttribute(DATA_ATTRS.system) ?? DEFAULT_SYSTEM
+  return getSystem() ?? DEFAULT_SYSTEM
 }
 
 function initialPalette(): string {
-  return (
-    document.documentElement.getAttribute(DATA_ATTRS.palette) ??
-    findSystem(initialSystem()).defaultPalette
-  )
+  return getPalette() ?? findSystem(initialSystem()).defaultPalette
 }
 
 export function App() {
-  const route = useRoute()
-  // A pairing is two decisions, so the topbar has a select for each. The palette
-  // list holds every palette, not only this system's, so that cross-pairings
-  // can be chosen. `selectSystem` decides which palette a system change moves to.
+  const path = useRoute()
+  // A pairing is two decisions, held here because two pages read the system
+  // (its axes on the tokens page, its temperament on the motion page).
+  // `selectSystem` decides which palette a system change moves to.
   const [system, setSystemState] = useState(initialSystem)
   const [palette, setPaletteState] = useState(initialPalette)
-  // Seeded from storage, not from a literal, so the selector matches the page
-  // after a reload. The mode preference can be `system`, which is never an
-  // attribute value, so unlike the pairing above it cannot be read from
-  // `<html>`.
-  const [mode, setModeState] = useState<ModePreference>(getModePreference)
-  const [collapsed, setCollapsed] = useState(false)
+  // The theme panel's ModeSwitch reads the document's preference itself. The
+  // shell keeps no copy of the mode.
+  const onModeChange = (_mode: ModePreference) => {}
 
-  const section =
-    SECTIONS.find((candidate) => candidate.path !== '/' && route.startsWith(candidate.path))
-      ?.path ?? '/'
+  const route = ((): Route => {
+    if (path === '/') return { layout: 'page', page: <HomePage /> }
+    if (path === '/components') return { layout: 'page', page: <ComponentsPage /> }
+    if (path.startsWith('/components/')) {
+      return {
+        layout: 'page',
+        page: <ComponentDetailPage slug={path.slice('/components/'.length)} />,
+      }
+    }
+    if (path === '/tokens') return { layout: 'page', page: <TokensPage system={system} /> }
+    if (path === '/systems') return { layout: 'page', page: <SystemsPage /> }
+    if (path === '/motion') return { layout: 'page', page: <MotionPage system={system} /> }
+    if (path === '/principles') return { layout: 'page', page: <PrinciplesPage /> }
+    if (path === '/install') return { layout: 'page', page: <InstallPage /> }
+    return { layout: 'page', page: <NotFoundPage /> }
+  })()
 
   return (
     <AppShell
-      collapsed={collapsed}
-      onCollapsedChange={setCollapsed}
+      navigation="top"
+      contentLayout={route.layout}
+      transitionKey={path}
       brand={
-        <Badge variant="solid" tone="accent">
-          {collapsed ? 'P' : 'Polymorph'}
-        </Badge>
+        <Inline gap={2} align="center">
+          <Mark />
+          <Link variant="standalone" href="/">
+            {SITE.name}
+          </Link>
+        </Inline>
       }
       sidebar={
         <>
           {/* `href`, not `onSelect`. With an `href`, NavItem renders an `<a>`
               (link.md), so a row can be middle-clicked, cmd-clicked and copied
-              like any other link. A click handler cannot offer that. A plain
-              click stays on the page because `interceptLinks` routes it.
-              Passing `onSelect` as well would also route the current tab on a
-              cmd-click, which is the behaviour the href exists to avoid. */}
+              like any other link. A plain click stays on the page because
+              `interceptLinks` routes it. */}
           {SECTIONS.map((item) => (
             <AppShell.NavItem
               key={item.path}
-              icon={item.icon}
               label={item.label}
-              current={section === item.path}
+              current={path === item.path || path.startsWith(`${item.path}/`)}
               href={item.path}
             />
           ))}
@@ -127,76 +137,37 @@ export function App() {
       }
       topbar={{
         trailing: (
-          /* Without labels, a screen reader would announce each of the three
-             as "combobox", and they are the site's only controls. Each gets an
-             `aria-label` rather than a visible label, which is what Select's
-             API offers when no FormField wraps it. Visible labels reading
-             "System Palette Mode" would spend the row's width on words the
-             values already show (`pastel`, `harbor`, `Dark`), and the three
-             triggers share a single row. */
           <>
-            <Select
-              aria-label="System"
-              size="sm"
-              options={SYSTEMS.map((candidate) => ({
-                value: candidate.name,
-                label: candidate.name,
-              }))}
-              value={system}
-              onChange={(next) => {
-                if (next === null) return
+            <ThemeControl
+              system={system}
+              palette={palette}
+              onSystemChange={(next) => {
                 setSystemState(next)
                 setPaletteState(selectSystem(next))
               }}
-            />
-            <Select
-              aria-label="Palette"
-              size="sm"
-              options={PALETTES.map((candidate) => ({
-                value: candidate.name,
-                label: candidate.name,
-              }))}
-              value={palette}
-              onChange={(next) => {
-                if (next === null) return
+              onPaletteChange={(next) => {
                 setPaletteState(next)
                 selectPalette(system, next)
               }}
+              onModeChange={onModeChange}
             />
-            <Select
-              aria-label="Mode"
-              size="sm"
-              options={MODES}
-              value={mode}
-              onChange={(next) => {
-                if (next === null) return
-                setModeState(next as ModePreference)
-                setMode(next as ModePreference)
-              }}
-            />
+            <Link
+              variant="button"
+              buttonVariant="ghost"
+              tone="neutral"
+              href={SITE.repository}
+              external
+            >
+              GitHub
+            </Link>
           </>
         ),
       }}
     >
       <ChunkBoundary>
         <Suspense fallback={null}>
-          {route.startsWith('/components/') ? (
-            <ComponentDetailPage slug={route.slice('/components/'.length)} />
-          ) : route === '/components' ? (
-            <ComponentsPage />
-          ) : route === '/tokens' ? (
-            <TokensPage system={system} />
-          ) : route === '/systems' ? (
-            <SystemsPage />
-          ) : route === '/motion' ? (
-            <MotionPage system={system} />
-          ) : route === '/principles' ? (
-            <PrinciplesPage />
-          ) : route === '/install' ? (
-            <InstallPage />
-          ) : (
-            <HomePage />
-          )}
+          {route.page}
+          <SiteFooter inset={route.layout === 'full'} />
         </Suspense>
       </ChunkBoundary>
     </AppShell>

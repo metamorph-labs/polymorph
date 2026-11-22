@@ -42,7 +42,12 @@ function loadFontFamilies(families: readonly string[]): void {
   }
 }
 
-function loadSystemFonts(name: string): void {
+/**
+ * Loads one system's families. The document's system loads through the observer
+ * below. A page calls this for a system it draws in a nested pairing scope,
+ * which no attribute on `<html>` announces.
+ */
+export function loadSystemFonts(name: string): void {
   const system = SYSTEMS.find((candidate) => candidate.name === name)
   if (!system) return
   loadFontFamilies(FONT_ROLES.map((role) => system.fonts[role].family))

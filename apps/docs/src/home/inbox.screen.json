@@ -1,0 +1,55 @@
+{
+  "spec": "polymorph-screen/1",
+  "name": "Inbox",
+  "purpose": "A support inbox: a search field and one primary action.",
+  "inputs": [
+    {
+      "name": "query",
+      "type": "string"
+    },
+    {
+      "name": "onQueryChange",
+      "type": "(value: string) => void"
+    },
+    {
+      "name": "onNewTicket",
+      "type": "() => void"
+    }
+  ],
+  "root": {
+    "component": "ListPage",
+    "props": {
+      "title": "Inbox",
+      "emptyState": {
+        "$object": {
+          "title": "No tickets",
+          "description": "New tickets arrive here."
+        }
+      },
+      "actions": {
+        "component": "Button",
+        "props": {
+          "variant": "solid",
+          "tone": "accent",
+          "icon": "add",
+          "label": "New ticket",
+          "onClick": {
+            "$": "onNewTicket"
+          }
+        }
+      },
+      "filters": {
+        "component": "SearchInput",
+        "props": {
+          "placeholder": "Search tickets",
+          "value": {
+            "$": "query"
+          },
+          "onChange": {
+            "$": "onQueryChange"
+          }
+        }
+      }
+    }
+  }
+}

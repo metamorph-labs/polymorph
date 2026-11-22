@@ -1,0 +1,25 @@
+/* The landing page's stage (`Stage.tsx`). Harness CSS: it paints the page
+   surface of a nested pairing scope, which in an application is the shell's
+   job and which no member does for a region inside a page. Every value is a
+   token, read inside the scope, so the stage wears the pairing it shows. */
+
+.stage {
+  padding: var(--pm-space-6);
+  font-family: var(--pm-text-md-family);
+  color: var(--pm-text-primary);
+  background: var(--pm-texture-page) var(--pm-bg-app);
+  border: 1px solid var(--pm-border-default);
+  border-radius: var(--pm-radius-lg);
+  box-shadow: var(--pm-shadow-overlay);
+
+  /* The members inside measure this box, as they measure the shell's content
+     region in an application (`docs/layout.md`). */
+  container-type: inline-size;
+}
+
+/* A phone has no room for the desktop inset. */
+@container (width < 30rem) {
+  .stage {
+    padding: var(--pm-space-4);
+  }
+}

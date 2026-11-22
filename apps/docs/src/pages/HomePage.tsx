@@ -1,129 +1,206 @@
 import {
-  Badge,
-  Button,
   Card,
+  CodeBlock,
   Grid,
+  Heading,
   Hero,
   Inline,
+  Link,
+  List,
   Stack,
   Stat,
-  Switch,
   Text,
 } from '@polymorph/react-ui'
 
+import { EmittedCode } from '../home/EmittedCode'
+import { LookPicker } from '../home/LookPicker'
 import { REGISTRY } from '../registry'
-import { navigate } from '../router'
-import { findSystem } from '../themes'
 
 /**
- * The landing page. Its prose is hand-written, but every number it shows comes
+ * The landing page. Its words are hand-written, and every number it shows comes
  * from the registry, so the numbers always match the tree that published them.
  */
 
+const DESIGNED = REGISTRY.theme.systems.filter((system) => system.kind === 'designed')
+
+/** Every renderer: the web frameworks, and each platform that is not the web. */
+const RENDERERS =
+  REGISTRY.frameworks.length + REGISTRY.platforms.filter((platform) => platform !== 'web').length
+
 /**
- * One live specimen per system, rendered inside its own scope. A scope needs
- * both halves of a pairing, because a system alone matches no emitted block. So
- * the specimen uses the system with the palette that system declares as its own.
+ * What the validator prints for a screen spec that names a prop the member
+ * does not have. It is the validator's own wording, for a `ListPage` given
+ * `onRetry`.
  */
-function SystemSpecimen({ name }: { name: string }) {
-  const system = findSystem(name)
+const FAULT = `$.root.props.onRetry
+  \`ListPage\` has no prop \`onRetry\``
+
+function Section({
+  title,
+  lede,
+  children,
+}: {
+  title: string
+  lede: string
+  children: React.ReactNode
+}) {
   return (
-    <div
-      data-system={name}
-      data-palette={system.defaultPalette}
-      data-mode={system.defaultMode === 'dark' ? 'dark' : 'light'}
-    >
-      <Card>
-        <Stack gap={3}>
-          <Inline gap={2} align="center" justify="between">
-            <Badge variant="solid" tone="accent">
-              {name}
-            </Badge>
-            <Switch defaultChecked label={`${name} live`} />
-          </Inline>
-          <Inline gap={2}>
-            <Button variant="solid" tone="accent" size="sm" label="Primary" />
-            <Button variant="ghost" tone="neutral" size="sm" label="Quiet" />
-          </Inline>
-        </Stack>
-      </Card>
-    </div>
+    <Stack as="section" gap={5}>
+      <Stack gap={2}>
+        <Heading level={2}>{title}</Heading>
+        <Text tone="secondary">{lede}</Text>
+      </Stack>
+      {children}
+    </Stack>
   )
 }
 
 export function HomePage() {
-  const designed = REGISTRY.theme.systems.filter((system) => system.kind === 'designed')
-
   return (
-    <Stack gap={7} p={7}>
-      {/* A Hero rather than a PageHeader, because this is the landing page.
-          It keeps `align='start'` because everything below it is left-aligned
-          (a Stat row and two card grids), and a centred title above them would
-          give the page two reading edges. AuthPage centres because it is one
-          narrow column with nothing beside it. This page is a catalogue. */}
+    <Stack gap={9}>
+      {/* A Hero rather than a PageHeader, because this page introduces the
+          system and is not a working screen. */}
       <Hero
-        title="One vocabulary. Any number of faces."
-        lede="Polymorph is a design system engineered as a decision system: every design decision is made exactly once, referenced everywhere, verified by law, and safely changeable — by people and by agents."
+        align="center"
+        title="One set of components. Any look you want."
+        lede={`Polymorph gives you ${REGISTRY.components.length} components that behave the same in React, Vue, Svelte, Solid, Angular, plain HTML, SwiftUI and Jetpack Compose. Restyle all of them at once by changing a couple of small files.`}
         actions={
-          <Button
-            variant="solid"
-            tone="accent"
-            label="Browse components"
-            onClick={() => navigate('/components')}
-          />
+          <>
+            <Link variant="button" buttonVariant="solid" size="lg" href="/install">
+              Get started
+            </Link>
+            <Link
+              variant="button"
+              buttonVariant="outline"
+              tone="neutral"
+              size="lg"
+              href="/components"
+            >
+              Browse components
+            </Link>
+          </>
         }
       />
 
-      <Inline gap={5} wrap>
-        <Stat label="Components" value={String(REGISTRY.components.length)} />
-        {/* Counted separately because they are different things: a system is
-            structure and a palette is colour. Every palette is lawful on every
-            system. */}
-        <Stat label="Design systems" value={String(designed.length)} />
-        <Stat label="Palettes" value={String(REGISTRY.theme.palettes.length)} />
-        <Stat label="Laws" value={String(REGISTRY.laws.length)} />
-        <Stat label="Design tokens" value={String(REGISTRY.theme.customProperties.length)} />
-      </Inline>
+      <Section
+        title="Try on a different look"
+        lede="This is one small app screen, and nobody restyled it by hand. Pick a look and watch everything follow: the type, the corners, the spacing, the colours, even how things move."
+      >
+        <LookPicker />
+      </Section>
 
-      <Grid columns={3} gap={4}>
-        {designed.map((system) => (
-          <SystemSpecimen key={system.name} name={system.name} />
-        ))}
-      </Grid>
+      <Section
+        title="Why teams pick it"
+        lede="Most design systems hand you components and hope for the best. This one is built so the right thing is the easy thing."
+      >
+        <Grid columns={3} gap={4}>
+          <Card title="A redesign is a small edit" href="/guides/theming" label="How theming works">
+            <Text>
+              Your theme lives in two small files: one for how things are built, one for colour.
+              Change them and the whole product follows. No hunting through screens.
+            </Text>
+          </Card>
+          <Card
+            title="It stays consistent on its own"
+            href="/guides/rules"
+            label="How the rules work"
+          >
+            <Text>
+              Your app code picks components and fills in content. A one-off colour or a stray
+              margin can’t sneak in, because a lint rule catches it before a reviewer has to.
+            </Text>
+          </Card>
+          <Card
+            title="It’s tested, not promised"
+            href="/guides/verification"
+            label="How it is tested"
+          >
+            <Text>
+              Readable contrast, keyboard support, every state of every component: there’s a test
+              for each, in every framework. If something slips, a test goes red.
+            </Text>
+          </Card>
+        </Grid>
+      </Section>
 
-      <Grid columns={3} gap={5}>
-        <Card>
-          <Stack gap={3}>
-            <Badge tone="accent">Consistent by construction</Badge>
-            <Text>
-              Application code expresses product intent through governed decisions. It cannot invent
-              a visual primitive by accident, so consistency comes from the system&rsquo;s
-              structure, not from review or discipline.
-            </Text>
-          </Stack>
-        </Card>
-        <Card>
-          <Stack gap={3}>
-            <Badge tone="accent">Changeable as data</Badge>
-            <Text>
-              A pairing is two JSON files: a system&rsquo;s eight axes and fonts, and a
-              palette&rsquo;s handful of colour seeds. Re-branding, changing density or onboarding a
-              tenant is an edit to those decisions, not a sweep across screens. The churn proof
-              re-runs the redesign on every change.
-            </Text>
-          </Stack>
-        </Card>
-        <Card>
-          <Stack gap={3}>
-            <Badge tone="accent">Verified by law</Badge>
-            <Text>
-              Contrast, coherence, state completeness, motion rules and the exception ladder are
-              lint rules and tests, not guidelines. A deviation either cannot be written or fails a
-              check, for people and agents alike.
-            </Text>
-          </Stack>
-        </Card>
-      </Grid>
+      <Section
+        title="Write a screen once, use it in your framework"
+        lede="Describe a screen in a short file and Polymorph writes the code for the framework you use. Here’s the same inbox in five of them. On iOS and Android, the same components are drawn with SwiftUI and Jetpack Compose."
+      >
+        <EmittedCode />
+      </Section>
+
+      <Section
+        title="Good company for an AI agent"
+        lede="Ask an agent to build a screen and it usually invents its own buttons and colours. Give it Polymorph and it picks from components that already exist, checks its work as it goes, and stays on brand."
+      >
+        <Grid columns={2} gap={4}>
+          <Card title="What your agent gets">
+            <List label="What an agent gets">
+              <List.Item
+                title="The whole system in one file"
+                description="Every component, its options and the rules, short enough to read in one go."
+                href="/system-card.md"
+              />
+              <List.Item
+                title="Tools it can call"
+                description="An MCP server for looking up components and checking a screen before it ships."
+                href="/guides/tooling"
+              />
+              <List.Item
+                title="A page it can find by itself"
+                description="llms.txt points an agent at everything above."
+                href="/llms.txt"
+              />
+            </List>
+          </Card>
+          <Card title="Mistakes come back fixable">
+            <Stack gap={4}>
+              <Text>
+                When an agent reaches for something that isn’t there, it gets told exactly where and
+                what, so the next try is right.
+              </Text>
+              <CodeBlock label="What the checker says">{FAULT}</CodeBlock>
+            </Stack>
+          </Card>
+        </Grid>
+      </Section>
+
+      <Section
+        title="What’s in the box"
+        lede="Everything here is counted from the code, so it’s never out of date."
+      >
+        <Grid columns={4} gap={4}>
+          <Card>
+            <Stat label="Components" value={String(REGISTRY.components.length)} />
+          </Card>
+          <Card>
+            <Stat label="Frameworks and platforms" value={String(RENDERERS)} />
+          </Card>
+          <Card>
+            {/* Counted apart from palettes because they are different things: a
+                system is how things are built and a palette is colour. Any
+                palette works on any system. */}
+            <Stat label="Ready-made looks" value={String(DESIGNED.length)} />
+          </Card>
+          <Card>
+            <Stat label="Colour palettes" value={String(REGISTRY.theme.palettes.length)} />
+          </Card>
+        </Grid>
+      </Section>
+
+      <Stack gap={4} align="center">
+        <Heading level={2}>Ready when you are</Heading>
+        <Text tone="secondary">It’s free and open source. Start a new app in a minute.</Text>
+        <Inline gap={3} wrap justify="center">
+          <Link variant="button" buttonVariant="solid" size="lg" href="/install">
+            Get started
+          </Link>
+          <Link variant="button" buttonVariant="ghost" tone="neutral" size="lg" href="/guides">
+            Read the guides
+          </Link>
+        </Inline>
+      </Stack>
     </Stack>
   )
 }
