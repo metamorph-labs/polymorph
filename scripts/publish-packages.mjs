@@ -384,6 +384,26 @@ for (const entry of PACKAGES) {
     console.log(`publish: ${label} → ${join(out, file)}`)
   }
 
+  const npm = auth ? auth.args : ['--registry', TARGET.registry]
+  let existing = ''
+  try {
+    existing = run('npm', ['view', label, 'version', ...npm], {
+      env: auth?.env ?? process.env,
+      stdio: 'pipe',
+    }).trim()
+  } catch {
+    // Not found is the expected answer.
+  }
+  // From the tag the contents are fixed, so a package already uploaded is the same
+  // tarball, and a run that stopped part-way is finished by running it again. A dry
+  // run has packed and checked the package already, and npm's own dry run would
+  // refuse the version.
+  if (existing && (fromTag || dryRun)) {
+    console.log(`publish: ${label} is already on ${TARGET.registry}, skipped`)
+    continue
+  }
+  if (existing) fail(`${label} is already published — bump the version with changesets first`)
+
   if (dryRun) {
     run('npm', ['publish', contents, '--dry-run', '--registry', TARGET.registry], {
       stdio: 'inherit',
@@ -391,24 +411,6 @@ for (const entry of PACKAGES) {
     console.log(`publish: ${label} — dry run, not uploaded`)
     continue
   }
-
-  const npm = auth.args
-  let existing = ''
-  try {
-    existing = run('npm', ['view', label, 'version', ...npm], {
-      env: auth.env,
-      stdio: 'pipe',
-    }).trim()
-  } catch {
-    // Not found is the expected answer.
-  }
-  // From the tag the contents are fixed, so a package already uploaded is the same
-  // tarball, and a run that stopped part-way is finished by running it again.
-  if (existing && fromTag) {
-    console.log(`publish: ${label} is already on ${TARGET.registry}, skipped`)
-    continue
-  }
-  if (existing) fail(`${label} is already published — bump the version with changesets first`)
 
   const access = TARGET.access ? ['--access', TARGET.access] : []
   run('npm', ['publish', contents, ...access, ...npm], { env: auth.env, stdio: 'inherit' })
