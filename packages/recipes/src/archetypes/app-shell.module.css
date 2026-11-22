@@ -318,8 +318,16 @@
  * It is the only scroll container. The frame stays in place and the page
  * inside it scrolls. The texture also stays in place, because the default
  * background attachment pins it to the region's box, so the page scrolls over
- * a still surface. */
+ * a still surface.
+ *
+ * It is positioned, so it is the containing block of everything it scrolls. A
+ * member that hides text from the eye positions it absolutely
+ * (`conventions/a11y.module.css`), and an absolutely positioned box belongs to
+ * its containing block, not to the scroll container it sits in. Without a
+ * positioned region, such a box far down a long page would be laid out against
+ * the document and make the document itself scroll, under the frame. */
 .content {
+  position: relative;
   container-type: size;
   grid-area: content;
   min-inline-size: 0;

@@ -157,6 +157,37 @@ describe('AppShell — the frame', () => {
     expect(getComputedStyle(skip).outlineStyle).toBe('solid')
   })
 
+  it('contains what it scrolls, so a hidden caption far down the page does not scroll the document', () => {
+    render(
+      <AppShell sidebar={<Button variant="ghost" tone="neutral" label="Inbox" />}>
+        <Grid columns={1} gap={10}>
+          {Array.from({ length: 40 }, (_, index) => (
+            <Card key={index}>
+              <Stat label="Open" value="12" />
+            </Card>
+          ))}
+          <Table label="Tickets" caption="Open tickets">
+            <Table.Body>
+              <Table.Row>
+                <Table.Cell>T-1041</Table.Cell>
+              </Table.Row>
+            </Table.Body>
+          </Table>
+        </Grid>
+      </AppShell>,
+    )
+    const main = screen.getByRole('main')
+    // The page is longer than the region, and the region is what scrolls.
+    expect(main.scrollHeight).toBeGreaterThan(main.clientHeight * 2)
+    // The table's name is hidden text, positioned absolutely at the end of the
+    // page. It belongs to the region, so it adds nothing to the document.
+    const caption = main.querySelector('caption') as HTMLElement
+    expect(getComputedStyle(caption).position).toBe('absolute')
+    expect(caption.offsetParent).toBe(main)
+    const page = document.documentElement
+    expect(page.scrollHeight).toBe(page.clientHeight)
+  })
+
   it('points the skip link at the content region it names', () => {
     shell()
     expect(screen.getByRole('main').id).toBe('content')
