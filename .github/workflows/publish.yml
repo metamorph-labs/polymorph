@@ -4,7 +4,8 @@
 # exists because npmjs.com's trusted publishing accepts an upload only from a
 # GitHub-hosted runner, and the packages trust this file by name.
 #
-# Run by hand, it is a dry run of a tag that exists: everything but the upload.
+# Run by hand, it is a dry run of the branch or tag it is given: it builds and
+# packs every package and uploads nothing.
 name: publish
 
 on:
@@ -12,9 +13,10 @@ on:
     tags: ['v*']
   workflow_dispatch:
     inputs:
-      tag:
-        description: The release tag to try, such as v1.0.16
+      ref:
+        description: The branch or tag to try
         required: true
+        default: main
 
 permissions:
   contents: read
@@ -29,18 +31,26 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      TAG: ${{ inputs.tag || github.ref_name }}
+      REF: ${{ inputs.ref || github.ref_name }}
       DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && '--dry-run' || '' }}
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+          ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
       # The checkout can write an annotated tag as a lightweight one, and the gate's
       # record is in the annotation.
-      - run: git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
-      - name: The tag's commit is on main
-        run: git merge-base --is-ancestor "$TAG^{commit}" origin/main
+      - name: The whole tag, on main
+        if: github.event_name == 'push'
+        run: |
+          git fetch --force origin "refs/tags/$REF:refs/tags/$REF"
+          git merge-base --is-ancestor "$REF^{commit}" origin/main
+      # A commit from before this workflow has a publish script that would run the
+      # whole gate here instead.
+      - name: The publish script reads the gate from the tag
+        run: |
+          grep -q -- "'--tagged'" scripts/publish-packages.mjs ||
+            { echo "::error::$REF predates the publish workflow"; exit 1; }
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:

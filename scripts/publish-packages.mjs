@@ -285,14 +285,14 @@ function gate() {
  * owner's machine. The gate ran there, on this commit, before the first upload
  * made the tag, and the tag's message says so (`GATE_RECORD`). A lightweight tag,
  * a tag without that line, or a checkout that is not the tag's commit is
- * refused. A dry run needs only the commit, so the workflow can be tried on a tag
- * made before the record existed.
+ * refused. A dry run uploads nothing and reads no tag, so the workflow can be
+ * tried on any branch.
  */
 function recordedGate() {
+  if (dryRun) return
   if (!tagged) fail(`--tagged needs the tag v${release}`)
   const commit = run('git', ['rev-parse', `v${release}^{commit}`]).trim()
   if (commit !== HEAD) fail(`HEAD is not v${release}: check out the tag`)
-  if (dryRun) return
   const [type, ...message] = run('git', [
     'for-each-ref',
     `refs/tags/v${release}`,

@@ -310,4 +310,6 @@ npmjs.com as an owner. A package must exist before it can trust a publisher, so 
 first release goes up from your machine with `--to npmjs`, which authenticates with `NPM_TOKEN`,
 else with the login in your own `~/.npmrc`. A version that is already on npmjs.com is skipped from
 the tag, so a run that stopped part-way is finished by running it again. Run by hand from the
-Actions tab, the workflow is a dry run of the tag it is given.
+Actions tab, the workflow is a dry run of the branch or tag it is given: it builds and packs, and
+uploads nothing. It refuses a commit whose publish script has no `--tagged`, which every tag before
+the workflow is.
