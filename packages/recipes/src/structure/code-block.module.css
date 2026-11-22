@@ -40,23 +40,21 @@
    line that runs into the corner before it is scrolled is cut off at one edge
    and never shows through or beside the glyph.
 
-   It is two lines of code tall, which is the least that holds the button, so
-   it never covers part of a line. A one-line block is shorter than that, and
-   the maximum keeps the control inside the block's border there. */
+   It ends where the second line of code ends, which is the least that holds
+   the button, so it never covers part of a line. A one-line block is shorter
+   than that, and the maximum stops the control at the block's bottom padding
+   there, clear of the rounded corner and of a scrollbar. */
 .control {
   position: absolute;
   inset-block-start: 1px;
   inset-inline-end: 1px;
   box-sizing: border-box;
-  block-size: calc(
-    var(--pm-space-4) - 1px + 2 * var(--pm-text-sm-line-height) * var(--pm-text-sm-size)
-  );
-  max-block-size: calc(100% - 2px);
+  block-size: calc(var(--pm-space-4) + 2 * var(--pm-text-sm-line-height) * var(--pm-text-sm-size));
+  max-block-size: calc(100% - 2px - var(--pm-space-4));
   padding-block-start: calc(var(--pm-space-4) - 1px);
   padding-inline: var(--pm-space-2) calc(var(--pm-space-4) - 1px);
   background: var(--pm-bg-subtle);
   border-start-end-radius: var(--pm-radius-md);
-  border-end-end-radius: var(--pm-radius-md);
 }
 
 /* The `copy` → `confirm` swap fades in at control duration, as Table's sort
