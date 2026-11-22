@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * `pnpm publish:packages` publishes the installable packages to GitHub
- * Packages: `@polymorph/engine`, `@polymorph/rules`, `@polymorph/react`,
+ * Packages, or with `--to npmjs` to npmjs.com: `@polymorph/engine`, `@polymorph/rules`, `@polymorph/react`,
  * `@polymorph/recipes`, `@polymorph/react-ui`, `@polymorph/vue`,
  * `@polymorph/vue-ui`, `@polymorph/svelte`, `@polymorph/svelte-ui`,
  * `@polymorph/solid`, `@polymorph/solid-ui`, `@polymorph/elements`,
@@ -18,6 +18,9 @@
  * Inside this repository the packages keep their `@polymorph/*` names, which
  * every import, test and doc uses. GitHub Packages requires a package's scope to
  * be the owner of the repository, so the names change only at the registry.
+ * npmjs.com receives the same names, under the `metamorph-labs` organisation, so
+ * an alias reads the same on either registry and only a consumer's `.npmrc`
+ * chooses between them.
  * A dependency on another of these packages is published as an `npm:` alias:
  * `@metamorph-labs/polymorph-react` depends on
  * `"@polymorph/engine": "npm:@metamorph-labs/polymorph-engine@^<version>"`, and a
@@ -37,9 +40,19 @@
  *   node scripts/publish-packages.mjs              # publish
  *   node scripts/publish-packages.mjs --dry-run    # everything but the upload, the gate included
  *   node scripts/publish-packages.mjs --out <dir>  # also keep the final tarballs
+ *   node scripts/publish-packages.mjs --to npmjs   # publish to npmjs.com, as public packages
  *
- * Auth: `NODE_AUTH_TOKEN`, or the GitHub CLI's token (`gh auth token`), which
- * needs the `write:packages` scope (`gh auth refresh -s write:packages`).
+ * Auth for GitHub Packages: `NODE_AUTH_TOKEN`, or the GitHub CLI's token
+ * (`gh auth token`), which needs the `write:packages` scope
+ * (`gh auth refresh -s write:packages`). Auth for npmjs.com: trusted publishing in a
+ * GitHub Actions job with `id-token: write`, else `NPM_TOKEN`, else the login in
+ * the user's own `~/.npmrc`. A token that does not bypass two-factor
+ * authentication stops each upload for a one-time code, so use a granular token
+ * that bypasses it.
+ *
+ * The release is tagged after its first registry receives it. A second registry
+ * receives what the tagged commit holds: with the tag present, the script
+ * publishes only from a commit that differs from the tag in this script alone.
  *
  * The registry names and the registry URL come from `@polymorph/registry`
  * (`PUBLISHED_NAMES`, `PUBLISHED_REGISTRY` in `packages/registry/src/install.ts`),
@@ -130,6 +143,20 @@ const dryRun = args.includes('--dry-run')
 const outIndex = args.indexOf('--out')
 const out = outIndex === -1 ? null : resolve(args[outIndex + 1] ?? '')
 
+/**
+ * The registries a release can go to. npmjs.com publishes a scoped package as
+ * restricted unless it is told otherwise, and an organisation without a paid
+ * plan cannot hold a restricted one, so its packages are published as public.
+ */
+const TARGETS = {
+  github: { registry: REGISTRY, variable: 'NODE_AUTH_TOKEN', access: null },
+  npmjs: { registry: 'https://registry.npmjs.org', variable: 'NPM_TOKEN', access: 'public' },
+}
+const toIndex = args.indexOf('--to')
+const targetName = toIndex === -1 ? 'github' : (args[toIndex + 1] ?? '')
+const TARGET = TARGETS[targetName]
+if (!TARGET) fail(`--to takes ${Object.keys(TARGETS).join(' or ')}, not "${targetName}"`)
+
 function readJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'))
 }
@@ -156,7 +183,10 @@ function rewrite(manifest, { name, dir, bundled }, directory) {
   if (Array.isArray(published.sideEffects)) {
     published.sideEffects = publishedSideEffects(published.sideEffects, directory)
   }
-  published.publishConfig = { registry: REGISTRY }
+  published.publishConfig = {
+    registry: TARGET.registry,
+    ...(TARGET.access ? { access: TARGET.access } : {}),
+  }
   published.repository = { type: 'git', url: `git+${REPOSITORY}.git`, directory: dir }
   return published
 }
@@ -181,13 +211,33 @@ function check(directory, manifest, { build = true } = {}) {
   }
 }
 
+/**
+ * The npm arguments and environment that authenticate an upload. A token stays
+ * in the environment; the config file written for it only names the variable.
+ * Without `NPM_TOKEN`, npmjs.com is reached with the login in the user's own
+ * `~/.npmrc`, which is checked here so that a missing login fails before the gate.
+ */
 function authConfig() {
-  const token = process.env.NODE_AUTH_TOKEN || run('gh', ['auth', 'token']).trim()
-  if (!token) fail('no token: set NODE_AUTH_TOKEN or log in with `gh auth login`')
+  const host = TARGET.registry.replace(/^https:\/\//, '')
+  const fromGh = targetName === 'github' ? () => run('gh', ['auth', 'token']).trim() : () => ''
+  const token = process.env[TARGET.variable] || fromGh()
+  if (!token && targetName === 'npmjs') {
+    try {
+      const user = run('npm', ['whoami', '--registry', TARGET.registry], { stdio: 'pipe' }).trim()
+      console.log(`publish: npmjs.com as ${user}`)
+    } catch {
+      fail('no npmjs.com login: set NPM_TOKEN, or log in with `npm login`')
+    }
+    return { config: null, args: ['--registry', TARGET.registry], env: process.env }
+  }
+  if (!token) fail(`no token: set ${TARGET.variable} or log in with \`gh auth login\``)
   const config = join(mkdtempSync(join(tmpdir(), 'polymorph-npmrc-')), '.npmrc')
-  // The token stays in the environment; the file only names the variable.
-  writeFileSync(config, `//npm.pkg.github.com/:_authToken=\${NODE_AUTH_TOKEN}\n`)
-  return { config, env: { ...process.env, NODE_AUTH_TOKEN: token } }
+  writeFileSync(config, `//${host}/:_authToken=\${${TARGET.variable}}\n`)
+  return {
+    config,
+    args: ['--registry', TARGET.registry, '--userconfig', config],
+    env: { ...process.env, [TARGET.variable]: token },
+  }
 }
 
 function clean() {
@@ -231,8 +281,21 @@ function releaseVersion() {
 }
 
 const release = releaseVersion()
-if (!dryRun && run('git', ['tag', '--list', `v${release}`]).trim() !== '')
+const tagged = run('git', ['tag', '--list', `v${release}`]).trim() !== ''
+if (!dryRun && tagged && targetName === 'github')
   fail(`v${release} is already a release — run \`pnpm version-packages\` first`)
+// A second registry receives what the first one did. The script that uploads may
+// have changed since the tag, for that registry; nothing it builds or packs may.
+const SELF = 'scripts/publish-packages.mjs'
+if (!dryRun && tagged) {
+  const changed = run('git', ['diff', '--name-only', `v${release}`, 'HEAD'])
+    .split('\n')
+    .filter((path) => path !== '' && path !== SELF)
+  if (changed.length > 0)
+    fail(
+      `HEAD differs from v${release} in ${changed.join(', ')}: publish ${release} from v${release}`,
+    )
+}
 
 if (!dryRun && !clean()) fail('the working tree is not clean — publish from a commit')
 
@@ -276,12 +339,14 @@ for (const entry of PACKAGES) {
   }
 
   if (dryRun) {
-    run('npm', ['publish', contents, '--dry-run', '--registry', REGISTRY], { stdio: 'inherit' })
+    run('npm', ['publish', contents, '--dry-run', '--registry', TARGET.registry], {
+      stdio: 'inherit',
+    })
     console.log(`publish: ${label} — dry run, not uploaded`)
     continue
   }
 
-  const npm = ['--registry', REGISTRY, '--userconfig', auth.config]
+  const npm = auth.args
   let existing = ''
   try {
     existing = run('npm', ['view', label, 'version', ...npm], {
@@ -293,14 +358,16 @@ for (const entry of PACKAGES) {
   }
   if (existing) fail(`${label} is already published — bump the version with changesets first`)
 
-  run('npm', ['publish', contents, ...npm], { env: auth.env, stdio: 'inherit' })
+  const access = TARGET.access ? ['--access', TARGET.access] : []
+  run('npm', ['publish', contents, ...access, ...npm], { env: auth.env, stdio: 'inherit' })
   console.log(`publish: ${label} published`)
 }
 
 rmSync(work, { recursive: true, force: true })
-if (auth) rmSync(auth.config, { force: true })
+if (auth?.config) rmSync(auth.config, { force: true })
 
-if (!dryRun) {
+if (!dryRun && tagged) console.log(`publish: ${release} is published to ${TARGET.registry}`)
+else if (!dryRun) {
   console.log(`publish: ${release} is published. Tag the release commit and push it:`)
   console.log(`  git tag -a v${release} -m "Release ${release}"`)
   console.log(`  git push origin main v${release}`)
