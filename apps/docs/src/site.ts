@@ -8,6 +8,7 @@
  */
 export const SITE = {
   name: 'Polymorph',
+  tagline: 'one design system, any look you want',
   description:
     'One set of components that behaves the same in React, Vue, Svelte, Solid, Angular, plain HTML, SwiftUI and Jetpack Compose. Restyle all of them at once by changing a couple of small files.',
   url: (import.meta.env.VITE_SITE_URL as string | undefined)?.replace(/\/$/, '') ?? null,

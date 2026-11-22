@@ -62,10 +62,14 @@ export function interceptLinks(): void {
   })
 }
 
+/**
+ * The path a route is matched on: the pathname without a trailing slash. A
+ * static host may serve `/guides/` for `/guides`, and both are one page.
+ */
+export function currentPath(): string {
+  return window.location.pathname.replace(/(.)\/+$/, '$1')
+}
+
 export function useRoute(): string {
-  return useSyncExternalStore(
-    subscribe,
-    () => window.location.pathname,
-    () => '/',
-  )
+  return useSyncExternalStore(subscribe, currentPath, () => '/')
 }

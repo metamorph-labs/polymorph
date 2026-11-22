@@ -61,15 +61,15 @@ const EMITTED_FRAMEWORKS = ['react', 'vue', 'svelte', 'solid', 'angular'] as con
  * it, one per web framework, as a virtual module.
  *
  * The page shows one spec beside its React, Vue, Svelte, Solid and Angular
- * output. The output comes from `packages/spec/bin/emit.js`, the command behind
- * `pnpm emit`, run here once per framework. So the page cannot show code the
+ * output. The output comes from `scripts/emit-screens.mjs`, which calls the functions
+ * behind `pnpm emit` with the same checks. So the page cannot show code the
  * emitter does not write, and an unlawful spec fails the build with the
  * validator's own message. A child process is used, not an import, because the
  * emitter reads the registry from the checkout through its own loader.
  */
 function emittedScreen(): Plugin {
   const spec = src('./src/home/inbox.screen.json')
-  const bin = src('../../packages/spec/bin/emit.js')
+  const bin = src('../../scripts/emit-screens.mjs')
   const run = promisify(execFile)
   const resolved = `\0${EMITTED_SCREEN}`
   return {
@@ -80,18 +80,19 @@ function emittedScreen(): Plugin {
     async load(id) {
       if (id !== resolved) return undefined
       this.addWatchFile(spec)
-      const sources = await Promise.all(
-        EMITTED_FRAMEWORKS.map(async (framework) => {
-          const { stdout } = await run(process.execPath, [bin, spec, '--framework', framework])
+      const { stdout } = await run(process.execPath, [bin, spec, ...EMITTED_FRAMEWORKS])
+      const emitted = Object.fromEntries(
+        Object.entries(JSON.parse(stdout) as Record<string, string>).map(([framework, code]) => [
+          framework,
           // The emitter opens every file with a comment that repeats the spec's
           // purpose and says the file was emitted. The page says both beside
           // the code, so the comment is left out to keep the sample short.
-          return [framework, stdout.replace(/\/\*\*[\s\S]*?\*\/\n+/, '').trimEnd()] as const
-        }),
+          code.replace(/\/\*\*[\s\S]*?\*\/\n+/, '').trimEnd(),
+        ]),
       )
       return [
         `export const SCREEN_SPEC = ${JSON.stringify(readFileSync(spec, 'utf8').trimEnd())}`,
-        `export const EMITTED = ${JSON.stringify(Object.fromEntries(sources))}`,
+        `export const EMITTED = ${JSON.stringify(emitted)}`,
       ].join('\n')
     },
   }

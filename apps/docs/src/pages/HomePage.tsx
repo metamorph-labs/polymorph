@@ -14,6 +14,7 @@ import {
 
 import { EmittedCode } from '../home/EmittedCode'
 import { LookPicker } from '../home/LookPicker'
+import { useMeta } from '../meta'
 import { REGISTRY } from '../registry'
 
 /**
@@ -56,13 +57,14 @@ function Section({
 }
 
 export function HomePage() {
+  useMeta({})
   return (
     <Stack gap={9}>
       {/* A Hero rather than a PageHeader, because this page introduces the
           system and is not a working screen. */}
       <Hero
         align="center"
-        title="One set of components. Any look you want."
+        title="One design system. Any look you want."
         lede={`Polymorph gives you ${REGISTRY.components.length} components that behave the same in React, Vue, Svelte, Solid, Angular, plain HTML, SwiftUI and Jetpack Compose. Restyle all of them at once by changing a couple of small files.`}
         actions={
           <>

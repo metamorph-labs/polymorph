@@ -16,6 +16,7 @@
     "publish:packages": "node scripts/publish-packages.mjs",
     "size": "node scripts/size.mjs",
     "layout": "node scripts/layout.mjs",
+    "site": "node scripts/site.mjs",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "typecheck": "node scripts/typecheck.mjs",

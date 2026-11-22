@@ -1,53 +1,25 @@
 import { getPalette, getSystem, type ModePreference } from '@polymorph/theme'
 import { AppShell, Inline, Link } from '@polymorph/react-ui'
-import { lazy, Suspense, useState, type ReactNode } from 'react'
+import { Suspense, useState, type ReactNode } from 'react'
 
 import { ChunkBoundary } from './ChunkBoundary'
 import { Mark } from './harness/Mark'
+import {
+  ComponentDetailPage,
+  ComponentsPage,
+  HomePage,
+  InstallPage,
+  MotionPage,
+  NotFoundPage,
+  PrinciplesPage,
+  SystemsPage,
+  TokensPage,
+} from './pages'
 import { useRoute } from './router'
 import { SiteFooter } from './shell/SiteFooter'
 import { ThemeControl } from './shell/ThemeControl'
 import { SITE } from './site'
 import { DEFAULT_SYSTEM, findSystem, selectPalette, selectSystem } from './themes'
-
-/*
- * Route-level code splitting. The boot bundle is the shell: `AppShell`, the top
- * bar's controls, and the theme engine that `themes.ts` runs at startup. Each
- * page is a chunk that loads when its route is visited. The largest is the
- * component detail page. It renders the live states fixtures, so it imports
- * `@polymorph/react-ui/galleries` and through it every member of the vocabulary.
- * The Suspense fallback is `null`, not a styled placeholder, because a fallback
- * is a style decision and the red rules give application code nowhere to make
- * one. The shell stays mounted, so a loading page shows only a brief empty
- * content region, already themed by the `<html>` attributes.
- */
-const ComponentDetailPage = lazy(() =>
-  import('./pages/ComponentDetailPage').then((module) => ({ default: module.ComponentDetailPage })),
-)
-const ComponentsPage = lazy(() =>
-  import('./pages/ComponentsPage').then((module) => ({ default: module.ComponentsPage })),
-)
-const HomePage = lazy(() =>
-  import('./pages/HomePage').then((module) => ({ default: module.HomePage })),
-)
-const InstallPage = lazy(() =>
-  import('./pages/InstallPage').then((module) => ({ default: module.InstallPage })),
-)
-const MotionPage = lazy(() =>
-  import('./pages/MotionPage').then((module) => ({ default: module.MotionPage })),
-)
-const NotFoundPage = lazy(() =>
-  import('./pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })),
-)
-const PrinciplesPage = lazy(() =>
-  import('./pages/PrinciplesPage').then((module) => ({ default: module.PrinciplesPage })),
-)
-const SystemsPage = lazy(() =>
-  import('./pages/SystemsPage').then((module) => ({ default: module.SystemsPage })),
-)
-const TokensPage = lazy(() =>
-  import('./pages/TokensPage').then((module) => ({ default: module.TokensPage })),
-)
 
 /** The first-level sections, in the order the top bar draws them. */
 const SECTIONS = [

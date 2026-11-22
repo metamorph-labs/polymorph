@@ -3,7 +3,8 @@ import { createRoot } from 'react-dom/client'
 
 import { App } from './App'
 import { installFonts } from './fonts'
-import { interceptLinks } from './router'
+import { pageFor } from './pages'
+import { currentPath, interceptLinks } from './router'
 import { installThemes } from './themes'
 
 installThemes()
@@ -21,8 +22,18 @@ interceptLinks()
 const root = document.getElementById('root')
 if (!root) throw new Error('docs: #root missing from index.html')
 
-createRoot(root).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+// The route's chunk is loaded before the first render. The document may arrive
+// with the page already drawn (`prerender.mjs`), and rendering before the chunk
+// is in memory would replace that markup with an empty region for a frame
+// (`pages.ts`). A chunk that fails to load still renders: the page then loads
+// through `lazy`, and `ChunkBoundary` reports the failure.
+void pageFor(currentPath())
+  .preload()
+  .catch(() => {})
+  .then(() => {
+    createRoot(root).render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    )
+  })
