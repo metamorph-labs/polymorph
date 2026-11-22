@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { assertGoverned } from '@polymorph/react'
@@ -411,10 +411,37 @@ describe('CodeBlock: the copy control', () => {
     const copyable = mount(<CodeBlock copyable>{COMMAND}</CodeBlock>).querySelector(
       'pre',
     ) as HTMLElement
+    // The button, the block's own padding beyond it, and the gap that keeps the
+    // code off the button.
     expect(Number.parseFloat(getComputedStyle(copyable).paddingInlineEnd)).toBeCloseTo(
-      room + Number.parseFloat(tokenLength('--pm-control-height-sm')),
+      room +
+        Number.parseFloat(tokenLength('--pm-control-height-sm')) +
+        Number.parseFloat(tokenLength('--pm-space-2')),
       1,
     )
+  })
+
+  it('paints the block’s surface over the reserved corner, inside the border', () => {
+    const LONG = `pnpm add ${'@polymorph/react-ui '.repeat(40)}`
+    for (const code of [LONG, `${LONG}\n${LONG}\n${LONG}\n${LONG}`]) {
+      const root = mount(<CodeBlock copyable>{code}</CodeBlock>)
+      const pre = root.querySelector('pre') as HTMLElement
+      const control = within(root).getByRole('button', { name: 'Copy' })
+        .parentElement as HTMLElement
+      const reserve = Number.parseFloat(getComputedStyle(pre).paddingInlineEnd)
+      const block = pre.getBoundingClientRect()
+      const corner = control.getBoundingClientRect()
+
+      // Opaque, in the block's own colour, so a line under it does not show.
+      expect(getComputedStyle(control).backgroundColor).toBe(getComputedStyle(pre).backgroundColor)
+      // It starts where the reserved room starts, so a line scrolled to its end
+      // is clear of it, and it ends inside the border.
+      expect(block.right - corner.left).toBeCloseTo(reserve, 0)
+      expect(corner.right).toBeLessThan(block.right)
+      expect(corner.top).toBeGreaterThan(block.top)
+      // A one-line block is shorter than the control wants to be. It stays inside.
+      expect(corner.bottom).toBeLessThan(block.bottom)
+    }
   })
 
   const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
