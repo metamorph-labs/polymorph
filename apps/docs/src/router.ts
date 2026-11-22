@@ -56,6 +56,9 @@ export function interceptLinks(): void {
     // `mailto:` are left to the browser.
     const href = anchor.getAttribute('href')
     if (href === null || !href.startsWith('/') || href.startsWith('//')) return
+    // A path that names a file (`/llms.txt`, `/system-card.md`) is a document
+    // the server holds, not a page of the application.
+    if (/\.[a-z0-9]+$/i.test(href.split(/[?#]/)[0] ?? '')) return
 
     event.preventDefault()
     navigate(href)

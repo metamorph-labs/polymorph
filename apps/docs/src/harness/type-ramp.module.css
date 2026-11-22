@@ -1,22 +1,36 @@
 /* The type ramp, rendered at emitted size in the theme's own families. */
 
+.ramp {
+  display: flex;
+  flex-direction: column;
+}
+
 .row {
   display: flex;
-  gap: var(--pm-space-4);
+  gap: var(--pm-space-5);
   align-items: baseline;
-  padding-block: var(--pm-space-2);
+  padding-block: var(--pm-space-3);
   border-block-end: 1px solid var(--pm-border-subtle);
 }
 
+.row:last-child {
+  border-block-end: none;
+}
+
 .step {
+  display: flex;
   flex: none;
+  flex-direction: column;
   inline-size: calc(var(--pm-space-10) + var(--pm-space-6));
   font-family: var(--pm-font-mono);
   font-size: var(--pm-text-xs-size);
-  color: var(--pm-text-muted);
+  line-height: var(--pm-text-xs-line-height);
+  color: var(--pm-text-secondary);
 }
 
 .specimen {
+  display: block;
+  min-inline-size: 0;
   overflow: hidden;
   font-family: var(--pm-sample-family);
   font-size: var(--pm-sample-size);

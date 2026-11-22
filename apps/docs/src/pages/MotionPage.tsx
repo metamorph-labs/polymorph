@@ -7,27 +7,28 @@ import {
 import {
   Accordion,
   Alert,
-  Badge,
   Button,
   Card,
   Checkbox,
+  Code,
   Dialog,
   Drawer,
   FormField,
-  Code,
   Grid,
   Heading,
   Inline,
   Input,
+  List,
   Menu,
   PageHeader,
   Popover,
   Select,
+  Separator,
   Skeleton,
   Spinner,
   Stack,
+  Stat,
   Stepper,
-  Table,
   Tabs,
   Text,
   toast,
@@ -36,27 +37,65 @@ import {
 } from '@polymorph/react-ui'
 import { useState, type ReactNode } from 'react'
 
+import motion from '../../../../design/motion/motion.json'
+import { Section } from '../reference/Section'
 import { findSystem } from '../themes'
+import { useMeta } from '../meta'
 
 /**
  * The motion page.
  *
- * Motion quality cannot be reviewed unless something shows it, because timing
- * tuned below perception looks fine in a JSON file. Colour has a gallery, and
- * this page is the gallery for motion. Every pattern in `design/motion/motion.md`
- * is demonstrated here by the component that owns its binding and can be
- * re-triggered by hand. The temperament select at the top lets the whole page
- * be viewed at each of the four settings.
+ * Motion cannot be reviewed unless something shows it, because timing tuned below perception
+ * looks fine in a JSON file. Every pattern in `design/motion/motion.md` is demonstrated here by
+ * the component that owns its binding, and each can be re-triggered by hand. The temperament
+ * control at the top lets the whole page be viewed at each of the four settings, and the numbers
+ * the page states are computed for the setting in effect from `design/motion/motion.json`.
  *
- * One constraint shapes every stage below: **application code cannot express
- * motion.** There is no page-level CSS and no engine import here
- * (`polymorph/no-app-css`, `polymorph/no-external-motion`), so a pattern is
- * shown by the vocabulary component that carries it or not at all. That is why
- * the fade stage uses Tabs and not a fading Card. A Card mounted by this file
- * would have no motion, and a page that faked one would document the fake.
+ * Application code cannot express motion. There is no page-level CSS and no engine import here
+ * (`polymorph/no-app-css`, `polymorph/no-external-motion`), so a pattern is shown by the
+ * vocabulary component that carries it or not at all. That is why the fade stage uses Tabs and
+ * not a fading Card: a Card mounted by this file would have no motion, and a page that faked one
+ * would document the fake.
  */
 
-const TEMPERAMENT_OPTIONS = MOTION_TEMPERAMENTS.map((name) => ({ value: name, label: name }))
+type DurationClass = keyof typeof motion.durationsMs
+
+/** The timings a temperament gives, from the motion data. */
+function timings(temperament: MotionTemperament) {
+  const { durationScale, distanceScale, pressScale, ambient } = motion.temperaments[temperament]
+  const enter = (kind: DurationClass) => Math.round(motion.durationsMs[kind] * durationScale)
+  return {
+    durationScale,
+    pressScale,
+    ambient,
+    enter,
+    exit: (kind: DurationClass) =>
+      Math.round(motion.durationsMs[kind] * durationScale * motion.exitRatio),
+    /** A scale-from depth after the temperament rescales it. */
+    scaleFrom: (kind: DurationClass) =>
+      Math.round((1 - (1 - motion.scaleFrom[kind]) * distanceScale) * 1000) / 1000,
+    /** A named travel distance after the temperament rescales it. */
+    distance: (name: keyof typeof motion.distancesPx) =>
+      Math.round(motion.distancesPx[name] * distanceScale * 10) / 10,
+    /** An ambient loop's period, which runs slower as durations shrink. */
+    period: (loop: keyof typeof motion.ambientPeriodsMs) =>
+      durationScale === 0 ? null : Math.round(motion.ambientPeriodsMs[loop] / durationScale),
+  }
+}
+
+type Timings = ReturnType<typeof timings>
+
+const LIVELINESS: Record<MotionTemperament, string> = {
+  none: 'None: nothing moves',
+  subtle: 'Subtle',
+  standard: 'Standard',
+  expressive: 'Expressive',
+}
+
+const TEMPERAMENT_OPTIONS = MOTION_TEMPERAMENTS.map((name) => ({
+  value: name,
+  label: LIVELINESS[name],
+}))
 
 /** The override already on `<html>`, so the select agrees with the page after a reload. */
 function initialTemperament(): MotionTemperament | null {
@@ -67,61 +106,57 @@ function initialTemperament(): MotionTemperament | null {
 }
 
 /**
- * One demonstration: the pattern, its carrier, the live specimen, the control
- * that replays it, and a caption naming the binding and its duration class.
- * Every stage has the same shape so that stages can be compared.
+ * One demonstration: what it is called, one or two sentences on what to watch, the live
+ * specimen, the control that replays it, and the component parts that carry the motion. Every
+ * stage has the same shape so that stages can be compared.
  */
 function Stage({
-  pattern,
-  binding,
-  motionClass,
+  title,
   caption,
+  carriers,
   control,
   children,
 }: {
-  pattern: string
-  binding: string
-  motionClass: string
+  title: string
   caption: ReactNode
+  carriers: readonly string[]
   control: ReactNode
   children: ReactNode
 }) {
   return (
     <Card>
-      <Stack gap={4}>
-        <Inline gap={2} align="center" wrap>
-          <Badge variant="solid" tone="accent">
-            {pattern}
-          </Badge>
-          <Badge variant="outline" tone="accent">
-            {binding}
-          </Badge>
-          <Badge variant="outline">{motionClass}</Badge>
-        </Inline>
+      <Stack gap={5}>
+        <Stack gap={2}>
+          <Heading level={3}>{title}</Heading>
+          <Text size="sm" tone="secondary">
+            {caption}
+          </Text>
+        </Stack>
         {children}
         <Inline gap={2} wrap>
           {control}
         </Inline>
-        <Text size="sm" tone="secondary">
-          {caption}
-        </Text>
+        <Inline gap={2} wrap>
+          {carriers.map((carrier) => (
+            <Text key={carrier} size="sm" tone="secondary">
+              <Code>{carrier}</Code>
+            </Text>
+          ))}
+        </Inline>
       </Stack>
     </Card>
   )
 }
 
-/**
- * `fade`. Every other pattern projects to it under reduced motion, so it is
- * shown first. Tabs are peers, which is why their content has no travel.
- */
-function FadeStage() {
+/** `fade`. Every other pattern becomes this one under reduced motion, so it is shown first. */
+function FadeStage({ t }: { t: Timings }) {
   const [tab, setTab] = useState('one')
 
   return (
     <Stage
-      pattern="fade"
-      binding="tabs.content"
-      motionClass="surface · 220ms"
+      title="Fade"
+      carriers={['tabs.content', 'dialog.scrim', 'input.clear']}
+      caption={`Tabs fade between panels over ${t.enter('surface')}ms. They don't slide, because tabs have no order to slide along.`}
       control={
         <Button
           variant="outline"
@@ -131,15 +166,6 @@ function FadeStage() {
           label="Replay"
           onClick={() => setTab(tab === 'one' ? 'two' : 'one')}
         />
-      }
-      caption={
-        <>
-          Opacity 0 → 1 and nothing else. <Code>tabs.content</Code> fades over the surface duration
-          on the enter curve. It does not slide, because a direction would imply an order that tabs
-          do not have. The same pattern at other classes: <Code>dialog.scrim</Code> (overlay),{' '}
-          <Code>input.clear</Code> and <Code>table.sorticon</Code> (control). Every pattern below
-          projects to this one under reduced motion.
-        </>
       }
     >
       <Tabs
@@ -151,89 +177,65 @@ function FadeStage() {
         onChange={setTab}
       >
         <Tabs.Content value="one">
-          <Text>This panel arrived by fading in. Replay swaps to its peer and back.</Text>
+          <Text>This panel faded in. Replay swaps to the other one and back.</Text>
         </Tabs.Content>
         <Tabs.Content value="two">
-          <Text>So did this one, over the same 220ms at the standard temperament.</Text>
+          <Text>So did this one.</Text>
         </Tabs.Content>
       </Tabs>
     </Stage>
   )
 }
 
-/**
- * `scale-fade` at all three classes at once, so the depths can be compared. A
- * dialog grows from where it was launched, an anchored surface from its
- * trigger-facing edge, and the depth of the grow is the class's own scale-from.
- */
-function ScaleFadeStage() {
+/** `scale-fade` at all three classes, so the depths can be compared. */
+function ScaleFadeStage({ t }: { t: Timings }) {
   const [open, setOpen] = useState(false)
 
   return (
     <Stage
-      pattern="scale-fade"
-      binding="dialog.panel · popover.panel · tooltip.bubble"
-      motionClass="overlay · surface · control"
+      title="Grow and fade"
+      carriers={['dialog.panel', 'popover.panel', 'tooltip.bubble']}
+      caption={`Things that open grow in from where you opened them. Bigger things grow less: a tooltip starts at ${t.scaleFrom('control')}, a popover at ${t.scaleFrom('surface')} and a dialog at ${t.scaleFrom('overlay')} of its size.`}
       control={
         <>
-          <Popover
-            label="A popover panel"
-            trigger={<Button variant="outline" tone="accent" size="sm" label="Open popover" />}
+          <Dialog
+            open={open}
+            onOpenChange={setOpen}
+            title="A dialog"
+            description={`It took ${t.enter('overlay')}ms to arrive and takes ${t.exit('overlay')}ms to leave.`}
+            trigger={<Button variant="solid" tone="accent" size="sm" label="Open a dialog" />}
+            footer={
+              <Button variant="solid" tone="accent" label="Close" onClick={() => setOpen(false)} />
+            }
           >
-            <Text>
-              popover.panel — scale-fade at surface, growing from the trigger-facing edge.
-            </Text>
+            <Text>It grew from the button you pressed, not from the middle of the screen.</Text>
+          </Dialog>
+          <Popover
+            label="A popover"
+            trigger={<Button variant="outline" tone="accent" size="sm" label="Open a popover" />}
+          >
+            <Text>This grew from the edge that faces its button.</Text>
           </Popover>
-          <Tooltip content="tooltip.bubble — scale-fade at control, 140ms">
+          <Tooltip content="A tooltip grows the most, because it's the smallest">
             <Button variant="ghost" tone="neutral" size="sm" label="Hover for a tooltip" />
           </Tooltip>
         </>
       }
-      caption={
-        <>
-          Opacity 0 → 1 with scale <em>s</em> → 1, where <em>s</em> is the class&rsquo;s own depth:
-          control <strong>0.90</strong>, surface <strong>0.94</strong>, overlay{' '}
-          <strong>0.96</strong>. Bigger surfaces scale less, because a large grow looks like a zoom.
-          Temperament rescales the depth rather than the pattern (<em>s</em>′ = 1 − (1 − <em>s</em>)
-          × distanceScale). The dialog also brings <Code>dialog.scrim</Code>, a plain fade at
-          overlay, and takes its transform-origin from the button you launched it with.
-        </>
-      }
     >
-      <Inline gap={2} wrap>
-        <Dialog
-          open={open}
-          onOpenChange={setOpen}
-          title="scale-fade at the overlay class"
-          description="260ms in, 169ms out, growing from the trigger you pressed."
-          trigger={<Button variant="solid" tone="accent" size="sm" label="Open dialog" />}
-          footer={
-            <Button variant="solid" tone="accent" label="Close" onClick={() => setOpen(false)} />
-          }
-        >
-          <Text>
-            Watch the corner this grew from — the panel&rsquo;s origin is the projected position of
-            the control that opened it, not the centre of the screen.
-          </Text>
-        </Dialog>
-      </Inline>
+      {null}
     </Stage>
   )
 }
 
-/**
- * `slide-fade` at both ends of the distance scale: a toast travels 16px from the
- * viewport edge, and a field error travels 4px from the top of its own row. One
- * pattern at two classes and two distances.
- */
-function SlideFadeStage() {
+/** `slide-fade` at both ends of the distance scale: a toast and a field error. */
+function SlideFadeStage({ t }: { t: Timings }) {
   const [error, setError] = useState<string | undefined>(undefined)
 
   return (
     <Stage
-      pattern="slide-fade"
-      binding="toast.enter · formfield.error"
-      motionClass="surface · control"
+      title="Slide and fade"
+      carriers={['toast.enter', 'toast.reflow', 'formfield.error']}
+      caption={`A toast slides ${t.distance('lg')}px up from the bottom edge. A field error moves only ${t.distance('sm')}px, so it clearly belongs to its field. Raise a few toasts and close one in the middle to watch the rest close the gap.`}
       control={
         <>
           <Button
@@ -243,7 +245,7 @@ function SlideFadeStage() {
             label="Raise a toast"
             onClick={() =>
               toast.success('Ticket assigned', {
-                description: 'Arrived on a spring from the bottom edge; the stack reflows on one.',
+                description: 'It slid in from the bottom edge.',
               })
             }
           />
@@ -251,73 +253,40 @@ function SlideFadeStage() {
             variant="outline"
             tone="accent"
             size="sm"
-            label={error === undefined ? 'Fail validation' : 'Clear the error'}
+            label={error === undefined ? 'Show an error' : 'Clear the error'}
             onClick={() =>
               setError(error === undefined ? 'Enter a work email address.' : undefined)
             }
           />
         </>
       }
-      caption={
-        <>
-          Opacity 0 → 1 with a translate of <em>d</em> → 0 from the bound edge. Distances are named,
-          not measured: <strong>sm 4px</strong>, <strong>md 8px</strong>, <strong>lg 16px</strong>,
-          each multiplied by temperament&rsquo;s distanceScale. <Code>toast.enter</Code> takes lg
-          from the bottom on spring <Code>default</Code>. <Code>formfield.error</Code> takes sm from
-          the top at the control class, so a message under a field does not appear to come from
-          somewhere else. Raise several toasts and dismiss one from the middle: the others move into
-          the gap on the layout spring (<Code>toast.reflow</Code>) instead of jumping. This is the
-          only place on this page where the engine&rsquo;s springs run directly rather than
-          projected onto a bezier.
-        </>
-      }
     >
-      <FormField
-        label="Requester"
-        description="The error below enters from the top edge of its own row."
-        error={error}
-      >
+      <FormField label="Requester" error={error}>
         <Input placeholder="you@example.com" />
       </FormField>
     </Stage>
   )
 }
 
-/**
- * `collapse` in both its modes, side by side. Persistent mode animates a box
- * that stays mounted. Exit mode animates one that leaves.
- */
-function CollapseStage() {
+/** `collapse` in both its modes: one box that stays mounted, one that leaves. */
+function CollapseStage({ t }: { t: Timings }) {
   const [dismissed, setDismissed] = useState(false)
 
   return (
     <Stage
-      pattern="collapse"
-      binding="accordion.content · alert.dismiss"
-      motionClass="surface"
+      title="Collapse"
+      carriers={['accordion.content', 'alert.dismiss']}
+      caption={`Rows open and close over ${t.enter('surface')}ms. A dismissed alert fades first, then closes its gap, and only then leaves the page.`}
       control={
         <Button
           variant="outline"
           tone="accent"
           size="sm"
           icon="refresh"
-          label="Restore the alert"
+          label="Bring the alert back"
           disabled={!dismissed}
           onClick={() => setDismissed(false)}
         />
-      }
-      caption={
-        <>
-          Size 0 ↔ natural, on the one kind of box the interruption laws allow to animate size.{' '}
-          <Code>accordion.content</Code> is <strong>persistent</strong> mode: the row stays mounted,
-          the height moves over the surface duration on standard easing, and the copy fades against
-          the first and last half of it. <Code>alert.dismiss</Code> is <strong>exit</strong> mode:
-          content fades over the first 50% of the surface exit, then the row closes over the rest,
-          and only then does the Alert tell the page it may unmount. Overflow stays hidden while
-          anything moves. The third consumer is this page&rsquo;s own shell:{' '}
-          <Code>appshell.sidebar</Code> is the same persistent collapse on the inline axis, and the
-          chevron at the foot of the sidebar plays it.
-        </>
       }
     >
       <Stack gap={4}>
@@ -327,16 +296,16 @@ function CollapseStage() {
           items={[
             {
               value: 'what',
-              label: 'What persistent mode means',
-              content: <Text>The row never leaves. Only its height and its copy move.</Text>,
+              label: 'Open and close me',
+              content: <Text>The row stays on the page. Only its height and its text move.</Text>,
             },
             {
               value: 'why',
-              label: 'Why size and not transform',
+              label: 'Why height and not a slide',
               content: (
                 <Text>
-                  Interruption law 2 permits an animated size on non-interactive containers only,
-                  and forbids scrolling the box while it moves.
+                  Only boxes you can't interact with may animate their size, and they never scroll
+                  while they move.
                 </Text>
               ),
             },
@@ -344,8 +313,7 @@ function CollapseStage() {
         />
         {dismissed ? null : (
           <Alert tone="info" title="Dismiss me" onDismiss={() => setDismissed(true)}>
-            The ✕ plays the departure; the page owns the unmount, and is told when the row has
-            finished closing.
+            Press the close button and watch the space close up.
           </Alert>
         )}
       </Stack>
@@ -353,19 +321,16 @@ function CollapseStage() {
   )
 }
 
-/**
- * `spring-pop`. The only pattern with a spring in its enter, and the only one
- * with an asymmetric exit: it leaves with a fade, not a reversed pop.
- */
+/** `spring-pop`: the one pattern with a spring in its entrance and a plain fade for its exit. */
 function SpringPopStage() {
   const [checked, setChecked] = useState(false)
   const [step, setStep] = useState(1)
 
   return (
     <Stage
-      pattern="spring-pop"
-      binding="checkbox.indicator · stepper.indicator"
-      motionClass="control"
+      title="Pop"
+      carriers={['checkbox.indicator', 'stepper.indicator']}
+      caption="A tick pops in on a spring. It doesn't bounce when motion is subtle, overshoots a little at standard, and bounces clearly when it's expressive. Unticking just fades it out."
       control={
         <>
           <Button
@@ -388,21 +353,12 @@ function SpringPopStage() {
           />
         </>
       }
-      caption={
-        <>
-          Opacity 0 → 1 over control × 0.5, and scale <strong>0.5 → 1</strong> on spring{' '}
-          <Code>snappy</Code>. It is over-damped at subtle (no overshoot), overshoots slightly at
-          standard, and bounces visibly at expressive. The exit is a plain fade at the control exit
-          duration. A checkbox being cleared does not reverse the pop, and this asymmetry is part of
-          the pattern, not an omission.
-        </>
-      }
     >
       <Stack gap={4}>
         <Checkbox
           checked={checked}
           onCheckedChange={(next) => setChecked(next === true)}
-          label="Tick me — the indicator pops in and fades out"
+          label="Tick me"
         />
         <Stepper
           activeIndex={step}
@@ -413,15 +369,15 @@ function SpringPopStage() {
   )
 }
 
-/** `sheet`: Drawer's edge entrance, and the only pattern whose travel temperament does not scale. */
-function SheetStage() {
+/** `sheet`: Drawer's edge entrance, the one pattern whose travel the temperament leaves alone. */
+function SheetStage({ t }: { t: Timings }) {
   const [open, setOpen] = useState(false)
 
   return (
     <Stage
-      pattern="sheet"
-      binding="drawer.panel"
-      motionClass="overlay"
+      title="Sheet"
+      carriers={['drawer.panel']}
+      caption={`A drawer slides all the way in from the edge in ${t.enter('overlay')}ms, without fading. Press Escape while it's still moving, and it turns back from where it is.`}
       control={
         <Button
           variant="solid"
@@ -431,44 +387,37 @@ function SheetStage() {
           onClick={() => setOpen(true)}
         />
       }
-      caption={
-        <>
-          Translate ±100% → 0 on the bound edge, with <strong>opacity 1 throughout</strong>. A sheet
-          slides in and does not fade. The distance is <em>structural</em>, so distanceScale does
-          not apply: 100% is geometry, not a travel budget, and scaling it would leave a gap at the
-          edge. The scrim is <Code>dialog.scrim</Code> again. Under reduced motion this projects to
-          a fade in place, because a sheet held off-screen by a transform cannot arrive from nowhere
-          at opacity 0. Open it and press Escape in the same gesture: the reversal continues from
-          wherever the panel had reached, on the exit curve, instead of restarting from the edge.
-          This is interruption law 1, and the easiest of the four to check by hand.
-        </>
-      }
     >
       <Drawer
         open={open}
         onOpenChange={setOpen}
         side="end"
-        title="drawer.panel — sheet"
-        description="Full off-canvas travel on the overlay class: 260ms in, 169ms out."
+        title="A drawer"
+        description="Change how lively the page is and open it again. It travels the same distance, in a different time."
         footer={
           <Button variant="outline" tone="neutral" label="Close" onClick={() => setOpen(false)} />
         }
       >
-        <Text>Open it at each temperament: the travel is identical, the time is not.</Text>
+        <Text>Close it with the button, Escape, or a click outside.</Text>
       </Drawer>
     </Stage>
   )
 }
 
-/** `shimmer`: ambient, and the first of the two loops whose period scales inversely. */
-function ShimmerStage() {
+/** `shimmer`: an ambient loop, whose period grows as the temperament calms. */
+function ShimmerStage({ t }: { t: Timings }) {
   const [loaded, setLoaded] = useState(false)
+  const period = t.period('shimmer')
 
   return (
     <Stage
-      pattern="shimmer"
-      binding="skeleton.sheen"
-      motionClass="ambient · 1600ms"
+      title="Shimmer"
+      carriers={['skeleton.sheen']}
+      caption={
+        period === null
+          ? 'With motion off, the placeholder stays still. It still holds the space.'
+          : `A placeholder shimmers while content loads, once every ${period}ms. Calmer settings shimmer more slowly.`
+      }
       control={
         <Button
           variant="outline"
@@ -478,14 +427,6 @@ function ShimmerStage() {
           label={loaded ? 'Show the placeholder' : 'Load the content'}
           onClick={() => setLoaded(!loaded)}
         />
-      }
-      caption={
-        <>
-          A 200%-wide gradient layer travelling −100% → 100%, linear and infinite, over a period of{' '}
-          <strong>1600ms ÷ durationScale</strong>. Ambient periods scale <em>inversely</em>: a
-          calmer temperament shimmers slower, not faster. At <Code>none</Code> the sweep stops and
-          the base fill remains, because the fill is the placeholder and the sweep is decoration.
-        </>
       }
     >
       {loaded ? (
@@ -507,14 +448,19 @@ function ShimmerStage() {
 }
 
 /** `spin`: the other ambient loop, on both of its carriers. */
-function SpinStage() {
+function SpinStage({ t }: { t: Timings }) {
   const [loading, setLoading] = useState(true)
+  const period = t.period('spin')
 
   return (
     <Stage
-      pattern="spin"
-      binding="spinner.glyph · button.spinner"
-      motionClass="ambient · 900ms"
+      title="Spin"
+      carriers={['spinner.glyph', 'button.spinner']}
+      caption={
+        period === null
+          ? 'With motion off, the spinner stands still. Its shape still says it is working.'
+          : `A spinner turns once every ${period}ms. A busy button keeps its colour and focus, because it's working, not disabled.`
+      }
       control={
         <Button
           variant="outline"
@@ -523,15 +469,6 @@ function SpinStage() {
           label={loading ? 'Finish the command' : 'Run the command'}
           onClick={() => setLoading(!loading)}
         />
-      }
-      caption={
-        <>
-          Rotate 0 → 360°, linear and infinite, over <strong>900ms ÷ durationScale</strong>. The{' '}
-          <Code>loading</Code> glyph is a three-quarter arc so that a frozen frame still reads as
-          loading. It freezes at <Code>none</Code>, and under reduced motion, where the global
-          ambient rule stops it. A loading Button keeps its colours, its focus and its name. It is
-          busy, not disabled.
-        </>
       }
     >
       <Inline gap={4} align="center">
@@ -542,8 +479,8 @@ function SpinStage() {
   )
 }
 
-/** The stagger primitive's only consumer, with enough rows to reach the delay ceiling. */
-function CascadeSection() {
+/** The stagger's only consumer, with enough rows to reach its ceiling. */
+function CascadeStage() {
   const [chosen, setChosen] = useState<string | null>(null)
   const commands = [
     { label: 'Assign to me', icon: 'user' },
@@ -559,248 +496,177 @@ function CascadeSection() {
   ] as const
 
   return (
-    <Card>
-      <Stack gap={4}>
-        <Inline gap={2} align="center" wrap>
-          <Badge variant="solid" tone="accent">
-            cascade
-          </Badge>
-          <Badge variant="outline" tone="accent">
-            menu.items
-          </Badge>
-          <Badge variant="outline">control · enter only</Badge>
-        </Inline>
-        <Inline gap={3} align="center" wrap>
-          <Menu
-            trigger={<Button variant="outline" tone="neutral" icon="menu" label="Open the menu" />}
-            items={commands.map((command) => ({
-              label: command.label,
-              icon: command.icon,
-              onSelect: () => setChosen(command.label),
-            }))}
-          />
-          {chosen === null ? null : <Badge tone="accent">{`Chose: ${chosen}`}</Badge>}
-        </Inline>
-        <Text>
-          The panel itself is <Code>menu.content</Code>: scale-fade at surface, anchored. Inside it,
-          each row is a fade plus a 2px drift at control × enter, delayed by{' '}
-          <strong>index × 24ms</strong> and clamped to <strong>200ms</strong>. The menu has ten rows
-          on purpose. The ninth crosses the ceiling, so the last two arrive together instead of the
-          list taking longer the further down you read. The delay steps are capped at twelve, and
-          later items share the ceiling. The cascade runs on enter only; lists do not cascade out.
-          Temperament changes it only through the tokens (32ms a row at expressive, 19ms a row at
-          subtle, zero at <Code>none</Code>). Under reduced motion the cascade projects to presence,
-          because a delay counts as motion even when the delayed element does not move.
-        </Text>
-      </Stack>
-    </Card>
+    <Stage
+      title="Cascade"
+      carriers={['menu.content', 'menu.items']}
+      caption="Each row of a menu starts a moment after the one above it. The delay stops growing after a few rows, so a long menu opens as fast as a short one. Rows don't cascade on the way out."
+      control={
+        <Menu
+          trigger={
+            <Button variant="outline" tone="neutral" size="sm" icon="menu" label="Open the menu" />
+          }
+          items={commands.map((command) => ({
+            label: command.label,
+            icon: command.icon,
+            onSelect: () => setChosen(command.label),
+          }))}
+        />
+      }
+    >
+      {chosen === null ? null : <Text size="sm">{`You chose “${chosen}”.`}</Text>}
+    </Stage>
   )
 }
 
 /**
- * The reduced-motion projections from `design/motion/motion.md`, as data. Every
- * pattern above must have one.
+ * The reduced-motion projections from `design/motion/motion.md`, as data. Every pattern above
+ * must have one.
  */
 const PROJECTIONS = [
-  ['fade', 'itself'],
-  ['scale-fade', 'fade — opacity only, no transform'],
-  ['slide-fade', 'fade — opacity only, no travel'],
-  ['spring-pop', 'fade — opacity only, no scale'],
-  ['collapse', 'instant size change; the content still fades'],
-  ['sheet', 'fade in place — no travel'],
-  ['shimmer · spin', 'off — static, by one global rule'],
-  ['press-feedback', 'no transform; colour states alone'],
-  ['cascade', 'presence — a delay is motion too'],
+  ['Fade', 'Stays a fade'],
+  ['Grow and fade', 'Fades, without growing'],
+  ['Slide and fade', 'Fades, without moving'],
+  ['Pop', 'Fades, without popping'],
+  ['Collapse', 'Changes size at once, and the content still fades'],
+  ['Sheet', 'Fades in place'],
+  ['Shimmer and spin', 'Stop, and stay still'],
+  ['Button press', 'No shrink, just the colour change'],
+  ['Cascade', 'Every row appears at once'],
 ] as const
 
-/**
- * The duration column of the temperament table (`design/motion/motion.md`) and
- * its effect on the control class. A reader needs these two numbers beside the
- * select to tell whether what they saw came from the temperament or the
- * pattern. They are written here rather than read from a token because the
- * ratio is the decision and the token value follows from it.
- */
-const DURATION_SCALES: Record<MotionTemperament, string> = {
-  none: '0',
-  subtle: '0.8',
-  standard: '1',
-  expressive: '1.35',
-}
-
-const CONTROL_MS: Record<MotionTemperament, string> = {
-  none: '0ms',
-  subtle: '112ms',
-  standard: '140ms',
-  expressive: '189ms',
-}
-
 export function MotionPage({ system }: { system: string }) {
+  useMeta({
+    title: 'Motion',
+    description:
+      'You never write an animation. Pick how lively your product should feel and every component moves to match. Try each pattern live.',
+  })
   const [temperament, setTemperament] = useState<MotionTemperament | null>(initialTemperament)
   const systemDefault = findSystem(system).axes.motionTemperament
   const effective = temperament ?? systemDefault
+  const t = timings(effective)
 
   return (
-    <Stack gap={7} p={7}>
+    <Stack gap={8}>
       <PageHeader
         title="Motion"
-        description="Motion binds to state, is derived rather than authored, and has a budget. Every pattern in the catalogue is below, performed by the component that owns its binding and re-triggerable by hand — because a system whose motion is only written down is a system whose motion nobody can review."
+        description="You never write an animation. Pick how lively your product should feel, and every component moves to match. Everything on this page is live, so go ahead and play."
       />
 
       <Card>
-        <Stack gap={4}>
-          <Inline gap={3} align="center" wrap>
-            <Select
-              size="sm"
-              emptyOption={`System default (${systemDefault})`}
-              options={TEMPERAMENT_OPTIONS}
-              value={temperament}
-              aria-label="Motion temperament"
-              onChange={(next) => {
-                const value = next as MotionTemperament | null
-                setTemperament(value)
-                setMotionTemperament(value)
-              }}
+        <Stack gap={6}>
+          <Grid columns={2} gap={6}>
+            <FormField
+              label="How lively should it feel?"
+              description={`This changes motion across the whole site. The ${system} system's own setting is ${systemDefault}.`}
+            >
+              <Select
+                emptyOption={`The system's own (${systemDefault})`}
+                options={TEMPERAMENT_OPTIONS}
+                value={temperament}
+                onChange={(next) => {
+                  const value = next as MotionTemperament | null
+                  setTemperament(value)
+                  setMotionTemperament(value)
+                }}
+              />
+            </FormField>
+            <Stack gap={3}>
+              <Text>Now open something and watch how it arrives.</Text>
+              <Inline gap={2} wrap>
+                <Popover
+                  label="A popover"
+                  trigger={<Button variant="solid" tone="accent" label="Open a popover" />}
+                >
+                  <Text>{`This took ${t.enter('surface')}ms to arrive.`}</Text>
+                </Popover>
+                <Button
+                  variant="outline"
+                  tone="accent"
+                  label="Raise a toast"
+                  onClick={() =>
+                    toast.success('Saved', {
+                      description: 'This slid up from the bottom on a spring.',
+                    })
+                  }
+                />
+              </Inline>
+            </Stack>
+          </Grid>
+          <Grid columns={3} gap={6}>
+            <Stat
+              label="Buttons and fields"
+              value={`${t.enter('control')}ms`}
+              description={`${t.exit('control')}ms on the way out`}
             />
-            {/* The temperament in effect, with or without an override. The
-                badge exists so that a cleared select still names a temperament. */}
-            <Badge variant="outline" tone="accent">
-              {`${effective} · duration × ${DURATION_SCALES[effective]}`}
-            </Badge>
-            <Badge variant="outline">{`control ${CONTROL_MS[effective]}`}</Badge>
-          </Inline>
-          <Text>
-            This is the same setting the theme&rsquo;s <Code>motionTemperament</Code> axis controls.
-            It writes <Code>data-motion</Code> on the document root, which rescales every duration
-            token and the engine identically. CSS state feedback and choreographed exits read the
-            same tokens, so they cannot disagree. Clearing the override returns each system to its
-            own axis value. Every stage below responds to it, and so does the select itself. Opening
-            it plays <Code>select.content</Code> (scale-fade at surface, anchored) and rotates its
-            chevron 180° on standard easing at the control class.
-          </Text>
-          <Text>
-            <Code>subtle</Code> scales durations by <strong>0.8</strong> and no lower, because
-            shorter changes stop being perceptible. A 98ms colour-only hover on a faint wash is too
-            fast to read as feedback. At <strong>112ms</strong> the control class is above the
-            threshold where a state change is seen rather than inferred. <Code>none</Code> is zero,
-            and the engine is bypassed entirely.
-          </Text>
+            <Stat
+              label="Menus and panels"
+              value={`${t.enter('surface')}ms`}
+              description={`${t.exit('surface')}ms on the way out`}
+            />
+            <Stat
+              label="Dialogs and drawers"
+              value={`${t.enter('overlay')}ms`}
+              description={`${t.exit('overlay')}ms on the way out`}
+            />
+          </Grid>
         </Stack>
       </Card>
 
-      <Stack gap={4}>
-        <Stack gap={1}>
-          <Heading>State feedback</Heading>
-          <Text size="sm" tone="secondary">
-            The always-on part of the system, and the only part that is pure CSS. Hover these, then
-            press and hold one. Colour, border and shadow cross-fade over the control duration on
-            standard easing: 140ms at standard, 112ms at subtle, 189ms at expressive, and no
-            transition at none, where the static states still show everything.
-          </Text>
-        </Stack>
-        <Card>
-          <Stack gap={4}>
-            <Inline gap={3} wrap align="center">
-              <Button variant="solid" tone="accent" label="Solid" />
-              <Button variant="soft" tone="accent" label="Soft" />
-              <Button variant="outline" tone="neutral" label="Outline" />
-              <Button variant="ghost" tone="neutral" label="Ghost" />
-              <Button variant="solid" tone="danger" label="Danger" />
-              <Button variant="outline" tone="neutral" label="Disabled" disabled />
-            </Inline>
-            <Text>
-              The press is a transform, not a colour change. The button scales down to{' '}
-              <Code>--pm-motion-press-scale</Code> over half the control duration on standard
-              easing, and returns on a snappy spring. The token varies by temperament: 0.99 at
-              subtle, 0.97 at standard, 0.95 at expressive, and exactly <strong>1</strong> at none,
-              where the transform disappears and colour alone gives the feedback. It uses only
-              transform, runs on the compositor, and never blocks the click.
-            </Text>
-          </Stack>
-        </Card>
-      </Stack>
+      <Section
+        id="feedback"
+        title="Feedback on every control"
+        lede={
+          t.durationScale === 0
+            ? 'Hover and press these. With motion off, colours change at once and nothing shrinks, but you still see every state.'
+            : `Hover and press these. Colours ease over ${t.enter('control')}ms, and a press shrinks the button to ${t.pressScale} of its size, then springs back.`
+        }
+      >
+        <Inline gap={3} wrap align="center">
+          <Button variant="solid" tone="accent" label="Solid" />
+          <Button variant="soft" tone="accent" label="Soft" />
+          <Button variant="outline" tone="neutral" label="Outline" />
+          <Button variant="ghost" tone="neutral" label="Ghost" />
+          <Button variant="solid" tone="danger" label="Danger" />
+          <Button variant="outline" tone="neutral" label="Disabled" disabled />
+        </Inline>
+      </Section>
 
-      <Stack gap={4}>
-        <Stack gap={1}>
-          <Heading>Enter and exit</Heading>
-          <Text size="sm" tone="secondary">
-            Five enter/exit patterns and two ambient loops, each on the component that carries its
-            binding. Exits use the same numbers × 0.65 on the accelerating curve, because the user
-            has already decided and the surface should leave quickly. Nothing here is authored per
-            component. A component picks a pattern and a class, and the engine derives the rest.
-          </Text>
-        </Stack>
-        <Grid columns={2} gap={5}>
-          <FadeStage />
-          <ScaleFadeStage />
-          <SlideFadeStage />
-          <CollapseStage />
+      <Separator />
+
+      <Section
+        id="patterns"
+        title="Things coming and going"
+        lede="Every component picks one of a handful of patterns, and the timing comes from your setting. Exits run faster than entrances, because by then you've already decided."
+      >
+        <Grid columns={2} gap={6}>
+          <FadeStage t={t} />
+          <ScaleFadeStage t={t} />
+          <SlideFadeStage t={t} />
+          <CollapseStage t={t} />
           <SpringPopStage />
-          <SheetStage />
-          <ShimmerStage />
-          <SpinStage />
+          <SheetStage t={t} />
+          <ShimmerStage t={t} />
+          <SpinStage t={t} />
+          <CascadeStage />
         </Grid>
-      </Stack>
+      </Section>
 
-      <Stack gap={4}>
-        <Stack gap={1}>
-          <Heading>The cascade</Heading>
-          <Text size="sm" tone="secondary">
-            The stagger primitive&rsquo;s only consumer. A cascade adds no new kind of motion: it is
-            an existing pattern at an existing class, plus a bounded sequence of delays.
-          </Text>
-        </Stack>
-        <CascadeSection />
-      </Stack>
+      <Separator />
 
-      <Stack gap={4}>
-        <Stack gap={1}>
-          <Heading>Reduced motion</Heading>
-          <Text size="sm" tone="secondary">
-            Reduced motion projects regardless of temperament. Durations are kept where they are
-            vestibular-safe, because an opacity change does not cause motion sickness. Only{' '}
-            <Code>none</Code> sets durations to zero.
-          </Text>
-        </Stack>
-        <Stack gap={3}>
-          <Text>
-            This page cannot demonstrate it. <Code>prefers-reduced-motion</Code> is an operating
-            system setting, and a checkbox that faked the projection would show this page&rsquo;s
-            approximation of the law rather than the law. Instead, this section says where the
-            projections live. The ambient stop is <strong>one global rule</strong> in the
-            vocabulary&rsquo;s motion conventions. It matches both the media query and a{' '}
-            <Code>none</Code> scope, so no component special-cases it. The per-pattern projections
-            are the engine&rsquo;s pattern table and each component&rsquo;s own reduced-motion
-            branch, and tests assert them. Turn the setting on in your OS and reload: every stage
-            above stays legible, and none of them moves.
-          </Text>
-          {/* `Table.Head` is the `<thead>` section and `Table.Header` is the
-              `<th>` cell. */}
-          <Table>
-            <Table.Head>
-              <Table.Row>
-                <Table.Header>Pattern</Table.Header>
-                <Table.Header>Projection</Table.Header>
-              </Table.Row>
-            </Table.Head>
-            <Table.Body>
-              {PROJECTIONS.map(([pattern, projection]) => (
-                <Table.Row key={pattern}>
-                  <Table.Cell>
-                    <Badge variant="outline" tone="accent">
-                      {pattern}
-                    </Badge>
-                  </Table.Cell>
-                  <Table.Cell>{projection}</Table.Cell>
-                </Table.Row>
-              ))}
-            </Table.Body>
-          </Table>
-        </Stack>
-      </Stack>
+      <Section
+        id="reduced-motion"
+        title="When someone turns motion down"
+        lede="If your reader asks their device for less motion, nothing on the page travels, grows or bounces, whatever setting you picked. Here's what each pattern does instead. Turn on your device's reduce-motion setting and reload to see it."
+      >
+        <List label="What each pattern does with reduced motion">
+          {PROJECTIONS.map(([pattern, projection]) => (
+            <List.Item key={pattern} title={pattern} description={projection} />
+          ))}
+        </List>
+      </Section>
 
-      {/* The toast viewport this page's slide-fade stage raises into. Mounted
-          once, here rather than in the shell, because the docs site has exactly
-          one screen that raises a toast. */}
+      {/* The toast viewport this page's stages raise into. Mounted once, here rather than in
+          the shell, because the docs site has exactly one screen that raises a toast. */}
       <Toaster />
     </Stack>
   )

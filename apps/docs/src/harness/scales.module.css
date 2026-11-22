@@ -1,0 +1,50 @@
+/* The scale specimens on the tokens page (`Scales.tsx`). The measured value arrives as
+   `--pm-sample`, a token reference set from TSX. */
+
+.scale {
+  display: grid;
+  grid-template-columns: max-content max-content minmax(0, 1fr);
+  gap: var(--pm-space-3) var(--pm-space-4);
+  align-items: center;
+}
+
+.row {
+  display: contents;
+}
+
+.label,
+.value {
+  font-family: var(--pm-font-mono);
+  font-size: var(--pm-text-xs-size);
+  line-height: var(--pm-text-xs-line-height);
+  color: var(--pm-text-secondary);
+}
+
+.value {
+  text-align: end;
+}
+
+.bar {
+  inline-size: var(--pm-sample);
+  min-inline-size: 1px;
+  block-size: var(--pm-space-4);
+  background: var(--pm-accent-bg);
+  border-radius: var(--pm-radius-sm);
+}
+
+.radius {
+  inline-size: var(--pm-space-9);
+  block-size: var(--pm-space-9);
+  background: var(--pm-accent-subtle);
+  border: 2px solid var(--pm-accent-bg);
+  border-radius: var(--pm-sample);
+}
+
+.shadow {
+  inline-size: 100%;
+  block-size: var(--pm-space-9);
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-md);
+  box-shadow: var(--pm-sample);
+}

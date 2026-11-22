@@ -1,248 +1,280 @@
 import {
-  Alert,
-  Badge,
-  Card,
   Code,
   CodeBlock,
+  Grid,
   Heading,
-  Inline,
+  Link,
+  List,
   PageHeader,
+  Separator,
   Stack,
+  Tabs,
   Text,
 } from '@polymorph/react-ui'
 
-import { REGISTRY } from '../registry'
+import { AGENT_FILES, MCP_READ_TOOLS, MCP_WRITE_TOOLS, REGISTRY_ACCESS } from '../reference/facts'
+import {
+  GUIDE,
+  INIT_WRITES,
+  MCP_CONFIG,
+  OWN_THE_CODE,
+  QUICK_START,
+  RELEASE,
+  TARGETS,
+  THEME_STEPS,
+  type Snippet,
+} from '../reference/install'
+import { Section, Step } from '../reference/Section'
+import { useMeta } from '../meta'
 
 /**
- * Quickstarts for the three interfaces to the registry: the CLI vendors source,
- * the MCP server answers agents, and the JSON is the registry itself. The
- * engine, the rules, the recipes and each web framework's foundation and
- * vocabulary are published to GitHub Packages (`docs/consuming.md`). The CLI,
- * the MCP server and the native packages are not, so their commands run
- * against a clone of this repository.
+ * The get-started page, for a reader outside this repository: the quickest way to a running app,
+ * then each framework and platform, then a theme of their own, then the tools for a coding agent.
+ *
+ * Every command, package name and file comes from `src/reference/install.ts` and
+ * `src/reference/facts.ts`, which read the registry and are held to their sources by tests.
  */
-export function InstallPage() {
+
+type ReadTool = (typeof MCP_READ_TOOLS)[number]
+type WriteTool = (typeof MCP_WRITE_TOOLS)[number]
+
+/**
+ * What each MCP tool does, in a reader's words, from `docs/tooling.md`. Keyed by the server's own
+ * tool names, so a tool the server adds is a type error here until it has a line.
+ */
+const TOOL_HELP: Record<ReadTool | WriteTool, string> = {
+  search_components: 'Finds components by name, purpose or prop.',
+  get_component: 'Everything about one component: its props, variants and states.',
+  get_install_plan: 'Shows what polymorph add would copy, before it copies anything.',
+  get_system_card: 'Every component and rule in one read. Agents start here.',
+  get_theme_axes: 'The axes, systems, palettes and token names a theme is made of.',
+  validate: 'Checks code or a screen spec against the lint rules and says how to fix each problem.',
+  fix: 'Rewrites the problems that have exactly one right answer.',
+  propose_theme: 'Turns a few words about a feel into a theme, and checks it.',
+  render_screen:
+    'Draws a screen at phone and desktop width and sends back the pictures, with any layout problems it found.',
+  emit_screen: 'Writes a screen from its spec, for your framework, SwiftUI or Compose.',
+  install: 'Copies components into your project, the way polymorph add does.',
+  save_theme: 'Saves a theme that passed its checks as two JSON files.',
+  fix_file: 'Applies the one-answer fixes to a file where it stands.',
+}
+
+/** A numbered step: what to do on one side, what to copy on the other. */
+function CopyStep({
+  step,
+  index,
+  titled = true,
+}: {
+  step: Snippet
+  index?: number
+  /** False when a heading above already names the step, so only its help is drawn. */
+  titled?: boolean
+}) {
   return (
-    <Stack gap={7} p={7}>
+    <Grid columns={2} gap={5}>
+      {titled ? (
+        <Step
+          title={index === undefined ? step.title : `${index + 1}. ${step.title}`}
+          help={step.help}
+        />
+      ) : (
+        <Text size="sm" tone="secondary">
+          {step.help}
+        </Text>
+      )}
+      <CodeBlock copyable label={step.title}>
+        {step.code}
+      </CodeBlock>
+    </Grid>
+  )
+}
+
+/** The tools as a list, so a phone reads each one whole. */
+function ToolList({ label, tools }: { label: string; tools: readonly (ReadTool | WriteTool)[] }) {
+  return (
+    <List label={label}>
+      {tools.map((tool) => (
+        <List.Item key={tool} title={tool} description={TOOL_HELP[tool]} />
+      ))}
+    </List>
+  )
+}
+
+export function InstallPage() {
+  useMeta({
+    title: 'Get started',
+    description:
+      'Start a new app with one command, or add Polymorph to the app you already have, in React, Vue, Svelte, Solid, Angular, plain HTML, iOS or Android.',
+  })
+  return (
+    <Stack gap={8}>
       <PageHeader
-        title="Install"
-        description="Open code, closed usage: components arrive as source you own, and the red rules travel with them, so your lint corrects you (and your agents) the way it corrects this repository."
+        title="Get started"
+        description={`Start a new app with one command, or add Polymorph to an app you already have. These steps install release ${RELEASE}.`}
+        actions={
+          <Link variant="button" buttonVariant="outline" tone="neutral" href={GUIDE} external>
+            Full setup guide
+          </Link>
+        }
       />
 
-      <Alert tone="info" title="Published packages">
-        The engine, the rules, the recipes, and a foundation and a vocabulary for React, Vue,
-        Svelte, Solid, Angular and the custom elements are published privately to GitHub Packages
-        and installed under their @polymorph/* names with npm aliases, as docs/consuming.md
-        describes. The CLI, the MCP server and the SwiftUI and Compose packages are not published,
-        so they run from a clone of this repository.
-      </Alert>
-
-      <Stack gap={3}>
-        <Stack gap={1}>
-          <Heading>The workspace</Heading>
-          <Text size="sm" tone="secondary">
-            Clone, install, and open the galleries and this site. From the same checkout, one
-            command creates a new app outside it: the packages under their aliases, a theme, the red
-            rules, the MCP server for an agent, and a first screen emitted from its spec.
-          </Text>
-        </Stack>
-        <Card>
-          <CodeBlock>{`pnpm install
-pnpm dev            # workbench — galleries + the Relay demo
-pnpm dev:docs       # this site
-pnpm proof          # the churn proof: re-theme with zero app diffs
-
-pnpm polymorph init ../my-app   # a new app beside the checkout (--system pastel, --no-install)
-cd ../my-app && pnpm dev`}</CodeBlock>
-        </Card>
-      </Stack>
-
-      <Stack gap={3}>
-        <Stack gap={1}>
-          <Heading>Other frameworks and platforms</Heading>
-          <Text size="sm" tone="secondary">
-            The same vocabulary renders in Vue, Svelte, Solid and Angular, generated from one
-            description per member, as custom elements over the Solid members for a page written in
-            HTML with no build, and natively in SwiftUI and Compose. A web app picks its framework
-            when it is created; a page with no build gets the files it loads copied into its static
-            directory, because no public URL serves them; a native app depends on the platform
-            package in a checkout of this repository, pinned to a release tag. docs/consuming.md has
-            a section for each.
-          </Text>
-        </Stack>
-        <Card>
-          <CodeBlock>{`pnpm polymorph init ../my-app --framework vue       # or svelte, solid, angular
-pnpm polymorph init ../my-site --framework elements # a page with no build: <poly-button> and the rest
-# In an app of that framework, vendor its members instead:
-node ../polymorph/packages/cli/bin/polymorph.js add button --framework svelte
-
-# iOS: platforms/ios as a Swift package path dependency (PolymorphTokens, PolymorphUI)
-# Android: includeBuild("../polymorph/platforms/android"), then dev.polymorph:tokens and :ui
-pnpm emit inbox.json InboxView.swift                # a spec whose platform is ios, as SwiftUI`}</CodeBlock>
-        </Card>
-      </Stack>
-
-      <Stack gap={3}>
-        <Stack gap={1}>
-          <Heading>Vendor components</Heading>
-          <Text size="sm" tone="secondary">
-            The CLI resolves a component&rsquo;s closure from the registry, copies its source,
-            states and styles into your repository, and extends your lint config so the laws apply
-            there too. It runs from a checkout of this repository and writes into the directory it
-            runs in, so run it in your app; it refuses to write into a checkout of polymorph.
-          </Text>
-        </Stack>
-        <Card>
-          <CodeBlock>{`# In your app, with this repository checked out beside it at ../polymorph:
-node ../polymorph/packages/cli/bin/polymorph.js add button dialog   # components, with their closure
-node ../polymorph/packages/cli/bin/polymorph.js add bespoke         # rung 4, the declared escape, as source
-node ../polymorph/packages/cli/bin/polymorph.js add theme:terminal  # a pairing: system, palette, fonts, pre-paint
-node ../polymorph/packages/cli/bin/polymorph.js add palette:orchid  # a palette on its own; any system can use it
-node ../polymorph/packages/cli/bin/polymorph.js diff                # what you changed vs what the registry has
-node ../polymorph/packages/cli/bin/polymorph.js update              # re-vendor what you have not touched`}</CodeBlock>
-        </Card>
-      </Stack>
-
-      <Stack gap={3}>
-        <Stack gap={1}>
-          <Heading>Or install the packages</Heading>
-          <Text size="sm" tone="secondary">
-            Vendoring gives you the source to own. A product that must <em>not</em> own it, because
-            its foundation must stay read-only and never be copied, forked or patched around,
-            installs @polymorph/engine, @polymorph/rules and its framework&rsquo;s foundation and
-            vocabulary (for React, @polymorph/react and @polymorph/react-ui) from GitHub Packages
-            instead, under npm aliases so every import keeps its @polymorph/* name. The public
-            surface is each package&rsquo;s <Code>exports</Code> map and nothing deeper. A change
-            the product needs is a change to this repository, then a release. Linking a checkout, as
-            below, is for trying an unreleased change; a product builds against a release.
-          </Text>
-        </Stack>
-        <Card>
+      <Section
+        id="quick-start"
+        title="The quickest way in"
+        lede="One command sets up a new React app with the components, a theme, the lint rules and a first screen. It runs from a copy of the repository, so you clone that first."
+      >
+        <Grid columns={2} gap={6}>
           <Stack gap={3}>
-            <CodeBlock>{`// package.json: the releases, under their @polymorph/* names
-// <version>: each package's release; polymorph init writes it for you
-"dependencies": {
-  "@polymorph/engine":   "npm:@metamorph-labs/polymorph-engine@^<version>",
-  "@polymorph/react":    "npm:@metamorph-labs/polymorph-react@^<version>",
-  "@polymorph/react-ui": "npm:@metamorph-labs/polymorph-react-ui@^<version>"
-},
-"devDependencies": {
-  "@polymorph/rules":    "npm:@metamorph-labs/polymorph-rules@^<version>"
-}
-// .npmrc points the @metamorph-labs scope at GitHub Packages; docs/consuming.md has the two lines.`}</CodeBlock>
-            <CodeBlock>{`// vite.config.ts
-resolve: { dedupe: ['react', 'react-dom'] },              // one React, the app's`}</CodeBlock>
-            <CodeBlock>{`# To try an unreleased change, link a checkout in place of the release. Never commit a link.
-pnpm link ../polymorph/packages/engine ../polymorph/packages/react ../polymorph/packages/react-ui
-# and let the Vite dev server read the checkout:
-# server: { fs: { allow: [searchForWorkspaceRoot(process.cwd()), '../polymorph'] } }`}</CodeBlock>
-            <CodeBlock>{`import { AppShell, DataTable } from '@polymorph/react-ui'       // the whole vocabulary
-import { AuthPage, Button } from '@polymorph/react-ui/identity'  // or a focused entry, for a small bundle
-// No stylesheet to import: these entries load their members' CSS and the base layer.`}</CodeBlock>
+            <CodeBlock copyable label="Quick start">
+              {QUICK_START}
+            </CodeBlock>
+            <Text size="sm" tone="secondary">
+              {`You'll need Node 24 or later, pnpm 11 and the GitHub CLI. The packages are on ${REGISTRY_ACCESS.host}, which asks for a token even to read them.`}
+            </Text>
           </Stack>
-        </Card>
-      </Stack>
-
-      <Stack gap={3}>
-        <Stack gap={1}>
-          <Heading>Bring your own system</Heading>
-          <Text size="sm" tone="secondary">
-            The catalogue belongs to this repository, but the engine accepts any theme. Two JSON
-            documents, a system (eight axes, three font slots, defaults) and a palette (the colour
-            seeds), go through the same law checks as a shipped pairing, and this repository never
-            needs their names. <Code>admitTheme</Code> checks, resolves and emits them, and its
-            report uses the laws&rsquo; own messages. The catalogue-management laws (axis
-            divergence, the accent-hue band) do not apply to an external theme by design. The report
-            says so, so that their absence is not mistaken for a pass.
-          </Text>
-        </Stack>
-        <Card>
           <Stack gap={3}>
-            <CodeBlock>{`# In your app, as above:
-node ../polymorph/packages/cli/bin/polymorph.js theme schema system --out system.schema.json
-node ../polymorph/packages/cli/bin/polymorph.js theme validate my-system.json my-palette.json
-node ../polymorph/packages/cli/bin/polymorph.js theme emit my-system.json my-palette.json`}</CodeBlock>
-            <CodeBlock>{`import { admitTheme, installThemeCSS, setSystem, setPalette } from '@polymorph/engine'
-import system from './my-system.json'
-import palette from './my-palette.json'
-
-const admission = admitTheme({ system, palette })
-if (!admission.lawful) throw new Error(admission.faults[0].message)
-installThemeCSS(admission.css)               // the emitted block, on the page
-setSystem(system.name); setPalette(palette.name)
-// admission.fonts names the @fontsource packages to install — the app loads its own type.`}</CodeBlock>
-          </Stack>
-        </Card>
-      </Stack>
-
-      <Stack gap={3}>
-        <Stack gap={1}>
-          <Heading>For agents</Heading>
-          <Text size="sm" tone="secondary">
-            A stdio MCP server, a thin layer over the registry. The key tool is{' '}
-            <Code>validate</Code>: it returns the red-rule violations in submitted code and the rung
-            to climb for each. It only parses the code and never executes it. <Code>fix</Code> also
-            rewrites the violations that have exactly one lawful answer. <Code>render_screen</Code>{' '}
-            draws a screen spec in a browser at a phone and a desktop width and returns the pictures
-            with the layout faults it measured. Four tools write into the agent’s project: a screen
-            compiled from its spec, an install, a saved theme, and a file fixed in place. Each
-            refuses anything unlawful.
-          </Text>
-        </Stack>
-        <Card>
-          <Stack gap={3}>
-            <CodeBlock>{`node <checkout>/packages/mcp/bin/polymorph-mcp.js   # stdio — point your agent runtime at it`}</CodeBlock>
-            <Inline gap={2} wrap>
-              {[
-                'search_components',
-                'get_component',
-                'get_install_plan',
-                'get_system_card',
-                'get_theme_axes',
-                'propose_theme',
-                'validate',
-                'fix',
-                'render_screen',
-                'emit_screen',
-                'install',
-                'save_theme',
-                'fix_file',
-              ].map((tool) => (
-                <Badge key={tool} variant="outline" tone="accent">
-                  {tool}
-                </Badge>
+            <Heading level={3}>What you get</Heading>
+            <List label="What polymorph init writes">
+              {INIT_WRITES.map((item) => (
+                <List.Item
+                  key={item.file}
+                  title={item.title}
+                  description={item.description}
+                  meta={item.file}
+                />
               ))}
-            </Inline>
-            <Text>
-              The system card summarises the whole vocabulary (all{' '}
-              <Code>{String(REGISTRY.components.length)}</Code> components, their prop grids, the
-              token roles and the laws) in a few thousand tokens of context. It is generated from
-              the same tree as everything else. An agent that reads it composes from the vocabulary
-              and cannot express an inconsistency.
-            </Text>
-            <Text>
-              An agent that starts from this site fetches <Code>/llms.txt</Code>. It links the card
-              at <Code>/system-card.md</Code> and the card followed by the rules page at{' '}
-              <Code>/llms-full.txt</Code>, and names the MCP server and <Code>init</Code> commands.
-              The build generates all three, so they match the registry.
-            </Text>
+            </List>
           </Stack>
-        </Card>
-      </Stack>
+        </Grid>
+      </Section>
 
-      <Stack gap={3}>
-        <Stack gap={1}>
-          <Heading>The registry itself</Heading>
-          <Text size="sm" tone="secondary">
-            Generated from source at publish time and never committed. Component schemas come from
-            exported types, closures from the import graph, and the token catalogue from the theme
-            engine.
+      <Separator />
+
+      <Section
+        id="frameworks"
+        title="Pick your framework"
+        lede="The same components and the same themes work in every one. Start fresh, or follow the steps to add Polymorph to what you have."
+      >
+        <Tabs tabs={TARGETS.map((target) => ({ value: target.value, label: target.label }))}>
+          {TARGETS.map((target) => (
+            <Tabs.Content key={target.value} value={target.value}>
+              <Stack gap={7}>
+                <Text>{target.intro}</Text>
+                {target.create === undefined ? null : (
+                  <Stack gap={5}>
+                    <Heading level={3}>{target.create.title}</Heading>
+                    <CopyStep step={target.create} titled={false} />
+                  </Stack>
+                )}
+                <Stack gap={7}>
+                  <Heading level={3}>
+                    {target.addTitle ?? 'Add it to an app you already have'}
+                  </Heading>
+                  {target.add.map((step, index) => (
+                    <CopyStep key={step.title} step={step} index={index} />
+                  ))}
+                </Stack>
+                <Link variant="standalone" href={`${GUIDE}${target.anchor}`} external>
+                  {`Read the full ${target.label} guide`}
+                </Link>
+              </Stack>
+            </Tabs.Content>
+          ))}
+        </Tabs>
+      </Section>
+
+      <Separator />
+
+      <Section
+        id="own-the-code"
+        title="Own the code instead"
+        lede="Prefer to keep the component source in your own repository? polymorph add copies the components you name, with their styles, and sets up the lint rules for them. You can change them however you like."
+      >
+        <CopyStep step={OWN_THE_CODE} />
+      </Section>
+
+      <Separator />
+
+      <Section
+        id="your-theme"
+        title="Make it look like yours"
+        lede="A theme is two small JSON files. The system sets the shape of things: corners, depth, spacing, type and motion. The palette sets the colours. Any palette works with any system."
+      >
+        <Stack gap={6}>
+          <CopyStep index={0} step={THEME_STEPS[0]!} />
+          <CopyStep index={1} step={THEME_STEPS[1]!} />
+          <Text tone="secondary">
+            Not sure where to start? Copy a system from the{' '}
+            <Link href="/systems">systems page</Link> and change what you like. Or describe the feel
+            you want, and your agent can draft a theme with <Code>propose_theme</Code>.
           </Text>
         </Stack>
-        <Card>
-          <CodeBlock>{`pnpm registry     # writes registry/registry.json, registry.schema.json, system-card.md`}</CodeBlock>
-        </Card>
-      </Stack>
+      </Section>
+
+      <Separator />
+
+      <Section
+        id="agents"
+        title="Build with your coding agent"
+        lede="Polymorph comes with an MCP server. Your agent can look up components, check its code against the lint rules, and see the screens it builds."
+      >
+        <Stack gap={7}>
+          <Grid columns={2} gap={6}>
+            <Step
+              title="Connect it"
+              help="polymorph init writes this for you as .mcp.json. Otherwise, add it to your client's config with the full path to your copy of the repository."
+            >
+              <CodeBlock copyable label="MCP server config">
+                {MCP_CONFIG}
+              </CodeBlock>
+            </Step>
+            <Step
+              title="Point it at the docs"
+              help="This site serves three plain-text files written for agents."
+            >
+              <Stack gap={4}>
+                <Stack gap={1}>
+                  <Link variant="standalone" href={AGENT_FILES.index} external>
+                    {AGENT_FILES.index}
+                  </Link>
+                  <Text size="sm" tone="secondary">
+                    A short introduction, the rules, and links to the two files below.
+                  </Text>
+                </Stack>
+                <Stack gap={1}>
+                  <Link variant="standalone" href={AGENT_FILES.card} external>
+                    {AGENT_FILES.card}
+                  </Link>
+                  <Text size="sm" tone="secondary">
+                    The system card: every component, its props and the token names in one read.
+                  </Text>
+                </Stack>
+                <Stack gap={1}>
+                  <Link variant="standalone" href={AGENT_FILES.full} external>
+                    {AGENT_FILES.full}
+                  </Link>
+                  <Text size="sm" tone="secondary">
+                    The system card followed by the full rules, with the exception ladder.
+                  </Text>
+                </Stack>
+              </Stack>
+            </Step>
+          </Grid>
+          <Grid columns={2} gap={6}>
+            <Stack gap={3}>
+              <Heading level={3}>What it can look up</Heading>
+              <ToolList label="Tools that only read" tools={MCP_READ_TOOLS} />
+            </Stack>
+            <Stack gap={3}>
+              <Heading level={3}>What it can write</Heading>
+              <Text size="sm" tone="secondary">
+                Each one checks first, and writes nothing if the check fails.
+              </Text>
+              <ToolList label="Tools that write to your project" tools={MCP_WRITE_TOOLS} />
+            </Stack>
+          </Grid>
+        </Stack>
+      </Section>
     </Stack>
   )
 }

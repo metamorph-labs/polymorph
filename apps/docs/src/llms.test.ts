@@ -4,6 +4,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { CLI_BIN, LLMS_PATHS, MCP_BIN, readLlmsFiles } from './llms'
+import { MCP_CONFIG, OWN_THE_CODE, QUICK_START, TARGETS, THEME_STEPS } from './reference/install'
 import { REGISTRY } from './registry'
 
 /**
@@ -55,14 +56,26 @@ describe('/llms.txt points an agent at the contract', () => {
 })
 
 describe('the install page names the same bins', () => {
-  const page = readFileSync(resolve(import.meta.dirname, 'pages/InstallPage.tsx'), 'utf8')
+  // The page's commands are built in `reference/install.ts`, so these are the strings it shows.
+  const commands = [
+    QUICK_START,
+    MCP_CONFIG,
+    OWN_THE_CODE.code,
+    ...THEME_STEPS.map((step) => step.code),
+    ...TARGETS.flatMap((target) => [
+      ...(target.create === undefined ? [] : [target.create.code]),
+      ...target.add.map((step) => step.code),
+    ]),
+  ].join('\n')
 
   it('runs the CLI and the MCP server from a checkout, never by a bare name', () => {
     // Neither is published, so a bare `polymorph` or `polymorph-mcp` is a
     // command no reader has, and the CLI writes into the directory it runs in.
-    expect(page).toContain(`node <checkout>/${MCP_BIN}`)
-    expect(page).toContain(`node ../polymorph/${CLI_BIN} add`)
-    expect(page).not.toMatch(/(^|\{`)polymorph(-mcp)?\b/m)
+    expect(MCP_CONFIG).toContain('"command": "node"')
+    expect(MCP_CONFIG).toContain(`/polymorph/${MCP_BIN}"`)
+    expect(commands).toContain(`node ../polymorph/${CLI_BIN} add`)
+    expect(commands).toContain(`node polymorph/${CLI_BIN} init`)
+    expect(commands).not.toMatch(/^polymorph(-mcp)?\b/m)
   })
 })
 

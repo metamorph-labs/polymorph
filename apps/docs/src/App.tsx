@@ -66,6 +66,10 @@ export function App() {
   const onModeChange = (_mode: ModePreference) => {}
 
   const [searching, setSearching] = useState(false)
+  const chooseSystem = (next: string) => {
+    setSystemState(next)
+    setPaletteState(selectSystem(next))
+  }
 
   // The shell's content region is the page's scroll container, and it keeps
   // its offset when the route changes, because the region is not remounted. A
@@ -89,7 +93,12 @@ export function App() {
       return { layout: 'full', page: <GuidePage slug={path.slice('/guides/'.length)} /> }
     }
     if (path === '/tokens') return { layout: 'page', page: <TokensPage system={system} /> }
-    if (path === '/systems') return { layout: 'page', page: <SystemsPage /> }
+    if (path === '/systems') {
+      return {
+        layout: 'page',
+        page: <SystemsPage system={system} onSystemChange={chooseSystem} />,
+      }
+    }
     if (path === '/motion') return { layout: 'page', page: <MotionPage system={system} /> }
     if (path === '/principles') return { layout: 'page', page: <PrinciplesPage /> }
     if (path === '/install') return { layout: 'page', page: <InstallPage /> }
@@ -141,10 +150,7 @@ export function App() {
             <ThemeControl
               system={system}
               palette={palette}
-              onSystemChange={(next) => {
-                setSystemState(next)
-                setPaletteState(selectSystem(next))
-              }}
+              onSystemChange={chooseSystem}
               onPaletteChange={(next) => {
                 setPaletteState(next)
                 selectPalette(system, next)
