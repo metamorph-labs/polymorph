@@ -23,8 +23,9 @@ export function Reach({ component }: { component: RegistryComponent }) {
           <Text size="sm">{series(web.native)}</Text>
           {web.absent.map((group) => (
             <Text key={group.frameworks.join()} size="sm" tone="secondary">
-              {`Not in ${series(group.frameworks, 'or')}`}
-              {group.reason === null ? '.' : [': ', ...withCode(group.reason), '.']}
+              {/* The map's reason is written for someone changing the
+                  renderers, so the page says only where the member is not. */}
+              {`Not in ${series(group.frameworks, 'or')}.`}
             </Text>
           ))}
         </Stack>

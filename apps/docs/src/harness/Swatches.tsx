@@ -63,10 +63,11 @@ export function Swatch({
  */
 export function Ramp({ roles, labels }: { roles: readonly string[]; labels: readonly string[] }) {
   return (
-    <div className={styles.ramp} aria-hidden="true">
+    <div className={styles.ramp}>
       {roles.map((role, index) => (
         <div key={role} className={styles.cell}>
           <div
+            aria-hidden="true"
             className={styles.block}
             style={{ ['--pm-swatch-bg' as string]: `var(${cssVarName(role)})` }}
           />

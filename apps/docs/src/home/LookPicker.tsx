@@ -53,31 +53,34 @@ export function LookPicker() {
 
   return (
     <Stack gap={5}>
-      <Inline gap={2} wrap>
-        {SYSTEMS.map((name) => {
-          // A system brings its own palette and mode, as it does for a whole
-          // product. The reader can change either afterwards.
-          const choose = () => {
-            show(name, findSystem(name).defaultPalette)
-            setMode(homeMode(name))
-          }
-          // Two elements, not one with computed props: Button's variant and
-          // tone are typed as lawful pairs, and a computed pair is not one.
-          return name === system ? (
-            <Button key={name} variant="soft" tone="accent" size="sm" label={name} pressed />
-          ) : (
-            <Button
-              key={name}
-              variant="ghost"
-              tone="neutral"
-              size="sm"
-              label={name}
-              pressed={false}
-              onClick={choose}
-            />
-          )
-        })}
-      </Inline>
+      {/* A named group, so the row of buttons is announced as one choice. */}
+      <div role="group" aria-label="Look">
+        <Inline gap={2} wrap>
+          {SYSTEMS.map((name) => {
+            // A system brings its own palette and mode, as it does for a whole
+            // product. The reader can change either afterwards.
+            const choose = () => {
+              show(name, findSystem(name).defaultPalette)
+              setMode(homeMode(name))
+            }
+            // Two elements, not one with computed props: Button's variant and
+            // tone are typed as lawful pairs, and a computed pair is not one.
+            return name === system ? (
+              <Button key={name} variant="soft" tone="accent" size="sm" label={name} pressed />
+            ) : (
+              <Button
+                key={name}
+                variant="ghost"
+                tone="neutral"
+                size="sm"
+                label={name}
+                pressed={false}
+                onClick={choose}
+              />
+            )
+          })}
+        </Inline>
+      </div>
       <Inline gap={3} wrap align="center">
         <Select
           aria-label="Palette"

@@ -106,7 +106,10 @@ export function FixtureFrame({
           timer = window.setTimeout(() => release?.(), SLOT_TIMEOUT_MS)
         })
       },
-      { rootMargin: NEAR },
+      // The shell's content region scrolls, not the viewport, and a margin only
+      // widens the root it is given. With the viewport as the root, the region
+      // would clip a frame until it was on screen.
+      { root: document.getElementById('content'), rootMargin: NEAR },
     )
     observer.observe(frame)
     frame.addEventListener('load', loaded)

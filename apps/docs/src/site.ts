@@ -10,7 +10,7 @@ export const SITE = {
   name: 'Polymorph',
   tagline: 'one design system, any look you want',
   description:
-    'One set of components that behaves the same in React, Vue, Svelte, Solid, Angular, plain HTML, SwiftUI and Jetpack Compose. Restyle all of them at once by changing a couple of small files.',
+    'One set of components for React, Vue, Svelte, Solid, Angular and plain HTML, with native SwiftUI and Jetpack Compose versions of most of them. Restyle everything at once by changing a couple of small files.',
   url: (import.meta.env.VITE_SITE_URL as string | undefined)?.replace(/\/$/, '') ?? null,
   repository: 'https://github.com/metamorph-labs/polymorph',
   npm: 'https://www.npmjs.com/org/metamorph-labs',

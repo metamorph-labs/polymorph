@@ -376,11 +376,14 @@ serves. It is also a check, because it opens every page. It serves `apps/docs/di
 
 It fails on:
 
-- a page that throws or logs an error while it renders;
-- a link to an address of the site that has no page. A component's page is exempt, because the
-  states it renders hold sample links that are the fixture's content;
+- a page that throws or logs an error while it renders, which includes a request for a script,
+  picture or font the build lacks;
+- a link to an address of the site that has no page. A link inside a state that a component's page
+  draws live is not followed, because it is the fixture's sample content: the page marks the box
+  each state is drawn in;
 - a crawl in which no page held the themes' stylesheet, which would leave every saved page
-  unthemed.
+  unthemed;
+- a `dist` the step has already written, which no longer holds the application's own document.
 
 It then writes what each page rendered as `dist/<route>.html`, with `404.html`, the sharing
 picture, `robots.txt` and, when `VITE_SITE_URL` names the site's address, `sitemap.xml`.

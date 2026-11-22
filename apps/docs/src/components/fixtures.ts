@@ -15,6 +15,9 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
  */
 const DETECT_WINDOW_MS = 1500
 
+/** Longer than any overlay's exit, so an overlay that was closing has left the page. */
+const SETTLE_MS = 600
+
 const VERDICT_PREFIX = 'pm-docs:contained:'
 
 function readVerdict(name: string): boolean {
@@ -101,12 +104,28 @@ export function drawsFixed(): boolean {
  * verdict is cached per session, so a return visit uses frames from the first
  * paint. The caller remounts this per member (a `key`), so a verdict for Select
  * never reaches the next page visited.
+ *
+ * The page can already be taken when a member's page is first drawn, by
+ * something that is not the member: the site's search closes as it navigates,
+ * and its dialog holds the page until its exit has played. A mark found then
+ * says nothing about the entries, so the look starts after that has had time
+ * to finish. An entry that takes the page itself still holds it afterwards.
  */
 export function useContainment(name: string, live: boolean): boolean {
   const [contained, setContained] = useState(() => readVerdict(name))
+  const [settled, setSettled] = useState(() => {
+    const root = document.getElementById('root')
+    return root === null || !pageIsTaken(root)
+  })
 
   useEffect(() => {
-    if (contained || !live) return
+    if (settled) return
+    const timer = window.setTimeout(() => setSettled(true), SETTLE_MS)
+    return () => window.clearTimeout(timer)
+  }, [settled])
+
+  useEffect(() => {
+    if (contained || !live || !settled) return
     const root = document.getElementById('root')
     if (!root) return
 
@@ -148,7 +167,7 @@ export function useContainment(name: string, live: boolean): boolean {
       for (const look of looks) window.clearTimeout(look)
       observer.disconnect()
     }
-  }, [name, contained, live])
+  }, [name, contained, live, settled])
 
   return contained
 }

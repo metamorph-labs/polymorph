@@ -344,7 +344,7 @@ export function TokensPage({ system }: { system: string }) {
                 ))}
               </Inline>
               <Text size="sm" tone="secondary">
-                {`Density changes the heights and spacing, and nothing else. This system is ${axes.density}.`}
+                {`Density sets how tall controls are and how much room they get. This system is ${axes.density}.`}
               </Text>
             </Stack>
           </Card>

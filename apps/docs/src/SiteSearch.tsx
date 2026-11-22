@@ -37,11 +37,6 @@ function isApple(): boolean {
   return typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform)
 }
 
-/** The keys of the shortcut, one per Kbd, for the button that opens the palette. */
-export function searchShortcutKeys(): readonly string[] {
-  return isApple() ? ['⌘', 'K'] : ['Ctrl', 'K']
-}
-
 function isTextEntry(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
   return target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)
@@ -93,9 +88,9 @@ export function SiteSearch({ open, onOpenChange, pages = SITE_PAGES }: SiteSearc
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.altKey || event.shiftKey) return
+      if (event.altKey) return
       const command = isApple() ? event.metaKey : event.ctrlKey
-      if (command && event.key.toLowerCase() === 'k') {
+      if (command && !event.shiftKey && event.key.toLowerCase() === 'k') {
         event.preventDefault()
         onOpenChange(!open)
         return

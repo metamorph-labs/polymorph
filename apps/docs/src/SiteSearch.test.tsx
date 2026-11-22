@@ -107,6 +107,11 @@ describe('the shortcut', () => {
     field.remove()
   })
 
+  it('opens on / typed with Shift, as a keyboard layout that has no / key of its own types it', () => {
+    press({ key: '/', shiftKey: true })
+    expect(onOpenChange).toHaveBeenCalledWith(true)
+  })
+
   it('ignores K without the command key, and with Shift', () => {
     press({ key: 'k' })
     press({ key: 'K', metaKey: true, ctrlKey: true, shiftKey: true })

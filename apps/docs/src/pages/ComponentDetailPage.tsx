@@ -9,11 +9,11 @@ import {
   Collapsible,
   DescriptionList,
   DetailPage,
-  EmptyState,
   Grid,
   Heading,
   Inline,
   Link,
+  PageHeader,
   Stack,
   Table,
   TableOfContents,
@@ -40,6 +40,7 @@ import { Section } from '../components/Section'
 import { TIER_COPY } from '../components/tiers'
 import { FixtureFrame } from '../FixtureFrame'
 import { useMeta } from '../meta'
+import { CLI_FROM_APP } from '../reference/install'
 import { componentBySlug, componentSlug, findComponent, type TIERS } from '../registry'
 import { navigate } from '../router'
 
@@ -99,11 +100,10 @@ export function ComponentDetailPage({ slug }: { slug: string }) {
   if (!component) {
     return (
       <Stack p={7}>
-        <EmptyState
-          icon="search"
+        <PageHeader
           title="We couldn’t find that component"
           description={`There’s no component called “${readable(slug)}”. Have a look through the full list instead.`}
-          action={
+          actions={
             <Link variant="button" buttonVariant="soft" href="/components">
               See all components
             </Link>
@@ -133,7 +133,13 @@ function MemberPage({ component }: { component: RegistryComponent }) {
     if (contained) {
       return <FixtureFrame component={component.name} index={index} name={entry.name} />
     }
-    return <div ref={measured ? cell : undefined}>{entry.render()}</div>
+    // Marked, so the site step can tell a fixture's sample link from a link of
+    // the site's own (`scripts/site.mjs`).
+    return (
+      <div data-specimen="" ref={measured ? cell : undefined}>
+        {entry.render()}
+      </div>
+    )
   }
 
   const first = entries[0]
@@ -160,7 +166,11 @@ function MemberPage({ component }: { component: RegistryComponent }) {
       label: 'Styling hooks',
       shown: component.requiredSelectors.length > 0 || component.dataAttributes.length > 0,
     },
-    { id: SECTION.behaviour, label: 'Accessibility', shown: component.behaviour.length > 0 },
+    {
+      id: SECTION.behaviour,
+      label: 'Keyboard and accessibility',
+      shown: component.behaviour.length > 0,
+    },
     { id: SECTION.agents, label: 'For AI agents', shown: component.agent !== null },
   ]
   const shown = (id: string) => sections.some((section) => section.id === id && section.shown)
@@ -286,7 +296,7 @@ function MemberPage({ component }: { component: RegistryComponent }) {
           <Section
             id={SECTION.tokens}
             title="Theme tokens"
-            lede={`${component.name} takes its colours, spacing and type from ${component.tokens.length === 1 ? 'one token' : `${component.tokens.length} tokens`}. Change one in your theme and ${component.name} follows, with no CSS of your own.`}
+            lede={`${component.name} takes its colours, spacing and type from ${component.tokens.length === 1 ? 'one token' : `${component.tokens.length} tokens`}. Change your theme and ${component.name} follows, with no CSS of your own.`}
           >
             <Collapsible
               label={
@@ -369,8 +379,8 @@ function Usage({ component }: { component: RegistryComponent }) {
       )}
       {component.origin === 'vendored' ? (
         <Text>
-          {'Want to own the code instead? Run '}
-          <Code>{`polymorph add ${slug}`}</Code>
+          {'Want to own the code instead? From a copy of the repository beside your app, run '}
+          <Code>{`${CLI_FROM_APP} add ${slug}`}</Code>
           {` and it copies ${component.name} into your project, ${component.dependencies.files.length} files in all, ready for you to change.`}
         </Text>
       ) : (

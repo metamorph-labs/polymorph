@@ -31,16 +31,16 @@ export const PUBLISHED_NAMES: Readonly<Record<string, string>> = {
   '@polymorph/elements-ui': '@metamorph-labs/polymorph-elements-ui',
 }
 
-/** The npm registry the published names live in. */
+/** The registry `polymorph init` points a new app at. The same names are public on npmjs.com. */
 export const PUBLISHED_REGISTRY = 'https://npm.pkg.github.com'
 
 /** The scope every published name is under, which an app's `.npmrc` points at the registry. */
 export const PUBLISHED_SCOPE = (Object.values(PUBLISHED_NAMES)[0] ?? '').split('/')[0] as string
 
 /**
- * What a reader needs before an install can reach the registry. GitHub Packages answers only a
- * request with a token, so the `.npmrc` names one and the reader creates it once. These are the
- * lines `polymorph init` writes (`packages/cli/src/init.ts`) and `docs/consuming.md` describes.
+ * What a reader needs before `polymorph init` can install a new app. The app it writes points
+ * the scope at GitHub Packages (`packages/cli/src/init.ts`), which answers only a request with a
+ * token, so the reader creates one once. An app that installs from npmjs.com needs none of this.
  * `facts.test.ts` fails when `PUBLISHED_REGISTRY` changes, so this block is revisited with it.
  */
 export const REGISTRY_ACCESS = {

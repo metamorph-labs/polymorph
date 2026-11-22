@@ -7,7 +7,7 @@ import { createElement, lazy, type ComponentType } from 'react'
  * Each page is a chunk that loads when its route is visited. `lazy` alone
  * suspends on first use even when the chunk is already in memory, so a document
  * that arrives with its page already drawn (the prerendered HTML,
- * `prerender.mjs`) would blank for a frame while React mounts. `preload` loads
+ * `scripts/site.mjs`) would blank for a frame while React mounts. `preload` loads
  * the chunk first and the page then renders in the first commit, over markup
  * that already matches it. A route visited later goes through `lazy` as usual.
  */

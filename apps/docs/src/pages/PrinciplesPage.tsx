@@ -179,6 +179,9 @@ const RULE_GROUPS: readonly {
   },
 ]
 
+/** The rules a visitor's own code meets: the ones that read application code and CSS. */
+const APP_RULES = laws.filter((law) => law.applies === 'application').length
+
 export function PrinciplesPage() {
   useMeta({
     title: 'Principles',
@@ -214,7 +217,7 @@ export function PrinciplesPage() {
       <Section
         id="rules"
         title="The lint rules"
-        lede={`${laws.length} lint rules keep styling decisions out of your screens. Each one tells you what to write instead, and which step of the ladder to take if you really need an exception. People and coding agents get the same answer.`}
+        lede={`${APP_RULES} lint rules keep styling decisions out of your screens, and a few more look after the components themselves. Each one tells you what to write instead, and which step of the ladder to take if you really need an exception. People and coding agents get the same answer.`}
       >
         <Stack gap={8}>
           {RULE_GROUPS.filter((group) => group.rules.length > 0).map((group) => (

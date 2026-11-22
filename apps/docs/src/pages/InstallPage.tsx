@@ -64,16 +64,20 @@ function CopyStep({
   step,
   index,
   titled = true,
+  level = 3,
 }: {
   step: Snippet
   index?: number
   /** False when a heading above already names the step, so only its help is drawn. */
   titled?: boolean
+  /** The step's heading level: 4 under a third-level heading, 3 under a section's own. */
+  level?: 3 | 4
 }) {
   return (
     <Grid columns={2} gap={5}>
       {titled ? (
         <Step
+          level={level}
           title={index === undefined ? step.title : `${index + 1}. ${step.title}`}
           help={step.help}
         />
@@ -129,7 +133,7 @@ export function InstallPage() {
               {QUICK_START}
             </CodeBlock>
             <Text size="sm" tone="secondary">
-              {`You'll need Node 24 or later, pnpm 11 and the GitHub CLI. The packages are on ${REGISTRY_ACCESS.host}, which asks for a token even to read them.`}
+              {`You’ll need Node 24 or later, pnpm 11 and the GitHub CLI. The new app installs its packages from ${REGISTRY_ACCESS.host}, which asks for a token even to read them. Adding Polymorph to an app you already have needs no token.`}
             </Text>
           </Stack>
           <Stack gap={3}>
@@ -171,7 +175,7 @@ export function InstallPage() {
                     {target.addTitle ?? 'Add it to an app you already have'}
                   </Heading>
                   {target.add.map((step, index) => (
-                    <CopyStep key={step.title} step={step} index={index} />
+                    <CopyStep key={step.title} step={step} index={index} level={4} />
                   ))}
                 </Stack>
                 <Link variant="standalone" href={`${GUIDE}${target.anchor}`}>

@@ -19,7 +19,7 @@
   border-radius: var(--pm-radius-md);
 }
 
-/* An edge role is drawn as the edge itself, at the focus ring's 2px so a faint hairline is seen. */
+/* An edge role is drawn as the edge itself, two pixels wide, so a faint hairline is seen. */
 .swatch[data-kind='line'] {
   border: 2px solid var(--pm-swatch-line);
 }

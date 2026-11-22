@@ -8,7 +8,7 @@ import { SITE } from './site'
  *
  * Each page calls `useMeta` once. The head is written from an effect, because
  * the site has one HTML document and the page changes inside it. The
- * prerendering step (`prerender.mjs`) saves the document after this has run, so
+ * site step (`scripts/site.mjs`) saves the document after this has run, so
  * a crawler and a link preview read the same head a visitor's tab shows.
  */
 export interface PageMeta {

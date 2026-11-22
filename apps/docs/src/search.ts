@@ -58,9 +58,6 @@ export interface SearchEntry {
 export interface SearchMember {
   name: string
   slug: string
-  /** The site's line for the member, in a visitor's words. */
-  blurb: string
-  /** The spec's line, in the vocabulary's words. A query in either finds the member. */
   purpose: string
   tier: string
 }
@@ -91,7 +88,11 @@ export function memberEntries(members: readonly SearchMember[]): SearchEntry[] {
     label: member.name,
     href: `/components/${member.slug}`,
     group: SEARCH_GROUPS.members,
-    keywords: [member.blurb, member.purpose, member.tier],
+    // The spec's line and the tier, not the site's line for the member
+    // (`components/blurbs.ts`). The palette lists what matches in this order
+    // and does not rank, and the site's lines name other things by example
+    // ("such as buttons"), which put them above the member a query names.
+    keywords: [member.purpose, member.tier],
   }))
 }
 
@@ -132,14 +133,10 @@ export function searchIndex({
 
 /** Every member in the registry. The registry is a chunk of its own, loaded here on first use. */
 export async function loadMembers(): Promise<SearchMember[]> {
-  const [{ REGISTRY, componentSlug }, { BLURBS }] = await Promise.all([
-    import('./registry'),
-    import('./components/blurbs'),
-  ])
+  const { REGISTRY, componentSlug } = await import('./registry')
   return REGISTRY.components.map((component) => ({
     name: component.name,
     slug: componentSlug(component.name),
-    blurb: BLURBS[component.name] ?? component.purpose,
     purpose: component.purpose,
     tier: component.tier,
   }))

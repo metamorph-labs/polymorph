@@ -33,15 +33,18 @@ export function Step({
   title,
   help,
   children,
+  level = 3,
 }: {
   title: string
   help?: ReactNode
   children?: ReactNode
+  /** The step's heading level: one below the heading it sits under. */
+  level?: 3 | 4
 }) {
   return (
     <Stack gap={3}>
       <Stack gap={1}>
-        <Heading level={4}>{title}</Heading>
+        <Heading level={level}>{title}</Heading>
         {help === undefined ? null : (
           <Text size="sm" tone="secondary">
             {help}

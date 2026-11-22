@@ -61,7 +61,7 @@ pnpm layout                  # the layout measure over every gallery and sample 
 pnpm new:member <Name> --tier <tier>   # scaffold a new member and every entry it needs (see CONTRIBUTING.md)
 pnpm eval                    # the agent eval against a real model: ANTHROPIC_API_KEY, or --runner cli with Claude Code signed in (--claude <path> for another CLI); costs money or plan usage
 pnpm dev / pnpm dev:docs     # the workbench / the docs site
-pnpm site                    # the docs site as static HTML for any host; fails on a page error or a dead link (--no-build)
+pnpm site                    # the docs site as static HTML for a static host; fails on a page error or a dead link (--no-build)
 ```
 
 A change is done when the gate for what it touches passes. `pnpm gate` is the web gate:

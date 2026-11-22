@@ -16,8 +16,8 @@
  * twice, and a page nothing links to is not published. That also makes it the
  * site's link check: a link to an address the site has no page for fails the
  * run with the page that holds it. So does a page that throws or logs an error.
- * The one exception is a link on a component's page, where the member's states
- * are drawn live and may hold sample links.
+ * A link inside a state that a component's page draws live is not followed: it
+ * is the fixture's sample content, and the page marks the box it is drawn in.
  *
  * Besides the pages it writes:
  *
@@ -56,8 +56,8 @@ const WORKERS = Math.max(1, Math.min(4, availableParallelism() - 1))
 /** The address the unknown-address page is saved from. Nothing links to it. */
 const NOT_FOUND = '/404'
 
-/** A page that draws a member's states fixture, sample links included. */
-const SPECIMEN_PAGE = /^\/components\/[^/]+$/
+/** The mark a saved page carries, so a later run can tell it from the application's document. */
+const SAVED = '<meta name="generator" content="pnpm site">'
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -87,14 +87,20 @@ if (!existsSync(join(DIST, 'index.html'))) {
 /**
  * The application's own document, as the build wrote it. Every route is drawn
  * from it, and it is read before any page is written, because the landing
- * page's saved HTML replaces the file.
+ * page's saved HTML replaces the file. A `dist` this step has already written
+ * no longer holds that document, so it is refused: drawing every route from
+ * the saved landing page would give each page the landing page's links.
  */
 const TEMPLATE = readFileSync(join(DIST, 'index.html'))
+if (TEMPLATE.includes(SAVED)) {
+  fail('apps/docs/dist already holds saved pages. Run `pnpm site` without --no-build.')
+}
 
 /**
  * Serves `dist` as a single-page host does: a file when the path names one,
- * and the application's document for every other path. The saved pages are
- * never served back, so a second run draws each page from the application.
+ * and the application's document for a path that names a page. A path with an
+ * extension that names no file is answered 404, so a page that asks for a
+ * script, picture or font the build lacks logs an error and fails the step.
  */
 const server = createServer((request, response) => {
   const path = decodeURIComponent(new URL(request.url ?? '/', 'http://localhost').pathname)
@@ -110,6 +116,11 @@ const server = createServer((request, response) => {
   if (asset || frame) {
     response.writeHead(200, { 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream' })
     response.end(readFileSync(file))
+    return
+  }
+  if (extname(path) !== '' && extname(path) !== '.html') {
+    response.writeHead(404, { 'Content-Type': TYPES['.txt'] })
+    response.end('Not found')
     return
   }
   response.writeHead(200, { 'Content-Type': TYPES['.html'] })
@@ -143,7 +154,12 @@ async function draw(route) {
     await page.evaluate(() => document.fonts.ready)
 
     const result = await page.evaluate(() => {
+      // A component's page draws the member's states live, and a state may
+      // hold a sample link (`/reset` under a password field). Such a link is
+      // the fixture's content, not the site's, and the page marks the box it
+      // is drawn in.
       const links = [...document.querySelectorAll('a[href^="/"]')]
+        .filter((anchor) => anchor.closest('[data-specimen]') === null)
         .map((anchor) => anchor.getAttribute('href') ?? '')
         .filter((href) => !href.startsWith('//'))
       const themes = [...document.querySelectorAll('style')].filter(
@@ -194,12 +210,7 @@ async function worker() {
     const drawn = await draw(route)
     for (const fault of drawn.faults) problems.push(`${route} ${fault}`)
     if (drawn.noindex && route !== NOT_FOUND) {
-      // A component's page draws the member's states live, and a state may hold
-      // a sample link (`/reset` under a password field). Such a link is the
-      // fixture's content, not the site's, so it is neither saved nor a fault.
-      if (!SPECIMEN_PAGE.test(linkedFrom.get(route))) {
-        problems.push(`${linkedFrom.get(route)} links to ${route}, and the site has no page there`)
-      }
+      problems.push(`${linkedFrom.get(route)} links to ${route}, and the site has no page there`)
     } else if (drawn.html !== '') {
       pages.set(route, drawn.html)
       themeCss ||= drawn.css
@@ -248,10 +259,10 @@ const themeLink = `<link rel="stylesheet" href="/${themeFile}">`
 /**
  * The application adds a link for each chunk and stylesheet it loads, and the
  * browser serialises those with the address of the server that served the
- * crawl. A saved page names them from the root, so they resolve on any host.
+ * crawl. A saved page names them from the root, so they resolve on the host that serves the site.
  */
 const finish = (html) =>
-  html.replaceAll(`${ORIGIN}/`, '/').replace('</head>', `${themeLink}</head>`)
+  html.replaceAll(`${ORIGIN}/`, '/').replace('</head>', `${SAVED}${themeLink}</head>`)
 
 for (const [route, html] of pages) {
   const file = join(DIST, route === '/' ? 'index.html' : `${route.slice(1)}.html`)

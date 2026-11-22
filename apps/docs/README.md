@@ -58,7 +58,7 @@ its address on GitHub. A guide keeps the
 plain register its file is written in. The page copy around it speaks to the visitor.
 
 The search (`src/SiteSearch.tsx`, `src/search.ts`) opens from the top bar, with `/`, and with
-Cmd+K or Ctrl+K. It finds pages, members, guides and the headings inside each guide.
+Cmd+K or Ctrl+K. It finds pages, members, guides and the `##` sections of each guide.
 
 The landing page's code sample is real output. A plugin in `vite.config.ts` runs
 `scripts/emit-screens.mjs` over `src/home/inbox.screen.json` and serves the spec and what the
@@ -85,11 +85,17 @@ script runs. It also writes `404.html`, `og.png` (the picture a shared link show
 `robots.txt`. The themes' stylesheet, which the engine computes when the app starts, is written
 once as a hashed file that every page links.
 
-The step fails when a page logs an error, or when a page links to an address of the site that has
-no page. A component page is exempt from the second check, because its fixtures hold sample links.
+The step fails when a page logs an error, when a page asks for a file the build lacks, or when a
+page links to an address of the site that has no page. A link inside a state that a component's
+page draws live is not followed: it is the fixture's sample content, and the page marks the box
+it is drawn in (`data-specimen`). The step also refuses a `dist/` it has already written, because
+the application's own document is gone from it: run it without `--no-build`.
 
-`dist/` is then a folder of plain files that any static host serves. The host must serve
-`<route>.html` for `/<route>` and `404.html` for an address with no file, which static hosts do.
+`dist/` is then a folder of plain files for a static host. The host must do three things: serve
+the site from the root of its address, serve `<route>.html` for `/<route>`, and serve `404.html`
+for an address with no file. GitHub Pages, Cloudflare Pages and Netlify do all three as they
+come. A server that maps an address to a file only by its exact name, such as nginx or an object
+store, needs a rule for the second: in nginx, `try_files $uri $uri.html =404`.
 Set `VITE_SITE_URL` to the site's public address when building: the canonical links, the absolute
 address of the sharing picture and `sitemap.xml` are written only when it is set.
 
@@ -128,8 +134,8 @@ The red rules (the ESLint and Stylelint rules that fail `pnpm lint`) treat this 
 application code: no stylesheets, no `style` or `className`, no raw interactive elements.
 `src/harness/` is the one declared exemption, through the same `HARNESS` glob in the root
 `eslint.config.ts` that exempts the workbench's harness. It holds what no member draws: the site's
-mark, the framed stage a nested pairing renders in, and the swatches, the type ramp and the scales
-on the tokens page. Each has its own CSS module, reads only `--pm-*` tokens, and sets `--pm-*`
+mark, the framed stage a nested pairing renders in, the route announcer, and the swatches, the type ramp and the scales
+on the tokens page. Each has its own CSS module, takes its colours, spacing and type from `--pm-*` tokens, and sets `--pm-*`
 custom properties from a `style` prop where it needs a value per instance. Everything else here
 uses only the vocabulary. [docs/rules.md](../../docs/rules.md) has the rules.
 

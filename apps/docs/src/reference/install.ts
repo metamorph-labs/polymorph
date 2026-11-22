@@ -119,14 +119,12 @@ function dependencies(foundation: string, vocabulary: string, framework?: string
   ].join('\n')
 }
 
+/**
+ * How an app that already exists gets the packages. They are public on npmjs.com, so an install
+ * needs no `.npmrc` and no token (`docs/consuming.md`, "Registry access").
+ */
 const PACKAGES_HELP =
-  'Each one installs under its @polymorph name, so your imports match these docs.'
-
-const registryStep: Snippet = {
-  title: 'Let your package manager find the packages',
-  help: `They're published to ${REGISTRY_ACCESS.host}. Add these two lines to your project's .npmrc, and set NODE_AUTH_TOKEN to a GitHub token that can read packages.`,
-  code: REGISTRY_ACCESS.npmrc,
-}
+  'They’re public on npm, so there’s nothing to set up first. Each one installs under its @polymorph name, so your imports match these docs.'
 
 const themeStep: Snippet = {
   title: 'Copy a theme into your project',
@@ -191,7 +189,6 @@ export const TARGETS: readonly Target[] = [
     intro: `All ${REGISTRY.components.length} components, written by hand for React on React Aria and Radix.`,
     create: createStep(null),
     add: [
-      registryStep,
       {
         title: 'Add the packages',
         help: PACKAGES_HELP,
@@ -222,7 +219,6 @@ export const TARGETS: readonly Target[] = [
     intro: `${shipped('vue')}, as Vue single-file components.`,
     create: createStep('vue'),
     add: [
-      registryStep,
       {
         title: 'Add the packages',
         help: PACKAGES_HELP,
@@ -255,7 +251,6 @@ import { Button } from '@polymorph/vue-ui'
     intro: `${shipped('svelte')}, as Svelte 5 components.`,
     create: createStep('svelte'),
     add: [
-      registryStep,
       {
         title: 'Add the packages',
         help: PACKAGES_HELP,
@@ -288,7 +283,6 @@ import { Button } from '@polymorph/vue-ui'
     intro: `${shipped('solid')}, as Solid components.`,
     create: createStep('solid'),
     add: [
-      registryStep,
       {
         title: 'Add the packages',
         help: PACKAGES_HELP,
@@ -316,7 +310,6 @@ import { Button } from '@polymorph/vue-ui'
     intro: `${shipped('angular')}, as standalone Angular components.`,
     create: createStep('angular'),
     add: [
-      registryStep,
       {
         title: 'Add the packages',
         help: PACKAGES_HELP,
@@ -379,7 +372,7 @@ import { Button } from '@polymorph/vue-ui'
       },
       {
         title: 'Already using a bundler?',
-        help: 'Install the two elements packages, with the same .npmrc as the other frameworks, and import them once.',
+        help: 'Install the two elements packages from npm and import them once.',
         code: [
           '// package.json',
           '"dependencies": {',

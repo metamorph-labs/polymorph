@@ -30,7 +30,7 @@ A few terms used throughout:
 | `pnpm emit:theme <system> <palette> [out.css]` | Emits one pairing's stylesheet, for inspection | `scripts/emit-theme.mjs` |
 | `pnpm dev` | The workbench: studio, composer, components, pages, mood board, Relay | `apps/workbench` |
 | `pnpm dev:docs` | The docs site | `apps/docs` |
-| `pnpm site` | Builds the docs site and writes every page as static HTML, for any static host | `scripts/site.mjs` |
+| `pnpm site` | Builds the docs site and writes every page as static HTML, for a static host | `scripts/site.mjs` |
 | `pnpm new:member <Name>` | Scaffolds a new member and wires it in | `packages/react-ui/bin/new-member.mjs` |
 | `pnpm inventory` | Lists every declared exception; fails on an undeclared one | `packages/rules/bin/inventory.js` |
 

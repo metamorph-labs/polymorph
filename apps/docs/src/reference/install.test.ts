@@ -51,6 +51,17 @@ describe('the install page', () => {
     for (const target of TARGETS) expect(headings, target.value).toContain(target.anchor)
   })
 
+  it('says an existing app installs from npm with no setup, as docs/consuming.md does', () => {
+    // The page drops the `.npmrc` step because the guide says none is needed. When the guide
+    // stops saying so, this fails, and the step comes back.
+    expect(read('docs/consuming.md')).toMatch(
+      /npmjs\.com[\s\S]{0,80}aliases install with no\s+configuration and no token/,
+    )
+    for (const target of TARGETS) {
+      for (const step of target.add) expect(step.code ?? '').not.toContain('_authToken')
+    }
+  })
+
   it('writes each Vite plugin import as the CLI writes it', () => {
     const templates = readdirSync(resolve(ROOT, 'packages/cli/src'))
       .filter((file) => /^init.*\.ts$/.test(file) && !file.endsWith('.test.ts'))

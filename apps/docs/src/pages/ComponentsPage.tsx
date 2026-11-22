@@ -44,7 +44,7 @@ import { componentSlug, REGISTRY } from '../registry'
  */
 export function ComponentsPage() {
   const [query, setQuery] = useState('')
-  // The list re-renders up to 140 cards per keystroke. Deferring it keeps the
+  // The list re-renders every member's card per keystroke. Deferring it keeps the
   // field responsive while the list catches up.
   const deferred = useDeferredValue(query)
   const tiers = useMemo(() => listTiers(deferred), [deferred])

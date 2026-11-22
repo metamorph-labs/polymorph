@@ -59,7 +59,7 @@ export function HomePage() {
       <Hero
         align="center"
         title="One design system. Any look you want."
-        lede={`Polymorph gives you ${COUNTS.components} components that behave the same in React, Vue, Svelte, Solid, Angular, plain HTML, SwiftUI and Jetpack Compose. Restyle all of them at once by changing a couple of small files.`}
+        lede={`Polymorph gives you ${COUNTS.components} components for React, Vue, Svelte, Solid, Angular and plain HTML, with native SwiftUI and Jetpack Compose versions of most of them. Restyle everything at once by changing a couple of small files.`}
         actions={
           <>
             <Link variant="button" buttonVariant="solid" size="lg" href="/install">
@@ -187,7 +187,7 @@ export function HomePage() {
 
       <Stack gap={4} align="center">
         <Heading level={2}>Ready when you are</Heading>
-        <Text tone="secondary">It’s free and open source. Start a new app in a minute.</Text>
+        <Text tone="secondary">It’s free and open source. Start a new app with one command.</Text>
         <Inline gap={3} wrap justify="center">
           <Link variant="button" buttonVariant="solid" size="lg" href="/install">
             Get started

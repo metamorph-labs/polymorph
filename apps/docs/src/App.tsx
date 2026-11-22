@@ -1,9 +1,10 @@
 import { getPalette, getSystem, type ModePreference } from '@polymorph/theme'
 import { AppShell, Button, Inline, Link } from '@polymorph/react-ui'
-import { Suspense, useEffect, useState, type ReactNode } from 'react'
+import { Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { ChunkBoundary } from './ChunkBoundary'
 import { Mark } from './harness/Mark'
+import { RouteAnnouncer } from './harness/RouteAnnouncer'
 import {
   ComponentDetailPage,
   ComponentsPage,
@@ -54,6 +55,9 @@ function initialPalette(): string {
   return getPalette() ?? findSystem(initialSystem()).defaultPalette
 }
 
+/** How many frames a fragment's section is looked for before the address is taken to name none. */
+const SEEK_FRAMES = 240
+
 export function App() {
   const path = useRoute()
   // A pairing is two decisions, held here because two pages read the system
@@ -73,10 +77,37 @@ export function App() {
 
   // The shell's content region is the page's scroll container, and it keeps
   // its offset when the route changes, because the region is not remounted. A
-  // new page starts at its top. An address with a fragment is left alone: the
-  // page that owns the section scrolls to it.
+  // new page starts at its top. The first page is the exception: it keeps the
+  // offset the reader gave the saved page (`main.tsx`).
+  //
+  // An address with a fragment goes to its section. The browser read the
+  // fragment before the application drew anything, and a page's chunk or a
+  // guide's text may still be loading, so the section is looked for on each
+  // frame until it is drawn, for a few seconds.
+  const visited = useRef(false)
   useEffect(() => {
-    if (window.location.hash === '') document.getElementById('content')?.scrollTo(0, 0)
+    const first = !visited.current
+    visited.current = true
+    const fragment = window.location.hash.slice(1)
+    if (fragment === '') {
+      if (!first) document.getElementById('content')?.scrollTo(0, 0)
+      return
+    }
+    let id = fragment
+    try {
+      id = decodeURIComponent(fragment)
+    } catch {
+      // A fragment that is not valid percent-encoding is looked up as written.
+    }
+    let frame = 0
+    let frames = 0
+    const seek = () => {
+      const section = document.getElementById(id)
+      if (section) section.scrollIntoView()
+      else if (++frames < SEEK_FRAMES) frame = requestAnimationFrame(seek)
+    }
+    seek()
+    return () => cancelAnimationFrame(frame)
   }, [path])
 
   const route = ((): Route => {
@@ -171,6 +202,7 @@ export function App() {
       }}
     >
       <SiteSearch open={searching} onOpenChange={setSearching} />
+      <RouteAnnouncer />
       <ChunkBoundary>
         <Suspense fallback={null}>
           {route.page}

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 
-import { BLURBS } from './components/blurbs'
 import { GUIDES, loadGuideText, parseGuide } from './guides'
 import { REGISTRY } from './registry'
 import {
@@ -31,13 +30,13 @@ describe('the search index', () => {
     ])
   })
 
-  it('lists every member, at its page, found by the site’s line for it, its purpose and its tier', async () => {
+  it('lists every member, at its page, found by its purpose and tier', async () => {
     const members = await loadMembers()
     expect(members).toHaveLength(REGISTRY.components.length)
     const button = searchIndex({ members }).find((entry) => entry.id === 'member:Button')
     expect(button).toMatchObject({ label: 'Button', href: '/components/button' })
     const component = REGISTRY.components.find((each) => each.name === 'Button')!
-    expect(button!.keywords).toEqual([BLURBS.Button, component.purpose, component.tier])
+    expect(button!.keywords).toEqual([component.purpose, component.tier])
   })
 
   it('lists every guide and each of its ## sections, with the section’s anchor', async () => {
