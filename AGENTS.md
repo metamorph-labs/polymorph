@@ -42,7 +42,7 @@ pnpm lint                    # eslint (incl. red rules) + stylelint + prettier
 pnpm test                    # vitest: logic (node) + the browser projects (real chromium)
 pnpm exec vitest run <path>  # a subset — a file, a directory, or --project <name>
 pnpm test:coverage           # coverage thresholds; they only ever go up
-pnpm gate                    # the web gate: typecheck, lint, inventory, test, coverage, builds, size, the static-page check, the Next.js gate
+pnpm gate                    # the web gate: typecheck, lint, inventory, test, coverage, builds, the site, size, the static-page check, the Next.js gate
 pnpm gate:ios                # the iOS gate: contracts, examples, native laws, swift build/test, audit (Xcode)
 pnpm gate:android            # the Android gate: contracts, examples, Kotlin laws, Gradle build and harness (JDK)
 pnpm gate:engines            # the Firefox and WebKit gate: the browser projects and the static-page check again, on both engines
@@ -61,11 +61,12 @@ pnpm layout                  # the layout measure over every gallery and sample 
 pnpm new:member <Name> --tier <tier>   # scaffold a new member and every entry it needs (see CONTRIBUTING.md)
 pnpm eval                    # the agent eval against a real model: ANTHROPIC_API_KEY, or --runner cli with Claude Code signed in (--claude <path> for another CLI); costs money or plan usage
 pnpm dev / pnpm dev:docs     # the workbench / the docs site
+pnpm site                    # the docs site as static HTML for any host; fails on a page error or a dead link (--no-build)
 ```
 
 A change is done when the gate for what it touches passes. `pnpm gate` is the web gate:
-typecheck, lint, inventory, the suite, coverage, the apps' builds, the layout scan of the
-workbench's pages, the packages' builds, the size budgets, the static-page check, which loads the
+typecheck, lint, inventory, the suite, coverage, the apps' builds, the docs site written as
+static pages, which fails on a page error or a dead link, the layout scan of the workbench's pages, the packages' builds, the size budgets, the static-page check, which loads the
 elements' no-build files into a page served as plain files on Chromium, and the Next.js gate,
 which builds an App Router application from the published React builds. A change to `platforms/ios` or to what
 the iOS contracts are generated from also needs `pnpm gate:ios`, and one to `platforms/android`

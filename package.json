@@ -34,7 +34,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --project logic --coverage",
     "test:watch": "vitest",
-    "gate": "pnpm typecheck && pnpm lint && pnpm inventory && pnpm test && pnpm test:coverage && pnpm build && pnpm layout && pnpm build:packages && pnpm size && pnpm gate:no-build --no-build chromium && pnpm gate:next --no-build",
+    "gate": "pnpm typecheck && pnpm lint && pnpm inventory && pnpm test && pnpm test:coverage && pnpm build && pnpm site --no-build && pnpm layout && pnpm build:packages && pnpm size && pnpm gate:no-build --no-build chromium && pnpm gate:next --no-build",
     "polymorph": "node packages/cli/bin/polymorph.js",
     "mcp": "node packages/mcp/bin/polymorph-mcp.js",
     "emit": "node packages/spec/bin/emit.js",

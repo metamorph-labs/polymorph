@@ -30,6 +30,7 @@ Terms used on this page:
 | `pnpm test` | the `logic`, `core`, `ui`, `vue`, `solid`, `svelte`, `angular`, `elements` and `hosted` test projects | yes |
 | `pnpm test:coverage` | the `logic` project again, held to coverage thresholds | yes |
 | `pnpm build` | the workbench and docs apps build | yes |
+| `pnpm site` | every page of the built docs site renders in Chromium without an error and links only to pages the site has; the step writes each page as static HTML ([The site check](#the-site-check)) | yes, on the build `pnpm build` made |
 | `pnpm layout` | no page of the built workbench has a layout fault: every member's gallery, the Relay screens and the sample pages, at a phone's width and a desktop's ([The layout scan](#the-layout-scan)) | yes |
 | `pnpm build:packages` | the published builds of `@polymorph/engine`, `@polymorph/rules`, `@polymorph/react`, `@polymorph/react-ui`, `@polymorph/vue`, `@polymorph/vue-ui`, `@polymorph/svelte`, `@polymorph/svelte-ui`, `@polymorph/solid`, `@polymorph/solid-ui`, `@polymorph/elements`, `@polymorph/elements-ui` (with the files a page with no build loads, `dist/cdn/`), `@polymorph/angular` and `@polymorph/angular-ui` | yes |
 | `pnpm size` | what a consumer ships stays under its budget | yes |
@@ -367,6 +368,25 @@ The scan serves `apps/workbench/dist` itself, on a port the system picks, so it 
 and no free port. It runs on Chromium only: the measure asks the page what a touch lands on, and
 the engines gate does not repeat it.
 
+## The site check
+
+`pnpm site` (`scripts/site.mjs`) is the step that turns the docs site into the files a host
+serves. It is also a check, because it opens every page. It serves `apps/docs/dist`, starts at
+`/`, and follows each link to a page of the site until it has opened them all, in Chromium.
+
+It fails on:
+
+- a page that throws or logs an error while it renders;
+- a link to an address of the site that has no page. A component's page is exempt, because the
+  states it renders hold sample links that are the fixture's content;
+- a crawl in which no page held the themes' stylesheet, which would leave every saved page
+  unthemed.
+
+It then writes what each page rendered as `dist/<route>.html`, with `404.html`, the sharing
+picture, `robots.txt` and, when `VITE_SITE_URL` names the site's address, `sitemap.xml`.
+`pnpm gate` runs it with `--no-build`, on the build `pnpm build` has just made.
+[apps/docs/README.md](../apps/docs/README.md) says what a host must serve.
+
 ## The full gate
 
 There is no hosted CI. A change is checked on the machine where it is made, and a release cannot
@@ -375,7 +395,7 @@ Each platform has its own gate, and a change runs the gate for what it touches. 
 web gate. It runs every step in order and stops at the first failure:
 
 ```sh
-pnpm gate   # typecheck, lint, inventory, test, test:coverage, build, layout, build:packages, size, gate:no-build (Chromium), gate:next
+pnpm gate   # typecheck, lint, inventory, test, test:coverage, build, site, layout, build:packages, size, gate:no-build (Chromium), gate:next
 ```
 
 `pnpm gate:ios` ([The iOS gate](#the-ios-gate)) and `pnpm gate:android`

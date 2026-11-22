@@ -245,7 +245,13 @@ if (themeCss === '') fail('no page held the theme stylesheet, so the saved pages
 const themeFile = `assets/themes-${createHash('sha256').update(themeCss).digest('hex').slice(0, 8)}.css`
 writeFileSync(join(DIST, themeFile), themeCss)
 const themeLink = `<link rel="stylesheet" href="/${themeFile}">`
-const finish = (html) => html.replace('</head>', `${themeLink}</head>`)
+/**
+ * The application adds a link for each chunk and stylesheet it loads, and the
+ * browser serialises those with the address of the server that served the
+ * crawl. A saved page names them from the root, so they resolve on any host.
+ */
+const finish = (html) =>
+  html.replaceAll(`${ORIGIN}/`, '/').replace('</head>', `${themeLink}</head>`)
 
 for (const [route, html] of pages) {
   const file = join(DIST, route === '/' ? 'index.html' : `${route.slice(1)}.html`)

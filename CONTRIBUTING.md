@@ -26,8 +26,8 @@ vocabulary. Setup and commands are in [README.md](README.md). The model is in
    before the change that satisfies it. Seeing it fail first shows that the passing result comes
    from your change.
 4. **Keep the gates green.** Each platform has a gate. `pnpm gate` is the web gate: typecheck,
-   lint, inventory, the suite, coverage, both apps' builds, the layout scan of the workbench's
-   pages (`pnpm layout`), the packages' builds, the size budgets (`pnpm size`) and the Next.js
+   lint, inventory, the suite, coverage, both apps' builds, the docs site written as static pages
+   (`pnpm site`), the layout scan of the workbench's pages (`pnpm layout`), the packages' builds, the size budgets (`pnpm size`) and the Next.js
    gate (`pnpm gate:next`), which builds a Next.js application from the published React builds.
    `pnpm gate:ios` checks the SwiftUI members and needs Xcode.
    `pnpm gate:android` checks the Compose members and needs a JDK: the wrapper fetches Gradle, and

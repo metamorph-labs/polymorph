@@ -90,13 +90,14 @@ pnpm exec playwright install chromium     # the browser test projects and pnpm p
 
 pnpm dev                                  # the workbench: studio, composer, components, Relay
 pnpm dev:docs                             # the docs site
+pnpm site                                 # the docs site as static HTML, in apps/docs/dist
 ```
 
 There is no hosted CI, so the gates run where a change is made. Each platform has its own, and
 the web has a second for Firefox and WebKit:
 
 ```sh
-pnpm gate             # the web gate: typecheck, lint, inventory, test, coverage, builds, size, the Next.js gate
+pnpm gate             # the web gate: typecheck, lint, inventory, test, coverage, builds, the site, size, the Next.js gate
 pnpm gate:ios         # the SwiftUI members: contracts, laws, swift build and test, the audit (needs Xcode)
 pnpm gate:android     # the Compose members: contracts, laws, the Gradle build and harness (needs a JDK; the wrapper fetches Gradle)
 pnpm gate:engines     # the web gate's browser tests again, on Firefox and WebKit (needs pnpm exec playwright install firefox webkit)
@@ -108,6 +109,7 @@ The commands, by what they do:
 | --- | --- |
 | `pnpm typecheck`, `pnpm lint`, `pnpm inventory`, `pnpm test`, `pnpm test:coverage` | the steps of `pnpm gate` ([docs/verification.md](docs/verification.md)) |
 | `pnpm build`, `pnpm build:packages`, `pnpm size` | the apps' builds, the published packages' builds, and what a consumer ships against its budgets |
+| `pnpm site` | the docs site written as static HTML into `apps/docs/dist`, which fails on a page that logs an error or links to a page the site does not have |
 | `pnpm layout` | the layout measure over every member's gallery and the sample pages of the built workbench, at a phone's width and a desktop's |
 | `pnpm registry` | regenerate `registry/` and the system card |
 | `pnpm shells` | regenerate the Vue, Svelte, Solid and Angular members and the elements from their descriptions |
