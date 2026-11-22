@@ -444,6 +444,31 @@ describe('CodeBlock: the copy control', () => {
     }
   })
 
+  it('keeps the control inside a one-line block that a row stretches', () => {
+    // A row stretches the wrapper to its tallest cell. The block fills the
+    // wrapper, so the control is still measured against the block.
+    const row = mount(
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', inlineSize: 600 }}>
+        <div style={{ blockSize: 200 }} />
+        <CodeBlock copyable>{COMMAND}</CodeBlock>
+      </div>,
+    )
+    const root = row.querySelector('pre')!.parentElement as HTMLElement
+    const pre = root.querySelector('pre') as HTMLElement
+    const control = within(root).getByRole('button', { name: 'Copy' }).parentElement as HTMLElement
+
+    expect(root.getBoundingClientRect().height).toBeCloseTo(200, 0)
+    expect(pre.getBoundingClientRect().height).toBeCloseTo(root.getBoundingClientRect().height, 0)
+    expect(control.getBoundingClientRect().bottom).toBeLessThan(pre.getBoundingClientRect().bottom)
+    // A long line still scrolls inside the block and does not widen the cell.
+    const wide = mount(
+      <CodeBlock copyable>{`pnpm add ${'@polymorph/react-ui '.repeat(40)}`}</CodeBlock>,
+    )
+    const block = wide.querySelector('pre') as HTMLElement
+    expect(block.scrollWidth).toBeGreaterThan(block.clientWidth)
+    expect(block.getBoundingClientRect().width).toBeCloseTo(wide.getBoundingClientRect().width, 0)
+  })
+
   const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
   it('copies verbatim, confirms, announces politely, and reverts after the delay', async () => {

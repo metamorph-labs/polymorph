@@ -29,9 +29,17 @@
 }
 
 /* The wrapper exists only when copyable. It is the containing block for the
-   corner control and paints nothing. */
+   corner control and paints nothing.
+
+   It is a one-cell grid so the block always fills it. A row that stretches the
+   wrapper beside a taller neighbour then stretches the block with it, as it
+   stretches a block with no control, and the control, which is sized against
+   the wrapper, is sized against the block. `minmax(0, 1fr)` keeps the cell the
+   wrapper's width, so a long line scrolls and does not widen it. */
 .copyable {
   position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 /* Corner control, placed like Dialog's close: the button sits inset from the
