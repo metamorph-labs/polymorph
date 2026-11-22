@@ -32,7 +32,7 @@
  * Every package is published at one version, the release's, and the script
  * ends by printing the tag for it (`releaseVersion`).
  *
- * Steps: `pnpm gate`, then per package: build, `pnpm pack` (which applies
+ * Steps: `pnpm gate` (or, with `--tagged`, the tag's record of it), then per package: build, `pnpm pack` (which applies
  * `publishConfig` and pins `workspace:` ranges), rewrite the packed manifest for
  * the registry, check it, publish it. `@polymorph/recipes` has no build: it
  * publishes its `src/` as it is, and the consumer's bundler compiles it.
@@ -41,6 +41,7 @@
  *   node scripts/publish-packages.mjs --dry-run    # everything but the upload, the gate included
  *   node scripts/publish-packages.mjs --out <dir>  # also keep the final tarballs
  *   node scripts/publish-packages.mjs --to npmjs   # publish to npmjs.com, as public packages
+ *   node scripts/publish-packages.mjs --to npmjs --tagged   # publish the tagged commit, whose gate passed
  *
  * Auth for GitHub Packages: `NODE_AUTH_TOKEN`, or the GitHub CLI's token
  * (`gh auth token`), which needs the `write:packages` scope
@@ -50,9 +51,15 @@
  * authentication stops each upload for a one-time code, so use a granular token
  * that bypasses it.
  *
- * The release is tagged after its first registry receives it. A second registry
- * receives what the tagged commit holds: with the tag present, the script
- * publishes only from a commit that differs from the tag in this script alone.
+ * The release is tagged after its first registry receives it: the script makes
+ * the annotated tag, and its message records the commit the gate passed on. A
+ * second registry receives what the tagged commit holds: with the tag present,
+ * the script publishes only from a commit that differs from the tag in this
+ * script alone. With `--tagged` it publishes the tag's own commit and reads the
+ * gate's result from the tag instead of running the gate again. The publish
+ * workflow (`.github/workflows/publish.yml`) does that on a GitHub-hosted runner
+ * when the tag is pushed, because npmjs.com's trusted publishing accepts an
+ * upload only from there.
  *
  * The registry names and the registry URL come from `@polymorph/registry`
  * (`PUBLISHED_NAMES`, `PUBLISHED_REGISTRY` in `packages/registry/src/install.ts`),
@@ -142,6 +149,7 @@ const args = process.argv.slice(2)
 const dryRun = args.includes('--dry-run')
 const outIndex = args.indexOf('--out')
 const out = outIndex === -1 ? null : resolve(args[outIndex + 1] ?? '')
+const fromTag = args.includes('--tagged')
 
 /**
  * The registries a release can go to. npmjs.com publishes a scoped package as
@@ -219,6 +227,16 @@ function check(directory, manifest, { build = true } = {}) {
  */
 function authConfig() {
   const host = TARGET.registry.replace(/^https:\/\//, '')
+  // Trusted publishing: in a GitHub Actions job with `id-token: write`, npm trades
+  // the job's identity token for a short-lived upload token itself.
+  if (
+    targetName === 'npmjs' &&
+    !process.env.NPM_TOKEN &&
+    process.env.ACTIONS_ID_TOKEN_REQUEST_URL
+  ) {
+    console.log('publish: npmjs.com through trusted publishing')
+    return { config: null, args: ['--registry', TARGET.registry], env: process.env }
+  }
   const fromGh = targetName === 'github' ? () => run('gh', ['auth', 'token']).trim() : () => ''
   const token = process.env[TARGET.variable] || fromGh()
   if (!token && targetName === 'npmjs') {
@@ -262,6 +280,30 @@ function gate() {
 }
 
 /**
+ * `--tagged` stands in for the gate on a runner that cannot run it: the browser
+ * projects, the native laws' toolchains and the gate's length belong on the
+ * owner's machine. The gate ran there, on this commit, before the first upload
+ * made the tag, and the tag's message says so (`GATE_RECORD`). A lightweight tag,
+ * a tag without that line, or a checkout that is not the tag's commit is
+ * refused. A dry run needs only the commit, so the workflow can be tried on a tag
+ * made before the record existed.
+ */
+function recordedGate() {
+  if (!tagged) fail(`--tagged needs the tag v${release}`)
+  const commit = run('git', ['rev-parse', `v${release}^{commit}`]).trim()
+  if (commit !== HEAD) fail(`HEAD is not v${release}: check out the tag`)
+  if (dryRun) return
+  const [type, ...message] = run('git', [
+    'for-each-ref',
+    `refs/tags/v${release}`,
+    '--format=%(objecttype)%0a%(contents)',
+  ]).split('\n')
+  if (type !== 'tag' || !message.includes(GATE_RECORD))
+    fail(`v${release} records no gate that passed on ${HEAD}: publish from a machine that runs it`)
+  console.log(`publish: v${release} records that the gate passed on ${HEAD}`)
+}
+
+/**
  * The release's version. Every package carries it and the release tag is `v`
  * and that version, so the tag is derived here and never typed. A package at
  * another version, or a tag that already exists, means `pnpm version-packages`
@@ -282,7 +324,10 @@ function releaseVersion() {
 
 const release = releaseVersion()
 const tagged = run('git', ['tag', '--list', `v${release}`]).trim() !== ''
-if (!dryRun && tagged && targetName === 'github')
+const HEAD = run('git', ['rev-parse', 'HEAD']).trim()
+/** The line the release tag's message carries once the gate has passed on its commit. */
+const GATE_RECORD = `Gate: passed at ${HEAD}`
+if (!dryRun && !fromTag && tagged && targetName === 'github')
   fail(`v${release} is already a release — run \`pnpm version-packages\` first`)
 // A second registry receives what the first one did. The script that uploads may
 // have changed since the tag, for that registry; nothing it builds or packs may.
@@ -301,7 +346,8 @@ if (!dryRun && !clean()) fail('the working tree is not clean — publish from a 
 
 // Auth before the gate, so a missing token fails in seconds rather than after it.
 const auth = dryRun ? null : authConfig()
-gate()
+if (fromTag) recordedGate()
+else gate()
 // Everything the gate writes is gitignored. If that ever stops being true, the
 // tarballs would be cut from a tree that is not the commit.
 if (!dryRun && !clean()) fail('the gate changed tracked files: commit them, then publish')
@@ -356,6 +402,12 @@ for (const entry of PACKAGES) {
   } catch {
     // Not found is the expected answer.
   }
+  // From the tag the contents are fixed, so a package already uploaded is the same
+  // tarball, and a run that stopped part-way is finished by running it again.
+  if (existing && fromTag) {
+    console.log(`publish: ${label} is already on ${TARGET.registry}, skipped`)
+    continue
+  }
   if (existing) fail(`${label} is already published — bump the version with changesets first`)
 
   const access = TARGET.access ? ['--access', TARGET.access] : []
@@ -368,7 +420,8 @@ if (auth?.config) rmSync(auth.config, { force: true })
 
 if (!dryRun && tagged) console.log(`publish: ${release} is published to ${TARGET.registry}`)
 else if (!dryRun) {
-  console.log(`publish: ${release} is published. Tag the release commit and push it:`)
-  console.log(`  git tag -a v${release} -m "Release ${release}"`)
+  run('git', ['tag', '-a', `v${release}`, '-m', `Release ${release}`, '-m', GATE_RECORD])
+  console.log(`publish: ${release} is published and tagged v${release}. Push the tag by name;`)
+  console.log('the publish workflow then uploads the tagged commit to npmjs.com:')
   console.log(`  git push origin main v${release}`)
 }

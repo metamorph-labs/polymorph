@@ -369,8 +369,10 @@ the engines gate does not repeat it.
 
 ## The full gate
 
-There is no hosted CI. A change is checked on the machine where it is made, and a release cannot
-skip the check: `pnpm publish:packages` runs the gate before it uploads (CONTRIBUTING.md).
+There is no hosted CI that checks a change. A change is checked on the machine where it is made,
+and a release cannot skip the check: `pnpm publish:packages` runs the gate before it uploads, and
+the publish workflow uploads to npmjs.com only a tag whose message records that the gate passed on
+its commit (CONTRIBUTING.md).
 Each platform has its own gate, and a change runs the gate for what it touches. `pnpm gate` is the
 web gate. It runs every step in order and stops at the first failure:
 

@@ -92,7 +92,7 @@ pnpm dev                                  # the workbench: studio, composer, com
 pnpm dev:docs                             # the docs site
 ```
 
-There is no hosted CI, so the gates run where a change is made. Each platform has its own, and
+There is no hosted CI that checks a change, so the gates run where a change is made. Each platform has its own, and
 the web has a second for Firefox and WebKit:
 
 ```sh

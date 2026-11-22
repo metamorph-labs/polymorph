@@ -1,0 +1,52 @@
+# Uploads a release to npmjs.com when its tag is pushed. It runs no check: the
+# gate runs on the owner's machine, and the release tag's message records the
+# commit it passed on (`scripts/publish-packages.mjs`, `--tagged`). This workflow
+# exists because npmjs.com's trusted publishing accepts an upload only from a
+# GitHub-hosted runner, and the packages trust this file by name.
+#
+# Run by hand, it is a dry run of a tag that exists: everything but the upload.
+name: publish
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release tag to try, such as v1.0.16
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  npmjs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && '--dry-run' || '' }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+          fetch-depth: 0
+      # The checkout can write an annotated tag as a lightweight one, and the gate's
+      # record is in the annotation.
+      - run: git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
+      - name: The tag's commit is on main
+        run: git merge-base --is-ancestor "$TAG^{commit}" origin/main
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      # Trusted publishing needs npm 11.5.1 or later.
+      - run: npm install --global npm@^11.5.1
+      - run: pnpm install --frozen-lockfile
+      - run: node scripts/publish-packages.mjs --to npmjs --tagged $DRY_RUN

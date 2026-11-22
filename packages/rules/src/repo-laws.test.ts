@@ -601,24 +601,37 @@ describe('the layout primitives make app CSS unnecessary', () => {
 
 describe('a release runs the gate first', () => {
   /**
-   * There is no hosted CI, so `scripts/publish-packages.mjs` is the only machine
-   * between a commit and a published tarball. This reads the script instead of
-   * running it: the gate takes minutes and the upload needs a token.
+   * There is no hosted CI that checks a change, so `scripts/publish-packages.mjs`
+   * is the only machine between a commit and a published tarball. The publish
+   * workflow runs it with `--tagged`, which reads the gate's result from the
+   * release tag because a GitHub-hosted runner does not run the gate, and the
+   * script writes that result into the tag only after the gate passed. This reads
+   * the script instead of running it: the gate takes minutes and the upload needs
+   * a token.
    */
   const source = readFileSync(resolve(ROOT, 'scripts/publish-packages.mjs'), 'utf8')
+  const lines = source.split('\n')
 
   it('invokes the whole gate, not a subset of it', () => {
     expect(source).toMatch(/run\('pnpm', \['gate'\]/)
   })
 
-  it('calls it unconditionally, so a dry run gets it too', () => {
-    expect(source.split('\n')).toContain('gate()')
+  it('calls it on every run that does not read it from the tag, a dry run included', () => {
+    expect(lines).toContain('if (fromTag) recordedGate()')
+    expect(lines).toContain('else gate()')
   })
 
-  it('calls it before anything is packed or uploaded', () => {
-    const gate = source.indexOf('\ngate()')
+  it('reads it from the tag only as the line the script writes there', () => {
+    expect(source).toMatch(/const GATE_RECORD = `Gate: passed at \$\{HEAD\}`/)
+    expect(source).toMatch(/!message\.includes\(GATE_RECORD\)/)
+    expect(source).toMatch(/run\('git', \['tag', '-a', [^\n]*GATE_RECORD\]\)/)
+  })
+
+  it('decides before anything is packed, uploaded or tagged', () => {
+    const gate = source.indexOf('\nif (fromTag) recordedGate()')
     expect(gate).toBeGreaterThan(-1)
     expect(gate).toBeLessThan(source.indexOf("['pack'"))
     expect(gate).toBeLessThan(source.indexOf("['publish'"))
+    expect(gate).toBeLessThan(source.indexOf("['tag', '-a'"))
   })
 })
