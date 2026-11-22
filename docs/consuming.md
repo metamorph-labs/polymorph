@@ -80,7 +80,8 @@ app that already exists. Each framework's own section lists what its `init` writ
 
 ### 1. Registry access
 
-The packages are published privately to GitHub Packages, under the `metamorph-labs` org:
+The packages are published to npmjs.com, as public packages, and to GitHub Packages, under the
+`metamorph-labs` org and the same names on both:
 
 | Package | Published as | Installed as |
 | --- | --- | --- |
@@ -113,7 +114,11 @@ recipes compiled. Add it to your `package.json` only to import one of its files 
 
 GitHub Packages requires the scope to be the owning org, so the registry names differ. You
 install the packages under their `@polymorph/*` names with an npm alias, so every import
-stays the same. Point the scope at the registry in your repository's `.npmrc`:
+stays the same.
+
+From npmjs.com, which holds every release from 1.0.16, the aliases install with no
+configuration and no token. To install from GitHub Packages instead, point the scope at it in
+your repository's `.npmrc`:
 
 ```ini
 @metamorph-labs:registry=https://npm.pkg.github.com

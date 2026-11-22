@@ -250,7 +250,7 @@ A release ships every package, each the way its kind is shipped:
 
 | Packages | Versioned by | Shipped by |
 | --- | --- | --- |
-| The published web packages: `@polymorph/engine`, `@polymorph/rules`, `@polymorph/recipes`, and the foundation and vocabulary of each web framework (`@polymorph/react`, `@polymorph/react-ui`, `@polymorph/vue`, `@polymorph/vue-ui`, `@polymorph/svelte`, `@polymorph/svelte-ui`, `@polymorph/solid`, `@polymorph/solid-ui`, `@polymorph/angular`, `@polymorph/angular-ui`) | changesets: the release's version, in each `package.json` | `pnpm publish:packages`, to GitHub Packages as `@metamorph-labs/polymorph-<name>` |
+| The published web packages: `@polymorph/engine`, `@polymorph/rules`, `@polymorph/recipes`, and the foundation and vocabulary of each web framework (`@polymorph/react`, `@polymorph/react-ui`, `@polymorph/vue`, `@polymorph/vue-ui`, `@polymorph/svelte`, `@polymorph/svelte-ui`, `@polymorph/solid`, `@polymorph/solid-ui`, `@polymorph/angular`, `@polymorph/angular-ui`) | changesets: the release's version, in each `package.json` | `pnpm publish:packages`, to GitHub Packages, and with `--to npmjs` to npmjs.com, as `@metamorph-labs/polymorph-<name>` |
 | The internal packages: `@polymorph/theme`, `@polymorph/registry`, `@polymorph/cli`, `@polymorph/mcp`, `@polymorph/spec`, `@polymorph/shells`, `@polymorph/conformance`, `@polymorph/native` | changesets: the same version, with their changelogs | nothing: they run from a checkout |
 | The native packages: `platforms/ios`, `platforms/android`, `platforms/dart` | the repository's release tag | the tag: an app pins its checkout or submodule to it |
 
@@ -270,6 +270,7 @@ pnpm gate:engines                         # the browser tests on Firefox and Web
 pnpm publish:packages                     # pnpm gate, then build, pack, rewrite, check, upload
 git tag -a v<version> -m "Release <version>"   # the publish script prints this line with the version
 git push origin main v<version>           # the tag by name: --follow-tags skips a lightweight tag
+node scripts/publish-packages.mjs --to npmjs   # the same release to npmjs.com, as public packages
 ```
 
 Each gate runs before what it covers ships. `pnpm publish:packages` runs `pnpm gate`, the gate for
@@ -293,3 +294,10 @@ and the script fails when that table and its own list disagree.
 and `--out <dir>` keeps the final tarballs. It authenticates with `NODE_AUTH_TOKEN`, or the GitHub
 CLI's token, which needs `write:packages` (`gh auth refresh -s write:packages`). A published
 version cannot be replaced: a mistake is fixed by the next patch release.
+
+`--to npmjs` publishes the same packages to npmjs.com under the same names, as public packages.
+Once the release is tagged, it publishes only from a commit that differs from the tag in the
+publish script alone, so both registries hold what the tag holds. It authenticates with
+npmjs.com's trusted publishing when it runs in a GitHub Actions job with `id-token: write`, else
+with `NPM_TOKEN`, else with the login in your own `~/.npmrc`. A token has to bypass two-factor
+authentication, or each upload stops for a one-time code.
