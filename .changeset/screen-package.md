@@ -27,8 +27,7 @@ The package has no framework, no DOM and no dependencies:
   passed. An element whose required data prop was never written, or was refused, is not drawn,
   with a fault that names the prop; a slot whose element is a fault leaves its page drawn, while a member that reads one element it
   requires (a FormField's child, a SettingsRow's `control`) is not drawn without it. A
-  function in the host's data is never handed to a member as itself. `values` holds what the
-  reader sees in each named control, its default or its empty value included, and `changed` names the ones the person chose. An element in a structured
+  function in the host's data is never handed to a member as itself. `values` holds what each named control holds, on screen or not, its default or its empty value included, and `changed` names the ones the person chose. An element in a structured
   object is drawn only where the field's data type takes a node, and none at any depth below a
   field that takes data only. Each node's `key` holds a named
   control's name, so a renderer draws a renamed control afresh.
