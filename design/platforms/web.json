@@ -316,6 +316,12 @@
     "RelativeTime": {
       "status": "native"
     },
+    "RichTextContent": {
+      "status": "native"
+    },
+    "RichTextInput": {
+      "status": "native"
+    },
     "ScatterChart": {
       "status": "native"
     },

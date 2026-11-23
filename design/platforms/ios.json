@@ -355,6 +355,14 @@
     "RelativeTime": {
       "status": "native"
     },
+    "RichTextContent": {
+      "status": "native"
+    },
+    "RichTextInput": {
+      "status": "absent",
+      "reason": "SwiftUI\u2019s text editor edits plain text on iOS 17 and macOS 14, and a native member wraps a platform control. An app edits the text in a Textarea and shows a stored document with RichTextContent.",
+      "substitute": "Textarea"
+    },
     "ScatterChart": {
       "status": "native",
       "as": "Swift Charts"

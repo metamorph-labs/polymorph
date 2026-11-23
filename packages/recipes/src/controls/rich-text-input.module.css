@@ -1,0 +1,16 @@
+/* RichTextInput — `design/components/rich-text-input.md`.
+ *
+ * DECIDE: the recipe. Every length, colour, radius, shadow and duration below
+ * comes from a `--pm-*` token: Stylelint's `polymorph/token-values-only` refuses
+ * a raw value, and `packages/rules/src/token-references.test.ts` refuses a token
+ * that does not exist — a misspelled name throws its whole declaration away
+ * without a word, which is the failure that law was written for.
+ *
+ * `design/components/README.md` assigns radius and size by component class;
+ * `pnpm registry` prints the token set with its values. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-3);
+}

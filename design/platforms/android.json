@@ -361,6 +361,14 @@
       "status": "native",
       "reason": "Its words are the app’s, from the platform’s formatter, because the member module reaches no time zone and no locale’s time format. Without them its phrases are English, and its absolute form writes the date and an instant’s 24-hour time in UTC, said as UTC."
     },
+    "RichTextContent": {
+      "status": "native"
+    },
+    "RichTextInput": {
+      "status": "absent",
+      "reason": "Compose has no rich-text field, and a native member wraps a platform control. An app edits the text in a Textarea and shows a stored document with RichTextContent.",
+      "substitute": "Textarea"
+    },
     "ScatterChart": {
       "status": "absent",
       "reason": "Android has no first-party charting framework, where iOS has Swift Charts. The chart’s table twin carries the same data.",

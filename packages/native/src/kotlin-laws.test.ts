@@ -39,7 +39,7 @@ import { UNDRAWN, type UndrawnProps } from './undrawn'
  * removing it from `kotlin-pending.ts` and lowering this number in the same
  * change.
  */
-const KOTLIN_PENDING_COUNT = 0
+const KOTLIN_PENDING_COUNT = 1
 
 const ROOT = resolve(import.meta.dirname, '../../..')
 const registry = buildRegistry(ROOT)

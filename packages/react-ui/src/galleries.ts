@@ -38,6 +38,7 @@ import { states as providerButton } from './controls/provider-button.states'
 import { states as radio } from './controls/radio.states'
 import { states as recordButton } from './controls/record-button.states'
 import { states as rating } from './controls/rating.states'
+import { states as richTextInput } from './controls/rich-text-input.states'
 import { states as searchInput } from './controls/search-input.states'
 import { states as segmentedControl } from './controls/segmented-control.states'
 import { states as select } from './controls/select.states'
@@ -126,6 +127,7 @@ import { states as pagination } from './structure/pagination.states'
 import { states as progress } from './structure/progress.states'
 import { states as qRCode } from './structure/qr-code.states'
 import { states as relativeTime } from './structure/relative-time.states'
+import { states as richTextContent } from './structure/rich-text-content.states'
 import { states as scrollArea } from './structure/scroll-area.states'
 import { states as sectionNav } from './structure/section-nav.states'
 import { states as separator } from './structure/separator.states'
@@ -159,6 +161,8 @@ export const GALLERIES: readonly ComponentStates[] = [
   text,
   code,
   codeBlock,
+  // a stored rich-text document drawn through the vocabulary, after the code block it draws
+  richTextContent,
   // the structure of one value, beside the code blocks it would otherwise be pasted into
   jsonTree,
   // two values compared, beside the blocks that each show one
@@ -202,6 +206,8 @@ export const GALLERIES: readonly ComponentStates[] = [
   // one-time codes, which are not secrets, beside the field for secrets
   oTPInput,
   textarea,
+  // Textarea's counterpart for text that carries formatting
+  richTextInput,
   tagInput,
   fileUpload,
   checkbox,

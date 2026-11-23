@@ -10,4 +10,4 @@
  * member's rendering, or marking it absent on Android, removes it here and
  * lowers the count in the same change.
  */
-export const KOTLIN_PENDING: readonly string[] = []
+export const KOTLIN_PENDING: readonly string[] = ['RichTextContent']
