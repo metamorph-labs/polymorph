@@ -1,4 +1,11 @@
 /**
+ * The event an element dispatches when its member throws, as it renders or
+ * later: `detail` is the error. It does not bubble, and cancelling it keeps
+ * the error out of the console. No member's callback dispatches it.
+ */
+export const ERROR_EVENT = 'poly-error'
+
+/**
  * The events an element dispatches for its member's callbacks: `poly-` and
  * the callback's kebab name (`onOpenChange` is `poly-open-change`). `detail`
  * is the callback's first argument, `null` when it has none. Every event
