@@ -291,6 +291,39 @@ describe('callback inputs are actions', () => {
   })
 })
 
+describe('a required prop with nothing behind it', () => {
+  const document = doc(
+    {
+      component: 'Stack',
+      children: [
+        {
+          component: 'ConfirmDialog',
+          props: {
+            title: 'Delete?',
+            description: 'It goes.',
+            confirmLabel: 'Delete',
+            onConfirm: { $: 'undeclared' },
+          },
+        },
+        { component: 'Stat', props: { label: 'Open', value: { $: 'open' } } },
+      ],
+    },
+    [{ name: 'open', type: 'Count' }],
+  )
+
+  it('is stubbed when it is a callback bound to nothing', () => {
+    const { screen } = open({ document })
+    expect(call(at(screen, '$.root.children[0]'), 'onConfirm')).toBeUndefined()
+  })
+
+  it('is a fault when it is data the host has not given, and none in a picture, which samples it', () => {
+    expect(open({ document }).faults.map(({ message }) => message)).toEqual([
+      "`Stat` requires `value`, and the host's data holds nothing at `open`",
+    ])
+    expect(open({ document, fill: 'sample' }).faults).toEqual([])
+  })
+})
+
 describe('controls follow the reader', () => {
   const document = doc(
     {

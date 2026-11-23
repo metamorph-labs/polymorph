@@ -374,7 +374,10 @@ export function createScreen(options: ScreenOptions): Screen {
   const samples = new Map<string, unknown>()
   /** Each callback input's action, by name: one function for the screen's life. */
   const actions = new Map<string, Handler>()
-  /** Each control's handler and each stub, by `path#prop`: one function while the node is there. */
+  /**
+   * Each control's handler and each stub, by `path#component#prop`: one function while a node of
+   * that component is there.
+   */
   const handlers = new Map<string, Handler>()
   const chosen = new Map<string, Choice>()
   let bases = new Map<string, Drawn | undefined>()
@@ -559,11 +562,22 @@ export function createScreen(options: ScreenOptions): Screen {
         if (resolved === undefined) continue
         if (ADDRESS_KEYS.has(name) && refused(resolved, at)) continue
         if (resolved.kind === 'value' && resolved.value === undefined) {
-          if (!prop.optional && !streaming && isBinding(value)) {
+          // A required prop bound to a declared data input the host gave no value for. A binding to
+          // an input the document does not declare is the validator's fault, and a sample is what
+          // a picture asked for.
+          const binding = isBinding(value) ? value.$ : ''
+          const input = inputs.get(binding.split('.')[0] ?? '')
+          if (
+            !prop.optional &&
+            !streaming &&
+            fillMode === 'absent' &&
+            input !== undefined &&
+            !isCallback(input.type)
+          ) {
             found.push({
               path: at,
               component,
-              message: `\`${component}\` requires \`${name}\`, and the host's data holds nothing at \`${value.$}\``,
+              message: `\`${component}\` requires \`${name}\`, and the host's data holds nothing at \`${binding}\``,
             })
           }
           continue
@@ -612,7 +626,11 @@ export function createScreen(options: ScreenOptions): Screen {
         own(props, event, {
           kind: 'value',
           from: 'screen',
-          value: handler(`${path}#${event}`, () => change(path, prop, event, eventType), live),
+          value: handler(
+            `${path}#${component}#${event}`,
+            () => change(path, prop, event, eventType),
+            live,
+          ),
         })
       }
       if (formProp !== null && formName !== null) {
@@ -624,23 +642,22 @@ export function createScreen(options: ScreenOptions): Screen {
         if (current !== undefined) named.push([formName, toJson(current) ?? null])
       }
 
-      // A required prop the document does not give: a callback is stubbed by its return type, and
-      // anything missing is a fault once the document is whole.
+      // A required callback with nothing to call is stubbed by its return type, and a required prop
+      // the document does not give is a fault once the document is whole.
       for (const prop of known.props) {
-        if (
-          prop.optional ||
-          prop.name === 'children' ||
-          Object.prototype.hasOwnProperty.call(written, prop.name)
-        )
-          continue
+        if (prop.optional || prop.name === 'children') continue
         if (props[prop.name] === undefined && isCallback(prop.type)) {
           own(props, prop.name, {
             kind: 'value',
             from: 'screen',
-            value: handler(`${path}#${prop.name}`, () => stubFor(prop.type).stub, live),
+            value: handler(
+              `${path}#${component}#${prop.name}`,
+              () => stubFor(prop.type).stub,
+              live,
+            ),
           })
         }
-        if (!streaming) {
+        if (!streaming && !Object.prototype.hasOwnProperty.call(written, prop.name)) {
           found.push({
             path,
             component,
