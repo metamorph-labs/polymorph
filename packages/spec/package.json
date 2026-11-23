@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./schema": "./src/schema.ts",
-    "./validate": "./src/validate.ts"
+    "./validate": "./src/validate.ts",
+    "./action-type": "./src/action-type.ts"
   },
   "dependencies": {
     "@polymorph/registry": "workspace:*",
@@ -21,7 +22,6 @@
   "license": "MIT",
   "devDependencies": {
     "@internationalized/date": "^3.12.2",
-    "@polymorph/react-ui": "workspace:*",
     "@types/react": "^19.2.7",
     "react": "^19.2.8"
   }

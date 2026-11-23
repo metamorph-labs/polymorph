@@ -1,0 +1,23 @@
+{
+  "turns": [
+    {
+      "usage": {
+        "input_tokens": 320,
+        "output_tokens": 1600,
+        "cache_read_input_tokens": 14200
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": [
+            "Here is the screen.\n\n```json\n",
+            {
+              "$file": "form-booking/answer.json"
+            },
+            "```\n"
+          ]
+        }
+      ]
+    }
+  ]
+}

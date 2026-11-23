@@ -22,6 +22,7 @@
     ".": "./src/index.ts",
     "./definitions": "./src/definitions.ts",
     "./loaders": "./src/loaders.ts",
+    "./screen": "./src/screen/index.ts",
     "./ai/*": "./src/ai/*.ts",
     "./archetypes/*": "./src/archetypes/*.ts",
     "./charts/*": "./src/charts/*.ts",
@@ -41,8 +42,10 @@
     "**/*.css",
     "./src/index.ts",
     "./src/*/[A-Z]*.ts",
+    "./src/screen/index.ts",
     "./dist/index.js",
     "./dist/*/[A-Z]*.js",
+    "./dist/screen/index.js",
     "./dist/cdn/**"
   ],
   "scripts": {
@@ -50,6 +53,7 @@
   },
   "dependencies": {
     "@polymorph/elements": "workspace:*",
+    "@polymorph/screen": "workspace:*",
     "@polymorph/solid": "workspace:*",
     "@polymorph/solid-ui": "workspace:*",
     "@zag-js/accordion": "1.46.0",
@@ -101,6 +105,10 @@
       "./loaders": {
         "types": "./dist/types/loaders.d.ts",
         "import": "./dist/loaders.js"
+      },
+      "./screen": {
+        "types": "./dist/types/screen/index.d.ts",
+        "import": "./dist/screen/index.js"
       },
       "./ai/*": {
         "types": "./dist/types/ai/*.d.ts",

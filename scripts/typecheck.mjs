@@ -99,6 +99,8 @@ const projects = [
   'packages/cli/tsconfig.json',
   'packages/mcp/tsconfig.json',
   'packages/spec/tsconfig.json',
+  'packages/screen/tsconfig.json',
+  'packages/screen/tsconfig.node.json',
   'packages/native/tsconfig.json',
   'packages/react-ui/tsconfig.json',
   'packages/react-ui/tsconfig.node.json',

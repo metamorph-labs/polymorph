@@ -32,9 +32,9 @@ Terms used on this page:
 | `pnpm build` | the workbench and docs apps build | yes |
 | `pnpm site` | every page of the built docs site renders in Chromium without an error and links only to pages the site has; the step writes each page as static HTML ([The site check](#the-site-check)) | yes, on the build `pnpm build` made |
 | `pnpm layout` | no page of the built workbench has a layout fault: every member's gallery, the Relay screens and the sample pages, at a phone's width and a desktop's ([The layout scan](#the-layout-scan)) | yes |
-| `pnpm build:packages` | the published builds of `@polymorph/engine`, `@polymorph/rules`, `@polymorph/react`, `@polymorph/react-ui`, `@polymorph/vue`, `@polymorph/vue-ui`, `@polymorph/svelte`, `@polymorph/svelte-ui`, `@polymorph/solid`, `@polymorph/solid-ui`, `@polymorph/elements`, `@polymorph/elements-ui` (with the files a page with no build loads, `dist/cdn/`), `@polymorph/angular` and `@polymorph/angular-ui` | yes |
+| `pnpm build:packages` | the published builds of `@polymorph/engine`, `@polymorph/rules`, `@polymorph/screen`, `@polymorph/react`, `@polymorph/react-ui`, `@polymorph/vue`, `@polymorph/vue-ui`, `@polymorph/svelte`, `@polymorph/svelte-ui`, `@polymorph/solid`, `@polymorph/solid-ui`, `@polymorph/elements`, `@polymorph/elements-ui` (with the files a page with no build loads, `dist/cdn/`), `@polymorph/angular` and `@polymorph/angular-ui` | yes |
 | `pnpm size` | what a consumer ships stays under its budget | yes |
-| `pnpm gate:no-build` | a page with no build, served as plain files, loads the elements' no-build files and works: before and after the tags are defined, from markup, in a form, through an overlay, through htmx-style and morphing swaps and page snapshots ([The static-page check](#the-static-page-check)) | yes, on Chromium, on the builds `pnpm build:packages` made; `pnpm gate:engines` runs it on Firefox and WebKit |
+| `pnpm gate:no-build` | a page with no build, served as plain files, loads the elements' no-build files and works: before and after the tags are defined, from markup, in a form, through an overlay, through htmx-style and morphing swaps and page snapshots, and drawing a run-time screen ([The static-page check](#the-static-page-check)) | yes, on Chromium, on the builds `pnpm build:packages` made; `pnpm gate:engines` runs it on Firefox and WebKit |
 | `pnpm gate:next` | a Next.js App Router application built from the published builds, on Turbopack, on webpack and on the development server: the members' stylesheets reach each page, the pages hydrate, the theme installs, and the red rules run ([The Next.js gate](#the-nextjs-gate)) | yes, last, on the builds `pnpm build:packages` made |
 | `pnpm gate:ios` | the SwiftUI members: contracts, example screens, native laws, `swift build` and `swift test`, the simulator type check, and the accessibility audit on an iPhone simulator ([The iOS gate](#the-ios-gate)) | no: its own gate, which needs Xcode, and an iOS simulator runtime for the audit |
 | `pnpm gate:android` | the Compose members: contracts, example screens, Kotlin laws, the JVM build and harness, the Android library, and the accessibility audit under Robolectric ([The Android gate](#the-android-gate)) | no: its own gate, which needs a JDK, and an Android SDK for the Android library and the audit |
@@ -48,18 +48,18 @@ Terms used on this page:
 
 | Project | Environment | Root | Picks up |
 | --- | --- | --- | --- |
-| `logic` | node | repository root | `packages/{theme,rules,registry,cli,mcp,spec}/src/**/*.test.ts`, `packages/{engine,react,rules,cli,mcp,spec,conformance,react-ui,vue,vue-ui,solid,solid-ui,svelte,svelte-ui,angular,angular-ui,elements,elements-ui}/*.test.ts`, `packages/shells/src/**/*.test.ts`, `packages/native/src/**/*.test.ts`, `apps/workbench/src/**/*.test.{ts,tsx}`, `apps/docs/src/**/*.test.{ts,tsx}`, `eval/*.test.ts` |
-| `core` | Chromium, through Playwright | `packages/react` | `packages/{engine,react}/src/**/*.test.{ts,tsx}` |
+| `logic` | node | repository root | `packages/{theme,rules,registry,cli,mcp,spec,screen}/src/**/*.test.ts`, `packages/{engine,react,rules,cli,mcp,spec,screen,conformance,react-ui,vue,vue-ui,solid,solid-ui,svelte,svelte-ui,angular,angular-ui,elements,elements-ui}/*.test.ts`, `packages/shells/src/**/*.test.ts`, `packages/native/src/**/*.test.ts`, `apps/workbench/src/**/*.test.{ts,tsx}`, `apps/docs/src/**/*.test.{ts,tsx}`, `eval/*.test.ts` |
+| `core` | Chromium, through Playwright | `packages/react` | `packages/{engine,react}/src/**/*.test.{ts,tsx}`, the run-time renderer's tests (`packages/react/src/screen/`) among them |
 | `ui` | Chromium, through Playwright | `packages/react-ui` | `src/**/*.test.{ts,tsx}`, with `src/test-setup.ts`. Includes the behaviour conformance law (`src/conformance.test.tsx`), which runs every statement in every spec's `contract` fence against the React shell; [conformance.md](conformance.md) has the grammar, the runner, each shell's adapter and the ledgers |
 | `vue` | Chromium, through Playwright | `packages/vue-ui` | `src/**/*.test.ts`, with `src/test-setup.ts`: the Vue shell's laws over the generated members (completeness, identity, axe), its behaviour conformance law (`src/conformance.test.ts`), which runs every contract statement of every member the Vue shell ships through the Vue adapter, with the React law's runner and locators, and is shown a false statement of every kind, and the members' behaviour tests beside them (`src/<tier>/<member>.test.ts`) for what the contract grammar cannot state ([shells.md](shells.md)) |
 | `svelte` | Chromium, through Playwright | `packages/svelte-ui` | `src/**/*.test.ts`, with `src/test-setup.ts`: the Svelte shell's laws over the generated members (completeness, identity, axe), its behaviour conformance law (`src/conformance.test.ts`) through the Svelte adapter, the foundation's presences and slot conventions (`src/conventions/*.test.ts`), and the members' behaviour tests, which mount with `src/mount.ts` and the helpers and harness components in `src/testing/` ([shells.md](shells.md#the-svelte-laws)) |
 | `solid` | Chromium, through Playwright | `packages/solid-ui` | `src/**/*.test.{ts,tsx}`, with `src/test-setup.ts`, compiled by Solid's plugin: the Solid shell's laws over the generated members (completeness, identity, axe), its behaviour conformance law (`src/conformance.test.ts`) through the Solid adapter, the foundation's machine service, effects and slot conventions (`src/conventions/foundation.test.tsx`), and the members' behaviour tests beside them (`src/<tier>/<member>.test.tsx`) ([shells.md](shells.md#the-solid-laws)) |
 | `angular` | Chromium, through Playwright | `packages/angular-ui` | `{angular,angular-ui}/src/**/*.test.ts` under `packages/`, with `packages/angular-ui/src/test-setup.ts`, compiled ahead of time by Angular's compiler (`packages/angular-ui/vitest.plugins.ts`): the foundation's Zag adapter against three machines (`packages/angular/src/zag/zag.test.ts`), the Angular shell's laws over the generated members (completeness, identity, axe), its behaviour conformance law (`src/conformance.test.ts`) through the Angular adapter, and the members' behaviour tests beside them ([shells.md](shells.md#the-angular-laws)) |
-| `elements` | Chromium, through Playwright | `packages/elements-ui` | `src/**/*.test.{ts,tsx}`, with `src/test-setup.ts`: the elements' laws over each fixture entry mounted as a page's markup (completeness, identity, axe), the parity law (`src/parity/`), which compares each entry's document with the Solid member's, the behaviour conformance law (`src/conformance.test.ts`) through the elements adapter, the shared behaviour laws through the elements mount or adapter (`src/<tier>/<member>.test.ts`, and `src/direction.test.ts` for the reading direction), and the bridge's tests (`src/bridge/*.test.ts`) ([shells.md](shells.md#the-elements-laws)). A change to `packages/solid` or `packages/solid-ui` reaches every element, so it runs this project with the `solid` one |
+| `elements` | Chromium, through Playwright | `packages/elements-ui` | `src/**/*.test.{ts,tsx}`, with `src/test-setup.ts`: the elements' laws over each fixture entry mounted as a page's markup (completeness, identity, axe), the parity law (`src/parity/`), which compares each entry's document with the Solid member's, the behaviour conformance law (`src/conformance.test.ts`) through the elements adapter, the shared behaviour laws through the elements mount or adapter (`src/<tier>/<member>.test.ts`, and `src/direction.test.ts` for the reading direction), and the bridge's tests (`src/bridge/*.test.ts`), the base class's among them: a slot that keeps the elements it still holds, `fillSlot` and a member that throws ([shells.md](shells.md#the-elements-laws)), and the run-time renderer's tests (`src/screen/`). A change to `packages/solid` or `packages/solid-ui` reaches every element, so it runs this project with the `solid` one |
 | `core-firefox`, `ui-firefox`, `vue-firefox`, `solid-firefox`, `svelte-firefox`, `angular-firefox`, `elements-firefox`, `core-webkit`, `ui-webkit`, `vue-webkit`, `solid-webkit`, `svelte-webkit`, `angular-webkit`, `elements-webkit` | Firefox or WebKit | as above | as above; only defined when `PM_BROWSER_MATRIX=1`, which `pnpm gate:engines` sets |
 
 **`logic`** is pure logic: schema validation, colour derivation, the lint rules under `RuleTester`,
-the registry generator, the CLI and MCP server as subprocesses, the shells' freshness and the Vue,
+the registry generator, the run-time screen core, the CLI and MCP server as subprocesses, the shells' freshness and the Vue,
 Svelte, Solid and Angular vocabularies' and the elements' laws that read files and the registry
 ([shells.md](shells.md)),
 the native contracts and the laws over the Swift and Kotlin sources, the eval's harness, and the
@@ -250,7 +250,21 @@ project its path falls under in the table above, unless its row names another ga
 | The MCP server | `packages/mcp/transcript.test.ts` | a tool that fails over a real stdio session |
 | The docs site | `apps/docs/src/llms.test.ts` | an `/llms.txt` that does not point an agent at the card, the tools, every guide's markdown file and every application rule; a guide's markdown file with a link the site does not serve |
 | The docs site | `apps/docs/src/page-head.test.ts` | a page title that does not name the pages above it; structured data with an address that is not written in full |
-| The eval's harness | `eval/eval.test.ts` | a harness that counts a run the model did not earn, a brief's requirement that names something the vocabulary lacks or that a screen without the part still meets, or a report that differs from what `pnpm eval:report` renders ([The agent eval](#the-agent-eval)) |
+| The eval's harness | `eval/eval.test.ts` | a harness that counts a run the model did not earn, a brief's requirement that names something the vocabulary lacks or that a screen without the part still meets, a run-time request that is not the card, the brief and no tool, or a run-time answer judged before its document is whole, or a report that differs from what `pnpm eval:report` renders ([The agent eval](#the-agent-eval)) |
+
+### The run-time screens
+
+| Law | File | What it refuses |
+| --- | --- | --- |
+| Parity with the registry | `packages/screen/src/parity.test.ts` | a vocabulary table that gives a screen in `design/screens/` or a faulty document other faults than the full registry gives, in any framework; a table that differs from what `pnpm registry` writes from the tree; controlled pairs other than the elements' definitions; a text prop named or documented as an address that is not an address key; a member that takes markup, a script's address or an embed; a default that allows `ThirdParty`; a card other than the registry's |
+| What each entry reaches | `packages/screen/src/browser-surface.test.ts` | an import of anything but the package's own modules and the spec's and the registry's pure subpaths; `parsePartial` reaching another module; the walk reaching the vocabulary table, the card or the validator; `checkScreen` reaching the card |
+| The run-time contract | `packages/screen/src/walk.test.ts`, `actions.test.ts`, `check.test.ts` | a data input filled with anything but the host's value; a callback input handed by anything but what receives it: a question told to the host, an action not told, a stub passed where an optional question leaves the member to answer, or a callback passed where no callback receives it; a function in the host's data handed to a member; an element drawn below a structured object's field that takes no node, at any depth; an element drawn once whole whose required text or data was never written or was refused; a page not drawn around a slot whose element is a fault or was never written; a member that reads one element it requires (a FormField's control, a SettingsRow's `control`) drawn without it, or an optional one-element prop handed anything but a drawn element; what a key over `MAX_KEY_LENGTH` holds that is read; a control that drops what the reader chose while the document and the host hold the same value; `values` that differ from what the reader sees, or a name two controls share, or every object has, that is not a fault; `changed` naming a control the person did not change; a member the host does not allow, or an address a screen may not hold, that is drawn or not reported; a fault told twice in one drawing, or not told again in a whole document that differs |
+| A document that streams | `packages/screen/src/partial.test.ts`, `streaming.test.ts` | a cut of a screen in `design/screens/` that holds a half-written name, number or binding, drawn text that shrinks, or a whole text that reads other than `JSON.parse` reads it; an element drawn without a prop it requires or with a half-written value, or drawn and then left out |
+| A hostile document | `packages/screen/src/hostile.test.ts` | an address a screen may not hold that reaches a member in any shape; a value of the document passed where a member calls a function; a plain object passed where the format writes `$object`; a document deeper than the limit that is read past it; an input type over `MAX_TYPE_LENGTH` that is read; one of the test's hostile texts and values that makes the core throw; a kind of input whose cost grows twenty times or more from one size to the larger |
+| The card | `packages/screen/src/card.test.ts` | a card over its ceiling, for the default members or for a few dozen; a card that lists a member the host did not allow; a screen written from the card alone that is not lawful, or whose objects do not fit the data types the card describes |
+| The renderers | `packages/react/src/screen/*.test.tsx`, `packages/elements-ui/src/screen/*.test.ts` | an element mounted twice while a document streams or its data changes; a field that loses its text or its focus, or shows other than its `values`; a member the host does not allow, an address a screen may not hold in any shape, or a prop its element's definition does not name, that is drawn or set; a ConfirmDialog that does not wait on the host's promise; an action told while a document streams, when it ends or when the data changes, with no one acting; a function in the host's data that a member calls; a document too deep, a swap of `<poly-screen>`'s children or a `members` value it cannot read that is not handled |
+| Server render | `packages/react/screen-server.test.ts` | a screen whose server render differs from what the client draws, or tells the host anything, and a member that throws on the server and fails the page around the screen |
+| No markup | `packages/elements-ui/screen.test.ts` | an elements renderer module that names an API that reads or writes markup, or holds a tag in a string; an event of `<poly-screen>` that a member dispatches; a member, part or exception primitive with no element |
 
 ## Coverage ratchet
 
@@ -258,7 +272,7 @@ project its path falls under in the table above, unless its row names another ga
 pnpm test:coverage    # vitest run --project logic --coverage
 ```
 
-Coverage is V8 coverage over `packages/{theme,rules,registry,cli,mcp,spec}/src/**`, reported as text
+Coverage is V8 coverage over `packages/{theme,rules,registry,cli,mcp,spec,screen}/src/**`, reported as text
 and as HTML in `coverage/` (gitignored). The thresholds in `vitest.config.ts` (statements 89%,
 branches 81%, functions 94%, lines 91%) are set at the tree's measured coverage, rounded down. They
 only go up. Raise them when real coverage rises, and never lower one to admit a regression.
@@ -333,6 +347,8 @@ build written again without minifying.
 | `agent-bridge` | a React page with a Checkbox and a Button that creates an agent bridge and registers its tools: the cost of `@polymorph/engine/agent`, paid only by an application that imports it |
 | `elements-button` | a page with no build that writes one `<poly-button>`: `prepaint.js`, `polymorph.js` and what it imports (Solid's runtime, the bridge and the definitions table), the chunks of Button and what it composes, `polymorph.css` and the plain theme sheet |
 | `elements-all` | the same page loading `polymorph-all.js`, every element in one file |
+| `elements-agent` | the `elements-button` page with `<html data-agent="on-call">`: what it fetches before any tool is called |
+| `elements-screen` | a page with no build that writes one `<poly-screen>` holding a document in its script child: what `elements-button` fetches, the run-time renderer's chunk and the vocabulary table, and the chunk of each member the document names ([run-time-screens.md](run-time-screens.md#what-it-costs)) |
 
 The ceilings catch machinery that should not reach production code. A ceiling is raised only with
 its reason in the same commit. [`scripts/size/README.md`](../scripts/size/README.md) describes the
@@ -519,6 +535,12 @@ writes after the test projects have run. On each engine it checks:
 - `polymorph-all.js` renders a Dialog with no chunk, its bridge lists and closes that Dialog, and
   both scripts export `restore`, `toast` and `loadAgentBridge`; with `on-call` and with `eager` it
   registers the three tools at load, a call lists the page's members, and no chunk is fetched;
+- a `<poly-screen>` draws the document in its `<script type="application/json">` child and draws no
+  box of its own, a press of its Button dispatches `poly-action` with the named Input's text in
+  `values` and its name in `changed`, and `loadScreen` resolves to `drawScreen`, `parsePartial`, `checkScreen`,
+  `runtimeCard` and `outputContract`; a page with no `<poly-screen>` fetches none of the screen's
+  code, a page that draws one fetches its renderer and the vocabulary table and not the validator
+  or the card, and `loadScreen` fetches those two;
 - an attribute an element cannot read is reported in the console by `polymorph.js` and by
   `polymorph-all.js`, and the element renders without that prop;
 - no page logs an error or fails a request.
@@ -942,7 +964,9 @@ document. `validate` checks it against the registry, emits it as TSX and runs th
 TSX, as `pnpm emit` does before it writes anything. In `tsx` mode the agent hands back a module that
 imports from `@polymorph/react-ui`. `validate` runs `@polymorph/rules/verify` over it, and adds one
 check: the module must import from the vocabulary at all. `tsx` mode does not typecheck, so a
-variant × tone cell that does not exist passes it. `spec` mode catches that cell.
+variant × tone cell that does not exist passes it. `spec` mode catches that cell. A third mode,
+`runtime`, offers no tool and sends one request, as a product that draws a model's screen at run
+time does ([The run-time lane](#the-run-time-lane)).
 
 What goes wrong is kept apart from what the model did:
 
@@ -1164,6 +1188,56 @@ file beside the results, not in them.
 A results file written before a field existed does not have it. The schema accepts such a file,
 and the report says its screens were not judged against their briefs.
 
+### The run-time lane
+
+`pnpm eval --mode runtime` measures what a product that draws a model's screen at run time gets
+from one request with no tools ([run-time-screens.md](run-time-screens.md)). The system prompt is
+the run-time card alone (`runtimeCard` from `@polymorph/screen`, the output contract at its end),
+for the framework and members the run names, as one block marked for the prompt cache. The message
+is the brief, followed by the instruction to build the screen it describes. Every run of an eval
+sends the same card, so after the first request the card is read from the cache, as it is for a
+product that caches its card. The request offers no tools.
+
+The answer is read as a product reads it, with `parsePartial`, and judged only when its document
+is whole: with `checkScreen` for the card's framework and members, and against the brief's
+requirements, which read a run-time document as they read a `spec` one. An answer with no whole
+document (none, one cut short, or one that stops being JSON) is not lawful and meets no
+requirement, and `fatal` says which. A response that was refused or cut off at `max_tokens` is not
+judged, as in the other modes. One request is its own first shot, so a record has `lawful` and no
+`firstShotLawful`, and no `iterations`, `violationsSeen` or `misses`.
+
+| Flag | What it does |
+| --- | --- |
+| `--framework <name>` | the card's and the check's framework; the registry's default (`react`) when absent |
+| `--members default\|<subset>\|<A,B,…>` | the members the card lists and the check allows: the framework's default, a subset in `eval/members/<subset>.json` (a lowercase name), or a list joined by commas. A name the vocabulary does not have stops the eval before any run |
+| `--thinking adaptive\|disabled\|between_tools` | sent as `thinking.type`; `adaptive` when absent. Which value a model accepts is the model's, and a refused value stops the eval with the API's error |
+
+`--max-iterations` is refused in this mode, which makes no `validate` call, and `--thinking` with
+the CLI runner, which chooses its own thinking, and with `--fake`. The three flags belong to this
+mode, and another mode refuses them.
+
+Besides the fields every record has, a run-time record keeps the input tokens apart:
+`uncachedInputTokens`, `cacheWriteTokens` and `cacheReadTokens` beside their sum, `inputTokens`.
+`firstTokenMs` is the time from sending the request that was answered to the first text of the
+answer, thinking left out: the moment a product could start to draw. The summary gives the lawful
+rate, the rate that meets its brief and the rate that does both, each with its interval, the
+answers with no whole document (`unreadable`), the mean tokens of each kind, and the mean time to
+the first text and to the end, each with the fastest and the slowest run beside it. The results
+record the card: its framework, how its members were chosen, every member it lists, and its length
+in characters (`card`).
+
+The CLI runner runs the lane through `claude -p` with no tool at all: an MCP configuration that
+names no server, `--tools ""`, the card as the system prompt and the brief on stdin. It stops the
+CLI at the end of the first response, and stops the eval when the CLI starts with any tool or MCP
+server. It cannot measure the time to the first text, which it records as `null`, and the CLI adds
+text of its own to the prompt and sets its own cache breakpoints, so its cache split is the CLI's.
+
+A run writes `eval/results/<date>-<model>-runtime.json` (`-runtime-cli.json` through the CLI
+runner). `eval/README.md` prints the lane last, in a section of its own, with its own number for
+each model, runner, thinking setting, effort, framework and members. A run is compared only with an
+earlier one that has the same settings. `eval/fake/<brief>.runtime.json` scripts each brief's
+answer for `--fake`, and `eval/eval.test.ts` runs the lane through both runners with it.
+
 ### How far a rate can be trusted
 
 A run either is lawful or is not, so a rate is a count out of a number of runs, and a few runs fix
@@ -1211,6 +1285,7 @@ pnpm eval --runner cli --effort high              # the same through Claude Code
 pnpm eval --runner cli --claude /path/to/claude   # through another installed CLI than the one on the PATH
 pnpm eval --runs 5                                # five runs per brief, for narrower intervals
 pnpm eval --mode tsx --runs 3                     # TSX modules instead of specs, three runs per brief
+pnpm eval --mode runtime --members small          # the run-time lane: one request, no tools, the card for a subset
 pnpm eval --model claude-opus-5-5 --effort high   # another model, at a chosen effort
 pnpm eval --briefs 'eval/briefs/list*.md' --max-iterations 3   # a smoke run over a subset
 pnpm eval --max-tokens-per-run 300000 --max-tokens-total 2000000   # tighter ceilings

@@ -19,8 +19,10 @@
  * `packages/elements-ui/dist/cdn/`, as a browser fetches them. Its scripts
  * and each module they import, each `poly-*` tag's chunk the loader imports
  * for the tags the page writes, the chunks the page's agent setting
- * (`<html data-agent>`) fetches at load, and the stylesheets it links, each
- * file gzipped on its own, as each is a request of its own.
+ * (`<html data-agent>`) fetches at load, for a `<poly-screen>` the chunk it
+ * imports and the chunk of each member its document names, and the
+ * stylesheets it links, each file gzipped on its own, as each is a request of
+ * its own.
  *
  * `scripts/size/budgets.json` holds a ceiling per fixture, and a fixture over
  * its ceiling fails the run. The ceilings catch a heavy dependency reaching
@@ -200,6 +202,48 @@ async function bundle(fixture, minify) {
  */
 const BRIDGE_MARKER = 'polymorph:agentchange'
 
+/**
+ * A string only the run-time screen's renderer holds, which a minifier keeps:
+ * the event `<poly-screen>` dispatches for an action. `polymorph.js` imports
+ * the renderer's chunk the first time a `<poly-screen>` connects, so a page
+ * that writes one fetches it, and a page that does not fetches none of it.
+ */
+const SCREEN_MARKER = /["'`]poly-action["'`]/
+
+/**
+ * Strings only the run-time screen's other chunks hold: the validator's ("did
+ * you mean") and the card's ("# Writing a screen"), which `polymorph.js`
+ * imports when a page checks a document or calls `loadScreen`. None of them is
+ * the agent setting's.
+ */
+const SCREEN_CODE = /["'`]poly-action["'`]|did you mean|# Writing a screen/
+
+/** A component's tag, as `@polymorph/elements` names it: `Table.Row` is `poly-table-row`. */
+const tagOf = (component) =>
+  `poly-${component
+    .replace('.', '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
+    .toLowerCase()}`
+
+/** Every component a document in a page's `<script type="application/json">` names. */
+function documentComponents(page) {
+  const found = []
+  const visit = (value) => {
+    if (Array.isArray(value)) value.forEach(visit)
+    else if (typeof value === 'object' && value !== null) {
+      if (typeof value.component === 'string') found.push(value.component)
+      Object.values(value).forEach(visit)
+    }
+  }
+  for (const match of page.matchAll(
+    /<script type="application\/json"[^>]*>([\s\S]*?)<\/script>/g,
+  )) {
+    visit(JSON.parse(match[1]).root)
+  }
+  return found
+}
+
 /** A page with no build's agent setting, `<html data-agent>`, or `null` without one. */
 const agentSetting = (page) => /<html\b[^>]*\bdata-agent="([^"]*)"/.exec(page)?.[1] ?? null
 
@@ -279,6 +323,9 @@ function fetched(fixture, files) {
   const scripts = named(/<script\b[^>]*\bsrc="polymorph\/([^"]+)"/g)
   const sheets = named(/<link rel="stylesheet" href="polymorph\/([^"]+)"/g)
   const tags = new Set(named(/<(poly-[a-z-]+)/g))
+  // A `<poly-screen>` draws the members its document names, each loaded as its element renders.
+  const screens = tags.has('poly-screen')
+  if (screens) for (const component of documentComponents(page)) tags.add(tagOf(component))
   const js = new Set()
   const text = (file) => {
     const found = files.get(file)
@@ -296,6 +343,17 @@ function fetched(fixture, files) {
     }
   }
   const setting = agentSetting(page)
+  /** Whether a chunk the script imports is the run-time screen's: it, or a chunk it imports, holds its code. */
+  const screenCode = (chunk, seen = new Set()) => {
+    if (seen.has(chunk)) return false
+    seen.add(chunk)
+    if (SCREEN_CODE.test(text(chunk))) return true
+    return [
+      ...text(chunk).matchAll(
+        /(?:^|[;}\s])(?:import|export)\s*(?:[^'"`();]*?from\s*)?["'`](\.[^"'`]+)["'`]/g,
+      ),
+    ].some((match) => screenCode(posix.join(posix.dirname(chunk), match[1]), seen))
+  }
   for (const script of scripts) {
     reach(script)
     // The loader's table: each tag's chunk, imported the first time one of its elements renders.
@@ -306,10 +364,18 @@ function fetched(fixture, files) {
       table.add(match[2])
       if (tags.has(match[1])) reach(posix.join(posix.dirname(script), match[2]))
     }
+    // The renderer's chunk, which the first `<poly-screen>` to connect imports, and what it imports.
+    if (screens) {
+      for (const match of text(script).matchAll(/\bimport\(["'`](\.\/[^"'`]+)["'`]\)/g)) {
+        const chunk = posix.join(posix.dirname(script), match[1])
+        if (!table.has(match[1]) && SCREEN_MARKER.test(text(chunk))) reach(chunk)
+      }
+    }
     if (setting !== 'on-call' && setting !== 'eager') continue
     for (const match of text(script).matchAll(/\bimport\(["'`](\.\/[^"'`]+)["'`]\)/g)) {
       if (table.has(match[1])) continue
       const chunk = posix.join(posix.dirname(script), match[1])
+      if (screenCode(chunk)) continue
       if (setting === 'eager' || !text(chunk).includes(BRIDGE_MARKER)) reach(chunk)
     }
   }

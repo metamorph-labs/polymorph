@@ -1,0 +1,23 @@
+{
+  "turns": [
+    {
+      "usage": {
+        "input_tokens": 290,
+        "output_tokens": 1450,
+        "cache_read_input_tokens": 14200
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": [
+            "Here is the screen.\n\n```json\n",
+            {
+              "$file": "chat-assistant/answer.json"
+            },
+            "```\n"
+          ]
+        }
+      ]
+    }
+  ]
+}

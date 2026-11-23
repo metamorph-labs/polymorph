@@ -18,6 +18,10 @@ products tend to rebuild these, and each rebuild adds a second type scale, a sec
 second link style. This tier provides them as members so that they are *selected*, not rebuilt.
 It also makes a model's `##` render as this system's `Heading`.
 
+A turn can also hold a screen the model wrote, such as a form to fill or a choice to make. The
+model writes it as a screen spec, and the app draws it with the vocabulary while it streams, in a
+`ChatMessage` or in the `ArtifactPane` ([run-time-screens.md](run-time-screens.md)).
+
 ## The members
 
 | Member | What it is | Not to be confused with |

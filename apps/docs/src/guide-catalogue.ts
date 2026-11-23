@@ -118,6 +118,13 @@ export const GUIDES: readonly Guide[] = [
       'Let an AI agent read and use the components on a live page, and decide exactly what it’s allowed to do.',
   },
   {
+    slug: 'run-time-screens',
+    title: 'Run-time screens',
+    group: 'agents',
+    description:
+      'Let an AI model build a screen right inside your product, drawn in your theme as its answer streams in, and hear back what people do with it.',
+  },
+  {
     slug: 'tooling',
     title: 'Tooling',
     group: 'agents',

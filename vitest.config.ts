@@ -15,7 +15,8 @@ const dir = (p: string) => fileURLToPath(new URL(p, import.meta.url))
 /**
  * The projects that run by default (`docs/verification.md`):
  *  - `logic` — node, for pure logic: the theme, the rules, the registry, the
- *    tools, the shells' and native packages' file-reading laws, and the eval
+ *    tools, the run-time screen core, the shells' and native packages'
+ *    file-reading laws, and the eval
  *  - `core` / `ui` — real chromium via Playwright, because Radix overlays and
  *    motion are unreliable in jsdom. `core` runs the tests of
  *    `@polymorph/engine` and `@polymorph/react`; `ui` runs the vocabulary's,
@@ -489,7 +490,7 @@ export default defineConfig({
      */
     coverage: {
       provider: 'v8',
-      include: ['packages/{theme,rules,registry,cli,mcp,spec}/src/**'],
+      include: ['packages/{theme,rules,registry,cli,mcp,spec,screen}/src/**'],
       reporter: ['text', 'html'],
       // The measured coverage behind these thresholds: statements 89.28%,
       // branches 81.17%, functions 94.36%, lines 91.69%.
@@ -547,13 +548,13 @@ export default defineConfig({
           // are covered by the law tests, but which tickets a filter keeps is
           // application logic, and it can be wrong like any other.
           include: [
-            'packages/{theme,rules,registry,cli,mcp,spec}/src/**/*.test.ts',
+            'packages/{theme,rules,registry,cli,mcp,spec,screen}/src/**/*.test.ts',
             // The packaging laws and the scratch-app acceptance test: node tests
             // about files on disk. Kept out of each package's `src/` so a browser
             // project does not claim them. The `pnpm new:member` generator test
             // is here for the same reason: it writes files and edits four lists,
             // which needs no browser.
-            'packages/{engine,react,rules,cli,mcp,spec,conformance,react-ui,vue,vue-ui,solid,solid-ui,svelte,svelte-ui,angular,angular-ui,elements,elements-ui}/*.test.ts',
+            'packages/{engine,react,rules,cli,mcp,spec,screen,conformance,react-ui,vue,vue-ui,solid,solid-ui,svelte,svelte-ui,angular,angular-ui,elements,elements-ui}/*.test.ts',
             // The member descriptions and the generators that write the shells from them.
             'packages/shells/src/**/*.test.ts',
             // `.tsx` for the composer's renderer law. A test of React output is

@@ -1533,3 +1533,183 @@ export function readVocabulary(
     })
     .filter((component): component is RegistryComponent => component !== null)
 }
+
+/* -------------------------------------------------------------------------- */
+/* Data types                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A named data type a member's props take: an option, a column, a stat, a
+ * menu entry. A prop's printed type names it (`options: SelectOption[]`), and
+ * a reader with no compiler, such as a model writing a screen from the
+ * run-time card, needs its fields to write one.
+ */
+export interface RegistryDataType {
+  name: string
+  /** Its type parameters, as its declaration names them: `Row` for `DataTableColumn<Row>`. */
+  params: string[]
+  /**
+   * For a type that is a union of other named types (`MenuEntry`), their
+   * names. Each is a data type of its own, and `fields` is empty.
+   */
+  union?: string[]
+  /** Its fields, one level, each typed as a prop's type is printed. */
+  fields: RegistryProp[]
+}
+
+/** Whether a declaration is the repository's own: a package's source, not a dependency's or the language's. */
+function ownDeclaration(root: string, declaration: ts.Declaration | undefined): boolean {
+  if (declaration === undefined) return false
+  const file = declaration.getSourceFile().fileName
+  return file.startsWith(`${resolve(root, 'packages')}/`) && !file.includes('/node_modules/')
+}
+
+/** A type's literal branches, which a printed prop type spells out, so they are no data type. */
+const isLiteral = (type: ts.Type): boolean =>
+  type.isStringLiteral() ||
+  type.isNumberLiteral() ||
+  (type.flags & (ts.TypeFlags.BooleanLiteral | ts.TypeFlags.Undefined | ts.TypeFlags.Null)) !== 0
+
+/**
+ * Every named data type the members' props reach, the parts' and the
+ * exception primitives' included, sorted by name.
+ *
+ * It walks each prop's type through unions, lists, records, `Readonly` and
+ * the other wrappers of the language, and records each named type the
+ * repository declares that holds fields: an interface, or an alias of an
+ * object type or of a union of them. It reads a recorded type's fields one
+ * level down and walks their types in turn, so a nested type is recorded
+ * too. A type a dependency declares (`ReactNode`, `CalendarDate`) is not read
+ * at all, and a function's parameters are not data.
+ * An alias of a union of literals is spelled out where it is printed, and is
+ * not recorded. Two declarations of one name would print as one, so they
+ * fail the build.
+ */
+export function readDataTypes(ui: UiProgram): RegistryDataType[] {
+  const { checker, exports, root } = ui
+  const found = new Map<string, { symbol: ts.Symbol; type: RegistryDataType }>()
+  const seen = new Set<ts.Type>()
+
+  const typeOfProperty = (property: ts.Symbol): ts.Type | null => {
+    const declaration = property.valueDeclaration ?? property.declarations?.[0]
+    return declaration ? checker.getTypeOfSymbolAtLocation(property, declaration) : null
+  }
+
+  /** The named, own symbol of a type's declaration, when it declares fields or a union. */
+  const ownNamed = (symbol: ts.Symbol | undefined): ts.Symbol | null => {
+    const declaration = symbol?.declarations?.[0]
+    if (symbol === undefined || !ownDeclaration(root, declaration)) return null
+    return declaration !== undefined &&
+      (ts.isInterfaceDeclaration(declaration) || ts.isTypeAliasDeclaration(declaration))
+      ? symbol
+      : null
+  }
+
+  const visitFields = (type: ts.Type): void => {
+    for (const property of checker.getPropertiesOfType(type)) {
+      const field = typeOfProperty(property)
+      if (field !== null) visit(field)
+    }
+    for (const index of checker.getIndexInfosOfType(type)) visit(index.type)
+  }
+
+  const record = (symbol: ts.Symbol): void => {
+    const name = symbol.name
+    const known = found.get(name)
+    if (known !== undefined) {
+      if (known.symbol !== symbol) {
+        throw new Error(
+          `registry: two data types are named ${name}, and a reader cannot tell them apart`,
+        )
+      }
+      return
+    }
+    const declaration = symbol.declarations?.[0] as
+      ts.InterfaceDeclaration | ts.TypeAliasDeclaration
+    const declared = checker.getDeclaredTypeOfSymbol(symbol)
+    if (checker.getSignaturesOfType(declared, ts.SignatureKind.Call).length > 0) return
+    const branches = declared.isUnion() ? declared.types : [declared]
+    if (branches.every(isLiteral)) return
+    const params = (declaration.typeParameters ?? []).map((parameter) => parameter.name.text)
+    const named = branches
+      .filter((branch) => !isLiteral(branch))
+      .map((branch) => ownNamed(branch.aliasSymbol) ?? ownNamed(branch.symbol))
+    if (declared.isUnion() && named.every((branch) => branch !== null)) {
+      const union = named.map((branch) => (branch as ts.Symbol).name)
+      found.set(name, { symbol, type: { name, params, union, fields: [] } })
+      for (const branch of named) record(branch as ts.Symbol)
+      return
+    }
+    found.set(name, { symbol, type: { name, params, fields: propsOfType(checker, declared) } })
+    for (const branch of branches) visitFields(branch)
+  }
+
+  const visit = (type: ts.Type): void => {
+    if (seen.has(type)) return
+    seen.add(type)
+    const alias = ownNamed(type.aliasSymbol)
+    if (alias !== null) {
+      record(alias)
+      for (const argument of type.aliasTypeArguments ?? []) visit(argument)
+      return
+    }
+    if (type.isUnionOrIntersection()) {
+      for (const branch of type.types) visit(branch)
+      return
+    }
+    if ((type.flags & ts.TypeFlags.Object) === 0) return
+    if (checker.getSignaturesOfType(type, ts.SignatureKind.Call).length > 0) return
+    const reference = type as ts.TypeReference
+    const argumentsOf = reference.target === undefined ? [] : checker.getTypeArguments(reference)
+    const symbol = ownNamed(type.symbol)
+    if (symbol !== null) {
+      record(symbol)
+      for (const argument of argumentsOf) visit(argument)
+      return
+    }
+    // A type the language names (`ReadonlyArray`, `Readonly`, `Record`, `Set`) is read through its
+    // arguments, and an object written in place through its fields. A type a dependency names
+    // (`ReactElement<FormFieldControlProps>`, `CalendarDate`) is read no further: what its
+    // arguments say is not data a document writes.
+    const foreign = type.aliasSymbol ?? type.symbol
+    const declaration = foreign?.declarations?.[0]
+    const written = foreign === undefined || foreign.name.startsWith('__')
+    const language =
+      declaration !== undefined &&
+      ui.program.isSourceFileDefaultLibrary(declaration.getSourceFile())
+    if (written || language) {
+      for (const argument of [...argumentsOf, ...(type.aliasTypeArguments ?? [])]) visit(argument)
+    }
+    if (written || (language && checker.getIndexInfosOfType(type).length > 0)) visitFields(type)
+  }
+
+  const visitProps = (type: ts.Type): void => {
+    for (const branch of type.isUnion() ? type.types : [type]) visitFields(branch)
+  }
+
+  for (const { name } of ui.components) {
+    const props = exports.get(PROP_TYPE_OVERRIDES[name] ?? `${name}Props`)
+    if (props !== undefined)
+      visitProps(checker.getDeclaredTypeOfSymbol(resolveAlias(checker, props)))
+    const symbol = exports.get(DECLARATION_OVERRIDES[name] ?? name)
+    if (symbol === undefined) continue
+    for (const part of compoundParts(checker, symbol))
+      if (part.props !== null) visitProps(part.props)
+  }
+  for (const name of Object.keys(PRIMITIVE_RUNGS)) {
+    const symbol = exports.get(name)
+    const declaration =
+      symbol === undefined ? undefined : resolveAlias(checker, symbol).valueDeclaration
+    if (symbol === undefined || declaration === undefined) continue
+    const resolved = resolveAlias(checker, symbol)
+    const [signature] = checker.getSignaturesOfType(
+      checker.getTypeOfSymbolAtLocation(resolved, declaration),
+      ts.SignatureKind.Call,
+    )
+    const parameter = signature?.parameters[0]
+    if (parameter !== undefined)
+      visitProps(checker.getTypeOfSymbolAtLocation(parameter, declaration))
+  }
+
+  return [...found.values()].map(({ type }) => type).sort((a, b) => a.name.localeCompare(b.name))
+}

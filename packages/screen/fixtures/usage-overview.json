@@ -1,0 +1,77 @@
+{
+  "spec": "polymorph-screen/1",
+  "name": "UsageOverview",
+  "purpose": "This month's usage: the key numbers, requests by day and the busiest projects.",
+  "inputs": [
+    { "name": "stats", "type": "StatProps[]" },
+    { "name": "requests", "type": "Readonly<Record<string, string | number | null>>[]" },
+    { "name": "requestSeries", "type": "ChartSeries[]" },
+    { "name": "requestAxis", "type": "ChartXAxis" },
+    { "name": "range", "type": "string" },
+    { "name": "onRangeChange", "type": "(value: string) => void" },
+    { "name": "onOpenProject", "type": "() => void" }
+  ],
+  "root": {
+    "component": "Dashboard",
+    "props": {
+      "title": "Usage",
+      "description": "Requests and spend for this workspace.",
+      "stats": { "$": "stats" },
+      "actions": {
+        "component": "SegmentedControl",
+        "props": {
+          "label": "Range",
+          "value": { "$": "range" },
+          "onChange": { "$": "onRangeChange" },
+          "options": [
+            { "$object": { "value": "7d", "label": "7 days" } },
+            { "$object": { "value": "30d", "label": "30 days" } }
+          ]
+        }
+      },
+      "primary": {
+        "component": "Dashboard.Panel",
+        "props": { "title": "Requests by day" },
+        "children": [
+          {
+            "component": "BarChart",
+            "props": {
+              "label": "Requests by day",
+              "data": { "$": "requests" },
+              "series": { "$": "requestSeries" },
+              "x": { "$": "requestAxis" }
+            }
+          }
+        ]
+      },
+      "secondary": {
+        "component": "Dashboard.Panel",
+        "props": { "title": "Busiest projects" },
+        "children": [
+          {
+            "component": "List",
+            "props": { "label": "Busiest projects" },
+            "children": [
+              {
+                "component": "List.Item",
+                "props": {
+                  "title": "Atlas",
+                  "meta": "12,400 requests",
+                  "onSelect": { "$": "onOpenProject" }
+                }
+              },
+              {
+                "component": "List.Item",
+                "props": {
+                  "title": "Beacon",
+                  "meta": "8,950 requests",
+                  "onSelect": { "$": "onOpenProject" }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

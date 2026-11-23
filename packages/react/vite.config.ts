@@ -38,10 +38,12 @@ function stylesheetImport(): Plugin {
 /**
  * The dist build for `@polymorph/react` (`pnpm build:packages`).
  *
- * Two entries, one per JS entry in the package's `exports` map. The root is
+ * Three entries, one per JS entry in the package's `exports` map. The root is
  * what a member imports: the engine re-exported, the icon gateway, the hooks
  * and the conventions typed with React's element types. `motion` is for member
- * internals, and application code must not import it.
+ * internals, and application code must not import it. `screen` is the
+ * renderer of a screen a model writes, which an application imports and a
+ * member never does.
  *
  * Which dependencies are external:
  *
@@ -53,6 +55,9 @@ function stylesheetImport(): Plugin {
  *    second theme engine and a second set of conventions beside the one their
  *    lint config, Vite plugin and test setup import, and the two could disagree
  *    after an upgrade of either.
+ *  - `@polymorph/screen` is a dependency, never bundled, for the same reason: a
+ *    host checks a document and builds its model's prompt with the copy it
+ *    installs, and the renderer draws with that copy's vocabulary.
  *
  * `cssCodeSplit: false` puts Icon's stylesheet in one `dist/react.css`, which
  * Icon's recipe module imports (`stylesheetImport` above). It is also
@@ -70,6 +75,7 @@ export default defineConfig({
       entry: {
         index: entry('./src/index.ts'),
         motion: entry('./src/motion/index.ts'),
+        screen: entry('./src/screen/index.ts'),
       },
       formats: ['es'],
       // Named here rather than derived from the package name, because Icon's
@@ -88,6 +94,8 @@ export default defineConfig({
         'lucide',
         '@polymorph/engine',
         /^@polymorph\/engine\//,
+        '@polymorph/screen',
+        /^@polymorph\/screen\//,
       ],
       /*
        * `preserveModules` is required for server rendering.

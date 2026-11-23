@@ -1,0 +1,136 @@
+{
+  "spec": "polymorph-screen/1",
+  "name": "WorkspaceSettings",
+  "purpose": "A workspace's region, plan and notification settings, in two tabs.",
+  "inputs": [
+    { "name": "tab", "type": "string" },
+    { "name": "onTabChange", "type": "(value: string) => void" },
+    { "name": "onSave", "type": "() => Promise<void>" }
+  ],
+  "root": {
+    "component": "FormPage",
+    "props": {
+      "title": "Workspace settings",
+      "onSubmit": { "$": "onSave" },
+      "actions": {
+        "component": "Button",
+        "props": {
+          "label": "Save settings",
+          "variant": "solid",
+          "tone": "accent",
+          "type": "submit"
+        }
+      }
+    },
+    "children": [
+      {
+        "component": "Tabs",
+        "props": {
+          "value": { "$": "tab" },
+          "onChange": { "$": "onTabChange" },
+          "tabs": [
+            { "$object": { "value": "general", "label": "General" } },
+            {
+              "$object": {
+                "value": "notifications",
+                "label": "Notifications",
+                "icon": "notification"
+              }
+            }
+          ]
+        },
+        "children": [
+          {
+            "component": "Tabs.Content",
+            "props": { "value": "general" },
+            "children": [
+              {
+                "component": "Stack",
+                "props": { "gap": 5 },
+                "children": [
+                  {
+                    "component": "FormField",
+                    "props": {
+                      "label": "Region",
+                      "description": "Where the workspace's data is kept."
+                    },
+                    "children": [
+                      {
+                        "component": "Select",
+                        "props": {
+                          "name": "region",
+                          "placeholder": "Choose a region",
+                          "options": [
+                            {
+                              "$object": {
+                                "label": "Europe",
+                                "options": [
+                                  { "$object": { "value": "eu-west", "label": "Ireland" } },
+                                  { "$object": { "value": "eu-central", "label": "Frankfurt" } }
+                                ]
+                              }
+                            },
+                            {
+                              "$object": {
+                                "label": "Americas",
+                                "options": [
+                                  { "$object": { "value": "us-east", "label": "Virginia" } },
+                                  {
+                                    "$object": {
+                                      "value": "us-west",
+                                      "label": "Oregon",
+                                      "description": "Full until next month",
+                                      "disabled": true
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "component": "FormField",
+                    "props": { "label": "Plan" },
+                    "children": [
+                      {
+                        "component": "RadioGroup",
+                        "props": {
+                          "name": "plan",
+                          "orientation": "vertical",
+                          "options": [
+                            { "$object": { "value": "free", "label": "Free" } },
+                            { "$object": { "value": "team", "label": "Team" } },
+                            {
+                              "$object": {
+                                "value": "enterprise",
+                                "label": "Enterprise",
+                                "disabled": true
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "component": "Tabs.Content",
+            "props": { "value": "notifications" },
+            "children": [
+              {
+                "component": "Switch",
+                "props": { "name": "digest", "label": "Send a daily digest" }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

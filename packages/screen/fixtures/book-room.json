@@ -1,0 +1,104 @@
+{
+  "spec": "polymorph-screen/1",
+  "name": "BookRoom",
+  "purpose": "Books a meeting room for a team discussion.",
+  "inputs": [
+    { "name": "rooms", "type": "SelectOption[]" },
+    { "name": "lengths", "type": "RadioOption[]" },
+    { "name": "errors", "type": "ErrorSummaryError[]" },
+    { "name": "roomError", "type": "string" },
+    { "name": "saving", "type": "boolean" },
+    { "name": "onBook", "type": "() => void" },
+    { "name": "onCancel", "type": "() => void" }
+  ],
+  "root": {
+    "component": "FormPage",
+    "props": {
+      "title": "Book a room",
+      "description": "Pick a room, a time and who to invite.",
+      "onSubmit": { "$": "onBook" },
+      "actions": {
+        "component": "Inline",
+        "props": { "gap": 3, "justify": "end" },
+        "children": [
+          {
+            "component": "Button",
+            "props": {
+              "label": "Cancel",
+              "variant": "ghost",
+              "tone": "neutral",
+              "onClick": { "$": "onCancel" }
+            }
+          },
+          {
+            "component": "Button",
+            "props": {
+              "label": "Book the room",
+              "variant": "solid",
+              "tone": "accent",
+              "type": "submit",
+              "loading": { "$": "saving" }
+            }
+          }
+        ]
+      }
+    },
+    "children": [
+      {
+        "component": "ErrorSummary",
+        "props": { "title": "Check these fields", "errors": { "$": "errors" } }
+      },
+      {
+        "component": "Stack",
+        "props": { "gap": 5 },
+        "children": [
+          {
+            "component": "FormField",
+            "props": { "label": "Room", "required": true, "error": { "$": "roomError" } },
+            "children": [
+              {
+                "component": "Select",
+                "props": {
+                  "name": "room",
+                  "options": { "$": "rooms" },
+                  "placeholder": "Choose a room"
+                }
+              }
+            ]
+          },
+          {
+            "component": "FormField",
+            "props": { "label": "Date" },
+            "children": [{ "component": "DatePicker", "props": { "name": "date" } }]
+          },
+          {
+            "component": "FormField",
+            "props": { "label": "Start" },
+            "children": [
+              { "component": "TimeInput", "props": { "name": "start", "granularity": "minute" } }
+            ]
+          },
+          {
+            "component": "FormField",
+            "props": { "label": "Length" },
+            "children": [
+              {
+                "component": "RadioGroup",
+                "props": {
+                  "name": "length",
+                  "options": { "$": "lengths" },
+                  "orientation": "horizontal"
+                }
+              }
+            ]
+          },
+          {
+            "component": "FormField",
+            "props": { "label": "Invitation note", "description": "Optional." },
+            "children": [{ "component": "Textarea", "props": { "name": "note", "rows": 3 } }]
+          }
+        ]
+      }
+    ]
+  }
+}

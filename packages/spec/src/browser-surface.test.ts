@@ -8,8 +8,10 @@ import { describe, expect, it } from 'vitest'
  *
  * The composer validates documents in the page through three subpaths:
  * `@polymorph/spec/validate`, `@polymorph/spec/schema` and
- * `@polymorph/registry/shape`, which reach `@polymorph/registry/platforms` and
- * `@polymorph/registry/frameworks` for the platform and framework names. They are useful only because they do NOT load
+ * `@polymorph/registry/shape`. A screen drawn at run time (`@polymorph/screen`)
+ * reads those and `@polymorph/spec/action-type`. They reach
+ * `@polymorph/registry/platforms` and `@polymorph/registry/frameworks` for the
+ * platform and framework names. They are useful only because they do NOT load
  * the registry builder's `node:fs`/`typescript` or the emitter's Prettier. This
  * law walks the transitive *value* import graph of each entry and fails on the
  * first node-only module in it. Type-only imports are erased
@@ -21,6 +23,7 @@ const ROOT = resolve(import.meta.dirname, '../../..')
 
 const ENTRIES = {
   '@polymorph/spec/validate': 'packages/spec/src/validate.ts',
+  '@polymorph/spec/action-type': 'packages/spec/src/action-type.ts',
   '@polymorph/spec/schema': 'packages/spec/src/schema.ts',
   '@polymorph/registry/shape': 'packages/registry/src/shape.ts',
 }
@@ -33,6 +36,7 @@ const SUBPATHS: Record<string, string> = {
   '@polymorph/registry/frameworks': 'packages/registry/src/frameworks.ts',
   '@polymorph/spec/schema': 'packages/spec/src/schema.ts',
   '@polymorph/spec/validate': 'packages/spec/src/validate.ts',
+  '@polymorph/spec/action-type': 'packages/spec/src/action-type.ts',
 }
 
 const FORBIDDEN = /^(node:|prettier$|typescript$|jiti$)/

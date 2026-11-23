@@ -1,0 +1,60 @@
+{
+  "spec": "polymorph-screen/1",
+  "name": "RevenueSummary",
+  "purpose": "This quarter's revenue in four numbers, with how each moved.",
+  "inputs": [{ "name": "onOpenReport", "type": "() => void" }],
+  "root": {
+    "component": "Dashboard",
+    "props": {
+      "title": "Revenue",
+      "description": "This quarter, against the last.",
+      "stats": [
+        {
+          "$object": {
+            "label": "Revenue",
+            "value": "€1.24M",
+            "icon": "ledger",
+            "delta": { "$object": { "direction": "up", "value": "12%", "positive": true } }
+          }
+        },
+        {
+          "$object": {
+            "label": "New customers",
+            "value": "318",
+            "trend": { "$object": { "direction": "up", "label": "Up for three months" } }
+          }
+        },
+        {
+          "$object": {
+            "label": "Churn",
+            "value": "2.1%",
+            "delta": { "$object": { "direction": "down", "value": "0.4 pts", "positive": true } }
+          }
+        },
+        {
+          "$object": {
+            "label": "Refunds",
+            "value": "€18K",
+            "footer": { "$object": { "primary": "41 refunds", "secondary": "6 still open" } }
+          }
+        }
+      ],
+      "primary": {
+        "component": "Dashboard.Panel",
+        "props": { "title": "Where it came from" },
+        "children": [
+          { "component": "Text", "children": ["Most of the growth is the Team plan in Europe."] },
+          {
+            "component": "Button",
+            "props": {
+              "label": "Open the full report",
+              "variant": "ghost",
+              "tone": "accent",
+              "onClick": { "$": "onOpenReport" }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -269,6 +269,9 @@ importers:
       '@polymorph/registry':
         specifier: workspace:*
         version: link:../../packages/registry
+      '@polymorph/screen':
+        specifier: workspace:*
+        version: link:../../packages/screen
       '@polymorph/spec':
         specifier: workspace:*
         version: link:../../packages/spec
@@ -550,6 +553,9 @@ importers:
       '@polymorph/elements':
         specifier: workspace:*
         version: link:../elements
+      '@polymorph/screen':
+        specifier: workspace:*
+        version: link:../screen
       '@polymorph/solid':
         specifier: workspace:*
         version: link:../solid
@@ -742,6 +748,9 @@ importers:
       '@polymorph/engine':
         specifier: workspace:*
         version: link:../engine
+      '@polymorph/screen':
+        specifier: workspace:*
+        version: link:../screen
       lucide:
         specifier: ^1.27.0
         version: 1.27.0
@@ -915,6 +924,24 @@ importers:
       vue-eslint-parser:
         specifier: ^10.4.1
         version: 10.4.1(eslint@10.8.0(jiti@2.7.0))
+
+  packages/screen:
+    devDependencies:
+      '@polymorph/conformance':
+        specifier: workspace:*
+        version: link:../conformance
+      '@polymorph/registry':
+        specifier: workspace:*
+        version: link:../registry
+      '@polymorph/spec':
+        specifier: workspace:*
+        version: link:../spec
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vite:
+        specifier: ^8.1.5
+        version: 8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)
 
   packages/shells:
     dependencies:
@@ -1095,9 +1122,6 @@ importers:
       '@internationalized/date':
         specifier: ^3.12.2
         version: 3.12.2
-      '@polymorph/react-ui':
-        specifier: workspace:*
-        version: link:../react-ui
       '@types/react':
         specifier: ^19.2.7
         version: 19.2.17

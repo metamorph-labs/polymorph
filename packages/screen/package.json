@@ -1,0 +1,72 @@
+{
+  "name": "@polymorph/screen",
+  "version": "1.0.16",
+  "description": "The Polymorph design system's screens drawn at run time: a document a model writes, checked, read while it streams and resolved for any renderer, and the card a host puts in the model's prompt. No framework, no DOM, no runtime dependencies.",
+  "keywords": [
+    "polymorph",
+    "design-system",
+    "generative-ui",
+    "llm",
+    "agents",
+    "json",
+    "streaming",
+    "validation",
+    "ui"
+  ],
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./check": "./src/check.ts",
+    "./partial": "./src/partial.ts",
+    "./walk": "./src/walk.ts",
+    "./vocabulary": "./src/vocabulary.ts",
+    "./card": "./src/card.ts"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "NODE_ENV=production vite build --config vite.build.config.ts && tsc -p tsconfig.build.json && node scripts/emit-types.mjs"
+  },
+  "devDependencies": {
+    "@polymorph/conformance": "workspace:*",
+    "@polymorph/registry": "workspace:*",
+    "@polymorph/spec": "workspace:*",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.5"
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "exports": {
+      ".": {
+        "types": "./dist/types/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./check": {
+        "types": "./dist/types/check.d.ts",
+        "import": "./dist/check.js"
+      },
+      "./partial": {
+        "types": "./dist/types/partial.d.ts",
+        "import": "./dist/partial.js"
+      },
+      "./walk": {
+        "types": "./dist/types/walk.d.ts",
+        "import": "./dist/walk.js"
+      },
+      "./vocabulary": {
+        "types": "./dist/types/vocabulary.d.ts",
+        "import": "./dist/vocabulary.js"
+      },
+      "./card": {
+        "types": "./dist/types/card.d.ts",
+        "import": "./dist/card.js"
+      }
+    }
+  },
+  "license": "MIT"
+}

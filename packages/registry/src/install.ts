@@ -579,6 +579,7 @@ export const PUBLISHED_NAMES: Readonly<Record<string, string>> = {
   '@polymorph/angular-ui': '@metamorph-labs/polymorph-angular-ui',
   '@polymorph/elements': '@metamorph-labs/polymorph-elements',
   '@polymorph/elements-ui': '@metamorph-labs/polymorph-elements-ui',
+  '@polymorph/screen': '@metamorph-labs/polymorph-screen',
 }
 
 /**
@@ -615,6 +616,14 @@ export const FRAMEWORK_PACKAGES: readonly string[] = [
   ...ELEMENTS_PACKAGES,
 ]
 
+/**
+ * The packages published for a host that draws a screen a model writes, at
+ * run time: `@polymorph/screen`, the core every run-time renderer shares. No
+ * app install names it. A renderer that draws at run time depends on it, and a
+ * host that only checks documents or builds a prompt installs it by name.
+ */
+export const RUNTIME_PACKAGES: readonly string[] = ['@polymorph/screen']
+
 /** The npm registry the published names live in. A consumer's `.npmrc` points their scope here. */
 export const PUBLISHED_REGISTRY = 'https://npm.pkg.github.com'
 
@@ -633,10 +642,14 @@ export const PUBLISHED_REGISTRY = 'https://npm.pkg.github.com'
  * vendored install copies each recipe beside its member. The Vue, Svelte,
  * Solid, Angular and elements packages (`FRAMEWORK_PACKAGES`) are published too. Each is
  * ranged with its own framework (`readFrameworkPackageVersions`), and a React
- * install never names them.
+ * install never names them. Nor does it name the run-time packages
+ * (`RUNTIME_PACKAGES`).
  */
 export const INSTALLED_PACKAGES = Object.keys(PUBLISHED_NAMES).filter(
-  (name) => name !== RECIPES_PACKAGE && !FRAMEWORK_PACKAGES.includes(name),
+  (name) =>
+    name !== RECIPES_PACKAGE &&
+    !FRAMEWORK_PACKAGES.includes(name) &&
+    !RUNTIME_PACKAGES.includes(name),
 )
 
 /** The directory a workspace package lives in: `@polymorph/vue` -> `packages/vue`. */

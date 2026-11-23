@@ -62,7 +62,9 @@ export function Inbox({ onNewTicket }: { onNewTicket: () => void }) {
   member token-only and complete.
 - **For agents**, the registry describes the whole system in one generated file
   (`registry/system-card.md`), an MCP server exposes it as tools, and screens are written as
-  validated JSON specs and emitted for any web framework, SwiftUI or Compose.
+  validated JSON specs and emitted for any web framework, SwiftUI or Compose. A product can also
+  draw a spec a model writes while it runs, as it streams in, with no build
+  ([docs/run-time-screens.md](docs/run-time-screens.md)).
 
 ## Start
 
@@ -155,6 +157,7 @@ The commands, by what they do:
 | [docs/charts.md](docs/charts.md) | Data visualisation: the chart palette, its laws, the chart members |
 | [docs/layout.md](docs/layout.md) | Container-first responsiveness, the phone register, performance |
 | [docs/conversation.md](docs/conversation.md) | The AI conversation tier |
+| [docs/run-time-screens.md](docs/run-time-screens.md) | Screens a model writes and a product draws while it runs: the run-time card, the renderers, what a document cannot do |
 | [docs/rules.md](docs/rules.md) | The red rules and the exception ladder |
 | [docs/verification.md](docs/verification.md) | Every gate, test project and law, `pnpm proof`, and the agent eval |
 | [docs/tooling.md](docs/tooling.md) | Registry, CLI, MCP server, spec DSL, workbench |
@@ -177,8 +180,8 @@ the owner's step before a release, through either runner, which measure the same
 
 ## Status
 
-The engine, the rules, the recipes, and a foundation and a vocabulary for each web framework
-publish privately to GitHub Packages under the `metamorph-labs` org, and are installed under
+The engine, the rules, the recipes, the run-time screen core, and a foundation and a vocabulary
+for each web framework publish privately to GitHub Packages under the `metamorph-labs` org, and are installed under
 their `@polymorph/*` names
 ([docs/consuming.md](docs/consuming.md#1-registry-access) has the table). The iOS, Android and
 Dart packages are not published to a registry: an app reaches them through a checkout or a git

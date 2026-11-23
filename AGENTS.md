@@ -30,6 +30,9 @@ page written in HTML, SwiftUI on iOS and Jetpack Compose on Android.
   are the native packages: SwiftUI and Compose members written by hand against contracts
   `packages/native` generates. `platforms/dart` holds the tokens only.
 - `packages/rules` holds the red rules that stop application code from making design decisions.
+- `packages/screen` is the run-time core for a screen a model writes and a host draws with no
+  build: the check, the streaming reader, the walk and the run-time card, which
+  `@polymorph/react/screen` and `<poly-screen>` (`@polymorph/elements-ui/screen`) draw from.
 
 [docs/architecture.md](docs/architecture.md) maps every package and platform.
 
@@ -55,11 +58,11 @@ pnpm native:contracts        # regenerate the Swift and Kotlin contracts (--chec
 pnpm emit:native             # regenerate the native token sources (--check: fail if stale)
 pnpm emit:examples           # regenerate the native example screens from their specs (--check)
 pnpm emit <spec.json> [out]  # emit a screen for a web framework, SwiftUI or Compose
-pnpm build:packages          # the published builds of the engine, rules, react and each framework's packages
+pnpm build:packages          # the published builds of the engine, rules, the run-time core, react and each framework's packages
 pnpm size                    # what a consumer ships, against budgets, a page with no build included (needs build:packages; --why)
 pnpm layout                  # the layout measure over every gallery and sample page, at two widths (needs build)
 pnpm new:member <Name> --tier <tier>   # scaffold a new member and every entry it needs (see CONTRIBUTING.md)
-pnpm eval                    # the agent eval against a real model: ANTHROPIC_API_KEY, or --runner cli with Claude Code signed in (--claude <path> for another CLI); costs money or plan usage
+pnpm eval                    # the agent eval against a real model: ANTHROPIC_API_KEY, or --runner cli with Claude Code signed in (--claude <path> for another CLI; --mode runtime for the run-time lane); costs money or plan usage
 pnpm dev / pnpm dev:docs     # the workbench / the docs site
 pnpm site                    # the docs site as static HTML for a static host; fails on a page error or a dead link (--no-build)
 ```
@@ -144,8 +147,8 @@ static-page check, on Firefox and WebKit. There is no hosted CI, so these are th
 - **The ladder is parsed** from [docs/rules.md](docs/rules.md) by
   `packages/registry/src/rulings.ts`. Keep that section's shape.
 - **Generated files are never hand-edited.** Each says what writes it in its header:
-  - `registry/` and `apps/*/src/fonts.gen.ts`: `pnpm registry`, after adding a member or
-    changing which tokens a member reads.
+  - `registry/`, `apps/*/src/fonts.gen.ts` and `packages/screen/src/vocabulary.gen.ts`:
+    `pnpm registry`, after adding a member or changing which tokens a member reads.
   - The Vue, Svelte, Solid and Angular members, their states fixtures, indexes and galleries,
     and each foundation's `Icon` and glyph data, and the elements' definition modules, fixtures,
     index, galleries, `definitions.ts` and `poly-icon`: `pnpm shells`.
@@ -231,5 +234,6 @@ static-page check, on Firefox and WebKit. There is no hosted CI, so these are th
 | What does a spec's behaviour contract say, and where is it run? | [docs/conformance.md](docs/conformance.md) |
 | What may an agent on a page read and do with a member, and how do I declare it? | [docs/agents.md](docs/agents.md), then the member's `## Agent` section |
 | How do I build an AI chat screen? | [docs/conversation.md](docs/conversation.md), then `design/components/chat-thread.md` |
+| How does a product draw a screen a model writes while it runs? | [docs/run-time-screens.md](docs/run-time-screens.md) |
 | CLI, MCP, registry, spec DSL, workbench | [docs/tooling.md](docs/tooling.md) |
 | Native platforms: tokens, members, the screen contract, their laws | [docs/native.md](docs/native.md), then `design/native/screen-contract.md` |

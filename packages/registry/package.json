@@ -11,7 +11,9 @@
     "./platforms": "./src/platforms.ts",
     "./frameworks": "./src/frameworks.ts",
     "./behaviour": "./src/behaviour.ts",
-    "./agent": "./src/agent.ts"
+    "./agent": "./src/agent.ts",
+    "./screen-table": "./src/screen-table.ts",
+    "./runtime-card": "./src/runtime-card.ts"
   },
   "dependencies": {
     "@polymorph/rules": "workspace:*",

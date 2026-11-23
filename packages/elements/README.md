@@ -12,12 +12,26 @@ package does for them.
 - `src/element.ts`: `PolyElement`, the element base class, `define`, which turns a definition and a
   Solid member (and, for a member with a date or a time prop, the temporal codecs) into a custom
   element, `defineLazy`, which defines the tag before its member's code
-  is loaded, and `restore`, which puts back the markup a page wrote. The base class takes the
-  element's children into the member's slots, renders the elements of a document in document
-  order once their code has loaded, follows a swap of its children, dispatches each callback as a
-  `poly-*` event, and replaces a table's or a list's part with the element it renders. A prop
-  named as a method every element inherits (Diff's `before` and `after`) has no property, so the
-  method keeps working, and its attribute sets it (`inheritedMethod`).
+  is loaded, `restore`, which puts back the markup a page wrote, and `fillSlot`, which sets the
+  nodes one slot holds from script. The base class takes the element's children into the member's
+  slots, renders the elements of a document in document order once their code has loaded, follows
+  a swap of its children, dispatches each callback as a `poly-*` event, and replaces a table's or
+  a list's part with the element it renders. A prop named as a method every element inherits
+  (Diff's `before` and `after`) has no property, so the method keeps working, and its attribute
+  sets it (`inheritedMethod`).
+
+  When what a slot holds changes, the member reads the slot again, and each `poly-*` element the
+  slot still holds keeps its rendering: a field inside it keeps its text and its focus, and only
+  the nodes that arrived render. A slot that holds one element is read as a list of one, so a
+  node added beside it goes after it. `fillSlot(element, slot, nodes)` sets one slot's nodes in
+  order (`''` for the children, `footer`, `empty-state.action`), before the member renders or
+  while it renders, on any element, a structural part included; a renderer that draws elements
+  from data places every child this way and writes no markup. A member that throws as it first
+  renders renders nothing, and the members around it render; one that throws as it updates keeps
+  what it had rendered. Either way the element dispatches `poly-error` (`ERROR_EVENT`) with the
+  error, and reports it with `reportError` (`window`'s `error` event and the console) unless a
+  listener cancels the event. An error a member's event handler throws is the browser's uncaught
+  error, as on any page.
 - `src/loader.ts`: what a page with no build loads first: `defineAll`, which defines every tag at
   once, each loading its member's code the first time one of its elements renders, with
   `restore` and `toast`. It defines no element itself.
@@ -34,7 +48,9 @@ package does for them.
 - `src/temporal.ts`: the temporal codecs (`time`, `date`, `range`), which read ISO 8601 text as
   `@internationalized/date`'s values through the engine. The definition module of each member with
   a date or a time prop imports them and gives them to `define`.
-- `src/events.ts`: `PolymorphEvent`, a `CustomEvent` with `waitUntil(promise)`.
+- `src/events.ts`: `PolymorphEvent`, a `CustomEvent` with `waitUntil(promise)` and `args`, every
+  argument the member called its callback with, and `ERROR_EVENT`, the event an element dispatches
+  when its member throws.
 - `src/fixture.ts`: the element-form states fixture's types, and `listen` and `holding`, which its
   `setup` uses.
 - `src/host.css`: `:state(poly-host):not([hidden]) { display: contents }`, the rule that makes an

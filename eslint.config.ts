@@ -72,6 +72,7 @@ export default tseslint.config(
       'packages/rules/fixtures/**',
       // Generated from the catalogue by `pnpm registry`; not hand-lawful code.
       'apps/*/src/fonts.gen.ts',
+      'packages/screen/src/vocabulary.gen.ts',
       // Agent worktrees are whole checkouts of this repository, linted from their own root.
       '.claude/**',
       // Gradle's build outputs for the native packages (test reports carry their own JS).

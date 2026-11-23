@@ -16,7 +16,7 @@ import {
   type ElementEvent,
 } from '@polymorph/elements/definition'
 import type { Registry } from '@polymorph/registry'
-import { unionParts, vueBinding } from '@polymorph/registry/frameworks'
+import { controlledProps, unionParts, vueBinding } from '@polymorph/registry/frameworks'
 
 import type {
   FixtureChild,
@@ -616,12 +616,8 @@ export function elementShape(
       }
     }
   }
-  const controlled: Record<string, string> = {}
-  for (const name of Object.keys(props)) {
-    const change = `on${capital(name)}Change`
-    if (change in events) controlled[name] = change
-    else if (name === 'value' && 'onChange' in events) controlled[name] = 'onChange'
-  }
+  // The rule a screen drawn at run time follows too (`@polymorph/screen`).
+  const controlled = controlledProps(own)
   const overlays = overlaySlots(template)
   const definition: ElementDefinition = {
     tag: tagOf(component.name),

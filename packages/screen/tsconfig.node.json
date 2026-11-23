@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/screen-node.tsbuildinfo",
+    // The tests and the build's node files. Separate from `tsconfig.json` so
+    // the package's own source keeps `"types": []` and no DOM: it must
+    // typecheck with neither in scope. The tests build the registry, which
+    // reaches `@polymorph/theme`'s `runtime.ts` as workspace source, and that
+    // is typed against the DOM.
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"]
+  },
+  "include": ["src/**/*.test.ts", "*.test.ts", "dist-lock.ts", "vite.build.config.ts"]
+}

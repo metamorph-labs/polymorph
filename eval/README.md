@@ -241,3 +241,14 @@ First-shot misses in 2026-11-16-claude-sonnet-5-5-spec.json, in the validator’
 | settings-workspace | 1 | 0 of 1 (0–79%) | 1 of 1 (21–100%) | — | — | — |
 
 With 1 run a brief, no two briefs can be told apart.
+
+## The run-time lane
+
+How a model given only the run-time card and a brief gets on in one request with no tools: how
+often the screen it writes is lawful, how often that screen has every part its brief requires,
+and what it costs in tokens and time. The card is `runtimeCard` from `@polymorph/screen` for the
+framework and members a run names, and the screen is judged with `checkScreen` for the same
+ones. One request is its own first shot, so the lawful rate is printed once. Each time is
+printed with the fastest and the slowest run beside its mean.
+
+No run-time number is recorded: `eval/results/` holds no real run of the run-time lane over every brief. It is measured with `pnpm eval --mode runtime`, with `ANTHROPIC_API_KEY` set or with `--runner cli` and Claude Code signed in.

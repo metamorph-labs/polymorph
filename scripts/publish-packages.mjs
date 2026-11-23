@@ -5,15 +5,15 @@
  * `@polymorph/recipes`, `@polymorph/react-ui`, `@polymorph/vue`,
  * `@polymorph/vue-ui`, `@polymorph/svelte`, `@polymorph/svelte-ui`,
  * `@polymorph/solid`, `@polymorph/solid-ui`, `@polymorph/elements`,
- * `@polymorph/elements-ui`, `@polymorph/angular` and `@polymorph/angular-ui`,
- * as `@metamorph-labs/polymorph-engine`, `@metamorph-labs/polymorph-rules`,
+ * `@polymorph/elements-ui`, `@polymorph/angular`, `@polymorph/angular-ui` and
+ * `@polymorph/screen`, as `@metamorph-labs/polymorph-engine`, `@metamorph-labs/polymorph-rules`,
  * `@metamorph-labs/polymorph-react`, `@metamorph-labs/polymorph-recipes`,
  * `@metamorph-labs/polymorph-react-ui`, `@metamorph-labs/polymorph-vue`,
  * `@metamorph-labs/polymorph-vue-ui`, `@metamorph-labs/polymorph-svelte`,
  * `@metamorph-labs/polymorph-svelte-ui`, `@metamorph-labs/polymorph-solid`,
  * `@metamorph-labs/polymorph-solid-ui`, `@metamorph-labs/polymorph-elements`,
- * `@metamorph-labs/polymorph-elements-ui`, `@metamorph-labs/polymorph-angular`
- * and `@metamorph-labs/polymorph-angular-ui`.
+ * `@metamorph-labs/polymorph-elements-ui`, `@metamorph-labs/polymorph-angular`,
+ * `@metamorph-labs/polymorph-angular-ui` and `@metamorph-labs/polymorph-screen`.
  *
  * Inside this repository the packages keep their `@polymorph/*` names, which
  * every import, test and doc uses. GitHub Packages requires a package's scope to
@@ -99,6 +99,10 @@ const PACKAGES = [
   // Peer-depends on the engine: `./stylelint/emitted` composes a theme to list
   // the tokens that exist.
   { dir: 'packages/rules', bundled: [] },
+  // The run-time core, which a renderer that draws at run time depends on. It has no dependency:
+  // its build inlines the spec's and the registry's pure modules (`packages/screen/vite.build.config.ts`),
+  // types included (`packages/screen/scripts/emit-types.mjs`).
+  { dir: 'packages/screen', bundled: ['@polymorph/registry', '@polymorph/spec'] },
   { dir: 'packages/react', bundled: [] },
   // CSS Modules source, packed as it is: `build: false` skips the build and
   // allows the `src/` directory every other package keeps out of its tarball.

@@ -93,6 +93,11 @@ const definitionModules = filesUnder(SRC).filter((path) =>
   /^[a-z]+\/[A-Z][A-Za-z]+\.ts$/.test(relative(SRC, path)),
 )
 
+/** The run-time screen's modules: `src/screen/*.ts`, without its tests. */
+const screenModules = filesUnder(resolve(SRC, 'screen')).filter(
+  (path) => path.endsWith('.ts') && !path.endsWith('.test.ts'),
+)
+
 /** Whether a published `exports` map resolves a subpath, a pattern's `*` included. */
 function resolves(exports: Manifest['publishConfig']['exports'], subpath: string): boolean {
   return Object.keys(exports).some((entry) =>
@@ -106,7 +111,12 @@ function resolves(exports: Manifest['publishConfig']['exports'], subpath: string
 describe('what the shipped source imports, the manifest declares', () => {
   it('resolves every bare specifier of an element from dependencies', () => {
     const declared = new Set(Object.keys(manifest.dependencies))
-    const shipped = [...definitionModules, resolve(SRC, 'index.ts'), resolve(SRC, 'loaders.ts')]
+    const shipped = [
+      ...definitionModules,
+      resolve(SRC, 'index.ts'),
+      resolve(SRC, 'loaders.ts'),
+      ...screenModules,
+    ]
     const undeclared = shipped.flatMap((path) =>
       importsOf(path)
         .filter((specifier) => !specifier.startsWith('.') && !declared.has(packageOf(specifier)))
@@ -152,9 +162,15 @@ describe('what the shipped source imports, the manifest declares', () => {
         '**/*.css',
         './dist/index.js',
         './dist/*/[A-Z]*.js',
+        './dist/screen/index.js',
         './dist/cdn/**',
       ]),
     )
+  })
+
+  it('publishes the run-time screens at `./screen`, on the run-time core', () => {
+    expect(manifest.exports['./screen']).toBe('./src/screen/index.ts')
+    expect(manifest.dependencies['@polymorph/screen']).toBe('workspace:*')
   })
 
   it('ships its build, its readme and its changelog', () => {
@@ -219,6 +235,19 @@ describe('the published build', () => {
         /\.states\.|galleries|mount|conformance|parity|bridge/.test(relative(DIST, path)),
       ),
     ).toEqual([])
+  })
+
+  it('writes the run-time screens’ entry, which imports its renderer and validator when first used', () => {
+    const entry = resolve(DIST, 'screen/index.js')
+    expect(existsSync(entry)).toBe(true)
+    expect(existsSync(resolve(DIST, 'types/screen/index.d.ts'))).toBe(true)
+    // `<poly-screen>` imports the renderer when one connects, and the validator when one checks.
+    const element = readFileSync(resolve(DIST, 'screen/element.js'), 'utf8')
+    expect(importsOf(resolve(DIST, 'screen/element.js'))).toEqual([])
+    expect(element).toMatch(/import\(["'`]\.\/drawing\.js["'`]\)/)
+    expect(element).toMatch(/import\(["'`]\.\/check\.js["'`]\)/)
+    // The core stays one copy in a consumer's bundle: the build imports it, and compiles none in.
+    expect(importsOf(resolve(DIST, 'screen/draw.js'))).toContain('@polymorph/screen/walk')
   })
 
   /** The modules a bundler reads: every `.js` file of `dist/` but the no-build files. */
@@ -375,7 +404,7 @@ describe('the published build', () => {
       }
     })
 
-    it('export restore, toast and loadAgentBridge from both scripts', () => {
+    it('export restore, toast, loadAgentBridge and loadScreen from both scripts', () => {
       for (const file of ['polymorph.js', 'polymorph-all.js']) {
         const exported = [...cdn(file).matchAll(/export\s*\{([^}]*)\}/g)].flatMap((match) =>
           (match[1] as string).split(',').map((binding) =>
@@ -385,7 +414,7 @@ describe('the published build', () => {
               .at(-1),
           ),
         )
-        expect(exported.sort(), file).toEqual(['loadAgentBridge', 'restore', 'toast'])
+        expect(exported.sort(), file).toEqual(['loadAgentBridge', 'loadScreen', 'restore', 'toast'])
       }
     })
 
@@ -394,7 +423,7 @@ describe('the published build', () => {
     // A tool's name, which the tools' definitions hold.
     const tools = /polymorph_snapshot/
     /** The chunks `polymorph.js` imports when something asks, other than a tag's. */
-    const lazy = (): string[] => {
+    const imported = (): string[] => {
       const tags = new Set(chunks().values())
       return [
         ...new Set(
@@ -404,6 +433,72 @@ describe('the published build', () => {
         ),
       ].filter((file) => !tags.has(file))
     }
+
+    /**
+     * Strings only one part of the run-time screen holds, which the minifier
+     * keeps: the renderer says a node "has no element on this page", the
+     * vocabulary table holds each member's purpose (Alert's is "Inline status
+     * callout"), the validator suggests a name ("did you mean") and the card
+     * opens "# Writing a screen".
+     */
+    const SCREEN = {
+      renderer: /has no element on this page/,
+      table: /Inline status callout/,
+      validator: /did you mean/,
+      card: /# Writing a screen/,
+    }
+    /** The chunks `polymorph.js` imports for a run-time screen: the ones that reach its renderer or its validator. */
+    const screenImports = (): string[] =>
+      imported().filter((file) =>
+        [...reached(file)].some(
+          (reach) => SCREEN.renderer.test(cdn(reach)) || SCREEN.validator.test(cdn(reach)),
+        ),
+      )
+
+    /** The chunks `polymorph.js` imports for the agent bridge and its setting. */
+    const lazy = (): string[] => {
+      const screens = new Set(screenImports())
+      return imported().filter((file) => !screens.has(file))
+    }
+
+    it('keep the run-time screen out of polymorph.js, in chunks a page fetches when it draws or checks one', () => {
+      const first = reached('polymorph.js')
+      for (const [part, marker] of Object.entries(SCREEN)) {
+        expect(
+          [...first].filter((file) => marker.test(cdn(file))),
+          part,
+        ).toEqual([])
+      }
+      // `<poly-screen>` is defined by polymorph.js, and draws through a chunk it imports.
+      expect(cdn('polymorph.js')).toMatch(/["'`]poly-screen["'`]/)
+      const imports = screenImports()
+      // The drawing, the validator `check()` fetches, and what `loadScreen` resolves to.
+      expect(imports).toHaveLength(3)
+      const holding = (file: string, marker: RegExp) =>
+        [...reached(file)].some((reach) => !first.has(reach) && marker.test(cdn(reach)))
+      const drawing = imports.filter(
+        (file) => holding(file, SCREEN.renderer) && !holding(file, SCREEN.card),
+      )
+      expect(drawing).toHaveLength(1)
+      // It is the chunk that dispatches `<poly-screen>`'s events.
+      expect(cdn(drawing[0] as string)).toMatch(/["'`]poly-action["'`]/)
+      // A page that only draws fetches the renderer and the table, and neither the validator nor the card.
+      expect(holding(drawing[0] as string, SCREEN.table)).toBe(true)
+      expect(holding(drawing[0] as string, SCREEN.validator)).toBe(false)
+      expect(holding(drawing[0] as string, SCREEN.card)).toBe(false)
+      // What `loadScreen` resolves to holds all four.
+      const api = imports.filter((file) => holding(file, SCREEN.card))
+      expect(api).toHaveLength(1)
+      for (const marker of Object.values(SCREEN))
+        expect(holding(api[0] as string, marker)).toBe(true)
+      // A Button's chunk holds none of it.
+      const button = reached(chunks().get('poly-button') as string, first)
+      for (const marker of Object.values(SCREEN)) {
+        expect([...button].filter((file) => marker.test(cdn(file)))).toEqual([])
+      }
+      // polymorph-all.js holds every part.
+      for (const marker of Object.values(SCREEN)) expect(cdn('polymorph-all.js')).toMatch(marker)
+    })
 
     it('keep the agent bridge in a chunk a page fetches only when it calls loadAgentBridge or its setting asks', () => {
       const bridged = lazy().filter((file) => bridge.test(cdn(file)))

@@ -2,10 +2,12 @@
  * `polymorph-all.js`, every element in one file for a page with no build
  * (`dist/cdn/`): it defines every `poly-*` tag with its member's code, for a
  * page that prefers one request to loading each member when it is first used.
- * A page's own module script imports `restore`, `toast` and `loadAgentBridge`
- * from it. `loadAgentBridge` resolves to `@polymorph/engine/agent`, the agent
- * bridge, which this file holds with everything else, so the bridge reads the
- * registry the members on this page write to.
+ * A page's own module script imports `restore`, `toast`, `loadAgentBridge`
+ * and `loadScreen` from it. `loadAgentBridge` resolves to
+ * `@polymorph/engine/agent`, the agent bridge, which this file holds with
+ * everything else, so the bridge reads the registry the members on this page
+ * write to. It defines `<poly-screen>` and holds its renderer, the vocabulary
+ * table, the validator and the card, and `loadScreen` resolves to them.
  *
  * A page states when the bridge loads with `<html data-agent>`, which this
  * file reads once, as it runs, and hands to the engine's `applyAgentSetting`.
@@ -22,9 +24,16 @@ import '../index'
 
 import { AGENT_ATTRIBUTE, applyAgentSetting } from '@polymorph/engine/webmcp'
 
+import { definePolyScreen } from '../screen/element'
+
+definePolyScreen()
+
 export { restore, toast } from '@polymorph/elements'
 
 /** Loads the agent bridge: `createAgentBridge`, `agentTools` and `registerWebMCP`. */
 export const loadAgentBridge = () => import('@polymorph/engine/agent')
+
+/** Loads the run-time screens: `drawScreen`, `parsePartial`, `checkScreen`, `runtimeCard` and `outputContract`. */
+export const loadScreen = () => import('../screen/api')
 
 applyAgentSetting(document.documentElement.getAttribute(AGENT_ATTRIBUTE))

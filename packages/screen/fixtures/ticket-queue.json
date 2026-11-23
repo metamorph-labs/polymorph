@@ -1,0 +1,97 @@
+{
+  "spec": "polymorph-screen/1",
+  "name": "TicketQueue",
+  "purpose": "The open tickets as a sortable table, with a menu of bulk commands.",
+  "inputs": [
+    { "name": "tickets", "type": "Ticket[]", "doc": "The rows, as the host's data." },
+    { "name": "sort", "type": "DataTableSort" },
+    { "name": "compact", "type": "boolean" },
+    { "name": "getRowId", "type": "(ticket: Ticket) => string" },
+    { "name": "onSortChange", "type": "(sort: DataTableSort) => void" },
+    { "name": "onRowClick", "type": "(ticket: Ticket) => void" },
+    { "name": "onAssignToMe", "type": "() => void" },
+    { "name": "onCloseResolved", "type": "() => void" },
+    { "name": "onCompactChange", "type": "(checked: boolean) => void" },
+    { "name": "onNewTicket", "type": "() => void" }
+  ],
+  "root": {
+    "component": "ListPage",
+    "props": {
+      "title": "Open tickets",
+      "emptyState": {
+        "$object": {
+          "title": "No open tickets",
+          "description": "Every ticket has an answer.",
+          "icon": "inbox",
+          "action": {
+            "component": "Button",
+            "props": { "label": "New ticket", "icon": "add", "onClick": { "$": "onNewTicket" } }
+          }
+        }
+      },
+      "actions": {
+        "component": "Menu",
+        "props": {
+          "trigger": {
+            "component": "Button",
+            "props": { "label": "Commands", "variant": "outline", "tone": "neutral" }
+          },
+          "items": [
+            {
+              "$object": {
+                "label": "Assign all to me",
+                "icon": "user",
+                "onSelect": { "$": "onAssignToMe" }
+              }
+            },
+            { "$object": { "kind": "separator" } },
+            { "$object": { "kind": "label", "label": "View" } },
+            {
+              "$object": {
+                "kind": "checkbox",
+                "label": "Compact rows",
+                "checked": { "$": "compact" },
+                "onCheckedChange": { "$": "onCompactChange" }
+              }
+            },
+            {
+              "$object": {
+                "label": "Close resolved",
+                "tone": "danger",
+                "onSelect": { "$": "onCloseResolved" }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "children": [
+      {
+        "component": "DataTable",
+        "props": {
+          "label": "Open tickets",
+          "data": { "$": "tickets" },
+          "getRowId": { "$": "getRowId" },
+          "sort": { "$": "sort" },
+          "onSortChange": { "$": "onSortChange" },
+          "onRowClick": { "$": "onRowClick" },
+          "stickyHeader": true,
+          "columns": [
+            { "$object": { "key": "subject", "header": "Subject", "sortable": true } },
+            { "$object": { "key": "requester", "header": "Requester" } },
+            { "$object": { "key": "priority", "header": "Priority", "sortable": true } },
+            {
+              "$object": {
+                "key": "age",
+                "header": "Age (hours)",
+                "numeric": true,
+                "sortable": true
+              }
+            }
+          ],
+          "emptyState": { "$object": { "title": "No tickets match", "icon": "search" } }
+        }
+      }
+    ]
+  }
+}

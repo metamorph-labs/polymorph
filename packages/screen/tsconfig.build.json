@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Types only. Vite emits the JavaScript (`vite.build.config.ts`).
+    //
+    // `tsc` writes declarations relative to the common root of its inputs,
+    // and the inputs include the spec's and the registry's pure modules,
+    // which the build inlines. So declarations land under `dist/.tsc/` by
+    // their repository paths, and `scripts/emit-types.mjs` moves them into
+    // `dist/types/`, the inlined ones under `_internal/`.
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "declarationMap": false,
+    "outDir": "dist/.tsc",
+    "incremental": false,
+    "tsBuildInfoFile": null
+  }
+}

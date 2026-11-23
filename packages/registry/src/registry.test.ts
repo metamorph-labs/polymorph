@@ -69,6 +69,7 @@ describe('the registry validates against its own published schema', () => {
       'platforms',
       'frameworks',
       'components',
+      'dataTypes',
       'vendor',
       'packages',
       'icons',
@@ -327,6 +328,73 @@ describe('the prop surfaces are the real ones', () => {
     expect(byName.get('Checkbox')?.exports).toEqual([])
     expect(byName.get('FormField')?.exports.map((entry) => entry.name)).toEqual(['ToastFormField'])
     expect(byName.get('Button')?.exports).toEqual([])
+  })
+})
+
+describe('the data types come from the types the props name', () => {
+  const byName = new Map(registry.dataTypes.map((type) => [type.name, type]))
+  const field = (type: string, name: string) =>
+    byName.get(type)?.fields.find((candidate) => candidate.name === name)
+
+  it('lists each once, sorted by name', () => {
+    const names = registry.dataTypes.map(({ name }) => name)
+    expect(names).toEqual([...new Set(names)].sort((a, b) => a.localeCompare(b)))
+  })
+
+  it('gives an option, a column, a stat and a menu entry their fields', () => {
+    expect(field('SelectOption', 'value')).toMatchObject({ type: 'string', optional: false })
+    expect(field('SelectOption', 'label')).toMatchObject({ type: 'string', optional: false })
+    // A generic type keeps its parameter, as a field's type names it.
+    expect(byName.get('DataTableColumn')?.params).toEqual(['Row'])
+    expect(field('DataTableColumn', 'cell')?.type).toContain('(row: Row) => ReactNode')
+    expect(field('StatProps', 'label')).toMatchObject({ optional: false })
+    expect(field('MenuItemEntry', 'onSelect')).toMatchObject({
+      type: '() => void',
+      optional: false,
+    })
+  })
+
+  it('names the members of a union of named types, each a data type of its own', () => {
+    const entry = byName.get('MenuEntry')
+    expect(entry?.fields).toEqual([])
+    expect(entry?.union).toContain('MenuItemEntry')
+    for (const type of registry.dataTypes) {
+      for (const member of type.union ?? [])
+        expect(byName.has(member), `${type.name}: ${member}`).toBe(true)
+    }
+  })
+
+  it('reaches a type nested in another, and none a node’s type argument names', () => {
+    // `SelectOptionGroup.options` is `SelectOption[]`; `FormField` takes an element whose props
+    // are `FormFieldControlProps`, which is not data a screen writes.
+    expect(field('SelectOptionGroup', 'options')?.type).toBe('SelectOption[]')
+    expect(byName.has('SelectOption')).toBe(true)
+    expect(byName.has('FormFieldControlProps')).toBe(false)
+    // A type a dependency declares is not the vocabulary's to describe.
+    expect(byName.has('CalendarDate')).toBe(false)
+    expect(byName.has('ReactElement')).toBe(false)
+  })
+
+  it('lists the own types the printed props name', () => {
+    const declared = new Set(registry.dataTypes.map(({ name }) => name))
+    // Each name in this list is printed by some member's prop, and is a type the vocabulary declares.
+    for (const name of [
+      'TabDescriptor',
+      'TimelineEvent',
+      'DescriptionListItem',
+      'RadioOption',
+      'ChartSeries',
+    ]) {
+      expect(declared.has(name), name).toBe(true)
+      expect(
+        registry.components.some((component) =>
+          [...component.props, ...component.parts.flatMap((part) => part.props)].some((prop) =>
+            new RegExp(`\\b${name}\\b`).test(prop.type),
+          ),
+        ),
+        name,
+      ).toBe(true)
+    }
   })
 })
 

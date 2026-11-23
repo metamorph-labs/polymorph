@@ -162,7 +162,7 @@ imports.
 | data: an array, an object, a named data type | a JSON attribute (`options='[{"value":"low","label":"Low"}]'`), or the property set to the value; data whose type holds a function (a messages catalogue with plural functions) is the property only |
 | a callback an item of data requires (a Menu item's `onSelect`) | left out of the JSON, the element completes it: the event `poly-select` on the element, with `detail` `{ item, index }` and `value` where the member passes one |
 | `Time`, `CalendarDate`, `CalendarDateTime`, a range of dates | an ISO 8601 attribute (`09:30`, `2026-07-15`, `2026-07-15T09:30`, `2026-07-01/2026-07-15`), or the property, set to the engine's value or to that text. On a page that loads a member's code when one of its elements first renders (`polymorph.js`), the property reads `undefined` until that code has loaded |
-| event prop `onFoo: (payload) => void` | the event `poly-foo` (`onOpenChange` is `poly-open-change`): a `PolymorphEvent` whose `detail` is the callback's first argument, or `null`; it bubbles and is composed |
+| event prop `onFoo: (payload) => void` | the event `poly-foo` (`onOpenChange` is `poly-open-change`): a `PolymorphEvent` whose `detail` is the callback's first argument, or `null`, and whose `args` is every argument the member passed, so `[null]` and `[]` differ; it bubbles and is composed |
 | a controlled prop and its change event (`value` and `onChange`, `open` and `onOpenChange`) | the element follows the reader: after the change event, unless a listener calls `preventDefault()`, the element sets its own property to the new value, so `el.value` reads the current value. A controlled prop the page never set leaves the member uncontrolled, and the property reads the value the member last reported |
 | a prop named as a method every element inherits (Diff's `before` and `after`) | the attribute only: the element has no property of that name, so `el.before()` is still `ChildNode.before()` |
 | `children` | the element's content |
@@ -194,6 +194,29 @@ development. The elements need Chrome 125, Safari 17.4 or Firefox 126, because t
 with a custom state (`:state()`); an older engine draws each element as an inline box, and a
 layout through one breaks. [consuming.md](consuming.md#a-page-with-no-build) says how a page loads
 them and what it can set only from script.
+
+An element observes its own children, and a slot is read again when what it holds changes. Each
+`poly-*` element the slot still holds keeps its rendering, so a field among them keeps its text
+and its focus, and only the nodes that arrived render. A slot that holds one element is read as a
+list of one, so a node added beside it goes after it, and a slot that holds one text is read as
+the string. A script places nodes in a slot with `fillSlot(element, slot, nodes)`, exported by
+`@polymorph/elements`: `slot` is the slot as a `slot` attribute names it (`''` for the children,
+`footer`, `empty-state.action`), on any element, a table's or a list's part included, before or
+after the member renders. The placed nodes replace what the page wrote in that slot and are not
+the element's children, so `restore` puts back only what the page wrote. The run-time renderer
+places every child this way and writes no markup.
+
+A member that throws as it first renders renders nothing, and the members around it render. One
+that throws as it updates (an effect that runs again when a prop changes) keeps what it had
+rendered. Either way the element dispatches `poly-error`, which does not bubble, with the error as
+`detail`. Unless a listener cancels the event, the error is reported as an uncaught error is
+(`reportError`), so `window`'s `error` event and an error monitor see it. An error a member's
+event handler throws is the browser's uncaught error, with no `poly-error`.
+
+A screen a model writes while the product runs is drawn as elements by `<poly-screen>`. Vue,
+Svelte, Solid and Angular have no run-time renderer of their own, so a page in any of them uses
+`<poly-screen>`: it imports `@polymorph/elements-ui/screen` once and writes the element as it
+writes any custom element ([run-time-screens.md](run-time-screens.md)).
 
 ## Another library's component
 

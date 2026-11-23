@@ -1,4 +1,5 @@
 import {
+  catchError,
   createComponent,
   createMemo,
   createRenderEffect,
@@ -29,7 +30,7 @@ import {
   type ElementProperties,
   type PropertyName,
 } from './definition'
-import { PolymorphEvent } from './events'
+import { ERROR_EVENT, PolymorphEvent } from './events'
 
 /**
  * The element base class: a page-written `poly-*` element that renders its
@@ -88,6 +89,14 @@ import { PolymorphEvent } from './events'
  *   itself. A controlled prop the page holds no value for leaves the member
  *   uncontrolled, as an absent prop leaves a React member, and its property
  *   reads the value the member last reported.
+ * - **Errors.** A member that throws as it first renders renders nothing, and
+ *   the members around it render as they would. One that throws as it updates
+ *   (an effect that runs again) keeps what it had rendered, and the effect
+ *   that threw stops. Either way the element dispatches `poly-error` with the
+ *   error as `detail`, and reports the error as an uncaught error is
+ *   (`reportError`) unless a listener cancels the event. An error a member's
+ *   event handler throws is the browser's, as on any page: Solid runs the
+ *   handler outside the member's rendering.
  * - **Listening.** A member that asks whether its caller handles an event
  *   (`listening`) is told so while a listener for it is added through the
  *   element's `addEventListener`, or while the `listens` attribute names it
@@ -96,7 +105,14 @@ import { PolymorphEvent } from './events'
  *   node the page adds before or after the member's rendering joins the slot
  *   its `slot` attribute names. A child the page removes through the element
  *   (`removeChild`) leaves its slot. A swap that replaces the element's
- *   children renders the member again from the new ones.
+ *   children renders the member again from the new ones. A slot that is read
+ *   again, because what one of the element's slots holds changed, keeps the
+ *   rendering of each `poly-*` element it still holds, so a node added beside
+ *   a field leaves the field, its text and its focus as they were.
+ * - **Content a script places.** `fillSlot` sets the nodes one slot holds, in
+ *   order, in place of what the page wrote there, before or after the member
+ *   renders, on any element, a structural part included. A renderer that draws
+ *   elements from data places every child this way and writes no markup.
  * - **Structural parts.** A table's section, row or cell, a list's item: its
  *   member renders the part's root (`<tr>`) where the element was, and the
  *   element, out of the document, stays the part's controller. Its attributes
@@ -188,11 +204,23 @@ function loadOf(type: object | undefined): Promise<void> | null {
   return entry.loading
 }
 
-/** The loads an element's member and the members of the elements inside it wait for. */
+/** The nodes a script placed in an element's slots (`fillSlot`), which the class gives this module. */
+let placedIn: (element: PolyElement) => Iterable<readonly Node[]> = () => []
+/** Places nodes in an element's slot; the class gives this module its private entry. */
+let fill: (element: PolyElement, slot: string, nodes: readonly Node[]) => void = () => {}
+
+/**
+ * The loads an element's member and the members of the elements inside it
+ * wait for: the elements in its markup and the elements placed in its slots.
+ */
 function loadsWithin(root: Element | DocumentFragment, loads: Set<Promise<void>>): void {
   const visit = (element: Element) => {
     const loading = loadOf(customElements.get(element.localName))
     if (loading !== null) loads.add(loading)
+    if (!(element instanceof PolyElement)) return
+    for (const nodes of placedIn(element)) {
+      for (const node of nodes) if (node instanceof Element) loadsWithin(node, loads)
+    }
   }
   if (root instanceof Element) visit(root)
   for (const element of root.querySelectorAll('*')) {
@@ -257,6 +285,39 @@ function schedule(element: PolyElement): void {
 const RENDER = Symbol('render')
 /** A slot's entry into an element it holds: the element renders inside the slot. */
 const ADOPT = Symbol('adopt')
+/** The entry that disposes an adopted element no slot read again. */
+const SETTLE = Symbol('settle')
+
+/* -------------------------------------------------------------------------- */
+/* Release                                                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Adopted elements whose slot let go of them: the computation that read the
+ * slot was cleaned, to run again or to end. One that runs again reads the
+ * slot again and takes back each element it still holds, with its rendering.
+ * Each one nothing took back is disposed when the change that let go of it
+ * has run: at once after a change the element base class makes itself, and a
+ * microtask later after any other.
+ */
+const RELEASED = new Set<PolyElement>()
+let settling = false
+
+function release(element: PolyElement): void {
+  RELEASED.add(element)
+  if (settling) return
+  settling = true
+  queueMicrotask(settle)
+}
+
+/** Disposes every released element nothing took back. */
+function settle(): void {
+  settling = false
+  if (RELEASED.size === 0) return
+  const released = [...RELEASED]
+  RELEASED.clear()
+  for (const element of released) element[SETTLE]()
+}
 
 /* -------------------------------------------------------------------------- */
 /* Adoption                                                                    */
@@ -267,14 +328,14 @@ const ADOPT = Symbol('adopt')
  * part's root. An element whose member's code the queue did not load first (a
  * node a script added to a slot later) renders there once the code has loaded.
  */
-function Hosted(props: { element: PolyElement }): JSX.Element {
-  const element = props.element
+function Hosted(props: { element: PolyElement; reader: Owner | null }): JSX.Element {
+  const { element, reader } = props
   const loading = loadOf(element.constructor)
-  if (loading === null) return element[ADOPT]()
+  if (loading === null) return element[ADOPT](reader)
   const [loaded, setLoaded] = createSignal(false)
   void loading.then(() => setLoaded(true))
   return createMemo(() =>
-    loaded() ? untrack(() => element[ADOPT]()) : undefined,
+    loaded() ? untrack(() => element[ADOPT](reader)) : undefined,
   ) as unknown as JSX.Element
 }
 
@@ -287,13 +348,18 @@ function outermost(node: Element, out: PolyElement[] = []): PolyElement[] {
   return out
 }
 
-/** One node of a slot as the member reads it. */
+/**
+ * One node of a slot as the member reads it. The computation that reads the
+ * slot is the element's reader: when it reads the slot again, the element
+ * keeps its rendering.
+ */
 function content(node: Node): JSX.Element {
-  if (node instanceof PolyElement) return createComponent(Hosted, { element: node })
+  const reader = getOwner()
+  if (node instanceof PolyElement) return createComponent(Hosted, { element: node, reader })
   if (node.nodeType === Node.TEXT_NODE) return (node as Text).data
   // A member inside a plain element is made with the slot's content, as JSX makes it.
   if (node instanceof Element)
-    for (const inner of outermost(node)) createComponent(Hosted, { element: inner })
+    for (const inner of outermost(node)) createComponent(Hosted, { element: inner, reader })
   return node as JSX.Element
 }
 
@@ -413,11 +479,20 @@ export class PolyElement extends Base {
   #slotted: [Element, string][] = []
   /** Each captured child, with its slot and the nodes it gave that slot (a template's content). */
   #given = new Map<Node, { slot: string; nodes: readonly Node[] }>()
+  /** The nodes a script placed in each slot (`fillSlot`), by slot prop, kept across renders. */
+  readonly #placed = new Map<string, readonly Node[]>()
+
+  static {
+    placedIn = (element) => element.#placed.values()
+    fill = (element, slot, nodes) => element.#fill(slot, nodes)
+  }
 
   /** Disposes the member's rendering, while it renders. */
   #dispose: (() => void) | null = null
   /** The owner a slot that adopted the element renders it under. */
   #owner: Owner | null = null
+  /** The computation that read the slot that adopted the element. */
+  #reader: Owner | null = null
   /** The adoption that renders the element now, so an earlier one's cleanup leaves it alone. */
   #hosting: object | null = null
   #standalone = false
@@ -766,6 +841,7 @@ export class PolyElement extends Base {
         const controls = this.#controls.get(prop)
         const event = new PolymorphEvent(type, {
           detail: args.length === 0 || args[0] === undefined ? null : args[0],
+          args,
           bubbles: true,
           composed: true,
           cancelable: controls !== undefined,
@@ -889,9 +965,38 @@ export class PolyElement extends Base {
     this.#slotted = []
     this.#given = new Map()
     for (const node of original) this.#take(node, slots, 'end')
+    // What a script placed in a slot takes the place of what the page wrote there.
+    for (const [key, nodes] of this.#placed) {
+      if (nodes.length === 0) slots.delete(key)
+      else slots.set(key, [...nodes])
+    }
     this.replaceChildren()
     this.#original = original
     this.#captured[1](slots)
+  }
+
+  /**
+   * Sets the nodes a slot holds (`fillSlot`). Before the member renders, they
+   * wait for it; while it renders, the member reads the slot again, which
+   * keeps each element still there rendered as it was.
+   */
+  #fill(slot: string, nodes: readonly Node[]): void {
+    const key = slotProp(slot)
+    const placed = [...nodes]
+    this.#placed.set(key, placed)
+    const captured = untrack(this.#captured[0])
+    if (captured === null) return
+    const before = captured.get(key) ?? []
+    const slots = new Map<string, readonly Node[]>(captured)
+    if (placed.length === 0) slots.delete(key)
+    else slots.set(key, placed)
+    this.#captured[1](slots)
+    settle()
+    // A node the member still has in its rendering once it has read the slot again is removed here.
+    const rendering = this.#root ?? this
+    for (const node of before) {
+      if (!placed.includes(node) && rendering.contains(node)) (node as ChildNode).remove()
+    }
   }
 
   /** Adds one node the page wrote to its slot, at its start or its end. */
@@ -941,17 +1046,24 @@ export class PolyElement extends Base {
       element.setAttribute('slot', name)
     }
     this.#captured[1](slots)
+    settle()
     // A node the member still has in the document once it has read the slot again is removed here.
     for (const node of [...given.nodes, taken]) (node as ChildNode).remove()
     return child
   }
 
-  /** A slot as the member reads it: `undefined` when the page put nothing in it. */
+  /**
+   * A slot as the member reads it: `undefined` when the page put nothing in
+   * it, the text alone when it holds one text, and otherwise a list. A slot
+   * that holds one element is a list of one, so a second node added beside it
+   * is inserted after it, and the element is not taken out of the document
+   * and put back, which would take the focus from a field inside it.
+   */
   #slot(prop: string): JSX.Element | undefined {
     const nodes = this.#captured[0]()?.get(prop)
     if (nodes === undefined || nodes.length === 0) return undefined
     const read = nodes.map(content)
-    return read.length === 1 ? read[0] : read
+    return read.length === 1 && typeof read[0] === 'string' ? read[0] : read
   }
 
   /* rendering -------------------------------------------------------------- */
@@ -984,23 +1096,57 @@ export class PolyElement extends Base {
     this.#mount()
   }
 
-  [ADOPT](): JSX.Element {
+  /** Renders the element inside the slot `reader` reads (`content`). */
+  [ADOPT](reader: Owner | null): JSX.Element {
+    const owner = getOwner()
+    if (this.#reclaims(reader)) {
+      // The slot that holds the element read it again: it keeps its rendering.
+      RELEASED.delete(this)
+      this.#owner = owner
+      this.#host()
+      return this.#definition.structural === true ? this.#rendered : this
+    }
     if (this.#dispose !== null) this.#teardown()
     // A member whose code failed to load renders nothing; the failure was reported.
     if ((this.constructor as typeof PolyElement).component === undefined) {
       return this.#definition.structural === true ? null : this
     }
+    this.#host()
+    this.#adopted = true
+    this.#owner = owner
+    this.#reader = reader
+    this.#mount()
+    return this.#definition.structural === true ? this.#rendered : this
+  }
+
+  /**
+   * Whether a slot reading the element takes back the rendering a read of the
+   * same slot let go of: the element was released, and the computation that
+   * reads the slot now is the one that read it before, run again.
+   */
+  #reclaims(reader: Owner | null): boolean {
+    return (
+      this.#dispose !== null &&
+      this.#adopted &&
+      this.#hosting === null &&
+      reader !== null &&
+      reader === this.#reader
+    )
+  }
+
+  /** Ties the element to the slot's current read: when the read is cleaned, the element is released. */
+  #host(): void {
     const token = {}
     this.#hosting = token
-    this.#adopted = true
-    this.#owner = getOwner()
-    this.#mount()
     onCleanup(() => {
       if (this.#hosting !== token) return
       this.#hosting = null
-      this.#teardown()
+      release(this)
     })
-    return this.#definition.structural === true ? this.#rendered : this
+  }
+
+  [SETTLE](): void {
+    if (this.#hosting === null && this.#adopted) this.#teardown()
   }
 
   /** Renders the member: in a root of its own, under the slot that adopted the element if one did. */
@@ -1021,7 +1167,11 @@ export class PolyElement extends Base {
     createRoot(
       (dispose) => {
         this.#dispose = dispose
-        const rendered = createComponent(component, this.#props)
+        // A member that throws renders nothing, and the members around it render as they would.
+        const rendered = catchError(
+          () => createComponent(component, this.#props),
+          (error: unknown) => this.#fail(error),
+        )
         if (this.#definition.structural === true) {
           this.#rendered = rendered
           createRenderEffect(() => this.#rootIs(firstElement(rendered)))
@@ -1041,6 +1191,20 @@ export class PolyElement extends Base {
     notify(this, 'render')
   }
 
+  /**
+   * Reports an error the member threw as it rendered or as it updated:
+   * `poly-error` on the element, with the error as `detail`, and, unless a
+   * listener cancels the event, as an uncaught error is reported, to
+   * `window`'s `error` event (which error monitors read) and the console.
+   */
+  #fail(error: unknown): void {
+    const event = new PolymorphEvent(ERROR_EVENT, { detail: error, cancelable: true })
+    event.dispatchOn(this)
+    if (event.defaultPrevented) return
+    if (typeof reportError === 'function') reportError(error)
+    else console.error(`polymorph: the member of <${this.#definition.tag}> threw`, error)
+  }
+
   /** Disposes the member and puts the page's children back. */
   #teardown(): void {
     const dispose = this.#dispose
@@ -1051,6 +1215,8 @@ export class PolyElement extends Base {
     this.#attributeList?.disconnect()
     this.#attributeList = null
     dispose()
+    // The elements the member's slots held are disposed with it, before the page's children are back.
+    settle()
     this.#rootIs(null)
     this.#rendered = null
     this.#markers = null
@@ -1063,6 +1229,7 @@ export class PolyElement extends Base {
     this.#captured[1](null)
     this.#standalone = false
     this.#adopted = false
+    this.#reader = null
     // The element holds the page's children again, as it did before it rendered.
     this.#internals?.states.delete('poly-host')
     // The attributes the member's props took off go back, so the page's markup is whole again.
@@ -1092,6 +1259,7 @@ export class PolyElement extends Base {
       this.#dispose = null
       this.#childList?.disconnect()
       dispose?.()
+      settle()
       this.#markers = null
       this.#original = null
       this.#slotted = []
@@ -1129,6 +1297,7 @@ export class PolyElement extends Base {
     }
     this.#childList?.takeRecords()
     this.#captured[1](slots)
+    settle()
   }
 
   /* structural parts ------------------------------------------------------- */
@@ -1215,6 +1384,29 @@ export function defineLazy(
   load: () => Promise<unknown>,
 ): typeof PolyElement {
   return PolyElement.defineLazy(definition, load)
+}
+
+/**
+ * Sets the nodes one slot of an element holds, in order, in place of what the
+ * page wrote there: `slot` is the slot as a `slot` attribute names it (`''`
+ * for the children, `footer`, `empty-state.action`), and each node is text,
+ * a `poly-*` element or a plain node, as a child the page wrote would be. It
+ * works before the member renders and while it renders, on a structural part
+ * as on any other element. Each `poly-*` element the slot held before and
+ * still holds keeps its rendering; one it no longer holds is disposed. An
+ * empty list empties the slot.
+ *
+ * A placed node is not a child of the element: `restore` puts back only what
+ * the page wrote, and the slot holds the placed nodes again when the member
+ * renders again.
+ */
+export function fillSlot(element: Element, slot: string, nodes: readonly Node[]): void {
+  if (!(element instanceof PolyElement)) {
+    throw new TypeError(
+      `fillSlot fills a slot of a defined poly-* element, and <${element.localName}> is not one`,
+    )
+  }
+  fill(element, slot, nodes)
 }
 
 /**

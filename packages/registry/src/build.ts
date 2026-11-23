@@ -33,11 +33,13 @@ import {
   readFrameworkDocuments,
   readFrameworkMap,
   readPlatformDocuments,
+  readDataTypes,
   readPlatformMap,
   readVocabulary,
   vocabularyNames,
   type ExceptionPrimitive,
   type RegistryComponent,
+  type RegistryDataType,
 } from './vocabulary'
 
 /**
@@ -70,6 +72,12 @@ export interface Registry {
    */
   frameworks: Framework[]
   components: RegistryComponent[]
+  /**
+   * Every named data type the members' props take (`SelectOption`,
+   * `DataTableColumn<Row>`), with its fields, sorted by name: what a reader
+   * with no compiler needs to write one.
+   */
+  dataTypes: RegistryDataType[]
   vendor: {
     root: string
     /**
@@ -248,6 +256,7 @@ export function buildRegistry(root: string): Registry {
     platforms: [...PLATFORMS],
     frameworks: [...FRAMEWORKS],
     components,
+    dataTypes: readDataTypes(ui),
     vendor: {
       root: VENDOR_ROOT,
       recipes: { package: RECIPES_PACKAGE, root: RECIPES_ROOT },

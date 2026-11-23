@@ -2,8 +2,8 @@
 
 The React foundation a consumer **installs**. It re-exports
 [`@polymorph/engine`](../engine/README.md) whole and adds the parts that only exist in React: the
-icon gateway, the motion presence components, the hooks, and the conventions typed with React's
-element types. Components render the UI, and a consumer either links them
+icon gateway, the motion presence components, the hooks, the conventions typed with React's
+element types, and the renderer of a screen a model writes. Components render the UI, and a consumer either links them
 ([`@polymorph/react-ui`](../react-ui/README.md)) or vendors them as source it owns
 ([docs/consuming.md](../../docs/consuming.md)). This package stays a versioned dependency in both
 cases and is never edited downstream: a vendored member imports it and nothing deeper.
@@ -40,6 +40,25 @@ It contains:
   engine resolves it and runs it on the browser's Web Animations API, with no animation library.
   The subpath is for member internals, so it is not a root export. Application code composes
   members and never sees a duration or a spring. See [docs/motion.md](../../docs/motion.md).
+- **The run-time screen renderer** (`@polymorph/react/screen`): `ScreenView` draws a
+  `polymorph-screen/1` document a model writes, or the model's answer as text while it streams,
+  with the members the application passes, at run time and with no build. Everything a document
+  may do is decided by [`@polymorph/screen`](../screen/README.md), the core every renderer shares:
+  the walk, the fill of its inputs, its actions, the controls that follow the reader, its faults,
+  when a streamed element is drawn (once the props it requires are written, from where the text
+  ends: `parsePartial`'s `cut`) and how a member takes its children. This subpath draws what the
+  core resolves: each node keyed by its path and memoized on it, so a longer document, new data or
+  the reader's input mounts nothing twice, and each inside its own error boundary. A host that
+  reads the stream itself passes `document` with `parsePartial`'s `cut` and `open`. A server
+  renders no error boundary, so the screen is drawn inside one Suspense boundary: a member that
+  throws on the server (`renderToString`, `renderToPipeableStream`) leaves the screen's place
+  for the browser to draw, empty or holding `fallback` when the host gives one, and the page around
+  it is still served. In the browser the same
+  boundary shows `fallback` (nothing by default) while a member that is not lazy suspends, so a
+  host's own Suspense boundary above `ScreenView` does not see it. `useScreen` and `ScreenDrawing` are its two halves, and `componentFor`
+  is the rule a name resolves by among the members. The foundation knows no member, so the
+  application passes them (`import * as members from '@polymorph/react-ui'`). The subpath is not a
+  root export, so an application that imports the root loads none of it.
 
 ## Entry points
 
@@ -51,6 +70,7 @@ maps the published subpaths onto it:
 | ---------------------------------- | -------------------------- | ---------------------------------------------------------- |
 | `@polymorph/react`                 | `src/index.ts`             | `dist/index.js`, `dist/types/index.d.ts`                   |
 | `@polymorph/react/motion`          | `src/motion/index.ts`      | `dist/motion.js`, `dist/types/motion/index.d.ts`           |
+| `@polymorph/react/screen`          | `src/screen/index.ts`      | `dist/screen.js`, `dist/types/screen/index.d.ts`           |
 | `@polymorph/react/icon.module.css` | `src/icon/icon.module.css` | — (in-repo only)                                           |
 | `@polymorph/react/style.css`       | —                          | `dist/react.css` (Icon's stylesheet, which `Icon` imports) |
 
@@ -62,11 +82,11 @@ entry therefore stays importable by plain Node, and an application that renders 
 stylesheet by hand. The `./style.css` entry names the same file, for an application that imports
 it already.
 
-The build keeps `@polymorph/engine`, `lucide` and React external, and preserves modules so each
-keeps its own `'use client'` directive. The presence components and the hooks carry one; `Icon`
-and the entries do not, so `Icon` stays a server component and the engine stays out of a
-consumer's client bundle. The declarations name `@polymorph/engine`, which the consumer resolves
-from their own install.
+The build keeps `@polymorph/engine`, `@polymorph/screen`, `lucide` and React external, and
+preserves modules so each keeps its own `'use client'` directive. The presence components, the
+hooks and the screen renderer's drawing carry one; `Icon` and the entries do not, so `Icon` stays a
+server component and the engine stays out of a consumer's client bundle. The declarations name
+`@polymorph/engine` and `@polymorph/screen`, which the consumer resolves from their own install.
 
 ## Dependencies and peers
 
@@ -74,20 +94,26 @@ from their own install.
 | -------------------- | --------- | ------------------------------------------------------ |
 | `react`, `react-dom` | `^19.0.0` | everything that renders (members take `ref` as a prop) |
 
-Dependencies: [`@polymorph/engine`](../engine/README.md) and `lucide` (glyph data only, no
-components). There is no animation library. The motion engine uses the browser's.
+Dependencies: [`@polymorph/engine`](../engine/README.md),
+[`@polymorph/screen`](../screen/README.md) (loaded only by `@polymorph/react/screen`) and `lucide`
+(glyph data only, no components). There is no animation library. The motion engine uses the
+browser's.
 
 ## Tests
 
 ```sh
-pnpm exec vitest run packages/react/src                # chromium via Playwright
-pnpm exec vitest run packages/react/packaging.test.ts  # node: runs the real build
+pnpm exec vitest run packages/react/src                    # chromium via Playwright
+pnpm exec vitest run packages/react/packaging.test.ts      # node: runs the real build
+pnpm exec vitest run packages/react/screen-server.test.ts  # node: a screen rendered on a server
 ```
 
 The browser tests, in the `core` vitest project, cover the icon gateway and `BrandMark`, the
-presence components, the control hook and the development warnings.
-`packaging.test.ts` builds `dist/` and checks that every published export resolves, the engine is
-re-exported rather than bundled, `'use client'` directives survive, no undeclared package is
-imported, and the declarations typecheck as a strict consumer reads them. It holds
+presence components, the control hook, the development warnings and the screen renderer. The
+screen renderer's tests draw with the real vocabulary, which they import by path, since the
+foundation does not depend on it.
+`packaging.test.ts` builds `dist/` and checks that every published export resolves, the engine and
+the run-time core are imported rather than bundled, the screen renderer stays on its subpath,
+`'use client'` directives survive, no undeclared package is imported, and the declarations
+typecheck as a strict consumer reads them. It holds
 `packages/react/.dist-lock` while it runs, so no other build of the same tree empties `dist/`
 under its assertions.

@@ -1228,7 +1228,9 @@ types the React vocabulary exports beside its members.
 | `defineLazy` | defines a tag before its member's code is loaded, with the function that loads the module that calls `define` for it |
 | `inheritedMethod` | whether a name is a method every element inherits, which a prop's property would hide |
 | `restore` | disposes every member rendered on its own in a tree and puts back the children the page wrote, so a page snapshot saves the page's markup |
-| `PolymorphEvent` | the event an element dispatches: a `CustomEvent` with `waitUntil(promise)`, whose promises the member's callback returns, settled together |
+| `fillSlot` | sets the nodes one slot of an element holds, in order, from script, in place of what the page wrote there, before or after the member renders, on any element, a structural part included; the run-time renderer places every child this way |
+| `PolymorphEvent` | the event an element dispatches: a `CustomEvent` with `waitUntil(promise)`, whose promises the member's callback returns, settled together, and `args`, every argument the member passed its callback (`detail` is the first) |
+| `ERROR_EVENT` | `poly-error`, the event an element dispatches when its member throws |
 | `decode`, `encode`, `coerce`, `Unreadable` | an attribute's text as a prop's value and back, and a property's value as the member takes it |
 | `tagOf`, `attributeOf`, `propertyOf`, `eventOf`, `slotOf`, `PREFIX` | the names: `poly-` and the kebab name of a member, a part and an event; a prop's attribute and property; a slot's attribute |
 | `PolyIcon` | `<poly-icon>` |
@@ -1272,7 +1274,11 @@ The base class does what makes a page's markup a member:
   whatever order their tags were defined in. While the document is loading the queue waits for
   `DOMContentLoaded`, because a classic script sees an element before its children are parsed.
 - **Change.** The element observes its own children: a node added before or after the member's
-  rendering joins its slot, and a swap of every child renders the member again. Two empty comments
+  rendering joins its slot, and a swap of every child renders the member again. A slot read again
+  because what it holds changed keeps the rendering of each `poly-*` element it still holds, so a
+  field among them keeps its text and its focus, and a slot that holds one element is read as a
+  list of one. An element that leaves a slot is disposed at once after a change the element makes
+  itself, and a microtask later when its member stops reading the slot by itself. Two empty comments
   mark the member's rendering inside the element, so a node outside them is the page's. The
   member draws a slot's nodes inside its own elements, so the page takes a child out of its slot
   through the element: `removeChild` takes it, and the nodes a `<template>` gave, out of the slot
@@ -1281,6 +1287,10 @@ The base class does what makes a page's markup a member:
 - **Listening.** A member that reads whether its caller handles an event is told so while a
   listener for it was added through the element's `addEventListener`, or while the `listens`
   attribute names it.
+- **Errors.** A member that throws as it first renders renders nothing, and the members around
+  it render. One that throws as it updates keeps what it had rendered. Either way the element
+  dispatches `poly-error` with the error as `detail`, and, unless a listener cancels it, reports
+  the error with `reportError`, as an uncaught error is reported.
 - **`PolyElement.observe`** reports each element's member as it renders and as it is disposed.
 
 There is no `ElementInternals` form association: each member's own `<input>` or hidden input

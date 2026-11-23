@@ -41,9 +41,10 @@ workbench chrome and fill the window, as a real product would.
 
 `screen.html` is a second document, beside `index.html`. It has no toolbar and no route. It draws
 one screen spec for the MCP tool `render_screen` and measures its layout faults
-(`src/screen/main.tsx`, `fill.ts`, `measure.ts`), with the composer's renderer
-(`src/composer/draw.tsx`). The tool has it built in memory by `screen.build.mjs`, and every build
-of the workbench compiles it too. [docs/tooling.md](../../docs/tooling.md#seeing-a-screen-render_screen)
+(`src/screen/main.tsx`, `measure.ts`). The composer and this page draw a spec as a product draws a
+screen a model writes, with `@polymorph/react/screen` and the run-time core `@polymorph/screen`;
+`src/composer/draw.tsx` holds the options both draw with. The tool has the page built in memory by
+`screen.build.mjs`, and every build of the workbench compiles it too. [docs/tooling.md](../../docs/tooling.md#seeing-a-screen-render_screen)
 describes the tool.
 
 ## What it reads and writes
@@ -56,6 +57,8 @@ It reads, from the repository:
 - `design/screens/*.json`: the screen specs the composer opens.
 - `registry/registry.json`: the generated registry, used by the component browser, the
   composer's palette and the studio's exception audit.
+- `packages/screen/src/vocabulary.gen.ts`: the run-time core's vocabulary table, which
+  `pnpm registry` writes beside the registry. The composer and the screen page draw with it.
 
 It writes through two dev-server endpoints, registered in `vite.config.ts`. Both exist only under
 `vite dev` (`apply: 'serve'` plus `configureServer`). Both accept same-origin requests only,

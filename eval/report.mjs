@@ -30,6 +30,12 @@ import { apart, interval, resolution, smallestGap } from './spread.mjs'
  *
  * The page carries no dates of its own. A results file's name starts with the
  * day it ran, and its `at` field orders the rows.
+ *
+ * The run-time lane (`--mode runtime`) prints last, as a section of its own
+ * with its own number: one request with no tools has no first shot apart
+ * from its answer and no `validate` call, and it is measured by what a host
+ * pays, the card's tokens cached and uncached apart, and by how soon the
+ * answer starts and ends.
  */
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -76,16 +82,36 @@ const RATES = [
   {
     key: 'firstShotRate',
     name: 'first shot lawful',
+    title: 'First shot lawful',
     phrase: 'lawful on the first `validate` call',
   },
-  { key: 'lawfulRate', name: 'lawful', phrase: 'lawful at the end' },
-  { key: 'meetsBriefRate', name: 'meets brief', phrase: 'meeting their brief', judged: true },
+  { key: 'lawfulRate', name: 'lawful', title: 'Lawful', phrase: 'lawful at the end' },
+  {
+    key: 'meetsBriefRate',
+    name: 'meets brief',
+    title: 'Meets brief',
+    phrase: 'meeting their brief',
+    judged: true,
+  },
   {
     key: 'lawfulAndMeetsBriefRate',
     name: 'lawful and meets brief',
+    title: 'Lawful and meets brief',
     phrase: 'lawful and meeting their brief',
     judged: true,
   },
+]
+
+/** The mode of the run-time lane. */
+const RUNTIME = 'runtime'
+
+/**
+ * The three rates of the run-time lane. Its one request is its first shot,
+ * so the lawful rate is the first-shot rate as well, and is printed once.
+ */
+const RUNTIME_RATES = [
+  { key: 'lawfulRate', name: 'lawful', title: 'Lawful', phrase: 'lawful' },
+  ...RATES.filter(({ judged }) => judged === true),
 ]
 
 /** The runs a summary's rates are over: every run that was not a harness fault. */
@@ -206,9 +232,9 @@ function theNumber(entries, link) {
  * the page gives, for each rate, the range that eval could measure while the
  * difference is still no more than the samples produce by chance.
  */
-function resolutionLines({ summary }) {
+function resolutionLines({ summary }, rates = RATES) {
   const total = measuredOf(summary.overall)
-  const ranges = RATES.flatMap(({ key, name }) => {
+  const ranges = rates.flatMap(({ key, name }) => {
     const count = countOf(summary.overall, key)
     if (count === null) return []
     const { below, above } = resolution(count.successes, count.total)
@@ -249,11 +275,16 @@ function sameRequirements(one, other) {
   return one.requirements !== undefined && digests(one) === digests(other)
 }
 
+/** Whether two `spec` or `tsx` results files ran under the same condition: the same runner and effort. */
+const sameLoopCondition = (one, other) =>
+  one.runner === other.runner && one.settings.effort === other.settings.effort
+
 /**
  * The run a results file is compared with: the next older complete file of
- * the same model, mode, runner and effort over the same briefs.
+ * the same model, mode, runner and effort over the same briefs. `same` says
+ * what else has to match, and the run-time lane adds its own.
  */
-function previousOf(entry, group) {
+function previousOf(entry, group, same = sameLoopCondition) {
   const chosen = (results) => results.summary.briefs.map(({ brief }) => brief).join(',')
   const { results } = entry
   if (results.partial) return undefined
@@ -263,16 +294,15 @@ function previousOf(entry, group) {
       ({ results: other }) =>
         !other.partial &&
         other.fake === results.fake &&
-        other.runner === results.runner &&
-        other.settings.effort === results.settings.effort &&
+        same(other, results) &&
         chosen(other) === chosen(results),
     )
 }
 
 /** Each rate of a results file against the run before it, and whether the two samples tell them apart. */
-function comparisonLines(entry, previous, link) {
+function comparisonLines(entry, previous, link, rates = RATES) {
   const [now, before] = [entry.results.summary.overall, previous.results.summary.overall]
-  const lines = RATES.flatMap(({ key, name, judged }) => {
+  const lines = rates.flatMap(({ key, name, judged }) => {
     const [one, other] = [countOf(now, key), countOf(before, key)]
     if (one === null || other === null) return []
     if (judged === true && !sameRequirements(entry.results, previous.results)) {
@@ -293,18 +323,19 @@ function comparisonLines(entry, previous, link) {
   ]
 }
 
-/** One row per brief: its runs, its four rates as counts with their intervals, and what was not met. */
-function briefRows({ summary }) {
+/** One row per brief: its runs, its rates as counts with their intervals, and what was not met. */
+function briefRows({ summary }, rates = RATES) {
+  const columns = ['Brief', 'Runs', ...rates.map(({ title }) => title), 'Requirements not met']
   return [
-    '| Brief | Runs | First shot lawful | Lawful | Meets brief | Lawful and meets brief | Requirements not met |',
-    '| --- | --- | --- | --- | --- | --- | --- |',
+    `| ${columns.join(' | ')} |`,
+    `| ${columns.map(() => '---').join(' | ')} |`,
     ...summary.briefs.map((brief) => {
       const failed = Object.entries(brief.failedRequirements ?? {}).map(
         ([key, count]) => `\`${key.slice(brief.brief.length + 1)}\` ${count}`,
       )
       return (
         `| ${brief.brief} | ${measuredOf(brief)} | ` +
-        `${RATES.map(({ key }) => countCell(brief, key)).join(' | ')} | ` +
+        `${rates.map(({ key }) => countCell(brief, key)).join(' | ')} | ` +
         `${failed.length === 0 ? '—' : failed.join(', ')} |`
       )
     }),
@@ -327,36 +358,45 @@ function unmetLines({ summary, requirements }) {
     )
 }
 
+/** The `spec` and `tsx` modes: their rates, their condition, and what their misses say. */
+const LOOP_LANE = {
+  rates: RATES,
+  same: sameLoopCondition,
+  heading: '###',
+  misses: (entry) => {
+    const misses = firstShotMisses(entry.results)
+    return misses.length === 0
+      ? []
+      : [
+          `First-shot misses in ${fileName(entry.file)}, in the validator’s words:`,
+          '',
+          ...misses.map((miss) => `- ${miss}`),
+        ]
+  },
+}
+
 /**
  * A results file's own section: what its sample can tell apart, how it
  * compares with the run before it, its briefs, the requirements its screens
- * did not meet and its first-shot misses. A file with no finished run has
- * none.
+ * did not meet and its misses. A file with no finished run has none.
  */
-function detail(entry, group, link) {
+function detail(entry, group, link, lane = LOOP_LANE) {
   const { results } = entry
   if (measuredOf(results.summary.overall) === 0) return []
-  const previous = previousOf(entry, group)
+  const previous = previousOf(entry, group, lane.same)
   const paragraphs = [
-    resolutionLines(results),
-    previous === undefined ? [] : comparisonLines(entry, previous, link),
-    [...briefRows(results), ...briefResolution(results).flatMap((line) => ['', line])],
+    resolutionLines(results, lane.rates),
+    previous === undefined ? [] : comparisonLines(entry, previous, link, lane.rates),
+    [...briefRows(results, lane.rates), ...briefResolution(results).flatMap((line) => ['', line])],
   ]
   const failed = unmetLines(results)
   if (failed.length > 0) {
     paragraphs.push(['Requirements a screen did not meet, most often missed first:', '', ...failed])
   }
-  const misses = firstShotMisses(results)
-  if (misses.length > 0) {
-    paragraphs.push([
-      `First-shot misses in ${fileName(entry.file)}, in the validator’s words:`,
-      '',
-      ...misses.map((miss) => `- ${miss}`),
-    ])
-  }
+  paragraphs.push(lane.misses(entry))
   return [
     '',
-    `### ${fileName(entry.file)}`,
+    `${lane.heading} ${fileName(entry.file)}`,
     ...paragraphs.filter((lines) => lines.length > 0).flatMap((lines) => ['', ...lines]),
   ]
 }
@@ -389,8 +429,9 @@ function endingsCell({ endings }) {
 }
 
 /** The page, as a string. `readme` is where it will live, so its links resolve from there. */
-export function renderReport(entries, readme) {
+export function renderReport(all, readme) {
   const link = (file) => relative(dirname(readme), file).split('\\').join('/')
+  const entries = all.filter(({ results }) => results.mode !== RUNTIME)
   const lines = [
     '# The agent eval',
     '',
@@ -442,7 +483,220 @@ export function renderReport(entries, readme) {
     for (const entry of group) lines.push(...detail(entry, group, link))
   }
 
+  lines.push(
+    ...runtimeSection(
+      all.filter(({ results }) => results.mode === RUNTIME),
+      link,
+    ),
+  )
   return `${lines.join('\n')}\n`
+}
+
+/* -------------------------------------------------------------------------- */
+/* The run-time lane                                                          */
+/* -------------------------------------------------------------------------- */
+
+/** A time in seconds to two places, as `0.82 s`. */
+const precise = (ms) => `${(ms / 1000).toFixed(2)} s`
+
+/** A time's mean and its fastest and slowest run, as a table cell: `0.82 s (0.45–1.20 s)`. */
+const timeCell = (mean, span) =>
+  mean === null || span === null
+    ? '—'
+    : `${precise(mean)} (${(span.low / 1000).toFixed(2)}–${precise(span.high)})`
+
+/** The same in a sentence: `0.82 s (0.45 s to 1.20 s)`. */
+const timePhrase = (mean, span) =>
+  `${precise(mean)} (${precise(span.low)} to ${precise(span.high)})`
+
+/** What the run's request sent as `thinking`, in words. */
+const THINKING_WORDS = {
+  adaptive: 'adaptive thinking',
+  disabled: 'thinking disabled',
+  between_tools: 'thinking only between tools',
+}
+
+const thinkingPhrase = ({ settings }) =>
+  settings.thinking === null ? 'the CLI’s own thinking' : THINKING_WORDS[settings.thinking]
+
+/** The card's framework, how its members were chosen, how many and how long it is. */
+function cardPhrase({ card }) {
+  const which =
+    card.chosen === 'default'
+      ? 'of every member it draws'
+      : card.chosen === 'list'
+        ? 'of a list of members'
+        : `of the \`${card.chosen}\` subset`
+  return (
+    `the ${card.framework} card ${which} (${card.members.length} members, ` +
+    `${thousands(card.characters)} characters)`
+  )
+}
+
+const cardCell = ({ card }) =>
+  `${card.framework}, ${card.chosen} (${card.members.length} members, ` +
+  `${thousands(card.characters)} characters)`
+
+/** Whether two run-time results files ran under the same condition: runner, effort, thinking and card. */
+const sameRuntimeCondition = (one, other) =>
+  sameLoopCondition(one, other) &&
+  one.settings.thinking === other.settings.thinking &&
+  one.card.framework === other.card.framework &&
+  one.card.members.join(',') === other.card.members.join(',')
+
+/** What the rates leave out or count against the model, as a sentence; empty when nothing. */
+function runtimeCaveats({ runs: total, endings, unreadable }) {
+  const parts = [
+    endings.refusal > 0 && `${endings.refusal} ended in a refusal`,
+    endings.max_tokens > 0 &&
+      `${endings.max_tokens} ${endings.max_tokens === 1 ? 'was' : 'were'} cut off at \`max_tokens\``,
+    unreadable > 0 && `${unreadable} answered with no whole document`,
+    endings.harness > 0 && `${endings.harness} ended in a harness fault, left out of the figures`,
+  ].filter(Boolean)
+  return parts.length === 0 ? '' : ` Of ${runs(total)}, ${parts.join(', ')}.`
+}
+
+/**
+ * The run-time lane's number: for each model, runner, thinking, effort and
+ * card, its latest run that can be one, by the same rule as the other modes.
+ */
+function runtimeNumbers(entries, link) {
+  const latest = new Map()
+  for (const entry of entries) {
+    const { model, runner, settings, card } = entry.results
+    const key = [
+      model,
+      runner,
+      settings.thinking,
+      settings.effort,
+      card.framework,
+      card.members.join(','),
+    ].join(' · ')
+    if (canBeTheNumber(entry.results) && !latest.has(key)) latest.set(key, entry)
+  }
+  if (latest.size === 0) {
+    return [
+      'No run-time number is recorded: `eval/results/` holds no real run of the run-time lane over ' +
+        'every brief. It is measured with `pnpm eval --mode runtime`, with `ANTHROPIC_API_KEY` set ' +
+        'or with `--runner cli` and Claude Code signed in.',
+    ]
+  }
+  return [...latest.values()].flatMap(({ file, results }, index) => {
+    const { overall } = results.summary
+    const rates = RUNTIME_RATES.flatMap(({ key, phrase }) => {
+      const count = countOf(overall, key)
+      return count === null
+        ? []
+        : [`${percent(count.successes / count.total)} ${phrase} (${range(count, ' to ')})`]
+    })
+    const tokens =
+      `${thousands(overall.meanInputTokens)} input tokens a run ` +
+      `(${thousands(overall.meanCacheReadTokens)} read from the cache, ` +
+      `${thousands(overall.meanCacheWriteTokens)} written to it and ` +
+      `${thousands(overall.meanUncachedInputTokens)} uncached) and ` +
+      `${thousands(overall.meanOutputTokens)} output tokens`
+    const end = `${timePhrase(overall.meanWallMs, overall.wallRangeMs)} to the end of the answer`
+    const times =
+      overall.meanFirstTokenMs === null
+        ? `${end}, with no time to the first token`
+        : `${timePhrase(overall.meanFirstTokenMs, overall.firstTokenRangeMs)} to the first ` +
+          `token and ${end}`
+    return [
+      ...(index === 0 ? [] : ['']),
+      `**The run-time number:** \`${results.model}\`, ${thinkingPhrase(results)}, ` +
+        `${effort(results)}, ${through(results)}, ${version(results)}, ${cardPhrase(results)} — ` +
+        `${rates.join(', ')}, ${tokens}, ${times} ` +
+        `([${fileName(file)}](${link(file)})). Each rate’s range is the 95% interval its ` +
+        `${runs(measuredOf(overall))} support, and each time’s runs from the fastest run to ` +
+        `the slowest.` +
+        runtimeCaveats(overall),
+    ]
+  })
+}
+
+/**
+ * What the check said of each answer that was not lawful, one line per run:
+ * why there was no whole document, or the first of `checkScreen`'s faults.
+ */
+function checkMisses(results) {
+  return results.records.flatMap((record) => {
+    if (record.lawful || record.ended !== 'answered') return []
+    const reasons = record.fatal === null ? record.faults : [record.fatal]
+    const shown = reasons.slice(0, 3).join('; ')
+    const more = reasons.length > 3 ? ` (and ${reasons.length - 3} more)` : ''
+    return [`\`${record.brief}\` #${record.run}: ${shown}${more}`]
+  })
+}
+
+/** The run-time lane: its rates, its condition, and what its misses say. */
+const RUNTIME_LANE = {
+  rates: RUNTIME_RATES,
+  same: sameRuntimeCondition,
+  heading: '####',
+  misses: (entry) => {
+    const misses = checkMisses(entry.results)
+    return misses.length === 0
+      ? []
+      : [
+          `Answers that were not lawful in ${fileName(entry.file)}, in the check’s words:`,
+          '',
+          ...misses.map((miss) => `- ${miss}`),
+        ]
+  },
+}
+
+/**
+ * The run-time lane's section: what it measures, its number, and one table
+ * per model, latest run first, each results file with a section of its own.
+ */
+function runtimeSection(entries, link) {
+  const lines = [
+    '',
+    '## The run-time lane',
+    '',
+    'How a model given only the run-time card and a brief gets on in one request with no tools: how',
+    'often the screen it writes is lawful, how often that screen has every part its brief requires,',
+    'and what it costs in tokens and time. The card is `runtimeCard` from `@polymorph/screen` for the',
+    'framework and members a run names, and the screen is judged with `checkScreen` for the same',
+    'ones. One request is its own first shot, so the lawful rate is printed once. Each time is',
+    'printed with the fastest and the slowest run beside its mean.',
+    '',
+    ...runtimeNumbers(entries, link),
+  ]
+  const groups = new Map()
+  for (const entry of entries) {
+    const { model, fake } = entry.results
+    const key = `${model}${fake ? ' (scripted model: measures the harness, not a model)' : ''}`
+    groups.set(key, [...(groups.get(key) ?? []), entry])
+  }
+  for (const [title, group] of groups) {
+    lines.push(
+      '',
+      `### ${title}`,
+      '',
+      '| Results | Version | Runner | Thinking | Effort | Card | Briefs × runs | Lawful | Meets brief | Lawful and meets brief | Input tokens | Cache read | Cache written | Uncached | Output tokens | First token | Wall time | Retries | Endings |',
+      '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+    )
+    for (const entry of group) {
+      const { results } = entry
+      const { overall } = results.summary
+      lines.push(
+        `| ${resultsCell(entry, link)} | ${version(results)} | ${runnerCell(results)} | ` +
+          `${results.settings.thinking ?? 'the CLI’s'} | ${results.settings.effort} | ` +
+          `${cardCell(results)} | ${briefsCell(results)} | ` +
+          `${RUNTIME_RATES.map(({ key }) => rateCell(overall, key)).join(' | ')} | ` +
+          `${thousands(overall.meanInputTokens)} | ${thousands(overall.meanCacheReadTokens)} | ` +
+          `${thousands(overall.meanCacheWriteTokens)} | ` +
+          `${thousands(overall.meanUncachedInputTokens)} | ` +
+          `${thousands(overall.meanOutputTokens)} | ` +
+          `${timeCell(overall.meanFirstTokenMs, overall.firstTokenRangeMs)} | ` +
+          `${timeCell(overall.meanWallMs, overall.wallRangeMs)} | ` +
+          `${retriesCell(overall)} | ${endingsCell(overall)} |`,
+      )
+    }
+    for (const entry of group) lines.push(...detail(entry, group, link, RUNTIME_LANE))
+  }
+  return lines
 }
 
 /**

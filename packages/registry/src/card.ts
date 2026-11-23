@@ -1,4 +1,5 @@
 import type { Registry } from './build'
+import { CONVENTION_PROPS, optionsCarrier, TIER_ORDER, TIER_TITLE, wrapped } from './card-parts'
 import { DEFAULT_FRAMEWORK, FRAMEWORK_NAMES, shippedParts, type Framework } from './frameworks'
 import { DEFAULT_PLATFORM, NO_SUBSTITUTE, PLATFORM_STATUSES, type Platform } from './platforms'
 
@@ -34,37 +35,6 @@ import { DEFAULT_PLATFORM, NO_SUBSTITUTE, PLATFORM_STATUSES, type Platform } fro
 export const CHARS_PER_TOKEN = 4
 
 export const estimateTokens = (card: string) => Math.ceil(card.length / CHARS_PER_TOKEN)
-
-/** Conventions the whole vocabulary shares, stated once and omitted from each row. */
-const CONVENTION_PROPS = new Set([
-  'children',
-  'aria-label',
-  'aria-labelledby',
-  'aria-describedby',
-  'aria-required',
-])
-
-// Content, then data, then pages. This is the reading order `galleries.ts` uses.
-const TIER_ORDER = [
-  'icon',
-  'layout',
-  'controls',
-  'overlays',
-  'structure',
-  'charts',
-  'ai',
-  'archetypes',
-]
-
-const TIER_TITLE: Record<string, string> = {
-  icon: 'Iconography',
-  layout: 'Layout primitives',
-  controls: 'Controls',
-  overlays: 'Overlays',
-  structure: 'Structure',
-  ai: 'AI — the conversation',
-  archetypes: 'Page archetypes',
-}
 
 export interface CardOptions {
   /**
@@ -286,12 +256,7 @@ function componentLine(component: CardComponent, platform: Platform, framework: 
   const named = (props: readonly CardProp[]) => new Set(props.map((prop) => prop.name))
   const ownNames = named(own)
   const exported = framework === 'react' && platform === DEFAULT_PLATFORM ? component.exports : []
-  const carrier = exported.find(
-    (other) =>
-      other.kind === 'function' &&
-      other.props.length === own.length &&
-      other.props.every((prop) => ownNames.has(prop.name)),
-  )
+  const carrier = exported.length === 0 ? undefined : optionsCarrier(component)
 
   const segments: string[] = []
   if (carrier === undefined) {
@@ -391,24 +356,6 @@ export function factored(roles: string[]): string {
   if (!same) return roles.join(', ')
 
   return `{${[...groups.keys()].join(', ')}}.{${first.join(', ')}}`
-}
-
-/**
- * A paragraph broken into lines of at most `width` characters, at spaces outside
- * a code span, so `polymorph init --framework` stays on one line.
- */
-function wrapped(paragraph: string, width = 84): string[] {
-  const words = paragraph.match(/(?:`[^`]*`|[^\s`])+/g) ?? []
-  const lines: string[] = []
-  let line = ''
-  for (const word of words) {
-    if (line !== '' && line.length + 1 + word.length > width) {
-      lines.push(line)
-      line = word
-    } else line = line === '' ? word : `${line} ${word}`
-  }
-  if (line !== '') lines.push(line)
-  return lines
 }
 
 export function renderSystemCard(registry: Registry, options: CardOptions = {}): string {

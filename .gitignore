@@ -52,3 +52,8 @@ platforms/*/.gradle/
 platforms/*/.kotlin/
 platforms/*/.dart_tool/
 platforms/dart/pubspec.lock
+
+# `pnpm registry` also writes the run-time vocabulary table into the package
+# that ships it (packages/registry/src/screen-table.ts). Generated on every
+# install via `prepare`, never committed — for the same reason as /registry/.
+packages/screen/src/vocabulary.gen.ts

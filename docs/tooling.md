@@ -65,9 +65,13 @@ nothing. Otherwise it writes:
 | `registry/registry.schema.json` | The JSON Schema (draft 2020-12) of that document |
 | `registry/system-card.md` | The system card — the vocabulary compressed for an agent's context window |
 | `apps/docs/src/fonts.gen.ts`, `apps/workbench/src/fonts.gen.ts` | Each app's font-loader map, derived from the systems' font slots |
+| `packages/screen/src/vocabulary.gen.ts` | The run-time core's vocabulary table: what the spec validator and the run-time card read of the registry, in a compact form ([run-time-screens.md](run-time-screens.md)) |
 
 All of it is **generated and gitignored**. Nothing in `registry/` is committed, so there is no
-copy in git that can go out of date and no freshness test is needed. It is regenerated:
+copy in git that can go out of date and no freshness test is needed. The vocabulary table ships
+inside `@polymorph/screen`'s build, so `packages/screen/src/parity.test.ts` holds the file on disk
+to what the registry builds from the tree, and fails before a stale table is published. It is all
+regenerated:
 
 - by the root `prepare` script, on every `pnpm install`;
 - by each app's `predev` and `prebuild` hooks, so `pnpm dev`, `pnpm dev:docs` and `pnpm build`
@@ -121,6 +125,11 @@ outline:
   need a person, or `null` for a member agents cannot see; [agents.md](agents.md)), and
   `dependencies` (other members, external packages, and every file that must be installed with
   it).
+- **`dataTypes`** — every named data type the members' props take (an option, a column, a stat, a
+  menu entry), their parts' and the exception primitives' included, read through the TypeScript
+  checker and sorted by name: its type parameters, its fields typed as a prop's type is printed,
+  or the named types it is a union of. A reader with no compiler, such as a model writing a
+  run-time screen, writes one from its fields.
 - **`vendor`** — the source root install paths are rebased from, the package members import their
   recipes from and its source tree (`recipes`), the support file every install needs
   (`css-modules.d.ts`), the base layer (`@polymorph/recipes/base.css`), and for each framework but
@@ -157,8 +166,12 @@ names, the framework file's shape and its law, and `vueBinding`, the React-to-Vu
 prop, which the Vue, Svelte and Angular screen emitters and the shell generator read;
 browser-safe), `@polymorph/registry/behaviour` (the grammar of a spec's `contract` fence,
 browser-safe), `@polymorph/registry/agent` (the grammar of a spec's `agent` fence and the faults
-`pnpm registry` reports, browser-safe), and `@polymorph/registry/exceptions` (the check that a system's per-member
-exception names a member that actually reads that token).
+`pnpm registry` reports, browser-safe), `@polymorph/registry/exceptions` (the check that a system's per-member
+exception names a member that actually reads that token), `@polymorph/registry/screen-table` (the
+compact vocabulary table `pnpm registry` writes for the run-time core, and its expansion,
+browser-safe), and `@polymorph/registry/runtime-card` (the members section of the run-time card,
+rendered from that table, browser-safe). `@polymorph/screen` inlines the last two in its build
+([run-time-screens.md](run-time-screens.md)).
 
 ### The system card
 
@@ -681,9 +694,11 @@ Three decisions shape the tool.
 
 **Where the page is built and served.** The drawing is done by the workbench, not by the server:
 `apps/workbench/screen.html` is a second document of that app, and `src/screen/main.tsx` draws the
-spec with the composer's renderer (`src/composer/draw.tsx`) and the real vocabulary. The server
-passes the page the spec, the pairing, the data and each member's props from its own registry, so
-the page loads no registry of its own. The server runs over stdio from a checkout and its
+spec as the composer does, with the run-time renderer `@polymorph/react/screen` and the real
+vocabulary ([run-time-screens.md](run-time-screens.md)). The server passes the page the spec, the
+pairing, the data and its registry's member names, by which a layout fault names a member. What
+the spec's names mean is the run-time core's vocabulary table, which `pnpm registry` writes from
+the same registry, so the page loads no registry of its own. The server runs over stdio from a checkout and its
 dependency list is pinned, so it has no bundler and may print nothing on stdout. Its entry point
 names a program the workbench owns, `apps/workbench/screen.build.mjs`. The first call to the tool
 runs that program as a child process. It builds the screen page in memory with the workbench's own
@@ -709,14 +724,19 @@ needs some. The caller decides which pictures it gets:
 - With `data`, the screen is drawn populated. An input `data` leaves out is sampled.
 - With `empty` as well, a second drawing lays `empty` over `data`. `empty` alone draws only that.
 - With neither, there is one drawing, in which every input is sampled from its declared type by
-  the composer's rule: a string is its own name in brackets, a number is 0, a boolean is false, a
-  list is empty, a type that admits `null` is `null`, and any other type is absent. No data is
-  invented, so the sampled screen shows where the data goes.
+  the run-time core's rule (`sampleOf` in `@polymorph/screen`): a string is its own name in
+  brackets, a number is 0, a boolean is false, a list is empty, a type that admits `null` is
+  `null`, and any other type is absent. No data is invented, so the sampled screen shows where
+  the data goes.
 
-A callback is always a stub, because JSON holds no function. The stub answers by the return type
-the input declares: nothing for `void`, `false`, `0`, an empty list, and for `string` a key for
-its first argument (its `id`, the value itself, or a serial for each object), which is what a
-`getRowId` is asked for. A key in `data` or `empty` that names no declared input, or names a
+A callback is never a function the caller passes, because JSON holds no function. The run-time
+core decides by the prop or field the callback is bound to
+([run-time-screens.md](run-time-screens.md#callback-inputs)). Where that prop's function returns
+a value and the prop may be left out, nothing is passed and the member answers by default.
+Elsewhere a stub answers by its return type: nothing for `void`, `false`, `0`, an empty list,
+and for `string` a key for its first argument (its `id`, the value itself, or a serial for each
+object), which is what a `getRowId` is asked for. A callback bound where no callback receives it
+is a fault, and the picture draws its fault in place. A key in `data` or `empty` that names no declared input, or names a
 callback, refuses the call, so a mistyped name cannot leave a sampled screen that its caller
 believes is populated. A cell renderer is code and cannot be passed, so a column given as data
 shows each row's value as text.
@@ -835,6 +855,10 @@ for a style and no expression language. A prop is a name and a value, and the na
 against that member's props in the registry. `className` therefore fails for the same reason a
 typo does: no member has it. Behaviour comes in only through declared inputs.
 
+This section covers the authoring path: a spec checked and emitted as a source file, which a
+developer commits and builds. The same document can also be drawn at run time, as a model writes
+it inside a running product, with no build: [run-time-screens.md](run-time-screens.md).
+
 ### The format: `polymorph-screen/1`
 
 The schema is `packages/spec/src/schema.ts`.
@@ -917,6 +941,10 @@ See [rules.md](rules.md).
 
 `validateSpec(registry, document)` (`packages/spec/src/validate.ts`) runs two passes and returns
 `{ ok, faults }`. Each fault is a `{ path, message }`, with a path such as `$.root.children[1]`.
+Its first parameter is typed by what it reads, `SpecVocabulary`: the members, the exception
+primitives and the icon roles. The registry is one, and the run-time core's vocabulary table is
+another, so `checkScreen` (`@polymorph/screen/check`) gives a page the registry's faults with no
+registry in it ([run-time-screens.md](run-time-screens.md#checking-an-answer-and-asking-again)).
 `validateSpec(registry, document, { framework })` with `vue`, `svelte`, `solid` or `angular` also refuses a
 member that framework's vocabulary does not ship, with the framework map's reason
 ([frameworks.md](frameworks.md)):
@@ -944,7 +972,9 @@ The last check needs a compiler, so it runs only where one is available. `valida
 package's root entry, which `pnpm emit` and the MCP server call, passes each input's type to the
 TypeScript parser (`packages/spec/src/input-type.ts`). The `@polymorph/spec/validate` subpath is
 the part the browser runs. It checks everything else and skips types. That is enough for the
-composer, because the composer creates neither inputs nor bindings.
+composer, because the composer creates neither inputs nor bindings, and for `checkScreen`, which
+is built on it. `@polymorph/spec/action-type` holds `isActionType`, the rule that reads an input's
+type as a callback, for code that needs the rule and no validator, such as the run-time walk.
 
 A structured object (`$object`) is data for a prop. Among children, or in a list in a prop that
 holds an element, it is a fault, because those positions are rendered.
@@ -1141,9 +1171,11 @@ The composer assembles screens from the vocabulary with the mouse, as `polymorph
 documents. This is the same format an agent writes and `pnpm emit` compiles.
 
 - **Three panes**: the layer tree (where you select a node), the canvas (the real vocabulary,
-  rendered from the spec by `apps/workbench/src/composer/draw.tsx` under the current pairing,
-  with `render.tsx` supplying the workbench's registry and the binding placeholders), and the
-  selection (the node's props as controls, plus the law panel showing `validateSpec`'s faults).
+  drawn from the spec under the current pairing by `@polymorph/react/screen` and the run-time
+  core, the renderer a product draws a model's screen with; `apps/workbench/src/composer/draw.tsx`
+  holds only the picture's options: every member allowed, inputs sampled, each fault and binding
+  drawn in place; and `render.tsx` adds the selection around each element), and the selection
+  (the node's props as controls, plus the law panel showing `validateSpec`'s faults).
 - **The palette of insertable members** is computed from the registry
   (`apps/workbench/src/composer/palette.ts`): a member is insertable when every required prop can
   be set with a control: text, number, switch, a choice from a literal union, an icon role, a
