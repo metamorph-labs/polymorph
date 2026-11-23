@@ -89,10 +89,14 @@ import { ERROR_EVENT, PolymorphEvent } from './events'
  *   itself. A controlled prop the page holds no value for leaves the member
  *   uncontrolled, as an absent prop leaves a React member, and its property
  *   reads the value the member last reported.
- * - **Errors.** A member that throws, as it renders or later, renders nothing
- *   from there, and the members around it render as they would. The element
- *   dispatches `poly-error` with the error as `detail`, and reports it in the
- *   console unless a listener cancels the event.
+ * - **Errors.** A member that throws as it first renders renders nothing, and
+ *   the members around it render as they would. One that throws as it updates
+ *   (an effect that runs again) keeps what it had rendered, and the effect
+ *   that threw stops. Either way the element dispatches `poly-error` with the
+ *   error as `detail`, and reports the error as an uncaught error is
+ *   (`reportError`) unless a listener cancels the event. An error a member's
+ *   event handler throws is the browser's, as on any page: Solid runs the
+ *   handler outside the member's rendering.
  * - **Listening.** A member that asks whether its caller handles an event
  *   (`listening`) is told so while a listener for it is added through the
  *   element's `addEventListener`, or while the `listens` attribute names it
@@ -837,6 +841,7 @@ export class PolyElement extends Base {
         const controls = this.#controls.get(prop)
         const event = new PolymorphEvent(type, {
           detail: args.length === 0 || args[0] === undefined ? null : args[0],
+          args,
           bubbles: true,
           composed: true,
           cancelable: controls !== undefined,
@@ -1187,16 +1192,17 @@ export class PolyElement extends Base {
   }
 
   /**
-   * Reports an error the member threw, as it rendered or later: `poly-error`
-   * on the element, with the error as `detail`, and the console unless a
-   * listener cancels the event.
+   * Reports an error the member threw as it rendered or as it updated:
+   * `poly-error` on the element, with the error as `detail`, and, unless a
+   * listener cancels the event, as an uncaught error is reported, to
+   * `window`'s `error` event (which error monitors read) and the console.
    */
   #fail(error: unknown): void {
     const event = new PolymorphEvent(ERROR_EVENT, { detail: error, cancelable: true })
     event.dispatchOn(this)
-    if (!event.defaultPrevented) {
-      console.error(`polymorph: the member of <${this.#definition.tag}> threw`, error)
-    }
+    if (event.defaultPrevented) return
+    if (typeof reportError === 'function') reportError(error)
+    else console.error(`polymorph: the member of <${this.#definition.tag}> threw`, error)
   }
 
   /** Disposes the member and puts the page's children back. */

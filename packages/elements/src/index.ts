@@ -39,6 +39,7 @@ export type {
 export { define, defineLazy, fillSlot, inheritedMethod, PolyElement, restore } from './element'
 export type { InstanceEvent, MemberElement } from './element'
 export { ERROR_EVENT, PolymorphEvent } from './events'
+export type { PolymorphEventInit } from './events'
 export { coerce, decode, encode, Unreadable } from './codecs'
 export type { TemporalCodecs } from './codecs'
 export { attributeOf, eventOf, PREFIX, propertyOf, slotOf, tagOf } from './definition'
