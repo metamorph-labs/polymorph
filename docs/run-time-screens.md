@@ -335,10 +335,22 @@ another process or another language reads it as data (`packages/screen/src/walk.
   kept argument stays at its position: `onClick(event)` is `[]`;
 - a value that holds itself is cut where it does.
 
-`values` holds, for every control in the drawing that has a non-empty `name` and a controlled
-value (`value`, or `checked`), its current value. A control is in `values` once its value is
-known: the person chose one, or the document or the host gave one. When two controls share a
-name, `values` holds the later one's, in document order.
+`values` holds every control in the drawing that has a `name` and a controlled value (`value`, or
+a checkbox's `checked`), by that name, as JSON. A control's value is what the person sees in it
+(`packages/screen/src/walk.test.ts`):
+
+1. what the person chose, until the document or the host gives the control another value, or the
+   control at that place becomes another component or takes another name;
+2. else the value the document or the host gives it;
+3. else its default (`defaultValue`, `defaultChecked`);
+4. else the empty value of its type: `null` where the type admits it (a Select with nothing
+   chosen, an empty NumberInput or DatePicker), `[]` for a list (MultiSelect, CheckboxGroup),
+   `false` for a checkbox or a switch, and `""` for text.
+
+So an action reports every named field, those the person left as they were included. Two
+controls with one name are a fault, and `values` holds the later one in document order. A control
+named `__proto__`, `constructor` or `prototype` is a fault and is left out of `values`, because a
+host that copies `values` into an object with `Object.assign` would set that object's prototype.
 
 ### Controls follow the reader
 
@@ -348,7 +360,10 @@ a different value, so a document replaced with the same value does not undo the 
 (`packages/screen/src/walk.test.ts`, `packages/react/src/screen/screen.test.tsx`,
 `packages/elements-ui/src/screen/screen.test.ts`). A document's value is compared by its content,
 and the host's data by identity. A control the document gives no value keeps its own state, as an
-uncontrolled field does, and `values` still holds what the person chose.
+uncontrolled field does, and `values` still holds what the person chose. That choice is passed
+back to the member as its default, so a member drawn again, such as a field in a dialog that
+opens again, shows what `values` holds. A choice is let go when its control takes another name,
+so `values` never reports one control's text under another control's name.
 
 When a document binds the change event to an action input (`"onChange": { "$": "onEdit" }`), the
 screen holds the new value before it tells the host, so the action's `values` already has it.
@@ -443,11 +458,13 @@ A document is data. The renderers read it, and run nothing it says:
 - **A component is drawn only if the vocabulary has it, the host allows it and the framework draws
   it.** Any other is drawn as nothing and reported: `` no component called `Modal` ``.
 - **A prop is passed only if the member has it.** Any other is reported and not passed:
-  `` `Button` has no prop `className` ``. Every function a member is handed is the screen's own:
-  an action, a stub or a control's handler.
+  `` `Button` has no prop `className` ``.
+- **Every function a member is handed is the screen's own**: an action, a stub or a control's
+  handler. A value a document writes where a member takes a function is a fault and is not passed:
+  `` `onClick` takes a function: bind it to an input whose type is one ``.
 - **A structured object is passed only where data goes.** A `$object` among an element's children
   is a fault and is not drawn. So is a plain object a document writes where the format writes
-  `$object`, in a prop, a field or a list.
+  `$object`, in a prop, a field or a list, at any depth (`packages/screen/src/hostile.test.ts`).
 
 ### What the host decides
 
@@ -496,10 +513,11 @@ and names or documents as an address is one of the three keys
 
 ### Depth
 
-A document nests at most `MAX_DEPTH` objects and lists inside one another (`packages/screen/src/depth.ts`).
+A document nests at most `MAX_DEPTH` objects and lists inside one another, its own object
+included: 128, which leaves room for screens several times as deep as any in `design/screens/`.
 `parsePartial` stops reading text that goes deeper, with an `error`, and keeps what came before.
-`checkScreen` reports a deeper document as a fault and does not validate it, and the walk reports
-a fault and draws nothing deeper. No document makes the core throw
+`checkScreen` reports a deeper document as one fault and does not validate it, and the walk
+reports a fault and draws nothing deeper. No text and no value makes the core throw
 (`packages/screen/src/hostile.test.ts`).
 
 ### What is not checked
@@ -521,9 +539,11 @@ A fault never blanks the screen. A node that cannot be drawn (a component the ho
 allow, a member that throws as it first renders) draws nothing in its place, and the rest of the
 screen draws (`packages/screen/src/walk.test.ts`, `packages/react/src/screen/screen.test.tsx`,
 `packages/elements-ui/src/bridge/kept.test.ts`). Each fault is `{ path, message, component? }`,
-with the validator's paths (`$.root.children[2]`). It is told to the host once, when it first
-appears: to `onFault` in React, and as `poly-fault` on `<poly-screen>`. While the document
-streams, nothing that has not arrived is a fault.
+with the validator's paths (`$.root.children[2]`). It is told to the host once in a drawing, by
+its path and message, when it first appears: to `onFault` in React, and as `poly-fault` on
+`<poly-screen>`. A fault that goes and comes back within a drawing is not told again. A drawing
+begins when the screen is made, and again when a stream begins (`packages/screen/src/walk.test.ts`).
+While the document streams, nothing that has not arrived is a fault.
 
 A host that wants to see the faults draws each in its node's place: `faults="inline"` on
 `ScreenView`, which draws the fault's words or what `renderFault` returns, and on
@@ -534,10 +554,11 @@ this way.
 
 `checkScreen(document, { framework, members })` (`@polymorph/screen/check`) returns
 `{ ok, faults }`. Its faults are the spec validator's, from a table generated from the registry,
-then a member the host does not allow and an address a screen may not hold. It needs no registry
-and no checkout, and runs in a page, a worker and a server alike. A law holds that the table gives
-every screen in `design/screens/` and a set of faulty documents the same faults the full registry
-gives (`packages/screen/src/parity.test.ts`).
+then the run-time's: a member the host does not allow, an address a screen may not hold, and a
+control's name `values` cannot hold (one two controls share, or one every object has). It needs
+no registry and no checkout, and runs in a page, a worker and a server alike. A law holds that the
+table gives every screen in `design/screens/` and a set of faulty documents the same faults the
+full registry gives (`packages/screen/src/parity.test.ts`).
 
 ```ts
 import { checkScreen } from '@polymorph/screen/check'
@@ -564,8 +585,8 @@ correct the document from them. The agent eval's `spec` mode measures that loop,
 a tool ([verification.md](verification.md#the-agent-eval)).
 
 The renderers do not need it. They draw while the document streams, before it can be checked,
-and they apply the run-time rules as they draw: a member that is not allowed, an unknown prop and
-a refused address are left out and reported. A host still checks a whole answer, because a
+and they apply the run-time rules as they draw: a member that is not allowed, an unknown prop, a
+refused address and a value where a function goes are left out and reported. A host still checks a whole answer, because a
 lawful document is the screen the model meant. A fault means part of that screen is missing from
 the drawing, and the model can supply it in one more turn. The validator also reads what the
 renderers do not, such as a variant and tone cell that does not exist and an icon role outside
@@ -580,7 +601,7 @@ page, a worker and a server. Each subpath loads only what it needs.
 
 | Import | What it exports | What it loads |
 | --- | --- | --- |
-| `@polymorph/screen/partial` | `parsePartial(text)` | nothing else |
+| `@polymorph/screen/partial` | `parsePartial(text)`, `MAX_DEPTH` | nothing else |
 | `@polymorph/screen/walk` | `createScreen(options)`, `materialize(drawn, materials)`, and the types `Screen`, `ScreenNode`, `ScreenAction`, `ScreenFault`, `ScreenOptions`, `ScreenUpdate`, `Drawn` | no vocabulary table, no card and no validator: a renderer hands it the table |
 | `@polymorph/screen/vocabulary` | `VOCABULARY`: the members, their props, parts, lawful cells and data types, generated from the release's registry | the table |
 | `@polymorph/screen/check` | `checkScreen(document, options)` | the table and the validator |
