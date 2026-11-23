@@ -2,10 +2,10 @@
  * The document a model has written so far, from the text it has written so
  * far.
  *
- * A model writes a screen as it thinks, and a host draws what has arrived.
- * Text cut at any point is not JSON, so this reads it as JSON that stops: it
- * closes what is open, and decides for the one thing being written at the cut
- * whether it can be drawn yet.
+ * A model's answer arrives a few characters at a time, and a host draws what
+ * has arrived. Text cut at any point is not JSON, so this reads it as JSON
+ * that stops: it closes what is open, and decides for the one thing being
+ * written at the cut whether it can be drawn yet.
  *
  *  - A string a reader reads (a child, a prop's value, a field of a
  *    structured object) is kept while it is written, so text appears as it
@@ -13,7 +13,7 @@
  *    half-written word means something else (a variant, an address).
  *  - Anything else still being written is left out until it is whole: a
  *    `component` name or a prop name (`Butt` is not `Button`), a number (`12`
- *    may be `120`), `true` and its siblings, a binding (`draft` may be
+ *    may be `120`), `true`, `false` and `null`, a binding (`draft` may be
  *    `draft.subject`), an input, an exception, and an object that does not yet
  *    say what it is (an element without its `component`).
  *
