@@ -10,8 +10,8 @@ shares. Nothing changes for a page that draws no screen.
   JSON in its `<script type="application/json">` child, with `data`, `streaming`, `members` and
   `faults` (`hidden` or `inline`). It dispatches `poly-action` (`{ name, args, values, changed }`,
   `changed` naming the controls the person changed; a listener hands the member a promise with
-  `event.waitUntil`) and `poly-fault` (`{ path, message, component }`), and has `values` and
-  `check()`. It draws no box of its own. `streaming` is the page's to set, for `text` as for `spec`:
+  `event.waitUntil`) and `poly-fault` (`{ path, message, component }`), and has `values`,
+  `changed` and `check()`. It draws no box of its own. `streaming` is the page's to set, for `text` as for `spec`:
   set it while the answer arrives and clear it when the answer ends, so a truncated answer reports
   what it lacks. A `members` value that cannot be read (an attribute that is not JSON or names, a
   property that is not a list) allows no member and is a `poly-fault` at the path `members`. A

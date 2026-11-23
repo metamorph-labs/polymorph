@@ -585,19 +585,25 @@ describe('a callback input bound where nothing acts on it', () => {
     expect(drawn.actions.map(({ name }) => name)).toEqual(['go'])
   })
 
-  it('draws no label or child bound to an action, tells no action, and says why', async () => {
+  it('draws no Button whose label is bound to an action and no child bound to one, tells no action, and says why', async () => {
     const drawn = await drawQuietly(
       JSON.parse(
         '{"spec":"polymorph-screen/1","name":"Approve","purpose":"A label and a child bound to an action.","inputs":[{"name":"onApprove","type":"() => void"}],"root":{"component":"Stack","children":[{"component":"Button","props":{"label":{"$":"onApprove"}}},{"component":"Text","children":[{"$":"onApprove"}]}]}}',
       ),
       {},
       { other: 1 },
-      (into) => expect(into.querySelector('button')).not.toBeNull(),
+      (into) => expect(into.querySelector('[data-member="text"]')).not.toBeNull(),
     )
-    expect(drawn.host.querySelector('button')?.textContent?.trim()).toBe('')
+    // A Button with no label has no name a reader can use, so it is not drawn.
+    expect(drawn.host.querySelector('button')).toBeNull()
     expect(drawn.host.querySelector('[data-member="text"]')?.textContent).toBe('')
+    expect(drawn.actions).toEqual([])
     expect(drawn.faults.map(({ path }) => path)).toEqual(
-      expect.arrayContaining(['$.root.children[0].props.label', '$.root.children[1].children[0]']),
+      expect.arrayContaining([
+        '$.root.children[0]',
+        '$.root.children[0].props.label',
+        '$.root.children[1].children[0]',
+      ]),
     )
   })
 

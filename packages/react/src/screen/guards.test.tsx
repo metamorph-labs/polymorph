@@ -317,7 +317,7 @@ describe('no action is told that no one took', () => {
     ])
   })
 
-  it('draws a label or a child bound to an action as nothing, and tells the host only the faults', () => {
+  it('draws no Button whose label is bound to an action and no child bound to one, and tells the host only the faults', () => {
     const onAction = vi.fn()
     const { container, told } = drawThrough(
       {
@@ -337,13 +337,17 @@ describe('no action is told that no one took', () => {
       { more: 1 },
       onAction,
     )
-    const button = within(container).getByRole('button')
+    // A Button with no label has no name a reader can use, so it is not drawn.
+    expect(within(container).queryByRole('button')).toBeNull()
     // No function's source is drawn as text.
     expect(container.textContent).not.toMatch(/=>|function|\{/)
-    expect(button.textContent).toBe('')
     expect(onAction).not.toHaveBeenCalled()
     expect(told.map(({ path }) => path)).toEqual(
-      expect.arrayContaining(['$.root.children[0].props.label', '$.root.children[1].children[0]']),
+      expect.arrayContaining([
+        '$.root.children[0]',
+        '$.root.children[0].props.label',
+        '$.root.children[1].children[0]',
+      ]),
     )
   })
 
