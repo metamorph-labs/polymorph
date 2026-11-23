@@ -86,6 +86,7 @@ export default function TimeInput(given: TimeInputProps): JSX.Element {
     claimSlot(given, 'group'),
   )
   const uid = createUniqueId()
+  const field = elementRef<HTMLElement>()
   const browserLanguage = createCell(undefined as string | undefined)
   const draft = createCell(
     timeDraft(props.value !== undefined ? props.value : props.defaultValue, {
@@ -98,7 +99,6 @@ export default function TimeInput(given: TimeInputProps): JSX.Element {
   const reported = createCell(
     (props.value !== undefined ? props.value : props.defaultValue)?.toString() ?? '',
   )
-  const field = elementRef<HTMLElement>()
   const language = createDerived(() => props.locale ?? browserLanguage.value ?? 'en-US')
   const fieldOptions = createDerived(() => ({
     locale: language.value,

@@ -14,6 +14,7 @@ import { normalizeProps } from '@zag-js/solid'
 import {
   Each,
   Icon,
+  afresh,
   agentMember,
   chooseMenuEntry,
   claimSlot,
@@ -86,12 +87,12 @@ export default function ContextMenu(given: ContextMenuProps): JSX.Element {
       },
     })
     const uid = createUniqueId()
-    const restoreTo = createCell(null as HTMLElement | null)
     const panel = elementRef<HTMLElement>()
     const scrim = elementRef<HTMLElement>()
     const sheetPanel = elementRef<HTMLElement>()
     const surface = elementRef<HTMLElement>()
     const phone = useMediaQuery('phone')
+    const restoreTo = createCell(null as HTMLElement | null)
     const sheeting = createDerived(() => props.presentation === 'auto' && phone())
     const flat = createDerived(() =>
       props.entries.flatMap((entry) =>
@@ -195,187 +196,191 @@ export default function ContextMenu(given: ContextMenuProps): JSX.Element {
           {props.children}
         </span>
         <Portal>
-          {present() ? (
-            <div {...mergeParts(api.value.getPositionerProps())}>
-              {/* panel */}
-              <div
-                {...mergeParts(api.value.getContentProps(), {
-                  class: styles.content,
-                  style: {
-                    '--radix-context-menu-content-available-height': 'var(--available-height)',
-                    '--radix-context-menu-content-transform-origin': 'var(--transform-origin)',
-                  },
-                  hidden: undefined,
-                  'data-member': 'context-menu',
-                  onfocus: () => followHighlight(panel.value, api.value.highlightedValue),
-                })}
-                ref={panel.attach}
-              >
-                <Each of={props.entries} by={(_entry, index) => index} renew>
-                  {(entry) => (
-                    <>
-                      {entry.kind === 'separator' ? (
-                        <div
-                          {...mergeParts(api.value.getSeparatorProps(), {
-                            class: styles.separator,
-                          })}
-                        />
-                      ) : entry.kind === 'label' ? (
-                        <div class={styles.groupLabel}>{entry.label}</div>
-                      ) : entry.kind === 'checkbox' ? (
-                        <div
-                          {...mergeParts(
-                            api.value.getOptionItemProps({
-                              type: 'checkbox',
-                              value: entry.label,
-                              checked: entry.checked,
-                              disabled: entry.disabled,
-                              closeOnSelect: false,
-                              onCheckedChange: entry.onCheckedChange,
-                            }),
-                            {
-                              class: classes(styles.item, styles.checkbox),
-                              tabindex: '-1',
-                              onfocus: () => api.value.setHighlightedValue(entry.label),
-                            },
+          {afresh(() => (
+            <>
+              {present() ? (
+                <div {...mergeParts(api.value.getPositionerProps())}>
+                  {/* panel */}
+                  <div
+                    {...mergeParts(api.value.getContentProps(), {
+                      class: styles.content,
+                      style: {
+                        '--radix-context-menu-content-available-height': 'var(--available-height)',
+                        '--radix-context-menu-content-transform-origin': 'var(--transform-origin)',
+                      },
+                      hidden: undefined,
+                      'data-member': 'context-menu',
+                      onfocus: () => followHighlight(panel.value, api.value.highlightedValue),
+                    })}
+                    ref={panel.attach}
+                  >
+                    <Each of={props.entries} by={(_entry, index) => index} renew>
+                      {(entry) => (
+                        <>
+                          {entry.kind === 'separator' ? (
+                            <div
+                              {...mergeParts(api.value.getSeparatorProps(), {
+                                class: styles.separator,
+                              })}
+                            />
+                          ) : entry.kind === 'label' ? (
+                            <div class={styles.groupLabel}>{entry.label}</div>
+                          ) : entry.kind === 'checkbox' ? (
+                            <div
+                              {...mergeParts(
+                                api.value.getOptionItemProps({
+                                  type: 'checkbox',
+                                  value: entry.label,
+                                  checked: entry.checked,
+                                  disabled: entry.disabled,
+                                  closeOnSelect: false,
+                                  onCheckedChange: entry.onCheckedChange,
+                                }),
+                                {
+                                  class: classes(styles.item, styles.checkbox),
+                                  tabindex: '-1',
+                                  onfocus: () => api.value.setHighlightedValue(entry.label),
+                                },
+                              )}
+                            >
+                              <span class={styles.check}>
+                                {entry.checked ? <Icon name="confirm" size="sm" /> : null}
+                              </span>
+                              <span class={styles.label}>{entry.label}</span>
+                            </div>
+                          ) : entry.kind === 'submenu' ? (
+                            <ContextMenuSubmenu entry={entry} />
+                          ) : (
+                            <div
+                              {...mergeParts(
+                                api.value.getItemProps({
+                                  value: entry.label,
+                                  disabled: entry.disabled,
+                                }),
+                                {
+                                  class: styles.item,
+                                  'data-tone': entry.tone ?? 'neutral',
+                                  tabindex: '-1',
+                                  onfocus: () => api.value.setHighlightedValue(entry.label),
+                                },
+                              )}
+                            >
+                              {entry.icon !== undefined ? (
+                                <span class={styles.glyph}>
+                                  <Icon name={entry.icon} size="sm" />
+                                </span>
+                              ) : null}
+                              <span class={styles.label}>{entry.label}</span>
+                              {entry.kbd !== undefined ? (
+                                <span class={styles.hint}>
+                                  <Kbd>{entry.kbd}</Kbd>
+                                </span>
+                              ) : null}
+                            </div>
                           )}
-                        >
-                          <span class={styles.check}>
-                            {entry.checked ? <Icon name="confirm" size="sm" /> : null}
-                          </span>
-                          <span class={styles.label}>{entry.label}</span>
-                        </div>
-                      ) : entry.kind === 'submenu' ? (
-                        <ContextMenuSubmenu entry={entry} />
-                      ) : (
-                        <div
-                          {...mergeParts(
-                            api.value.getItemProps({
-                              value: entry.label,
-                              disabled: entry.disabled,
-                            }),
-                            {
-                              class: styles.item,
-                              'data-tone': entry.tone ?? 'neutral',
-                              tabindex: '-1',
-                              onfocus: () => api.value.setHighlightedValue(entry.label),
-                            },
-                          )}
-                        >
-                          {entry.icon !== undefined ? (
-                            <span class={styles.glyph}>
-                              <Icon name={entry.icon} size="sm" />
-                            </span>
-                          ) : null}
-                          <span class={styles.label}>{entry.label}</span>
-                          {entry.kbd !== undefined ? (
-                            <span class={styles.hint}>
-                              <Kbd>{entry.kbd}</Kbd>
-                            </span>
-                          ) : null}
-                        </div>
+                        </>
                       )}
-                    </>
-                  )}
-                </Each>
-              </div>
-            </div>
-          ) : null}
-          {scrimPresent() ? (
-            <div
-              class={sheet.scrim}
-              data-state={api.value.open ? 'open' : 'closed'}
-              ref={scrim.attach}
-            />
-          ) : null}
-          {sheetPresent() ? (
-            <div class={sheet.positioner}>
-              <div
-                class={sheet.panel}
-                data-presentation="sheet"
-                data-state={api.value.open ? 'open' : 'closed'}
-                tabindex="-1"
-                ref={sheetPanel.attach}
-              >
-                {/* panel */}
-                <div
-                  {...mergeParts(api.value.getContentProps(), {
-                    class: styles.sheetList,
-                    hidden: undefined,
-                    'data-member': 'context-menu',
-                    onfocus: () => followHighlight(panel.value, api.value.highlightedValue),
-                  })}
-                  ref={panel.attach}
-                >
-                  <Each of={flat.value} by={(_entry, index) => index} renew>
-                    {(entry) => (
-                      <>
-                        {entry.kind === 'separator' ? (
-                          <div
-                            {...mergeParts(api.value.getSeparatorProps(), {
-                              class: styles.separator,
-                            })}
-                          />
-                        ) : entry.kind === 'label' ? (
-                          <div class={styles.groupLabel}>{entry.label}</div>
-                        ) : entry.kind === 'checkbox' ? (
-                          <div
-                            {...mergeParts(
-                              api.value.getOptionItemProps({
-                                type: 'checkbox',
-                                value: entry.label,
-                                checked: entry.checked,
-                                disabled: entry.disabled,
-                                closeOnSelect: false,
-                                onCheckedChange: entry.onCheckedChange,
-                              }),
-                              {
-                                class: classes(styles.item, styles.checkbox),
-                                tabindex: '-1',
-                                onfocus: () => api.value.setHighlightedValue(entry.label),
-                              },
-                            )}
-                          >
-                            <span class={styles.check}>
-                              {entry.checked ? <Icon name="confirm" size="sm" /> : null}
-                            </span>
-                            <span class={styles.label}>{entry.label}</span>
-                          </div>
-                        ) : (
-                          <div
-                            {...mergeParts(
-                              api.value.getItemProps({
-                                value: entry.label,
-                                disabled: entry.disabled,
-                              }),
-                              {
-                                class: styles.item,
-                                'data-tone': entry.tone ?? 'neutral',
-                                tabindex: '-1',
-                                onfocus: () => api.value.setHighlightedValue(entry.label),
-                              },
-                            )}
-                          >
-                            {entry.icon !== undefined ? (
-                              <span class={styles.glyph}>
-                                <Icon name={entry.icon} size="sm" />
-                              </span>
-                            ) : null}
-                            <span class={styles.label}>{entry.label}</span>
-                            {entry.kbd !== undefined ? (
-                              <span class={styles.hint}>
-                                <Kbd>{entry.kbd}</Kbd>
-                              </span>
-                            ) : null}
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </Each>
+                    </Each>
+                  </div>
                 </div>
-              </div>
-            </div>
-          ) : null}
+              ) : null}
+              {scrimPresent() ? (
+                <div
+                  class={sheet.scrim}
+                  data-state={api.value.open ? 'open' : 'closed'}
+                  ref={scrim.attach}
+                />
+              ) : null}
+              {sheetPresent() ? (
+                <div class={sheet.positioner}>
+                  <div
+                    class={sheet.panel}
+                    data-presentation="sheet"
+                    data-state={api.value.open ? 'open' : 'closed'}
+                    tabindex="-1"
+                    ref={sheetPanel.attach}
+                  >
+                    {/* panel */}
+                    <div
+                      {...mergeParts(api.value.getContentProps(), {
+                        class: styles.sheetList,
+                        hidden: undefined,
+                        'data-member': 'context-menu',
+                        onfocus: () => followHighlight(panel.value, api.value.highlightedValue),
+                      })}
+                      ref={panel.attach}
+                    >
+                      <Each of={flat.value} by={(_entry, index) => index} renew>
+                        {(entry) => (
+                          <>
+                            {entry.kind === 'separator' ? (
+                              <div
+                                {...mergeParts(api.value.getSeparatorProps(), {
+                                  class: styles.separator,
+                                })}
+                              />
+                            ) : entry.kind === 'label' ? (
+                              <div class={styles.groupLabel}>{entry.label}</div>
+                            ) : entry.kind === 'checkbox' ? (
+                              <div
+                                {...mergeParts(
+                                  api.value.getOptionItemProps({
+                                    type: 'checkbox',
+                                    value: entry.label,
+                                    checked: entry.checked,
+                                    disabled: entry.disabled,
+                                    closeOnSelect: false,
+                                    onCheckedChange: entry.onCheckedChange,
+                                  }),
+                                  {
+                                    class: classes(styles.item, styles.checkbox),
+                                    tabindex: '-1',
+                                    onfocus: () => api.value.setHighlightedValue(entry.label),
+                                  },
+                                )}
+                              >
+                                <span class={styles.check}>
+                                  {entry.checked ? <Icon name="confirm" size="sm" /> : null}
+                                </span>
+                                <span class={styles.label}>{entry.label}</span>
+                              </div>
+                            ) : (
+                              <div
+                                {...mergeParts(
+                                  api.value.getItemProps({
+                                    value: entry.label,
+                                    disabled: entry.disabled,
+                                  }),
+                                  {
+                                    class: styles.item,
+                                    'data-tone': entry.tone ?? 'neutral',
+                                    tabindex: '-1',
+                                    onfocus: () => api.value.setHighlightedValue(entry.label),
+                                  },
+                                )}
+                              >
+                                {entry.icon !== undefined ? (
+                                  <span class={styles.glyph}>
+                                    <Icon name={entry.icon} size="sm" />
+                                  </span>
+                                ) : null}
+                                <span class={styles.label}>{entry.label}</span>
+                                {entry.kbd !== undefined ? (
+                                  <span class={styles.hint}>
+                                    <Kbd>{entry.kbd}</Kbd>
+                                  </span>
+                                ) : null}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </Each>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ))}
         </Portal>
       </>
     )

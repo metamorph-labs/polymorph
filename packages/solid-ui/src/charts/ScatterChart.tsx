@@ -134,6 +134,8 @@ export default function ScatterChart(given: ScatterChartProps): JSX.Element {
     claimSlot(given),
   )
   return scope(() => {
+    const frame = elementRef<HTMLElement>()
+    const plot = elementRef<HTMLElement>()
     const box = createCell(UNMEASURED)
     const reading = createCell(createReading({ count: 0, seriesStart: 0 }))
     const position = createCell(readingRest(0))
@@ -141,8 +143,6 @@ export default function ScatterChart(given: ScatterChartProps): JSX.Element {
     const twinOpen = createCell(false)
     const warningLog = createCell(createWarningLog())
     const cap = createCell(readChartCap(null))
-    const frame = elementRef<HTMLElement>()
-    const plot = elementRef<HTMLElement>()
     const input = createDerived(() => ({
       data: props.data,
       series: props.series,

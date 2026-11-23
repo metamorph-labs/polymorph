@@ -8,5 +8,5 @@
     "jsxImportSource": "solid-js",
     "types": []
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "server-render.cases.tsx"]
 }

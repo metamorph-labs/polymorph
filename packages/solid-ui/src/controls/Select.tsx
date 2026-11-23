@@ -14,6 +14,7 @@ import { normalizeProps } from '@zag-js/solid'
 import {
   Each,
   Icon,
+  afresh,
   agentMember,
   claimSlot,
   createDerived,
@@ -296,240 +297,252 @@ export default function Select(given: SelectProps): JSX.Element {
           />
         ) : null}
         <Portal>
-          {present() ? (
-            <div {...mergeParts(api.value.getPositionerProps())}>
-              {/* panel */}
-              <div
-                {...mergeParts(api.value.getContentProps(), {
-                  class: styles.content,
-                  style: {
-                    '--radix-select-trigger-width': 'var(--reference-width)',
-                    '--radix-select-content-available-height': 'var(--available-height)',
-                    '--radix-select-content-transform-origin': 'var(--transform-origin)',
-                  },
-                  hidden: undefined,
-                  'data-size': props.size,
-                  'data-member': 'select',
-                  onfocus: () => followHighlight(panel.value, api.value.highlightedValue),
-                })}
-                ref={panel.attach}
-              >
-                <div class={styles.viewport}>
-                  {props.emptyOption !== undefined ? (
-                    <div
-                      {...mergeParts(api.value.getItemProps({ item: emptyChoice.value }), {
-                        class: styles.item,
-                        tabindex: '-1',
-                        onfocus: () => api.value.setHighlightValue(emptyChoice.value.value),
-                      })}
-                    >
-                      <span class={styles.check}>
-                        {api.value.value.includes(emptyChoice.value.value) ? (
-                          <Icon name="confirm" size="sm" />
-                        ) : null}
-                      </span>
-                      <span class={styles.text}>
-                        <span>{emptyChoice.value.label}</span>
-                        {emptyChoice.value.description !== undefined ? (
-                          <span class={styles.description}>{emptyChoice.value.description}</span>
-                        ) : null}
-                      </span>
-                    </div>
-                  ) : null}
-                  <Each
-                    of={props.options}
-                    by={(entry) => ('options' in entry ? `group-${entry.label}` : entry.value)}
-                    renew
+          {afresh(() => (
+            <>
+              {present() ? (
+                <div {...mergeParts(api.value.getPositionerProps())}>
+                  {/* panel */}
+                  <div
+                    {...mergeParts(api.value.getContentProps(), {
+                      class: styles.content,
+                      style: {
+                        '--radix-select-trigger-width': 'var(--reference-width)',
+                        '--radix-select-content-available-height': 'var(--available-height)',
+                        '--radix-select-content-transform-origin': 'var(--transform-origin)',
+                      },
+                      hidden: undefined,
+                      'data-size': props.size,
+                      'data-member': 'select',
+                      onfocus: () => followHighlight(panel.value, api.value.highlightedValue),
+                    })}
+                    ref={panel.attach}
                   >
-                    {(entry) => (
-                      <>
-                        {'options' in entry ? (
-                          <div
-                            {...mergeParts(api.value.getItemGroupProps({ id: entry.label }), {
-                              class: styles.group,
-                            })}
-                          >
-                            <div
-                              {...mergeParts(
-                                api.value.getItemGroupLabelProps({ htmlFor: entry.label }),
-                                { class: styles.groupLabel },
-                              )}
-                            >
-                              {entry.label}
-                            </div>
-                            <Each of={entry.options} by={(choice) => choice.value} renew>
-                              {(choice) => (
+                    <div class={styles.viewport}>
+                      {props.emptyOption !== undefined ? (
+                        <div
+                          {...mergeParts(api.value.getItemProps({ item: emptyChoice.value }), {
+                            class: styles.item,
+                            tabindex: '-1',
+                            onfocus: () => api.value.setHighlightValue(emptyChoice.value.value),
+                          })}
+                        >
+                          <span class={styles.check}>
+                            {api.value.value.includes(emptyChoice.value.value) ? (
+                              <Icon name="confirm" size="sm" />
+                            ) : null}
+                          </span>
+                          <span class={styles.text}>
+                            <span>{emptyChoice.value.label}</span>
+                            {emptyChoice.value.description !== undefined ? (
+                              <span class={styles.description}>
+                                {emptyChoice.value.description}
+                              </span>
+                            ) : null}
+                          </span>
+                        </div>
+                      ) : null}
+                      <Each
+                        of={props.options}
+                        by={(entry) => ('options' in entry ? `group-${entry.label}` : entry.value)}
+                        renew
+                      >
+                        {(entry) => (
+                          <>
+                            {'options' in entry ? (
+                              <div
+                                {...mergeParts(api.value.getItemGroupProps({ id: entry.label }), {
+                                  class: styles.group,
+                                })}
+                              >
                                 <div
-                                  {...mergeParts(api.value.getItemProps({ item: choice }), {
-                                    class: styles.item,
-                                    tabindex: '-1',
-                                    onfocus: () => api.value.setHighlightValue(choice.value),
-                                  })}
+                                  {...mergeParts(
+                                    api.value.getItemGroupLabelProps({ htmlFor: entry.label }),
+                                    { class: styles.groupLabel },
+                                  )}
                                 >
-                                  <span class={styles.check}>
-                                    {api.value.value.includes(choice.value) ? (
-                                      <Icon name="confirm" size="sm" />
-                                    ) : null}
-                                  </span>
-                                  <span class={styles.text}>
-                                    <span>{choice.label}</span>
-                                    {choice.description !== undefined ? (
-                                      <span class={styles.description}>{choice.description}</span>
-                                    ) : null}
-                                  </span>
+                                  {entry.label}
                                 </div>
-                              )}
-                            </Each>
-                          </div>
-                        ) : (
-                          <div
-                            {...mergeParts(api.value.getItemProps({ item: entry }), {
-                              class: styles.item,
-                              tabindex: '-1',
-                              onfocus: () => api.value.setHighlightValue(entry.value),
-                            })}
-                          >
-                            <span class={styles.check}>
-                              {api.value.value.includes(entry.value) ? (
-                                <Icon name="confirm" size="sm" />
-                              ) : null}
-                            </span>
-                            <span class={styles.text}>
-                              <span>{entry.label}</span>
-                              {entry.description !== undefined ? (
-                                <span class={styles.description}>{entry.description}</span>
-                              ) : null}
-                            </span>
-                          </div>
+                                <Each of={entry.options} by={(choice) => choice.value} renew>
+                                  {(choice) => (
+                                    <div
+                                      {...mergeParts(api.value.getItemProps({ item: choice }), {
+                                        class: styles.item,
+                                        tabindex: '-1',
+                                        onfocus: () => api.value.setHighlightValue(choice.value),
+                                      })}
+                                    >
+                                      <span class={styles.check}>
+                                        {api.value.value.includes(choice.value) ? (
+                                          <Icon name="confirm" size="sm" />
+                                        ) : null}
+                                      </span>
+                                      <span class={styles.text}>
+                                        <span>{choice.label}</span>
+                                        {choice.description !== undefined ? (
+                                          <span class={styles.description}>
+                                            {choice.description}
+                                          </span>
+                                        ) : null}
+                                      </span>
+                                    </div>
+                                  )}
+                                </Each>
+                              </div>
+                            ) : (
+                              <div
+                                {...mergeParts(api.value.getItemProps({ item: entry }), {
+                                  class: styles.item,
+                                  tabindex: '-1',
+                                  onfocus: () => api.value.setHighlightValue(entry.value),
+                                })}
+                              >
+                                <span class={styles.check}>
+                                  {api.value.value.includes(entry.value) ? (
+                                    <Icon name="confirm" size="sm" />
+                                  ) : null}
+                                </span>
+                                <span class={styles.text}>
+                                  <span>{entry.label}</span>
+                                  {entry.description !== undefined ? (
+                                    <span class={styles.description}>{entry.description}</span>
+                                  ) : null}
+                                </span>
+                              </div>
+                            )}
+                          </>
                         )}
-                      </>
-                    )}
-                  </Each>
+                      </Each>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          ) : null}
-          {scrimPresent() ? (
-            <div
-              class={sheet.scrim}
-              data-state={api.value.open ? 'open' : 'closed'}
-              ref={scrim.attach}
-            />
-          ) : null}
-          {sheetPresent() ? (
-            <div class={sheet.positioner}>
-              <div
-                class={sheet.panel}
-                data-presentation="sheet"
-                data-state={api.value.open ? 'open' : 'closed'}
-                tabindex="-1"
-                ref={sheetPanel.attach}
-              >
-                {/* panel */}
+              ) : null}
+              {scrimPresent() ? (
                 <div
-                  {...mergeParts(api.value.getContentProps(), {
-                    class: styles.sheetList,
-                    hidden: undefined,
-                    'data-size': props.size,
-                    'data-member': 'select',
-                    onfocus: () => followHighlight(panel.value, api.value.highlightedValue),
-                  })}
-                  ref={panel.attach}
-                >
-                  {props.emptyOption !== undefined ? (
-                    <div
-                      {...mergeParts(api.value.getItemProps({ item: emptyChoice.value }), {
-                        class: styles.item,
-                        tabindex: '-1',
-                        onfocus: () => api.value.setHighlightValue(emptyChoice.value.value),
-                      })}
-                    >
-                      <span class={styles.check}>
-                        {api.value.value.includes(emptyChoice.value.value) ? (
-                          <Icon name="confirm" size="sm" />
-                        ) : null}
-                      </span>
-                      <span class={styles.text}>
-                        <span>{emptyChoice.value.label}</span>
-                        {emptyChoice.value.description !== undefined ? (
-                          <span class={styles.description}>{emptyChoice.value.description}</span>
-                        ) : null}
-                      </span>
-                    </div>
-                  ) : null}
-                  <Each
-                    of={props.options}
-                    by={(entry) => ('options' in entry ? `group-${entry.label}` : entry.value)}
-                    renew
+                  class={sheet.scrim}
+                  data-state={api.value.open ? 'open' : 'closed'}
+                  ref={scrim.attach}
+                />
+              ) : null}
+              {sheetPresent() ? (
+                <div class={sheet.positioner}>
+                  <div
+                    class={sheet.panel}
+                    data-presentation="sheet"
+                    data-state={api.value.open ? 'open' : 'closed'}
+                    tabindex="-1"
+                    ref={sheetPanel.attach}
                   >
-                    {(entry) => (
-                      <>
-                        {'options' in entry ? (
-                          <div
-                            {...mergeParts(api.value.getItemGroupProps({ id: entry.label }), {
-                              class: styles.group,
-                            })}
-                          >
-                            <div
-                              {...mergeParts(
-                                api.value.getItemGroupLabelProps({ htmlFor: entry.label }),
-                                { class: styles.groupLabel },
-                              )}
-                            >
-                              {entry.label}
-                            </div>
-                            <Each of={entry.options} by={(choice) => choice.value} renew>
-                              {(choice) => (
+                    {/* panel */}
+                    <div
+                      {...mergeParts(api.value.getContentProps(), {
+                        class: styles.sheetList,
+                        hidden: undefined,
+                        'data-size': props.size,
+                        'data-member': 'select',
+                        onfocus: () => followHighlight(panel.value, api.value.highlightedValue),
+                      })}
+                      ref={panel.attach}
+                    >
+                      {props.emptyOption !== undefined ? (
+                        <div
+                          {...mergeParts(api.value.getItemProps({ item: emptyChoice.value }), {
+                            class: styles.item,
+                            tabindex: '-1',
+                            onfocus: () => api.value.setHighlightValue(emptyChoice.value.value),
+                          })}
+                        >
+                          <span class={styles.check}>
+                            {api.value.value.includes(emptyChoice.value.value) ? (
+                              <Icon name="confirm" size="sm" />
+                            ) : null}
+                          </span>
+                          <span class={styles.text}>
+                            <span>{emptyChoice.value.label}</span>
+                            {emptyChoice.value.description !== undefined ? (
+                              <span class={styles.description}>
+                                {emptyChoice.value.description}
+                              </span>
+                            ) : null}
+                          </span>
+                        </div>
+                      ) : null}
+                      <Each
+                        of={props.options}
+                        by={(entry) => ('options' in entry ? `group-${entry.label}` : entry.value)}
+                        renew
+                      >
+                        {(entry) => (
+                          <>
+                            {'options' in entry ? (
+                              <div
+                                {...mergeParts(api.value.getItemGroupProps({ id: entry.label }), {
+                                  class: styles.group,
+                                })}
+                              >
                                 <div
-                                  {...mergeParts(api.value.getItemProps({ item: choice }), {
-                                    class: styles.item,
-                                    tabindex: '-1',
-                                    onfocus: () => api.value.setHighlightValue(choice.value),
-                                  })}
+                                  {...mergeParts(
+                                    api.value.getItemGroupLabelProps({ htmlFor: entry.label }),
+                                    { class: styles.groupLabel },
+                                  )}
                                 >
-                                  <span class={styles.check}>
-                                    {api.value.value.includes(choice.value) ? (
-                                      <Icon name="confirm" size="sm" />
-                                    ) : null}
-                                  </span>
-                                  <span class={styles.text}>
-                                    <span>{choice.label}</span>
-                                    {choice.description !== undefined ? (
-                                      <span class={styles.description}>{choice.description}</span>
-                                    ) : null}
-                                  </span>
+                                  {entry.label}
                                 </div>
-                              )}
-                            </Each>
-                          </div>
-                        ) : (
-                          <div
-                            {...mergeParts(api.value.getItemProps({ item: entry }), {
-                              class: styles.item,
-                              tabindex: '-1',
-                              onfocus: () => api.value.setHighlightValue(entry.value),
-                            })}
-                          >
-                            <span class={styles.check}>
-                              {api.value.value.includes(entry.value) ? (
-                                <Icon name="confirm" size="sm" />
-                              ) : null}
-                            </span>
-                            <span class={styles.text}>
-                              <span>{entry.label}</span>
-                              {entry.description !== undefined ? (
-                                <span class={styles.description}>{entry.description}</span>
-                              ) : null}
-                            </span>
-                          </div>
+                                <Each of={entry.options} by={(choice) => choice.value} renew>
+                                  {(choice) => (
+                                    <div
+                                      {...mergeParts(api.value.getItemProps({ item: choice }), {
+                                        class: styles.item,
+                                        tabindex: '-1',
+                                        onfocus: () => api.value.setHighlightValue(choice.value),
+                                      })}
+                                    >
+                                      <span class={styles.check}>
+                                        {api.value.value.includes(choice.value) ? (
+                                          <Icon name="confirm" size="sm" />
+                                        ) : null}
+                                      </span>
+                                      <span class={styles.text}>
+                                        <span>{choice.label}</span>
+                                        {choice.description !== undefined ? (
+                                          <span class={styles.description}>
+                                            {choice.description}
+                                          </span>
+                                        ) : null}
+                                      </span>
+                                    </div>
+                                  )}
+                                </Each>
+                              </div>
+                            ) : (
+                              <div
+                                {...mergeParts(api.value.getItemProps({ item: entry }), {
+                                  class: styles.item,
+                                  tabindex: '-1',
+                                  onfocus: () => api.value.setHighlightValue(entry.value),
+                                })}
+                              >
+                                <span class={styles.check}>
+                                  {api.value.value.includes(entry.value) ? (
+                                    <Icon name="confirm" size="sm" />
+                                  ) : null}
+                                </span>
+                                <span class={styles.text}>
+                                  <span>{entry.label}</span>
+                                  {entry.description !== undefined ? (
+                                    <span class={styles.description}>{entry.description}</span>
+                                  ) : null}
+                                </span>
+                              </div>
+                            )}
+                          </>
                         )}
-                      </>
-                    )}
-                  </Each>
+                      </Each>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          ) : null}
+              ) : null}
+            </>
+          ))}
         </Portal>
       </>
     )

@@ -85,10 +85,10 @@ export default function ColorInput(given: ColorInputProps): JSX.Element {
     const borrowed: BorrowedHolder = {}
     provide(BORROWED, borrowed)
     const uid = createUniqueId()
-    const mirror = createCell(null as string | null)
-    const draft = createCell(null as string | null)
     const hexField = elementRef<HTMLElement>()
     const root = elementRef<HTMLElement>()
+    const mirror = createCell(null as string | null)
+    const draft = createCell(null as string | null)
     const parseHex = createDerived(
       () => (text: string) =>
         ((bare: string) =>

@@ -76,6 +76,11 @@ fixture's minifier writes both alike. Solid's runtime is about three fifths of t
 the foundation, most of it the glyph data of every icon role, which the Solid gateway ships as data
 as the Vue gateway does, is most of the rest. The member itself is about four kilobytes before
 compression, because Solid compiles its markup to templates and its bindings to direct DOM writes.
+The fixture measures 17.1 kB, so its ceiling is 19 kB. About a fifth of a kilobyte of that is the
+foundation's hydration conventions (`packages/solid/src/conventions/hydration.ts`), which keep a
+member to the order a server counted its elements in. Every member reaches them as it is created
+and as it resolves a slot, and a page that never hydrates ships them too, because Solid decides
+whether it hydrates while the page runs.
 
 In `angular-button`, Angular's runtime is about five sixths of the JavaScript. The member, the
 foundation it needs (the member context, the slot directives and the glyph data of every icon
@@ -98,7 +103,9 @@ not on the page: the codecs are a module of their own, which only a member that 
 time imports, so the date library comes in the chunks of those members. Button's chunk and
 Badge's, which Button composes, are under two kilobytes, and Icon's chunk is mostly the glyph data of every icon role. No other member reaches the page, because each element imports its Solid member by the
 member's own module rather than by the Solid vocabulary's index, which attaches every compound's
-parts. The CSS is `polymorph.css`, every recipe with the forms that reach through an element,
+parts. The page measures 41.03 kB, so its ceiling is 43 kB. About a quarter of a kilobyte of that
+is the Solid foundation's hydration conventions, which the Solid members carry and an element never
+uses, because an element renders its member in the browser. The CSS is `polymorph.css`, every recipe with the forms that reach through an element,
 which a page loads whichever members it uses, and the theme sheet. `elements-all` is the Solid
 vocabulary whole with Solid's runtime, the elements' bridge and the agent bridge; its largest third-party parts are Zod and
 Culori, from the theme engine, and Zag's date picker (`pnpm size --why elements-all`).

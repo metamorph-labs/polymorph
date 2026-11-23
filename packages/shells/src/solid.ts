@@ -105,6 +105,8 @@ export interface SolidContext {
   source: string
   /** Another described member's registry entry, for what a fixture must pass it. */
   lookup?: (name: string) => RegistryMemberLike | undefined
+  /** Every type the descriptions declare (`types`), by name, for what a prop's type holds. */
+  types?: ReadonlyMap<string, string>
 }
 
 /** A member's component file. */
@@ -164,6 +166,8 @@ const FOUNDATION_MODULES: Readonly<Record<string, string>> = {
   scope: 'slotted',
   createCell: 'cells',
   createDerived: 'cells',
+  createKept: 'cells',
+  afresh: 'hydration',
   elementRef: 'cells',
   classes: 'merge',
   mergeParts: 'merge',
@@ -237,6 +241,63 @@ const solidType = (text: string) =>
   text
     .replace(/\bRef<([^<>]+?) \| null>/g, '(element: $1 | null) => void')
     .replace(/\bVNode\b/g, 'JSX.Element')
+
+const NODE_TYPES = new Set(['VNode', 'ReactNode', 'ReactElement', 'JSX.Element'])
+
+/**
+ * Whether a value of this type may hold a node the caller creates: the type
+ * names a node, in itself or through a type a description declares or another
+ * member's props (ListPage's `emptyState` is EmptyState's props, whose action
+ * is a node). A function's type is not read, because a function a caller
+ * passes creates its nodes when the member calls it, and not when the prop is
+ * read.
+ */
+function holdsNode(
+  type: string,
+  declared: (name: string) => string | undefined,
+  lookup: SolidContext['lookup'],
+  seen = new Set<string>(),
+): boolean {
+  const source = ts.createSourceFile('type.ts', `type T = ${type}`, ts.ScriptTarget.Latest, true)
+  let found = false
+  const visit = (node: ts.Node): void => {
+    if (found) return
+    if (ts.isFunctionTypeNode(node) || ts.isConstructorTypeNode(node) || ts.isMethodSignature(node))
+      return
+    if (ts.isTypeReferenceNode(node)) {
+      const name = node.typeName.getText(source)
+      if (NODE_TYPES.has(name)) {
+        found = true
+        return
+      }
+      if (!seen.has(name)) {
+        seen.add(name)
+        const definition = declared(name)
+        if (definition !== undefined && holdsNode(definition, declared, lookup, seen)) {
+          found = true
+          return
+        }
+        const member = /^(\w+)Props$/.exec(name)?.[1]
+        const entry = member === undefined ? undefined : lookup?.(member)
+        const holds = (entry?.props ?? []).some((prop) => {
+          if (prop.name.includes('.')) return false
+          const kind = vueBinding(prop).kind
+          return (
+            kind === 'slot' ||
+            (kind === 'prop' && holdsNode(rewriteType(prop.type).text, declared, lookup, seen))
+          )
+        })
+        if (holds) {
+          found = true
+          return
+        }
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  return found
+}
 
 /** A member's props, by the registry; a prop listed under a part's name (`Group.title`) is the part's. */
 export function solidInterface(component: RegistryMemberLike): SolidInterface {
@@ -613,6 +674,15 @@ export function renderSolidMember(
   const events = new Map(
     face.props.filter((prop) => prop.kind === 'event').map((prop) => [prop.binding, prop]),
   )
+  // A prop whose value may hold a node is read once, and every place reads that value
+  // (the foundation's `createKept`).
+  const declaredType = (name: string) => shell.types?.[name] ?? context.types?.get(name)
+  const keptProps = new Map(
+    face.props
+      .filter((prop) => prop.kind === 'prop' && holdsNode(prop.type, declaredType, context.lookup))
+      .map((prop) => [camel(prop.name), prop]),
+  )
+  const keptVariable = (name: string) => `${name}Kept`
   const slotProps = new Map(
     face.props
       .filter((prop) => prop.kind === 'slot' || prop.kind === 'scoped-slot')
@@ -633,6 +703,12 @@ export function renderSolidMember(
       throw new Error(
         `shells: ${shell.member} names a derived or state value "${name}" after a prop`,
       )
+    }
+  }
+  for (const name of keptProps.keys()) {
+    const variable = keptVariable(name)
+    if (valueProps.has(variable) || derived.has(variable) || state.has(variable)) {
+      throw new Error(`shells: ${shell.member} names a value "${variable}" after a kept prop`)
     }
   }
   for (const name of Object.keys(shell.recipes ?? {})) {
@@ -748,7 +824,9 @@ export function renderSolidMember(
   }
   const baseName = (name: string): string | null => {
     const prop = propsByCamel.get(name)
-    if (prop !== undefined && prop.kind === 'prop') return access('props', prop.name)
+    if (prop !== undefined && prop.kind === 'prop') {
+      return keptProps.has(name) ? `${keptVariable(name)}.value` : access('props', prop.name)
+    }
     if (derived.has(name) || state.has(name) || templateRefs.has(name)) return `${name}.value`
     if (Object.hasOwn(shell.controlRefs ?? {}, name)) return `${name}.value`
     if (accessors.has(name)) return `${name}()`
@@ -969,6 +1047,15 @@ export function renderSolidMember(
     if (node.ref !== undefined) parts.push(refAttribute(node.ref))
     const children = node.children ?? []
     const open = parts.length === 0 ? tag : `${tag} ${parts.join(' ')}`
+    // In markup a textarea's value is its content. A server render writes `value` as an
+    // attribute, which a browser does not read, and a hydration sets no property. So a server
+    // writes the value as the content too, and the hydrated field holds it. A browser writes
+    // nothing there.
+    const value = node.attrs?.['value']
+    if (tag === 'textarea' && typeof value === 'string' && children.length === 0) {
+      web.add('isServer')
+      return `<${open}>{isServer ? ${at.expr(value)} : undefined}</${tag}>`
+    }
     if (children.length === 0) return `<${open} />`
     return `<${open}>\n${renderNodes(children, at).join('\n')}\n</${tag}>`
   }
@@ -1046,6 +1133,19 @@ export function renderSolidMember(
         // A conditional expression, which Solid's compiler memoizes on the condition as
         // `<Show>` does, and in which TypeScript narrows what the condition checked.
         const otherwise = node.otherwise === undefined ? 'null' : fragment(node.otherwise, at)
+        // A description draws a value that is text or a node through two branches
+        // (`typeof detail === 'string'`), because Vue and Svelte write them apart. Solid inserts
+        // both the same way, so the value is read once: the test would read it again, and a
+        // value a function returns (DataTable's `cell`) would be created for each read.
+        const [only] = node.branches
+        if (
+          node.branches.length === 1 &&
+          only !== undefined &&
+          /^typeof .+ === 'string'$/.test(only.when.trim()) &&
+          fragment(only.then, at) === otherwise
+        ) {
+          return `{${otherwise}}`
+        }
         return `{${node.branches
           .map((branch) => `(${at.expr(branch.when)}) ? ${fragment(branch.then, at)} : `)
           .join('')}${otherwise}}`
@@ -1089,8 +1189,10 @@ export function renderSolidMember(
         return `<Each of={${at.expr(node.of)}} by={(${by.join(', ')}) => ${keyExpr}}${renew}>\n{(${parameters.join(', ')}) => ${fragment(node.children, body, true)}}\n</Each>`
       }
       case 'portal':
+        // No server renders a portal, so its content is created outside a hydration (`afresh`).
         web.add('Portal')
-        return `<Portal>\n${renderNodes(node.children, at).join('\n')}\n</Portal>`
+        foundationValues.add('afresh')
+        return `<Portal>\n{afresh(() => ${fragment(node.children, at, true)})}\n</Portal>`
       case 'render':
         return `{${at.expr(node.value)}}`
     }
@@ -1139,6 +1241,7 @@ export function renderSolidMember(
   if (listRefs.size > 0) foundationValues.add('elementList')
   if (shell.state) foundationValues.add('createCell')
   if (shell.derived || shell.machine) foundationValues.add('createDerived')
+  if (keptProps.size > 0) foundationValues.add('createKept')
   // The foundation's `useMachine` applies an event when it is sent, as Vue's adapter does.
   if (shell.machine) foundationValues.add('useMachine')
   for (const name of face.names) if (FOUNDATION_TYPES.has(name)) foundationTypes.add(name)
@@ -1200,6 +1303,9 @@ export function renderSolidMember(
   const body: string[] = []
   const own = parameters.length === 0 ? '' : `<${parameters.join(', ')}>`
 
+  for (const [name, prop] of keptProps) {
+    body.push(`const ${keptVariable(name)} = createKept(() => ${access('props', prop.name)})`)
+  }
   if (shell.provide) {
     const getters = Object.entries(shell.provide).map(
       ([name, expr]) => `get ${name}() { return ${scriptExpr(expr)} }`,
@@ -1214,9 +1320,6 @@ export function renderSolidMember(
   if (readsLender) body.push('provide(BORROWED, undefined)')
   if (handsBack) body.push('const borrowed: BorrowedHolder = {}', 'provide(BORROWED, borrowed)')
   if (usesUid) body.push('const uid = createUniqueId()')
-  for (const [name, expr] of Object.entries(shell.state ?? {})) {
-    body.push(`const ${name} = createCell(${scriptExpr(expr)})`)
-  }
   for (const name of [...templateRefs].sort()) {
     body.push(
       listRefs.has(name)
@@ -1245,6 +1348,11 @@ export function renderSolidMember(
             .map(([prop, expr]) => `${key(prop)}: ${scriptExpr(expr)}`)
             .join(', ')} })`
     body.push(`const ${variable} = resolveSlot(() => ${access('props', entry.name)}${passCode})`)
+  }
+  // After the slots, because a state's first value may read one (MasterDetailPage starts
+  // `selected` from whether a detail is given).
+  for (const [name, expr] of Object.entries(shell.state ?? {})) {
+    body.push(`const ${name} = createCell(${scriptExpr(expr)})`)
   }
 
   // A derived value the machine reads is declared before it; one that reads the machine, after.
@@ -1998,12 +2106,14 @@ export function renderSolidFiles(
 ): Map<string, string> {
   const where = locations(shells)
   const owners = typeOwners(shells)
+  const types = new Map(shells.flatMap((shell) => Object.entries(shell.types ?? {})))
   const files = new Map<string, string>()
   for (const shell of shells) {
     const component = registryMember(registry, shell.member)
     const context: SolidContext = {
       locations: where,
       owners,
+      types,
       source: descriptionPath(shell),
       lookup: (name) => {
         try {

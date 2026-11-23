@@ -15,6 +15,7 @@ import {
   BORROWED,
   IDENTITY,
   ResolvedSlot,
+  afresh,
   agentMember,
   claimSlot,
   classes,
@@ -99,7 +100,6 @@ export default function Dialog(given: DialogProps): JSX.Element {
   return scope(() => {
     provide(BORROWED, undefined)
     const uid = createUniqueId()
-    const opener = createCell(null as HTMLElement | null)
     const panel = elementRef<HTMLElement>()
     const scrim = elementRef<HTMLElement>()
     const phone = useMediaQuery('phone')
@@ -107,6 +107,7 @@ export default function Dialog(given: DialogProps): JSX.Element {
       () => props.trigger,
       () => ({ onClick: openFrom.value }),
     )
+    const opener = createCell(null as HTMLElement | null)
     const sheet = createDerived(() => props.presentation === 'sheet' && phone())
     const documentDirection = useDirection()
     const service = useMachine(
@@ -175,80 +176,84 @@ export default function Dialog(given: DialogProps): JSX.Element {
       <>
         {triggerSlot()}
         <Portal>
-          {scrimPresent() ? (
-            <div
-              {...mergeParts(api.value.getBackdropProps(), {
-                class: styles.scrim,
-                hidden: undefined,
-              })}
-              ref={scrim.attach}
-            />
-          ) : null}
-          {panelPresent() ? (
-            <ResolvedSlot of={() => props.footer}>
-              {(footerSlot) => (
+          {afresh(() => (
+            <>
+              {scrimPresent() ? (
                 <div
-                  {...mergeParts(api.value.getPositionerProps(), {
-                    class: classes(
-                      sheet.value ? styles.sheetPositioner : undefined,
-                      !sheet.value ? styles.positioner : undefined,
-                    ),
+                  {...mergeParts(api.value.getBackdropProps(), {
+                    class: styles.scrim,
+                    hidden: undefined,
                   })}
-                >
-                  {/* panel */}
-                  <div
-                    {...mergeParts(api.value.getContentProps(), {
-                      class: classes(
-                        sheet.value ? styles.sheetPanel : undefined,
-                        !sheet.value ? styles.panel : undefined,
-                      ),
-                      hidden: undefined,
-                      'data-presentation': sheet.value ? 'sheet' : undefined,
-                      'data-size': props.size,
-                      'data-member': lent ?? 'dialog',
-                    })}
-                    ref={panel.attach}
-                  >
-                    {/* title */}
-                    <h2 {...mergeParts(api.value.getTitleProps(), { class: styles.title })}>
-                      {props.title}
-                    </h2>
-                    {props.description !== undefined ? (
-                      <p
-                        {...mergeParts(api.value.getDescriptionProps(), {
-                          class: styles.description,
+                  ref={scrim.attach}
+                />
+              ) : null}
+              {panelPresent() ? (
+                <ResolvedSlot of={() => props.footer}>
+                  {(footerSlot) => (
+                    <div
+                      {...mergeParts(api.value.getPositionerProps(), {
+                        class: classes(
+                          sheet.value ? styles.sheetPositioner : undefined,
+                          !sheet.value ? styles.positioner : undefined,
+                        ),
+                      })}
+                    >
+                      {/* panel */}
+                      <div
+                        {...mergeParts(api.value.getContentProps(), {
+                          class: classes(
+                            sheet.value ? styles.sheetPanel : undefined,
+                            !sheet.value ? styles.panel : undefined,
+                          ),
+                          hidden: undefined,
+                          'data-presentation': sheet.value ? 'sheet' : undefined,
+                          'data-size': props.size,
+                          'data-member': lent ?? 'dialog',
                         })}
+                        ref={panel.attach}
                       >
-                        {props.description}
-                      </p>
-                    ) : null}
-                    {/* body */}
-                    <div class={styles.body} data-dialog-part="body">
-                      {props.children}
+                        {/* title */}
+                        <h2 {...mergeParts(api.value.getTitleProps(), { class: styles.title })}>
+                          {props.title}
+                        </h2>
+                        {props.description !== undefined ? (
+                          <p
+                            {...mergeParts(api.value.getDescriptionProps(), {
+                              class: styles.description,
+                            })}
+                          >
+                            {props.description}
+                          </p>
+                        ) : null}
+                        {/* body */}
+                        <div class={styles.body} data-dialog-part="body">
+                          {props.children}
+                        </div>
+                        {footerSlot.filled() ? (
+                          <div class={styles.footer} data-dialog-part="footer">
+                            {footerSlot()}
+                          </div>
+                        ) : null}
+                        {props.dismissible ? (
+                          <div class={styles.close} data-dialog-part="close">
+                            <Button
+                              variant="ghost"
+                              tone="neutral"
+                              size="sm"
+                              iconOnly={true}
+                              icon="close"
+                              label={props.closeLabel}
+                              onClick={() => api.value.setOpen(false)}
+                            />
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
-                    {footerSlot.filled() ? (
-                      <div class={styles.footer} data-dialog-part="footer">
-                        {footerSlot()}
-                      </div>
-                    ) : null}
-                    {props.dismissible ? (
-                      <div class={styles.close} data-dialog-part="close">
-                        <Button
-                          variant="ghost"
-                          tone="neutral"
-                          size="sm"
-                          iconOnly={true}
-                          icon="close"
-                          label={props.closeLabel}
-                          onClick={() => api.value.setOpen(false)}
-                        />
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              )}
-            </ResolvedSlot>
-          ) : null}
+                  )}
+                </ResolvedSlot>
+              ) : null}
+            </>
+          ))}
         </Portal>
       </>
     )

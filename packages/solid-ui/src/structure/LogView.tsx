@@ -85,10 +85,10 @@ export default function LogView(given: LogViewProps): JSX.Element {
     claimSlot(given),
   )
   return scope(() => {
-    const detached = createCell(false)
-    const overflowing = createCell(false)
     const list = elementRef<HTMLElement>()
     const viewport = elementRef<HTMLElement>()
+    const detached = createCell(false)
+    const overflowing = createCell(false)
     let release1: (() => void) | undefined
     const effect1 = () => {
       release1?.()

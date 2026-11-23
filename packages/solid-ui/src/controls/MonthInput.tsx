@@ -91,13 +91,13 @@ export default function MonthInput(given: MonthInputProps): JSX.Element {
     claimSlot(given, 'group'),
   )
   const uid = createUniqueId()
+  const field = elementRef<HTMLElement>()
   const browserLanguage = createCell(undefined as string | undefined)
   const draft = createCell(monthDraft(props.value !== undefined ? props.value : props.defaultValue))
   const typed = createCell('')
   const reported = createCell(
     monthFieldValue(monthDraft(props.value !== undefined ? props.value : props.defaultValue)) ?? '',
   )
-  const field = elementRef<HTMLElement>()
   const say = createDerived(() => props.messages ?? { empty: 'Empty' })
   const language = createDerived(() => props.locale ?? browserLanguage.value ?? 'en-US')
   const fieldOptions = createDerived(() => ({

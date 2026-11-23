@@ -165,7 +165,7 @@ export class MasterDetailPage {
   protected readonly $p = this.$.props
   protected readonly narrow = cell(() => false)
   protected readonly held = cell(() => false)
-  protected readonly selected = cell(() => false)
+  protected readonly selected = cell(() => Boolean(this.$.filled('detail')))
   protected readonly body = elementRef<HTMLElement>()
   protected readonly root = elementRef<HTMLElement>()
   protected readonly measure = derived(() => () => {

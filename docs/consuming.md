@@ -1033,12 +1033,10 @@ An app that renders on a server (SolidStart, or Vite's server rendering) renders
 there: `packages/solid-ui/server-render.test.ts` renders every states fixture entry in Node. Its
 compiler reads the packages' `solid` condition, the JSX source, and compiles it for the server and,
 hydratable, for the browser; the packages' own `browser` and `node` builds are not hydratable. A
-browser hydrates most members. It does not hydrate the entries the law lists as `NOT_HYDRATING`,
-in Avatar.Group, DescriptionList, CommentThread, DataTable, ArtifactPane, AppShell, ListPage,
-Dashboard, MasterDetailPage, SearchPage and ConversationPage: each is given a node inside a value
-or a slot, and Solid throws when it hydrates one ([shells.md](shells.md#the-solid-foundation-polymorphsolid)).
-A page that holds one of these renders it in the browser only, once the page has mounted, and a
-crawler that runs no script does not get its markup.
+browser hydrates every member: the same law hydrates each entry's markup and compares the result
+with a mount of the same entry. One limit remains. A plain element, not a member, that a member
+creates and does not draw (a child past Avatar.Group's `max`) throws in Solid's development build
+([shells.md](shells.md#the-solid-foundation-polymorphsolid)).
 
 ## An Angular app
 

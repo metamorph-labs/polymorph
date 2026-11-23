@@ -15,6 +15,8 @@ import {
 
 import { readMotionEnvironment, resolveBinding, type BindingName } from '@polymorph/engine/motion'
 
+import { claimKeys, reserveKeys } from './hydration'
+
 /**
  * The slot conventions of the Solid members: what a member reads from the
  * content a caller gives it, and what it hands that content.
@@ -114,9 +116,11 @@ export function scope(render: () => JSX.Element): JSX.Element {
  * props the slot hands it over them (a handler runs after the member's own),
  * and an `undefined` passed value leaving the member's own. Outside a slot
  * that hands anything, the props as given. Called first in every generated
- * member, with its `controlKind`.
+ * member, with its `controlKind`. It is also where a member a server did not
+ * render leaves a hydration (`claimKeys`).
  */
 export function claimSlot<P extends object>(given: P, kind?: string): P {
+  claimKeys()
   claiming = null
   const host = useContext(SLOT)
   if (host === null) return given
@@ -246,7 +250,10 @@ function ownAttributes(element: Element): Record<string, unknown> {
  * owner that called this, so `pass` may read values the member declares after
  * it (FormField hands its control the id it derives from the control's kind,
  * which the control tells it as it claims the slot). A read made while the
- * content is being created sees what has claimed the slot so far.
+ * content is being created sees what has claimed the slot so far. In a
+ * hydration the content takes its place in the count here, and not where it
+ * is first read, which a server and a browser reach in different orders
+ * (`reserveKeys`).
  *
  * The slot holds members and elements no member rendered, in order, as Vue's
  * and Svelte's slots read them: an element counts beside the members, its own
@@ -254,6 +261,7 @@ function ownAttributes(element: Element): Record<string, unknown> {
  */
 export function resolveSlot(read: () => JSX.Element, pass?: SlotPass): Slot {
   const owner = getOwner()
+  const keyed = reserveKeys()
   const [claims, setClaims] = createSignal<readonly Claim[]>([])
   // An attribute the caller changes on an element in the slot, which the slot's readers read.
   const [changes, setChanges] = createSignal(0)
@@ -271,7 +279,7 @@ export function resolveSlot(read: () => JSX.Element, pass?: SlotPass): Slot {
       resolved = runWithOwner(owner, () => {
         const raw = createMemo(() => {
           provide(SLOT, host)
-          return read()
+          return keyed(read)
         })
         const held = createMemo(() => {
           const out: Held[] = []

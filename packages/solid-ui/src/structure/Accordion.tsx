@@ -18,6 +18,7 @@ import {
   claimSlot,
   createCell,
   createDerived,
+  createKept,
   elementList,
   elementRef,
   mergeParts,
@@ -65,10 +66,11 @@ export default function Accordion(given: AccordionProps): JSX.Element {
     claimSlot(given),
   )
   return scope(() => {
+    const itemsKept = createKept(() => props.items)
     const uid = createUniqueId()
-    const heights = createCell(new Map())
     const regions = elementList<HTMLElement>()
     const root = elementRef<HTMLElement>()
+    const heights = createCell(new Map())
     const documentDirection = useDirection()
     const service = useMachine(
       zag.machine,
@@ -104,7 +106,7 @@ export default function Accordion(given: AccordionProps): JSX.Element {
       () => api.value.value,
       () => regions.value,
       (element) =>
-        props.items.find(
+        itemsKept.value.find(
           (item) => api.value.getItemContentProps({ value: item.value }).id === element.id,
         )?.value,
     )
@@ -126,7 +128,7 @@ export default function Accordion(given: AccordionProps): JSX.Element {
         element: () => root.value,
         state: () => ({
           value: api.value.value,
-          items: props.items.map((item) => ({
+          items: itemsKept.value.map((item) => ({
             id: item.value,
             label: item.label,
             ...(item.disabled === true ? { disabled: true } : {}),
@@ -168,7 +170,7 @@ export default function Accordion(given: AccordionProps): JSX.Element {
         })}
         ref={root.attach}
       >
-        <Each of={props.items} by={(item) => item.value} renew>
+        <Each of={itemsKept.value} by={(item) => item.value} renew>
           {(item) => (
             <div
               {...mergeParts(
@@ -210,9 +212,7 @@ export default function Accordion(given: AccordionProps): JSX.Element {
                 )}
                 ref={regions.attach}
               >
-                <div class={styles.inner}>
-                  {typeof item.content === 'string' ? item.content : item.content}
-                </div>
+                <div class={styles.inner}>{item.content}</div>
               </div>
             </div>
           )}

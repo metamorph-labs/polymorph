@@ -64,10 +64,10 @@ export default function Alert(given: AlertProps): JSX.Element {
     claimSlot(given),
   )
   return scope(() => {
-    const settle = createCell(undefined as (() => void) | undefined)
     const closeRegion = elementRef<HTMLElement>()
     const root = elementRef<HTMLElement>()
     const childrenSlot = resolveSlot(() => props.children)
+    const settle = createCell(undefined as (() => void) | undefined)
     const departure = useDeparture(() => root.value, 'alert.dismiss')
     let release1: (() => void) | undefined
     const effect1 = () => {

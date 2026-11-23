@@ -78,10 +78,10 @@ export default function Pagination(given: PaginationProps): JSX.Element {
     claimSlot(given),
   )
   return scope(() => {
+    const root = elementRef<HTMLElement>()
     const focused = createCell(null as HTMLElement | null)
     const focusedControl = createCell(null as string | number | null)
     const taken = createCell(null as string | number | null)
-    const root = elementRef<HTMLElement>()
     const entries = createDerived(() =>
       paginationWindow(props.page, props.pageCount, props.siblingCount),
     )

@@ -94,9 +94,9 @@ export default function Image(given: ImageProps): JSX.Element {
     claimSlot(given),
   )
   return scope(() => {
+    const image = elementRef<HTMLElement>()
     const loaded = createCell('')
     const failed = createCell('')
-    const image = elementRef<HTMLElement>()
     const ratio = createDerived(() =>
       props.aspectRatio !== undefined && props.aspectRatio > 0 && Number.isFinite(props.aspectRatio)
         ? props.aspectRatio

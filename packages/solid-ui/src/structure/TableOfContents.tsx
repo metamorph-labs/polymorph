@@ -46,8 +46,8 @@ export interface TableOfContentsProps {
 export default function TableOfContents(given: TableOfContentsProps): JSX.Element {
   const props = claimSlot(given)
   const uid = createUniqueId()
-  const current = createCell(null as string | null)
   const nav = elementRef<HTMLElement>()
+  const current = createCell(null as string | null)
   const labelId = createDerived(() => `${uid}-label`)
   const groups = createDerived(() =>
     props.items.reduce(

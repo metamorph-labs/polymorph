@@ -877,10 +877,11 @@ exists in Solid:
 | --- | --- |
 | `Glyph`, `Icon`, `BrandMark` | the icon gateway, the member, and a third-party mark, as the Vue foundation's |
 | `usePresence`, `useKeyedPresence` (`@polymorph/solid/motion`) | keep exiting content mounted while it plays its exit, through the engine's motion engine or the recipe's CSS animation; the keyed one per item of a list |
-| `createCell`, `createDerived`, `elementRef`, `elementList`, `useControlRef`, `Defaults` | the cells a member's scope is spelled as: a held value, a derived value, a named element, the elements a loop renders, a control handed to the caller's `controlRef`; the type of the props a member gives defaults |
+| `createCell`, `createDerived`, `createKept`, `elementRef`, `elementList`, `useControlRef`, `Defaults` | the cells a member's scope is spelled as: a held value, a derived value, a prop's value that may hold nodes and is read once, a named element, the elements a loop renders, a control handed to the caller's `controlRef`; the type of the props a member gives defaults |
 | `Each`, `itemOf`, `Keyed` | the keyed list; the object a row's view of its item reads; content made again when its key changes, for a description's `key` |
 | `useMachine`, `watchEffect` | a Zag machine whose `send` applies an event before it returns (a copy of `@zag-js/solid`'s `useMachine`); an effect that runs on mount and a microtask after a watched change, once per task |
 | `afterRender` | runs a function in a microtask, by when Solid, which writes the document as a signal changes, has written the changes made before the call |
+| `afresh` | creates content outside a hydration, as new elements: a portal's, which no server renders |
 | `claimSlot`, `resolveSlot`, `ResolvedSlot`, `scope`, `provide`, `ownerContext`, `IDENTITY` | what a member reads from its slots and hands them, and a slot resolved in the branch that renders it; the computation a member renders in and the contexts it sets there; the context a member hands its compound parts and the identity it lends |
 | `mergeParts`, `classes` | a machine's prop getters and an element's own attributes on one element; a class list from recipe classes |
 | `useDeparture`, `useMediaQuery`, `MEDIA_QUERIES`, `useDirection` | a departure before a callback; a named media query; the document's reading direction, which a member hands to its machine |
@@ -901,15 +902,39 @@ under the `node` condition: it imports no stylesheet, so plain Node loads it and
 a string. Neither build is hydratable; an application that hydrates compiles the source.
 
 **A server render and hydration.** Every states fixture entry renders on a server, and a browser
-hydrates the markup of most. Solid finds each element by a key the server wrote on it, in the order
-the components were made. A node inside a value is made each time the value is read.
-DescriptionList reads `items` for its length and again for its rows, so an item's Badge is made
-twice. The server keeps the markup of the one it drew, and the browser's other one asks for a key
-the markup does not hold, so the hydration throws. The server-render law lists every entry that
-does not hydrate (`NOT_HYDRATING` in `packages/solid-ui/server-render.test.ts`), in Avatar.Group,
-DescriptionList, CommentThread, DataTable, ArtifactPane, AppShell, ListPage, Dashboard,
-MasterDetailPage, SearchPage and ConversationPage. Each holds a node it was given inside a value
-or a slot. The cause is traced for DescriptionList and not for the others.
+hydrates each one into the document a mount draws (`packages/solid-ui/server-render.test.ts`).
+Solid names each element a server renders by a key, counted in the order its components are
+created. A browser that hydrates finds each element by the same count, and a development build
+throws when one is missing. The foundation's `conventions/hydration.ts` and the renderer keep a
+member to that count:
+
+- A slot's content and a prop's value are created the first time the member reads them, and a
+  server and a browser do not read in the same order: a server evaluates an element's attributes
+  before its children, and a browser inserts the children first. So each takes its place in the
+  count where the member declares it (`reserveKeys`, in `resolveSlot` and `createKept`).
+- A prop whose type holds a node (DescriptionList's `items`, AppShell's `topbar`, ListPage's
+  `emptyState`) is a getter that creates the node on every read. The member reads it once, through
+  `createKept`, and every place reads that value. The renderer finds these props by their types,
+  through the types a description declares and another member's props. It does not read a
+  function's type, because a function creates its nodes when the member calls it.
+- A description draws a value that is text or a node through two branches
+  (`typeof detail === 'string'`), which Vue and Svelte write apart. The Solid renderer writes the
+  value once, because the test would read it again, and a value a function returns (DataTable's
+  `cell`) would be created for each read.
+- A member that is created and not drawn has no markup on the server: Avatar.Group creates every
+  Avatar to count them and draws the first few, and ArtifactPane is given every view's content and
+  draws one. Such a member leaves the hydration as it is created (`claimKeys`, in `claimSlot`), and
+  so does slot content a server rendered none of, so both are new elements.
+- No server renders a portal, so a member's portal creates its content outside the hydration
+  (`afresh`).
+- In markup a textarea's value is its content. A server render writes `value` as an attribute,
+  which a browser does not read, and a hydration sets no property. So on a server the renderer
+  writes the value as the textarea's content too.
+
+One limit remains. An element a caller wrote that a member creates and does not draw (a plain
+element past Avatar.Group's `max`) asks for a server element that is not there, and Solid's
+development build throws. Its production build creates the element anew. A member in that place
+is not affected.
 
 ## The Solid laws
 
@@ -924,7 +949,7 @@ The Solid shell is held to the Vue shell's laws, through its own files.
 | The framework map | `packages/solid-ui/laws.test.ts` | a member is `native` in `design/frameworks/solid.json` exactly when it has a description |
 | Token-only | `packages/solid-ui/laws.test.ts` | a component imports only Solid, Zag, the foundation, its recipes and other components; every `class`, in an attribute or a merged object, reads a recipe and names no class as a string; a `style` holds no colour or length; and the rest of the file passes `no-raw-styles`. `Icon.tsx` imports only Solid, the gateway, its stylesheet, the foundation's conventions and the engine |
 | Packaging | `packages/solid-ui/packaging.test.ts` | every import of the shipped source is declared; the browser's build compiles each recipe beside its member and its entry imports the base layer and the foundation's stylesheet; the server's build is compiled to strings, imports no stylesheet, loads in plain Node and renders a member; the source keeps its JSX, names only shipped files and ships no test tooling; every member has its declarations |
-| Server render | `packages/solid-ui/server-render.test.ts` | every states fixture entry renders with `renderToString` through Vite and Solid's plugin, in Node with no document, with no error and no warning; and the same sources compiled for the browser, hydratable, hydrate that markup in a document (jsdom), except the entries its `NOT_HYDRATING` lists, each of which must still fail |
+| Server render | `packages/solid-ui/server-render.test.ts` | every states fixture entry renders with `renderToString` through Vite and Solid's plugin, in Node with no document, with no error and no warning; and the same sources compiled for the browser, hydratable, hydrate that markup in a document (jsdom) with no error, into the document a mount of the same entry draws; the entries are the states fixtures and those of `server-render.cases.tsx`, which pass an element a caller wrote where a fixture passes a member |
 | Foundation packaging | `packages/solid/packaging.test.ts` | the foundation's two builds write every export target, mirror the source and keep the engine and Solid external; the server's loads in plain Node and renders `Icon`; the source keeps its JSX and is fully specified, each relative specifier naming its emitted file; the presences stay on `./motion`; and its declarations pass a strict consumer |
 | Behaviour | `packages/solid-ui/src/<tier>/<member>.test.tsx` | the Vue shell's behaviour tests, except ToolCall's, Command's and Combobox's, against the Solid members; and Tabs' panel, which follows the current tab |
 | Foundation | `packages/solid-ui/src/conventions/foundation.test.tsx` | `useMachine` has applied an event when `send` returns, holds one sent before it starts and drops one sent after its member is disposed; `watchEffect` runs once for the changes one task makes; `itemOf` gives a row's item back as the caller's object; `Keyed` makes its content again when its key changes and keeps it otherwise; `mergeParts` reads an attribute in either casing as one and keeps the casing Solid reads; `ResolvedSlot` makes a slot's content each time its branch opens and disposes it as the branch closes; a slot's plain elements count beside its members, take `pass` with their own attributes, and get their own attribute back once `pass` stops naming it |

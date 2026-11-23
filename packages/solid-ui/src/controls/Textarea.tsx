@@ -6,6 +6,7 @@
  * run `pnpm shells`.
  */
 import { createMemo, mergeProps, onCleanup, onMount, type JSX } from 'solid-js'
+import { isServer } from 'solid-js/web'
 
 import {
   agentFill,
@@ -107,8 +108,8 @@ export default function Textarea(given: TextareaProps): JSX.Element {
     >,
     claimSlot(given),
   )
-  const draft = createCell(props.defaultValue ?? '')
   const control = useControlRef(() => props.controlRef)
+  const draft = createCell(props.defaultValue ?? '')
   const resizing = createDerived(() => props.resize ?? (props.autosize ? 'none' : 'vertical'))
   const effect1 = () => {
     void (props.autosize && control.value && fitTextarea(control.value))
@@ -189,6 +190,8 @@ export default function Textarea(given: TextareaProps): JSX.Element {
       oncompositionstart={($event: CompositionEvent) => props.onCompositionStart?.($event)}
       oncompositionend={($event: CompositionEvent) => props.onCompositionEnd?.($event)}
       ref={control.attach}
-    />
+    >
+      {isServer ? (props.value ?? draft.value) : undefined}
+    </textarea>
   )
 }

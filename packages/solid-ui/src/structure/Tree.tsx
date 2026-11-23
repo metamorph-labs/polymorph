@@ -112,13 +112,13 @@ export default function Tree(given: TreeProps): JSX.Element {
   )
   return scope(() => {
     const uid = createUniqueId()
+    const root = elementRef<HTMLElement>()
     const ownExpanded = createCell(props.defaultExpanded ?? new Set<string>())
     const ownValue = createCell((props.defaultValue ?? null) as string | null)
     const placed = createCell(false)
     const held = createCell(false)
     const asked = createCell(null as { parent: string | null; count: number } | null)
     const moving = createCell(false)
-    const root = elementRef<HTMLElement>()
     const open = createDerived(() => props.expanded ?? ownExpanded.value)
     const selected = createDerived(() => (props.value === undefined ? ownValue.value : props.value))
     const shownItems = createDerived(() =>

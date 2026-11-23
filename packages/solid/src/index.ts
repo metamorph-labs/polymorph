@@ -47,11 +47,14 @@ export { Each, itemOf, Keyed } from './conventions/keyed'
 
 export { useMachine } from './conventions/machine'
 
+export { afresh } from './conventions/hydration'
+
 export { afterRender, watchEffect } from './conventions/effects'
 
 export {
   createCell,
   createDerived,
+  createKept,
   elementList,
   elementRef,
   useControlRef,

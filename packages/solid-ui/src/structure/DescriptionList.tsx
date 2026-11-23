@@ -7,7 +7,7 @@
  */
 import { mergeProps, type JSX } from 'solid-js'
 
-import { Each, claimSlot, scope, type Defaults } from '@polymorph/solid'
+import { Each, claimSlot, createKept, scope, type Defaults } from '@polymorph/solid'
 import styles from '@polymorph/recipes/structure/description-list.module.css'
 
 export interface DescriptionListItem {
@@ -36,21 +36,20 @@ export default function DescriptionList(given: DescriptionListProps): JSX.Elemen
     claimSlot(given),
   )
   return scope(() => {
+    const itemsKept = createKept(() => props.items)
     return (
       <>
-        {props.items.length > 0 ? (
+        {itemsKept.value.length > 0 ? (
           <dl
             class={styles.root}
             data-orientation={props.orientation}
             data-member="description-list"
           >
-            <Each of={props.items} by={(_item, index) => index} renew>
+            <Each of={itemsKept.value} by={(_item, index) => index} renew>
               {(item) => (
                 <div class={styles.pair}>
                   <dt class={styles.term}>{item.term}</dt>
-                  <dd class={styles.detail}>
-                    {typeof item.detail === 'string' ? item.detail : item.detail}
-                  </dd>
+                  <dd class={styles.detail}>{item.detail}</dd>
                 </div>
               )}
             </Each>

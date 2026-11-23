@@ -73,8 +73,8 @@ export default function CheckboxGroup(given: CheckboxGroupProps): JSX.Element {
   )
   return scope(() => {
     const uid = createUniqueId()
-    const mirror = createCell(props.defaultValue ?? [])
     const group = elementRef<HTMLElement>()
+    const mirror = createCell(props.defaultValue ?? [])
     const current = createDerived(() => props.value ?? mirror.value)
     const toggle = createDerived(
       () => (optionValue: string, checked: boolean) =>

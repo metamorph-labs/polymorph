@@ -13,6 +13,7 @@ import {
   claimSlot,
   createCell,
   createDerived,
+  createKept,
   elementRef,
   resolveSlot,
   scope,
@@ -89,21 +90,24 @@ export default function ArtifactPane(given: ArtifactPaneProps): JSX.Element {
     claimSlot(given),
   )
   return scope(() => {
+    const viewsKept = createKept(() => props.views)
     const uid = createUniqueId()
-    const overflowing = createCell(false)
-    const mirror = createCell(props.defaultView ?? props.views?.[0]?.id)
     const body = elementRef<HTMLElement>()
     const closer = elementRef<HTMLElement>()
     const pane = elementRef<HTMLElement>()
     const switcher = elementRef<HTMLElement>()
     const actionsSlot = resolveSlot(() => props.actions)
+    const overflowing = createCell(false)
+    const mirror = createCell(props.defaultView ?? viewsKept.value?.[0]?.id)
     const titleId = createDerived(() => `${uid}-title`)
     const current = createDerived(() => props.view ?? mirror.value)
-    const switching = createDerived(() => props.views !== undefined && props.views.length > 1)
+    const switching = createDerived(
+      () => viewsKept.value !== undefined && viewsKept.value.length > 1,
+    )
     const shown = createDerived(() =>
-      props.views === undefined
+      viewsKept.value === undefined
         ? undefined
-        : (props.views.find((entry) => entry.id === current.value) ?? props.views[0]),
+        : (viewsKept.value.find((entry) => entry.id === current.value) ?? viewsKept.value[0]),
     )
     const mark = createDerived(() =>
       props.kind === undefined
@@ -113,7 +117,7 @@ export default function ArtifactPane(given: ArtifactPaneProps): JSX.Element {
           ],
     )
     const choices = createDerived(() =>
-      (props.views ?? []).map((entry) => ({ value: entry.id, label: entry.label })),
+      (viewsKept.value ?? []).map((entry) => ({ value: entry.id, label: entry.label })),
     )
     let release1: (() => void) | undefined
     const effect1 = () => {
@@ -143,7 +147,7 @@ export default function ArtifactPane(given: ArtifactPaneProps): JSX.Element {
         element: () => pane.value,
         state: () => ({
           view: shown.value?.id ?? null,
-          views: (props.views ?? []).map((entry) => ({ id: entry.id, label: entry.label })),
+          views: (viewsKept.value ?? []).map((entry) => ({ id: entry.id, label: entry.label })),
           streaming: props.streaming,
         }),
         actions: {

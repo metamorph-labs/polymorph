@@ -61,9 +61,9 @@ export default function SearchInput(given: SearchInputProps): JSX.Element {
     claimSlot(given),
   )
   return scope(() => {
+    const frame = elementRef<HTMLElement>()
     const focused = createCell(false)
     const mirror = createCell(props.defaultValue ?? '')
-    const frame = elementRef<HTMLElement>()
     const current = createDerived(() => props.value ?? mirror.value)
     const showShortcut = createDerived(
       () =>

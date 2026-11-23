@@ -52,11 +52,11 @@ export interface ConversationPageProps {
 export default function ConversationPage(given: ConversationPageProps): JSX.Element {
   const props = claimSlot(given)
   return scope(() => {
-    const narrow = createCell(false)
-    const asideOpen = createCell(false)
     const root = elementRef<HTMLElement>()
     const actionsSlot = resolveSlot(() => props.actions)
     const asideSlot = resolveSlot(() => props.aside)
+    const narrow = createCell(false)
+    const asideOpen = createCell(false)
     const measure = createDerived(() => () => {
       if (root.value === null) return
       const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16

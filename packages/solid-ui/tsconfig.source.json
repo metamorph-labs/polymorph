@@ -10,9 +10,10 @@
     "incremental": false,
     "tsBuildInfoFile": null
   },
-  // The laws, the fixtures, the galleries and the mount helper are test tooling, not the
-  // published surface.
+  // The laws, the fixtures, the galleries, the mount helper and the server-render law's own
+  // entries are test tooling, not the published surface.
   "exclude": [
+    "server-render.cases.tsx",
     "src/**/*.test.ts",
     "src/**/*.test.tsx",
     "src/**/*.states.tsx",

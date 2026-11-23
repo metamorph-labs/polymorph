@@ -14,6 +14,7 @@ import { normalizeProps } from '@zag-js/solid'
 import {
   Each,
   Icon,
+  afresh,
   agentDateRange,
   agentMember,
   anchorProps,
@@ -134,6 +135,12 @@ export default function DateRangePicker(given: DateRangePickerProps): JSX.Elemen
   )
   return scope(() => {
     const uid = createUniqueId()
+    const anchor = elementRef<HTMLElement>()
+    const field = elementRef<HTMLElement>()
+    const panel = elementRef<HTMLElement>()
+    const scrim = elementRef<HTMLElement>()
+    const sheetPanel = elementRef<HTMLElement>()
+    const phone = useMediaQuery('phone')
     const browserLanguage = createCell(undefined as string | undefined)
     const startDraft = createCell(
       dateFieldDraft((props.value !== undefined ? props.value : props.defaultValue)?.start, {
@@ -157,12 +164,6 @@ export default function DateRangePicker(given: DateRangePickerProps): JSX.Elemen
       ),
     )
     const anchored = createCell(false)
-    const anchor = elementRef<HTMLElement>()
-    const field = elementRef<HTMLElement>()
-    const panel = elementRef<HTMLElement>()
-    const scrim = elementRef<HTMLElement>()
-    const sheetPanel = elementRef<HTMLElement>()
-    const phone = useMediaQuery('phone')
     const say = createDerived(
       () =>
         props.messages ?? {
@@ -704,77 +705,83 @@ export default function DateRangePicker(given: DateRangePickerProps): JSX.Elemen
           </span>
         </div>
         <Portal>
-          {present() ? (
-            <div {...mergeParts(api.value.getPositionerProps())}>
-              {/* panel */}
-              <div
-                {...mergeParts(api.value.getContentProps(), {
-                  class: styles.content,
-                  style: { '--radix-popover-content-transform-origin': 'var(--transform-origin)' },
-                  hidden: undefined,
-                  'aria-labelledby': undefined,
-                  'aria-describedby': undefined,
-                  'aria-label': say.value.chooseRange,
-                  'data-member': 'date-range-picker',
-                })}
-                ref={panel.attach}
-              >
-                <DateRangePickerRangeCalendar
-                  value={range.value}
-                  minValue={props.minValue}
-                  maxValue={props.maxValue}
-                  isDateUnavailable={props.isDateUnavailable}
-                  locale={language.value}
-                  firstDayOfWeek={props.firstDayOfWeek}
-                  disabled={props.disabled}
-                  messages={say.value}
-                  label={say.value.chooseRange}
-                  onCommit={($event) => choose.value($event)}
-                  onAnchorChange={($event) => (anchored.value = $event)}
-                />
-              </div>
-            </div>
-          ) : null}
-          {scrimPresent() ? (
-            <div
-              class={sheet.scrim}
-              data-state={api.value.open ? 'open' : 'closed'}
-              ref={scrim.attach}
-            />
-          ) : null}
-          {sheetPresent() ? (
-            <div class={sheet.positioner}>
-              <div
-                {...mergeParts(api.value.getContentProps(), {
-                  class: sheet.panel,
-                  hidden: undefined,
-                  'aria-labelledby': undefined,
-                  'aria-describedby': undefined,
-                  'aria-label': say.value.chooseRange,
-                  'aria-modal': 'true',
-                  'data-presentation': 'sheet',
-                })}
-                ref={sheetPanel.attach}
-              >
-                {/* sheetBody */}
-                <div class={styles.sheetBody} data-member="date-range-picker">
-                  <DateRangePickerRangeCalendar
-                    value={range.value}
-                    minValue={props.minValue}
-                    maxValue={props.maxValue}
-                    isDateUnavailable={props.isDateUnavailable}
-                    locale={language.value}
-                    firstDayOfWeek={props.firstDayOfWeek}
-                    disabled={props.disabled}
-                    messages={say.value}
-                    label={say.value.chooseRange}
-                    onCommit={($event) => choose.value($event)}
-                    onAnchorChange={($event) => (anchored.value = $event)}
-                  />
+          {afresh(() => (
+            <>
+              {present() ? (
+                <div {...mergeParts(api.value.getPositionerProps())}>
+                  {/* panel */}
+                  <div
+                    {...mergeParts(api.value.getContentProps(), {
+                      class: styles.content,
+                      style: {
+                        '--radix-popover-content-transform-origin': 'var(--transform-origin)',
+                      },
+                      hidden: undefined,
+                      'aria-labelledby': undefined,
+                      'aria-describedby': undefined,
+                      'aria-label': say.value.chooseRange,
+                      'data-member': 'date-range-picker',
+                    })}
+                    ref={panel.attach}
+                  >
+                    <DateRangePickerRangeCalendar
+                      value={range.value}
+                      minValue={props.minValue}
+                      maxValue={props.maxValue}
+                      isDateUnavailable={props.isDateUnavailable}
+                      locale={language.value}
+                      firstDayOfWeek={props.firstDayOfWeek}
+                      disabled={props.disabled}
+                      messages={say.value}
+                      label={say.value.chooseRange}
+                      onCommit={($event) => choose.value($event)}
+                      onAnchorChange={($event) => (anchored.value = $event)}
+                    />
+                  </div>
                 </div>
-              </div>
-            </div>
-          ) : null}
+              ) : null}
+              {scrimPresent() ? (
+                <div
+                  class={sheet.scrim}
+                  data-state={api.value.open ? 'open' : 'closed'}
+                  ref={scrim.attach}
+                />
+              ) : null}
+              {sheetPresent() ? (
+                <div class={sheet.positioner}>
+                  <div
+                    {...mergeParts(api.value.getContentProps(), {
+                      class: sheet.panel,
+                      hidden: undefined,
+                      'aria-labelledby': undefined,
+                      'aria-describedby': undefined,
+                      'aria-label': say.value.chooseRange,
+                      'aria-modal': 'true',
+                      'data-presentation': 'sheet',
+                    })}
+                    ref={sheetPanel.attach}
+                  >
+                    {/* sheetBody */}
+                    <div class={styles.sheetBody} data-member="date-range-picker">
+                      <DateRangePickerRangeCalendar
+                        value={range.value}
+                        minValue={props.minValue}
+                        maxValue={props.maxValue}
+                        isDateUnavailable={props.isDateUnavailable}
+                        locale={language.value}
+                        firstDayOfWeek={props.firstDayOfWeek}
+                        disabled={props.disabled}
+                        messages={say.value}
+                        label={say.value.chooseRange}
+                        onCommit={($event) => choose.value($event)}
+                        onAnchorChange={($event) => (anchored.value = $event)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ))}
         </Portal>
       </>
     )

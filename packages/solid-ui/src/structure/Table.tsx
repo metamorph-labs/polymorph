@@ -91,11 +91,11 @@ export default function Table(given: TableProps): JSX.Element {
         return props.grid
       },
     })
+    const table = elementRef<HTMLElement>()
+    const wrapper = elementRef<HTMLElement>()
     const overflowing = createCell(false)
     const at = createCell({ row: 0, column: 0, detail: false })
     const placed = createCell(false)
-    const table = elementRef<HTMLElement>()
-    const wrapper = elementRef<HTMLElement>()
     const stopIn = createDerived(() => (cell: HTMLTableCellElement): HTMLElement => {
       for (const node of Array.from(
         cell.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea'),

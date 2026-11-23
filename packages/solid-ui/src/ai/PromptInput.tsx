@@ -6,6 +6,7 @@
  * run `pnpm shells`.
  */
 import { createMemo, createUniqueId, mergeProps, onCleanup, onMount, type JSX } from 'solid-js'
+import { isServer } from 'solid-js/web'
 
 import {
   Each,
@@ -188,6 +189,12 @@ export default function PromptInput(given: PromptInputProps): JSX.Element {
   )
   return scope(() => {
     const uid = createUniqueId()
+    const chips = elementRef<HTMLElement>()
+    const end = elementRef<HTMLElement>()
+    const field = elementRef<HTMLElement>()
+    const picker = elementRef<HTMLElement>()
+    const root = elementRef<HTMLElement>()
+    const toolbar = elementRef<HTMLElement>()
     const uncontrolled = createCell(props.defaultValue ?? '')
     const dragover = createCell(false)
     const caret = createCell(null as number | null)
@@ -196,12 +203,6 @@ export default function PromptInput(given: PromptInputProps): JSX.Element {
     const highlight = createCell({ key: '', index: 0 })
     const side = createCell('top' as 'top' | 'bottom')
     const reported = createCell(null as string | null)
-    const chips = elementRef<HTMLElement>()
-    const end = elementRef<HTMLElement>()
-    const field = elementRef<HTMLElement>()
-    const picker = elementRef<HTMLElement>()
-    const root = elementRef<HTMLElement>()
-    const toolbar = elementRef<HTMLElement>()
     const text = createDerived(() => props.value ?? uncontrolled.value)
     const empty = createDerived(() => text.value.trim() === '' && props.attachments.length === 0)
     const attachable = createDerived(() => props.onAttach !== undefined && !props.disabled)
@@ -590,7 +591,9 @@ export default function PromptInput(given: PromptInputProps): JSX.Element {
               ($event.preventDefault(), add.value($event.clipboardData?.files))
             }
             ref={field.attach}
-          />
+          >
+            {isServer ? text.value : undefined}
+          </textarea>
           {/* toolbar */}
           <div class={styles.toolbar} ref={toolbar.attach}>
             {props.onAttach !== undefined ? (

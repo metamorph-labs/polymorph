@@ -202,7 +202,7 @@ export default describeMember({
   dir: 'archetypes',
   recipe: 'archetypes/master-detail-page',
   uses: ['EmptyStateProps'],
-  state: { narrow: 'false', held: 'false', selected: 'false' },
+  state: { narrow: 'false', held: 'false', selected: 'Boolean(slots.detail)' },
   derived: {
     measure: `() => { if (root === null) return; const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16; narrow = root.getBoundingClientRect().width < ${ONE_PANE_BELOW_REM} * rem }`,
   },

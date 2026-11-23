@@ -15,6 +15,7 @@ import {
   classes,
   createCell,
   createDerived,
+  createKept,
   currentRailDestination,
   elementRef,
   goToRailDestination,
@@ -117,13 +118,12 @@ export default function AppShell(given: AppShellProps): JSX.Element {
     claimSlot(given),
   )
   return scope(() => {
+    const topbarKept = createKept(() => props.topbar)
     provide(ownerContext<AppShellOwner>('AppShell'), {
       get collapsed() {
         return isCollapsed.value
       },
     })
-    const uncontrolled = createCell(props.defaultCollapsed ?? false)
-    const drawer = createCell(false)
     const drawerToggle = elementRef<HTMLElement>()
     const rail = elementRef<HTMLElement>()
     const railToggle = elementRef<HTMLElement>()
@@ -131,6 +131,8 @@ export default function AppShell(given: AppShellProps): JSX.Element {
     const brandSlot = resolveSlot(() => props.brand)
     const dockSlot = resolveSlot(() => props.dock)
     const sidebarFooterSlot = resolveSlot(() => props.sidebarFooter)
+    const uncontrolled = createCell(props.defaultCollapsed ?? false)
+    const drawer = createCell(false)
     const held = createDerived(() => props.collapsed ?? uncontrolled.value)
     const isCollapsed = createDerived(() => props.navigation === 'rail' && held.value)
     const say = createDerived(
@@ -299,11 +301,11 @@ export default function AppShell(given: AppShellProps): JSX.Element {
                 onClick={() => (drawer.value = !drawer.value)}
               />
             </span>
-            {props.topbar?.leading !== undefined ? props.topbar?.leading : null}
+            {topbarKept.value?.leading !== undefined ? topbarKept.value?.leading : null}
           </div>
           {/* trailing */}
           <div class={styles.topbarSlot}>
-            {props.topbar?.trailing !== undefined ? props.topbar?.trailing : null}
+            {topbarKept.value?.trailing !== undefined ? topbarKept.value?.trailing : null}
           </div>
         </header>
         {drawer.value ? (

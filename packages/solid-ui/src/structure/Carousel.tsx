@@ -16,6 +16,7 @@ import {
   claimSlot,
   createCell,
   createDerived,
+  createKept,
   elementRef,
   mergeParts,
   scope,
@@ -75,19 +76,20 @@ export default function Carousel(given: CarouselProps): JSX.Element {
     claimSlot(given),
   )
   return scope(() => {
+    const slidesKept = createKept(() => props.slides)
     const uid = createUniqueId()
+    const controls = elementRef<HTMLElement>()
+    const root = elementRef<HTMLElement>()
+    const viewport = elementRef<HTMLElement>()
     const kept = createCell(props.index ?? props.defaultIndex)
     const scrolls = createCell(0)
     const sent = createCell(-1)
     const moving = createCell(false)
-    const controls = elementRef<HTMLElement>()
-    const root = elementRef<HTMLElement>()
-    const viewport = elementRef<HTMLElement>()
     const measurable = createDerived(
       () => () => viewport.value !== null && viewport.value.clientWidth > 0,
     )
     const within = createDerived(
-      () => (at: number) => Math.min(Math.max(at, 0), Math.max(props.slides.length - 1, 0)),
+      () => (at: number) => Math.min(Math.max(at, 0), Math.max(slidesKept.value.length - 1, 0)),
     )
     const shown = createDerived(() => within.value(props.index ?? kept.value))
     const instant = createDerived(() => () => {
@@ -116,7 +118,7 @@ export default function Carousel(given: CarouselProps): JSX.Element {
         ({
           id: uid,
           dir: documentDirection(),
-          slideCount: props.slides.length,
+          slideCount: slidesKept.value.length,
           defaultPage: props.index ?? props.defaultIndex,
           loop: props.loop,
           onPageChange: (details) => {
@@ -227,16 +229,16 @@ export default function Carousel(given: CarouselProps): JSX.Element {
         element: () => root.value,
         state: () => ({
           index: shown.value,
-          slides: props.slides.map((slide) => ({ id: slide.id, label: slide.label })),
+          slides: slidesKept.value.map((slide) => ({ id: slide.id, label: slide.label })),
         }),
         actions: {
           set: {
             argument: 'number',
             run: (value) =>
               (() => {
-                if (!Number.isInteger(value) || value < 0 || value >= props.slides.length) {
+                if (!Number.isInteger(value) || value < 0 || value >= slidesKept.value.length) {
                   throw new Error(
-                    `There is no slide ${value}; the slides run from 0 to ${props.slides.length - 1}.`,
+                    `There is no slide ${value}; the slides run from 0 to ${slidesKept.value.length - 1}.`,
                   )
                 }
                 travel.value(value)
@@ -253,7 +255,7 @@ export default function Carousel(given: CarouselProps): JSX.Element {
     onCleanup(() => release5?.())
     return (
       <>
-        {props.slides.length > 0 ? (
+        {slidesKept.value.length > 0 ? (
           <section
             role="group"
             aria-roledescription={props.roleDescriptions.carousel}
@@ -276,7 +278,7 @@ export default function Carousel(given: CarouselProps): JSX.Element {
               )}
               ref={viewport.attach}
             >
-              <Each of={props.slides} by={(slide) => slide.id} renew>
+              <Each of={slidesKept.value} by={(slide) => slide.id} renew>
                 {(slide, at) => (
                   <div
                     {...mergeParts(
@@ -294,7 +296,7 @@ export default function Carousel(given: CarouselProps): JSX.Element {
                       },
                     )}
                   >
-                    {typeof slide.content === 'string' ? slide.content : slide.content}
+                    {slide.content}
                   </div>
                 )}
               </Each>
@@ -310,12 +312,12 @@ export default function Carousel(given: CarouselProps): JSX.Element {
                 label={props.previousLabel}
                 disabled={!props.loop && shown.value === 0}
                 onClick={() =>
-                  travel.value(shown.value === 0 ? props.slides.length - 1 : shown.value - 1)
+                  travel.value(shown.value === 0 ? slidesKept.value.length - 1 : shown.value - 1)
                 }
               />
               {/* rail */}
               <span class={styles.rail}>
-                <Each of={props.slides} by={(slide) => slide.id} renew>
+                <Each of={slidesKept.value} by={(slide) => slide.id} renew>
                   {(slide, at) => (
                     <button
                       class={styles.dot}
@@ -335,9 +337,9 @@ export default function Carousel(given: CarouselProps): JSX.Element {
                 iconOnly={true}
                 icon="next"
                 label={props.nextLabel}
-                disabled={!props.loop && shown.value === props.slides.length - 1}
+                disabled={!props.loop && shown.value === slidesKept.value.length - 1}
                 onClick={() =>
-                  travel.value(shown.value === props.slides.length - 1 ? 0 : shown.value + 1)
+                  travel.value(shown.value === slidesKept.value.length - 1 ? 0 : shown.value + 1)
                 }
               />
             </div>

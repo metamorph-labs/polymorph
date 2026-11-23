@@ -84,11 +84,11 @@ export default function Calendar(given: CalendarProps): JSX.Element {
   )
   return scope(() => {
     const uid = createUniqueId()
+    const root = elementRef<HTMLElement>()
     const browserLanguage = createCell(undefined as string | undefined)
     const travel = createCell('next')
     const shownMonth = createCell('')
     const monthButton = createCell(false)
-    const root = elementRef<HTMLElement>()
     const say = createDerived(
       () => props.messages ?? { previousMonth: 'Previous month', nextMonth: 'Next month' },
     )

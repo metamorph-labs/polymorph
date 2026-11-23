@@ -50,11 +50,11 @@ export default function CodeBlock(given: CodeBlockProps): JSX.Element {
     claimSlot(given),
   )
   return scope(() => {
+    const block = elementRef<HTMLElement>()
+    const childrenSlot = resolveSlot(() => props.children)
     const overflowing = createCell(false)
     const copied = createCell(false)
     const copies = createCell(0)
-    const block = elementRef<HTMLElement>()
-    const childrenSlot = resolveSlot(() => props.children)
     const copy = createDerived(
       () => () =>
         void navigator.clipboard.writeText(childrenSlot.text()).then(
