@@ -13,6 +13,7 @@ import { normalizeProps } from '@zag-js/solid'
 
 import {
   ResolvedSlot,
+  afresh,
   agentMember,
   claimSlot,
   createDerived,
@@ -135,81 +136,85 @@ export default function Drawer(given: DrawerProps): JSX.Element {
     onCleanup(() => release1?.())
     return (
       <Portal>
-        {scrimPresent() ? (
-          <div
-            {...mergeParts(api.value.getBackdropProps(), {
-              class: styles.scrim,
-              hidden: undefined,
-            })}
-            ref={scrim.attach}
-          />
-        ) : null}
-        {panelPresent() ? (
-          <ResolvedSlot of={() => props.footer}>
-            {(footerSlot) => (
+        {afresh(() => (
+          <>
+            {scrimPresent() ? (
               <div
-                {...mergeParts(api.value.getPositionerProps(), {
-                  class: styles.positioner,
-                  'data-side': props.side,
+                {...mergeParts(api.value.getBackdropProps(), {
+                  class: styles.scrim,
+                  hidden: undefined,
                 })}
-              >
-                {/* panel */}
-                <div
-                  {...mergeParts(api.value.getContentProps(), {
-                    class: styles.panel,
-                    hidden: undefined,
-                    'data-side': props.side,
-                    'data-size': props.size,
-                    'data-member': 'drawer',
-                  })}
-                  ref={panel.attach}
-                >
-                  {/* header */}
-                  <div class={styles.header}>
-                    {/* heading */}
-                    <div class={styles.heading}>
-                      {/* title */}
-                      <h2 {...mergeParts(api.value.getTitleProps(), { class: styles.title })}>
-                        {props.title}
-                      </h2>
-                      {props.description !== undefined ? (
-                        <p
-                          {...mergeParts(api.value.getDescriptionProps(), {
-                            class: styles.description,
-                          })}
-                        >
-                          {props.description}
-                        </p>
+                ref={scrim.attach}
+              />
+            ) : null}
+            {panelPresent() ? (
+              <ResolvedSlot of={() => props.footer}>
+                {(footerSlot) => (
+                  <div
+                    {...mergeParts(api.value.getPositionerProps(), {
+                      class: styles.positioner,
+                      'data-side': props.side,
+                    })}
+                  >
+                    {/* panel */}
+                    <div
+                      {...mergeParts(api.value.getContentProps(), {
+                        class: styles.panel,
+                        hidden: undefined,
+                        'data-side': props.side,
+                        'data-size': props.size,
+                        'data-member': 'drawer',
+                      })}
+                      ref={panel.attach}
+                    >
+                      {/* header */}
+                      <div class={styles.header}>
+                        {/* heading */}
+                        <div class={styles.heading}>
+                          {/* title */}
+                          <h2 {...mergeParts(api.value.getTitleProps(), { class: styles.title })}>
+                            {props.title}
+                          </h2>
+                          {props.description !== undefined ? (
+                            <p
+                              {...mergeParts(api.value.getDescriptionProps(), {
+                                class: styles.description,
+                              })}
+                            >
+                              {props.description}
+                            </p>
+                          ) : null}
+                        </div>
+                        {props.dismissible ? (
+                          <div class={styles.close} data-dialog-part="close">
+                            <Button
+                              variant="ghost"
+                              tone="neutral"
+                              size="sm"
+                              iconOnly={true}
+                              icon="close"
+                              label={props.closeLabel}
+                              onClick={() => api.value.setOpen(false)}
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+                      {/* body */}
+                      <div class={styles.body} data-dialog-part="body">
+                        {props.children}
+                      </div>
+                      {footerSlot.filled() ? (
+                        <div class={styles.footer} data-dialog-part="footer">
+                          {footerSlot()}
+                        </div>
                       ) : null}
                     </div>
-                    {props.dismissible ? (
-                      <div class={styles.close} data-dialog-part="close">
-                        <Button
-                          variant="ghost"
-                          tone="neutral"
-                          size="sm"
-                          iconOnly={true}
-                          icon="close"
-                          label={props.closeLabel}
-                          onClick={() => api.value.setOpen(false)}
-                        />
-                      </div>
-                    ) : null}
                   </div>
-                  {/* body */}
-                  <div class={styles.body} data-dialog-part="body">
-                    {props.children}
-                  </div>
-                  {footerSlot.filled() ? (
-                    <div class={styles.footer} data-dialog-part="footer">
-                      {footerSlot()}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            )}
-          </ResolvedSlot>
-        ) : null}
+                )}
+              </ResolvedSlot>
+            ) : null}
+          </>
+        ))}
       </Portal>
     )
   })

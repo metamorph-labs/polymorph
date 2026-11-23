@@ -92,13 +92,13 @@ export default function DonutChart(given: DonutChartProps): JSX.Element {
     claimSlot(given),
   )
   return scope(() => {
+    const frame = elementRef<HTMLElement>()
+    const plot = elementRef<HTMLElement>()
     const box = createCell(UNMEASURED)
     const reading = createCell(createReading({ count: 0, seriesStart: null }))
     const position = createCell(readingRest(null))
     const twinOpen = createCell(false)
     const warningLog = createCell(createWarningLog())
-    const frame = elementRef<HTMLElement>()
-    const plot = elementRef<HTMLElement>()
     const input = createDerived(() => ({
       segments: props.segments,
       center: props.center,

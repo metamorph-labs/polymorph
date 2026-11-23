@@ -67,12 +67,12 @@ export default function SplitPane(given: SplitPaneProps): JSX.Element {
   )
   return scope(() => {
     const uid = createUniqueId()
+    const divider = elementRef<HTMLElement>()
+    const root = elementRef<HTMLElement>()
     const mirror = createCell(Math.min(1, Math.max(0, props.defaultRatio)))
     const dragging = createCell(false)
     const bounds = createCell({ min: 0, max: 1 })
     const latest = createCell(Math.min(1, Math.max(0, props.ratio ?? props.defaultRatio)))
-    const divider = elementRef<HTMLElement>()
-    const root = elementRef<HTMLElement>()
     const horizontal = createDerived(() => props.orientation === 'horizontal')
     const current = createDerived(() => Math.min(1, Math.max(0, props.ratio ?? mirror.value)))
     const clamp = createDerived(

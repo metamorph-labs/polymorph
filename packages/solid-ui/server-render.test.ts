@@ -16,8 +16,8 @@ import {
 
 /**
  * The server-render law: every states fixture entry renders on a server with
- * no error and no warning, and a browser hydrates that markup, except the
- * entries `NOT_HYDRATING` names.
+ * no error and no warning, and a browser hydrates that markup into the
+ * document a mount draws.
  *
  * The server half is the package as a server-rendering application loads it
  * (SolidStart, or Vite's own server rendering): through Vite and Solid's
@@ -31,15 +31,20 @@ import {
  * wrote on it, and throws when a component asks for a key the markup does not
  * hold. So the law reads what the hydration threw or reported.
  *
+ * A hydration that throws nothing can still leave the wrong document: Solid
+ * keeps the server's text and attributes where it finds an element, and an
+ * element created outside the hydration is not put in the place of the
+ * server's. So the law also mounts each entry afresh, and compares the two
+ * documents (`drawn`).
+ *
  * Solid hydrates once in a page: the first hydration marks the page done, and
  * a later `hydrate` renders afresh. Each entry is a page of its own, so the
  * law gives each one the state the page's hydration script would
  * (`globalThis._$HY`) and clears what the last one left on `sharedConfig`.
  *
- * `NOT_HYDRATING` is the list of entries that do not hydrate. The law fails
- * on an entry that is listed and hydrates, as it does on one that is not
- * listed and fails, so the list is exact and an entry leaves it when its
- * member is fixed. It holds that a listed entry fails, and not how it fails.
+ * The entries are the states fixtures, and a few more beside them that pass
+ * an element a caller wrote where a fixture passes a member
+ * (`server-render.cases.tsx`).
  *
  * The file's clock is held at one instant, and what it leaves on the process
  * is undone when it ends (`lawProcess`).
@@ -54,66 +59,6 @@ const CACHE = resolve(PACKAGE, 'node_modules/.cache/server-render')
 const law = lawProcess()
 afterAll(law.undo)
 
-/**
- * The entries a browser does not hydrate, by member.
- *
- * Most fail the same way: a component in the browser asks for the element
- * under a key, and the server's markup holds no element under it. CommentThread
- * fails reading the sibling of an element it did not find. The cause is traced
- * for DescriptionList. A node inside a value is made each time the value is
- * read, and the member reads `items` once for its length and again for its
- * rows, so an item's Badge is made twice. The server keeps the markup of the
- * one it drew, and the browser's other one asks for a key the markup does not
- * hold. The other entries also hold a node the member was given inside a value
- * or a slot (a DataTable column's cell, an EmptyState's action, an AppShell
- * slot's member), and their causes are not traced. An application that renders
- * one of these on a server mounts it in the browser instead of hydrating it.
- */
-const NOT_HYDRATING: Readonly<Record<string, readonly string[]>> = {
-  Avatar: ['a group of five with max 3 — three marks and a "+2" that is real text'],
-  DescriptionList: ['member detail — a value is often a member, not a sentence'],
-  CommentThread: ['a thread with replies'],
-  DataTable: [
-    'plain',
-    'sorted, ascending, on one column',
-    'sorted the other way',
-    'selectable, with nothing selected yet',
-    'some selected — the header goes indeterminate and the bar arrives',
-    'all selected',
-    'expandable, with every row closed',
-    'a row open — its detail spans every column',
-    'a row that takes no detail — its cell in the expansion column is empty',
-    'selection with expansion — a selected row that is open',
-    'with a pagination row',
-  ],
-  ArtifactPane: ['two readings — the switch between code and preview'],
-  AppShell: [
-    'default — every slot filled',
-    'grouped rail, with the user at its foot',
-    'collapsed',
-    'grouped rail, collapsed — titles gone, names kept',
-    'with a banner — a notice across the frame, above the rail and the topbar',
-    'counts in the topbar — a capped count beside a neighbour and at the edge',
-    'navigation on top — the rail’s items lead the topbar',
-    'navigation on top, grouped — a rule between the groups',
-    'drawer closed — below the breakpoint, the rail behind the topbar’s menu button',
-    'drawer open — below the breakpoint, the rail over the page and the banner',
-  ],
-  ListPage: [
-    'summary survives the empty story — a filter changed the view, not the queue',
-    'empty',
-    'filtered dry — the way out is a secondary action',
-  ],
-  Dashboard: ['three stats, a table and a narrow column'],
-  MasterDetailPage: [
-    'an item selected — the list beside its detail',
-    'a long list — the list pane scrolls and the detail stays',
-    'narrow, an item selected — the detail alone under the way back',
-  ],
-  SearchPage: ['nothing found — the way out is a secondary action'],
-  ConversationPage: ['with an aside — the artifact beside the thread'],
-}
-
 /** A states fixture as `src/galleries.ts` lists it: the member's name and its entries. */
 interface ComponentStates {
   component: string
@@ -125,11 +70,15 @@ interface StateEntry {
   render: (overrides?: Readonly<Record<string, unknown>>) => Solid.JSX.Element
 }
 
+/** The states fixtures, and the entries that pass elements a caller wrote (`server-render.cases.tsx`). */
 async function load(server: ViteDevServer): Promise<readonly ComponentStates[]> {
   const { GALLERIES } = (await server.ssrLoadModule('/src/galleries.ts')) as {
     GALLERIES: readonly ComponentStates[]
   }
-  return GALLERIES
+  const { cases } = (await server.ssrLoadModule('/server-render.cases.tsx')) as {
+    cases: ComponentStates
+  }
+  return [...GALLERIES, cases]
 }
 
 const key = (states: ComponentStates, entry: StateEntry) => `${states.component} — ${entry.name}`
@@ -185,15 +134,105 @@ const browser = await law.half(async () => {
   })
   law.servers.push(vite)
   const galleries = await load(vite)
-  const { hydrate } = (await vite.ssrLoadModule('solid-js/web')) as typeof SolidWeb
+  const { hydrate, render } = (await vite.ssrLoadModule('solid-js/web')) as typeof SolidWeb
   const { sharedConfig } = (await vite.ssrLoadModule('solid-js')) as typeof Solid
-  return { galleries, hydrate, sharedConfig }
+  return { galleries, hydrate, render, sharedConfig }
 })
+
+/**
+ * A document as the law compares two of them: its elements, attributes and
+ * text, and each form control's value and checked state, which are properties
+ * and not markup.
+ *
+ * What differs between a hydration and a mount by construction is left out or
+ * written one way: the hydration keys, markers and script; the order of the
+ * attributes; a class list's spacing; a style, which a server writes as the
+ * member gave it and a browser writes as it parsed it, so both are read
+ * through a browser's parser; a `value` attribute, which a server writes for
+ * the property; and a textarea's content, which is its value in markup.
+ */
+function drawn(host: Element): string {
+  const scratch = document.createElement('div')
+  const write = (node: Node): string => {
+    if (node.nodeType === Node.TEXT_NODE) return (node as Text).data
+    if (node.nodeType !== Node.ELEMENT_NODE) return ''
+    const element = node as HTMLInputElement
+    const tag = element.tagName.toLowerCase()
+    if (tag === 'script') return ''
+    const attributes: string[] = []
+    for (const { name, value } of Array.from(element.attributes)) {
+      if (name === 'data-hk' || name === 'value') continue
+      let written = value
+      if (name === 'class') written = value.split(/\s+/).filter(Boolean).join(' ')
+      if (name === 'style') {
+        scratch.style.cssText = value
+        written = scratch.style.cssText
+      }
+      if ((name === 'class' || name === 'style') && written === '') continue
+      attributes.push(` ${name}="${written}"`)
+    }
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') {
+      attributes.push(` .value="${element.value}"`)
+      if (element.checked === true) attributes.push(' .checked')
+      if (element.indeterminate === true) attributes.push(' .indeterminate')
+    }
+    const children = tag === 'textarea' ? '' : Array.from(element.childNodes).map(write).join('')
+    return `<${tag}${attributes.sort().join('')}>${children}</${tag}>`
+  }
+  let out = Array.from(host.childNodes).map(write).join('')
+  // An id an element carries is named by its place, because a mount and a hydration generate
+  // different ones.
+  const ids = new Map<string, string>()
+  for (const [, id] of out.matchAll(/ id="([^"]*)"/g)) {
+    if (id !== undefined && !ids.has(id)) ids.set(id, `id-${ids.size}`)
+  }
+  for (const [id, name] of [...ids].sort((a, b) => b[0].length - a[0].length)) {
+    out = out.split(`"${id}"`).join(`"${name}"`)
+  }
+  return out
+}
+
+/**
+ * Where a hydrated document differs from a mounted one, or `null`. An id no
+ * element carries is still generated (an overlay's `aria-controls` while it is
+ * closed): a mount writes `cl-7` and a hydration its place in the count, so
+ * each generated id of the mount matches any id.
+ */
+function difference(hydrated: string, mounted: string): string | null {
+  const parts = mounted.split(/cl-\d+/)
+  let at = 0
+  let same = true
+  for (const [index, part] of parts.entries()) {
+    if (index > 0) at += /^[0-9a-z]+/.exec(hydrated.slice(at))?.[0].length ?? 0
+    if (!hydrated.startsWith(part, at)) {
+      same = false
+      break
+    }
+    at += part.length
+  }
+  if (same && at === hydrated.length) return null
+  let first = 0
+  while (first < hydrated.length && hydrated[first] === mounted[first]) first++
+  const from = Math.max(0, first - 80)
+  return `the hydrated document differs from a mount’s: …${hydrated.slice(from, first + 120)}… where a mount draws …${mounted.slice(from, first + 120)}…`
+}
 
 /** What hydrating one entry's server markup threw or reported, the members' own warnings left out. */
 async function hydrationFaults(states: ComponentStates, entry: StateEntry): Promise<string[]> {
   const rendered = server.markup.get(key(states, entry))
   if (rendered === undefined) return ['the server half rendered no markup']
+
+  // A mount, outside any hydration, for the document a hydration is held to.
+  Object.assign(browser.sharedConfig, { context: undefined, registry: undefined, done: true })
+  const mountHost = document.createElement('div')
+  document.body.append(mountHost)
+  let mounted = ''
+  const mountFaults = await reported(() => {
+    const dispose = browser.render(() => entry.render(), mountHost)
+    mounted = drawn(mountHost)
+    dispose()
+  })
+  document.body.innerHTML = ''
 
   // A page that has not hydrated yet: what Solid's hydration script leaves for `hydrate`.
   Object.assign(globalThis, { _$HY: { events: [], completed: new WeakSet(), r: {}, fe() {} } })
@@ -202,12 +241,19 @@ async function hydrationFaults(states: ComponentStates, entry: StateEntry): Prom
   const host = document.createElement('div')
   host.innerHTML = rendered
   document.body.append(host)
+  let hydrated = ''
   const messages = await reported(() => {
     const dispose = browser.hydrate(() => entry.render(), host)
+    hydrated = drawn(host)
     dispose()
   })
   document.body.innerHTML = ''
-  return messages.filter((message) => !isDevWarning(message))
+  const faults = [...mountFaults.map((message) => `a mount: ${message}`), ...messages].filter(
+    (message) => !isDevWarning(message) && !isDevWarning(message.replace(/^a mount: /, '')),
+  )
+  if (faults.length > 0) return faults
+  const differs = difference(hydrated, mounted)
+  return differs === null ? [] : [differs]
 }
 
 describe('a server renders every state with no error and no warning', () => {
@@ -218,23 +264,15 @@ describe('a server renders every state with no error and no warning', () => {
   }
 })
 
-describe('a browser hydrates the server markup', () => {
+describe('a browser hydrates the server markup into the document a mount draws', () => {
   for (const states of browser.galleries) {
     it(states.component, async () => {
-      const failing: string[] = []
       const faults: string[] = []
       for (const entry of states.entries) {
         const found = await hydrationFaults(states, entry)
-        if (found.length === 0) continue
-        failing.push(entry.name)
-        faults.push(...found.map((message) => `${entry.name} — ${message.slice(0, 400)}`))
+        faults.push(...found.map((message) => `${entry.name} — ${message.slice(0, 600)}`))
       }
-      expect(failing, faults.join('\n')).toEqual(NOT_HYDRATING[states.component] ?? [])
+      expect(faults).toEqual([])
     })
   }
-
-  it('lists only members the vocabulary has', () => {
-    const members = new Set(browser.galleries.map((states) => states.component))
-    expect(Object.keys(NOT_HYDRATING).filter((member) => !members.has(member))).toEqual([])
-  })
 })

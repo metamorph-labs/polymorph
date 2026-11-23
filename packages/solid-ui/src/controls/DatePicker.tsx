@@ -14,6 +14,7 @@ import { normalizeProps } from '@zag-js/solid'
 import {
   Each,
   Icon,
+  afresh,
   agentDate,
   agentDateTime,
   agentMember,
@@ -126,6 +127,12 @@ export default function DatePicker(given: DatePickerProps): JSX.Element {
   )
   return scope(() => {
     const uid = createUniqueId()
+    const anchor = elementRef<HTMLElement>()
+    const field = elementRef<HTMLElement>()
+    const panel = elementRef<HTMLElement>()
+    const scrim = elementRef<HTMLElement>()
+    const sheetPanel = elementRef<HTMLElement>()
+    const phone = useMediaQuery('phone')
     const browserLanguage = createCell(undefined as string | undefined)
     const draft = createCell(
       dateFieldDraft(props.value !== undefined ? props.value : props.defaultValue, {
@@ -142,12 +149,6 @@ export default function DatePicker(given: DatePickerProps): JSX.Element {
     const reported = createCell(
       (props.value !== undefined ? props.value : props.defaultValue)?.toString() ?? '',
     )
-    const anchor = elementRef<HTMLElement>()
-    const field = elementRef<HTMLElement>()
-    const panel = elementRef<HTMLElement>()
-    const scrim = elementRef<HTMLElement>()
-    const sheetPanel = elementRef<HTMLElement>()
-    const phone = useMediaQuery('phone')
     const say = createDerived(
       () =>
         props.messages ?? {
@@ -522,73 +523,79 @@ export default function DatePicker(given: DatePickerProps): JSX.Element {
           </span>
         </div>
         <Portal>
-          {present() ? (
-            <div {...mergeParts(api.value.getPositionerProps())}>
-              {/* panel */}
-              <div
-                {...mergeParts(api.value.getContentProps(), {
-                  class: styles.content,
-                  style: { '--radix-popover-content-transform-origin': 'var(--transform-origin)' },
-                  hidden: undefined,
-                  'aria-labelledby': undefined,
-                  'aria-describedby': undefined,
-                  'aria-label': say.value.chooseDate,
-                  'data-member': 'date-picker',
-                })}
-                ref={panel.attach}
-              >
-                <Calendar
-                  value={current.value === null ? null : calendarDateOf(current.value)}
-                  minValue={props.minValue}
-                  maxValue={props.maxValue}
-                  isDateUnavailable={props.isDateUnavailable}
-                  locale={language.value}
-                  firstDayOfWeek={props.firstDayOfWeek}
-                  messages={say.value}
-                  aria-label={say.value.chooseDate}
-                  onChange={($event) => choose.value($event)}
-                />
-              </div>
-            </div>
-          ) : null}
-          {scrimPresent() ? (
-            <div
-              class={sheet.scrim}
-              data-state={api.value.open ? 'open' : 'closed'}
-              ref={scrim.attach}
-            />
-          ) : null}
-          {sheetPresent() ? (
-            <div class={sheet.positioner}>
-              <div
-                {...mergeParts(api.value.getContentProps(), {
-                  class: sheet.panel,
-                  hidden: undefined,
-                  'aria-labelledby': undefined,
-                  'aria-describedby': undefined,
-                  'aria-label': say.value.chooseDate,
-                  'aria-modal': 'true',
-                  'data-presentation': 'sheet',
-                })}
-                ref={sheetPanel.attach}
-              >
-                {/* sheetBody */}
-                <div class={styles.sheetBody} data-member="date-picker">
-                  <Calendar
-                    value={current.value === null ? null : calendarDateOf(current.value)}
-                    minValue={props.minValue}
-                    maxValue={props.maxValue}
-                    isDateUnavailable={props.isDateUnavailable}
-                    locale={language.value}
-                    firstDayOfWeek={props.firstDayOfWeek}
-                    messages={say.value}
-                    aria-label={say.value.chooseDate}
-                    onChange={($event) => choose.value($event)}
-                  />
+          {afresh(() => (
+            <>
+              {present() ? (
+                <div {...mergeParts(api.value.getPositionerProps())}>
+                  {/* panel */}
+                  <div
+                    {...mergeParts(api.value.getContentProps(), {
+                      class: styles.content,
+                      style: {
+                        '--radix-popover-content-transform-origin': 'var(--transform-origin)',
+                      },
+                      hidden: undefined,
+                      'aria-labelledby': undefined,
+                      'aria-describedby': undefined,
+                      'aria-label': say.value.chooseDate,
+                      'data-member': 'date-picker',
+                    })}
+                    ref={panel.attach}
+                  >
+                    <Calendar
+                      value={current.value === null ? null : calendarDateOf(current.value)}
+                      minValue={props.minValue}
+                      maxValue={props.maxValue}
+                      isDateUnavailable={props.isDateUnavailable}
+                      locale={language.value}
+                      firstDayOfWeek={props.firstDayOfWeek}
+                      messages={say.value}
+                      aria-label={say.value.chooseDate}
+                      onChange={($event) => choose.value($event)}
+                    />
+                  </div>
                 </div>
-              </div>
-            </div>
-          ) : null}
+              ) : null}
+              {scrimPresent() ? (
+                <div
+                  class={sheet.scrim}
+                  data-state={api.value.open ? 'open' : 'closed'}
+                  ref={scrim.attach}
+                />
+              ) : null}
+              {sheetPresent() ? (
+                <div class={sheet.positioner}>
+                  <div
+                    {...mergeParts(api.value.getContentProps(), {
+                      class: sheet.panel,
+                      hidden: undefined,
+                      'aria-labelledby': undefined,
+                      'aria-describedby': undefined,
+                      'aria-label': say.value.chooseDate,
+                      'aria-modal': 'true',
+                      'data-presentation': 'sheet',
+                    })}
+                    ref={sheetPanel.attach}
+                  >
+                    {/* sheetBody */}
+                    <div class={styles.sheetBody} data-member="date-picker">
+                      <Calendar
+                        value={current.value === null ? null : calendarDateOf(current.value)}
+                        minValue={props.minValue}
+                        maxValue={props.maxValue}
+                        isDateUnavailable={props.isDateUnavailable}
+                        locale={language.value}
+                        firstDayOfWeek={props.firstDayOfWeek}
+                        messages={say.value}
+                        aria-label={say.value.chooseDate}
+                        onChange={($event) => choose.value($event)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ))}
         </Portal>
       </>
     )

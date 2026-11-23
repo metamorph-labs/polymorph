@@ -14,6 +14,7 @@ import { normalizeProps } from '@zag-js/solid'
 import {
   Each,
   Icon,
+  afresh,
   agentMember,
   claimSlot,
   createCell,
@@ -161,18 +162,18 @@ export default function Combobox(given: ComboboxProps): JSX.Element {
   )
   return scope(() => {
     const uid = createUniqueId()
-    const query = createCell(
-      props.options.find((option) => option.value === (props.value ?? props.defaultValue))?.label ??
-        '',
-    )
-    const showAll = createCell(false)
-    const loadMoreAt = createCell(-1)
     const input = elementRef<HTMLElement>()
     const list = elementRef<HTMLElement>()
     const panel = elementRef<HTMLElement>()
     const scrim = elementRef<HTMLElement>()
     const sheetPanel = elementRef<HTMLElement>()
     const phone = useMediaQuery('phone')
+    const query = createCell(
+      props.options.find((option) => option.value === (props.value ?? props.defaultValue))?.label ??
+        '',
+    )
+    const showAll = createCell(false)
+    const loadMoreAt = createCell(-1)
     const sheeting = createDerived(() => props.presentation === 'auto' && phone())
     const say = createDerived(() => ({
       showOptions: 'Show options',
@@ -439,162 +440,166 @@ export default function Combobox(given: ComboboxProps): JSX.Element {
           </div>
         </div>
         <Portal>
-          {present() ? (
-            <div {...mergeParts(api.value.getPositionerProps())}>
-              {/* panel */}
-              <div
-                class={styles.content}
-                style={{
-                  '--radix-popover-trigger-width': 'var(--reference-width)',
-                  '--radix-popover-content-available-height': 'var(--available-height)',
-                  '--radix-popover-content-transform-origin': 'var(--transform-origin)',
-                }}
-                data-size={props.size}
-                data-state={api.value.open ? 'open' : 'closed'}
-                data-member="combobox"
-                ref={panel.attach}
-              >
-                {/* list */}
-                <ul
-                  {...mergeParts(api.value.getContentProps(), {
-                    class: styles.listbox,
-                    hidden: undefined,
-                    'aria-label': 'Suggestions',
-                    'aria-labelledby':
-                      props['aria-labelledby'] === undefined
-                        ? undefined
-                        : `${api.value.getContentProps().id} ${props['aria-labelledby']}`,
-                    onscroll: () =>
-                      (list.value?.scrollHeight ?? 0) -
-                        (list.value?.scrollTop ?? 0) -
-                        (list.value?.clientHeight ?? 0) <=
-                        32 && requestMore.value(),
-                  })}
-                  ref={list.attach}
-                >
-                  <Each of={shown.value} by={(option) => option.value} renew>
-                    {(option) => (
-                      <li
-                        {...mergeParts(api.value.getItemProps({ item: option }), {
-                          class: styles.option,
-                        })}
-                      >
-                        <span class={styles.check}>
-                          {api.value.value.includes(option.value) ? (
-                            <Icon name="confirm" size="sm" />
-                          ) : null}
-                        </span>
-                        <span class={styles.text}>
-                          <span class={styles.label}>{option.label}</span>
-                          {option.description !== undefined ? (
-                            <span class={styles.description}>{option.description}</span>
-                          ) : null}
-                        </span>
-                      </li>
-                    )}
-                  </Each>
-                </ul>
-                {props.loading ? (
-                  <div class={styles.rows} aria-hidden="true">
-                    <Each of={[0, 1, 2]} by={(row) => row}>
-                      {() => (
-                        <div class={styles.row}>
-                          <Skeleton textStep="sm" />
-                        </div>
-                      )}
-                    </Each>
-                  </div>
-                ) : null}
-                {showEmpty.value ? (
-                  <div class={styles.empty} aria-hidden="true">
-                    {props.emptyMessage}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-          {scrimPresent() ? (
-            <div
-              class={sheet.scrim}
-              data-state={api.value.open ? 'open' : 'closed'}
-              ref={scrim.attach}
-            />
-          ) : null}
-          {sheetPresent() ? (
-            <div class={sheet.positioner}>
-              <div
-                class={sheet.panel}
-                data-presentation="sheet"
-                data-state={api.value.open ? 'open' : 'closed'}
-                ref={sheetPanel.attach}
-              >
-                {/* panel */}
-                <div
-                  class={styles.sheetBody}
-                  data-size={props.size}
-                  data-member="combobox"
-                  ref={panel.attach}
-                >
-                  {/* list */}
-                  <ul
-                    {...mergeParts(api.value.getContentProps(), {
-                      class: styles.listbox,
-                      hidden: undefined,
-                      'aria-label': 'Suggestions',
-                      'aria-labelledby':
-                        props['aria-labelledby'] === undefined
-                          ? undefined
-                          : `${api.value.getContentProps().id} ${props['aria-labelledby']}`,
-                      onscroll: () =>
-                        (list.value?.scrollHeight ?? 0) -
-                          (list.value?.scrollTop ?? 0) -
-                          (list.value?.clientHeight ?? 0) <=
-                          32 && requestMore.value(),
-                    })}
-                    ref={list.attach}
+          {afresh(() => (
+            <>
+              {present() ? (
+                <div {...mergeParts(api.value.getPositionerProps())}>
+                  {/* panel */}
+                  <div
+                    class={styles.content}
+                    style={{
+                      '--radix-popover-trigger-width': 'var(--reference-width)',
+                      '--radix-popover-content-available-height': 'var(--available-height)',
+                      '--radix-popover-content-transform-origin': 'var(--transform-origin)',
+                    }}
+                    data-size={props.size}
+                    data-state={api.value.open ? 'open' : 'closed'}
+                    data-member="combobox"
+                    ref={panel.attach}
                   >
-                    <Each of={shown.value} by={(option) => option.value} renew>
-                      {(option) => (
-                        <li
-                          {...mergeParts(api.value.getItemProps({ item: option }), {
-                            class: styles.option,
-                          })}
-                        >
-                          <span class={styles.check}>
-                            {api.value.value.includes(option.value) ? (
-                              <Icon name="confirm" size="sm" />
-                            ) : null}
-                          </span>
-                          <span class={styles.text}>
-                            <span class={styles.label}>{option.label}</span>
-                            {option.description !== undefined ? (
-                              <span class={styles.description}>{option.description}</span>
-                            ) : null}
-                          </span>
-                        </li>
-                      )}
-                    </Each>
-                  </ul>
-                  {props.loading ? (
-                    <div class={styles.rows} aria-hidden="true">
-                      <Each of={[0, 1, 2]} by={(row) => row}>
-                        {() => (
-                          <div class={styles.row}>
-                            <Skeleton textStep="sm" />
-                          </div>
+                    {/* list */}
+                    <ul
+                      {...mergeParts(api.value.getContentProps(), {
+                        class: styles.listbox,
+                        hidden: undefined,
+                        'aria-label': 'Suggestions',
+                        'aria-labelledby':
+                          props['aria-labelledby'] === undefined
+                            ? undefined
+                            : `${api.value.getContentProps().id} ${props['aria-labelledby']}`,
+                        onscroll: () =>
+                          (list.value?.scrollHeight ?? 0) -
+                            (list.value?.scrollTop ?? 0) -
+                            (list.value?.clientHeight ?? 0) <=
+                            32 && requestMore.value(),
+                      })}
+                      ref={list.attach}
+                    >
+                      <Each of={shown.value} by={(option) => option.value} renew>
+                        {(option) => (
+                          <li
+                            {...mergeParts(api.value.getItemProps({ item: option }), {
+                              class: styles.option,
+                            })}
+                          >
+                            <span class={styles.check}>
+                              {api.value.value.includes(option.value) ? (
+                                <Icon name="confirm" size="sm" />
+                              ) : null}
+                            </span>
+                            <span class={styles.text}>
+                              <span class={styles.label}>{option.label}</span>
+                              {option.description !== undefined ? (
+                                <span class={styles.description}>{option.description}</span>
+                              ) : null}
+                            </span>
+                          </li>
                         )}
                       </Each>
-                    </div>
-                  ) : null}
-                  {showEmpty.value ? (
-                    <div class={styles.empty} aria-hidden="true">
-                      {props.emptyMessage}
-                    </div>
-                  ) : null}
+                    </ul>
+                    {props.loading ? (
+                      <div class={styles.rows} aria-hidden="true">
+                        <Each of={[0, 1, 2]} by={(row) => row}>
+                          {() => (
+                            <div class={styles.row}>
+                              <Skeleton textStep="sm" />
+                            </div>
+                          )}
+                        </Each>
+                      </div>
+                    ) : null}
+                    {showEmpty.value ? (
+                      <div class={styles.empty} aria-hidden="true">
+                        {props.emptyMessage}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            </div>
-          ) : null}
+              ) : null}
+              {scrimPresent() ? (
+                <div
+                  class={sheet.scrim}
+                  data-state={api.value.open ? 'open' : 'closed'}
+                  ref={scrim.attach}
+                />
+              ) : null}
+              {sheetPresent() ? (
+                <div class={sheet.positioner}>
+                  <div
+                    class={sheet.panel}
+                    data-presentation="sheet"
+                    data-state={api.value.open ? 'open' : 'closed'}
+                    ref={sheetPanel.attach}
+                  >
+                    {/* panel */}
+                    <div
+                      class={styles.sheetBody}
+                      data-size={props.size}
+                      data-member="combobox"
+                      ref={panel.attach}
+                    >
+                      {/* list */}
+                      <ul
+                        {...mergeParts(api.value.getContentProps(), {
+                          class: styles.listbox,
+                          hidden: undefined,
+                          'aria-label': 'Suggestions',
+                          'aria-labelledby':
+                            props['aria-labelledby'] === undefined
+                              ? undefined
+                              : `${api.value.getContentProps().id} ${props['aria-labelledby']}`,
+                          onscroll: () =>
+                            (list.value?.scrollHeight ?? 0) -
+                              (list.value?.scrollTop ?? 0) -
+                              (list.value?.clientHeight ?? 0) <=
+                              32 && requestMore.value(),
+                        })}
+                        ref={list.attach}
+                      >
+                        <Each of={shown.value} by={(option) => option.value} renew>
+                          {(option) => (
+                            <li
+                              {...mergeParts(api.value.getItemProps({ item: option }), {
+                                class: styles.option,
+                              })}
+                            >
+                              <span class={styles.check}>
+                                {api.value.value.includes(option.value) ? (
+                                  <Icon name="confirm" size="sm" />
+                                ) : null}
+                              </span>
+                              <span class={styles.text}>
+                                <span class={styles.label}>{option.label}</span>
+                                {option.description !== undefined ? (
+                                  <span class={styles.description}>{option.description}</span>
+                                ) : null}
+                              </span>
+                            </li>
+                          )}
+                        </Each>
+                      </ul>
+                      {props.loading ? (
+                        <div class={styles.rows} aria-hidden="true">
+                          <Each of={[0, 1, 2]} by={(row) => row}>
+                            {() => (
+                              <div class={styles.row}>
+                                <Skeleton textStep="sm" />
+                              </div>
+                            )}
+                          </Each>
+                        </div>
+                      ) : null}
+                      {showEmpty.value ? (
+                        <div class={styles.empty} aria-hidden="true">
+                          {props.emptyMessage}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ))}
         </Portal>
       </>
     )

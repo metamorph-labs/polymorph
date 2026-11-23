@@ -14,6 +14,7 @@ import { normalizeProps } from '@zag-js/solid'
 import {
   Each,
   Icon,
+  afresh,
   agentMember,
   agentPress,
   chooseMenuEntry,
@@ -279,187 +280,191 @@ export default function SplitButton(given: SplitButtonProps): JSX.Element {
           </button>
         </span>
         <Portal>
-          {present() ? (
-            <div {...mergeParts(api.value.getPositionerProps())}>
-              {/* panel */}
-              <div
-                {...mergeParts(api.value.getContentProps(), {
-                  class: styles.content,
-                  style: {
-                    '--radix-dropdown-menu-content-available-height': 'var(--available-height)',
-                    '--radix-dropdown-menu-content-transform-origin': 'var(--transform-origin)',
-                  },
-                  hidden: undefined,
-                  'data-member': 'split-button',
-                  onfocus: () => followHighlight(panel.value, api.value.highlightedValue),
-                })}
-                ref={panel.attach}
-              >
-                <Each of={props.entries} by={(_entry, index) => index} renew>
-                  {(entry) => (
-                    <>
-                      {entry.kind === 'separator' ? (
-                        <div
-                          {...mergeParts(api.value.getSeparatorProps(), {
-                            class: styles.separator,
-                          })}
-                        />
-                      ) : entry.kind === 'label' ? (
-                        <div class={styles.groupLabel}>{entry.label}</div>
-                      ) : entry.kind === 'checkbox' ? (
-                        <div
-                          {...mergeParts(
-                            api.value.getOptionItemProps({
-                              type: 'checkbox',
-                              value: entry.label,
-                              checked: entry.checked,
-                              disabled: entry.disabled,
-                              closeOnSelect: false,
-                              onCheckedChange: entry.onCheckedChange,
-                            }),
-                            {
-                              class: classes(styles.item, styles.checkbox),
-                              tabindex: '-1',
-                              onfocus: () => api.value.setHighlightedValue(entry.label),
-                            },
+          {afresh(() => (
+            <>
+              {present() ? (
+                <div {...mergeParts(api.value.getPositionerProps())}>
+                  {/* panel */}
+                  <div
+                    {...mergeParts(api.value.getContentProps(), {
+                      class: styles.content,
+                      style: {
+                        '--radix-dropdown-menu-content-available-height': 'var(--available-height)',
+                        '--radix-dropdown-menu-content-transform-origin': 'var(--transform-origin)',
+                      },
+                      hidden: undefined,
+                      'data-member': 'split-button',
+                      onfocus: () => followHighlight(panel.value, api.value.highlightedValue),
+                    })}
+                    ref={panel.attach}
+                  >
+                    <Each of={props.entries} by={(_entry, index) => index} renew>
+                      {(entry) => (
+                        <>
+                          {entry.kind === 'separator' ? (
+                            <div
+                              {...mergeParts(api.value.getSeparatorProps(), {
+                                class: styles.separator,
+                              })}
+                            />
+                          ) : entry.kind === 'label' ? (
+                            <div class={styles.groupLabel}>{entry.label}</div>
+                          ) : entry.kind === 'checkbox' ? (
+                            <div
+                              {...mergeParts(
+                                api.value.getOptionItemProps({
+                                  type: 'checkbox',
+                                  value: entry.label,
+                                  checked: entry.checked,
+                                  disabled: entry.disabled,
+                                  closeOnSelect: false,
+                                  onCheckedChange: entry.onCheckedChange,
+                                }),
+                                {
+                                  class: classes(styles.item, styles.checkbox),
+                                  tabindex: '-1',
+                                  onfocus: () => api.value.setHighlightedValue(entry.label),
+                                },
+                              )}
+                            >
+                              <span class={styles.check}>
+                                {entry.checked ? <Icon name="confirm" size="sm" /> : null}
+                              </span>
+                              <span class={styles.rowLabel}>{entry.label}</span>
+                            </div>
+                          ) : entry.kind === 'submenu' ? (
+                            <SplitButtonSubmenu entry={entry} />
+                          ) : (
+                            <div
+                              {...mergeParts(
+                                api.value.getItemProps({
+                                  value: entry.label,
+                                  disabled: entry.disabled,
+                                }),
+                                {
+                                  class: styles.item,
+                                  'data-tone': entry.tone ?? 'neutral',
+                                  tabindex: '-1',
+                                  onfocus: () => api.value.setHighlightedValue(entry.label),
+                                },
+                              )}
+                            >
+                              {entry.icon !== undefined ? (
+                                <span class={styles.rowGlyph}>
+                                  <Icon name={entry.icon} size="sm" />
+                                </span>
+                              ) : null}
+                              <span class={styles.rowLabel}>{entry.label}</span>
+                              {entry.kbd !== undefined ? (
+                                <span class={styles.hint}>
+                                  <Kbd>{entry.kbd}</Kbd>
+                                </span>
+                              ) : null}
+                            </div>
                           )}
-                        >
-                          <span class={styles.check}>
-                            {entry.checked ? <Icon name="confirm" size="sm" /> : null}
-                          </span>
-                          <span class={styles.rowLabel}>{entry.label}</span>
-                        </div>
-                      ) : entry.kind === 'submenu' ? (
-                        <SplitButtonSubmenu entry={entry} />
-                      ) : (
-                        <div
-                          {...mergeParts(
-                            api.value.getItemProps({
-                              value: entry.label,
-                              disabled: entry.disabled,
-                            }),
-                            {
-                              class: styles.item,
-                              'data-tone': entry.tone ?? 'neutral',
-                              tabindex: '-1',
-                              onfocus: () => api.value.setHighlightedValue(entry.label),
-                            },
-                          )}
-                        >
-                          {entry.icon !== undefined ? (
-                            <span class={styles.rowGlyph}>
-                              <Icon name={entry.icon} size="sm" />
-                            </span>
-                          ) : null}
-                          <span class={styles.rowLabel}>{entry.label}</span>
-                          {entry.kbd !== undefined ? (
-                            <span class={styles.hint}>
-                              <Kbd>{entry.kbd}</Kbd>
-                            </span>
-                          ) : null}
-                        </div>
+                        </>
                       )}
-                    </>
-                  )}
-                </Each>
-              </div>
-            </div>
-          ) : null}
-          {scrimPresent() ? (
-            <div
-              class={sheet.scrim}
-              data-state={api.value.open ? 'open' : 'closed'}
-              ref={scrim.attach}
-            />
-          ) : null}
-          {sheetPresent() ? (
-            <div class={sheet.positioner}>
-              <div
-                class={sheet.panel}
-                data-presentation="sheet"
-                data-state={api.value.open ? 'open' : 'closed'}
-                tabindex="-1"
-                ref={sheetPanel.attach}
-              >
-                {/* panel */}
-                <div
-                  {...mergeParts(api.value.getContentProps(), {
-                    class: styles.sheetList,
-                    hidden: undefined,
-                    'data-member': 'split-button',
-                    onfocus: () => followHighlight(panel.value, api.value.highlightedValue),
-                  })}
-                  ref={panel.attach}
-                >
-                  <Each of={flat.value} by={(_entry, index) => index} renew>
-                    {(entry) => (
-                      <>
-                        {entry.kind === 'separator' ? (
-                          <div
-                            {...mergeParts(api.value.getSeparatorProps(), {
-                              class: styles.separator,
-                            })}
-                          />
-                        ) : entry.kind === 'label' ? (
-                          <div class={styles.groupLabel}>{entry.label}</div>
-                        ) : entry.kind === 'checkbox' ? (
-                          <div
-                            {...mergeParts(
-                              api.value.getOptionItemProps({
-                                type: 'checkbox',
-                                value: entry.label,
-                                checked: entry.checked,
-                                disabled: entry.disabled,
-                                closeOnSelect: false,
-                                onCheckedChange: entry.onCheckedChange,
-                              }),
-                              {
-                                class: classes(styles.item, styles.checkbox),
-                                tabindex: '-1',
-                                onfocus: () => api.value.setHighlightedValue(entry.label),
-                              },
-                            )}
-                          >
-                            <span class={styles.check}>
-                              {entry.checked ? <Icon name="confirm" size="sm" /> : null}
-                            </span>
-                            <span class={styles.rowLabel}>{entry.label}</span>
-                          </div>
-                        ) : (
-                          <div
-                            {...mergeParts(
-                              api.value.getItemProps({
-                                value: entry.label,
-                                disabled: entry.disabled,
-                              }),
-                              {
-                                class: styles.item,
-                                'data-tone': entry.tone ?? 'neutral',
-                                tabindex: '-1',
-                                onfocus: () => api.value.setHighlightedValue(entry.label),
-                              },
-                            )}
-                          >
-                            {entry.icon !== undefined ? (
-                              <span class={styles.rowGlyph}>
-                                <Icon name={entry.icon} size="sm" />
-                              </span>
-                            ) : null}
-                            <span class={styles.rowLabel}>{entry.label}</span>
-                            {entry.kbd !== undefined ? (
-                              <span class={styles.hint}>
-                                <Kbd>{entry.kbd}</Kbd>
-                              </span>
-                            ) : null}
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </Each>
+                    </Each>
+                  </div>
                 </div>
-              </div>
-            </div>
-          ) : null}
+              ) : null}
+              {scrimPresent() ? (
+                <div
+                  class={sheet.scrim}
+                  data-state={api.value.open ? 'open' : 'closed'}
+                  ref={scrim.attach}
+                />
+              ) : null}
+              {sheetPresent() ? (
+                <div class={sheet.positioner}>
+                  <div
+                    class={sheet.panel}
+                    data-presentation="sheet"
+                    data-state={api.value.open ? 'open' : 'closed'}
+                    tabindex="-1"
+                    ref={sheetPanel.attach}
+                  >
+                    {/* panel */}
+                    <div
+                      {...mergeParts(api.value.getContentProps(), {
+                        class: styles.sheetList,
+                        hidden: undefined,
+                        'data-member': 'split-button',
+                        onfocus: () => followHighlight(panel.value, api.value.highlightedValue),
+                      })}
+                      ref={panel.attach}
+                    >
+                      <Each of={flat.value} by={(_entry, index) => index} renew>
+                        {(entry) => (
+                          <>
+                            {entry.kind === 'separator' ? (
+                              <div
+                                {...mergeParts(api.value.getSeparatorProps(), {
+                                  class: styles.separator,
+                                })}
+                              />
+                            ) : entry.kind === 'label' ? (
+                              <div class={styles.groupLabel}>{entry.label}</div>
+                            ) : entry.kind === 'checkbox' ? (
+                              <div
+                                {...mergeParts(
+                                  api.value.getOptionItemProps({
+                                    type: 'checkbox',
+                                    value: entry.label,
+                                    checked: entry.checked,
+                                    disabled: entry.disabled,
+                                    closeOnSelect: false,
+                                    onCheckedChange: entry.onCheckedChange,
+                                  }),
+                                  {
+                                    class: classes(styles.item, styles.checkbox),
+                                    tabindex: '-1',
+                                    onfocus: () => api.value.setHighlightedValue(entry.label),
+                                  },
+                                )}
+                              >
+                                <span class={styles.check}>
+                                  {entry.checked ? <Icon name="confirm" size="sm" /> : null}
+                                </span>
+                                <span class={styles.rowLabel}>{entry.label}</span>
+                              </div>
+                            ) : (
+                              <div
+                                {...mergeParts(
+                                  api.value.getItemProps({
+                                    value: entry.label,
+                                    disabled: entry.disabled,
+                                  }),
+                                  {
+                                    class: styles.item,
+                                    'data-tone': entry.tone ?? 'neutral',
+                                    tabindex: '-1',
+                                    onfocus: () => api.value.setHighlightedValue(entry.label),
+                                  },
+                                )}
+                              >
+                                {entry.icon !== undefined ? (
+                                  <span class={styles.rowGlyph}>
+                                    <Icon name={entry.icon} size="sm" />
+                                  </span>
+                                ) : null}
+                                <span class={styles.rowLabel}>{entry.label}</span>
+                                {entry.kbd !== undefined ? (
+                                  <span class={styles.hint}>
+                                    <Kbd>{entry.kbd}</Kbd>
+                                  </span>
+                                ) : null}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </Each>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ))}
         </Portal>
       </>
     )

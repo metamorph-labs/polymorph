@@ -87,14 +87,14 @@ export default function AudioPlayer(given: AudioPlayerProps): JSX.Element {
   )
   return scope(() => {
     const uid = createUniqueId()
+    const audio = elementRef<HTMLElement>()
+    const root = elementRef<HTMLElement>()
     const playing = createCell(false)
     const finished = createCell(false)
     const elapsed = createCell(0)
     const fileLength = createCell(null as number | null)
     const failed = createCell(null as string | null)
     const scrub = createCell(null as number | null)
-    const audio = elementRef<HTMLElement>()
-    const root = elementRef<HTMLElement>()
     const known = createDerived(
       () =>
         fileLength.value ??

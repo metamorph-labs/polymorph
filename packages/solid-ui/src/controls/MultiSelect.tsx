@@ -24,6 +24,7 @@ import { normalizeProps } from '@zag-js/solid'
 import {
   Each,
   Icon,
+  afresh,
   afterRender,
   agentMember,
   claimSlot,
@@ -195,12 +196,6 @@ export default function MultiSelect(given: MultiSelectProps): JSX.Element {
   )
   return scope(() => {
     const uid = createUniqueId()
-    const uncontrolled = createCell(props.defaultValue ?? [])
-    const uncontrolledText = createCell(props.defaultInputValue ?? '')
-    const refused = createCell(false)
-    const announcement = createCell('')
-    const loadMoreAt = createCell(-1)
-    const settled = createCell(false)
     const chipList = elementRef<HTMLElement>()
     const frame = elementRef<HTMLElement>()
     const list = elementRef<HTMLElement>()
@@ -209,6 +204,12 @@ export default function MultiSelect(given: MultiSelectProps): JSX.Element {
     const sheetPanel = elementRef<HTMLElement>()
     const textField = elementRef<HTMLElement>()
     const phone = useMediaQuery('phone')
+    const uncontrolled = createCell(props.defaultValue ?? [])
+    const uncontrolledText = createCell(props.defaultInputValue ?? '')
+    const refused = createCell(false)
+    const announcement = createCell('')
+    const loadMoreAt = createCell(-1)
+    const settled = createCell(false)
     const values = createDerived(() => props.value ?? uncontrolled.value)
     const text = createDerived(() => props.inputValue ?? uncontrolledText.value)
     const sheeting = createDerived(() => props.presentation === 'auto' && phone())
@@ -744,190 +745,201 @@ export default function MultiSelect(given: MultiSelectProps): JSX.Element {
           ) : null}
         </div>
         <Portal>
-          {present() ? (
-            <div {...mergeParts(api.value.getPositionerProps())}>
-              {/* panel */}
-              <div
-                class={styles.content}
-                style={{
-                  '--radix-popover-trigger-width': 'var(--reference-width)',
-                  '--radix-popover-content-available-height': 'var(--available-height)',
-                  '--radix-popover-content-transform-origin': 'var(--transform-origin)',
-                }}
-                data-size={props.size}
-                data-state={api.value.open ? 'open' : 'closed'}
-                data-member="multi-select"
-                ref={panel.attach}
-              >
-                {/* list */}
-                <ul
-                  {...mergeParts(api.value.getContentProps(), {
-                    class: styles.listbox,
-                    hidden: undefined,
-                    'aria-label':
-                      props['aria-labelledby'] === undefined ? props['aria-label'] : undefined,
-                    'aria-labelledby': props['aria-labelledby'],
-                    onscroll: () =>
-                      (list.value?.scrollHeight ?? 0) -
-                        (list.value?.scrollTop ?? 0) -
-                        (list.value?.clientHeight ?? 0) <=
-                        32 && requestMore.value(),
-                  })}
-                  ref={list.attach}
-                >
-                  <Each of={rows.value} by={(row) => row.value} renew>
-                    {(row, at) => (
-                      <li
-                        {...mergeParts(api.value.getItemProps({ item: row }), {
-                          class: styles.option,
-                          'aria-selected': values.value.includes(row.value) ? 'true' : 'false',
-                          'aria-labelledby': `${uid}-opt-${at()}` + '-label',
-                          'aria-describedby':
-                            row.description !== undefined
-                              ? `${uid}-opt-${at()}` + '-description'
-                              : undefined,
-                          'data-mint': row.value === mint.value ? '' : undefined,
-                        })}
-                      >
-                        <span class={styles.check}>
-                          {row.value === mint.value ? (
-                            <Icon name="add" size="sm" />
-                          ) : values.value.includes(row.value) ? (
-                            <Icon name="confirm" size="sm" />
-                          ) : null}
-                        </span>
-                        <span class={styles.text}>
-                          <span class={styles.optionLabel} id={`${uid}-opt-${at()}` + '-label'}>
-                            {row.label}
-                          </span>
-                          {row.description !== undefined ? (
-                            <span
-                              class={styles.description}
-                              id={`${uid}-opt-${at()}` + '-description'}
-                            >
-                              {row.description}
-                            </span>
-                          ) : null}
-                        </span>
-                      </li>
-                    )}
-                  </Each>
-                </ul>
-                {props.loading ? (
-                  <div class={styles.rows} aria-hidden="true">
-                    <Each of={[0, 1, 2]} by={(row) => row}>
-                      {() => (
-                        <div class={styles.row}>
-                          <Skeleton textStep="sm" />
-                        </div>
-                      )}
-                    </Each>
-                  </div>
-                ) : null}
-                {showEmpty.value ? (
-                  <div class={styles.empty} aria-hidden="true">
-                    {props.emptyMessage}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-          {scrimPresent() ? (
-            <div
-              class={sheet.scrim}
-              data-state={api.value.open ? 'open' : 'closed'}
-              ref={scrim.attach}
-            />
-          ) : null}
-          {sheetPresent() ? (
-            <div class={sheet.positioner}>
-              <div
-                class={sheet.panel}
-                data-presentation="sheet"
-                data-state={api.value.open ? 'open' : 'closed'}
-                ref={sheetPanel.attach}
-              >
-                {/* panel */}
-                <div
-                  class={styles.sheetBody}
-                  data-size={props.size}
-                  data-member="multi-select"
-                  ref={panel.attach}
-                >
-                  {/* list */}
-                  <ul
-                    {...mergeParts(api.value.getContentProps(), {
-                      class: styles.listbox,
-                      hidden: undefined,
-                      'aria-label':
-                        props['aria-labelledby'] === undefined ? props['aria-label'] : undefined,
-                      'aria-labelledby': props['aria-labelledby'],
-                      onscroll: () =>
-                        (list.value?.scrollHeight ?? 0) -
-                          (list.value?.scrollTop ?? 0) -
-                          (list.value?.clientHeight ?? 0) <=
-                          32 && requestMore.value(),
-                    })}
-                    ref={list.attach}
+          {afresh(() => (
+            <>
+              {present() ? (
+                <div {...mergeParts(api.value.getPositionerProps())}>
+                  {/* panel */}
+                  <div
+                    class={styles.content}
+                    style={{
+                      '--radix-popover-trigger-width': 'var(--reference-width)',
+                      '--radix-popover-content-available-height': 'var(--available-height)',
+                      '--radix-popover-content-transform-origin': 'var(--transform-origin)',
+                    }}
+                    data-size={props.size}
+                    data-state={api.value.open ? 'open' : 'closed'}
+                    data-member="multi-select"
+                    ref={panel.attach}
                   >
-                    <Each of={rows.value} by={(row) => row.value} renew>
-                      {(row, at) => (
-                        <li
-                          {...mergeParts(api.value.getItemProps({ item: row }), {
-                            class: styles.option,
-                            'aria-selected': values.value.includes(row.value) ? 'true' : 'false',
-                            'aria-labelledby': `${uid}-opt-${at()}` + '-label',
-                            'aria-describedby':
-                              row.description !== undefined
-                                ? `${uid}-opt-${at()}` + '-description'
-                                : undefined,
-                            'data-mint': row.value === mint.value ? '' : undefined,
-                          })}
-                        >
-                          <span class={styles.check}>
-                            {row.value === mint.value ? (
-                              <Icon name="add" size="sm" />
-                            ) : values.value.includes(row.value) ? (
-                              <Icon name="confirm" size="sm" />
-                            ) : null}
-                          </span>
-                          <span class={styles.text}>
-                            <span class={styles.optionLabel} id={`${uid}-opt-${at()}` + '-label'}>
-                              {row.label}
+                    {/* list */}
+                    <ul
+                      {...mergeParts(api.value.getContentProps(), {
+                        class: styles.listbox,
+                        hidden: undefined,
+                        'aria-label':
+                          props['aria-labelledby'] === undefined ? props['aria-label'] : undefined,
+                        'aria-labelledby': props['aria-labelledby'],
+                        onscroll: () =>
+                          (list.value?.scrollHeight ?? 0) -
+                            (list.value?.scrollTop ?? 0) -
+                            (list.value?.clientHeight ?? 0) <=
+                            32 && requestMore.value(),
+                      })}
+                      ref={list.attach}
+                    >
+                      <Each of={rows.value} by={(row) => row.value} renew>
+                        {(row, at) => (
+                          <li
+                            {...mergeParts(api.value.getItemProps({ item: row }), {
+                              class: styles.option,
+                              'aria-selected': values.value.includes(row.value) ? 'true' : 'false',
+                              'aria-labelledby': `${uid}-opt-${at()}` + '-label',
+                              'aria-describedby':
+                                row.description !== undefined
+                                  ? `${uid}-opt-${at()}` + '-description'
+                                  : undefined,
+                              'data-mint': row.value === mint.value ? '' : undefined,
+                            })}
+                          >
+                            <span class={styles.check}>
+                              {row.value === mint.value ? (
+                                <Icon name="add" size="sm" />
+                              ) : values.value.includes(row.value) ? (
+                                <Icon name="confirm" size="sm" />
+                              ) : null}
                             </span>
-                            {row.description !== undefined ? (
-                              <span
-                                class={styles.description}
-                                id={`${uid}-opt-${at()}` + '-description'}
-                              >
-                                {row.description}
+                            <span class={styles.text}>
+                              <span class={styles.optionLabel} id={`${uid}-opt-${at()}` + '-label'}>
+                                {row.label}
                               </span>
-                            ) : null}
-                          </span>
-                        </li>
-                      )}
-                    </Each>
-                  </ul>
-                  {props.loading ? (
-                    <div class={styles.rows} aria-hidden="true">
-                      <Each of={[0, 1, 2]} by={(row) => row}>
-                        {() => (
-                          <div class={styles.row}>
-                            <Skeleton textStep="sm" />
-                          </div>
+                              {row.description !== undefined ? (
+                                <span
+                                  class={styles.description}
+                                  id={`${uid}-opt-${at()}` + '-description'}
+                                >
+                                  {row.description}
+                                </span>
+                              ) : null}
+                            </span>
+                          </li>
                         )}
                       </Each>
-                    </div>
-                  ) : null}
-                  {showEmpty.value ? (
-                    <div class={styles.empty} aria-hidden="true">
-                      {props.emptyMessage}
-                    </div>
-                  ) : null}
+                    </ul>
+                    {props.loading ? (
+                      <div class={styles.rows} aria-hidden="true">
+                        <Each of={[0, 1, 2]} by={(row) => row}>
+                          {() => (
+                            <div class={styles.row}>
+                              <Skeleton textStep="sm" />
+                            </div>
+                          )}
+                        </Each>
+                      </div>
+                    ) : null}
+                    {showEmpty.value ? (
+                      <div class={styles.empty} aria-hidden="true">
+                        {props.emptyMessage}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            </div>
-          ) : null}
+              ) : null}
+              {scrimPresent() ? (
+                <div
+                  class={sheet.scrim}
+                  data-state={api.value.open ? 'open' : 'closed'}
+                  ref={scrim.attach}
+                />
+              ) : null}
+              {sheetPresent() ? (
+                <div class={sheet.positioner}>
+                  <div
+                    class={sheet.panel}
+                    data-presentation="sheet"
+                    data-state={api.value.open ? 'open' : 'closed'}
+                    ref={sheetPanel.attach}
+                  >
+                    {/* panel */}
+                    <div
+                      class={styles.sheetBody}
+                      data-size={props.size}
+                      data-member="multi-select"
+                      ref={panel.attach}
+                    >
+                      {/* list */}
+                      <ul
+                        {...mergeParts(api.value.getContentProps(), {
+                          class: styles.listbox,
+                          hidden: undefined,
+                          'aria-label':
+                            props['aria-labelledby'] === undefined
+                              ? props['aria-label']
+                              : undefined,
+                          'aria-labelledby': props['aria-labelledby'],
+                          onscroll: () =>
+                            (list.value?.scrollHeight ?? 0) -
+                              (list.value?.scrollTop ?? 0) -
+                              (list.value?.clientHeight ?? 0) <=
+                              32 && requestMore.value(),
+                        })}
+                        ref={list.attach}
+                      >
+                        <Each of={rows.value} by={(row) => row.value} renew>
+                          {(row, at) => (
+                            <li
+                              {...mergeParts(api.value.getItemProps({ item: row }), {
+                                class: styles.option,
+                                'aria-selected': values.value.includes(row.value)
+                                  ? 'true'
+                                  : 'false',
+                                'aria-labelledby': `${uid}-opt-${at()}` + '-label',
+                                'aria-describedby':
+                                  row.description !== undefined
+                                    ? `${uid}-opt-${at()}` + '-description'
+                                    : undefined,
+                                'data-mint': row.value === mint.value ? '' : undefined,
+                              })}
+                            >
+                              <span class={styles.check}>
+                                {row.value === mint.value ? (
+                                  <Icon name="add" size="sm" />
+                                ) : values.value.includes(row.value) ? (
+                                  <Icon name="confirm" size="sm" />
+                                ) : null}
+                              </span>
+                              <span class={styles.text}>
+                                <span
+                                  class={styles.optionLabel}
+                                  id={`${uid}-opt-${at()}` + '-label'}
+                                >
+                                  {row.label}
+                                </span>
+                                {row.description !== undefined ? (
+                                  <span
+                                    class={styles.description}
+                                    id={`${uid}-opt-${at()}` + '-description'}
+                                  >
+                                    {row.description}
+                                  </span>
+                                ) : null}
+                              </span>
+                            </li>
+                          )}
+                        </Each>
+                      </ul>
+                      {props.loading ? (
+                        <div class={styles.rows} aria-hidden="true">
+                          <Each of={[0, 1, 2]} by={(row) => row}>
+                            {() => (
+                              <div class={styles.row}>
+                                <Skeleton textStep="sm" />
+                              </div>
+                            )}
+                          </Each>
+                        </div>
+                      ) : null}
+                      {showEmpty.value ? (
+                        <div class={styles.empty} aria-hidden="true">
+                          {props.emptyMessage}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ))}
         </Portal>
       </>
     )

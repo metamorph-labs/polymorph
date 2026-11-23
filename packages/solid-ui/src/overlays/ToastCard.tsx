@@ -41,11 +41,11 @@ export interface ToastCardProps {
 export default function ToastCard(given: ToastCardProps): JSX.Element {
   const props = claimSlot(given)
   return scope(() => {
+    const card = elementRef<HTMLElement>()
     const swipe = createCell('')
     const tracking = createCell(false)
     const startX = createCell(0)
     const deltaX = createCell(0)
-    const card = elementRef<HTMLElement>()
     const icon = createDerived(() =>
       props.record.tone === 'neutral' ? null : TOAST_TONE_ICON[props.record.tone],
     )

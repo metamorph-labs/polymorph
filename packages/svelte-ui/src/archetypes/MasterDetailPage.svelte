@@ -85,7 +85,7 @@ const slots = {
 }
 let narrow = $state(false)
 let held = $state(false)
-let selected = $state(false)
+let selected = $state(Boolean(slots.detail))
 let body = $state<HTMLElement | null>(null)
 let root = $state<HTMLElement | null>(null)
 const measure = $derived(() => {

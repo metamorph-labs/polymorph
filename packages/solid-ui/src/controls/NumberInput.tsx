@@ -98,11 +98,11 @@ export default function NumberInput(given: NumberInputProps): JSX.Element {
   )
   return scope(() => {
     const uid = createUniqueId()
+    const control = elementRef<HTMLElement>()
     const committed = createCell(
       props.value === undefined ? (props.defaultValue ?? null) : props.value,
     )
     const draft = createCell('')
-    const control = elementRef<HTMLElement>()
     const documentDirection = useDirection()
     const service = useMachine(
       zag.machine,

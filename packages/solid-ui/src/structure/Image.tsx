@@ -81,9 +81,9 @@ export default function Image(given: ImageProps): JSX.Element {
     claimSlot(given),
   )
   return scope(() => {
+    const image = elementRef<HTMLElement>()
     const loaded = createCell('')
     const failed = createCell('')
-    const image = elementRef<HTMLElement>()
     const status = createDerived(() =>
       props.src === '' || failed.value === props.src
         ? 'failed'

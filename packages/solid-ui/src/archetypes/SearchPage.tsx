@@ -7,7 +7,14 @@
  */
 import { mergeProps, type JSX } from 'solid-js'
 
-import { claimSlot, createDerived, resolveSlot, scope, type Defaults } from '@polymorph/solid'
+import {
+  claimSlot,
+  createDerived,
+  createKept,
+  resolveSlot,
+  scope,
+  type Defaults,
+} from '@polymorph/solid'
 import styles from '@polymorph/recipes/archetypes/search-page.module.css'
 import EmptyState, { type EmptyStateProps } from '../structure/EmptyState'
 import Inline from '../layout/Inline'
@@ -64,6 +71,7 @@ export default function SearchPage(given: SearchPageProps): JSX.Element {
     claimSlot(given),
   )
   return scope(() => {
+    const emptyStateKept = createKept(() => props.emptyState)
     const actionsSlot = resolveSlot(() => props.actions)
     const filtersSlot = resolveSlot(() => props.filters)
     const submit = createDerived(() => (event: Event) => {
@@ -121,13 +129,15 @@ export default function SearchPage(given: SearchPageProps): JSX.Element {
         >
           {props.empty ? (
             <EmptyState
-              icon={props.emptyState.icon}
-              title={props.emptyState.title}
-              description={props.emptyState.description}
-              action={props.emptyState.action !== undefined ? props.emptyState.action : undefined}
+              icon={emptyStateKept.value.icon}
+              title={emptyStateKept.value.title}
+              description={emptyStateKept.value.description}
+              action={
+                emptyStateKept.value.action !== undefined ? emptyStateKept.value.action : undefined
+              }
               secondaryAction={
-                props.emptyState.secondaryAction !== undefined
-                  ? props.emptyState.secondaryAction
+                emptyStateKept.value.secondaryAction !== undefined
+                  ? emptyStateKept.value.secondaryAction
                   : undefined
               }
             />

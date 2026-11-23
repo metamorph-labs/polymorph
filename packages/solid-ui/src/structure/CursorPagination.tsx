@@ -90,11 +90,11 @@ export default function CursorPagination(given: CursorPaginationProps): JSX.Elem
     claimSlot(given),
   )
   return scope(() => {
+    const root = elementRef<HTMLElement>()
     const focused = createCell(null as HTMLElement | null)
     const taken = createCell(null as string | number | null)
     const asked = createCell(null as 'previous' | 'next' | null)
     const paged = createCell(false)
-    const root = elementRef<HTMLElement>()
     const more = createDerived(() => props.messages.more ?? 'Load more')
     const end = createDerived(() => props.messages.end ?? 'No more to load')
     const ended = createDerived(() => !props.hasNext && !props.pending)

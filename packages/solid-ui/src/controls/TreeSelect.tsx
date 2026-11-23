@@ -13,6 +13,7 @@ import { normalizeProps } from '@zag-js/solid'
 
 import {
   Icon,
+  afresh,
   agentMember,
   claimSlot,
   createCell,
@@ -140,6 +141,11 @@ export default function TreeSelect(given: TreeSelectProps): JSX.Element {
   )
   return scope(() => {
     const uid = createUniqueId()
+    const panel = elementRef<HTMLElement>()
+    const scrim = elementRef<HTMLElement>()
+    const sheetPanel = elementRef<HTMLElement>()
+    const trigger = elementRef<HTMLElement>()
+    const phone = useMediaQuery('phone')
     const ownValue = createCell((props.defaultValue ?? null) as string | null)
     const ownExpanded = createCell(
       props.defaultOpen === true
@@ -164,11 +170,6 @@ export default function TreeSelect(given: TreeSelectProps): JSX.Element {
           })(props.items, props.defaultExpanded ?? new Set<string>(), props.defaultValue ?? null)
         : (props.defaultExpanded ?? new Set<string>()),
     )
-    const panel = elementRef<HTMLElement>()
-    const scrim = elementRef<HTMLElement>()
-    const sheetPanel = elementRef<HTMLElement>()
-    const trigger = elementRef<HTMLElement>()
-    const phone = useMediaQuery('phone')
     const sheeting = createDerived(() => props.presentation === 'auto' && phone())
     const chosen = createDerived(() => (props.value === undefined ? ownValue.value : props.value))
     const branches = createDerived(() => props.expanded ?? ownExpanded.value)
@@ -393,90 +394,94 @@ export default function TreeSelect(given: TreeSelectProps): JSX.Element {
           />
         ) : null}
         <Portal>
-          {present() ? (
-            <div {...mergeParts(api.value.getPositionerProps())}>
-              {/* panel */}
-              <div
-                {...mergeParts(api.value.getContentProps(), {
-                  class: styles.content,
-                  style: {
-                    '--radix-popover-trigger-width': 'var(--reference-width)',
-                    '--radix-popover-content-available-width': 'var(--available-width)',
-                    '--radix-popover-content-available-height': 'var(--available-height)',
-                    '--radix-popover-content-transform-origin': 'var(--transform-origin)',
-                  },
-                  hidden: undefined,
-                  role: undefined,
-                  'aria-modal': undefined,
-                  'aria-labelledby': undefined,
-                  'aria-describedby': undefined,
-                  'data-size': props.size,
-                  'data-member': 'tree-select',
-                  onkeydown: ($event: KeyboardEvent) => closeOnRepick.value($event),
-                  onclick: ($event: MouseEvent) => closeOnRepick.value($event),
-                })}
-                ref={panel.attach}
-              >
-                <Tree
-                  label={props.label}
-                  items={shownItems.value}
-                  expanded={branches.value}
-                  value={treeValue.value}
-                  loading={props.loading}
-                  hasMore={props.hasMore}
-                  messages={props.messages}
-                  onChange={($event) => choose.value($event)}
-                  onExpandedChange={($event) => changeExpanded.value($event)}
-                  onLoadMore={($event) => props.onLoadMore?.($event)}
-                />
-              </div>
-            </div>
-          ) : null}
-          {scrimPresent() ? (
-            <div
-              class={sheet.scrim}
-              data-state={api.value.open ? 'open' : 'closed'}
-              ref={scrim.attach}
-            />
-          ) : null}
-          {sheetPresent() ? (
-            <div class={sheet.positioner}>
-              <div
-                {...mergeParts(api.value.getContentProps(), {
-                  class: sheet.panel,
-                  hidden: undefined,
-                  role: undefined,
-                  'aria-modal': undefined,
-                  'aria-labelledby': undefined,
-                  'aria-describedby': undefined,
-                  'data-presentation': 'sheet',
-                })}
-                ref={sheetPanel.attach}
-              >
-                {/* sheetBody */}
-                <div
-                  class={styles.sheetBody}
-                  data-size={props.size}
-                  data-member="tree-select"
-                  onkeydown={($event: KeyboardEvent) => closeOnRepick.value($event)}
-                  onclick={($event: MouseEvent) => closeOnRepick.value($event)}
-                >
-                  <Tree
-                    label={props.label}
-                    items={shownItems.value}
-                    expanded={branches.value}
-                    value={treeValue.value}
-                    loading={props.loading}
-                    hasMore={props.hasMore}
-                    messages={props.messages}
-                    onChange={($event) => choose.value($event)}
-                    onExpandedChange={($event) => changeExpanded.value($event)}
-                    onLoadMore={($event) => props.onLoadMore?.($event)}
-                  />
+          {afresh(() => (
+            <>
+              {present() ? (
+                <div {...mergeParts(api.value.getPositionerProps())}>
+                  {/* panel */}
+                  <div
+                    {...mergeParts(api.value.getContentProps(), {
+                      class: styles.content,
+                      style: {
+                        '--radix-popover-trigger-width': 'var(--reference-width)',
+                        '--radix-popover-content-available-width': 'var(--available-width)',
+                        '--radix-popover-content-available-height': 'var(--available-height)',
+                        '--radix-popover-content-transform-origin': 'var(--transform-origin)',
+                      },
+                      hidden: undefined,
+                      role: undefined,
+                      'aria-modal': undefined,
+                      'aria-labelledby': undefined,
+                      'aria-describedby': undefined,
+                      'data-size': props.size,
+                      'data-member': 'tree-select',
+                      onkeydown: ($event: KeyboardEvent) => closeOnRepick.value($event),
+                      onclick: ($event: MouseEvent) => closeOnRepick.value($event),
+                    })}
+                    ref={panel.attach}
+                  >
+                    <Tree
+                      label={props.label}
+                      items={shownItems.value}
+                      expanded={branches.value}
+                      value={treeValue.value}
+                      loading={props.loading}
+                      hasMore={props.hasMore}
+                      messages={props.messages}
+                      onChange={($event) => choose.value($event)}
+                      onExpandedChange={($event) => changeExpanded.value($event)}
+                      onLoadMore={($event) => props.onLoadMore?.($event)}
+                    />
+                  </div>
                 </div>
-              </div>
-            </div>
-          ) : null}
+              ) : null}
+              {scrimPresent() ? (
+                <div
+                  class={sheet.scrim}
+                  data-state={api.value.open ? 'open' : 'closed'}
+                  ref={scrim.attach}
+                />
+              ) : null}
+              {sheetPresent() ? (
+                <div class={sheet.positioner}>
+                  <div
+                    {...mergeParts(api.value.getContentProps(), {
+                      class: sheet.panel,
+                      hidden: undefined,
+                      role: undefined,
+                      'aria-modal': undefined,
+                      'aria-labelledby': undefined,
+                      'aria-describedby': undefined,
+                      'data-presentation': 'sheet',
+                    })}
+                    ref={sheetPanel.attach}
+                  >
+                    {/* sheetBody */}
+                    <div
+                      class={styles.sheetBody}
+                      data-size={props.size}
+                      data-member="tree-select"
+                      onkeydown={($event: KeyboardEvent) => closeOnRepick.value($event)}
+                      onclick={($event: MouseEvent) => closeOnRepick.value($event)}
+                    >
+                      <Tree
+                        label={props.label}
+                        items={shownItems.value}
+                        expanded={branches.value}
+                        value={treeValue.value}
+                        loading={props.loading}
+                        hasMore={props.hasMore}
+                        messages={props.messages}
+                        onChange={($event) => choose.value($event)}
+                        onExpandedChange={($event) => changeExpanded.value($event)}
+                        onLoadMore={($event) => props.onLoadMore?.($event)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ))}
         </Portal>
       </>
     )

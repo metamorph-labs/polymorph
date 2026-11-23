@@ -96,6 +96,7 @@ export default function DurationInput(given: DurationInputProps): JSX.Element {
     claimSlot(given, 'group'),
   )
   const uid = createUniqueId()
+  const field = elementRef<HTMLElement>()
   const browserLanguage = createCell(undefined as string | undefined)
   const draft = createCell(
     durationDraft(props.value !== undefined ? props.value : (props.defaultValue ?? null), {
@@ -109,7 +110,6 @@ export default function DurationInput(given: DurationInputProps): JSX.Element {
   const reported = createCell(
     (props.value !== undefined ? props.value : (props.defaultValue ?? null)) as number | null,
   )
-  const field = elementRef<HTMLElement>()
   const language = createDerived(() => props.locale ?? browserLanguage.value ?? 'en-US')
   const fieldOptions = createDerived(() => ({
     units: props.units,

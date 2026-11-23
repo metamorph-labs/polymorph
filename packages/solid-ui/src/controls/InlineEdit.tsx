@@ -117,10 +117,10 @@ export default function InlineEdit(given: InlineEditProps): JSX.Element {
   )
   return scope(() => {
     const uid = createUniqueId()
+    const root = elementRef<HTMLElement>()
     const mirror = createCell(props.defaultEditing)
     const draft = createCell(props.value)
     const within = createCell(false)
-    const root = elementRef<HTMLElement>()
     const current = createDerived(() => props.editing ?? mirror.value)
     const valueId = createDerived(() => `${uid}-value`)
     const errorId = createDerived(() => `${uid}-error`)

@@ -67,13 +67,13 @@ export default function PasswordInput(given: PasswordInputProps): JSX.Element {
     claimSlot(given),
   )
   return scope(() => {
+    const frame = elementRef<HTMLElement>()
     const revealed = createCell(false)
     const held = createCell({
       start: null as number | null,
       end: null as number | null,
       direction: 'none' as 'forward' | 'backward' | 'none',
     })
-    const frame = elementRef<HTMLElement>()
     const field = createDerived(() => frame.value?.querySelector('input') ?? null)
     const effect1 = () => {
       void (field.value?.setAttribute('spellcheck', 'false'),

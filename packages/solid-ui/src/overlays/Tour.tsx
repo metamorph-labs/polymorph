@@ -12,6 +12,7 @@ import * as zag from '@zag-js/dialog'
 import { normalizeProps } from '@zag-js/solid'
 
 import {
+  afresh,
   agentMember,
   claimSlot,
   classes,
@@ -94,6 +95,9 @@ export default function Tour(given: TourProps): JSX.Element {
   )
   return scope(() => {
     const uid = createUniqueId()
+    const panel = elementRef<HTMLElement>()
+    const positioner = elementRef<HTMLElement>()
+    const scrim = elementRef<HTMLElement>()
     const uncontrolledStep = createCell(props.defaultStep ?? 0)
     const ending = createCell(null as 'finished' | 'dismissed' | null)
     const geometry = createCell(
@@ -104,9 +108,6 @@ export default function Tour(given: TourProps): JSX.Element {
         hole: { x: number; y: number; width: number; height: number } | null
       } | null,
     )
-    const panel = elementRef<HTMLElement>()
-    const positioner = elementRef<HTMLElement>()
-    const scrim = elementRef<HTMLElement>()
     const count = createDerived(() => props.steps.length)
     const index = createDerived(() =>
       Math.min(Math.max(props.step ?? uncontrolledStep.value, 0), Math.max(count.value - 1, 0)),
@@ -279,95 +280,103 @@ export default function Tour(given: TourProps): JSX.Element {
     onCleanup(() => release5?.())
     return (
       <Portal>
-        {scrimPresent() ? (
-          <div
-            {...mergeParts(api.value.getBackdropProps(), {
-              class: classes(
-                cutOut.value !== null ? styles.spotlight : undefined,
-                cutOut.value === null ? styles.scrim : undefined,
-              ),
-              style: {
-                '--pm-tour-hole-x': cutOut.value === null ? undefined : `${cutOut.value.x}px`,
-                '--pm-tour-hole-y': cutOut.value === null ? undefined : `${cutOut.value.y}px`,
-                '--pm-tour-hole-width':
-                  cutOut.value === null ? undefined : `${cutOut.value.width}px`,
-                '--pm-tour-hole-height':
-                  cutOut.value === null ? undefined : `${cutOut.value.height}px`,
-              },
-              hidden: undefined,
-              'aria-hidden': 'true',
-              'data-tour-part': 'scrim',
-            })}
-            ref={scrim.attach}
-          />
-        ) : null}
-        {panelPresent() ? (
-          <div
-            {...mergeParts(api.value.getPositionerProps(), {
-              class: styles.positioner,
-              style: {
-                '--pm-tour-x': `${geometry.value?.x ?? 0}px`,
-                '--pm-tour-y': `${geometry.value?.y ?? 0}px`,
-              },
-              'data-placement': drawnAt.value,
-            })}
-            ref={positioner.attach}
-          >
-            {/* panel */}
-            <div
-              {...mergeParts(api.value.getContentProps(), {
-                class: styles.panel,
-                hidden: undefined,
-                'data-step': current.value?.id,
-                'data-member': 'tour',
-              })}
-              ref={panel.attach}
-            >
-              {/* title */}
-              <h2 {...mergeParts(api.value.getTitleProps(), { class: styles.title })}>
-                {current.value?.title}
-              </h2>
-              {/* description */}
-              <div {...mergeParts(api.value.getDescriptionProps(), { class: styles.description })}>
-                {/* body */}
-                <p class={styles.body}>{current.value?.body}</p>
-                {/* position */}
-                <p class={styles.position} data-tour-part="position">
-                  {props.messages.position(index.value + 1, count.value)}
-                </p>
+        {afresh(() => (
+          <>
+            {scrimPresent() ? (
+              <div
+                {...mergeParts(api.value.getBackdropProps(), {
+                  class: classes(
+                    cutOut.value !== null ? styles.spotlight : undefined,
+                    cutOut.value === null ? styles.scrim : undefined,
+                  ),
+                  style: {
+                    '--pm-tour-hole-x': cutOut.value === null ? undefined : `${cutOut.value.x}px`,
+                    '--pm-tour-hole-y': cutOut.value === null ? undefined : `${cutOut.value.y}px`,
+                    '--pm-tour-hole-width':
+                      cutOut.value === null ? undefined : `${cutOut.value.width}px`,
+                    '--pm-tour-hole-height':
+                      cutOut.value === null ? undefined : `${cutOut.value.height}px`,
+                  },
+                  hidden: undefined,
+                  'aria-hidden': 'true',
+                  'data-tour-part': 'scrim',
+                })}
+                ref={scrim.attach}
+              />
+            ) : null}
+            {panelPresent() ? (
+              <div
+                {...mergeParts(api.value.getPositionerProps(), {
+                  class: styles.positioner,
+                  style: {
+                    '--pm-tour-x': `${geometry.value?.x ?? 0}px`,
+                    '--pm-tour-y': `${geometry.value?.y ?? 0}px`,
+                  },
+                  'data-placement': drawnAt.value,
+                })}
+                ref={positioner.attach}
+              >
+                {/* panel */}
+                <div
+                  {...mergeParts(api.value.getContentProps(), {
+                    class: styles.panel,
+                    hidden: undefined,
+                    'data-step': current.value?.id,
+                    'data-member': 'tour',
+                  })}
+                  ref={panel.attach}
+                >
+                  {/* title */}
+                  <h2 {...mergeParts(api.value.getTitleProps(), { class: styles.title })}>
+                    {current.value?.title}
+                  </h2>
+                  {/* description */}
+                  <div
+                    {...mergeParts(api.value.getDescriptionProps(), { class: styles.description })}
+                  >
+                    {/* body */}
+                    <p class={styles.body}>{current.value?.body}</p>
+                    {/* position */}
+                    <p class={styles.position} data-tour-part="position">
+                      {props.messages.position(index.value + 1, count.value)}
+                    </p>
+                  </div>
+                  {/* actions */}
+                  <div class={styles.actions} data-tour-part="actions">
+                    {!first.value ? (
+                      <Button
+                        variant="outline"
+                        tone="neutral"
+                        size="sm"
+                        label={props.messages.previous}
+                        onClick={() => go.value(index.value - 1)}
+                      />
+                    ) : null}
+                    <Button
+                      size="sm"
+                      label={last.value ? props.messages.done : props.messages.next}
+                      onClick={() =>
+                        last.value ? end.value('finished') : go.value(index.value + 1)
+                      }
+                    />
+                  </div>
+                  {/* close */}
+                  <div class={styles.close} data-tour-part="close">
+                    <Button
+                      variant="ghost"
+                      tone="neutral"
+                      size="sm"
+                      iconOnly={true}
+                      icon="close"
+                      label={props.messages.close}
+                      onClick={() => end.value('dismissed')}
+                    />
+                  </div>
+                </div>
               </div>
-              {/* actions */}
-              <div class={styles.actions} data-tour-part="actions">
-                {!first.value ? (
-                  <Button
-                    variant="outline"
-                    tone="neutral"
-                    size="sm"
-                    label={props.messages.previous}
-                    onClick={() => go.value(index.value - 1)}
-                  />
-                ) : null}
-                <Button
-                  size="sm"
-                  label={last.value ? props.messages.done : props.messages.next}
-                  onClick={() => (last.value ? end.value('finished') : go.value(index.value + 1))}
-                />
-              </div>
-              {/* close */}
-              <div class={styles.close} data-tour-part="close">
-                <Button
-                  variant="ghost"
-                  tone="neutral"
-                  size="sm"
-                  iconOnly={true}
-                  icon="close"
-                  label={props.messages.close}
-                  onClick={() => end.value('dismissed')}
-                />
-              </div>
-            </div>
-          </div>
-        ) : null}
+            ) : null}
+          </>
+        ))}
       </Portal>
     )
   })

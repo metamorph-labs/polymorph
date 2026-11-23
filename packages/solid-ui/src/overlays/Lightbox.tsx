@@ -13,6 +13,7 @@ import { normalizeProps } from '@zag-js/solid'
 
 import {
   Each,
+  afresh,
   agentMember,
   claimSlot,
   createCell,
@@ -95,14 +96,14 @@ export default function Lightbox(given: LightboxProps): JSX.Element {
   )
   return scope(() => {
     const uid = createUniqueId()
-    const opener = createCell(null as HTMLElement | null)
-    const mirror = createCell(props.defaultIndex)
     const panel = elementRef<HTMLElement>()
     const scrim = elementRef<HTMLElement>()
     const triggerSlot = resolveSlot(
       () => props.trigger,
       () => ({ onClick: openFrom.value }),
     )
+    const opener = createCell(null as HTMLElement | null)
+    const mirror = createCell(props.defaultIndex)
     const within = createDerived(
       () => (at: number) => Math.min(Math.max(at, 0), Math.max(props.images.length - 1, 0)),
     )
@@ -222,87 +223,91 @@ export default function Lightbox(given: LightboxProps): JSX.Element {
       <>
         {triggerSlot()}
         <Portal>
-          {scrimPresent() ? (
-            <div
-              {...mergeParts(api.value.getBackdropProps(), {
-                class: styles.scrim,
-                hidden: undefined,
-                onclick: () => api.value.setOpen(false),
-              })}
-              ref={scrim.attach}
-            />
-          ) : null}
-          {panelPresent() ? (
-            <div {...mergeParts(api.value.getPositionerProps(), { class: styles.positioner })}>
-              {/* panel */}
-              <div
-                {...mergeParts(api.value.getContentProps(), {
-                  class: styles.panel,
-                  hidden: undefined,
-                  'data-member': 'lightbox',
-                  onkeydown: ($event: KeyboardEvent) => keyDown.value($event),
-                })}
-                ref={panel.attach}
-              >
-                {/* title */}
-                <h2 {...mergeParts(api.value.getTitleProps(), { class: styles.title })}>
-                  {props.label}
-                </h2>
-                {/* stage */}
-                <div class={styles.stage}>
-                  <Each of={current.value} by={() => shown.value} renew>
-                    {(picture) => <Image src={picture.src} alt={picture.alt} loading="eager" />}
-                  </Each>
-                </div>
-                {several.value ? (
-                  <>
-                    {/* previous */}
-                    <div class={styles.previous} data-lightbox-part="previous">
+          {afresh(() => (
+            <>
+              {scrimPresent() ? (
+                <div
+                  {...mergeParts(api.value.getBackdropProps(), {
+                    class: styles.scrim,
+                    hidden: undefined,
+                    onclick: () => api.value.setOpen(false),
+                  })}
+                  ref={scrim.attach}
+                />
+              ) : null}
+              {panelPresent() ? (
+                <div {...mergeParts(api.value.getPositionerProps(), { class: styles.positioner })}>
+                  {/* panel */}
+                  <div
+                    {...mergeParts(api.value.getContentProps(), {
+                      class: styles.panel,
+                      hidden: undefined,
+                      'data-member': 'lightbox',
+                      onkeydown: ($event: KeyboardEvent) => keyDown.value($event),
+                    })}
+                    ref={panel.attach}
+                  >
+                    {/* title */}
+                    <h2 {...mergeParts(api.value.getTitleProps(), { class: styles.title })}>
+                      {props.label}
+                    </h2>
+                    {/* stage */}
+                    <div class={styles.stage}>
+                      <Each of={current.value} by={() => shown.value} renew>
+                        {(picture) => <Image src={picture.src} alt={picture.alt} loading="eager" />}
+                      </Each>
+                    </div>
+                    {several.value ? (
+                      <>
+                        {/* previous */}
+                        <div class={styles.previous} data-lightbox-part="previous">
+                          <Button
+                            variant="ghost"
+                            tone="neutral"
+                            size="sm"
+                            iconOnly={true}
+                            icon="previous"
+                            label={props.messages.previous}
+                            disabled={shown.value === 0}
+                            onClick={() => travel.value(shown.value - 1)}
+                          />
+                        </div>
+                        {/* next */}
+                        <div class={styles.next} data-lightbox-part="next">
+                          <Button
+                            variant="ghost"
+                            tone="neutral"
+                            size="sm"
+                            iconOnly={true}
+                            icon="next"
+                            label={props.messages.next}
+                            disabled={shown.value === props.images.length - 1}
+                            onClick={() => travel.value(shown.value + 1)}
+                          />
+                        </div>
+                        {/* position */}
+                        <p class={styles.position} role="status">
+                          {props.messages.position(shown.value + 1, props.images.length)}
+                        </p>
+                      </>
+                    ) : null}
+                    {/* close */}
+                    <div class={styles.close} data-dialog-part="close">
                       <Button
                         variant="ghost"
                         tone="neutral"
                         size="sm"
                         iconOnly={true}
-                        icon="previous"
-                        label={props.messages.previous}
-                        disabled={shown.value === 0}
-                        onClick={() => travel.value(shown.value - 1)}
+                        icon="close"
+                        label={props.messages.close}
+                        onClick={() => api.value.setOpen(false)}
                       />
                     </div>
-                    {/* next */}
-                    <div class={styles.next} data-lightbox-part="next">
-                      <Button
-                        variant="ghost"
-                        tone="neutral"
-                        size="sm"
-                        iconOnly={true}
-                        icon="next"
-                        label={props.messages.next}
-                        disabled={shown.value === props.images.length - 1}
-                        onClick={() => travel.value(shown.value + 1)}
-                      />
-                    </div>
-                    {/* position */}
-                    <p class={styles.position} role="status">
-                      {props.messages.position(shown.value + 1, props.images.length)}
-                    </p>
-                  </>
-                ) : null}
-                {/* close */}
-                <div class={styles.close} data-dialog-part="close">
-                  <Button
-                    variant="ghost"
-                    tone="neutral"
-                    size="sm"
-                    iconOnly={true}
-                    icon="close"
-                    label={props.messages.close}
-                    onClick={() => api.value.setOpen(false)}
-                  />
+                  </div>
                 </div>
-              </div>
-            </div>
-          ) : null}
+              ) : null}
+            </>
+          ))}
         </Portal>
       </>
     )

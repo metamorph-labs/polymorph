@@ -45,7 +45,7 @@ const callerSlots = defineSlots<{
 const slots = useTrackedSlots(callerSlots)
 const narrow = ref(false)
 const held = ref(false)
-const selected = ref(false)
+const selected = ref(Boolean(slots.detail))
 const body = useTemplateRef<HTMLElement>('body')
 const root = useTemplateRef<HTMLElement>('root')
 const measure = computed(() => () => {

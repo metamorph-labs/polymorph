@@ -39,10 +39,10 @@ export interface ToastViewportProps {
 export default function ToastViewport(given: ToastViewportProps): JSX.Element {
   const props = claimSlot(given)
   return scope(() => {
-    const version = createCell(0)
-    const paused = createCell(false)
     const list = elementRef<HTMLElement>()
     const region = elementRef<HTMLElement>()
+    const version = createCell(0)
+    const paused = createCell(false)
     const say = createDerived(
       () =>
         props.messages ?? {

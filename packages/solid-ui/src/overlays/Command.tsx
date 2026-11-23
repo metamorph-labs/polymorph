@@ -12,6 +12,7 @@ import * as zag from '@zag-js/dialog'
 import { normalizeProps } from '@zag-js/solid'
 
 import {
+  afresh,
   agentMember,
   claimSlot,
   createCell,
@@ -93,9 +94,9 @@ export default function Command(given: CommandProps): JSX.Element {
   )
   return scope(() => {
     const uid = createUniqueId()
-    const query = createCell('')
     const panel = elementRef<HTMLElement>()
     const scrim = elementRef<HTMLElement>()
+    const query = createCell('')
     const documentDirection = useDirection()
     const service = useMachine(
       zag.machine,
@@ -157,41 +158,45 @@ export default function Command(given: CommandProps): JSX.Element {
     onCleanup(() => release1?.())
     return (
       <Portal>
-        {scrimPresent() ? (
-          <div
-            {...mergeParts(api.value.getBackdropProps(), {
-              class: styles.scrim,
-              hidden: undefined,
-            })}
-            ref={scrim.attach}
-          />
-        ) : null}
-        {panelPresent() ? (
-          <div {...mergeParts(api.value.getPositionerProps(), { class: styles.positioner })}>
-            {/* panel */}
-            <div
-              {...mergeParts(api.value.getContentProps(), {
-                class: styles.panel,
-                hidden: undefined,
-                'aria-describedby': undefined,
-                'data-loading': props.loading ? '' : undefined,
-                'data-member': 'command',
-              })}
-              ref={panel.attach}
-            >
-              <CommandPanel
-                items={props.items}
-                placeholder={props.placeholder}
-                escapeHint={props.escapeHint}
-                filter={props.filter}
-                loading={props.loading}
-                emptyMessage={props.emptyMessage}
-                onQueryChange={($event) => (query.value = $event)}
-                onCommand={() => props.closeOnSelect && api.value.setOpen(false)}
+        {afresh(() => (
+          <>
+            {scrimPresent() ? (
+              <div
+                {...mergeParts(api.value.getBackdropProps(), {
+                  class: styles.scrim,
+                  hidden: undefined,
+                })}
+                ref={scrim.attach}
               />
-            </div>
-          </div>
-        ) : null}
+            ) : null}
+            {panelPresent() ? (
+              <div {...mergeParts(api.value.getPositionerProps(), { class: styles.positioner })}>
+                {/* panel */}
+                <div
+                  {...mergeParts(api.value.getContentProps(), {
+                    class: styles.panel,
+                    hidden: undefined,
+                    'aria-describedby': undefined,
+                    'data-loading': props.loading ? '' : undefined,
+                    'data-member': 'command',
+                  })}
+                  ref={panel.attach}
+                >
+                  <CommandPanel
+                    items={props.items}
+                    placeholder={props.placeholder}
+                    escapeHint={props.escapeHint}
+                    filter={props.filter}
+                    loading={props.loading}
+                    emptyMessage={props.emptyMessage}
+                    onQueryChange={($event) => (query.value = $event)}
+                    onCommand={() => props.closeOnSelect && api.value.setOpen(false)}
+                  />
+                </div>
+              </div>
+            ) : null}
+          </>
+        ))}
       </Portal>
     )
   })

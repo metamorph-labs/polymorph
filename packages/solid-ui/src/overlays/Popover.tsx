@@ -21,6 +21,7 @@ import { normalizeProps } from '@zag-js/solid'
 
 import {
   BORROWED,
+  afresh,
   agentMember,
   anchorProps,
   claimSlot,
@@ -159,52 +160,58 @@ export default function Popover(given: PopoverProps): JSX.Element {
           {props.trigger}
         </span>
         <Portal>
-          {present() ? (
-            <div {...mergeParts(api.value.getPositionerProps())}>
-              {/* panel */}
-              <div
-                {...mergeParts(api.value.getContentProps(), {
-                  class: styles.panel,
-                  style: { '--radix-popover-content-transform-origin': 'var(--transform-origin)' },
-                  hidden: undefined,
-                  'aria-labelledby': undefined,
-                  'aria-describedby': undefined,
-                  'aria-label': props.label,
-                  'data-member': 'popover',
-                })}
-                ref={panel.attach}
-              >
-                {props.children}
-              </div>
-            </div>
-          ) : null}
-          {scrimPresent() ? (
-            <div
-              class={sheet.scrim}
-              data-state={api.value.open ? 'open' : 'closed'}
-              ref={scrim.attach}
-            />
-          ) : null}
-          {sheetPresent() ? (
-            <div class={sheet.positioner}>
-              <div
-                {...mergeParts(api.value.getContentProps(), {
-                  class: sheet.panel,
-                  hidden: undefined,
-                  'aria-labelledby': undefined,
-                  'aria-describedby': undefined,
-                  'aria-label': props.label,
-                  'data-presentation': 'sheet',
-                })}
-                ref={sheetPanel.attach}
-              >
-                {/* panel */}
-                <div class={styles.sheetBody} data-member="popover">
-                  {props.children}
+          {afresh(() => (
+            <>
+              {present() ? (
+                <div {...mergeParts(api.value.getPositionerProps())}>
+                  {/* panel */}
+                  <div
+                    {...mergeParts(api.value.getContentProps(), {
+                      class: styles.panel,
+                      style: {
+                        '--radix-popover-content-transform-origin': 'var(--transform-origin)',
+                      },
+                      hidden: undefined,
+                      'aria-labelledby': undefined,
+                      'aria-describedby': undefined,
+                      'aria-label': props.label,
+                      'data-member': 'popover',
+                    })}
+                    ref={panel.attach}
+                  >
+                    {props.children}
+                  </div>
                 </div>
-              </div>
-            </div>
-          ) : null}
+              ) : null}
+              {scrimPresent() ? (
+                <div
+                  class={sheet.scrim}
+                  data-state={api.value.open ? 'open' : 'closed'}
+                  ref={scrim.attach}
+                />
+              ) : null}
+              {sheetPresent() ? (
+                <div class={sheet.positioner}>
+                  <div
+                    {...mergeParts(api.value.getContentProps(), {
+                      class: sheet.panel,
+                      hidden: undefined,
+                      'aria-labelledby': undefined,
+                      'aria-describedby': undefined,
+                      'aria-label': props.label,
+                      'data-presentation': 'sheet',
+                    })}
+                    ref={sheetPanel.attach}
+                  >
+                    {/* panel */}
+                    <div class={styles.sheetBody} data-member="popover">
+                      {props.children}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ))}
         </Portal>
       </>
     )

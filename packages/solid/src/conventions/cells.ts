@@ -7,6 +7,8 @@ import {
   type Accessor,
 } from 'solid-js'
 
+import { reserveKeys } from './hydration'
+
 /**
  * The values a Solid member holds, each read as `.value`.
  *
@@ -39,6 +41,31 @@ export function createCell<T>(initial: T): { value: T } {
  */
 export function createDerived<T>(compute: () => T): { readonly value: T } {
   const owner = getOwner()
+  let memo: Accessor<T> | undefined
+  return {
+    get value() {
+      memo ??= runWithOwner(owner, () => createMemo(compute)) ?? createMemo(compute)
+      return memo()
+    },
+  }
+}
+
+/**
+ * A prop's value that may hold nodes (DescriptionList's `items`, whose details
+ * are text or members; AppShell's `topbar`), read as `.value`.
+ *
+ * In Solid a prop written with a node inside it is a getter that creates the
+ * node each time it is read, and a member reads a prop in several places (the
+ * list's length, then its rows). So the member reads the prop here once, and
+ * again when what the caller's expression reads changes, and every place
+ * reads the value that one read returned. The first read is made when the
+ * value is first asked for, under the owner that declared it, in the place the
+ * declaration took in a hydration's count (`reserveKeys`).
+ */
+export function createKept<T>(read: () => T): { readonly value: T } {
+  const owner = getOwner()
+  const keyed = reserveKeys()
+  const compute = () => keyed(read)
   let memo: Accessor<T> | undefined
   return {
     get value() {

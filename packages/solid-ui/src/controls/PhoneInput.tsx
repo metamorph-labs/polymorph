@@ -102,6 +102,7 @@ export default function PhoneInput(given: PhoneInputProps): JSX.Element {
   )
   return scope(() => {
     const uid = createUniqueId()
+    const root = elementRef<HTMLElement>()
     const browserLanguage = createCell(undefined as string | undefined)
     const kept = createCell(props.defaultValue ?? '')
     const chosen = createCell(
@@ -112,7 +113,6 @@ export default function PhoneInput(given: PhoneInputProps): JSX.Element {
     )
     const draft = createCell(null as string | null)
     const typed = createCell(null as { text: string; under: string } | null)
-    const root = elementRef<HTMLElement>()
     const language = createDerived(() => props.locale ?? browserLanguage.value ?? 'en-US')
     const say = createDerived(() => ({
       country: 'Country calling code',

@@ -14,6 +14,7 @@ import {
   claimSlot,
   createCell,
   createDerived,
+  createKept,
   elementRef,
   itemOf,
   resolveSlot,
@@ -164,10 +165,11 @@ export default function DataTable<Row>(given: DataTableProps<Row>): JSX.Element 
     claimSlot(given),
   )
   return scope(() => {
+    const emptyStateKept = createKept(() => props.emptyState)
     const uid = createUniqueId()
-    const ownExpanded = createCell(props.defaultExpanded ?? new Set<string>())
     const root = elementRef<HTMLElement>()
     const paginationSlot = resolveSlot(() => props.pagination)
+    const ownExpanded = createCell(props.defaultExpanded ?? new Set<string>())
     const selectable = createDerived(() => props.selection !== undefined)
     const expandable = createDerived(() => props.rowDetail !== undefined)
     const open = createDerived(() => props.expanded ?? ownExpanded.value)
@@ -313,13 +315,15 @@ export default function DataTable<Row>(given: DataTableProps<Row>): JSX.Element 
         ) : null}
         {empty.value ? (
           <EmptyState
-            icon={props.emptyState.icon}
-            title={props.emptyState.title}
-            description={props.emptyState.description}
-            action={props.emptyState.action !== undefined ? props.emptyState.action : undefined}
+            icon={emptyStateKept.value.icon}
+            title={emptyStateKept.value.title}
+            description={emptyStateKept.value.description}
+            action={
+              emptyStateKept.value.action !== undefined ? emptyStateKept.value.action : undefined
+            }
             secondaryAction={
-              props.emptyState.secondaryAction !== undefined
-                ? props.emptyState.secondaryAction
+              emptyStateKept.value.secondaryAction !== undefined
+                ? emptyStateKept.value.secondaryAction
                 : undefined
             }
           />
@@ -458,9 +462,7 @@ export default function DataTable<Row>(given: DataTableProps<Row>): JSX.Element 
                         <Each of={props.columns} by={(column) => column.key} renew>
                           {(column) => (
                             <TableCell numeric={column.numeric}>
-                              {typeof cellOf.value(itemOf(column), itemOf(row)) === 'string'
-                                ? cellOf.value(itemOf(column), itemOf(row))
-                                : cellOf.value(itemOf(column), itemOf(row))}
+                              {cellOf.value(itemOf(column), itemOf(row))}
                             </TableCell>
                           )}
                         </Each>

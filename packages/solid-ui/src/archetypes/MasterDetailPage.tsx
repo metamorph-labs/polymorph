@@ -12,6 +12,7 @@ import {
   claimSlot,
   createCell,
   createDerived,
+  createKept,
   elementRef,
   masterDetailFocus,
   masterDetailHolds,
@@ -64,13 +65,14 @@ export interface MasterDetailPageProps {
 export default function MasterDetailPage(given: MasterDetailPageProps): JSX.Element {
   const props = claimSlot(given)
   return scope(() => {
-    const narrow = createCell(false)
-    const held = createCell(false)
-    const selected = createCell(false)
+    const emptyStateKept = createKept(() => props.emptyState)
     const body = elementRef<HTMLElement>()
     const root = elementRef<HTMLElement>()
     const actionsSlot = resolveSlot(() => props.actions)
     const detailSlot = resolveSlot(() => props.detail)
+    const narrow = createCell(false)
+    const held = createCell(false)
+    const selected = createCell(Boolean(detailSlot.filled()))
     const measure = createDerived(() => () => {
       if (root.value === null) return
       const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
@@ -194,17 +196,17 @@ export default function MasterDetailPage(given: MasterDetailPageProps): JSX.Elem
                   ) : (
                     <div class={styles.empty}>
                       <EmptyState
-                        icon={props.emptyState.icon}
-                        title={props.emptyState.title}
-                        description={props.emptyState.description}
+                        icon={emptyStateKept.value.icon}
+                        title={emptyStateKept.value.title}
+                        description={emptyStateKept.value.description}
                         action={
-                          props.emptyState.action !== undefined
-                            ? props.emptyState.action
+                          emptyStateKept.value.action !== undefined
+                            ? emptyStateKept.value.action
                             : undefined
                         }
                         secondaryAction={
-                          props.emptyState.secondaryAction !== undefined
-                            ? props.emptyState.secondaryAction
+                          emptyStateKept.value.secondaryAction !== undefined
+                            ? emptyStateKept.value.secondaryAction
                             : undefined
                         }
                       />

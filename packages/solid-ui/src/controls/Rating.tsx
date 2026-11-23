@@ -94,8 +94,8 @@ export default function Rating(given: RatingProps): JSX.Element {
     claimSlot(given, 'group'),
   )
   return scope(() => {
-    const mirror = createCell(props.defaultValue ?? null)
     const root = elementRef<HTMLElement>()
+    const mirror = createCell(props.defaultValue ?? null)
     const model = createDerived(() =>
       ratingModel({
         value: props.value === undefined ? mirror.value : props.value,

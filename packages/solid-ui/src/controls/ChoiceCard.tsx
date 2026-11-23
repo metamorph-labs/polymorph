@@ -59,13 +59,13 @@ export default function ChoiceCard(given: ChoiceCardProps): JSX.Element {
   )
   return scope(() => {
     const uid = createUniqueId()
+    const grid = elementRef<HTMLElement>()
     const singleMirror = createCell(
       props.mode === 'single' ? (props.defaultValue as string | undefined) : undefined,
     )
     const multipleMirror = createCell(
       props.mode === 'multiple' ? ((props.defaultValue as string[] | undefined) ?? []) : [],
     )
-    const grid = elementRef<HTMLElement>()
     const chosen = createDerived(() =>
       props.mode === 'single'
         ? ((props.value as string | undefined) ?? singleMirror.value)

@@ -148,9 +148,9 @@ export default function Input(given: InputProps): JSX.Element {
     claimSlot(given),
   )
   return scope(() => {
-    const draft = createCell(props.defaultValue ?? '')
     const control = useControlRef(() => props.controlRef)
     const trailingSlot = resolveSlot(() => props.trailing)
+    const draft = createCell(props.defaultValue ?? '')
     const current = createDerived(() => props.value ?? draft.value)
     const showClear = createDerived(
       () => props.clearable && current.value !== '' && !props.disabled && !props.readOnly,

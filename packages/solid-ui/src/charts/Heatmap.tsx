@@ -92,13 +92,13 @@ export default function Heatmap(given: HeatmapProps): JSX.Element {
     claimSlot(given),
   )
   return scope(() => {
+    const frame = elementRef<HTMLElement>()
+    const plot = elementRef<HTMLElement>()
     const box = createCell(UNMEASURED)
     const reading = createCell(createReading({ count: 0, seriesStart: 0 }))
     const position = createCell(readingRest(0))
     const twinOpen = createCell(false)
     const warningLog = createCell(createWarningLog())
-    const frame = elementRef<HTMLElement>()
-    const plot = elementRef<HTMLElement>()
     const input = createDerived(() => ({
       data: props.data,
       x: props.x,

@@ -67,11 +67,11 @@ export default function OTPInput(given: OTPInputProps): JSX.Element {
     >,
     claimSlot(given, 'field'),
   )
+  const field = elementRef<HTMLElement>()
   const uncontrolled = createCell(
     (props.defaultValue ?? '').replace(/\D/g, '').slice(0, props.length),
   )
   const focused = createCell(false)
-  const field = elementRef<HTMLElement>()
   const code = createDerived(() =>
     (props.value ?? uncontrolled.value).replace(/\D/g, '').slice(0, props.length),
   )

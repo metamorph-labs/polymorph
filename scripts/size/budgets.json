@@ -28,7 +28,7 @@
     "css": 6
   },
   "solid-button": {
-    "js": 17,
+    "js": 19,
     "css": 6
   },
   "angular-button": {
@@ -40,7 +40,7 @@
     "css": 7
   },
   "elements-button": {
-    "js": 41,
+    "js": 43,
     "css": 49
   },
   "elements-all": {

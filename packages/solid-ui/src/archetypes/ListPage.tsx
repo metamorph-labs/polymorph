@@ -7,7 +7,14 @@
  */
 import { mergeProps, type JSX } from 'solid-js'
 
-import { claimSlot, elementRef, resolveSlot, scope, type Defaults } from '@polymorph/solid'
+import {
+  claimSlot,
+  createKept,
+  elementRef,
+  resolveSlot,
+  scope,
+  type Defaults,
+} from '@polymorph/solid'
 import { usePresence } from '@polymorph/solid/motion'
 import styles from '@polymorph/recipes/archetypes/list-page.module.css'
 import EmptyState, { type EmptyStateProps } from '../structure/EmptyState'
@@ -49,6 +56,7 @@ export interface ListPageProps {
 export default function ListPage(given: ListPageProps): JSX.Element {
   const props = mergeProps({ empty: false } as Defaults<ListPageProps, 'empty'>, claimSlot(given))
   return scope(() => {
+    const emptyStateKept = createKept(() => props.emptyState)
     const nothing = elementRef<HTMLElement>()
     const records = elementRef<HTMLElement>()
     const actionsSlot = resolveSlot(() => props.actions)
@@ -85,13 +93,17 @@ export default function ListPage(given: ListPageProps): JSX.Element {
           {emptyPresent() ? (
             <div class={styles.body} ref={nothing.attach}>
               <EmptyState
-                icon={props.emptyState.icon}
-                title={props.emptyState.title}
-                description={props.emptyState.description}
-                action={props.emptyState.action !== undefined ? props.emptyState.action : undefined}
+                icon={emptyStateKept.value.icon}
+                title={emptyStateKept.value.title}
+                description={emptyStateKept.value.description}
+                action={
+                  emptyStateKept.value.action !== undefined
+                    ? emptyStateKept.value.action
+                    : undefined
+                }
                 secondaryAction={
-                  props.emptyState.secondaryAction !== undefined
-                    ? props.emptyState.secondaryAction
+                  emptyStateKept.value.secondaryAction !== undefined
+                    ? emptyStateKept.value.secondaryAction
                     : undefined
                 }
               />

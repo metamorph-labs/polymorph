@@ -141,10 +141,10 @@ export default function FileUpload(given: FileUploadProps): JSX.Element {
     claimSlot(given, 'group'),
   )
   return scope(() => {
-    const dragover = createCell(false)
     const picker = elementRef<HTMLElement>()
     const root = elementRef<HTMLElement>()
     const zone = elementRef<HTMLElement>()
+    const dragover = createCell(false)
     const zoneState = createDerived(() => (dragover.value ? 'dragover' : 'idle'))
     const add = createDerived(
       () => (list: FileList | null | undefined) =>

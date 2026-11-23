@@ -14,6 +14,7 @@ import { normalizeProps } from '@zag-js/solid'
 import {
   TOOLTIP_DELAY_MS,
   TOOLTIP_SKIP_DELAY_MS,
+  afresh,
   anchorProps,
   claimSlot,
   createDerived,
@@ -104,21 +105,25 @@ export default function HoverCard(given: HoverCardProps): JSX.Element {
           {props.children}
         </span>
         <Portal>
-          {present() ? (
-            <div {...mergeParts(api.value.getPositionerProps())}>
-              {/* panel */}
-              <div
-                {...mergeParts(api.value.getContentProps(), {
-                  class: styles.panel,
-                  hidden: undefined,
-                  'data-member': 'hover-card',
-                })}
-                ref={panel.attach}
-              >
-                {props.content}
-              </div>
-            </div>
-          ) : null}
+          {afresh(() => (
+            <>
+              {present() ? (
+                <div {...mergeParts(api.value.getPositionerProps())}>
+                  {/* panel */}
+                  <div
+                    {...mergeParts(api.value.getContentProps(), {
+                      class: styles.panel,
+                      hidden: undefined,
+                      'data-member': 'hover-card',
+                    })}
+                    ref={panel.attach}
+                  >
+                    {props.content}
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ))}
         </Portal>
       </>
     )

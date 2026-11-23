@@ -14,6 +14,7 @@ import { normalizeProps } from '@zag-js/solid'
 import {
   TOOLTIP_DELAY_MS,
   TOOLTIP_SKIP_DELAY_MS,
+  afresh,
   anchorProps,
   claimSlot,
   createDerived,
@@ -105,23 +106,29 @@ export default function Tooltip(given: TooltipProps): JSX.Element {
           {props.children}
         </span>
         <Portal>
-          {present() ? (
-            <div {...mergeParts(api.value.getPositionerProps())}>
-              {/* bubble */}
-              <div
-                {...mergeParts(api.value.getContentProps(), {
-                  class: styles.bubble,
-                  style: { '--radix-tooltip-content-available-width': 'var(--available-width)' },
-                  hidden: undefined,
-                  'data-state': api.value.open ? 'delayed-open' : 'closed',
-                  'data-member': 'tooltip',
-                })}
-                ref={bubble.attach}
-              >
-                {props.content}
-              </div>
-            </div>
-          ) : null}
+          {afresh(() => (
+            <>
+              {present() ? (
+                <div {...mergeParts(api.value.getPositionerProps())}>
+                  {/* bubble */}
+                  <div
+                    {...mergeParts(api.value.getContentProps(), {
+                      class: styles.bubble,
+                      style: {
+                        '--radix-tooltip-content-available-width': 'var(--available-width)',
+                      },
+                      hidden: undefined,
+                      'data-state': api.value.open ? 'delayed-open' : 'closed',
+                      'data-member': 'tooltip',
+                    })}
+                    ref={bubble.attach}
+                  >
+                    {props.content}
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ))}
         </Portal>
       </>
     )

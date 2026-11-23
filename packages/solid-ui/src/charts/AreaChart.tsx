@@ -168,6 +168,8 @@ export default function AreaChart(given: AreaChartProps): JSX.Element {
     claimSlot(given),
   )
   return scope(() => {
+    const frame = elementRef<HTMLElement>()
+    const plot = elementRef<HTMLElement>()
     const box = createCell(UNMEASURED)
     const reading = createCell(createReading({ count: 0, seriesStart: null }))
     const position = createCell(readingRest(null))
@@ -180,8 +182,6 @@ export default function AreaChart(given: AreaChartProps): JSX.Element {
     const brushed = createCell(brush.value.state())
     const sync = createCell(createSyncMember((value) => receive.value(value)))
     const receiving = createCell(false)
-    const frame = elementRef<HTMLElement>()
-    const plot = elementRef<HTMLElement>()
     const input = createDerived(() => ({
       data: props.data,
       series: props.series,
