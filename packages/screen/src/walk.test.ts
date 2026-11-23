@@ -265,7 +265,11 @@ describe('callback inputs are actions', () => {
         component: 'Stack',
         children: [
           // An action input where the table asks a question of each row: the table's question.
-          table({ getRowId: { $: 'onRemove' }, isRowExpandable: { $: 'onRemove' } }),
+          table({
+            getRowId: { $: 'onRemove' },
+            isRowExpandable: { $: 'onRemove' },
+            getRowName: { $: 'rowKey' },
+          }),
           // A question input where a button is pressed: the button's action.
           { component: 'Button', props: { label: 'Key', onClick: { $: 'rowKey' } } },
           { component: 'Button', props: { label: 'Save', onClick: { $: 'save' } } },
@@ -286,7 +290,11 @@ describe('callback inputs are actions', () => {
     })
     const rows = at(screen, '$.root.children[0]')
     expect(call(rows, 'getRowId', { id: 7 })).toBe('7')
-    expect(call(rows, 'isRowExpandable', { id: 7 })).toBe(false)
+    // A question the member may be left without is left unset, so it answers as it does by
+    // default; one it requires is answered by a stub. Neither declaration is a fault.
+    expect(rows.props['isRowExpandable']).toBeUndefined()
+    expect(rows.props['getRowName']).toBeUndefined()
+    expect(screen.faults).toEqual([])
     screen.update({ data: { tickets: [{ id: 8 }] } })
     expect(call(at(screen, '$.root.children[0]'), 'getRowId', { id: 8 })).toBe('8')
     expect(actions).toEqual([])
@@ -610,6 +618,7 @@ describe('a function reaches a member only where a callback receives it', () => 
       kind: 'value'
       value: Record<string, unknown>
     }
+    // `page` is a field `PaginationMessages` requires, so a stub answers it.
     const page = messages.value['page'] as (page: number) => unknown
     expect(page(3)).toBe('3')
     screen.update({ data: {} })
@@ -617,6 +626,36 @@ describe('a function reaches a member only where a callback receives it', () => 
     // Where a person acts, the same kind of input is the action.
     call(screen.root as ScreenNode, 'onPageChange', 2)
     expect(actions.map(({ name }) => name)).toEqual(['go'])
+  })
+
+  it('leaves a question unset where its field may be left out, so the member answers it', () => {
+    // A column's `cell` is optional: a table draws the row's value at the column's key.
+    const { screen, faults } = open({
+      document: doc(
+        {
+          component: 'DataTable',
+          props: {
+            label: 'Rows',
+            data: { $: 'rows' },
+            columns: [{ $object: { key: 'id', header: 'Id', cell: { $: 'renderCell' } } }],
+            getRowId: { $: 'rowId' },
+            emptyState: { $object: { title: 'None' } },
+          },
+        },
+        [
+          { name: 'rows', type: 'Row[]' },
+          { name: 'renderCell', type: '(row: Row) => string' },
+          { name: 'rowId', type: '(row: Row) => string' },
+        ],
+      ),
+      data: { rows: [] },
+    })
+    expect(screen.root?.props['columns']).toEqual({
+      kind: 'value',
+      value: [{ key: 'id', header: 'Id' }],
+      from: 'document',
+    })
+    expect(faults).toEqual([])
   })
 
   it('is a fault, and nothing is passed, where text, a node or data receives a callback input', () => {
@@ -636,7 +675,10 @@ describe('a function reaches a member only where a callback receives it', () => 
         approve,
       ),
     })
-    expect(at(screen, '$.root.children[0]').props['label']).toBeUndefined()
+    // A button whose label is refused has no name, so it is not drawn.
+    expect(at(screen, '$.root.children[0]').fault?.message).toBe(
+      '`Button` is not drawn, as its required prop `label` has no value',
+    )
     expect(at(screen, '$.root.children[1]').children.map(({ kind }) => kind)).toEqual(['fault'])
     expect(at(screen, '$.root.children[2]').props['items']).toEqual({
       kind: 'value',
@@ -645,6 +687,7 @@ describe('a function reaches a member only where a callback receives it', () => 
     })
     expect(faults.map(({ path }) => path)).toEqual([
       '$.root.children[0].props.label',
+      '$.root.children[0]',
       '$.root.children[1].children[0]',
       '$.root.children[2].props.items[0].x',
     ])
@@ -713,7 +756,7 @@ describe('a function reaches a member only where a callback receives it', () => 
       data: { session: { logout }, rows: [], columns: [{ key: 'id', header: 'Id', cell }] },
     })
     expect(at(screen, '$.root.children[0]').props['onClick']).toBeUndefined()
-    expect(at(screen, '$.root.children[1]').props['label']).toBeUndefined()
+    expect(at(screen, '$.root.children[1]').fault).not.toBeNull()
     expect(at(screen, '$.root.children[2]').props['columns']).toEqual({
       kind: 'value',
       value: [{ key: 'id', header: 'Id', cell }],
@@ -725,6 +768,7 @@ describe('a function reaches a member only where a callback receives it', () => 
         "the host's data holds a function at `session.logout`, ",
       ],
       ['$.root.children[1].props.label', "the host's data holds a function at `session.logout`, "],
+      ['$.root.children[1]', '`Button` is not drawn, as its required prop `label` ha'],
     ])
     expect(actions).toEqual([])
   })
@@ -826,6 +870,118 @@ describe('what the person changed', () => {
     })
     expect(screen.values).toEqual({ q: 'inner' })
     expect(faults.map(({ path }) => path)).toEqual(['$.root.props.trailing.props.name'])
+  })
+})
+
+describe('an element is drawn once every prop it requires has a value', () => {
+  const approve = [{ name: 'onApprove', type: '() => void' }]
+  const named = { component: 'Input', props: { name: 'nickname', defaultValue: 'Ada' } }
+
+  it('is not drawn where a required prop was never written or was refused, and a fault says which', () => {
+    const { screen, faults } = open({
+      document: doc(
+        {
+          component: 'Stack',
+          children: [
+            { component: 'Button', props: {} },
+            { component: 'Button', props: { label: { $: 'onApprove' } } },
+            { component: 'Button', props: { label: { text: 'Save' } } },
+            // A row whose control is no member, and whose named field is then drawn nowhere.
+            { component: 'SettingsRow', props: { label: { $: 'onApprove' }, control: named } },
+            {
+              component: 'SettingsRow',
+              props: { label: 'Theme', control: { component: 'Buton' } },
+            },
+          ],
+        },
+        approve,
+      ),
+    })
+    const notDrawn = [0, 1, 2, 3, 4].map(
+      (index) => at(screen, `$.root.children[${index}]`).fault?.message,
+    )
+    expect(notDrawn).toEqual([
+      '`Button` is missing its required prop `label`',
+      '`Button` is not drawn, as its required prop `label` has no value',
+      '`Button` is not drawn, as its required prop `label` has no value',
+      '`SettingsRow` is not drawn, as its required prop `label` has no value',
+      '`SettingsRow` is not drawn, as its required prop `control` has no value',
+    ])
+    expect(at(screen, '$.root.children[3]').props).toEqual({})
+    // The field the row held is drawn nowhere, so it holds no value.
+    expect(screen.values).toEqual({})
+    // Each cause is told at its prop, and each element left undrawn at its own path.
+    expect(faults.map(({ path }) => path)).toEqual([
+      '$.root.children[0]',
+      '$.root.children[1].props.label',
+      '$.root.children[1]',
+      '$.root.children[2].props.label',
+      '$.root.children[2]',
+      '$.root.children[3].props.label',
+      '$.root.children[3]',
+      '$.root.children[4].props.control',
+      '$.root.children[4]',
+    ])
+  })
+
+  it('is drawn without an address refused, without data the host has not given, and with a stub for a callback', () => {
+    const { screen, faults } = open({
+      document: doc(
+        {
+          component: 'Stack',
+          children: [
+            { component: 'Link', props: { href: 'javascript:alert(1)' }, children: ['Open'] },
+            { component: 'Image', props: { src: 'data:text/html,x', alt: 'A cat' } },
+            { component: 'Button', props: { label: { $: 'title' } } },
+            {
+              component: 'ConfirmDialog',
+              props: { title: 'Delete?', description: 'It goes.', confirmLabel: 'Delete' },
+            },
+          ],
+        },
+        [{ name: 'title', type: 'string' }],
+      ),
+    })
+    for (const index of [0, 1, 2, 3]) {
+      expect(at(screen, `$.root.children[${index}]`).fault).toBeNull()
+    }
+    expect(at(screen, '$.root.children[0]').children).toEqual([
+      { kind: 'value', value: 'Open', from: 'document' },
+    ])
+    expect(at(screen, '$.root.children[1]').props['alt']).toBeDefined()
+    expect(
+      typeof (at(screen, '$.root.children[3]').props['onConfirm'] as { value: unknown }).value,
+    ).toBe('function')
+    expect(faults.map(({ path, message }) => [path, message.slice(0, 30)])).toEqual([
+      ['$.root.children[0].props.href', '"javascript:alert(1)" is not a'],
+      ['$.root.children[1].props.src', '"data:text/html,x" is not an a'],
+      ['$.root.children[2].props.label', '`Button` requires `label`, and'],
+      ['$.root.children[3]', '`ConfirmDialog` is missing its'],
+    ])
+  })
+
+  it('is left out while the document streams, and is a fault once it is whole', () => {
+    const document = doc(
+      {
+        component: 'Stack',
+        children: [
+          { component: 'Text', children: ['Kept'] },
+          { component: 'Button', props: { label: { $: 'onApprove' } } },
+        ],
+      },
+      approve,
+    )
+    const { screen, faults } = open({ document, streaming: true })
+    expect(screen.root?.children.map(({ kind }) => kind)).toEqual(['node'])
+    expect(faults.map(({ path }) => path)).toEqual(['$.root.children[1].props.label'])
+    screen.update({ streaming: false })
+    expect(
+      screen.root?.children.map((child) => child.kind === 'node' && child.node.fault !== null),
+    ).toEqual([false, true])
+    expect(faults.map(({ path }) => path)).toEqual([
+      '$.root.children[1].props.label',
+      '$.root.children[1]',
+    ])
   })
 })
 

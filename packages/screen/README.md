@@ -35,8 +35,10 @@ behaves the same in each of them:
   prop's type is a function that returns nothing, it is an action: the host is told
   `{ name, args, values, changed }` when the member calls it, and the member waits on a promise
   the host returns. Where it is a function that returns a value, it is a question the member asks
-  while it draws (a row's key, a page's label): a stub answers by that type, and the host is never
-  told. Anywhere else (a text, a child, data, a field of an object type the vocabulary does not
+  while it draws (a row's key, a page's label), which no document can answer at run time: where
+  the prop or field may be left out, nothing is passed and the member answers as it does by
+  default; where it is required, a stub answers by that type. The host is never told of a
+  question. Anywhere else (a text, a child, data, a field of an object type the vocabulary does not
   name), the binding is a fault and nothing is passed;
 - a function in the host's `data` is never handed to a member as itself: a binding whose value is
   a function is a fault, wherever it is bound. Functions inside an object or a list the host binds
@@ -46,6 +48,14 @@ behaves the same in each of them:
 - a component is drawn only if the vocabulary has it and the host allows it (`members`), a prop
   only if the member takes it, a callback only if it is a function, and an object only as the
   format writes one (`{ "$object": … }`);
+- an element is drawn only once every prop it requires has a value, as a member drawn without one
+  is drawn empty or unnamed. One whose required prop was never written, or was refused (a callback
+  bound where none receives it, a function in the host's data, an object or an element that is not
+  drawn), is drawn as nothing, with a fault that names the prop. Three things are not counted: a
+  required callback, which a stub answers; `children`; and an address that was refused, as a link
+  or an image without its address still reads, and is inert. A required prop bound to data the host
+  has not given yet is drawn without it, with a fault, so a screen keeps its shape while its data
+  arrives;
 - an element in a structured object is drawn only where the field's data type takes a node (an
   empty state's `action`). One in a field the type does not declare, or declares as data, is a
   fault and is not drawn, so it holds no value in `values`. In an object whose type the vocabulary

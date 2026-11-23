@@ -15,7 +15,7 @@ import { unionParts } from '@polymorph/registry/frameworks'
  * so a text of `n` nested pairs costs `n`, not `n²`: a screen declares its
  * input types, and the walk reads them while the screen streams.
  */
-function unwrap(text: string): string {
+export function unwrap(text: string): string {
   const blank = (at: number) => (text[at] as string).trim() === ''
   let start = 0
   let end = text.length - 1

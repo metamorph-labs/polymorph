@@ -1,6 +1,6 @@
 import { unionParts } from '@polymorph/registry/frameworks'
 import type { TableDataType } from '@polymorph/registry/screen-table'
-import { EVENT_HANDLER_ALIAS } from '@polymorph/spec/action-type'
+import { EVENT_HANDLER_ALIAS, unwrap } from '@polymorph/spec/action-type'
 
 import { isAction, isCallback } from './actions'
 import { MAX_DEPTH } from './depth'
@@ -46,10 +46,8 @@ interface ObjectType {
 
 interface Index {
   dataTypes: Map<string, TableDataType>
-  items: Map<string, Receiver>
-  objects: Map<string, ObjectType | null>
-  callbacks: Map<string, CallbackKind | null>
-  nodes: Map<string, boolean>
+  /** What each reading below found for a type, by the reading's name and the type. */
+  read: Map<string, unknown>
 }
 
 const INDEXES = new WeakMap<ScreenVocabulary, Index>()
@@ -59,45 +57,28 @@ function indexOf(vocabulary: ScreenVocabulary): Index {
   if (index === undefined) {
     index = {
       dataTypes: new Map((vocabulary.dataTypes ?? []).map((type) => [type.name, type])),
-      items: new Map(),
-      objects: new Map(),
-      callbacks: new Map(),
-      nodes: new Map(),
+      read: new Map(),
     }
     INDEXES.set(vocabulary, index)
   }
   return index
 }
 
-function remembered<Value>(cache: Map<string, Value>, key: string, read: () => Value): Value {
-  if (cache.has(key)) return cache.get(key) as Value
-  const value = read()
-  cache.set(key, value)
-  return value
+/** A reading of a vocabulary's type, made once for each vocabulary and type. */
+function remembered<Value>(
+  vocabulary: ScreenVocabulary,
+  reading: string,
+  type: string,
+  read: () => Value,
+): Value {
+  const cache = indexOf(vocabulary).read
+  const key = `${reading}\u0000${type}`
+  if (!cache.has(key)) cache.set(key, read())
+  return cache.get(key) as Value
 }
 
-/** The text without the parentheses around all of it. The vocabulary's types are short. */
-function bare(text: string): string {
-  let inner = text.trim().replace(/^readonly\s+/, '')
-  for (;;) {
-    if (!inner.startsWith('(')) return inner
-    let depth = 0
-    let end = -1
-    for (let at = 0; at < inner.length; at += 1) {
-      const char = inner[at] as string
-      if ('(<{['.includes(char)) depth += 1
-      else if (')}]'.includes(char) || (char === '>' && inner[at - 1] !== '=')) {
-        depth -= 1
-        if (depth === 0) {
-          end = at
-          break
-        }
-      }
-    }
-    if (end !== inner.length - 1) return inner
-    inner = inner.slice(1, -1).trim()
-  }
-}
+/** The text without `readonly` and the parentheses around all of it. */
+const bare = (text: string): string => unwrap(unwrap(text).replace(/^readonly\s+/, ''))
 
 /** A type's parts other than `null` and `undefined`, each without the parentheses around it. */
 function partsOf(type: string): string[] {
@@ -126,7 +107,7 @@ function listItem(part: string): string | null {
  */
 export function itemOf(vocabulary: ScreenVocabulary, type: Receiver): Receiver {
   if (type === null) return null
-  return remembered(indexOf(vocabulary).items, type, () => {
+  return remembered(vocabulary, 'item', type, () => {
     const parts = partsOf(type)
     if (parts.some((part) => NODE.test(part))) return type
     const items = parts.flatMap((part) => {
@@ -144,8 +125,8 @@ export function itemOf(vocabulary: ScreenVocabulary, type: Receiver): Receiver {
  * type written out) or no object at all.
  */
 function objectOf(vocabulary: ScreenVocabulary, type: string): ObjectType | null {
-  const index = indexOf(vocabulary)
-  return remembered(index.objects, type, () => {
+  const { dataTypes } = indexOf(vocabulary)
+  return remembered(vocabulary, 'object', type, () => {
     const types: TableDataType[] = []
     let record: string | null = null
     const seen = new Set<string>()
@@ -154,72 +135,66 @@ function objectOf(vocabulary: ScreenVocabulary, type: string): ObjectType | null
         if (SCALAR.test(part) || listItem(part) !== null) continue
         const named = NAMED.exec(part)
         if (named === null) return false
-        const name = named[1] as string
+        const [, name, args = ''] = named
+        // `Readonly<T>` has `T`'s fields.
+        if (name === 'Readonly') {
+          if (!read(args)) return false
+          continue
+        }
+        // `Record<K, V>` takes any key, each with a `V`; a key type with commas or brackets is
+        // not read.
         if (name === 'Record') {
-          // `Record<K, V>` takes any key, each with a `V`.
-          const value = splitArguments(named[2] ?? '')[1]
+          const value = /^[^,<>()]*,(.*)$/s.exec(args)?.[1]?.trim()
           if (value === undefined) return false
           record = record === null ? value : `${record} | ${value}`
           continue
         }
-        // `Readonly<T>` and `Partial<T>` have `T`'s fields.
-        if (name === 'Readonly' || name === 'Partial') {
-          if (!read(named[2] ?? '')) return false
-          continue
-        }
-        const known = index.dataTypes.get(name)
+        const known = dataTypes.get(name as string)
         if (known === undefined) return false
-        if (seen.has(name)) continue
-        seen.add(name)
+        if (seen.has(known.name)) continue
+        seen.add(known.name)
         if (known.union !== undefined && known.union.length > 0) {
           if (!read(known.union.join(' | '))) return false
         } else types.push(known)
       }
       return true
     }
-    if (!read(type) || (types.length === 0 && record === null)) return null
-    return { types, record }
+    return read(type) && (types.length > 0 || record !== null) ? { types, record } : null
   })
 }
 
-/** A type's arguments, split at the commas outside brackets: `K, V` of `Record<K, V>`. */
-function splitArguments(text: string): string[] {
-  const out: string[] = []
-  let depth = 0
-  let start = 0
-  for (let at = 0; at < text.length; at += 1) {
-    const char = text[at] as string
-    if ('(<{['.includes(char)) depth += 1
-    else if (')}]'.includes(char) || (char === '>' && text[at - 1] !== '=')) depth -= 1
-    else if (char === ',' && depth === 0) {
-      out.push(text.slice(start, at).trim())
-      start = at + 1
-    }
-  }
-  out.push(text.slice(start).trim())
-  return out
+/** A field of a structured object: the type that receives its value, and whether it may be left out. */
+export interface Field {
+  type: string
+  optional: boolean
 }
 
 /**
- * The type of a structured object's field, where the object is written at
- * `type`: the field's type in each data type the object can be, `undefined`
- * where the object's type is known and declares no such field, and `null`
- * where the object's type is not known (`objectOf`).
+ * A structured object's field, where the object is written at `type`: its type
+ * in each data type the object can be, `undefined` where the object's type is
+ * known and declares no such field, and `null` where the object's type is not
+ * known (`objectOf`). It is optional only where every data type that declares
+ * it marks it so; a record's value may not be left out.
  */
 export function fieldOf(
   vocabulary: ScreenVocabulary,
   type: Receiver,
   key: string,
-): Receiver | undefined {
+): Field | undefined | null {
   if (type === null) return null
   const object = objectOf(vocabulary, type)
   if (object === null) return null
   const found = new Set<string>()
+  let optional = object.record === null
   for (const dataType of object.types) {
-    for (const field of dataType.fields) if (field.name === key) found.add(field.type)
+    for (const field of dataType.fields) {
+      if (field.name !== key) continue
+      found.add(field.type)
+      optional &&= field.optional
+    }
   }
   if (object.record !== null) found.add(object.record)
-  return found.size === 0 ? undefined : [...found].join(' | ')
+  return found.size === 0 ? undefined : { type: [...found].join(' | '), optional }
 }
 
 /** The name of the data type a structured object at `type` is, for a fault's words. */
@@ -232,7 +207,7 @@ export function objectName(vocabulary: ScreenVocabulary, type: Receiver): string
 /** Whether a member draws a node received at `type`. Where the vocabulary does not say, it may. */
 export function takesNode(vocabulary: ScreenVocabulary, type: Receiver): boolean {
   if (type === null) return true
-  return remembered(indexOf(vocabulary).nodes, type, () =>
+  return remembered(vocabulary, 'node', type, () =>
     partsOf(type).some((part) => NODE.test(part) || NODE.test(bare(listItem(part) ?? ''))),
   )
 }
@@ -244,7 +219,7 @@ export function takesNode(vocabulary: ScreenVocabulary, type: Receiver): boolean
  */
 export function callbackOf(vocabulary: ScreenVocabulary, type: Receiver): CallbackKind | null {
   if (type === null) return null
-  return remembered(indexOf(vocabulary).callbacks, type, () => {
+  return remembered(vocabulary, 'callback', type, () => {
     if (!isCallback(type)) return null
     // A handler alias (`ReactEventHandler<T>`) is a function of one event that returns nothing.
     const parts = partsOf(type).filter((part) => !EVENT_HANDLER_ALIAS.test(part))

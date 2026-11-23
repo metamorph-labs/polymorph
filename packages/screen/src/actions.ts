@@ -11,11 +11,12 @@ import { isActionType } from '@polymorph/spec/action-type'
  *    either) is handed an **action**: the person did something, and the host
  *    is told. A member that waits on it (ConfirmDialog while it saves) waits on
  *    the promise the host's handler returns.
- *  - A receiver that returns a value (`getRowId: (row: Row) => string`) is
- *    handed a **question**'s stub, which the member asks while it draws: a
- *    row's key, whether a date can be picked. It answers by the receiver's
- *    return type, and the host is never told, as a table asks one question per
- *    row on every drawing.
+ *  - A receiver that returns a value (`getRowId: (row: Row) => string`) asks
+ *    a **question** while the member draws: a row's key, whether a date can be
+ *    picked. A document cannot answer it, so a receiver that may be left out
+ *    is handed nothing and the member answers by default, and a required one
+ *    is handed a stub that answers by the receiver's return type. The host is
+ *    never told, as a table asks one question per row on every drawing.
  *  - A receiver that is no callback is handed nothing (`walk.ts`).
  *
  * The input's own type says what its `Fill` reads. A required callback the

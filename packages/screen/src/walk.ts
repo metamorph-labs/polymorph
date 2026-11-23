@@ -70,8 +70,10 @@ import { addressFaults, ADDRESS_KEYS } from './urls'
  *    an action: a member that calls it tells the host `{ name, args, values,
  *    changed }` (`onAction`), and a promise the host's handler returns is what
  *    the member waits on. Bound to a callback that returns a value, it is a
- *    question the member asks while it draws (a row's key): a stub answers by
- *    the receiver's return type, and the host is never told (`actions.ts`).
+ *    question the member asks while it draws (a row's key), which no document
+ *    can answer: nothing is passed where the receiver may be left out, so the
+ *    member answers by default, and a stub answers by the receiver's return
+ *    type where it is required. The host is never told (`actions.ts`).
  *    Bound anywhere else (a text, a node, data, a field the vocabulary does
  *    not know), it is a fault and nothing is passed, as a renderer may call a
  *    function it is handed as text. A function in the host's data is never
@@ -105,6 +107,11 @@ import { addressFaults, ADDRESS_KEYS } from './urls'
  *    if it is one a screen may hold (`urls.ts`). An object is passed only as
  *    the format writes one (`$object`), and a document nested deeper than
  *    `MAX_DEPTH` (`depth.ts`) is drawn only down to it.
+ *  - **An element is drawn once every prop it requires has a value.** One
+ *    whose required prop was never written, or was refused, carries a fault
+ *    that names the prop and is drawn as nothing. A required callback is
+ *    stubbed, `children` are no prop here, and an address refused or data the
+ *    host has not given leaves the element drawn without it.
  *  - **A fault never blanks the screen.** A node that cannot be drawn carries
  *    its fault and is drawn as nothing, or as the fault where the host asks;
  *    every fault reaches the host with its path (`onFault`), once in each
@@ -815,7 +822,8 @@ export function createScreen(options: ScreenOptions): Screen {
      * drawn (a child, or a list that holds an element), `text` that a string
      * still being written reads there as what it will say, `depth` is how many
      * objects and lists hold the value (`depth.ts`), and `receiver` is the type
-     * of the prop, item or field that receives it (`receivers.ts`).
+     * of the prop, item or field that receives it (`receivers.ts`), which
+     * `optional` says may be left out.
      */
     const resolveValue = (
       written: unknown,
@@ -824,6 +832,7 @@ export function createScreen(options: ScreenOptions): Screen {
       text: boolean,
       depth: number,
       receiver: Receiver,
+      optional = false,
     ): Drawn | undefined => {
       const value = written as SpecValue
       if (typeof value === 'object' && value !== null && depth > MAX_DEPTH) {
@@ -845,7 +854,7 @@ export function createScreen(options: ScreenOptions): Screen {
         BUILT.add(plain)
         return { kind: 'value', value: plain, from: 'document' }
       }
-      if (isBinding(value)) return bindingAt(value.$, path, drawn, receiver)
+      if (isBinding(value)) return bindingAt(value.$, path, drawn, receiver, optional)
       if (isObjectValue(value)) {
         if (drawn) return faulted({ path, message: OBJECT_AS_CHILD }, true)
         if (!isRecord(value.$object)) return faulted({ path, message: PLAIN_OBJECT }, false)
@@ -856,7 +865,7 @@ export function createScreen(options: ScreenOptions): Screen {
           const field = fieldOf(vocabulary, receiver, key)
           // An element is drawn only in a field that takes a node: one the type declares as data,
           // or does not declare, no member draws, and a control there would hold a value unseen.
-          if (field !== null && !takesNode(vocabulary, field ?? 'never') && elementIn(item)) {
+          if (field !== null && !takesNode(vocabulary, field?.type ?? 'never') && elementIn(item)) {
             const type = objectName(vocabulary, receiver)
             found.push({
               path: at,
@@ -864,7 +873,15 @@ export function createScreen(options: ScreenOptions): Screen {
             })
             continue
           }
-          let resolved = resolveValue(item, at, false, false, depth + 2, field ?? null)
+          let resolved = resolveValue(
+            item,
+            at,
+            false,
+            false,
+            depth + 2,
+            field?.type ?? null,
+            field?.optional ?? false,
+          )
           if (resolved !== undefined && ADDRESS_KEYS.has(key)) {
             resolved = address(resolved, item, at, key)
           }
@@ -882,9 +899,8 @@ export function createScreen(options: ScreenOptions): Screen {
         return { kind: 'value', value: plain, from: 'document' }
       }
       if (isElement(value)) {
-        return drawable(value, path, depth)
-          ? { kind: 'node', node: node(value, path, depth) }
-          : undefined
+        const made = drawable(value, path, depth) ? node(value, path, depth) : null
+        return made === null ? undefined : { kind: 'node', node: made }
       }
       // An object of no form the format has is passed nowhere: a member would read it unchecked.
       if (isRecord(value)) return faulted({ path, message: PLAIN_OBJECT }, drawn)
@@ -899,16 +915,20 @@ export function createScreen(options: ScreenOptions): Screen {
     /**
      * A binding's value, by what receives it. A callback input is the screen's
      * own function: the action where a callback that returns nothing receives
-     * it, a question's stub where one that returns a value does, and a fault
-     * anywhere else. A function the host's data holds is never handed on as
-     * itself. Anything else is the host's data, or, where things are drawn, the
-     * binding with its value.
+     * it, and a fault anywhere a callback does not. A callback that returns a
+     * value is a question no document can answer at run time: where it may be
+     * left out, nothing is passed and the member answers it as it does by
+     * default; where it is required, a stub answers by its return type. The
+     * host is told of neither. A function the host's data holds is never handed
+     * on as itself. Anything else is the host's data, or, where things are
+     * drawn, the binding with its value.
      */
     const bindingAt = (
       binding: string,
       path: string,
       drawn: boolean,
       receiver: Receiver,
+      optional: boolean,
     ): Drawn | undefined => {
       const head = binding.split('.')[0] ?? binding
       if (binding === head && callbacks.has(head)) {
@@ -916,6 +936,7 @@ export function createScreen(options: ScreenOptions): Screen {
         if (kind === null || receiver === null) {
           return faulted({ path, message: unreceivedCallback(head) }, drawn)
         }
+        if (kind === 'question' && optional) return undefined
         const handed = kind === 'action' ? action(head, receiver) : question(receiver)
         return { kind: 'value', value: handed, from: 'screen' }
       }
@@ -952,11 +973,13 @@ export function createScreen(options: ScreenOptions): Screen {
       return undefined
     }
 
-    const node = (element: SpecElement, path: string, depth: number): ScreenNode => {
+    const node = (element: SpecElement, path: string, depth: number): ScreenNode | null => {
       const { component } = element
       // Its place in document order, before anything its props and children hold.
       const place = order
       order += 1
+      // The named controls registered from here on are those its props and children hold.
+      const mark = named.length
       const surface = surfaceOf(vocabulary, component)
       // An element's props, children and exception sit one level below it.
       const holdsDeeper =
@@ -986,6 +1009,9 @@ export function createScreen(options: ScreenOptions): Screen {
       // The prop a named control's value is in: `value`, or a checkbox's `checked`.
       const formProp = formPropOf(known)
 
+      /** The props whose address was refused, and whose binding the host's data leaves empty. */
+      const refused = new Set<string>()
+      const empty = new Set<string>()
       for (const [name, value] of Object.entries(written)) {
         const at = `${path}.props.${name}`
         const prop = types.get(name)
@@ -996,9 +1022,10 @@ export function createScreen(options: ScreenOptions): Screen {
         if (name === 'children') continue
         // A control's name still being written is another name, so it arrives whole.
         const text = takesText(prop) && !(name === 'name' && formProp !== null)
-        let resolved = resolveValue(value, at, false, text, depth + 2, prop.type)
+        let resolved = resolveValue(value, at, false, text, depth + 2, prop.type, prop.optional)
         if (resolved !== undefined && ADDRESS_KEYS.has(name)) {
           resolved = address(resolved, value, at, name)
+          if (resolved === undefined) refused.add(name)
         }
         if (resolved === undefined) continue
         // A callback is a function the screen makes, or nothing: a member calls what it is given.
@@ -1024,6 +1051,7 @@ export function createScreen(options: ScreenOptions): Screen {
           // a picture asked for.
           const binding = isBinding(value) ? value.$ : ''
           const input = inputs.get(binding.split('.')[0] ?? '')
+          if (input !== undefined && !isCallback(input.type)) empty.add(name)
           if (
             !prop.optional &&
             !streaming &&
@@ -1040,6 +1068,46 @@ export function createScreen(options: ScreenOptions): Screen {
           continue
         }
         own(props, name, resolved)
+      }
+
+      // An element is drawn once every prop it requires has a value, as it is drawn while it
+      // streams once every prop it requires is written: a member drawn without one is drawn empty
+      // or unnamed. A callback is stubbed below, and `children` are no prop here. Two are drawn
+      // without the value. An address refused: the element's words are still read, and it is
+      // inert. A binding the host's data leaves empty: data arrives after a screen is first drawn,
+      // and a screen that keeps its shape while it fills surprises a host less than one whose
+      // parts appear, or whose whole page waits on one field (a fault says what is empty).
+      const lacking = known.props.find((prop) => {
+        if (prop.optional || prop.name === 'children' || isCallback(prop.type)) return false
+        if (refused.has(prop.name) || empty.has(prop.name)) return false
+        const given = props[prop.name]
+        return given === undefined || (given.kind === 'node' && given.node.fault !== null)
+      })
+      if (lacking !== undefined) {
+        // What its props hold is not drawn either, so holds no value.
+        named.length = mark
+        // While it streams, it is left out until the value arrives; once whole, it is a fault.
+        if (streaming) return null
+        const fault: ScreenFault = {
+          path,
+          component,
+          message: Object.prototype.hasOwnProperty.call(written, lacking.name)
+            ? `\`${component}\` is not drawn, as its required prop \`${lacking.name}\` has no value`
+            : `\`${component}\` is missing its required prop \`${lacking.name}\``,
+        }
+        found.push(fault)
+        return kept({
+          path,
+          key: path,
+          component,
+          element,
+          member: known.member,
+          part: known.part,
+          props: {},
+          children: [],
+          fault,
+          childrenKind: null,
+        })
       }
 
       // A control follows the reader: the value the reader chose stands until the document or the
@@ -1138,11 +1206,11 @@ export function createScreen(options: ScreenOptions): Screen {
         })
       }
 
-      // A required callback with nothing to call is stubbed by its return type, and a required prop
-      // the document does not give is a fault once the document is whole.
+      // A required callback with nothing to call is stubbed by its return type, and one the
+      // document does not give is a fault once the document is whole.
       for (const prop of known.props) {
-        if (prop.optional || prop.name === 'children') continue
-        if (props[prop.name] === undefined && isCallback(prop.type)) {
+        if (prop.optional || prop.name === 'children' || !isCallback(prop.type)) continue
+        if (props[prop.name] === undefined) {
           own(props, prop.name, {
             kind: 'value',
             from: 'screen',

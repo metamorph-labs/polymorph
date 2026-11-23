@@ -203,13 +203,13 @@ function runTimeFaults(
       for (const [key, item] of Object.entries(fields)) {
         const at = `${path}.${key}`
         const field = fieldOf(vocabulary, receiver, key)
-        if (field !== null && !takesNode(vocabulary, field ?? 'never') && elementIn(item)) {
+        if (field !== null && !takesNode(vocabulary, field?.type ?? 'never') && elementIn(item)) {
           const type = objectName(vocabulary, receiver)
           fault(at, field === undefined ? undeclaredField(key, type) : dataField(key, type))
           continue
         }
         if (ADDRESS_KEYS.has(key)) address(key, item, at)
-        visit(item, at, field ?? null)
+        visit(item, at, field?.type ?? null)
       }
     }
   }
