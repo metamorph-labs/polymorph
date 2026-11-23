@@ -571,7 +571,11 @@ The pagers take addresses too: Pagination's `getPageHref(page)`, and CursorPagin
 click that would navigate the current tab calls the pager's own handler (`onPageChange`,
 `onPrevious`, `onNext`) instead, with the browser's navigation already stopped, so the app changes
 the page as it does without addresses. A click with a modifier key opens the address
-([pagination.md](../design/components/pagination.md#behavior)).
+([pagination.md](../design/components/pagination.md#behavior)). The plain click is the handler's
+whether or not one is given. React requires the handlers. In Vue, Svelte, Solid and Angular, and
+on a page written in HTML, a pager with addresses and no handler does nothing on a plain click,
+so a page that only links listens and follows the address:
+`pager.addEventListener('poly-next', () => location.assign(pager.nextHref))`.
 
 With TanStack Router:
 

@@ -153,11 +153,18 @@ const card = renderSystemCard(registry)
  * status is an AuthPage builds a page for "not found" from a Stack and a
  * Heading.
  *
+ * It also includes the props a public page needs for a reader that runs no
+ * script: Accordion's and Collapsible's `keepMounted`, Pagination's
+ * `getPageHref`, CursorPagination's `previousHref` and `nextHref`, and Image's
+ * `srcSet`, `sizes` and `fetchPriority`. A model not told about `keepMounted`
+ * leaves an FAQ's answers out of the server's markup, and one not told about
+ * `getPageHref` writes a pager a crawler cannot follow past the first page.
+ *
  * `packages/mcp/src/tools.test.ts` and `packages/mcp/transcript.test.ts` check
  * the same number from the tool that serves the card, so the three move
  * together.
  */
-const BUDGET_CHARS = 38_220
+const BUDGET_CHARS = 38_300
 /**
  * A platform card says, for every adapted member, how it renders there, which
  * the web card never has to; those notes are the only thing that makes the
