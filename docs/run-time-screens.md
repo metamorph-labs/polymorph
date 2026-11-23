@@ -451,8 +451,9 @@ that throws for a prop that has not arrived draws nothing until the document is 
 A document is data. The renderers read it, and run nothing it says:
 
 - **Nothing is executed or inserted as markup.** A string is drawn as text. The elements renderer
-  makes each element with `document.createElement` and sets its properties, and a law holds that
-  its modules name no API that reads or writes markup and hold no tag in a string
+  makes each element with `document.createElement` and sets only the props, events and slots the
+  element's definition names (`packages/elements-ui/src/screen/guards.test.ts`), and a law holds
+  that its modules name no API that reads or writes markup and hold no tag in a string
   (`packages/elements-ui/screen.test.ts`). No member takes markup, a script's address or an embed
   (`packages/screen/src/parity.test.ts`).
 - **A component is drawn only if the vocabulary has it, the host allows it and the framework draws
@@ -693,8 +694,9 @@ It draws the first of these that holds a document:
 
 1. the `spec` property, the document as an object;
 2. the `text` property, a model's answer so far, read with `parsePartial`;
-3. a `<script type="application/json">` child, for a page a server renders. The element follows a
-   change to the script, and a swap of its children that brings another.
+3. a `<script type="application/json">` child, for a page a server renders. The element draws
+   again when the script's text changes and when a swap replaces its children, a swap that puts
+   back the same script included (`packages/elements-ui/src/screen/guards.test.ts`).
 
 | Attribute or property | What it is |
 | --- | --- |
