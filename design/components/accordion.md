@@ -25,6 +25,7 @@ not as a row of buttons. Documents that sit deeper use the `headingLevel` prop.
 | `collapsible` | `boolean` | `true` | `single` only: the open item may be closed again |
 | `value` / `defaultValue` / `onValueChange` | `string \| string[]` | — | shape follows `type` |
 | `headingLevel` | `3 \| 4` | `3` | |
+| `keepMounted` | `boolean` | `false` | a closed item's content stays in the document and `hidden` (Radix `forceMount`), so a page's server markup carries every answer for a reader or crawler that runs no script, and state inside a region survives a close. The default leaves closed content out, so a long list does not pay to mount every region. The generated members keep closed content in the document, `hidden`, in every case, so the prop changes nothing there |
 
 Attributes come from Radix with no translation layer: item, trigger and content carry
 `data-state="open|closed"` and `data-disabled?`.
@@ -54,6 +55,7 @@ boxed or contained variant on purpose. For a panel, compose the Accordion inside
 | multiple, two open | `type="multiple"` | two `data-state="open"` |
 | one item disabled | one disabled | `data-disabled` |
 | long content | paragraph content | — |
+| kept mounted | `keepMounted`, all closed | every region in the DOM with its content, and `hidden`: out of the layout and the accessibility tree |
 
 `requiredSelectors`: `:hover`, `:focus-visible`, `[data-state="open"]`,
 `[data-state="closed"]`, `[data-disabled]`.
@@ -66,7 +68,8 @@ precedent. The Radix measured height `--radix-accordion-content-height` is the i
 Never write the keyframe by hand. Chevron: rotate over `--pm-motion-duration-control` ×
 `--pm-motion-easing-standard`. At `none`: instant open and close, static chevron.
 Reduced motion: per `collapse`'s projection, the size changes instantly and the content
-still fades.
+still fades. With `keepMounted`, a closing region is hidden when its close keyframes end,
+and at once when none run (reduced motion, `none`).
 
 ## Icons
 
@@ -76,8 +79,10 @@ still fades.
 
 Radix defaults: `<h3><button aria-expanded aria-controls>` plus region wiring, and
 arrow/home/end between triggers per WAI-APG. Enter and Space open and close the focused item.
-Content regions keep `role="region"` + `aria-labelledby` while open. Nothing focusable is hidden
-inside a closed item, because Radix unmounts closed content or makes it inert.
+Content regions keep `role="region"` + `aria-labelledby` while open. Nothing inside a closed item
+takes focus or is announced. By default Radix unmounts closed content. With `keepMounted` the
+region is in the document and `hidden`, which takes it out of the focus order and the
+accessibility tree.
 
 ```contract
 role trigger button

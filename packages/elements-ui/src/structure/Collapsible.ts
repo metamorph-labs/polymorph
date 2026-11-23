@@ -11,7 +11,7 @@ import Collapsible, { type CollapsibleProps } from '@polymorph/solid-ui/structur
 export const definition: ElementDefinition = {
   tag: 'poly-collapsible',
   member: 'Collapsible',
-  props: { defaultOpen: 'boolean', label: 'string', open: 'boolean' },
+  props: { defaultOpen: 'boolean', keepMounted: 'boolean', label: 'string', open: 'boolean' },
   events: { onOpenChange: { type: 'poly-open-change' } },
   slots: ['children'],
   controlled: { open: 'onOpenChange' },
@@ -20,7 +20,7 @@ export const definition: ElementDefinition = {
 /** The `<poly-collapsible>` element. */
 export type PolyCollapsibleElement = MemberElement<
   CollapsibleProps,
-  'defaultOpen' | 'label' | 'open'
+  'defaultOpen' | 'keepMounted' | 'label' | 'open'
 >
 
 export const PolyCollapsible = define(definition, Collapsible)

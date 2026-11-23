@@ -147,5 +147,31 @@ export const states: ComponentStates = {
           ...overrides,
         }),
     },
+    {
+      name: 'kept mounted — every answer in the markup while its row is closed',
+      render: (overrides = {}) =>
+        h(Accordion, {
+          items: [
+            {
+              value: 'delivery',
+              label: 'When will my order arrive?',
+              content: 'Two to four working days, and you get a tracking link the moment it ships.',
+            },
+            {
+              value: 'returns',
+              label: 'How do returns work?',
+              content: 'Thirty days, no reason needed. The label is in the box.',
+            },
+            {
+              value: 'sizing',
+              label: 'Do these run large or small?',
+              content:
+                'True to size. The one exception is the wide fit, which runs half a size up.',
+            },
+          ],
+          keepMounted: true,
+          ...overrides,
+        }),
+    },
   ],
 }

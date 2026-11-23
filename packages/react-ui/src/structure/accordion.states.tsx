@@ -90,6 +90,13 @@ export const states: ComponentStates = {
         />
       ),
     },
+    {
+      // Every region is closed, in the DOM and `hidden`: out of the layout and
+      // the accessibility tree, but its content is in the markup. The root
+      // cannot show that, so the browser test checks it directly.
+      name: 'kept mounted — every answer in the markup while its row is closed',
+      render: () => <Accordion keepMounted items={SHIPPING} />,
+    },
   ],
 
   requiredSelectors: [

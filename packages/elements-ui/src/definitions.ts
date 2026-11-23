@@ -1488,6 +1488,7 @@ export const DEFINITIONS: Readonly<Record<string, ElementDefinition>> = {
       defaultValue: { union: [], string: true, json: true },
       headingLevel: 'number',
       items: 'json',
+      keepMounted: 'boolean',
       type: 'string',
       value: { union: [], string: true, json: true },
     },
@@ -1498,7 +1499,7 @@ export const DEFINITIONS: Readonly<Record<string, ElementDefinition>> = {
   'poly-collapsible': {
     tag: 'poly-collapsible',
     member: 'Collapsible',
-    props: { defaultOpen: 'boolean', label: 'string', open: 'boolean' },
+    props: { defaultOpen: 'boolean', keepMounted: 'boolean', label: 'string', open: 'boolean' },
     events: { onOpenChange: { type: 'poly-open-change' } },
     slots: ['children'],
     controlled: { open: 'onOpenChange' },

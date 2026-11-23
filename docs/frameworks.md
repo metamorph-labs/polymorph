@@ -879,6 +879,10 @@ same as `add`. `packages/cli/src/elements.test.ts` runs each of these against a 
 The emitter writes against this contract, and a Vue member is generated to it:
 
 - Its props are the React member's, by the same names and types, the four ARIA hooks included.
+  A prop changes nothing where the generated member already does what the prop asks.
+  Accordion's and Collapsible's `keepMounted` keeps a closed region's content in the document,
+  `hidden`, in React, which otherwise leaves it out. A generated member keeps it there in every
+  case.
 - It emits one event per `onFoo` prop, named `foo` and declared in `emits`, with the React
   callback's parameters (Input's `change` emits the value and the event).
 - It has the default slot for `children`, a named slot for each node-typed prop and a scoped slot

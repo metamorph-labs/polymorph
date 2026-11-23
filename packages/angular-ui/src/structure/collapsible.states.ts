@@ -37,6 +37,11 @@ label="Details"
 [defaultOpen]="e4()"
 [pmOverrides]="overrides()"
 >Retries follow the backoff schedule configured on the workspace. Delivery headers include the signature, the attempt number and the event id. Retries follow the backoff schedule configured on the workspace. Delivery headers include the signature, the attempt number and the event id. Retries follow the backoff schedule configured on the workspace. Delivery headers include the signature, the attempt number and the event id.</pm-collapsible>}
+@case (4) {<pm-collapsible
+label="Advanced options"
+[keepMounted]="e5()"
+[pmOverrides]="overrides()"
+>Retries follow the backoff schedule configured on the workspace. Delivery headers include the signature, the attempt number and the event id.</pm-collapsible>}
 }`,
 })
 export class CollapsibleStates {
@@ -58,6 +63,10 @@ export class CollapsibleStates {
   protected e4(): CollapsibleProps['defaultOpen'] {
     return true
   }
+
+  protected e5(): CollapsibleProps['keepMounted'] {
+    return true
+  }
 }
 
 export const states: ComponentStates = {
@@ -71,5 +80,9 @@ export const states: ComponentStates = {
     { name: 'open', expect: { 'data-state': 'open' } },
     { name: 'controlled — state follows the prop', expect: { 'data-state': 'open' } },
     { name: 'long content — the label, not the region, sizes the trigger' },
+    {
+      name: 'kept mounted — the closed region stays in the markup, hidden',
+      expect: { 'data-state': 'closed' },
+    },
   ],
 }

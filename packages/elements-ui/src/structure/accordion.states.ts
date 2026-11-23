@@ -39,5 +39,10 @@ export const states: ComponentStates = {
       html: `<poly-accordion default-value="policy" items='[{"value":"policy","label":"What is the full returns policy?","content":"You have thirty days from delivery. Anything unworn, with its tags, goes back for a full refund — including the shipping you paid to receive it. Worn items are assessed individually, and the answer is usually yes. Sale items are refunded as credit rather than to the card. Exchanges are a return and a new order, which is slower but means you are never waiting on stock that has already gone."},{"value":"returns","label":"How do returns work?","content":"Thirty days, no reason needed. The label is in the box."},{"value":"sizing","label":"Do these run large or small?","content":"True to size. The one exception is the wide fit, which runs half a size up."}]'></poly-accordion>`,
       subject: 'poly-accordion',
     },
+    {
+      name: 'kept mounted — every answer in the markup while its row is closed',
+      html: `<poly-accordion items='[{"value":"delivery","label":"When will my order arrive?","content":"Two to four working days, and you get a tracking link the moment it ships."},{"value":"returns","label":"How do returns work?","content":"Thirty days, no reason needed. The label is in the box."},{"value":"sizing","label":"Do these run large or small?","content":"True to size. The one exception is the wide fit, which runs half a size up."}]' keep-mounted></poly-accordion>`,
+      subject: 'poly-accordion',
+    },
   ],
 }

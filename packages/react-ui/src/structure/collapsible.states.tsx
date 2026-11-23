@@ -44,6 +44,18 @@ export const states: ComponentStates = {
         </Collapsible>
       ),
     },
+    {
+      // The closed region is in the DOM and `hidden`: out of the layout and the
+      // accessibility tree, but its content is in the markup. The root cannot
+      // show that, so the browser test checks it directly.
+      name: 'kept mounted — the closed region stays in the markup, hidden',
+      render: () => (
+        <Collapsible label="Advanced options" keepMounted>
+          {PAYLOAD}
+        </Collapsible>
+      ),
+      expect: { 'data-state': 'closed' },
+    },
   ],
 
   /*

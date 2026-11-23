@@ -40,5 +40,11 @@ export const states: ComponentStates = {
       html: `<poly-collapsible label="Details" default-open>Retries follow the backoff schedule configured on the workspace. Delivery headers include the signature, the attempt number and the event id. Retries follow the backoff schedule configured on the workspace. Delivery headers include the signature, the attempt number and the event id. Retries follow the backoff schedule configured on the workspace. Delivery headers include the signature, the attempt number and the event id.</poly-collapsible>`,
       subject: 'poly-collapsible',
     },
+    {
+      name: 'kept mounted — the closed region stays in the markup, hidden',
+      html: `<poly-collapsible label="Advanced options" keep-mounted>Retries follow the backoff schedule configured on the workspace. Delivery headers include the signature, the attempt number and the event id.</poly-collapsible>`,
+      subject: 'poly-collapsible',
+      expect: { 'data-state': 'closed' },
+    },
   ],
 }

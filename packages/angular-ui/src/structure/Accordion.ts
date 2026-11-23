@@ -54,6 +54,12 @@ export interface AccordionProps {
   defaultValue?: string | string[]
   headingLevel?: 3 | 4
   items: AccordionItem[]
+  /**
+   * Keeps a closed item's content in the document and `hidden`, so a page's server markup
+   * carries it and its state survives a close. Without it the React member leaves closed content
+   * out. The generated members keep it in every case.
+   */
+  keepMounted?: boolean
   type?: 'single' | 'multiple'
   value?: string | string[]
 }
@@ -119,6 +125,12 @@ export class Accordion {
     AccordionProps['headingLevel']
   >(3, { transform: (value: AccordionProps['headingLevel']) => (value === undefined ? 3 : value) })
   readonly items = input.required<AccordionProps['items']>()
+  /**
+   * Keeps a closed item's content in the document and `hidden`, so a page's server markup
+   * carries it and its state survives a close. Without it the React member leaves closed content
+   * out. The generated members keep it in every case.
+   */
+  readonly keepMounted = input<AccordionProps['keepMounted']>(undefined)
   readonly type = input<Exclude<AccordionProps['type'], undefined>, AccordionProps['type']>(
     'single',
     { transform: (value: AccordionProps['type']) => (value === undefined ? 'single' : value) },
@@ -132,6 +144,7 @@ export class Accordion {
       defaultValue: () => this.defaultValue(),
       headingLevel: () => this.headingLevel(),
       items: () => this.items(),
+      keepMounted: () => this.keepMounted(),
       type: () => this.type(),
       value: () => this.value(),
     },
