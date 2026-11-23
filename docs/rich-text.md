@@ -319,12 +319,16 @@ On a page that only shows the document, `RichTextContent` takes the same props, 
 `annotations` lists the annotations drawn. A resolved thread's anchor stays in the document and is
 left out of the list. Without the prop every annotation is drawn.
 
-With `onAnnotationSelect` each highlight is a button a person reaches by Tab, named by its own
-words. Where annotations overlap, the innermost one takes the press. A press on a link inside a
-highlight follows the link. An annotation on part of a link is drawn around the whole link, and
-its anchor stays exact. When the application stores the annotated document and the reader draws it
-again, the selection ends and the bar leaves. `messages` holds the bar's name and its
-announcement.
+In the reader, with `onAnnotationSelect`, each highlight is a button a person reaches by Tab, named
+by its own words. Where annotations overlap, the innermost one takes the press. A press on a link
+inside a highlight follows the link. An annotation on part of a link is drawn around the whole
+link, and its anchor stays exact. When the application stores the annotated document and the
+reader draws it again, the selection ends and the bar leaves. `messages` holds the bar's name and
+its announcement.
+
+In the field a highlight is text a person edits, not a button. `onAnnotationSelect` is called when
+the caret enters an annotation, by the keys or by a press, and links are never followed while
+editing.
 
 A server works with annotations through the same entry:
 
@@ -359,7 +363,11 @@ no library, so it can be added without changing a document or a caller.
 - **Permissions and notifications.** `richTextEntities` lists who and what a document names, on
   the server, from the stored value.
 - **Validation.** A server reads what a client sent with `parseRichText`, restricts it with
-  `restrictRichText`, and checks `richTextLength` against its own limit. `maxLength` in the field
+  `restrictRichText`, and checks `richTextLength` against its own limit. A client can send any
+  JSON, so the server also checks each entity: that its `id` names something the author may
+  mention, and that its `label` is the name the server knows for it. The field keeps a pasted
+  entity only when it was copied from a field on the same page, and a mention copied from anywhere
+  else arrives as its text, so a web page cannot put a hidden mention on a person's clipboard. `maxLength` in the field
   is a soft limit: a person can type past it, the count shows how far, and the default submit
   control is disabled.
 - **The words.** Every label and announcement comes from `messages`, with English defaults.
@@ -373,7 +381,8 @@ with one tab stop, and each format control is a toggle that says whether it is o
 list is a `listbox` the text controls, and focus stays in the text while a person moves through
 it. One polite status region says what a sighted person sees change: a format turned on or off, a
 link added, an entity inserted, the limit crossed, a refused submit, and the state of the
-suggestions. A highlight that can be pressed is reachable by Tab and activated by Enter or Space.
+suggestions. In the reader, a highlight that can be pressed is reachable by Tab and activated by
+Enter or Space.
 Text entered through an input method is never changed while it is being composed.
 
 ## Frameworks and platforms
