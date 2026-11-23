@@ -12,7 +12,7 @@ The package has no framework, no DOM and no dependencies:
   validator's faults, in a page or in Node, with no registry, and the faults the walk adds for
   the document: a member the host does not allow, an address that is not relative or `http:`,
   `https:`, `mailto:` or `tel:` (as text, or a flat list of text), a control's name two controls
-  share or every object has, an input type over the length limit, a callback input bound where no
+  share or every object has, an input type or a key over its length limit, a callback input bound where no
   callback receives it, an element in a structured object's field that takes no node, and a
   document nested too deep to read. `ThirdParty` is allowed only where the host names it in
   `members`.
@@ -36,8 +36,8 @@ The package has no framework, no DOM and no dependencies:
   characters, and a value reduced to JSON holds at most `MAX_JSON_VALUES` (100,000) values.
   `hostile.test.ts` feeds the core documents and host data written to break it (deep nesting, long
   strings, thousands of children, an unclosed fence, cyclic and shared data, input types and keys
-  over their limits): none makes it throw, and for each kind it times, eight times the input costs
-  less than twenty times as much.
+  over their limits): none makes it throw, and for each kind it times, the larger of two sizes
+  costs less than twenty times the smaller (eight times the size, for most kinds).
 - `runtimeCard({ framework, members })` (`@polymorph/screen/card`): the text a host puts in the
   model's system prompt: the members it allows, each with its props' types, the data types those
   props take with their fields, and the output contract.
