@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 import { surfaceOf } from './members'
 import { parsePartial } from './partial'
+import { takesElement } from './receivers'
 import { VOCABULARY } from './vocabulary'
 import { createScreen, type Drawn, type Screen, type ScreenNode } from './walk'
 
@@ -103,9 +104,9 @@ function missing(screen: Screen): string[] {
 }
 
 /**
- * Every drawn node whose member takes one element as its child (FormField) and
- * is not handed exactly one drawn element: a member that reads its child
- * cannot be drawn without it.
+ * Every drawn node whose member reads one element and is not handed it drawn:
+ * its one child (FormField), a prop it requires that takes one element (a
+ * SettingsRow's control), or such a prop it is handed though optional.
  */
 function alone(screen: Screen): string[] {
   const out: string[] = []
@@ -122,6 +123,15 @@ function alone(screen: Screen): string[] {
       (only?.kind !== 'node' || only.node.fault !== null || more.length > 0)
     ) {
       out.push(at.path)
+    }
+    for (const prop of surfaceOf(VOCABULARY, at.component)?.props ?? []) {
+      if (prop.name === 'children' || !takesElement(VOCABULARY, prop.type)) continue
+      const given = at.props[prop.name]
+      if (
+        given === undefined ? !prop.optional : given.kind !== 'node' || given.node.fault !== null
+      ) {
+        out.push(`${at.path}.props.${prop.name}`)
+      }
     }
     Object.values(at.props).forEach(visit)
     at.children.forEach(visit)

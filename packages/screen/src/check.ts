@@ -22,7 +22,9 @@ import {
   fieldOf,
   holdsData,
   itemOf,
+  notOneElement,
   objectName,
+  takesElement,
   takesNode,
   undeclaredField,
   unreceivedCallback,
@@ -98,6 +100,10 @@ export function checkScreen(document: unknown, options: ScreenCheckOptions = {})
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/** Whether a value the document writes is an element. */
+const isElementValue = (value: unknown): boolean =>
+  isRecord(value) && typeof value['component'] === 'string'
 
 /**
  * The run-time faults of a document, in document order, by the validator's
@@ -195,12 +201,14 @@ function runTimeFaults(
       const surface = surfaceOf(vocabulary, component)
       const types = new Map((surface?.props ?? []).map((prop) => [prop.name, prop.type]))
       const props = isRecord(value['props']) ? value['props'] : {}
+      // The walk does not draw an element that lacks a required data prop or a required prop
+      // that takes one element (a SettingsRow's control).
       const lacks = (surface?.props ?? []).some(
         (prop) =>
           !prop.optional &&
           prop.name !== 'children' &&
           !isCallback(prop.type) &&
-          !takesNode(vocabulary, prop.type) &&
+          (!takesNode(vocabulary, prop.type) || takesElement(vocabulary, prop.type)) &&
           !Object.prototype.hasOwnProperty.call(props, prop.name),
       )
       const silent = unnamed || lacks
@@ -212,6 +220,11 @@ function runTimeFaults(
           continue
         }
         const at = `${path}.props.${key}`
+        // A prop that takes one element is handed only an element; the walk leaves anything else
+        // out, a binding included, as the host's data holds no element.
+        if (takesElement(vocabulary, types.get(key) ?? null) && !isElementValue(item)) {
+          fault(at, notOneElement(key))
+        }
         if (ADDRESS_KEYS.has(key)) address(key, item, at)
         visit(item, at, types.get(key) ?? null, silent)
       }

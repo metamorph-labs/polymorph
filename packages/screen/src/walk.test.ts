@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest'
 
 import { checkScreen } from './check'
 import { argumentsToJson, toJson } from './json'
-import { keyTooLong, MAX_KEY_LENGTH } from './members'
+import { keyTooLong, MAX_KEY_LENGTH, surfaceOf } from './members'
+import { takesElement } from './receivers'
 import { parsePartial } from './partial'
 import { VOCABULARY } from './vocabulary'
 import {
@@ -908,8 +909,8 @@ describe('an element is drawn once every prop it requires has a value', () => {
       '`Button` is not drawn, as its required prop `label` has no value',
       '`Button` is not drawn, as its required prop `label` has no value',
       '`SettingsRow` is not drawn, as its required prop `label` has no value',
-      // A slot whose member is a fault leaves its row drawn, the slot empty.
-      undefined,
+      // A row reads its one control, so it is not drawn without one it can draw.
+      '`SettingsRow` is not drawn, as its required prop `control` has no value',
     ])
     expect(at(screen, '$.root.children[3]').props).toEqual({})
     // The field the row held is drawn nowhere, so it holds no value.
@@ -924,6 +925,7 @@ describe('an element is drawn once every prop it requires has a value', () => {
       '$.root.children[3].props.label',
       '$.root.children[3]',
       '$.root.children[4].props.control',
+      '$.root.children[4]',
     ])
   })
 
@@ -1019,6 +1021,110 @@ describe('an element is drawn once every prop it requires has a value', () => {
     expect(faults.map(({ path }) => path)).toEqual([
       '$.root.children[1].props.label',
       '$.root.children[1]',
+    ])
+  })
+})
+
+describe('a prop that takes one element, which its member reads', () => {
+  const row = (control?: unknown) => ({
+    component: 'SettingsRow',
+    props: { label: 'Theme', ...(control === undefined ? {} : { control }) },
+  })
+  const page = (rows: unknown[]) =>
+    doc({
+      component: 'SettingsPage',
+      props: { title: 'Settings' },
+      children: [{ component: 'SettingsRow.Group', props: { title: 'Look' }, children: rows }],
+    })
+
+  it('leaves out a row whose control is missing or no member, and draws everything above it', () => {
+    const { screen, faults } = open({
+      document: page([
+        row(),
+        row({ component: 'Buton' }),
+        row({ component: 'Switch', props: { label: 'Dark', name: 'dark' } }),
+      ]),
+    })
+    const group = '$.root.children[0]'
+    expect(screen.root?.fault).toBeNull()
+    expect(at(screen, group).fault).toBeNull()
+    expect(
+      [0, 1, 2].map((index) => at(screen, `${group}.children[${index}]`).fault?.message),
+    ).toEqual([
+      '`SettingsRow` is missing its required prop `control`',
+      '`SettingsRow` is not drawn, as its required prop `control` has no value',
+      undefined,
+    ])
+    expect(faults.map(({ path }) => path)).toEqual([
+      `${group}.children[0]`,
+      `${group}.children[1].props.control`,
+      `${group}.children[1]`,
+    ])
+  })
+
+  it('waits while it streams for a row’s control to be drawn, and never hands the row without one', () => {
+    const text = JSON.stringify(
+      page([row({ component: 'Buton' }), row({ component: 'Switch', props: { label: 'Dark' } })]),
+    )
+    const screen = createScreen({ document: undefined, vocabulary: VOCABULARY, streaming: true })
+    const rows = (node: ScreenNode | null): ScreenNode[] =>
+      node === null
+        ? []
+        : [
+            ...(node.component === 'SettingsRow' && node.fault === null ? [node] : []),
+            ...node.children.flatMap((child) => (child.kind === 'node' ? rows(child.node) : [])),
+          ]
+    let drew = false
+    for (let end = 1; end <= text.length; end += 1) {
+      const read = parsePartial(text.slice(0, end))
+      screen.update({
+        document: read.document,
+        open: read.open,
+        cut: read.cut,
+        streaming: !read.complete,
+      })
+      for (const drawn of rows(screen.root)) {
+        const control = drawn.props['control']
+        expect(control?.kind === 'node' && control.node.fault === null, `character ${end}`).toBe(
+          true,
+        )
+        drew = true
+      }
+    }
+    expect(drew).toBe(true)
+  })
+
+  it('leaves an optional one unset where its element is no member, or it is no element', () => {
+    const { screen, faults } = open({
+      document: doc(
+        {
+          component: 'Stack',
+          children: [
+            {
+              component: 'Dialog',
+              props: { title: 'Hi', trigger: { component: 'Buton' } },
+              children: ['x'],
+            },
+            { component: 'Dialog', props: { title: 'Hi', trigger: 'Open' }, children: ['x'] },
+            { component: 'PageHeader', props: { title: 'A', titleEdit: { $: 'edit' } } },
+          ],
+        },
+        [{ name: 'edit', type: 'Edit' }],
+      ),
+      data: { edit: { component: 'InlineEdit' } },
+    })
+    for (const [index, prop] of [
+      [0, 'trigger'],
+      [1, 'trigger'],
+      [2, 'titleEdit'],
+    ] as const) {
+      expect(at(screen, `$.root.children[${index}]`).fault).toBeNull()
+      expect(at(screen, `$.root.children[${index}]`).props[prop], prop).toBeUndefined()
+    }
+    expect(faults.map(({ path, message }) => [path, message.slice(0, 30)])).toEqual([
+      ['$.root.children[0].props.trigger', 'no component called `Buton`'],
+      ['$.root.children[1].props.trigger', '`trigger` takes one element, w'],
+      ['$.root.children[2].props.titleEdit', '`titleEdit` takes one element,'],
     ])
   })
 })
@@ -1163,10 +1269,19 @@ describe('a fault in a slot leaves its page drawn', () => {
           createScreen({ document: copy, vocabulary: VOCABULARY, fill: 'sample' }),
         )
         for (const ancestor of above) {
-          // A member that reads its one child (FormField) is not drawn without it; the elements
-          // above it are.
+          // A member that reads its one child (FormField) or one element in a prop (a SettingsRow's
+          // control) is not drawn without it; the elements above it are.
           const holder = before.get(ancestor)
-          if (ancestor === above.at(-1) && holder?.childrenKind === 'element') continue
+          const prop = path.slice(ancestor.length).match(/^\.props\.([^.[]+)$/)?.[1]
+          const type = surfaceOf(VOCABULARY, holder?.component ?? '')?.props.find(
+            ({ name }) => name === prop,
+          )?.type
+          if (
+            ancestor === above.at(-1) &&
+            (holder?.childrenKind === 'element' || takesElement(VOCABULARY, type ?? null))
+          ) {
+            continue
+          }
           if (holder !== undefined) {
             expect(after.has(ancestor), `${file} ${path}: ${ancestor}`).toBe(true)
           }

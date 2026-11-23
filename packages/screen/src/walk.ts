@@ -46,7 +46,9 @@ import {
   functionInData,
   holdsData,
   itemOf,
+  notOneElement,
   objectName,
+  takesElement,
   takesNode,
   undeclaredField,
   unreceivedCallback,
@@ -118,11 +120,13 @@ import { addressFaults, ADDRESS_KEYS } from './urls'
  *    a fault that names the prop and is drawn as nothing. A required callback
  *    is stubbed, `children` are no prop here, an address refused or data the
  *    host has not given leaves the element drawn without it, and a required
- *    slot (a prop that takes a node) whose element is a fault or missing
+ *    slot (a prop that takes any node) whose element is a fault or missing
  *    leaves it drawn with the slot empty, so a fault never removes the page
- *    around it. A member that takes one element as its required child
- *    (FormField) is drawn once that child is; while the document streams it
- *    waits for it.
+ *    around it. A member that reads one element it requires, as its child
+ *    (FormField) or in a prop that takes exactly one element (SettingsRow's
+ *    `control`), is drawn once that element is; while the document streams it
+ *    waits for it. An optional prop that takes one element is handed a drawn
+ *    element or nothing.
  *  - **A fault never blanks the screen.** A node that cannot be drawn carries
  *    its fault and is drawn as nothing, or as the fault where the host asks;
  *    every fault reaches the host with its path (`onFault`), once in each
@@ -1091,6 +1095,17 @@ export function createScreen(options: ScreenOptions): Screen {
           }
           continue
         }
+        // A prop that takes one element, which its member reads (a trigger it clones), is handed
+        // a drawn element or nothing: a fault or a value in its place would be read as one.
+        if (
+          takesElement(vocabulary, prop.type) &&
+          !(resolved.kind === 'node' && resolved.node.fault === null)
+        ) {
+          if (resolved.kind !== 'node') {
+            found.push({ path: at, component, message: notOneElement(name) })
+          }
+          continue
+        }
         own(props, name, resolved)
       }
 
@@ -1103,10 +1118,13 @@ export function createScreen(options: ScreenOptions): Screen {
       // parts appear, or whose whole page waits on one field (a fault says what is empty).
       const lacking = known.props.find((prop) => {
         if (prop.optional || prop.name === 'children' || isCallback(prop.type)) return false
-        // A slot (a prop that takes a node) is no prop a reader needs to use the element: an empty
-        // one leaves the element drawn, as a page is drawn around a slot whose member is a fault.
-        if (takesNode(vocabulary, prop.type)) return false
-        if (refused.has(prop.name) || empty.has(prop.name)) return false
+        // A slot (a prop that takes any node) is no prop a reader needs to use the element: an
+        // empty one leaves the element drawn, as a page is drawn around a slot whose member is a
+        // fault. A prop that takes one element is read by its member, which cannot be drawn
+        // without it, as FormField cannot without its child.
+        const one = takesElement(vocabulary, prop.type)
+        if (takesNode(vocabulary, prop.type) && !one) return false
+        if (refused.has(prop.name) || (empty.has(prop.name) && !one)) return false
         const given = props[prop.name]
         return given === undefined || (given.kind === 'node' && given.node.fault !== null)
       })

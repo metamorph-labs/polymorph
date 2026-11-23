@@ -56,12 +56,15 @@ behaves the same in each of them:
   answers; `children`; an address that was refused, as a link or an image without its address
   still reads, and is inert; a required prop bound to data the host has not given yet, drawn
   without it with a fault, so a screen keeps its shape while its data arrives; and a required slot
-  (a prop that takes a node, such as a page's `actions`), which leaves the element drawn with the
-  slot empty when its element is a fault or is never written. So a fault in one element never
+  (a prop that takes any node, such as a page's `actions`), which leaves the element drawn with
+  the slot empty when its element is a fault or is never written. So a fault in one element never
   removes the elements around it, the page above it included. The exception is a member that
-  reads its one required child (a FormField's control): it is drawn once that child is; while a
-  document streams it waits for it, and once whole, one with no child it can draw is a fault
-  (its own parent is drawn);
+  reads one element it requires, as its child (a FormField's control) or in a prop that takes
+  exactly one element (a SettingsRow's `control`): it is drawn once that element is; while a
+  document streams it waits for it, and once whole, one without an element it can draw is a fault
+  (the element above it is drawn). A prop that takes exactly one element and is optional (a
+  Dialog's `trigger`, a page's `titleEdit`) is handed a drawn element or nothing: where its element
+  is a fault, or it holds no element, it is left out;
 - an element in a structured object is drawn only where the field's data type takes a node (an
   empty state's `action`). A field the type does not declare, or declares as text, numbers or
   booleans, holds no element at any depth: every element below it, through lists and structured

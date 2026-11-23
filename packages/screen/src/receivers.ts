@@ -30,6 +30,9 @@ export type CallbackKind = 'action' | 'question'
 /** A type a member draws as a node. */
 const NODE = /^(?:React\.)?(?:ReactNode|ReactElement|ReactPortal)\b|^JSX\.Element\b/
 
+/** A type a member reads as one element (a trigger it clones), as `childrenKind` reads it. */
+const ELEMENT = /^(?:React\.)?ReactElement\b/
+
 /** A type no structured object can be: text, a number, a boolean, a literal of one. */
 const SCALAR =
   /^(?:string|number|boolean|true|false|null|void|never|-?\d+(?:\.\d+)?|"[^"]*"|'[^']*')$/
@@ -268,6 +271,19 @@ export function takesNode(vocabulary: ScreenVocabulary, type: Receiver): boolean
 }
 
 /**
+ * Whether a prop takes exactly one element, which its member reads (a
+ * SettingsRow's control, a Dialog's trigger, each cloned with props of its
+ * own), rather than any node. Such a member cannot take a fault in its place.
+ */
+export function takesElement(vocabulary: ScreenVocabulary, type: Receiver): boolean {
+  if (type === null) return false
+  return remembered(vocabulary, 'element', type, () => {
+    const parts = partsOf(type)
+    return parts.length > 0 && parts.every((part) => ELEMENT.test(part))
+  })
+}
+
+/**
  * What a callback receiver at `type` is handed: the action where every
  * function the type allows returns nothing, a question's stub where one
  * returns a value, and `null` where the type is no callback or is not known.
@@ -296,6 +312,10 @@ export const unreceivedCallback = (input: string): string =>
 export const functionInData = (binding: string): string =>
   `the host's data holds a function at \`${binding}\`, which a member would call without the ` +
   'host being told — bind a callback input instead'
+
+/** The fault's words for a value that is no drawn element where a prop takes one element. */
+export const notOneElement = (prop: string): string =>
+  `\`${prop}\` takes one element, which its member reads, and this is not one; it is left out`
 
 /** The fault's words for an element in a field its data type does not declare. */
 export const undeclaredField = (key: string, type: string): string =>

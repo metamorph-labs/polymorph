@@ -206,6 +206,22 @@ describe('a name two controls share, where one is not drawn', () => {
   })
 })
 
+describe('a prop that takes one element', () => {
+  it('is a fault in checkScreen, as in the walk, when it is handed no element', () => {
+    const document = screen({
+      component: 'Dialog',
+      props: { title: 'Hi', trigger: 'Open' },
+      children: ['x'],
+    })
+    const pick = (faults: readonly { path: string; message: string }[]) =>
+      faults.filter(({ message }) => message.includes('takes one element')).map(({ path }) => path)
+    expect(pick(createScreen({ document, vocabulary: VOCABULARY }).faults)).toEqual([
+      '$.root.props.trigger',
+    ])
+    expect(pick(checkScreen(document).faults)).toEqual(['$.root.props.trigger'])
+  })
+})
+
 describe('an address a screen may not hold', () => {
   it('is a fault at a prop, at an object’s key and in a list, wherever the element is', () => {
     const document = screen({
