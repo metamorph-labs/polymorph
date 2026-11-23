@@ -801,7 +801,8 @@ export class RichTextInput {
    */
   readonly onAnnotationSelect = output<string>({ alias: 'annotationSelect' })
   /**
-   * The text lost focus.
+   * Focus left the field as a whole, for validation on leaving. Moving between its own parts is
+   * not leaving.
    */
   readonly onBlur = output<void>({ alias: 'blur' })
   readonly onCancel = output<void>({ alias: 'cancel' })
@@ -811,7 +812,8 @@ export class RichTextInput {
    */
   readonly onFiles = output<File[]>({ alias: 'files' })
   /**
-   * The text took focus.
+   * Focus entered the field: its text, its toolbars, the link form or the text style menu, from
+   * outside them.
    */
   readonly onFocus = output<void>({ alias: 'focus' })
   /**

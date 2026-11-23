@@ -212,7 +212,8 @@ export interface RichTextInputProps {
    */
   onAnnotationSelect?: (id: string) => void
   /**
-   * The text lost focus.
+   * Focus left the field as a whole, for validation on leaving. Moving between its own parts is
+   * not leaving.
    */
   onBlur?: () => void
   onCancel?: () => void
@@ -222,7 +223,8 @@ export interface RichTextInputProps {
    */
   onFiles?: (files: File[]) => void
   /**
-   * The text took focus.
+   * Focus entered the field: its text, its toolbars, the link form or the text style menu, from
+   * outside them.
    */
   onFocus?: () => void
   /**
