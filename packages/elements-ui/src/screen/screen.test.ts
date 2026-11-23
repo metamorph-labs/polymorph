@@ -196,15 +196,20 @@ describe('a callback input is an action', () => {
 
   it('dispatches poly-action with the input’s name, the arguments and the named controls’ values', async () => {
     const { host: into, element, actions } = screen({ spec: form })
-    const input = await vi.waitFor(() => {
-      const found = into.querySelector('input')
-      if (found === null) throw new Error('no field yet')
-      return found
+    // The field and the button, once both are laid out.
+    const [input, save] = await vi.waitFor(() => {
+      const field = into.querySelector('input')
+      const button = buttonNamed(into, 'Save')
+      if (field === null || button === undefined || button.getClientRects().length === 0) {
+        throw new Error('not drawn yet')
+      }
+      return [field, button] as const
     }, WAIT)
-    await userEvent.click(input)
-    await userEvent.keyboard('ada@example.com')
-    expect(element.values).toEqual({ email: 'ada@example.com' })
-    await userEvent.click(buttonNamed(into, 'Save') as HTMLButtonElement)
+    // One fill, rather than a key press per character, each a round trip to the browser.
+    await userEvent.fill(input, 'ada@example.com')
+    await vi.waitFor(() => expect(element.values).toEqual({ email: 'ada@example.com' }), WAIT)
+    await userEvent.click(save)
+    await vi.waitFor(() => expect(actions).toHaveLength(1), WAIT)
     expect(actions).toEqual([{ name: 'onSave', args: [], values: { email: 'ada@example.com' } }])
   })
 
@@ -417,7 +422,8 @@ describe('a document that streams in', () => {
     const warm = draw({ document: newTicket, data })
     await vi.waitFor(() => expect(warm.host.querySelector('[role="switch"]')).not.toBeNull(), WAIT)
     const text = textOf(newTicket)
-    const { host: into, element } = screen({ data })
+    // The host says more is to come while the answer arrives, and that nothing is once it has.
+    const { host: into, element } = screen({ data, streaming: true })
     let input: HTMLInputElement | null = null
     const { rendered, disposed } = await watching(async () => {
       for (let end = 1; end <= text.length; end += 3) {
@@ -432,6 +438,7 @@ describe('a document that streams in', () => {
         }
       }
       element.text = text
+      element.streaming = false
       await vi.waitFor(() => expect(buttonNamed(into, 'Create ticket')).toBeDefined(), WAIT)
       await vi.waitFor(() => expect(into.querySelector('[role="switch"]')).not.toBeNull(), WAIT)
     })

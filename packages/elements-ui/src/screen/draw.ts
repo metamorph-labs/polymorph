@@ -17,6 +17,7 @@ import {
   createScreen,
   materialize,
   type Drawn,
+  type Screen,
   type ScreenAction,
   type ScreenFault,
   type ScreenNode,
@@ -111,6 +112,8 @@ type Piece = Element | string
 /** A node drawn as an element, and what it was last given. */
 interface Placed {
   readonly tag: string
+  /** The node's key (`ScreenNode.key`): its path, and a named control's name, so a control under another name is a new element. */
+  readonly key: string
   readonly element: PolyElement
   readonly definition: ElementDefinition
   /** The node it was last drawn from. */
@@ -212,18 +215,35 @@ function own(target: Record<string, unknown>, key: string, value: unknown): void
 export function draw(container: Element, options: DrawOptions = {}): Drawing {
   const page = container.ownerDocument
   let display: FaultDisplay = options.faults ?? 'hidden'
-  const screen = createScreen({
-    document: options.document,
-    vocabulary: VOCABULARY,
-    framework: 'elements',
-    ...(options.members === undefined ? {} : { members: options.members }),
-    ...(options.data === undefined ? {} : { data: options.data }),
-    streaming: options.streaming ?? false,
-    open: options.open ?? null,
-    cut: options.cut ?? null,
-    ...(options.onAction === undefined ? {} : { onAction: options.onAction }),
-    ...(options.onFault === undefined ? {} : { onFault: options.onFault }),
-  })
+  let onFault = options.onFault
+  /** Why the document last given could not be read, told once; `null` when it could. */
+  let unreadable: string | null = null
+  const unread = (error: unknown): void => {
+    const message = `the document cannot be read: ${error instanceof Error ? error.message : String(error)}`
+    if (message !== unreadable) onFault?.({ path: '$', message })
+    unreadable = message
+  }
+  const made = (document: unknown) =>
+    createScreen({
+      document,
+      vocabulary: VOCABULARY,
+      framework: 'elements',
+      ...(options.members === undefined ? {} : { members: options.members }),
+      ...(options.data === undefined ? {} : { data: options.data }),
+      streaming: options.streaming ?? false,
+      open: options.open ?? null,
+      cut: options.cut ?? null,
+      ...(options.onAction === undefined ? {} : { onAction: options.onAction }),
+      onFault: (fault) => onFault?.(fault),
+    })
+  // A document the walk cannot read (one nested deeper than it reads) draws nothing, and is a fault.
+  let screen: Screen
+  try {
+    screen = made(options.document)
+  } catch (error) {
+    screen = made(undefined)
+    unread(error)
+  }
 
   /** Each node drawn, by its path. */
   const placed = new Map<string, Placed>()
@@ -281,6 +301,10 @@ export function draw(container: Element, options: DrawOptions = {}): Drawing {
     name: string,
     value: unknown,
   ): void => {
+    // Only a prop the definition names is set. Each has an accessor of the element's own, or is
+    // set by its attribute where its name is a method the element inherits, so nothing a document
+    // says reaches a property of the DOM's own: `innerHTML`, `style`, an `on…` handler.
+    if (!Object.prototype.hasOwnProperty.call(definition.props, name)) return
     const property = propertyOf(name)
     if (!inheritedMethod(property)) {
       ;(element as unknown as Record<string, unknown>)[property] = value
@@ -333,8 +357,10 @@ export function draw(container: Element, options: DrawOptions = {}): Drawing {
       if (event.target !== event.currentTarget) return
       const call = entry.calls.get(type)
       if (call === undefined) return
+      // Every argument the member passed (`PolymorphEvent.args`), so `null` and nothing differ.
+      const args = (event as { args?: readonly unknown[] }).args
       const detail = (event as CustomEvent<unknown>).detail
-      const result = detail === null || detail === undefined ? call() : call(detail)
+      const result = call(...(args ?? (detail === null || detail === undefined ? [] : [detail])))
       if (isThenable(result)) {
         ;(event as { waitUntil?: (promise: PromiseLike<unknown>) => void }).waitUntil?.(result)
       }
@@ -441,12 +467,13 @@ export function draw(container: Element, options: DrawOptions = {}): Drawing {
   const visit = (node: ScreenNode): Element | null => {
     if (node.fault !== null) return view(node.fault)
     const tag = tagOf(node.component.replace('.', ''))
+    const key = node.key ?? node.path
     let entry = placed.get(node.path)
     if (entry !== undefined && entry.tag === tag && entry.node === node && !fresh) {
       keep(node.path)
       return entry.element
     }
-    if (entry === undefined || entry.tag !== tag || entry.failed !== null) {
+    if (entry === undefined || entry.tag !== tag || entry.key !== key || entry.failed !== null) {
       const element = page.createElement(tag)
       if (!(element instanceof PolyElement)) {
         const message = `\`${node.component}\` has no element on this page (\`${tag}\` is not defined)`
@@ -455,6 +482,7 @@ export function draw(container: Element, options: DrawOptions = {}): Drawing {
       }
       const made: Placed = {
         tag,
+        key,
         element,
         definition: definitionOf(element),
         node: null,
@@ -488,7 +516,8 @@ export function draw(container: Element, options: DrawOptions = {}): Drawing {
 
   /** Puts the root element in the container, in place of the one drawn before. */
   const place = (next: Element | null): void => {
-    if (next === root) return
+    // The root a swap of the container's children took out is put back.
+    if (next === root && (next === null || next.parentNode === container)) return
     if (root !== null && root.parentNode === container) {
       if (next === null) container.removeChild(root)
       else container.replaceChild(next, root)
@@ -508,7 +537,14 @@ export function draw(container: Element, options: DrawOptions = {}): Drawing {
         again = false
         live = new Set()
         const top = screen.root
-        place(top === null ? null : visit(top))
+        try {
+          place(top === null ? null : visit(top))
+        } catch (error) {
+          // A tree too deep to draw draws nothing.
+          place(null)
+          live = new Set()
+          unread(error)
+        }
         for (const path of [...placed.keys()]) if (!live.has(path)) placed.delete(path)
         for (const path of [...views.keys()]) if (!live.has(path)) views.delete(path)
         for (const path of [...placed.keys()]) report(path)
@@ -530,8 +566,16 @@ export function draw(container: Element, options: DrawOptions = {}): Drawing {
     },
     update(change) {
       if (disposed) return
-      const { faults, ...rest } = change
-      screen.update(rest)
+      const { faults, onFault: told, ...walked } = change
+      // The walk tells this drawing of each fault, and the drawing tells the host it has now.
+      if ('onFault' in change) onFault = told
+      try {
+        screen.update(walked)
+        if ('document' in walked) unreadable = null
+      } catch (error) {
+        screen.update({ document: undefined, open: null, cut: null })
+        unread(error)
+      }
       if (faults !== undefined && faults !== display) {
         display = faults
         fresh = true

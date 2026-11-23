@@ -1,4 +1,4 @@
-import { PolymorphEvent } from '@polymorph/elements'
+import { PolyElement, PolymorphEvent } from '@polymorph/elements'
 import { parsePartial } from '@polymorph/screen/partial'
 import type { ScreenAction, ScreenFault } from '@polymorph/screen/walk'
 
@@ -22,6 +22,8 @@ export interface ScreenState {
   data: Readonly<Record<string, unknown>> | undefined
   streaming: boolean
   members: readonly string[] | undefined
+  /** Why the `members` the page gave cannot be read, or `null`. The element then allows none. */
+  membersFault: string | null
   faults: FaultDisplay
 }
 
@@ -31,7 +33,7 @@ export interface ScreenSource {
   open: string | null
   /** The path of the innermost value the text ends inside, or `null`. */
   cut: string | null
-  /** Whether more of it is to come: the text the model is still writing, or the `streaming` the page set. */
+  /** Whether more of it is to come: the `streaming` the page set. */
   streaming: boolean
   /** Why the text or the script stops being a document, or `null`. */
   fault: string | null
@@ -56,16 +58,29 @@ export function sourceOf(host: Element, state: ScreenState): ScreenSource {
     }
   }
   if (state.text !== undefined) {
-    const read = parsePartial(state.text)
-    return {
-      document: read.document,
-      open: read.open,
-      cut: read.cut,
-      streaming: state.streaming || !read.complete,
-      fault:
-        read.error === null
-          ? null
-          : `the text stops being a document at ${read.error.at}: ${read.error.message}`,
+    // Whether more is to come is the page's to say, as for a document set whole: text that stops
+    // before its document closes, once the page says the stream has ended, is drawn as it is and
+    // reports what it lacks.
+    try {
+      const read = parsePartial(state.text)
+      return {
+        document: read.document,
+        open: read.open,
+        cut: read.cut,
+        streaming: state.streaming,
+        fault:
+          read.error === null
+            ? null
+            : `the text stops being a document at ${read.error.at}: ${read.error.message}`,
+      }
+    } catch (error) {
+      return {
+        document: undefined,
+        open: null,
+        cut: null,
+        streaming: state.streaming,
+        fault: `the text cannot be read: ${error instanceof Error ? error.message : String(error)}`,
+      }
     }
   }
   const script = scriptOf(host)
@@ -121,10 +136,15 @@ export function control(host: HTMLElement, read: () => ScreenState): Controller 
 
   let state = read()
   let source = sourceOf(host, state)
-  let told: string | null = null
-  const tell = (fault: string | null) => {
-    if (fault !== null && fault !== told) onFault({ path: '$', message: fault })
-    told = fault
+  /** The fault told last at each of the element's own paths: `$` for the document, `members`. */
+  const told = new Map<string, string | null>()
+  const tell = (path: string, fault: string | null) => {
+    if (fault !== null && fault !== told.get(path)) onFault({ path, message: fault })
+    told.set(path, fault)
+  }
+  const tellAll = () => {
+    tell('$', source.fault)
+    tell('members', state.membersFault)
   }
 
   const open = (): Drawing =>
@@ -141,7 +161,7 @@ export function control(host: HTMLElement, read: () => ScreenState): Controller 
     })
 
   let drawing = open()
-  tell(source.fault)
+  tellAll()
 
   // The script child, and the text inside it, which a page or a swap may change.
   let script = scriptOf(host)
@@ -152,11 +172,18 @@ export function control(host: HTMLElement, read: () => ScreenState): Controller 
       text.observe(script, { childList: true, characterData: true, subtree: true })
   }
   watch()
-  const children = new MutationObserver(() => {
+  // A swap of the element's children: a new script, or the drawing taken out (a morph, an
+  // `innerHTML` or a `replaceChildren` that puts back the same script).
+  const children = new MutationObserver((records) => {
     const next = scriptOf(host)
-    if (next === script) return
-    script = next
-    watch()
+    const takenOut = records.some((record) =>
+      [...record.removedNodes].some((node) => node instanceof PolyElement && !node.isConnected),
+    )
+    if (next === script && !takenOut) return
+    if (next !== script) {
+      script = next
+      watch()
+    }
     sync()
   })
   children.observe(host, { childList: true })
@@ -186,7 +213,7 @@ export function control(host: HTMLElement, read: () => ScreenState): Controller 
         faults: state.faults,
       })
     }
-    tell(source.fault)
+    tellAll()
   }
 
   return {

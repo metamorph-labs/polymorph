@@ -54,7 +54,8 @@ each element with `createElement`, sets its props as properties, fills its slots
   a member, with no Solid member behind it. It draws its `spec` property, its `text` property (a
   model's answer so far, read with `parsePartial`), or the JSON in its `<script
   type="application/json">` child. `data`, `streaming`, `members` and `faults` (`hidden` or
-  `inline`) set what it draws; `values` and `check()` read it. It dispatches `poly-action` when a
+  `inline`) set what it draws; `values` and `check()` read it. `streaming` is the page's to set,
+  for `text` too; a `members` value that cannot be read allows no member and is a fault. It dispatches `poly-action` when a
   member calls one of the document's callback inputs, with `{ name, args, values }` as `detail`
   (`event.waitUntil` hands the member a promise), and `poly-fault` for what cannot be drawn. It
   draws in the light DOM and, while it draws, draws no box of its own.

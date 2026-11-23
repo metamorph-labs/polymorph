@@ -103,24 +103,31 @@ which a page loads whichever members it uses, and the theme sheet. `elements-all
 vocabulary whole with Solid's runtime, the elements' bridge and the agent bridge; its largest third-party parts are Zod and
 Culori, from the theme engine, and Zag's date picker (`pnpm size --why elements-all`).
 
-`elements-screen`'s ceilings are set as `elements-button`'s are, from its measurement, rounded up to
-the next kilobyte with a kilobyte added. About two fifths of its JavaScript is the run-time
-screen: the vocabulary table, which names every member's props, parts and lawful cells (about 22
-kB, the largest part), the walk with the renderer and `parsePartial` (under 9 kB), and the chunk
-`<poly-screen>` imports (under 1 kB). The validator and the card are not on the page: they are
-chunks of their own, which `polymorph.js` imports when a page calls `check()` on a `<poly-screen>`
-or calls `loadScreen`. The rest is the `elements-button` page and the chunks of the members the
-document draws. `polymorph.js` holds `<poly-screen>`'s element, about a kilobyte, and imports
-nothing of the screen until a page writes one. The measure reads the document's members from the
-page's JSON, and finds the chunk `<poly-screen>` imports by the event its renderer dispatches
-(`poly-action`), as it finds the bridge by its marker; an agent setting's chunks are counted
-without the screen's.
+`elements-screen`'s ceilings are set as `elements-button`'s are, from its measurement, 79.5 kB,
+rounded up to the next kilobyte with a kilobyte added: 81 kB. About two fifths of its JavaScript is
+the run-time screen: the vocabulary table with the core's shared modules, which name every member's
+props, parts and lawful cells and hold the checks every document passes (addresses, the depth
+limit; about 25 kB, the largest part), the walk with the renderer and `parsePartial` (about 8 kB),
+and the chunk `<poly-screen>` imports (about 1 kB). The validator and the card are not on the page:
+they are chunks of their own, which `polymorph.js` imports when a page calls `check()` on a
+`<poly-screen>` or calls `loadScreen`. The rest is the `elements-button` page and the chunks of the
+members the document draws. `polymorph.js` holds `<poly-screen>`'s element, about a kilobyte, and
+imports nothing of the screen until a page writes one. The measure reads the document's members
+from the page's JSON, and finds the chunk `<poly-screen>` imports by the event its renderer
+dispatches (`poly-action`), as it finds the bridge by its marker; an agent setting's chunks are
+counted without the screen's.
 
-`elements-all`'s ceiling is its measurement, 448.9 kB, rounded up with a kilobyte added: 450 kB, up
-from 412 kB. `polymorph-all.js` holds every element and everything a page might load, and now holds
-the run-time screen as well, its renderer, the vocabulary table, the validator and the card, about
-40 kB of it, so that a page that loads the one file draws, checks and prompts for a screen with no
-other request.
+`elements-all`'s ceiling is its measurement, 450.5 kB, rounded up with a kilobyte added: 452 kB, up
+from 412 kB (it measured 398.6 kB before the run-time screen). `polymorph-all.js` holds every
+element and everything a page might load, and now holds the run-time screen as well: about 34 kB of
+it draws (the vocabulary table, about 22 kB, the walk, the renderer and `parsePartial`), and about
+11 kB checks a document and builds a prompt (the validator, about 7 kB, and the card, about 4 kB).
+The validator and the card stay in the one file because the build that writes it cannot leave them
+out alone: it inlines every dynamic import (`codeSplitting: false`), and with splitting turned on it
+also splits the agent setting's two chunks and the bridge out of the file, and puts Solid's runtime
+and the modules the drawing shares in a chunk the file imports at once, so the one file would no
+longer be one request. Keeping those in would take static imports of modules the engine does not
+publish. A page that wants the validator and the card as chunks of their own loads `polymorph.js`.
 
 `elements-agent`'s ceilings are set as `elements-button`'s are, from its measurement. Its JavaScript is
 `elements-button`'s and the two chunks its setting fetches: the registration, under a quarter of a

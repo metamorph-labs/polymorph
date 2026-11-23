@@ -17,7 +17,8 @@ import type { Controller, ScreenState } from './drawing'
  * - **Attributes and properties.** `data` (property) is the host's data by
  *   input name. `streaming` (attribute and property) says more of the
  *   document is to come. `members` (attribute, a JSON array or names separated
- *   by spaces, and property) is the members the host allows. `faults`
+ *   by spaces, and property) is the members the host allows; a value that
+ *   cannot be read allows none and is a fault at the path `members`. `faults`
  *   (attribute and property) is `hidden`, the default, or `inline`, which draws
  *   a fault in its node's place. A property set before the element is defined
  *   is read when it is.
@@ -54,21 +55,37 @@ const Base: typeof HTMLElement =
 /** A boolean attribute: present, unless it says `false`. */
 const present = (value: string | null): boolean => value !== null && value !== 'false'
 
-/** The `members` attribute: a JSON array of names, or names separated by spaces. */
-function membersOf(value: string | null): readonly string[] | undefined {
-  if (value === null) return undefined
-  const text = value.trim()
-  if (!text.startsWith('[')) return text === '' ? [] : text.split(/\s+/)
-  try {
-    const parsed: unknown = JSON.parse(text)
-    if (Array.isArray(parsed) && parsed.every((name) => typeof name === 'string')) return parsed
-  } catch {
-    // Reported below.
+/** Members read from the page, or why they cannot be read: then the element allows none. */
+interface Members {
+  members: readonly string[] | undefined
+  fault: string | null
+}
+
+/** A list of names, or a fault for anything else. */
+function listed(value: unknown, source: string): Members {
+  if (Array.isArray(value) && value.every((name) => typeof name === 'string')) {
+    return { members: [...(value as string[])], fault: null }
   }
-  console.warn(
-    `polymorph: poly-screen members=${JSON.stringify(value)} is neither a JSON array nor names; every member is allowed`,
-  )
-  return undefined
+  return {
+    members: [],
+    fault: `${source} is not a list of member names, so no member is drawn`,
+  }
+}
+
+/**
+ * The `members` attribute: a JSON array of names, or names separated by
+ * spaces. An absent attribute allows the elements' default members; one that
+ * cannot be read allows none.
+ */
+function membersOf(value: string | null): Members {
+  if (value === null) return { members: undefined, fault: null }
+  const text = value.trim()
+  if (!text.startsWith('[')) return { members: text === '' ? [] : text.split(/\s+/), fault: null }
+  try {
+    return listed(JSON.parse(text) as unknown, `the members attribute ${JSON.stringify(value)}`)
+  } catch {
+    return listed(undefined, `the members attribute ${JSON.stringify(value)}`)
+  }
 }
 
 const displayOf = (value: unknown): FaultDisplay => (value === 'inline' ? 'inline' : 'hidden')
@@ -83,6 +100,7 @@ export class PolyScreen extends Base {
   #data: Readonly<Record<string, unknown>> | undefined = undefined
   #streaming = false
   #members: readonly string[] | undefined = undefined
+  #membersFault: string | null = null
   #faults: FaultDisplay = 'hidden'
   #controller: Controller | null = null
   #loading = false
@@ -144,12 +162,21 @@ export class PolyScreen extends Base {
     this.#sync()
   }
 
-  /** The members the host allows, by name; every member the elements draw but the code hosts when absent. */
+  /**
+   * The members the host allows, by name; every member the elements draw but
+   * the code hosts when absent (`undefined` or `null`). A value that is not a
+   * list of names allows none, and is a fault.
+   */
   get members(): readonly string[] | undefined {
     return this.#members
   }
   set members(value: readonly string[] | undefined) {
-    this.#members = Array.isArray(value) ? [...(value as readonly string[])] : undefined
+    const read: Members =
+      value === undefined || value === null
+        ? { members: undefined, fault: null }
+        : listed(value, `the members property ${JSON.stringify(value)}`)
+    this.#members = read.members
+    this.#membersFault = read.fault
     this.#sync()
   }
 
@@ -170,14 +197,24 @@ export class PolyScreen extends Base {
   /** What `checkScreen` says of the document the element draws, with its members. */
   async check(): Promise<ScreenCheck> {
     const [{ checkScreen }, { sourceOf }] = await Promise.all([loadCheck(), loadDrawing()])
-    const { document } = sourceOf(this, this.#state())
-    return checkScreen(document, this.#members === undefined ? {} : { members: this.#members })
+    const { document, fault } = sourceOf(this, this.#state())
+    if (fault !== null) return { ok: false, faults: [{ path: '$', message: fault }] }
+    try {
+      return checkScreen(document, this.#members === undefined ? {} : { members: this.#members })
+    } catch (error) {
+      // A document nested deeper than the validator reads.
+      const message = `the document cannot be read: ${error instanceof Error ? error.message : String(error)}`
+      return { ok: false, faults: [{ path: '$', message }] }
+    }
   }
 
   attributeChangedCallback(name: string, _old: string | null, value: string | null): void {
     if (name === 'streaming') this.#streaming = present(value)
-    else if (name === 'members') this.#members = membersOf(value)
-    else if (name === 'faults') this.#faults = displayOf(value)
+    else if (name === 'members') {
+      const read = membersOf(value)
+      this.#members = read.members
+      this.#membersFault = read.fault
+    } else if (name === 'faults') this.#faults = displayOf(value)
     this.#sync()
   }
 
@@ -188,7 +225,13 @@ export class PolyScreen extends Base {
       ({ control }) => {
         this.#loading = false
         if (!this.isConnected || this.#controller !== null) return
-        this.#controller = control(this, () => this.#state())
+        try {
+          this.#controller = control(this, () => this.#state())
+        } catch (error) {
+          // Drawing never throws for a document; anything else is the page's to hear.
+          reportError(error)
+          return
+        }
         this.#internals?.states.add('poly-host')
       },
       (error: unknown) => {
@@ -215,6 +258,7 @@ export class PolyScreen extends Base {
       data: this.#data,
       streaming: this.#streaming,
       members: this.#members,
+      membersFault: this.#membersFault,
       faults: this.#faults,
     }
   }
