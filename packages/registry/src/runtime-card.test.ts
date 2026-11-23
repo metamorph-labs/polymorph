@@ -109,6 +109,56 @@ describe('the members section', () => {
     expect(card).not.toContain('controlRef')
   })
 
+  it('prints the data types the allowed members reach, once each, a value-returning function as `fn`', () => {
+    const typed: RuntimeCardVocabulary = {
+      ...vocabulary,
+      components: [
+        ...vocabulary.components,
+        {
+          name: 'Select',
+          tier: 'controls',
+          purpose: 'A choice',
+          props: [
+            { name: 'options', type: '(Option | Group)[]', optional: false },
+            { name: 'onPick', type: '((choice: Choice) => void) | undefined', optional: true },
+          ],
+          parts: [],
+          grid: null,
+          frameworks,
+        },
+      ],
+      dataTypes: [
+        { name: 'Choice', params: [], fields: [{ name: 'at', type: 'number', optional: false }] },
+        {
+          name: 'Group',
+          params: [],
+          fields: [{ name: 'options', type: 'Option[]', optional: false }],
+        },
+        {
+          name: 'Option',
+          params: [],
+          fields: [
+            { name: 'label', type: 'string', optional: false },
+            { name: 'hint', type: '((value: string) => string) | undefined', optional: true },
+            { name: 'onChoose', type: '(() => void) | undefined', optional: true },
+            { name: 'icon', type: 'ReactNode', optional: true },
+          ],
+        },
+        { name: 'Entry', params: ['Row'], union: ['Option', 'Group'], fields: [] },
+      ],
+    }
+    const card = renderRuntimeCard(typed, { framework: 'react', members: new Set(['Select']) })
+    const section = card.slice(card.indexOf('### Data types'))
+    // `Choice` is named only by a callback's parameter, which is not data a document writes.
+    expect(section.split('\n').filter((row) => row.startsWith('- **'))).toEqual([
+      '- **Group** · options*: Option[]',
+      '- **Option** · label*: string · hint: fn · onChoose: () => void · icon: node',
+    ])
+    expect(
+      renderRuntimeCard(typed, { framework: 'react', members: new Set(['Button']) }),
+    ).not.toContain('### Data types')
+  })
+
   it('leaves out a member the host does not allow, and the roles when nothing listed takes one', () => {
     const card = renderRuntimeCard(vocabulary, { framework: 'react', members: new Set(['Table']) })
     expect(card).not.toContain('Button')

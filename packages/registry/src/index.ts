@@ -149,4 +149,9 @@ export type { JsonSchema, Shape } from './shape'
 
 export type { LadderRung, RegistryLaw } from './rulings'
 export type { RegistryPalette, RegistrySystem, ThemeCatalogue, ThemeRenames } from './theme'
-export type { ExceptionPrimitive, RegistryComponent, RegistryProp } from './vocabulary'
+export type {
+  ExceptionPrimitive,
+  RegistryComponent,
+  RegistryDataType,
+  RegistryProp,
+} from './vocabulary'

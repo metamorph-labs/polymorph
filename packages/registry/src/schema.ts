@@ -413,6 +413,27 @@ const LAW = obj({
   summary: str(),
 })
 
+const DATA_TYPE = obj(
+  {
+    name: str({ description: 'The type’s name, as a prop’s printed type names it.' }),
+    params: arr(str({ description: 'A type parameter, as the declaration names it: `Row`.' })),
+    union: arr(str({ description: 'A named data type the type is a union of.' }), {
+      description:
+        'For a type that is a union of named data types (`MenuEntry`): their names, each a ' +
+        'data type of its own. `fields` is empty then.',
+    }),
+    fields: arr(PROP, {
+      description: 'Its fields, one level, each typed as a prop’s type is printed.',
+    }),
+  },
+  {
+    optional: ['union'],
+    description:
+      'A named data type a member’s props take: an option, a column, a stat, a menu entry. A ' +
+      'reader with no compiler writes one from its fields.',
+  },
+)
+
 export const REGISTRY_SHAPE: Shape = obj({
   schema: str({
     enum: [SCHEMA_ID],
@@ -440,6 +461,11 @@ export const REGISTRY_SHAPE: Shape = obj({
     }),
   ),
   components: arr(COMPONENT),
+  dataTypes: arr(DATA_TYPE, {
+    description:
+      'Every named data type the members’ props take, their parts’ and the exception ' +
+      'primitives’ included, read through the TypeScript checker and sorted by name.',
+  }),
   vendor: obj({
     root: str({ description: 'The prefix install paths are rebased from.' }),
     recipes: obj({

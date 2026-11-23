@@ -14,7 +14,8 @@ import { PLATFORMS, type Platform, type PlatformStatus } from './platforms'
  * roles, which is what `validateSpec` reads (`SpecVocabulary` in
  * `packages/spec/src/validate.ts`). The walk also reads each member's
  * controlled props (`controlledProps`, the rule the elements follow) and,
- * in React, the function a call site calls in a member's place.
+ * in React, the function a call site calls in a member's place. The run-time
+ * card reads the named data types the props take, with their fields.
  *
  * `pnpm registry` writes the table into `packages/screen/src/vocabulary.gen.ts`
  * in a compact form (`compactTable`), and the screen package expands it once
@@ -95,13 +96,32 @@ export interface TablePrimitive {
   readonly controlled: Readonly<Record<string, string>>
 }
 
-/** The table, expanded: the shape `validateSpec` reads, with what the run-time walk adds. */
+/**
+ * A named data type a member's props take (`SelectOption`), with its fields:
+ * what the run-time card prints so a model can write one.
+ */
+export interface TableDataType {
+  readonly name: string
+  /** Its type parameters: `Row` for `DataTableColumn<Row>`. */
+  readonly params: readonly string[]
+  /** For a union of named data types (`MenuEntry`): their names; `fields` is empty then. */
+  readonly union?: readonly string[]
+  readonly fields: readonly TableProp[]
+}
+
+/** The table, expanded: the shape `validateSpec` reads, with what the run-time walk and the card add. */
 export interface ScreenTable {
   /** The registry's version: the release the table was generated for. */
   readonly version: string
   readonly components: readonly TableMember[]
   readonly exceptions: { readonly primitives: readonly TablePrimitive[] }
   readonly icons: { readonly roles: readonly { readonly name: string }[] }
+  /**
+   * The named data types the members' props take, sorted by name. The
+   * generated table always has them; a vocabulary built by hand may leave
+   * them out, and its card then prints none.
+   */
+  readonly dataTypes?: readonly TableDataType[]
 }
 
 /* -------------------------------------------------------------------------- */
@@ -148,6 +168,13 @@ export interface CompactPrimitive {
   readonly frameworks?: CompactFrameworks
 }
 
+export interface CompactDataType {
+  readonly name: string
+  readonly params?: readonly string[]
+  readonly union?: readonly string[]
+  readonly fields: readonly CompactProp[]
+}
+
 /** The table as `pnpm registry` writes it. */
 export interface CompactTable {
   readonly version: string
@@ -156,6 +183,7 @@ export interface CompactTable {
   readonly members: readonly CompactMember[]
   readonly primitives: readonly CompactPrimitive[]
   readonly roles: readonly string[]
+  readonly dataTypes: readonly CompactDataType[]
 }
 
 /* -------------------------------------------------------------------------- */
@@ -213,6 +241,12 @@ export interface TableSource {
     })[]
   }
   readonly icons: { readonly roles: readonly { readonly name: string }[] }
+  readonly dataTypes: readonly {
+    readonly name: string
+    readonly params: readonly string[]
+    readonly union?: readonly string[]
+    readonly fields: readonly SourceProp[]
+  }[]
 }
 
 type RegistryProps = readonly SourceProp[]
@@ -318,12 +352,20 @@ export function compactTable(registry: TableSource): CompactTable {
     }
   })
 
+  const dataTypes = registry.dataTypes.map((type): CompactDataType => ({
+    name: type.name,
+    ...(type.params.length === 0 ? {} : { params: type.params }),
+    ...(type.union === undefined ? {} : { union: type.union }),
+    fields: props(type.fields),
+  }))
+
   return {
     version: registry.version,
     types,
     members,
     primitives,
     roles: registry.icons.roles.map((role) => role.name),
+    dataTypes,
   }
 }
 
@@ -387,6 +429,12 @@ export function expandTable(compact: CompactTable): ScreenTable {
       }),
     },
     icons: { roles: compact.roles.map((name) => ({ name })) },
+    dataTypes: compact.dataTypes.map((type) => ({
+      name: type.name,
+      params: type.params ?? [],
+      ...(type.union === undefined ? {} : { union: type.union }),
+      fields: props(type.fields),
+    })),
   }
 }
 

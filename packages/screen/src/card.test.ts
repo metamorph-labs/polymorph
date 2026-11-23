@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 
 import { outputContract, runtimeCard } from './card'
 import { checkScreen } from './check'
-import { allowedMembers, CODE_HOSTS } from './members'
+import { allowedMembers, CODE_HOSTS, surfaceOf } from './members'
 import { ADDRESS_KEYS } from './urls'
 import { VOCABULARY } from './vocabulary'
 
@@ -23,15 +23,25 @@ import { VOCABULARY } from './vocabulary'
 
 /**
  * The budgets, in characters. The default card lists every member a framework
- * draws, with its props' types, and costs about eleven thousand tokens; a
- * host that draws a few dozen members pays about a quarter of that. Each
- * ceiling is a little above the measured card, so the next member or prop
- * fails here first, and whoever adds it decides whether it is worth its
- * characters. Raise a ceiling only after the growth that needs it, with the
- * reason here.
+ * draws, with its props' types, and the data types those props take, and costs
+ * about fourteen thousand tokens; a host that draws a few dozen members pays
+ * under a quarter of that. Each ceiling is a little above the measured card,
+ * so the next member or prop fails here first, and whoever adds it decides
+ * whether it is worth its characters. Raise a ceiling only after the growth
+ * that needs it, with the reason here.
+ *
+ * The ceilings include the data types section: every named type a listed
+ * member's props take, with its fields (about ten thousand characters on the
+ * default card, twelve hundred on the subset). A model not told a
+ * `SelectOption`'s fields guesses them, the guess validates, because the
+ * validator does not read a structured object's fields, and the Select draws
+ * no options. The section prints each type once, a function field that
+ * returns a value as `fn`, and a member's props type as a pointer to the
+ * member's line. It also includes the output contract's sentence that a
+ * callback returning a value is answered and never told to the host.
  */
-const BUDGET_CHARS = 47_000
-const SUBSET_BUDGET_CHARS = 12_000
+const BUDGET_CHARS = 57_000
+const SUBSET_BUDGET_CHARS = 13_500
 
 /** What a host that draws forms, lists and simple pages might allow. */
 const SUBSET = [
@@ -82,6 +92,7 @@ describe('the card lists the members a host draws', () => {
   it('lists a host’s members alone, with their parts', () => {
     const card = runtimeCard({ members: SUBSET })
     const listed = card
+      .slice(0, card.indexOf('### Data types'))
       .split('\n')
       .filter((row) => row.startsWith('- **'))
       .map((row) => /\*\*(.+?)\*\*/.exec(row)?.[1])
@@ -130,6 +141,44 @@ describe('each member says what writing it lawfully needs', () => {
   })
 })
 
+describe('the data types a member’s props take', () => {
+  const card = runtimeCard()
+  const types = (text: string) =>
+    text
+      .slice(text.indexOf('### Data types'))
+      .split('\n')
+      .filter((row) => row.startsWith('- **'))
+
+  it('prints each type a listed member reaches once, with its fields', () => {
+    const rows = types(card)
+    expect(new Set(rows).size).toBe(rows.length)
+    expect(line(card, 'SelectOption')).toBe(
+      '- **SelectOption** · description: string · disabled: boolean · label*: string · value*: string',
+    )
+    expect(line(card, 'SelectOptionGroup')).toContain(' · options*: SelectOption[]')
+    expect(card).toContain('- **DataTableColumn<Row>** · cell: fn · header*: string · key*: string')
+    expect(card).toContain('- **MenuEntry** = MenuItemEntry | MenuCheckboxEntry')
+    expect(line(card, 'MenuItemEntry')).toContain(' · onSelect*: () => void')
+  })
+
+  it('points a member’s props type at the member’s line, where the member is listed', () => {
+    expect(line(card, 'StatProps')).toBe('- **StatProps** · the props of `Stat`')
+    const alone = runtimeCard({ members: ['Dashboard'] })
+    expect(line(alone, 'StatProps')).toContain(' · label*: string')
+    expect(line(alone, 'StatDelta')).toContain(' · direction*: "up"|"down"')
+  })
+
+  it('prints only the types the listed members reach, and none a callback alone names', () => {
+    const select = types(runtimeCard({ members: ['Select'] })).map(
+      (row) => /\*\*(.+?)\*\*/.exec(row)?.[1],
+    )
+    expect(select).toEqual(['SelectOption', 'SelectOptionGroup'])
+    // `onSortChange: (sort: DataTableSort) => void` alone would not print `DataTableSort`; the
+    // `sort` prop does.
+    expect(types(runtimeCard({ members: ['Text'] }))).toEqual([])
+  })
+})
+
 describe('the output contract', () => {
   it('says what to write, in the order the host draws it', () => {
     const contract = outputContract()
@@ -167,6 +216,78 @@ describe('the card fits a prompt a host caches', () => {
   })
 })
 
+/**
+ * Whether a structured object has the fields its data type declares: none it
+ * lacks, every required one, a literal one of its literals, and each nested
+ * object as its own field's type says. The validator does not read a
+ * structured object's fields, so this is what tells a working object from a
+ * lawful guess. A union fits when one of its types does.
+ */
+function objectFaults(value: unknown, printed: string, path: string): string[] {
+  const catalogue = new Map((VOCABULARY.dataTypes ?? []).map((type) => [type.name, type]))
+  const names = (printed.match(/\b[A-Z][A-Za-z0-9]*\b/g) ?? []).filter((name) =>
+    catalogue.has(name),
+  )
+  if (names.length === 0) return []
+  if (Array.isArray(value))
+    return value.flatMap((item, at) => objectFaults(item, printed, `${path}[${at}]`))
+  if (typeof value !== 'object' || value === null || !('$object' in value)) return []
+  const fields = (value as { $object: Record<string, unknown> }).$object
+  const fit = (name: string, seen: Set<string>): string[] => {
+    const type = catalogue.get(name)
+    if (type === undefined || seen.has(name)) return [`${path}: no type ${name}`]
+    if (type.union !== undefined) {
+      const fits = type.union.map((member) => fit(member, new Set([...seen, name])))
+      return fits.some((faults) => faults.length === 0) ? [] : (fits[0] ?? [])
+    }
+    const declared = new Map(type.fields.map((field) => [field.name, field]))
+    const faults: string[] = []
+    for (const [key, item] of Object.entries(fields)) {
+      const field = declared.get(key)
+      if (field === undefined) {
+        faults.push(`${path}: ${name} has no field ${key}`)
+        continue
+      }
+      const literals = field.type.split(' | ').filter((part) => /^"[^"]*"$/.test(part))
+      if (
+        typeof item === 'string' &&
+        literals.length > 0 &&
+        literals.length === field.type.split(' | ').length
+      ) {
+        if (!literals.includes(JSON.stringify(item)))
+          faults.push(`${path}.${key}: ${item} is not ${field.type}`)
+      }
+      faults.push(...objectFaults(item, field.type, `${path}.${key}`))
+    }
+    for (const field of type.fields) {
+      if (!field.optional && !(field.name in fields))
+        faults.push(`${path}: ${name} needs ${field.name}`)
+    }
+    return faults
+  }
+  const fits = names.map((name) => fit(name, new Set()))
+  return fits.some((faults) => faults.length === 0) ? [] : fits.flat()
+}
+
+/** Every structured object a document writes at a prop, held to the prop's type. */
+function documentFaults(value: unknown, path: string): string[] {
+  if (Array.isArray(value))
+    return value.flatMap((item, at) => documentFaults(item, `${path}[${at}]`))
+  if (typeof value !== 'object' || value === null) return []
+  const record = value as Record<string, unknown>
+  const faults: string[] = []
+  if (typeof record['component'] === 'string') {
+    const surface = surfaceOf(VOCABULARY, record['component'])
+    for (const [name, item] of Object.entries((record['props'] ?? {}) as Record<string, unknown>)) {
+      const prop = surface?.props.find((candidate) => candidate.name === name)
+      if (prop !== undefined) faults.push(...objectFaults(item, prop.type, `${path}.props.${name}`))
+    }
+  }
+  for (const [key, item] of Object.entries(record))
+    faults.push(...documentFaults(item, `${path}.${key}`))
+  return faults
+}
+
 describe('a screen written from the card alone is lawful', () => {
   // Each was written by reading the card and nothing else: no registry, no tool, no spec.
   const FIXTURES = resolve(import.meta.dirname, '../fixtures')
@@ -182,6 +303,42 @@ describe('a screen written from the card alone is lawful', () => {
       for (const framework of ['react', 'elements'] as const) {
         expect(checkScreen(document, { framework }).faults, framework).toEqual([])
       }
+      // Each structured object has the fields the card prints for its type.
+      expect(documentFaults(document, '$')).toEqual([])
     })
   }
+
+  it('writes options, columns, stats, tabs and menu entries as objects the card describes', () => {
+    const objects = written.flatMap((file) => {
+      const text = readFileSync(join(FIXTURES, file), 'utf8')
+      return ['"tabs"', '"columns": [', '"items": [', '"stats": [', '"options": ['].filter((key) =>
+        text.includes(key),
+      )
+    })
+    expect(new Set(objects).size).toBe(5)
+  })
+
+  it('tells a guessed object from one the card describes', () => {
+    const guessed = {
+      component: 'Select',
+      props: { options: [{ $object: { id: 'a', text: 'A' } }] },
+    }
+    expect(documentFaults(guessed, '$')).toEqual(
+      expect.arrayContaining(['$.props.options[0]: SelectOption has no field id']),
+    )
+    const nested = {
+      component: 'Dashboard',
+      props: {
+        stats: [{ $object: { label: 'A', value: '1', delta: { $object: { dir: 'up' } } } }],
+      },
+    }
+    expect(documentFaults(nested, '$')).toEqual(
+      expect.arrayContaining(['$.props.stats[0].delta: StatDelta has no field dir']),
+    )
+    const entry = {
+      component: 'Menu',
+      props: { items: [{ $object: { kind: 'checkbox', label: 'Compact' } }] },
+    }
+    expect(documentFaults(entry, '$').length).toBeGreaterThan(0)
+  })
 })

@@ -51,11 +51,21 @@ export interface RuntimeCardPrimitive {
   readonly props: readonly CardProp[]
 }
 
+/** What the card reads of a named data type a prop takes: its fields, or the types it is a union of. */
+export interface RuntimeCardDataType {
+  readonly name: string
+  readonly params: readonly string[]
+  readonly union?: readonly string[]
+  readonly fields: readonly CardProp[]
+}
+
 /** What the card reads of a vocabulary: the registry and the run-time table both have it. */
 export interface RuntimeCardVocabulary {
   readonly components: readonly RuntimeCardMember[]
   readonly exceptions: { readonly primitives: readonly RuntimeCardPrimitive[] }
   readonly icons: { readonly roles: readonly { readonly name: string }[] }
+  /** The named data types the props take. A vocabulary without them gets a card without them. */
+  readonly dataTypes?: readonly RuntimeCardDataType[]
 }
 
 export interface RuntimeCardOptions {
@@ -188,11 +198,22 @@ export function cardType(printed: string, roles: ReadonlySet<string>): string {
     .join('|')
 }
 
+/** A function's printed result that is nothing: what an action returns. */
+const NOTHING =
+  /=> (?:void|undefined|Promise<(?:void|undefined)>)(?:\|(?:void|undefined|Promise<(?:void|undefined)>))*\)?$/
+
 /**
  * `name: type`, `*` marking a required one; the four ARIA hooks as `aria`
  * where all four are taken. A ref is left out, as a document cannot hold one.
+ * With `questions`, a function that returns a value is written `fn`: a
+ * data type's field of that kind cannot be given by a document at all, so its
+ * signature says nothing a document can use.
  */
-function propList(props: readonly CardProp[], roles: ReadonlySet<string>): string[] {
+function propList(
+  props: readonly CardProp[],
+  roles: ReadonlySet<string>,
+  questions = false,
+): string[] {
   const own = props.filter(
     (prop) =>
       !prop.name.includes('.') && !unionParts(prop.type).every((part) => REF_TYPE.test(part)),
@@ -201,7 +222,11 @@ function propList(props: readonly CardProp[], roles: ReadonlySet<string>): strin
   const allAria = ARIA.every((name) => names.has(name))
   const written = own
     .filter((prop) => !(allAria && ARIA.includes(prop.name)))
-    .map((prop) => `${prop.name}${prop.optional ? '' : '*'}: ${cardType(prop.type, roles)}`)
+    .map((prop) => {
+      const type = cardType(prop.type, roles)
+      const question = questions && isFunctionPrint(prop.type) && !NOTHING.test(type)
+      return `${prop.name}${prop.optional ? '' : '*'}: ${question ? 'fn' : type}`
+    })
   return allAria ? [...written, 'aria'] : written
 }
 
@@ -233,10 +258,95 @@ function memberLines(
   return lines
 }
 
+/** Whether a printed type is a function, alone or in a union with `undefined`: a callback, not data. */
+function isFunctionPrint(printed: string): boolean {
+  const flat = printed.replace(/\s+/g, ' ').trim()
+  if (functionType(flat, new Set()) !== null) return true
+  const parts = unionParts(flat)
+  return (
+    parts.length > 0 &&
+    parts.every(
+      (part) => functionType(part, new Set()) !== null || EVENT_HANDLER_ALIAS.test(unwrap(part)),
+    )
+  )
+}
+
+/**
+ * The data types section: each named data type the listed members' props
+ * take, the types those types' fields take, and so on, each printed once,
+ * sorted by name. A callback's parameters are not data a document writes,
+ * so a type only a callback names is left out. A type that is the props of
+ * a listed member (`StatProps`) points at the member's line.
+ */
+function dataTypeLines(
+  vocabulary: RuntimeCardVocabulary,
+  listed: readonly RuntimeCardMember[],
+  primitives: readonly RuntimeCardPrimitive[],
+  framework: Framework,
+  roles: ReadonlySet<string>,
+): string[] {
+  const catalogue = new Map((vocabulary.dataTypes ?? []).map((type) => [type.name, type]))
+  if (catalogue.size === 0) return []
+  const reached = new Set<string>()
+  const queue: string[] = []
+  const read = (printed: string) => {
+    if (isFunctionPrint(printed)) return
+    for (const name of printed.match(/\b[A-Z][A-Za-z0-9]*\b/g) ?? []) {
+      if (catalogue.has(name) && !reached.has(name)) {
+        reached.add(name)
+        queue.push(name)
+      }
+    }
+  }
+  for (const member of listed) {
+    for (const prop of member.props) if (!prop.name.includes('.')) read(prop.type)
+    for (const part of shippedParts(member, DEFAULT_PLATFORM, framework)) {
+      const recorded = member.parts.find((candidate) => candidate.name === part.name)
+      for (const prop of recorded?.props ?? []) read(prop.type)
+    }
+  }
+  for (const primitive of primitives) for (const prop of primitive.props) read(prop.type)
+  for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
+    const type = catalogue.get(next)
+    for (const member of type?.union ?? []) read(member)
+    for (const field of type?.fields ?? []) read(field.type)
+  }
+  if (reached.size === 0) return []
+
+  const members = new Set(listed.map((member) => member.name))
+  const lines = [...catalogue.values()]
+    .filter((type) => reached.has(type.name))
+    .map((type) => {
+      const name = `**${type.name}${type.params.length === 0 ? '' : `<${type.params.join(', ')}>`}**`
+      if (type.union !== undefined) return `- ${name} = ${type.union.join(' | ')}`
+      const owner = type.name.endsWith('Props') ? type.name.slice(0, -'Props'.length) : ''
+      if (members.has(owner)) return `- ${name} · the props of \`${owner}\``
+      return `- ${name}${propList(type.fields, roles, true)
+        .map((field) => ` · ${field}`)
+        .join('')}`
+    })
+  return [
+    '### Data types',
+    '',
+    ...wrapped(
+      'A prop typed with one of these takes an object: write it as `{ "$object": { … } }` with ' +
+        'the fields listed, `*` marking a required one, or bind the prop to an input that holds ' +
+        'it. A `node` field takes an element. A function field cannot be written as a value: one ' +
+        'shown by its signature returns nothing and takes a binding to an action input of that ' +
+        'type; one shown as `fn` returns a value, and a document cannot give it.',
+      96,
+    ),
+    '',
+    ...lines,
+    '',
+  ]
+}
+
 /**
  * The card's members section, for the members a host allows: a legend, the
  * members tier by tier in the system card's reading order, the exception
- * primitives, and the icon roles when a member listed takes one.
+ * primitives, the data types their props take, and the icon roles when a
+ * member listed takes one.
  */
 export function renderRuntimeCard(
   vocabulary: RuntimeCardVocabulary,
@@ -283,6 +393,8 @@ export function renderRuntimeCard(
     }
     out.push('')
   }
+
+  out.push(...dataTypeLines(vocabulary, listed, primitives, framework, roles))
 
   if (out.some((line) => line.includes('IconRole'))) {
     out.push(
