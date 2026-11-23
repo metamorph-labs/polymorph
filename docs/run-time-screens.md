@@ -165,7 +165,8 @@ export function Assistant({ data }: { data: Record<string, unknown> }) {
   element still being written waits. With `text` and no `streaming`, it is whether the text's
   document has not closed yet. A host that passes `streaming={false}` while chunks still arrive
   gives the screen a new whole document with each chunk: each is a new drawing whose faults are
-  told again, and an element whose required props have not arrived is a fault and is not drawn.
+  told again, and an element whose required text or data has not arrived is a fault and is not
+  drawn.
 - `onAction` returns nothing here, so no member waits on it. A handler that returns a promise
   makes a member that waits on its callback wait for it
   ([What the handler returns](#what-the-handler-returns)).
@@ -208,9 +209,9 @@ The page loads `polymorph.js` before this script, as every elements page does
 `streaming` is the page's to set: on while the answer arrives, and off when it ends, so an answer
 cut short reports what it lacks. A page that sets `text` chunk by chunk and never sets `streaming`
 gives the element a new whole document with each chunk: each is a new drawing whose faults are
-told again, and an element whose required props have not arrived is a fault and is not drawn. A server that renders the page can write a document it already
-has into the element, as a `<script type="application/json">` child, and `<poly-screen>` draws it
-with no script on the page.
+told again, and an element whose required text or data has not arrived is a fault and is not
+drawn. A server that renders the page can write a document it already has into the element, as a
+`<script type="application/json">` child, and `<poly-screen>` draws it with no script on the page.
 
 ### A screen, from answer to action
 
@@ -342,7 +343,8 @@ the receiver decides (`packages/screen/src/receivers.ts`, `packages/screen/src/w
 - **Bound where no callback receives it** (a Button's `label`, a child, a field the data type does
   not declare, a field of an object type the vocabulary does not name), it is a fault and nothing
   is passed: a member could hand it on as text or call it while it draws. Where that prop is
-  required, the element is not drawn ([below](#an-element-a-required-prop-is-missing-from)).
+  required and takes text or data, as a Button's `label` does, the element is not drawn
+  ([below](#an-element-a-required-prop-is-missing-from)).
   `checkScreen` reports the same fault (`packages/screen/src/check.test.ts`).
 
 A required callback prop the document leaves unbound is answered the same way, by the prop's
@@ -560,17 +562,22 @@ A document is data. The renderers read it, and run nothing it says:
   is a fault and is not drawn. So is a plain object a document writes where the format writes
   `$object`, in a prop, a field or a list, at any depth (`packages/screen/src/hostile.test.ts`).
 - **An element inside a structured object is drawn only where the field's data type takes a
-  node**, such as an empty state's `action`. One in a field the type does not declare, or declares
-  as data, is a fault and is not drawn, so it holds no value in `values`
-  (`packages/screen/src/walk.test.ts`). In an object whose type the vocabulary does not name, such
-  as a row of the host's own type, the walk cannot tell, and an element is drawn
-  (`fieldOf` and `takesNode` in `packages/screen/src/receivers.ts`).
+  node**, such as an empty state's `action`. A field that its data type does not declare, or
+  declares as text, numbers or booleans, holds no element at any depth: every element below it,
+  through lists and other structured objects, is left out with one fault at the field, and the
+  field's other data is kept. So no control there holds a value in `values`
+  (`packages/screen/src/walk.test.ts`, `packages/screen/src/check.test.ts`). In an object whose
+  type the vocabulary does not name, such as a table's rows of the host's own type, the walk
+  cannot tell, and an element is drawn (`holdsData`, `fieldOf` and `takesNode` in
+  `packages/screen/src/receivers.ts`).
 
 ### An element a required prop is missing from
 
-Once the document is whole, an element is drawn only when every prop it requires has a value. A
-member drawn without one is drawn empty or unnamed, such as a Button with no label. So the element
-is drawn as nothing, with a fault that names the prop, when a prop it requires:
+A fault takes out only the element it is in, and an element whose required text or data a
+reader needs (a label, an `alt`, options) is missing or refused. A member drawn without such a
+prop is drawn empty or unnamed, such as a Button with no label. So once the document is whole, the
+element is drawn as nothing, with a fault that names the prop, when a prop it requires that takes
+text or data:
 
 - was never written: `` `Button` is missing its required prop `label` ``;
 - was refused by another fault, such as a callback input bound where no callback receives it, a
@@ -582,11 +589,21 @@ The named controls the element holds are not drawn either, so they hold no value
 While the document streams, such an element is left out, with no fault, until the prop arrives
 (`packages/screen/src/walk.test.ts`).
 
+A required prop that takes a node is a slot (a FormPage's `actions`, a Dashboard's `primary`, a
+SettingsRow's `control`), and an empty slot does not take out its element. A page is drawn around
+a slot whose element is a fault, with the slot empty and the slot's fault told, and around a slot
+the document never wrote, with `` `FormPage` is missing its required prop `actions` ``. So a
+misspelt member in a slot, or one the host's `members` leave out, does not blank the page. While
+the document streams, the page waits while the text is inside a slot's element that cannot be
+drawn yet. Once that element is whole, the page is drawn around it: the element in the slot when
+it can be drawn, and the slot empty, with its fault, when it cannot
+(`packages/screen/src/walk.test.ts`).
+
 A member that requires exactly one element as its child and reads it, as a `FormField` reads its
-control to give it an id, is held to its child the same way. It is drawn only once that child is
-drawn: while the document streams it waits for it, and once the document is whole, one with no
-child it can draw (none, one that is not drawn, or more than one) is a fault and is drawn as
-nothing (`packages/screen/src/walk.test.ts`, `packages/screen/src/streaming.test.ts`).
+control to give it an id, is drawn only once that child is drawn. While the document streams it
+waits for it, and once the document is whole, one with no child it can draw (none, one that is not
+drawn, or more than one) is a fault and is drawn as nothing. The element that holds the FormField
+is still drawn (`packages/screen/src/walk.test.ts`, `packages/screen/src/streaming.test.ts`).
 
 Three cases still draw the element (`packages/screen/src/walk.test.ts`):
 
@@ -645,12 +662,13 @@ and names or documents as an address is one of the three keys
 
 ### Limits
 
-A document is read within three limits, each a constant of `@polymorph/screen`:
+A document is read within four limits, each a constant of `@polymorph/screen`:
 
 | Constant | Value | What is held to it |
 | --- | --- | --- |
 | `MAX_DEPTH` | 128 | the objects and lists a document nests inside one another, its own object included. `parsePartial` stops reading text that goes deeper, with an `error`, and keeps what came before. `checkScreen` reports a deeper document as one fault and does not validate it, and the walk reports a fault and draws nothing deeper |
 | `MAX_TYPE_LENGTH` | 500 | the characters of an input's declared type. A longer type is a fault, and the input is data with no value |
+| `MAX_KEY_LENGTH` | 100 | the characters of a key a document writes: a prop's name or a structured object's field. A longer key is a fault at the element or object that holds it, and what it holds is not read |
 | `MAX_JSON_VALUES` | 100,000 | the values one reduction to JSON writes, of an action's `args` or a control's value. A cut is a fault |
 
 `packages/screen/src/hostile.test.ts` holds the core to documents written to break it. It feeds
@@ -658,9 +676,10 @@ A document is read within three limits, each a constant of `@polymorph/screen`:
 long strings, thousands of children, an unclosed fence line, values of the wrong shape, host data
 that is cyclic, deep or shares one object at many levels, and input types far over the limit, and
 none of them throws. It also times each kind of input at two sizes, most at one size and at eight
-times it, and fails when the larger costs twenty times the smaller or more. Host data that shares
-one object at many levels is timed at a size the `MAX_JSON_VALUES` budget holds, and at one it
-cuts.
+times it, and fails when the larger costs twenty times the smaller or more. Among the kinds are
+many elements below one long key, and many elements bound to one input with a long declared type.
+Host data that shares one object at many levels is timed at a size the `MAX_JSON_VALUES` budget
+holds, and at one it cuts.
 
 ### What is not checked
 
@@ -687,12 +706,15 @@ or `avatar`), and `Markdown`.
 
 ### Faults
 
-A fault takes out only the element it is in. A node that cannot be drawn (a component the host
-does not allow, an element a required prop is missing from, a member that throws as it first
-renders) draws nothing in its place, and the rest of the screen draws
-(`packages/screen/src/walk.test.ts`, `packages/react/src/screen/screen.test.tsx`,
-`packages/elements-ui/src/bridge/kept.test.ts`). A fault in the root element leaves nothing to
-draw. Each fault is `{ path, message, component? }`,
+A fault takes out only the element it is in, and an element whose required text or data a reader
+needs is missing or refused ([above](#an-element-a-required-prop-is-missing-from)). A page is drawn
+around a slot whose element is a fault, with the slot empty, and around a slot the document never
+wrote. A FormField is not drawn without its one control, and the element that holds it is. A node
+that cannot be drawn (a component the host does not allow, an element missing its required text
+or data, a member that throws as it first renders) draws nothing in its place, and the rest of the
+screen draws (`packages/screen/src/walk.test.ts`, `packages/react/src/screen/screen.test.tsx`,
+`packages/elements-ui/src/bridge/kept.test.ts`). A fault in the root element itself leaves nothing
+to draw. Each fault is `{ path, message, component? }`,
 with the validator's paths (`$.root.children[2]`). It is told to the host once in a drawing, by
 its path and message, when it first appears: to `onFault` in React, and as `poly-fault` on
 `<poly-screen>`. A fault that goes and comes back within a drawing is not told again. A drawing
@@ -713,12 +735,18 @@ this way.
 `{ ok, faults }`. Its faults are the spec validator's, from a table generated from the registry,
 then the run-time's: a member the host does not allow, an address a screen may not hold, a
 control's name `values` cannot hold (one two controls share, or one every object has), an input
-type longer than `MAX_TYPE_LENGTH`, a callback input bound where no callback receives it, and an
-element in a structured object's field that takes no node. What the walk checks of the host's
-data (an address, a function) it checks as it draws, as `checkScreen` reads only the document. It needs
-no registry and no checkout, and runs in a page, a worker and a server alike. A law holds that the
-table gives every screen in `design/screens/` and a set of faulty documents the same faults the
-full registry gives (`packages/screen/src/parity.test.ts`).
+type longer than `MAX_TYPE_LENGTH`, a key longer than `MAX_KEY_LENGTH`, a callback input bound
+where no callback receives it, and an element in a structured object's field that takes no node.
+It needs no registry and no checkout, and runs in a page, a worker and a server alike. A law holds
+that the table gives every screen in `design/screens/` and a set of faulty documents the same
+faults the full registry gives (`packages/screen/src/parity.test.ts`).
+
+`checkScreen` and the walk agree on what the document holds, and cannot agree on what they do not
+both see. `checkScreen` reads only the document, so what the walk refuses by the host's data (an
+address bound from it, a function in it) it does not report, and a control the walk drops for such
+a refusal can leave a shared name that one reports and the other does not. Given no `members`, it
+checks against the framework's default list, so a host passes it the list its renderer is given
+(`packages/screen/src/check.ts`).
 
 ```ts
 import { checkScreen } from '@polymorph/screen/check'
