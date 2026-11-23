@@ -9,11 +9,16 @@
  * from the selection's box in viewport coordinates (`--pm-selection-bar-x`,
  * `--pm-selection-bar-y`, its top-left corner), which the member measures, as
  * Tour places its panel. The coordinates are physical, because they are the
- * browser's. */
+ * browser's. The placement keeps it `--pm-selection-bar-edge` inside the part
+ * of the window a person sees, on both axes, and writes the widest it may be
+ * there (`--pm-selection-bar-room`), so it wraps onto more rows instead of
+ * running past an edge. */
 
 .bar {
   --pm-selection-bar-x: 0px;
   --pm-selection-bar-y: 0px;
+  --pm-selection-bar-edge: var(--pm-space-2);
+  --pm-selection-bar-room: calc(100vw - var(--pm-selection-bar-edge) * 2);
 
   position: fixed;
   top: var(--pm-selection-bar-y);
@@ -26,14 +31,19 @@
   gap: var(--pm-space-1);
   align-items: center;
 
-  /* The bar wraps onto more rows at the viewport's width and is never clipped. */
-  max-inline-size: calc(100vw - var(--pm-space-2) * 2);
+  /* The bar wraps onto more rows at the visible width, which the placement measures. */
+  max-inline-size: var(--pm-selection-bar-room);
   padding: var(--pm-space-1);
   background: var(--pm-bg-overlay);
   border: 1px solid var(--pm-border-subtle);
   border-radius: var(--pm-radius-surface);
   box-shadow: var(--pm-shadow-transient);
   animation: selection-bar-enter var(--pm-motion-duration-surface) var(--pm-motion-easing-enter);
+}
+
+/* The selection is scrolled out of the field's own box: the bar waits, unseen, for it to return. */
+.bar[data-outside] {
+  visibility: hidden;
 }
 
 /* Leaving: the member keeps the bar until this ends, and it takes no press meanwhile. */

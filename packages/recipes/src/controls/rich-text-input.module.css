@@ -298,36 +298,48 @@
 /* suggestions -------------------------------------------------------------- *
  *
  * PromptInput's list, composed: the panel, the options and the rows. The panel
- * is placed at the token instead of across the field: under the token's line,
- * or above it when there is less room below (`data-placement`), its start at
- * the token's start and kept inside the root. The member measures the token
- * (`--pm-rich-text-input-x` from the root's inline start, `-above` and `-below`
- * from its top). At phone width it spans the root, as PromptInput's does. */
+ * is placed at the token instead of across the field, and it is `fixed`, as
+ * the selection bar is, so a scrolling ancestor (a Dialog's body) does not
+ * clip it. The member measures the token and writes the panel's top-left
+ * corner (`--pm-rich-text-input-x`, `--pm-rich-text-input-y`): under the
+ * token's line, or above it when there is less room below in the part of the
+ * window a person sees (`data-placement`), `--pm-rich-text-input-gap` from the
+ * token, its start at the token's start, kept inside the field and the
+ * window. It writes the field's width (`--pm-rich-text-input-field`), which
+ * bounds the panel and is its width at phone width, and the room on the
+ * panel's side (`--pm-rich-text-input-room`), which bounds its height. The
+ * coordinates are physical, because they are the browser's. */
 
 .suggestions {
   composes: suggestions from '../ai/prompt-input.module.css';
 
   --pm-rich-text-input-x: 0px;
-  --pm-rich-text-input-above: 0px;
-  --pm-rich-text-input-below: 0px;
-
-  inset-inline: clamp(
-      0px,
-      var(--pm-rich-text-input-x),
-      100% - min(100%, calc(var(--pm-space-10) * 4))
-    )
-    auto;
-
-  /* Popover's width: a name and a line under it. */
-  inline-size: min(100%, calc(var(--pm-space-10) * 4));
+  --pm-rich-text-input-y: 0px;
+  --pm-rich-text-input-gap: var(--pm-space-1);
+  --pm-rich-text-input-field: calc(var(--pm-space-10) * 4);
+  --pm-rich-text-input-room: 100vh;
 }
 
-.suggestions[data-placement='below'] {
-  inset-block-start: calc(var(--pm-rich-text-input-below) + var(--pm-space-1));
+/* The placement, under the root so it outweighs the composed panel's, whose
+   stylesheet a bundler may load after this one. */
+.root > .suggestions {
+  position: fixed;
+  inset: auto;
+  top: var(--pm-rich-text-input-y);
+  left: var(--pm-rich-text-input-x);
+
+  /* Above the page, as every transient surface is: the panel may cross what follows the field. */
+  z-index: var(--pm-z-overlay);
+
+  /* Popover's width: a name and a line under it, never wider than the field. */
+  inline-size: min(var(--pm-rich-text-input-field), calc(var(--pm-space-10) * 4));
+  max-block-size: min(40vh, calc(var(--pm-space-10) * 4), var(--pm-rich-text-input-room));
 }
 
-.suggestions[data-placement='above'] {
-  inset-block-end: calc(100% - var(--pm-rich-text-input-above) + var(--pm-space-1));
+@supports (height: 1dvh) {
+  .root > .suggestions {
+    max-block-size: min(40dvh, calc(var(--pm-space-10) * 4), var(--pm-rich-text-input-room));
+  }
 }
 
 .listbox {
@@ -506,8 +518,7 @@
     );
   }
 
-  .suggestions {
-    inset-inline: 0;
-    inline-size: auto;
+  .root > .suggestions {
+    inline-size: var(--pm-rich-text-input-field);
   }
 }

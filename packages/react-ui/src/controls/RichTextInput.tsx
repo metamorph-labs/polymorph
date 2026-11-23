@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type FocusEvent,
   type FormEvent,
   type MouseEvent,
   type ReactNode,
@@ -18,9 +19,13 @@ import { useFilter } from 'react-aria'
 import {
   createRichTextEditor,
   emptyRichText,
+  focusOnLabelPress,
+  followSelectionBar,
   Icon,
   type IconRole,
+  idPart,
   isRichTextEmpty,
+  isRichTextNewer,
   memberAttr,
   placeTokenList,
   RICH_TEXT_FORMATS,
@@ -208,7 +213,7 @@ export interface RichTextInputMessages {
   submitOverLimit?: (over: number) => string
   /** A submit refused because the app is saving. */
   submitPending?: string
-  /** The status while the suggestion list is open. Default: `{count} suggestions`. */
+  /** The status while the suggestion list is open. Default: `1 suggestion`, `{count} suggestions`. */
   suggestions?: (count: number) => string
   /** The status while the app loads options. Default: `Loading suggestions…`. */
   loadingSuggestions?: string
@@ -261,9 +266,9 @@ export interface RichTextInputProps {
   activeAnnotation?: string
   /** The caret entered a drawn annotation, or a press landed on one. */
   onAnnotationSelect?: (id: string) => void
-  /** The text took focus. */
+  /** Focus entered the field: its text, its toolbars, the link form or the text style menu, from outside them. */
   onFocus?: () => void
-  /** The text lost focus. */
+  /** Focus left the field as a whole, for validation on leaving. Moving between its own parts is not leaving. */
   onBlur?: () => void
   /** The editable element. */
   controlRef?: Ref<HTMLDivElement>
@@ -315,7 +320,7 @@ const DEFAULT_MESSAGES = {
   submitOverLimit: (over: number) =>
     `Remove ${over} ${over === 1 ? 'character' : 'characters'} to submit.`,
   submitPending: 'Still saving.',
-  suggestions: (count: number) => `${count} suggestions`,
+  suggestions: (count: number) => (count === 1 ? '1 suggestion' : `${count} suggestions`),
   loadingSuggestions: 'Loading suggestions…',
   noSuggestions: 'No results',
 } satisfies Required<RichTextInputMessages>
@@ -461,13 +466,36 @@ export function RichTextInput(props: RichTextInputProps) {
 
   /* The document --------------------------------------------------------- */
 
-  const [own, setOwn] = useState<RichTextDocument>(() => defaultValue ?? emptyRichText())
+  /** The first document, which a form's reset puts back. */
+  const [initial] = useState<RichTextDocument>(() => defaultValue ?? emptyRichText())
+  const [own, setOwn] = useState<RichTextDocument>(initial)
+  /** The editor, for the callbacks the editor and the toolbars run. */
+  const editorRef = useRef<RichTextEditor | null>(null)
+  // A field that stops being controlled keeps the document the editor holds, so the count, the
+  // emptiness, the form value and the submit control read what the text shows.
+  const [lastValue, setLastValue] = useState(value)
+  if (value !== lastValue) {
+    setLastValue(value)
+    // The editor holds the last value the app gave: it puts it back over any change the app
+    // did not take.
+    if (value === undefined && lastValue !== undefined) setOwn(lastValue)
+  }
   const doc = value ?? own
-  const empty = isRichTextEmpty(doc)
-  const length = richTextLength(doc)
+  // What is read from the whole document, once for each document.
+  const { empty, length, newer } = useMemo(
+    () => ({
+      empty: isRichTextEmpty(doc),
+      length: richTextLength(doc),
+      newer: isRichTextNewer(doc),
+    }),
+    [doc],
+  )
+  /** The form's value, serialized once for each document and not for each caret move. */
+  const posted = useMemo(() => (name === undefined ? '' : serializeRichText(doc)), [doc, name])
   const over = maxLength === undefined ? 0 : Math.max(0, length - maxLength)
   const overLimit = over > 0
-  const unwritable = readOnly || pending
+  /** Read-only, pending, or a document of a later format, which this version never writes over. */
+  const unwritable = readOnly || pending || newer
   /** Disabled, read-only or pending: nothing edits the text. */
   const locked = disabled || unwritable
   const editable = !locked
@@ -479,12 +507,11 @@ export function RichTextInput(props: RichTextInputProps) {
   const uid = useId()
   const surfaceId = id ?? `${uid}-surface`
   const listId = `${uid}-suggestions`
-  const optionId = (index: number) => `${uid}-suggestion-${index}`
+  /** An option's id, by the option's own id, so the active one's id changes with the option. */
+  const optionId = (option: RichTextEntityOption) => `${uid}-suggestion-${idPart(option.id)}`
   const countId = `${uid}-count`
 
   const [surfaceRef, attachSurface] = useControlRef(controlRef)
-  /** The editor, for the callbacks the editor and the toolbars run. */
-  const editorRef = useRef<RichTextEditor | null>(null)
   /** The same editor, for the handle the app's slots are drawn with. */
   const [mounted, setMounted] = useState<RichTextEditor | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -514,6 +541,10 @@ export function RichTextInput(props: RichTextInputProps) {
   /** The status region's words, each with a number of its own so the same words are heard again. */
   const [said, setSaid] = useState({ text: '', at: 0 })
   const announce = (text: string) => setSaid((last) => ({ text, at: last.at + 1 }))
+  /** Whether this turn said something, read from the announcement the last render drew. */
+  const [seenSaid, setSeenSaid] = useState(said.at)
+  const saidThisTurn = said.at !== seenSaid
+  if (saidThisTurn) setSeenSaid(said.at)
 
   const formatName = (format: Exclude<RichTextFormat, 'link'>): string =>
     ({
@@ -552,6 +583,8 @@ export function RichTextInput(props: RichTextInputProps) {
 
   /** The document the person or a command changed: the field's own copy, the app's handler and the limit. */
   function changed(next: RichTextDocument) {
+    // A document of a later format is never written over.
+    if (newer) return
     if (maxLength !== undefined) {
       const was = richTextLength(doc) > maxLength
       const nextOver = Math.max(0, richTextLength(next) - maxLength)
@@ -802,6 +835,8 @@ export function RichTextInput(props: RichTextInputProps) {
   const [selecting, setSelecting] = useState(false)
   const [barDismissed, setBarDismissed] = useState<string | null>(null)
   const rangeKey = `${selection.range.start}:${selection.range.end}`
+  // Escape hides the bar for one selection: another selection, or a caret, ends that.
+  if (barDismissed !== null && (selection.empty || barDismissed !== rangeKey)) setBarDismissed(null)
   const barPopup = formatsInBar && (linkOpen || headingOpen)
   const barOpen =
     (formatsInBar || actionsInBar) &&
@@ -810,10 +845,12 @@ export function RichTextInput(props: RichTextInputProps) {
     (state.focused || barFocus || barPopup) &&
     !selecting &&
     barDismissed !== rangeKey
+  // Said once each time focus enters the field from outside it, and never over what this turn
+  // already said (the link form's "Link added" as the text takes focus back).
   const [barHeard, setBarHeard] = useState(false)
   if (barOpen && !barHeard) {
     setBarHeard(true)
-    announce(say.selectionBarReady)
+    if (!saidThisTurn) announce(say.selectionBarReady)
   }
 
   /** Escape on the text: the list first, then the bar. Returns whether either took it. */
@@ -874,7 +911,9 @@ export function RichTextInput(props: RichTextInputProps) {
     'aria-haspopup': suggesting ? 'listbox' : undefined,
     'aria-controls': open && shown.length > 0 ? listId : undefined,
     'aria-activedescendant':
-      open && shown.length > 0 && activeOption !== -1 ? optionId(activeOption) : undefined,
+      open && activeOption !== -1 && shown[activeOption] !== undefined
+        ? optionId(shown[activeOption])
+        : undefined,
   }
 
   // What the editor's callbacks read: this render's values, after it commits.
@@ -883,6 +922,8 @@ export function RichTextInput(props: RichTextInputProps) {
     allowed: RichTextFormat[]
     kinds: RichTextEditorEntityKind[]
     editable: boolean
+    readOnly: boolean
+    disabled: boolean
     attributes: Record<string, string | undefined>
     placeholder: string | undefined
     annotations: string[] | undefined
@@ -897,8 +938,9 @@ export function RichTextInput(props: RichTextInputProps) {
     requestLink: () => void
     suggestionKey: (key: RichTextSuggestionKey) => boolean
     files: (files: File[]) => void
-    focused: () => void
-    blurred: () => void
+    entered: () => void
+    left: () => void
+    reset: () => void
     escape: () => boolean
     mount: (editor: RichTextEditor | null) => void
   } | null>(null)
@@ -908,6 +950,8 @@ export function RichTextInput(props: RichTextInputProps) {
       allowed,
       kinds,
       editable,
+      readOnly: !disabled && unwritable,
+      disabled,
       attributes,
       placeholder,
       annotations: drawnAnnotations,
@@ -928,11 +972,18 @@ export function RichTextInput(props: RichTextInputProps) {
       },
       suggestionKey,
       files: (files) => onFiles?.(files),
-      focused: () => {
+      entered: () => {
         setBarHeard(false)
         onFocus?.()
       },
-      blurred: () => onBlur?.(),
+      left: () => onBlur?.(),
+      reset: () => {
+        // A form's reset puts the first document back, as the person's act, as Checkbox's does.
+        const editor = editorRef.current
+        if (editor === null || serializeRichText(editor.getValue()) === serializeRichText(initial))
+          return
+        replace(editor, initial)
+      },
       escape,
       mount: (editor) => {
         setMounted(editor)
@@ -975,6 +1026,7 @@ export function RichTextInput(props: RichTextInputProps) {
       entities: live.kinds,
       classes: CLASSES,
       editable: live.editable,
+      readOnly: live.readOnly,
       attributes: live.attributes,
       placeholder: live.placeholder,
       annotations: live.annotations,
@@ -986,8 +1038,6 @@ export function RichTextInput(props: RichTextInputProps) {
       onLinkRequest: () => latestRef.current?.requestLink(),
       onSuggestionKey: (key) => latestRef.current?.suggestionKey(key) ?? false,
       onFiles: live.takesFiles ? (files) => latestRef.current?.files(files) : undefined,
-      onFocus: () => latestRef.current?.focused(),
-      onBlur: () => latestRef.current?.blurred(),
     })
     editorRef.current = editor
     // The editor calls `onState` after a change, and not at mount.
@@ -1006,6 +1056,7 @@ export function RichTextInput(props: RichTextInputProps) {
     allowed,
     kinds,
     editable,
+    !disabled && unwritable,
     attributes,
     placeholder ?? null,
     drawnAnnotations ?? null,
@@ -1023,6 +1074,7 @@ export function RichTextInput(props: RichTextInputProps) {
       formats: live.allowed,
       entities: live.kinds,
       editable: live.editable,
+      readOnly: live.readOnly,
       attributes: live.attributes,
       placeholder: live.placeholder,
       annotations: live.annotations,
@@ -1033,16 +1085,100 @@ export function RichTextInput(props: RichTextInputProps) {
   })
 
   // A controlled value is the document. The editor compares it with its own and replaces only a
-  // document that differs, with no change event and no undo step.
+  // document that differs, with no change event and no undo step; the same value over the same
+  // document, or the value the editor gave, it does not read again.
   useLayoutEffect(() => {
     if (value !== undefined) editorRef.current?.setValue(value)
   })
 
   // The list sits at the token: its start at the token's start, under the token's line, or
-  // above it when there is less room below in the window, inside the root (`placeTokenList`).
+  // above it when there is less room below in the part of the window a person sees, inside the
+  // field and the window (`placeTokenList`). It is fixed, so it follows the token as the page
+  // scrolls, the window resizes and a virtual keyboard opens.
+  const placeList = () =>
+    placeTokenList(
+      panelRef.current,
+      rootRef.current,
+      editorRef.current?.tokenRect() ?? suggestion?.rect,
+    )
+  useLayoutEffect(placeList)
+  const placeListRef = useRef(placeList)
   useLayoutEffect(() => {
-    placeTokenList(panelRef.current, rootRef.current, suggestion?.rect)
+    placeListRef.current = placeList
   })
+  useLayoutEffect(() => {
+    const panel = panelRef.current
+    if (!open || panel === null) return
+    return followSelectionBar(panel, () => placeListRef.current())
+  }, [open])
+
+  // A press on the FormField's label focuses the text, as a native label's does for its control:
+  // a `group` is named by `aria-labelledby`, which a label's `for` cannot reach.
+  useEffect(
+    () =>
+      focusOnLabelPress(
+        surfaceRef.current,
+        () => editorRef.current?.focus(),
+        () => latestRef.current?.disabled !== true,
+      ),
+    [labelledBy, surfaceRef],
+  )
+
+  // A form's reset puts the first document back.
+  useEffect(() => {
+    const form = rootRef.current?.closest('form')
+    if (form === null || form === undefined) return
+    const reset = () => latestRef.current?.reset()
+    form.addEventListener('reset', reset)
+    return () => form.removeEventListener('reset', reset)
+  }, [])
+
+  /**
+   * Whether an element is part of the field: inside its root, in the link
+   * form's panel, or in a popup a control of the field controls (the text
+   * style menu), which are drawn elsewhere in the document.
+   */
+  function inField(node: EventTarget | null): boolean {
+    const root = rootRef.current
+    if (!(node instanceof Node) || root === null) return false
+    if (root.contains(node) || linkPanelRef.current?.contains(node) === true) return true
+    for (let at = node instanceof Element ? node : node.parentElement; at !== null;) {
+      if (at.id !== '' && root.querySelector(`[aria-controls~="${CSS.escape(at.id)}"]`) !== null)
+        return true
+      at = at.parentElement
+    }
+    return false
+  }
+
+  /**
+   * Focus entering and leaving the field as a whole: `onFocus`, `onBlur` and
+   * the selection bar's announcement hear these, not each move between the
+   * field's own parts. Focus that leaves for no element (a control removed, or
+   * the editor ending an input method's composition) is read once the moves
+   * running now have finished, so focus that comes straight back never left.
+   */
+  const focusRef = useRef({ inside: false, moves: 0 })
+  const focusProps = {
+    onFocus: () => {
+      const focus = focusRef.current
+      focus.moves += 1
+      if (focus.inside) return
+      focus.inside = true
+      latestRef.current?.entered()
+    },
+    onBlur: (event: FocusEvent) => {
+      const focus = focusRef.current
+      if (!focus.inside || inField(event.relatedTarget)) return
+      const move = (focus.moves += 1)
+      const leave = () => {
+        if (focus.moves !== move || !focus.inside) return
+        focus.inside = false
+        latestRef.current?.left()
+      }
+      if (event.relatedTarget === null) queueMicrotask(leave)
+      else leave()
+    },
+  }
 
   /* The agent -------------------------------------------------------------- */
 
@@ -1051,6 +1187,7 @@ export function RichTextInput(props: RichTextInputProps) {
   // selection bar, the link form and the default footer) are withheld; the app's toolbar slot and
   // its footer are the app's, and stay an agent's.
   function writable(): RichTextEditor {
+    if (newer) throw new Error('The document is of a later format than this field writes.')
     if (unwritable) throw new Error('The field is read-only.')
     const editor = editorRef.current
     if (editor === null) throw new Error('The field is not ready.')
@@ -1279,6 +1416,7 @@ export function RichTextInput(props: RichTextInputProps) {
       data-readonly={!disabled && unwritable ? '' : undefined}
       data-invalid={invalid || overLimit ? '' : undefined}
       {...memberAttr('RichTextInput')}
+      {...focusProps}
     >
       <div className={styles.frame}>
         {toolbarDrawn ? (
@@ -1323,18 +1461,6 @@ export function RichTextInput(props: RichTextInputProps) {
             aria-controls={attributes['aria-controls']}
             aria-activedescendant={attributes['aria-activedescendant']}
             onKeyDown={(event) => {
-              // Mod+Enter on text that takes no editing is not the editor's, which takes no key
-              // then, so the field answers it: a pending field says why it does not submit.
-              if (
-                unwritable &&
-                event.key === 'Enter' &&
-                (event.metaKey || event.ctrlKey) &&
-                !event.nativeEvent.isComposing
-              ) {
-                event.preventDefault()
-                submit()
-                return
-              }
               // Alt+F10 moves to the controls, as in other editors: the bar while it is drawn.
               if (!event.altKey || event.key !== 'F10') return
               event.preventDefault()
@@ -1367,21 +1493,28 @@ export function RichTextInput(props: RichTextInputProps) {
         <SelectionBar
           open={barOpen}
           measure={() => editorRef.current?.selectionRect() ?? null}
+          within={() => surfaceRef.current}
           label={say.selectionBar}
           barRef={barRef}
           keys={barKeys}
           onFocusChange={setBarFocus}
+          // An application's control in the bar that replaces the selection closes the bar under
+          // the person's focus, which goes back to the text.
+          onFocusLost={() => editorRef.current?.focus()}
         >
-          <div className={styles.controls} {...notePointer}>
-            {interleave([
-              selectionActions !== undefined && actionsInBar ? (
-                <div key="actions" className={styles.group}>
-                  {selectionActions(handle)}
-                </div>
-              ) : null,
-              ...(formatsInBar ? [markGroup, headingGroup, blockGroup] : []),
-            ])}
-          </div>
+          {/* Drawn only while the bar is: the application's actions are not asked for otherwise. */}
+          {() => (
+            <div className={styles.controls} {...notePointer}>
+              {interleave([
+                selectionActions !== undefined && actionsInBar ? (
+                  <div key="actions" className={styles.group}>
+                    {selectionActions(handle)}
+                  </div>
+                ) : null,
+                ...(formatsInBar ? [markGroup, headingGroup, blockGroup] : []),
+              ])}
+            </div>
+          )}
         </SelectionBar>
 
         {footerDrawn ? (
@@ -1431,7 +1564,7 @@ export function RichTextInput(props: RichTextInputProps) {
               {shown.map((option, index) => (
                 <li
                   key={option.id}
-                  id={optionId(index)}
+                  id={optionId(option)}
                   role="option"
                   aria-selected={index === activeOption}
                   className={styles.option}
@@ -1490,11 +1623,14 @@ export function RichTextInput(props: RichTextInputProps) {
       </div>
 
       {name === undefined ? null : (
-        <input type="hidden" name={name} value={serializeRichText(doc)} disabled={disabled} />
+        <input type="hidden" name={name} value={posted} disabled={disabled} />
       )}
     </div>
   )
 }
 
-/** FormField names the field by `aria-labelledby`, because a press on a label reaches no `div`. */
+/**
+ * FormField names the field by `aria-labelledby`, because a label's `for` reaches no `div`; the
+ * member makes a press on that label focus the text (`focusOnLabelPress`).
+ */
 RichTextInput.controlKind = 'group' as const

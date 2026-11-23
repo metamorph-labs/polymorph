@@ -11,12 +11,14 @@ import {
 import { Decoration, DecorationSet, EditorView } from 'prosemirror-view'
 
 import {
-  isRichTextEmpty,
+  isRichTextNewer,
+  parseRichText,
   restrictRichText,
-  richTextEquals,
-  richTextLength,
+  richTextEntities,
+  richTextPlainText,
 } from '../rich-text/index'
-import type { RichTextDocument, RichTextFormat } from '../rich-text/types'
+import { codePoints } from '../rich-text/text'
+import type { RichTextDocument, RichTextEntity, RichTextFormat } from '../rich-text/types'
 import {
   type AnnotationDrawing,
   annotateCommand,
@@ -84,6 +86,24 @@ import type {
  * Which annotations are drawn, and which is active, are options of the
  * drawing and not of the document: `update` changes them without an edit.
  *
+ * The document is read once per change of ProseMirror's document: the JSON,
+ * its serialization, its emptiness and its length are kept by the document's
+ * identity, so a keystroke converts the document once and a caret move reads
+ * none of it.
+ *
+ * A read-only field that keeps its caret (`readOnly`) is a ProseMirror view
+ * that is editable, so the browser draws the caret and moves it with the
+ * keys, under a filter that refuses every transaction from the reader that
+ * changes the document. The browser's own edits are refused before they
+ * happen (`beforeinput`, paste, cut, drop); an input method's text, which a
+ * page cannot refuse, is read by ProseMirror as a change, refused by the
+ * filter, and the DOM is drawn again from the document.
+ *
+ * A document of a later format (`isRichTextNewer`) is drawn as far as this
+ * version reads it and held as it was given. The field is then read-only with
+ * a caret, its methods that edit refuse, and `getValue()` returns the held
+ * value, so nothing this version writes replaces what a later one stored.
+ *
  * Nothing here reads `window`, `document` or `navigator` until the function
  * runs, so the module can be imported on a server.
  */
@@ -92,12 +112,45 @@ import type {
 const SILENT = 'polymorphRichTextSilent'
 /** Metadata on the transaction that records a focus change. */
 const FOCUS = 'polymorphRichTextFocus'
+/** Metadata on a transaction one of the editor's methods made: the application's act, which a read-only field takes. */
+const APP = 'polymorphRichTextApp'
+
+/** The document as the editor read it: kept by the identity of ProseMirror's document. */
+interface Read {
+  doc: PMNode
+  value: RichTextDocument
+  /** The value's serialization: the normal form's JSON, so equal documents give equal text. */
+  text: string
+  empty: boolean
+  length: number
+}
+
+/**
+ * The text caret nearest an end of the document. A document that begins or
+ * ends with a node of a later version (drawn as one unit) would otherwise
+ * select that node, and the first keystroke would replace it. A document with
+ * no text position at all keeps the end's own selection.
+ */
+function caretAt(doc: PMNode, side: 'start' | 'end'): Selection {
+  return side === 'start'
+    ? (Selection.findFrom(doc.resolve(0), 1, true) ?? Selection.atStart(doc))
+    : (Selection.findFrom(doc.resolve(doc.content.size), -1, true) ?? Selection.atEnd(doc))
+}
+
+/** The text caret nearest `pos`, or the selection ProseMirror finds there when there is no text. */
+function caretNear(doc: PMNode, pos: number): Selection {
+  const $pos = doc.resolve(Math.max(0, Math.min(pos, doc.content.size)))
+  return (
+    Selection.findFrom($pos, 1, true) ?? Selection.findFrom($pos, -1, true) ?? Selection.near($pos)
+  )
+}
 
 type Callbacks = Omit<
   RichTextEditorUpdate,
   | 'formats'
   | 'entities'
   | 'editable'
+  | 'readOnly'
   | 'attributes'
   | 'placeholder'
   | 'annotations'
@@ -110,6 +163,16 @@ function toFormatSet(formats: readonly RichTextFormat[]): ReadonlySet<RichTextFo
   return new Set(formats)
 }
 
+/** Whether two lists hold the same entries, in any order. */
+function sameEntries(a: readonly string[], b: readonly string[]): boolean {
+  const left = new Set(a)
+  const right = new Set(b)
+  return left.size === right.size && [...left].every((entry) => right.has(entry))
+}
+
+const kindKeys = (kinds: readonly { kind: string; trigger: string }[]) =>
+  kinds.map(({ kind, trigger }) => JSON.stringify([kind, trigger]))
+
 export function createRichTextEditor(options: RichTextEditorOptions): RichTextEditor {
   const element = options.element
   const headingLevel = options.headingLevel ?? 2
@@ -118,6 +181,16 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
   let formats = [...options.formats]
   let entities = [...options.entities]
   let editable = options.editable
+  let readOnly = options.readOnly === true
+  /** A document of a later format, as it was given: drawn as far as it is read, and never written. */
+  let held: RichTextDocument | null = null
+  /** Whether the reader may change the document. */
+  const writable = () => editable && held === null
+  /**
+   * Read-only with a caret: the view is editable and the filter refuses the reader's edits. A
+   * held document makes an editable field read-only; a disabled field stays disabled.
+   */
+  const caretOnly = () => !writable() && (readOnly || (editable && held !== null))
   let attributes: Readonly<Record<string, string | undefined>> = { ...options.attributes }
   let placeholder = options.placeholder
   let drawing: AnnotationDrawing = {
@@ -140,16 +213,43 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
   let focused = element.ownerDocument.activeElement === element
   let published: RichTextEditorState | null = null
   let pendingValue: RichTextDocument | null = null
+  /** An entity picked while an input method composed, inserted once the composition ends. */
+  let pendingEntity: Omit<RichTextEntity, 'type'> | null = null
+  /** While the editor ends a composition by moving focus out and back, which no callback hears. */
+  let ending = false
   let destroyed = false
 
   let schema: Schema
   let allowed: ReadonlySet<RichTextFormat>
   let commands: FormatCommands
-  let value: RichTextDocument
-  let valueDoc: PMNode
+  let read: Read | null = null
+  /** The value `setValue` last applied, and the document it left, so the same value is not read again. */
+  let applied: { input: RichTextDocument; doc: PMNode } | null = null
 
-  /** The document a value becomes in this field: read tolerantly and restricted to the formats. */
-  const admit = (input: RichTextDocument): RichTextDocument => restrictRichText(input, formats)
+  /**
+   * The document a value becomes in this field: read tolerantly and restricted to the formats. A
+   * document of a later format is read as far as this version can, for drawing only.
+   */
+  const admit = (input: RichTextDocument): RichTextDocument =>
+    restrictRichText(isRichTextNewer(input) ? parseRichText(input).value : input, formats)
+
+  /** The document as JSON, with its serialization, emptiness and length: read once per document. */
+  const readOf = (doc: PMNode): Read => {
+    if (read !== null && read.doc === doc) return read
+    const value = fromEditorDoc(doc)
+    // `richTextLength` and `isRichTextEmpty` from one projection: the plain text with no block
+    // separator, whose code points are the length, and which is blank in an empty document
+    // unless the document holds an entity.
+    const plain = richTextPlainText(value, { blockSeparator: '' })
+    read = {
+      doc,
+      value,
+      text: JSON.stringify(value),
+      length: codePoints(plain),
+      empty: plain.trim() === '' && richTextEntities(value).length === 0,
+    }
+    return read
+  }
 
   /** `data-placeholder` on the only block of an empty document, and `data-selected` on a selected entity or unknown node. */
   const decorations = (state: EditorState): DecorationSet | null => {
@@ -176,6 +276,7 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
     props: {
       handleDOMEvents: {
         focus: (view) => {
+          if (ending) return false
           if (!focused) {
             focused = true
             view.dispatch(view.state.tr.setMeta(FOCUS, true))
@@ -184,6 +285,7 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
           return false
         },
         blur: (view) => {
+          if (ending) return false
           if (focused) {
             focused = false
             view.dispatch(view.state.tr.setMeta(FOCUS, false))
@@ -225,12 +327,71 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
     },
   })
 
+  /** A browser edit a read-only field refuses before it happens. */
+  const refuse = (_view: EditorView, event: Event) => {
+    if (!caretOnly()) return false
+    event.preventDefault()
+    return true
+  }
+  /** A drag over a read-only field: no drop. */
+  const refuseDrop = (_view: EditorView, event: DragEvent) => {
+    if (!caretOnly()) return false
+    event.preventDefault()
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'none'
+    return true
+  }
+
+  /**
+   * First of the plugins, so its handlers run before the others'. In a
+   * read-only field with a caret, it refuses every transaction that changes
+   * the document unless one of the editor's methods made it (or ProseMirror
+   * appended it to one), and every browser edit before it happens. In any
+   * field, typing while a node of a later version is selected as one unit
+   * writes a new paragraph after it, so a keystroke never replaces what this
+   * version cannot show.
+   */
+  const guardPlugin = new Plugin({
+    filterTransaction: (tr) => {
+      if (!caretOnly() || !tr.docChanged) return true
+      const root = (tr.getMeta('appendedTransaction') as Transaction | undefined) ?? tr
+      return root.getMeta(APP) === true || root.getMeta(SILENT) === true
+    },
+    props: {
+      handleDOMEvents: {
+        beforeinput: refuse,
+        paste: refuse,
+        cut: refuse,
+        drop: refuse,
+        dragover: refuseDrop,
+        dragenter: refuseDrop,
+      },
+      handleTextInput: (view, _from, _to, text) => {
+        const selection = view.state.selection
+        if (
+          text === '' ||
+          !(selection instanceof NodeSelection) ||
+          selection.node.type.name !== NODE.unknownBlock
+        )
+          return false
+        const paragraph = view.state.schema.nodes[NODE.paragraph]
+        if (paragraph === undefined) return false
+        const at = selection.to
+        const tr = view.state.tr.insert(at, paragraph.create(null, view.state.schema.text(text)))
+        tr.setSelection(TextSelection.create(tr.doc, at + 1 + text.length))
+        view.dispatch(tr.scrollIntoView())
+        return true
+      },
+    },
+  })
+
   const plugins = (): Plugin[] => [
+    guardPlugin,
     ...keyPlugins(schema, formats, {
       suggestionOpen: () => published?.suggestion !== null && published?.suggestion !== undefined,
       onSuggestionKey: () => callbacks.onSuggestionKey,
       onSubmit: () => callbacks.onSubmit,
       onLinkRequest: () => callbacks.onLinkRequest,
+      readOnly: caretOnly,
     }),
     rulesPlugin(schema),
     stickyMarksPlugin(),
@@ -245,24 +406,24 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
     schema = buildSchema({ formats, entities, classes: options.classes, headingLevel })
     allowed = toFormatSet(formats)
     commands = formatCommands(schema)
-    value = admit(doc)
-    valueDoc = toEditorDoc(schema, value)
-    value = fromEditorDoc(valueDoc)
-    return EditorState.create({ schema, doc: valueDoc, plugins: plugins() })
+    held = isRichTextNewer(doc) ? doc : null
+    const editorDoc = toEditorDoc(schema, admit(doc))
+    readOf(editorDoc)
+    return EditorState.create({
+      schema,
+      doc: editorDoc,
+      selection: caretAt(editorDoc, 'start'),
+      plugins: plugins(),
+    })
   }
 
-  const currentValue = (): RichTextDocument => {
-    const doc = view.state.doc
-    if (doc !== valueDoc) {
-      valueDoc = doc
-      value = fromEditorDoc(doc)
-    }
-    return value
-  }
+  const currentValue = (): RichTextDocument => held ?? readOf(view.state.doc).value
 
+  // The token is followed while an input method composes, so a phone's keyboard, which composes
+  // every word, shows the list as the word is typed.
   const suggestionFor = (state: EditorState): RichTextSuggestion | null => {
     const token = tokenOf(state)
-    if (!token || token.dismissed || !focused || !editable || view.composing) return null
+    if (!token || token.dismissed || !focused || !writable()) return null
     let rect = ZERO_RECT
     try {
       const coords = view.coordsAtPos(token.from, 1)
@@ -274,10 +435,10 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
   }
 
   const stateNow = (): RichTextEditorState => {
-    const doc = currentValue()
+    const { empty, length } = readOf(view.state.doc)
     return computeState(view.state, allowed, commands, {
-      empty: isRichTextEmpty(doc),
-      length: richTextLength(doc),
+      empty,
+      length,
       focused,
       suggestion: suggestionFor(view.state),
     })
@@ -308,18 +469,22 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
     if (destroyed) return
     const before = view.state
     const silent = tr.getMeta(SILENT) === true
-    const previous = silent ? value : currentValue()
     const next = before.apply(tr)
     view.updateState(next)
     const changed = next.doc !== before.doc
-    if (changed && !silent) {
-      const current = currentValue()
-      if (!richTextEquals(previous, current)) callbacks.onChange?.(current)
+    if (changed && !silent && held === null) {
+      const previous = readOf(before.doc).text
+      const current = readOf(next.doc)
+      if (current.text !== previous) callbacks.onChange?.(current.value)
     }
     publish()
     const pending = tr.getMeta(EVENT_META) as PendingEvent | undefined
     if (pending && !silent && (changed || pending.type === 'toggle'))
       announce(pending, before, next)
+    // ProseMirror also ends a composition without `compositionend` (a key that is not composing
+    // arrives); what waited for it follows.
+    if ((pendingValue || pendingEntity) && !view.composing)
+      void Promise.resolve().then(afterComposition)
   }
 
   const attributesFor = (): Record<string, string> => {
@@ -328,6 +493,11 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
       if (v !== undefined && name !== 'contenteditable' && name !== 'class') out[name] = v
     }
     if (focused) out['data-focused'] = ''
+    // Read-only with a caret: a touch device opens no keyboard, and no word is marked misspelt.
+    if (caretOnly()) {
+      out['inputmode'] = 'none'
+      out['spellcheck'] = 'false'
+    }
     return out
   }
 
@@ -343,7 +513,7 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
     { mount: element },
     {
       state: initial,
-      editable: () => editable,
+      editable: () => editable || caretOnly(),
       attributes: attributesFor,
       decorations,
       dispatchTransaction,
@@ -385,15 +555,36 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
 
   /**
    * The value compared is the one this editor would emit for `input`: read
-   * through the schema and back. The model's normal form keeps what the schema
-   * leaves out (bold in a heading, bold beside inline code), so comparing the
-   * raw value would replace the document on every render of a member that
-   * passes back what it was given.
+   * through the schema and back. A value as given may hold a format the field
+   * does not allow, or not be in normal form, so comparing the raw value would
+   * replace the document on every render of a member that passes back what it
+   * was given.
    */
   const applyValue = (input: RichTextDocument) => {
+    // The same value over the same document, or the value this editor gave: nothing to read.
+    const drawn = readOf(view.state.doc)
+    const same = applied?.input === input && applied.doc === view.state.doc
+    if (held === null ? input === drawn.value || same : input === held) {
+      applied = { input, doc: view.state.doc }
+      return
+    }
+    const wasHeld = held !== null
+    held = isRichTextNewer(input) ? input : null
     const next = toEditorDoc(schema, admit(input))
-    if (richTextEquals(fromEditorDoc(next), currentValue())) return
-    replaceWith(next)
+    if (JSON.stringify(fromEditorDoc(next)) !== drawn.text) replaceWith(next)
+    applied = { input, doc: view.state.doc }
+    // A document of a later format arriving or leaving changes whether the reader may edit.
+    if (wasHeld !== (held !== null)) {
+      view.setProps({})
+      publish()
+    }
+  }
+
+  /** The open token replaced by the entity and a space, or the entity at the selection. */
+  const putEntity = (entity: Omit<RichTextEntity, 'type'>) => {
+    const token = tokenOf(view.state)
+    const open = token && !token.dismissed ? { from: token.from, to: token.to } : null
+    run(entityCommand(schema, entity, open))
   }
 
   function afterComposition() {
@@ -403,17 +594,43 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
       pendingValue = null
       applyValue(next)
     }
+    if (pendingEntity) {
+      const entity = pendingEntity
+      pendingEntity = null
+      putEntity(entity)
+    }
     publish()
+  }
+
+  /**
+   * Ends an input method's composition: focus leaves the element and comes
+   * back, which commits the composed text in every engine. Neither move is a
+   * focus change the member hears.
+   */
+  const endComposition = () => {
+    if (element.ownerDocument.activeElement !== element) return
+    ending = true
+    try {
+      element.blur()
+      element.focus({ preventScroll: true })
+    } finally {
+      ending = false
+    }
   }
 
   const rebuild = () => {
     const doc = currentValue()
-    const selection = view.state.selection
+    const { from, to } = view.state.selection
     const state = configure(doc)
     let next = state
-    const pos = Math.min(selection.from, state.doc.content.size)
     try {
-      next = state.apply(state.tr.setSelection(Selection.near(state.doc.resolve(pos))))
+      // The selection where it can be kept: a range that still fits, else a caret near its start.
+      const size = state.doc.content.size
+      const selection =
+        to <= size && from !== to
+          ? TextSelection.between(state.doc.resolve(from), state.doc.resolve(to))
+          : caretNear(state.doc, from)
+      next = state.apply(state.tr.setSelection(selection))
     } catch {
       next = state
     }
@@ -421,8 +638,12 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
     publish()
   }
 
+  /**
+   * Runs one of the editor's methods: its transactions are the application's, which a read-only
+   * field takes. A document of a later format takes none.
+   */
   const run = (command: (state: EditorState, dispatch?: (tr: Transaction) => void) => boolean) =>
-    !destroyed && command(view.state, view.dispatch)
+    !destroyed && held === null && command(view.state, (tr) => view.dispatch(tr.setMeta(APP, true)))
 
   const editor: RichTextEditor = {
     getValue: () => currentValue(),
@@ -444,6 +665,7 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
       if (change.attributes !== undefined) attributes = { ...change.attributes }
       if ('placeholder' in change) placeholder = change.placeholder
       if (nextEditable !== undefined) editable = nextEditable
+      if ('readOnly' in change) readOnly = change.readOnly === true
       if ('annotations' in change || 'activeAnnotation' in change) {
         const drawn = 'annotations' in change ? change.annotations : drawing.drawn
         const active = 'activeAnnotation' in change ? change.activeAnnotation : drawing.active
@@ -457,11 +679,10 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
           }
         }
       }
+      // The schema depends on which formats and kinds there are, not on their order.
       const schemaChanged =
-        (nextFormats !== undefined && nextFormats.join() !== formats.join()) ||
-        (nextEntities !== undefined &&
-          nextEntities.map((e) => `${e.kind}:${e.trigger}`).join() !==
-            entities.map((e) => `${e.kind}:${e.trigger}`).join())
+        (nextFormats !== undefined && !sameEntries(nextFormats, formats)) ||
+        (nextEntities !== undefined && !sameEntries(kindKeys(nextEntities), kindKeys(entities)))
       if (nextFormats !== undefined) formats = [...nextFormats]
       if (nextEntities !== undefined) entities = [...nextEntities]
       if (schemaChanged) rebuild()
@@ -471,13 +692,9 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
     },
     focus(at) {
       if (destroyed) return
-      if (at) {
-        const selection =
-          at === 'start' ? Selection.atStart(view.state.doc) : Selection.atEnd(view.state.doc)
-        view.dispatch(view.state.tr.setSelection(selection))
-      }
-      // ProseMirror focuses only an editable view; a read-only field is still focusable and selectable.
-      if (editable) view.focus()
+      if (at) view.dispatch(view.state.tr.setSelection(caretAt(view.state.doc, at)))
+      // ProseMirror focuses only a view it edits; a disabled field's element takes focus itself.
+      if (editable || caretOnly()) view.focus()
       else element.focus({ preventScroll: true })
     },
     toggle(format) {
@@ -501,15 +718,22 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
       run(textCommand(text))
     },
     insertEntity(entity) {
-      const token = tokenOf(view.state)
-      const open = token && !token.dismissed ? { from: token.from, to: token.to } : null
-      run(entityCommand(schema, entity, open))
+      if (destroyed || held !== null) return
+      // A pick while an input method composes waits for the composition to end, which the
+      // editor brings about, so the input method commits no characters after the entity.
+      if (view.composing) {
+        pendingEntity = entity
+        endComposition()
+        return
+      }
+      putEntity(entity)
     },
     // The application's act, not the reader's typing: both work on a field that
     // is not editable, where a reviewer comments on what they may not change.
     annotate: (id) => run(annotateCommand(id)),
     removeAnnotation: (id) => run(removeAnnotationCommand(id)),
     selectionRect: () => (destroyed ? null : selectionRect(view)),
+    tokenRect: () => (destroyed ? null : (suggestionFor(view.state)?.rect ?? null)),
     dismissSuggestion() {
       const token = tokenOf(view.state)
       if (destroyed || !token || token.dismissed) return
@@ -517,11 +741,11 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
       view.dispatch(view.state.tr.setMeta(key, meta))
     },
     clear() {
-      if (destroyed || isBareDoc(view.state.doc)) return
+      if (destroyed || held !== null || isBareDoc(view.state.doc)) return
       const paragraph = schema.nodes[NODE.paragraph]!.create()
       const tr = view.state.tr.replaceWith(0, view.state.doc.content.size, paragraph)
       tr.setSelection(TextSelection.create(tr.doc, 1))
-      view.dispatch(tr.scrollIntoView())
+      view.dispatch(tr.scrollIntoView().setMeta(APP, true))
     },
     destroy() {
       if (destroyed) return

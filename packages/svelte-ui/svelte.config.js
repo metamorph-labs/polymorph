@@ -32,13 +32,27 @@ const NOT_REPORTED = new Set([
   'a11y_no_static_element_interactions',
   // DataTable's selection cell, whose Checkbox takes the keys.
   'a11y_click_events_have_key_events',
-  // A toolbar's keys on the toolbar, whose tab stop is one of its controls and not the toolbar,
-  // as WAI-ARIA's toolbar pattern has it: RichTextInput's fixed toolbar and its selection bar.
-  'a11y_interactive_supports_focus',
 ])
+
+/** The members that draw a `role="toolbar"` whose tab stop is one of its controls. */
+const TOOLBAR_MEMBERS = /(?:^|[\\/])(?:RichTextInput|RichTextContent)\.svelte$/
+
+/**
+ * A toolbar's keys are on the toolbar, and its tab stop is one of its controls
+ * and not the toolbar, as WAI-ARIA's toolbar pattern has it: RichTextInput's
+ * fixed toolbar and selection bar, and RichTextContent's selection bar. The
+ * hint that an element with an interactive role needs a tab stop
+ * (`a11y_interactive_supports_focus`) is not reported for a `toolbar` in those
+ * two files only, so any other element with an interactive role and no tab
+ * stop is still reported.
+ */
+const toolbarStopOnControl = (warning) =>
+  warning.code === 'a11y_interactive_supports_focus' &&
+  TOOLBAR_MEMBERS.test(warning.filename ?? '') &&
+  warning.message.includes("'toolbar'")
 
 export default {
   compilerOptions: {
-    warningFilter: (warning) => !NOT_REPORTED.has(warning.code),
+    warningFilter: (warning) => !NOT_REPORTED.has(warning.code) && !toolbarStopOnControl(warning),
   },
 }

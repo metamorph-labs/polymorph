@@ -72,7 +72,13 @@ export interface RichTextRect {
   right: number
 }
 
-/** The trigger token the caret is in, while no input method composes. */
+/**
+ * The trigger token the caret is in, while the field has focus and is
+ * editable. It is reported while an input method composes too, with the query
+ * as composed so far, because a phone's keyboard composes every word; the
+ * list's keys are never taken from a composing input method, and a pick made
+ * while one composes waits for the composition to end (`insertEntity`).
+ */
 export interface RichTextSuggestion {
   /** The entity kind whose trigger opened it. */
   kind: string
@@ -121,6 +127,17 @@ export interface RichTextEditorState {
 export interface RichTextEditorOptions {
   /** The element the member rendered for the document. The editor writes inside it and sets its editing attributes. */
   element: HTMLElement
+  /**
+   * The document. One of a later format than this version reads
+   * (`isRichTextNewer`) is drawn as far as this version reads it and held as it
+   * was given: the field is read-only with a caret (`readOnly`) whatever
+   * `editable` says, unless it is disabled; the editor's methods that edit
+   * refuse it (`annotate` and `removeAnnotation` return false, `insertText`,
+   * `insertEntity` and `clear` do nothing); `onChange` is never called; and
+   * `getValue()` returns the value as it was given, so nothing this version
+   * writes can replace it. A value of this version set later (`setValue`)
+   * ends it.
+   */
   value: RichTextDocument
   /** What the field allows. A document is restricted to them when it enters the editor. */
   formats: readonly RichTextFormat[]
@@ -128,6 +145,21 @@ export interface RichTextEditorOptions {
   classes: RichTextEditorClasses
   /** False for a field that is read-only or disabled. */
   editable: boolean
+  /**
+   * With `editable` false: true keeps a caret and the keyboard's selection in
+   * the element, for a field that is read-only but not disabled. The reader
+   * moves the caret, selects with Shift and the arrows, Home and End, Mod+A and
+   * a double press, copies, and submits with Mod+Enter; nothing the reader does
+   * changes the document (typing, Enter, Backspace, paste, cut, drop, a typed
+   * shortcut, a format key, undo, an input method's text). The element stays
+   * `contenteditable`, so the browser draws the caret, with `inputmode="none"`,
+   * so a touch device opens no keyboard, and `spellcheck="false"`. The
+   * member's own `aria-readonly` says it is read-only. The editor's methods
+   * still change the document, because they are the application's acts. False
+   * or absent: the element is not editable and holds no caret, as a disabled
+   * field's. No effect while `editable` is true.
+   */
+  readOnly?: boolean
   /**
    * Attributes the editor keeps on `element` beside its own: the member's
    * `id`, `role`, `aria-*` and `tabindex`. An `undefined` value removes the
@@ -170,6 +202,7 @@ export type RichTextEditorUpdate = Partial<
     | 'formats'
     | 'entities'
     | 'editable'
+    | 'readOnly'
     | 'attributes'
     | 'placeholder'
     | 'annotations'
@@ -187,7 +220,7 @@ export type RichTextEditorUpdate = Partial<
 >
 
 export interface RichTextEditor {
-  /** The current document, in normal form. */
+  /** The current document, in normal form; a document of a later format as it was given. */
   getValue(): RichTextDocument
   /** Replaces the document when `value` differs from it. Adds no undo step and calls no `onChange`. */
   setValue(value: RichTextDocument): void
@@ -209,7 +242,13 @@ export interface RichTextEditor {
   redo(): boolean
   /** Inserts text at the selection, in place of what is selected. */
   insertText(text: string): void
-  /** Replaces the open suggestion token with the entity and a space, or inserts it at the selection. */
+  /**
+   * Replaces the open suggestion token with the entity and a space, or inserts
+   * it at the selection. While an input method composes, the editor ends the
+   * composition (focus leaves the element and comes back, which commits it,
+   * with no `onBlur` or `onFocus`) and inserts the entity once it has ended,
+   * so the input method writes no stray characters after it.
+   */
   insertEntity(entity: Omit<RichTextEntity, 'type'>): void
   /**
    * Anchors `id` to the selection: every text and entity in it takes the
@@ -225,10 +264,20 @@ export interface RichTextEditor {
    * the box around every selected line. Null for a caret.
    */
   selectionRect(): RichTextRect | null
+  /**
+   * Where the open suggestion's token starts on screen now, as
+   * `state.suggestion.rect` was when it was published, for a list the member
+   * keeps at the token as the page scrolls. Null while no suggestion is open.
+   */
+  tokenRect(): RichTextRect | null
   /** Closes the suggestion for the token the caret is in. It stays closed while the caret is in that token. */
   dismissSuggestion(): void
   /** Empties the document, as the reader's own act: `onChange` is called and undo restores it. */
   clear(): void
-  /** Removes the editor from the element and leaves the element as the member rendered it. */
+  /**
+   * Removes the editor from the element: the element's attributes go back to
+   * the ones it had when the editor was made, and the document's DOM the
+   * editor wrote inside it is removed, so the element is left empty.
+   */
   destroy(): void
 }

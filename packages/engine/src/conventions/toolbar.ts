@@ -88,6 +88,54 @@ export function syncToolbarStop(toolbar: HTMLElement | null | undefined, stop: T
   if (active === null || active === toolbar.ownerDocument.body || active === previous) next.focus()
 }
 
+/** The attributes that make a control enabled or not, or reachable or not. */
+const STOP_ATTRIBUTES = ['disabled', 'aria-disabled', 'hidden', 'inert']
+
+/**
+ * Writes the roving tab stop again whenever what the toolbar holds changes: a
+ * control added or removed, or one disabled, enabled, hidden or made inert.
+ * The application's controls in a toolbar render on their own schedule, so
+ * the member does not wait for its own render to give them their tab index.
+ * Returns the function that stops watching.
+ */
+export function watchToolbarStop(
+  toolbar: HTMLElement | null | undefined,
+  stop: ToolbarStop,
+): () => void {
+  const view = toolbar?.ownerDocument.defaultView
+  if (toolbar === null || toolbar === undefined || view === null || view === undefined)
+    return () => {}
+  syncToolbarStop(toolbar, stop)
+  if (typeof view.MutationObserver !== 'function') return () => {}
+  const observer = new view.MutationObserver(() => syncToolbarStop(toolbar, stop))
+  observer.observe(toolbar, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: STOP_ATTRIBUTES,
+  })
+  return () => observer.disconnect()
+}
+
+/**
+ * Whether focus was in a toolbar that is leaving (made inert or about to be
+ * removed) and is still in it or has fallen to the page from it: the member
+ * then hands focus back (to its text, or to where focus came from), so focus
+ * does not fall to the page when a selection bar leaves under the control the
+ * person used. The stop no longer holds focus afterwards.
+ */
+export function toolbarLosesFocus(
+  toolbar: HTMLElement | null | undefined,
+  stop: ToolbarStop,
+): boolean {
+  if (!stop.holding || toolbar === null || toolbar === undefined) return false
+  const owner = toolbar.ownerDocument
+  const active = owner.activeElement
+  const lost = active === null || active === owner.body || toolbar.contains(active)
+  if (lost) stop.holding = false
+  return lost
+}
+
 /**
  * A key on the toolbar: Escape runs `onEscape`, and the arrows (mirrored in a
  * right-to-left document), Home and End move focus between the enabled

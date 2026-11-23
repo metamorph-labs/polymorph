@@ -20,8 +20,10 @@ import {
   toolbarFocusIn,
   toolbarFocusOut,
   toolbarKeydown,
+  toolbarLosesFocus,
   toolbarPress,
   toolbarStop,
+  watchToolbarStop,
   type RichTextRect,
 } from '@polymorph/react'
 import styles from '@polymorph/recipes/controls/selection-bar.module.css'
@@ -39,10 +41,13 @@ import styles from '@polymorph/recipes/controls/selection-bar.module.css'
  * `SelectionBar` is the bar drawn at a selection: `position: fixed`, centred
  * over the selection's box and above it, below it when there is less room
  * above or on a coarse pointer (where the system's own callout sits above the
- * selection), and inside the viewport's inline edges. It follows the selection
- * as the page scrolls and the window resizes. Application code may not place
- * anything, so the member draws the bar and the application gives it
- * controls.
+ * selection), at the selection's visible edge when neither side has room, and
+ * inside the visible viewport on both axes. It follows the selection as the
+ * page scrolls, the window resizes and a virtual keyboard opens. Application
+ * code may not place anything, so the member draws the bar and the
+ * application gives it controls. A bar that leaves while focus is in it hands
+ * focus to the member (`onFocusLost`), so focus does not fall to the page when
+ * an application's control in it replaces the selection.
  *
  * The keys and the placement are the engine's (`conventions/toolbar.ts`,
  * `conventions/selection-bar.ts`), which every framework's member calls; this
@@ -59,19 +64,28 @@ export interface ToolbarKeys {
   }
   /** Moves focus to the toolbar's tab stop. Returns whether a control took it. */
   enter: () => boolean
+  /**
+   * Whether focus was in the toolbar as it leaves, there still or fallen to the page from it
+   * (`toolbarLosesFocus`): the member hands it back.
+   */
+  losesFocus: () => boolean
 }
 
 /**
- * The roving tab stop of a toolbar (`syncToolbarStop`). Each render gives the stop's control
- * `tabindex="0"` and every other control `-1`, so Tab reaches the toolbar once
- * and arrives on the control it left from, the first one before that. A
- * control that is disabled while it has focus hands focus to the next enabled
- * control, so focus does not fall to the page when Undo runs out of steps.
+ * The roving tab stop of a toolbar (`syncToolbarStop`). Each render, and each
+ * change of what the toolbar holds (`watchToolbarStop`), gives the stop's
+ * control `tabindex="0"` and every other control `-1`, so Tab reaches the
+ * toolbar once and arrives on the control it left from, the first one before
+ * that. A control that is disabled while it has focus hands focus to the next
+ * enabled control, so focus does not fall to the page when Undo runs out of
+ * steps.
  *
  * The tab index is written on the controls the toolbar holds, the
  * application's among them, because a vocabulary control takes no `tabIndex`
- * prop. Events from a popup a control opened reach the toolbar through React
- * but not through the document, and the toolbar leaves them alone.
+ * prop; the application's controls render on their own schedule, so the
+ * toolbar watches for them rather than waiting for the member's render.
+ * Events from a popup a control opened reach the toolbar through React but
+ * not through the document, and the toolbar leaves them alone.
  */
 export function useToolbarKeys(
   ref: RefObject<HTMLElement | null>,
@@ -82,6 +96,17 @@ export function useToolbarKeys(
 
   useLayoutEffect(() => {
     syncToolbarStop(ref.current, held)
+  })
+
+  // What the toolbar holds changes without this member's render: the application's controls.
+  // The toolbar is read once it is drawn, and again when it is drawn anew.
+  const watching = useRef<{ toolbar: HTMLElement; release: () => void }>(null)
+  useLayoutEffect(() => {
+    const toolbar = ref.current
+    if (watching.current?.toolbar === toolbar) return
+    watching.current?.release()
+    watching.current =
+      toolbar === null ? null : { toolbar, release: watchToolbarStop(toolbar, held) }
   })
 
   // Escape is the toolbar's (`holdToolbarEscape`). The window is the toolbar's own, read once the
@@ -99,6 +124,8 @@ export function useToolbarKeys(
     () => () => {
       listening.current?.release()
       listening.current = null
+      watching.current?.release()
+      watching.current = null
     },
     [],
   )
@@ -123,6 +150,7 @@ export function useToolbarKeys(
       },
     },
     enter: () => enterToolbar(ref.current, held),
+    losesFocus: () => toolbarLosesFocus(ref.current, held),
   }
 }
 
@@ -143,7 +171,15 @@ export interface SelectionBarProps {
   barRef: RefObject<HTMLDivElement | null>
   /** The keys of the bar, which the member holds to move focus into it. */
   keys: ToolbarKeys
-  children: ReactNode
+  /**
+   * The element whose visible part the selection must be in (the field's text, which scrolls in
+   * its own box). The bar is hidden while none of the selection is in view there.
+   */
+  within?: () => Element | null
+  /** The bar left while focus was in it: the member gives focus back. */
+  onFocusLost?: () => void
+  /** The bar's controls, or a function that draws them, called only while the bar is drawn. */
+  children: ReactNode | (() => ReactNode)
 }
 
 export function SelectionBar({
@@ -153,6 +189,8 @@ export function SelectionBar({
   onFocusChange,
   barRef,
   keys,
+  within,
+  onFocusLost,
   children,
 }: SelectionBarProps) {
   // The bar stays while it leaves, and takes no focus and no press then.
@@ -164,15 +202,30 @@ export function SelectionBar({
   }
   const drawn = open || closing
 
-  const latest = useRef(measure)
+  const latest = useRef({ measure, within, onFocusLost })
   useLayoutEffect(() => {
-    latest.current = measure
+    latest.current = { measure, within, onFocusLost }
   })
 
   /** Places the bar at the selection (`placeSelectionBar`). */
   const place = useRef(() => {})
   useLayoutEffect(() => {
-    place.current = () => placeSelectionBar(barRef.current, latest.current())
+    place.current = () =>
+      placeSelectionBar(barRef.current, latest.current.measure(), latest.current.within?.())
+  })
+
+  /** Focus in the leaving bar, or fallen from it to the page, goes back to the member. */
+  const giveBack = () => {
+    const back = latest.current.onFocusLost
+    if (back !== undefined && keys.losesFocus()) back()
+  }
+
+  // The bar leaves (it is inert from this commit): focus in it goes back before the browser
+  // moves it to the page.
+  const shownRef = useRef(open)
+  useLayoutEffect(() => {
+    if (shownRef.current && !open) giveBack()
+    shownRef.current = open
   })
 
   // Every render of an open bar: the selection or the bar's contents may have moved.
@@ -214,12 +267,14 @@ export function SelectionBar({
         keys.props.onBlur(event)
         const to = event.relatedTarget
         if (!(to instanceof Node) || !event.currentTarget.contains(to)) onFocusChange?.(false)
+        // A browser that moves focus off the inert bar to the page does so here.
+        if (to === null && closing) giveBack()
       }}
       onAnimationEnd={(event) => {
         if (event.target === event.currentTarget && closing) setClosing(false)
       }}
     >
-      {children}
+      {typeof children === 'function' ? children() : children}
     </div>
   )
 }

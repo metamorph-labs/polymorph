@@ -15,8 +15,12 @@ import type { RichTextEditorEntityKind } from './types'
  * the token keeps its `key` while the query changes and gets a new one when the
  * caret is in another token. A dismissed token stays dismissed until the caret
  * leaves it. Whether the list is shown also depends on what only the view
- * knows (focus, an input method composing), so the editor publishes the
- * suggestion from this state and those facts together.
+ * knows (focus, whether the field is editable), so the editor publishes the
+ * suggestion from this state and those facts together. A token is followed
+ * while an input method composes, with the query as composed so far.
+ *
+ * A token is never in code or in a link's text: a trigger or a query
+ * character that carries either mark opens nothing.
  */
 
 export interface Token {
@@ -62,9 +66,17 @@ export function findToken(
   const match = /\S*$/.exec(before)
   const word = match ? match[0] : ''
   if (!word || word.includes(OBJECT)) return null
+  const from = $pos.pos - word.length
+  // Code and a link's text are not where a mention is written. `$pos.marks()`
+  // leaves out a mark that is not inclusive at its end, so the token's own
+  // characters are read: a trigger or a query in code or in a link opens
+  // nothing.
+  const link = state.schema.marks[MARK.link]
+  for (const mark of [code, link]) {
+    if (mark && state.doc.rangeHasMark(from, $pos.pos, mark)) return null
+  }
   for (const { kind, trigger } of kinds) {
     if (!trigger || !word.startsWith(trigger)) continue
-    const from = $pos.pos - word.length
     return { kind, trigger, query: word.slice(trigger.length), from, to: $pos.pos }
   }
   return null

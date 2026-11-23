@@ -39,7 +39,7 @@ same classes, so it looks the same while it is written and after it is saved.
     [selection bar? role="toolbar" — fixed at the selection: the app's `selectionActions`, a Separator, the format controls]
     [footer? — [count?] … [cancel?] [submit]  |  [count?] the app's `footer`]
   [count? — under the frame when there is no footer and maxLength is set]
-  [suggestions? — the panel at the token: listbox of options | loading rows | empty row | error row]
+  [suggestions? — the panel fixed at the token: listbox of options | loading rows | empty row | error row]
   [status role="status" aria-live="polite" — every announcement]
   [<input type="hidden" name>?]
 ```
@@ -51,7 +51,9 @@ headings (`h2`–`h4`), lists (`ul`/`ol`/`li`), quotes, code blocks (`pre > code
 (`span[data-entity-kind][data-entity-id][contenteditable=false]`), annotations (a
 `mark[data-annotation-id]` around each fragment, inside the format elements and around an entity,
 one per id where they overlap, the active one's with `data-active`) and the nodes of a later
-version, each as one unit.
+version, each as one unit, which a keystroke never replaces: typing while one is selected writes a
+new paragraph after it, and the caret a document opens with, or `autoFocus` puts at its end, is
+the nearest text position, never such a node.
 
 ## API
 
@@ -83,8 +85,8 @@ interface RichTextInputProps {
   annotations?: string[] // the annotations drawn. Default: every one the document holds
   activeAnnotation?: string // the drawn annotation that is active: the thread the app shows
   onAnnotationSelect?: (id: string) => void // the caret entered a drawn annotation, or a press landed on one
-  onFocus?: () => void // the text took focus
-  onBlur?: () => void // the text lost focus
+  onFocus?: () => void // focus entered the field (its text, toolbars, link form or menu) from outside it
+  onBlur?: () => void // focus left the field as a whole, for validation on leaving
   controlRef?: Ref<HTMLDivElement> // the editable element
   messages?: RichTextInputMessages // every label and announcement; English defaults
   id?: string // the surface's id
@@ -146,7 +148,8 @@ leaves out keeps its English default: the controls' names (`bold` "Bold", `itali
 "12 / 280", `overLimit(n)` "3 characters over the limit") and every announcement below
 (`formatOn(name)` "Bold on", `formatOff(name)`, `linkAdded`, `linkRemoved`, `inserted(label)`,
 `undone`, `redone`, `withinLimit`, `submitEmpty`, `submitOverLimit(n)`, `submitPending`,
-`selectionBarReady`, `suggestions(count)`, `loadingSuggestions`, `noSuggestions`).
+`selectionBarReady`, `suggestions(count)` "1 suggestion", "3 suggestions", `loadingSuggestions`,
+`noSuggestions`).
 
 Attributes: root `data-min-rows`, `data-max-rows`; `data-empty` while `isRichTextEmpty` holds;
 `data-disabled`; `data-readonly` while `readOnly` or `pending` (and not disabled); `data-invalid`
@@ -158,7 +161,11 @@ node `data-selected`, and an annotation's fragments `data-annotation-id` and, fo
 ## Behaviour
 
 **The document.** The field takes a document and gives one back, in the model's normal form, on
-each change the person or a command makes (`onChange`). A controlled `value` is the document: the
+each change the person or a command makes (`onChange`). A field that stops being controlled
+(`value` becomes `undefined`) keeps the document the text shows, so the count, `data-empty`, the
+form value and the submit control read it. A form's reset puts the first document
+(`defaultValue`) back, as the person's act: `onChange` is called with it, as Checkbox's reset
+does. A controlled `value` is the document: the
 editor compares it with its own and replaces only a document that differs, with no `onChange` and
 no undo step, so passing the value back on every render keeps the caret and the history. A
 document holding a format the field does not allow is restricted to the allowed ones as it enters
@@ -224,9 +231,9 @@ the link control is in the selection bar, so Mod+K opens the form only while a s
 drawn.
 
 **Entities.** A token is a trigger character at the start of a word (a block's start or after
-whitespace) followed by the text up to the caret with no whitespace. While the caret is in one,
-the field has focus and is editable, and no input method composes, the list for that trigger's
-source is open. It does not open inside code.
+whitespace) followed by the text up to the caret with no whitespace. While the caret is in one and
+the field has focus and is editable, the list for that trigger's source is open. It does not open
+for a token in code or in a link's text.
 
 - **The member filters**, as Combobox does: each option whose label contains the query, or starts
   with it under `filter: 'startsWith'`, by the locale's collation at base sensitivity. An app that
@@ -245,8 +252,17 @@ source is open. It does not open inside code.
 - **An entity is one unit**: an arrow steps over it, Backspace after it removes it whole, and the
   caret never lands inside.
 - **The panel is at the token**: under the token's line, or above it when there is less room below
-  in the window; its inline start at the token's start, kept inside the root. Below `30rem` it
-  spans the root.
+  in the part of the window a person sees (the visual viewport, which a virtual keyboard makes
+  shorter); its inline start at the token's start, kept inside the field and the window, and no
+  taller than the room on its side. It is `position: fixed`, placed from the token's box, so a
+  scrolling ancestor (a Dialog's body) does not clip it, and it follows the token as the page
+  scrolls. Below `30rem` it is as wide as the field.
+- **An input method.** A phone's keyboard composes every word, so the list opens while an input
+  method composes, with the query as composed so far. Its keys are never taken from a composing
+  input method (a key marked as composing, or one the browser reports as processed by one, such as
+  Safari's Enter that confirms Japanese text), so the Enter that confirms a composition never
+  picks. A pick made while one composes waits for the composition to end, which the field brings
+  about, and then replaces the token.
 
 **The limit.** With `maxLength`, the count shows `{length} / {maxLength}` in code points, the units
 a server counts (`richTextLength`). Past the limit the count says how many over in words
@@ -268,8 +284,21 @@ form, and the count sits under the frame. `onSubmit` without a label still answe
 
 **Disabled, read-only, pending.** `disabled`: the text is not editable and not focusable
 (`aria-disabled`), and every control is disabled. `readOnly` and `pending`: the text is
-focusable and selectable but not editable (`aria-readonly`), and the format controls are
-disabled; `editor.disabled` is true in all three, so the app's controls follow it.
+focusable, with a caret the keys move and select with (Shift and the arrows, Shift+Home and
+Shift+End, Mod+A, a double press), and copy works; nothing the person does changes it (typing,
+Enter, Backspace, paste, cut, drop, a typed shortcut, a format key, undo, an input method's text),
+and it is `aria-readonly`. The browser draws the caret because the surface stays
+`contenteditable`; it carries `inputmode="none"`, so a touch device opens no keyboard, and
+`spellcheck="false"`. Mod+Enter answers as a submit does. The format controls are disabled;
+`editor.disabled` is true in all three, so the app's controls follow it.
+
+**A document of a later format** (`isRichTextNewer`: one a later version of the model wrote) is
+drawn as far as this version reads it and never written over. The field is read-only as above
+(and `data-readonly`) whatever `readOnly` says, unless it is disabled; `onChange` is never called;
+the handle's `annotate`, `removeAnnotation`, `insertText`, `insertEntity` and `clear` change
+nothing; an agent's `fill` and `clear` are refused. The form value is the document as it was
+stored, and a submit hands `onSubmit` the document as it was given, so saving the field again
+keeps what the later version wrote.
 
 **The selection bar.** With `toolbarPlacement="selection"` the format controls are drawn in a bar
 at the selected text instead of in the fixed toolbar; undo and redo are keys there, and the fixed
@@ -281,19 +310,28 @@ one of its controls opened: the link form, the text style menu), and the bar has
 hold. A read-only or pending field holds `selectionActions` only, so a reviewer comments on text
 they may not edit; a disabled one draws no bar.
 
-- **Placement.** Centred over the selection's box and above it; under it when there is less room
-  above, and always under it on a coarse pointer, where the system's own copy and paste callout
-  is above the selection. It is kept inside the window's inline edges, follows the selection as
-  the page scrolls and the window resizes, and wraps onto more rows in a narrow window. It is
-  `position: fixed`, placed from the editor's `selectionRect()`.
+- **Placement.** Centred over the selection's box and above it; under it when there is no room
+  above; on a coarse pointer under it, where the system's own copy and paste callout is not, and
+  above it when there is no room under it. When neither side has room (a selection taller than
+  the window) it sits at the selection's visible edge: its top, or its bottom on a coarse pointer.
+  It is kept inside the part of the window a person sees (the visual viewport, which a virtual
+  keyboard or a pinch zoom makes smaller) on both axes, follows the selection as the page scrolls,
+  the window resizes and that viewport moves, and wraps onto more rows at the width that part
+  allows, a scroll bar not counted. It is placed at the part of the selection the field's own
+  scrolling box shows, and hidden while none of it is in view there, so it never sits over the
+  page outside the field. It is `position: fixed`, placed from the editor's `selectionRect()`.
 - **When.** It appears when a pointer selection ends, not while it is dragged, and at once for a
   selection made with the keys. Escape in the text hides it for that selection; the next selection
   brings it back. It leaves when the selection collapses or leaves the field.
 - **Keys.** The bar is a toolbar with the toolbar's keys and one tab stop. It follows the surface
   in the document, so Tab from the text reaches it while it is drawn, and Alt+F10 moves focus to
-  it. Escape in it returns focus to the text with the selection as it was. The first time a bar
-  appears after the text took focus, the status says the controls are there
-  (`messages.selectionBarReady`). A pointer press on its controls keeps the selection.
+  it. Escape in it returns focus to the text with the selection as it was. When it leaves with
+  focus in it (an app's control in it replaced the selection), focus goes back to the text. The
+  first time a bar appears after focus entered the field from outside it, the status says the
+  controls are there (`messages.selectionBarReady`), once: focus coming back to the text from the
+  field's own toolbars, link form or menu is not entering, and the words are not said over an
+  announcement made in the same turn. A pointer press on its controls keeps the selection. The
+  app's `selectionActions` are drawn, and asked for, only while the bar is.
 
 **Annotations** are anchors an app keeps something against, such as a comment thread: an
 `annotation` mark with the app's id on the words, which moves with them through every edit
@@ -326,7 +364,7 @@ key End moves-focus-last on control
 
 | Part | Tokens |
 | --- | --- |
-| root | column · gap `--pm-space-2` · `position: relative` (the suggestions' containing block) |
+| root | column · gap `--pm-space-2` · `position: relative` |
 | frame | column · gap `--pm-space-2` · padding `--pm-space-3` · bg `--pm-bg-surface` · border `1px solid --pm-border-field` · radius `--pm-radius-control` · shadow `--pm-shadow-seat` · `stateFeedback` |
 | frame, text focused | the composite-field focus convention (conventions §4) via `:has(.surface:focus-visible)`: outline `--pm-focus-width` `--pm-border-focus` at `--pm-focus-offset`, `--pm-glow-focus`, border `--pm-border-focus-solid` except while invalid; under `--pm-focus-field: border` the outline moves inside the edge in `--pm-border-focus-solid` and the seat stays |
 | frame hover | border `--pm-border-strong`, not while disabled, read-only or invalid |
@@ -351,12 +389,12 @@ key End moves-focus-last on control
 | annotation (`mark`), active, annotated entity | RichTextContent's annotation, composed (`rich-text-content.md`, Recipes): the warning wash, a rule under the words in `--pm-warning-border`, the active one's pressed wash and frame, and an annotated entity's ring |
 | footer | wrapping row · gap `--pm-space-2`; the default controls at the inline end: cancel `Button ghost/neutral/sm`, submit `Button solid/accent/sm` |
 | count | `text.xs` quartet · `--pm-text-muted` · tabular numerals; over the limit `--pm-danger-text`; under the frame, padding-inline `--pm-space-3` |
-| suggestions | PromptInput's panel, composed · inline-size `min(100%, --pm-space-10 × 4)` (Popover's width) · inline start at the token, clamped inside the root · `--pm-space-1` under the token's line (`data-placement="below"`) or above its top (`"above"`) · below `30rem`, `inset-inline: 0` |
+| suggestions | PromptInput's panel, composed · `position: fixed` at the corner the member measures · `--pm-z-overlay` · inline-size `min(` the field's width `, --pm-space-10 × 4)` (Popover's width) · max-block-size PromptInput's, and no more than the room on its side · inline start at the token, clamped inside the field and the visible viewport · `--pm-space-1` under the token's line (`data-placement="below"`) or above its top (`"above"`) · below `30rem`, the field's width |
 | option, glyph, text, label, description, loading rows, empty row | PromptInput's, composed; `leading` the app's drawing in the glyph's place |
 | error row | PromptInput's empty row, composed, in `--pm-danger-text` |
 | status | the conventions' `visuallyHidden` |
 | link form | column · gap `--pm-space-3`; its controls a wrapping row · gap `--pm-space-2` · at the end |
-| selection bar | `selection-bar.module.css`: fixed · `--pm-z-overlay` · wrapping row · gap `--pm-space-1` · padding `--pm-space-1` · bg `--pm-bg-overlay` · border `1px solid --pm-border-subtle` · radius `--pm-radius-surface` · shadow `--pm-shadow-transient` · max-inline-size `100vw` − 2 × `--pm-space-2` · glass as Popover's panel; its controls as the toolbar's |
+| selection bar | `selection-bar.module.css`: fixed · `--pm-z-overlay` · wrapping row · gap `--pm-space-1` · padding `--pm-space-1` · bg `--pm-bg-overlay` · border `1px solid --pm-border-subtle` · radius `--pm-radius-surface` · shadow `--pm-shadow-transient` · `--pm-space-2` from the visible viewport's edges · max-inline-size the visible width the member measures, less those edges · hidden (`visibility`) while the selection is scrolled out of the field's box · glass as Popover's panel; its controls as the toolbar's |
 
 **Forced colours** have no rule of their own, as Input's and PromptInput's: the focus ring is an
 outline, which forced colours keep. The annotation's transparent outline and its rule are drawn in
@@ -382,9 +420,9 @@ annotated entity, whose ring is a shadow that forced colours remove.
 | annotated | two annotations, the second active | — |
 | the selection bar | `toolbarPlacement="selection"`, `selectionActions`, words selected on mount | the bar at the selection |
 
-`requiredSelectors`: `:hover`, `:focus-visible`, `[data-placeholder]`, `[data-selected]`,
-`[data-placement="above"]`: the frame's pointer and keyboard states, the placeholder and a
-selected unit the editor draws, and the list above its token, which the layout decides.
+`requiredSelectors`: `:hover`, `:focus-visible`, `[data-placeholder]`, `[data-selected]`: the
+frame's pointer and keyboard states, and the placeholder and a selected unit the editor draws. The
+list's side of its token is the member's placement, which no rule restates.
 
 ## Motion
 
@@ -407,8 +445,10 @@ form's FormField brings `error`.
 ## A11y
 
 The surface is the field: `role="textbox"` with `aria-multiline="true"`, named by `aria-label` or
-by the FormField's label through `aria-labelledby` (`controlKind = 'group'`, because a press on a
-label reaches no `div`), described by the FormField's message and the count. It carries
+by the FormField's label through `aria-labelledby` (`controlKind = 'group'`, because a label's
+`for` reaches no `div`), described by the FormField's message and the count. A press on that label
+focuses the text, as a native label's press focuses its control: on the click, not when the press
+ends a drag that selected the label's own words, and not for a link or a control inside the label. It carries
 `aria-invalid` while invalid or over the limit, `aria-required`, `aria-readonly` while read-only or
 pending and `aria-disabled` while disabled, and it is a tab stop unless disabled. Headings,
 lists, quotes, code and links inside it are their own elements, so a screen reader reads the

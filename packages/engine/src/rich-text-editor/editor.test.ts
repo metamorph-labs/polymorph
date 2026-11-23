@@ -5,6 +5,7 @@ import { Decoration } from 'prosemirror-view'
 
 import {
   annotateRichText,
+  normalizeRichText,
   removeRichTextAnnotation,
   richTextAnnotations,
   richTextFindText,
@@ -14,10 +15,12 @@ import {
 import {
   RICH_TEXT_FORMAT,
   RICH_TEXT_FORMATS,
+  RICH_TEXT_MAX_DEPTH,
   type RichTextDocument,
   type RichTextFormat,
 } from '../rich-text/types'
 import { createRichTextEditor } from './editor'
+import { ENTITY_COPIES } from './schema'
 import type {
   RichTextEditor,
   RichTextEditorEvent,
@@ -419,7 +422,8 @@ describe('typed shortcuts', () => {
     ['* ', doc(ul([p(t('x'))]))],
     ['1. ', doc(ol([p(t('x'))]))],
     ['> ', doc(quote(p(t('x'))))],
-    ['```', doc(code('x'))],
+    ['``` ', doc(code('x'))],
+    ['```ts ', doc(code('x', 'ts'))],
   ] as const)('%j at the start of a block', async (typed, result) => {
     const m = mount()
     await focusEnd(m)
@@ -791,13 +795,13 @@ describe('paste', () => {
       )
   })
 
-  it('keeps a pasted entity of a kind the field suggests, and reads another as its label', async () => {
+  it('reads an entity that no editor in this page drew as its label', async () => {
     const m = mount()
     await focusEnd(m)
     paste(m, {
-      html: '<p><span data-entity-kind="user" data-entity-id="u1">@Ada Lovelace</span> <span data-entity-kind="team" data-entity-id="t1">#core</span></p>',
+      html: '<p><span data-entity-kind="user" data-entity-id="u-admin">@Ada Lovelace</span> <span data-entity-kind="team" data-entity-id="t1">#core</span></p>',
     })
-    await expect.poll(valueOf(m)).toEqual(doc(p(ada, t(' #core'))))
+    await expect.poll(valueOf(m)).toEqual(doc(p(t('@Ada Lovelace #core'))))
   })
 })
 
@@ -1109,6 +1113,23 @@ describe('update', () => {
     m.element.dispatchEvent(event)
     expect(event.defaultPrevented).toBe(true)
   })
+
+  it('keeps the history and the selection when the same formats or kinds come in another order', async () => {
+    const m = mount({ value: doc(p(t('one two'))) })
+    await focusEnd(m)
+    await userEvent.keyboard('!')
+    await vi.waitFor(() => expect(m.editor.getState().can.undo).toBe(true))
+    await select(m, 'two')
+    m.editor.update({
+      formats: [...RICH_TEXT_FORMATS].reverse(),
+      entities: [{ kind: 'user', trigger: '@' }],
+    })
+    expect(m.editor.getState().can.undo).toBe(true)
+    expect(m.editor.getState().selectedText).toBe('two')
+    // A real change rebuilds the schema, and the selection stays where it can.
+    m.editor.update({ formats: ['bold'] })
+    expect(m.editor.getState().selectedText).toBe('two')
+  })
 })
 
 describe('state', () => {
@@ -1189,19 +1210,65 @@ describe('what this version does not know', () => {
     expect(m.editor.getValue()).toEqual(m.changes.at(-1))
   })
 
-  it('gives back the document it was given, unchanged, for every known node and mark', () => {
+  it('gives back the normal form of the document it was given, for every node and mark together', () => {
+    // Emphasis in a heading, on inline code and on an entity is in the input
+    // on purpose: the normal form drops it, and the field holds the same.
     const value = doc(
-      h(2, t('Title '), t('code', 'code'), t(' '), link('l', 'https://l.example')),
-      p(t('a', 'bold', 'italic', 'strike'), br, ada, t(' '), {
+      h(
+        2,
+        t('Title ', 'bold'),
+        t('code', 'code', 'italic'),
+        t(' '),
+        link('l', 'https://l.example'),
+      ),
+      p(t('a', 'bold', 'italic', 'strike'), br, { ...ada, marks: [{ type: 'bold' }] }, t(' '), {
         type: 'text',
         text: 'both',
-        marks: [{ type: 'link', href: '/x' }, { type: 'code' }],
+        marks: [{ type: 'link', href: '/x' }, { type: 'code' }, { type: 'strike' }],
       }),
       { ...ol([p(t('one')), ul([p(t('nested'))])], [p(t('two')), quote(p(t('q')))]), start: 4 },
       quote(code('x', 'py'), p(t('after'))),
     )
     const m = mount({ value })
-    expect(m.editor.getValue()).toEqual(value)
+    expect(m.editor.getValue()).toEqual(normalizeRichText(value))
+    expect(m.editor.getValue()).toEqual(
+      doc(
+        h(2, t('Title '), t('code', 'code'), t(' '), link('l', 'https://l.example')),
+        p(t('a', 'bold', 'italic', 'strike'), br, ada, t(' '), {
+          type: 'text',
+          text: 'both',
+          marks: [{ type: 'link', href: '/x' }, { type: 'code' }],
+        }),
+        { ...ol([p(t('one')), ul([p(t('nested'))])], [p(t('two')), quote(p(t('q')))]), start: 4 },
+        quote(code('x', 'py'), p(t('after'))),
+      ),
+    )
+  })
+
+  const callout = (text: string) => ({ type: 'callout', content: [{ type: 'text', text }] })
+
+  it('places a text caret, not a later version’s block, at either end of the document', async () => {
+    const value = doc(callout('First'), p(t('x')), callout('Last'))
+    const m = mount({ value })
+    m.editor.focus()
+    await vi.waitFor(() => expect(m.editor.getState().focused).toBe(true))
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    await userEvent.keyboard('a')
+    await expect.poll(valueOf(m)).toEqual(doc(callout('First'), p(t('ax')), callout('Last')))
+    await focusEnd(m)
+    await userEvent.keyboard('b')
+    await expect.poll(valueOf(m)).toEqual(doc(callout('First'), p(t('axb')), callout('Last')))
+    await focusAt(m, 'start')
+    await userEvent.keyboard('c')
+    await expect.poll(valueOf(m)).toEqual(doc(callout('First'), p(t('caxb')), callout('Last')))
+  })
+
+  it('writes a new paragraph after a later version’s block a keystroke would replace', async () => {
+    // No text position: the block is selected as one unit, and typing keeps it.
+    const m = mount({ value: doc(callout('Only')) })
+    await focusEnd(m)
+    await userEvent.keyboard('ab')
+    await expect.poll(valueOf(m)).toEqual(doc(callout('Only'), p(t('ab'))))
   })
 })
 
@@ -1241,7 +1308,7 @@ function composingKey(m: Mounted, key: string) {
 }
 
 describe('composition', () => {
-  it('takes no key, fires no shortcut and opens no suggestion while an input method composes', async () => {
+  it('takes no key and fires no shortcut while an input method composes, and follows the token as it is composed', async () => {
     const m = mount({ value: doc(p(t('hi'))) })
     await focusEnd(m)
     m.element.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true, data: '' }))
@@ -1250,7 +1317,8 @@ describe('composition', () => {
     expect(m.editor.getState().active.bold).toBe(false)
     composeText(m, ' @a')
     await expect.poll(valueOf(m)).toEqual(doc(p(t('hi @a'))))
-    expect(m.states.some((s) => s.suggestion !== null)).toBe(false)
+    // A phone's keyboard composes every word, so the list follows the word as it is composed.
+    await vi.waitFor(() => expect(m.editor.getState().suggestion?.query).toBe('a'))
     m.element.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: ' @a' }))
     await vi.waitFor(() => expect(m.editor.getState().suggestion?.query).toBe('a'))
   })
@@ -1274,6 +1342,275 @@ describe('composition', () => {
     expect(m.editor.getValue()).toEqual(doc(p(t('a'))))
     m.element.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: '' }))
     await vi.waitFor(() => expect(m.editor.getValue()).toEqual(doc(p(t('replaced')))))
+  })
+
+  it('offers the list no key an input method is handling', async () => {
+    const taken: RichTextSuggestionKey[] = []
+    const m = mount({
+      value: doc(p(t('hi'))),
+      onSuggestionKey: (key) => {
+        taken.push(key)
+        return true
+      },
+    })
+    await focusEnd(m)
+    m.element.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true, data: '' }))
+    composeText(m, ' @ad')
+    await vi.waitFor(() => expect(m.editor.getState().suggestion?.query).toBe('ad'))
+    for (const key of ['ArrowDown', 'ArrowUp', 'Tab', 'Escape', 'Enter']) {
+      const event = new KeyboardEvent('keydown', {
+        key,
+        isComposing: true,
+        bubbles: true,
+        cancelable: true,
+      })
+      m.element.dispatchEvent(event)
+      expect(event.defaultPrevented, key).toBe(false)
+    }
+    m.element.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: ' @ad' }))
+    // Safari sends the Enter that confirms a composition after `compositionend`, as a key an
+    // input method processed (key code 229).
+    const confirm = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+    Object.defineProperty(confirm, 'keyCode', { value: 229 })
+    m.element.dispatchEvent(confirm)
+    expect(confirm.defaultPrevented).toBe(false)
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    expect(taken).toEqual([])
+    expect(m.editor.getValue()).toEqual(doc(p(t('hi @ad'))))
+    // A key no input method is handling is the list's.
+    await userEvent.keyboard('{ArrowDown}')
+    expect(taken).toEqual(['ArrowDown'])
+  })
+
+  it('inserts a pick made while an input method composes once the composition has ended, with no stray characters', async () => {
+    const onBlur = vi.fn()
+    const onFocus = vi.fn()
+    const m = mount({ value: doc(p(t('hi'))), onBlur, onFocus })
+    await focusEnd(m)
+    onFocus.mockClear()
+    m.element.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true, data: '' }))
+    composeText(m, ' @ad')
+    await vi.waitFor(() => expect(m.editor.getState().suggestion?.query).toBe('ad'))
+    const before = m.changes.length
+    m.editor.insertEntity({ kind: 'user', id: 'u1', label: '@Ada Lovelace' })
+    // The editor ends the composition by moving focus out and back, which no callback hears.
+    expect(document.activeElement).toBe(m.element)
+    expect(onBlur).not.toHaveBeenCalled()
+    expect(onFocus).not.toHaveBeenCalled()
+    expect(
+      m.changes.slice(before).some((change) => JSON.stringify(change).includes('entity')),
+    ).toBe(false)
+    m.element.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: ' @ad' }))
+    await expect.poll(valueOf(m)).toEqual(doc(p(t('hi '), ada, t(' '))))
+    expect(m.element.textContent).toBe('hi @Ada Lovelace ')
+    expect(m.events).toContainEqual({ type: 'entity', entity: ada })
+  })
+})
+
+describe('read-only with a caret', () => {
+  const words = () => doc(p(t('Read these words')), p(t('Second line')))
+  const readOnly = (overrides: Partial<RichTextEditorOptions> = {}) =>
+    mount({ value: words(), editable: false, readOnly: true, ...overrides })
+
+  it('is editable to the browser, so it draws a caret, and asks for no keyboard and no spelling', () => {
+    const m = readOnly()
+    expect(m.element.getAttribute('contenteditable')).toBe('true')
+    expect(m.element.getAttribute('inputmode')).toBe('none')
+    expect(m.element.getAttribute('spellcheck')).toBe('false')
+  })
+
+  it('moves the caret and selects with Shift and the arrows, Mod+A and a double press', async () => {
+    const m = readOnly()
+    await focusAt(m, 'start')
+    await userEvent.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}')
+    await userEvent.keyboard(
+      '{Shift>}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{/Shift}',
+    )
+    await vi.waitFor(() => expect(m.editor.getState().selectedText).toBe('these'))
+    await userEvent.keyboard('{Shift>}{ArrowDown}{/Shift}')
+    await vi.waitFor(() => expect(m.editor.getState().selectedText).toMatch(/^these words\nSe/))
+    // Shift+End and Shift+Home select to the line's end and start, or the document's on Apple
+    // platforms, whose keys these are.
+    await focusAt(m, 'start')
+    await userEvent.keyboard('{Shift>}{End}{/Shift}')
+    await vi.waitFor(() => expect(m.editor.getState().selectedText).toMatch(/^Read these words/))
+    await focusAt(m, 'end')
+    await userEvent.keyboard('{Shift>}{Home}{/Shift}')
+    await vi.waitFor(() => expect(m.editor.getState().selectedText).toMatch(/Second line$/))
+    await userEvent.keyboard(mod('a'))
+    await vi.waitFor(() =>
+      expect(m.editor.getState().selectedText).toBe('Read these words\nSecond line'),
+    )
+    const word = textNodes(m.element)[0]?.node.parentElement as HTMLElement
+    await userEvent.dblClick(word, { position: { x: 4, y: 4 } })
+    await vi.waitFor(() => expect(m.editor.getState().selectedText).toBe('Read'))
+    expect(m.changes).toEqual([])
+  })
+
+  it('changes nothing the reader does: keys, format keys, undo, paste, cut and drop', async () => {
+    const m = readOnly({ value: doc(p(t('Read these words'))) })
+    await focusEnd(m)
+    await select(m, 'these')
+    await userEvent.keyboard('x{Enter}{Backspace}{Delete}')
+    await userEvent.keyboard(`${mod('b')}${mod('z')}${modShift('8')}${modAlt('1')}`)
+    await userEvent.keyboard('{Shift>}{Enter}{/Shift}')
+    await userEvent.keyboard('{End}# - **a** ')
+    expect(paste(m, { text: 'pasted' }).defaultPrevented).toBe(true)
+    for (const type of ['cut', 'drop', 'dragover']) {
+      const event = new Event(type, { bubbles: true, cancelable: true })
+      m.element.dispatchEvent(event)
+      expect(event.defaultPrevented, type).toBe(true)
+    }
+    const undo = new InputEvent('beforeinput', {
+      inputType: 'historyUndo',
+      bubbles: true,
+      cancelable: true,
+    })
+    m.element.dispatchEvent(undo)
+    expect(undo.defaultPrevented).toBe(true)
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(m.changes).toEqual([])
+    expect(m.events).toEqual([])
+    expect(m.editor.getValue()).toEqual(doc(p(t('Read these words'))))
+    expect(m.element.textContent).toBe('Read these words')
+    expect(m.editor.getState().active.bold).toBe(false)
+  })
+
+  it('leaves no character an input method wrote', async () => {
+    const m = readOnly({ value: doc(p(t('Read'))) })
+    await focusEnd(m)
+    m.element.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true, data: '' }))
+    composeText(m, 'かな')
+    m.element.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: 'かな' }))
+    await vi.waitFor(() => expect(m.element.textContent).toBe('Read'))
+    expect(m.changes).toEqual([])
+    expect(m.editor.getValue()).toEqual(doc(p(t('Read'))))
+  })
+
+  it('copies the selection, leaves Tab to the browser and submits with Mod+Enter', async () => {
+    const onSubmit = vi.fn()
+    const m = readOnly({ value: doc(p(t('Read these words'))), onSubmit })
+    // A text field, which Tab reaches in every engine; WebKit's Tab skips a button by default.
+    const after = document.createElement('input')
+    after.setAttribute('aria-label', 'After')
+    document.body.append(after)
+    await focusEnd(m)
+    await select(m, 'these')
+    const transfer = new DataTransfer()
+    const copy = new Event('copy', { bubbles: true, cancelable: true })
+    Object.defineProperty(copy, 'clipboardData', { value: transfer })
+    m.element.dispatchEvent(copy)
+    expect(transfer.getData('text/plain')).toBe('these')
+    await userEvent.keyboard(mod('{Enter}'))
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    await userEvent.keyboard('{Tab}')
+    expect(document.activeElement).toBe(after)
+    expect(m.changes).toEqual([])
+  })
+
+  it('takes the application’s commands, which are edits', async () => {
+    const m = readOnly({ value: doc(p(t('Read these words'))) })
+    await focusEnd(m)
+    await select(m, 'these')
+    expect(m.editor.annotate('thread-1')).toBe(true)
+    expect(m.changes.at(-1)).toEqual(
+      doc(
+        p(
+          t('Read '),
+          { type: 'text', text: 'these', marks: [{ type: 'annotation', id: 'thread-1' }] },
+          t(' words'),
+        ),
+      ),
+    )
+    expect(m.editor.removeAnnotation('thread-1')).toBe(true)
+    expect(m.changes.at(-1)).toEqual(doc(p(t('Read these words'))))
+    m.editor.insertText('those')
+    expect(m.changes.at(-1)).toEqual(doc(p(t('Read those words'))))
+    m.editor.setValue(doc(p(t('Set by the app'))))
+    expect(m.element.textContent).toBe('Set by the app')
+  })
+
+  it('moves between editable, read-only with a caret and disabled without remounting', () => {
+    const m = mount({ value: words() })
+    m.editor.update({ editable: false, readOnly: true })
+    expect(m.element.getAttribute('contenteditable')).toBe('true')
+    expect(m.element.getAttribute('inputmode')).toBe('none')
+    m.editor.update({ readOnly: false })
+    expect(m.element.getAttribute('contenteditable')).toBe('false')
+    expect(m.element.hasAttribute('inputmode')).toBe(false)
+    m.editor.update({ editable: true, readOnly: true })
+    expect(m.element.getAttribute('contenteditable')).toBe('true')
+    expect(m.element.hasAttribute('inputmode')).toBe(false)
+    expect(m.element.hasAttribute('spellcheck')).toBe(false)
+  })
+})
+
+describe('a document of a later format', () => {
+  const later = () =>
+    ({
+      format: 'polymorph-rich-text/2',
+      blocks: [{ type: 'paragraph', content: [{ type: 'text', text: 'From a later version' }] }],
+    }) as unknown as RichTextDocument
+
+  it('draws it, keeps a caret, refuses every edit and gives it back as it was given', async () => {
+    const value = later()
+    const m = mount({ value })
+    expect(m.element.textContent).toBe('From a later version')
+    expect(m.element.getAttribute('contenteditable')).toBe('true')
+    expect(m.element.getAttribute('inputmode')).toBe('none')
+    expect(m.editor.getValue()).toBe(value)
+    await focusEnd(m)
+    await userEvent.keyboard('typed{Enter}{Backspace}')
+    await select(m, 'later')
+    expect(m.editor.annotate('thread-1')).toBe(false)
+    expect(m.editor.removeAnnotation('thread-1')).toBe(false)
+    expect(m.editor.toggle('bold')).toBe(false)
+    m.editor.insertText('x')
+    m.editor.insertEntity({ kind: 'user', id: 'u1', label: '@Ada' })
+    m.editor.clear()
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    expect(m.changes).toEqual([])
+    expect(m.editor.getValue()).toBe(value)
+    expect(m.element.textContent).toBe('From a later version')
+  })
+
+  it('stays disabled in a disabled field, and a value of this version ends it', () => {
+    const m = mount({ value: later(), editable: false })
+    expect(m.element.getAttribute('contenteditable')).toBe('false')
+    m.editor.update({ editable: true })
+    expect(m.element.getAttribute('contenteditable')).toBe('true')
+    expect(m.element.getAttribute('inputmode')).toBe('none')
+    m.editor.setValue(doc(p(t('Now'))))
+    expect(m.element.hasAttribute('inputmode')).toBe(false)
+    expect(m.editor.getValue()).toEqual(doc(p(t('Now'))))
+    m.editor.insertText('!')
+    expect(m.changes).toHaveLength(1)
+  })
+})
+
+describe('entities: where a token opens', () => {
+  it('opens no suggestion for a token in code or in a link’s text, at its end or inside it', async () => {
+    const inCode = mount({ value: doc(p(t('see '), t('@ada', 'code'))) })
+    await focusEnd(inCode)
+    expect(inCode.editor.getState().suggestion).toBeNull()
+    await caretAfter(inCode, 'see @a')
+    expect(inCode.editor.getState().suggestion).toBeNull()
+    const inLink = mount({ value: doc(p(t('see '), link('@ada', 'https://example.com'))) })
+    await focusEnd(inLink)
+    expect(inLink.editor.getState().suggestion).toBeNull()
+    const plain = mount({ value: doc(p(t('see @ada'))) })
+    await focusEnd(plain)
+    await vi.waitFor(() => expect(plain.editor.getState().suggestion?.query).toBe('ada'))
+  })
+
+  it('measures where the open token is now', async () => {
+    const m = mount({ value: doc(p(t('see @ada'))) })
+    expect(m.editor.tokenRect()).toBeNull()
+    await focusEnd(m)
+    await vi.waitFor(() => expect(m.editor.getState().suggestion).not.toBeNull())
+    expect(m.editor.tokenRect()).toEqual(m.editor.getState().suggestion?.rect)
+    const at = m.element.querySelector('p')?.getBoundingClientRect()
+    expect(m.editor.tokenRect()?.top).toBeGreaterThanOrEqual((at?.top ?? 0) - 1)
   })
 })
 
@@ -2236,5 +2573,556 @@ describe('annotations: keeping the drawing as the document changes', () => {
     } finally {
       inline.mockRestore()
     }
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* What a paste keeps, and the formats the field and the model agree on        */
+/* -------------------------------------------------------------------------- */
+
+/** A copy from the field: what the field put on the clipboard. */
+function copyFromField(m: Mounted) {
+  const transfer = new DataTransfer()
+  const event = new Event('copy', { bubbles: true, cancelable: true })
+  Object.defineProperty(event, 'clipboardData', { value: transfer })
+  m.element.dispatchEvent(event)
+  expect(event.defaultPrevented).toBe(true)
+  return { html: transfer.getData('text/html'), text: transfer.getData('text/plain') }
+}
+
+/** A paste carrying flavours beside HTML and text, as a code editor writes them. */
+function pasteFlavours(m: Mounted, flavours: Record<string, string>) {
+  const transfer = new DataTransfer()
+  for (const [type, value] of Object.entries(flavours)) transfer.setData(type, value)
+  const event = new Event('paste', { bubbles: true, cancelable: true })
+  Object.defineProperty(event, 'clipboardData', { value: transfer })
+  m.element.dispatchEvent(event)
+}
+
+const tokenIn = (html: string) => /data-entity-token="([^"]*)"/.exec(html)?.[1] ?? null
+
+describe('pasted entities: only one an editor in this page drew', () => {
+  it('keeps an entity copied from the field and pasted back, and its value goes nowhere else', async () => {
+    const m = mount({ value: doc(p(t('to '), ada, t(' now'))) })
+    await focusEnd(m)
+    await select(m, 'to @Ada Lovelace now')
+    const copied = copyFromField(m)
+    const token = tokenIn(copied.html)
+    expect(token).toMatch(/^[0-9a-f]{32}$/)
+    expect(copied.text).toBe('to @Ada Lovelace now')
+    // Every drawing of an entity for the clipboard carries a value of its own.
+    expect(tokenIn(copyFromField(m).html)).not.toBe(token)
+    m.editor.focus('end')
+    paste(m, copied)
+    await expect.poll(valueOf(m)).toEqual(doc(p(t('to '), ada, t(' nowto '), ada, t(' now'))))
+    expect(m.element.querySelectorAll('span.entity')).toHaveLength(2)
+    for (const place of [m.element.outerHTML, JSON.stringify(m.editor.getValue()), copied.text]) {
+      expect(place).not.toContain(token)
+      expect(place).not.toContain('data-entity-token')
+    }
+  })
+
+  it('keeps an entity copied from one field and pasted into another on the page', async () => {
+    const from = mount({ value: doc(p(ada)) })
+    await focusEnd(from)
+    await select(from, '@Ada Lovelace')
+    const copied = copyFromField(from)
+    const to = mount({ value: doc(p(t('to '))) })
+    await focusEnd(to)
+    paste(to, copied)
+    await expect.poll(valueOf(to)).toEqual(doc(p(t('to '), ada)))
+  })
+
+  it('reads as its label a span whose value was drawn for another entity, or never drawn', async () => {
+    const from = mount({ value: doc(p(ada)) })
+    await focusEnd(from)
+    await select(from, '@Ada Lovelace')
+    const value = tokenIn(copyFromField(from).html) ?? ''
+    const m = mount({
+      entities: [
+        { kind: 'user', trigger: '@' },
+        { kind: 'team', trigger: '#' },
+      ],
+    })
+    await focusEnd(m)
+    const span = (kind: string, id: string, label: string, carried: string | null) =>
+      `<span data-entity-kind="${kind}" data-entity-id="${id}"${carried === null ? '' : ` data-entity-token="${carried}"`}>${label}</span>`
+    paste(m, {
+      html: `<p>${[
+        // The entity the value was drawn for: kept.
+        span('user', 'u1', '@Ada Lovelace', value),
+        // The same value on another id, another label and another kind.
+        span('user', 'u-admin', '@Ada Lovelace', value),
+        span('user', 'u1', '@Grace Hopper', value),
+        span('team', 'u1', '@Ada Lovelace', value),
+        // A value never drawn, one changed, and none.
+        span('user', 'u1', '@Ada Lovelace', '0123456789abcdef0123456789abcdef'),
+        span('user', 'u1', '@Ada Lovelace', value.toUpperCase()),
+        span('user', 'u1', '@Ada Lovelace', null),
+      ].join(' ')}</p>`,
+      text: 'ignored',
+    })
+    await expect
+      .poll(valueOf(m))
+      .toEqual(
+        doc(
+          p(
+            ada,
+            t(
+              ' @Ada Lovelace @Grace Hopper @Ada Lovelace @Ada Lovelace @Ada Lovelace @Ada Lovelace',
+            ),
+          ),
+        ),
+      )
+  })
+
+  it(`remembers the last ${ENTITY_COPIES} entities drawn for the clipboard, and no more`, async () => {
+    const one = mount({ value: doc(p(ada)) })
+    await focusEnd(one)
+    await select(one, '@Ada Lovelace')
+    const first = copyFromField(one)
+    const entity = { type: 'entity', kind: 'user', id: 'u2', label: '@a' }
+    const many = mount({
+      value: doc(p(t('x'), ...Array.from({ length: ENTITY_COPIES - 1 }, () => entity), t('y'))),
+    })
+    await focusEnd(many)
+    await userEvent.keyboard(mod('a'))
+    await vi.waitFor(() => expect(many.editor.getState().collapsed).toBe(false))
+    expect(copyFromField(many).html.match(/data-entity-token=/g)).toHaveLength(ENTITY_COPIES - 1)
+    // The first copy is the oldest of the last ENTITY_COPIES drawn: still on record.
+    const kept = mount()
+    await focusEnd(kept)
+    paste(kept, first)
+    await expect.poll(valueOf(kept)).toEqual(doc(p(ada)))
+    // One more drawing, and it is forgotten.
+    copyFromField(one)
+    const forgotten = mount()
+    await focusEnd(forgotten)
+    paste(forgotten, first)
+    await expect.poll(valueOf(forgotten)).toEqual(doc(p(t('@Ada Lovelace'))))
+  })
+
+  it('keeps an entity a drag moves inside the field', async () => {
+    const m = mount({ value: doc(p(t('keep '), ada, t(' end')), p(t('target'))) })
+    await focusEnd(m)
+    await selectWord(m, 'keep @Ada Lovelace end')
+    const transfer = new DataTransfer()
+    textNode(m, 'keep ').parentElement?.dispatchEvent(
+      dragEvent('dragstart', transfer, pointIn(m, 'keep ', 2)),
+    )
+    const drop = dragEvent('drop', transfer, pointIn(m, 'target', 5))
+    textNode(m, 'target').parentElement?.dispatchEvent(drop)
+    expect(drop.defaultPrevented).toBe(true)
+    await vi.waitFor(() =>
+      expect(richTextPlainText(m.editor.getValue(), { blockSeparator: '|' })).toMatch(
+        /^\|targe?keep @Ada Lovelace endt?$/,
+      ),
+    )
+    expect(JSON.stringify(m.editor.getValue().blocks[1])).toContain(JSON.stringify(ada))
+  })
+})
+
+describe('formats on an entity', () => {
+  /** Whether the element drawing the entity sits inside an element that draws a format. */
+  const formatted = (m: Mounted) =>
+    m.element.querySelector('span.entity')?.closest('strong, em, s, code, a') !== null
+
+  it('draws no format a command put over a selection on the entity in it, and turns it off again', async () => {
+    const m = mount({ value: doc(p(t('a '), ada, t(' b'))) })
+    await focusEnd(m)
+    await select(m, 'a @Ada Lovelace b')
+    for (const format of ['bold', 'italic', 'strike', 'code'] as const) {
+      expect(m.editor.toggle(format), format).toBe(true)
+      expect(m.editor.getValue(), format).toEqual(doc(p(t('a ', format), ada, t(' b', format))))
+      expect(formatted(m), format).toBe(false)
+      await vi.waitFor(() => expect(m.editor.getState().active[format], format).toBe(true))
+      expect(m.editor.toggle(format), format).toBe(true)
+      expect(m.editor.getValue(), format).toEqual(doc(p(t('a '), ada, t(' b'))))
+    }
+    expect(m.editor.setLink('https://a.example')).toBe(true)
+    expect(m.editor.getValue()).toEqual(
+      doc(p(link('a ', 'https://a.example'), ada, link(' b', 'https://a.example'))),
+    )
+    expect(formatted(m)).toBe(false)
+  })
+
+  it('draws no format a typed shortcut or a paste puts around an entity', async () => {
+    const typed = mount()
+    await focusEnd(typed)
+    await userEvent.keyboard('**a ')
+    typed.editor.insertEntity({ kind: 'user', id: 'u1', label: '@Ada Lovelace' })
+    await userEvent.keyboard('b**')
+    await expect.poll(valueOf(typed)).toEqual(doc(p(t('a ', 'bold'), ada, t(' b', 'bold'))))
+    expect(formatted(typed)).toBe(false)
+    const source = mount({ value: doc(p(t('a '), ada, t(' b'))) })
+    await focusEnd(source)
+    await select(source, 'a @Ada Lovelace b')
+    const { html } = copyFromField(source)
+    const m = mount({ value: doc(p(t('x'))) })
+    await focusEnd(m)
+    paste(m, { html: `<p><b>${html.replace(/^<p[^>]*>|<\/p>$/g, '')}</b></p>` })
+    await expect.poll(valueOf(m)).toEqual(doc(p(t('x'), t('a ', 'bold'), ada, t(' b', 'bold'))))
+    expect(formatted(m)).toBe(false)
+  })
+
+  it('types on in the format of the text before an entity', async () => {
+    const m = mount({ value: doc(p(t('a ', 'bold'), ada, t(' b', 'bold'))) })
+    await focusEnd(m)
+    await caretAfter(m, 'a @Ada Lovelace')
+    await vi.waitFor(() => expect(m.editor.getState().active.bold).toBe(true))
+    await userEvent.keyboard('x')
+    await expect.poll(valueOf(m)).toEqual(doc(p(t('a ', 'bold'), ada, t('x b', 'bold'))))
+  })
+
+  it('inserts nothing for an entity with an empty kind, id or label', () => {
+    const m = mount({ value: doc(p(t('to '))) })
+    m.editor.focus('end')
+    for (const entity of [
+      { kind: 'user', id: '', label: '@Ghost' },
+      { kind: '', id: 'u1', label: '@Ghost' },
+      { kind: 'user', id: 'u1', label: '' },
+    ]) {
+      m.editor.insertEntity(entity)
+    }
+    expect(m.editor.getValue()).toEqual(doc(p(t('to '))))
+    expect(m.changes).toEqual([])
+    expect(m.element.querySelector('[data-entity-kind]')).toBeNull()
+  })
+})
+
+describe('pasted structure the model would read differently', () => {
+  it('flattens what a paste nests too deep with the reader’s own rule, so the field draws what it holds', async () => {
+    const levels = RICH_TEXT_MAX_DEPTH + 6
+    let html = '<p>deep</p>'
+    let model: unknown = p(t('deep'))
+    for (let level = levels; level >= 1; level -= 1) {
+      html = `<ul><li><p>level ${level}</p>${html}</li></ul>`
+      model = ul([p(t(`level ${level}`)), model])
+    }
+    const m = mount()
+    await focusEnd(m)
+    paste(m, { html: `<p>a</p>${html}<p>b</p>` })
+    const expected = normalizeRichText(doc(p(t('a')), model, p(t('b'))))
+    await expect.poll(valueOf(m)).toEqual(expected)
+    const stored = JSON.stringify(m.editor.getValue()).split('"list"').length - 1
+    expect(stored).toBe(RICH_TEXT_MAX_DEPTH)
+    expect(m.element.querySelectorAll('ul')).toHaveLength(RICH_TEXT_MAX_DEPTH)
+  })
+
+  it('reads a numbered list’s first number by the reader’s rule', async () => {
+    for (const [start, kept] of [
+      ['1e300', undefined],
+      ['3', 3],
+      ['', undefined],
+      ['-2', undefined],
+      ['0', 0],
+    ] as const) {
+      const m = mount()
+      await focusEnd(m)
+      paste(m, { html: `<p>x</p><ol start="${start}"><li>a</li><li>b</li></ol><p>y</p>` })
+      const list = {
+        ...ol([p(t('a'))], [p(t('b'))]),
+        ...(kept === undefined ? {} : { start: kept }),
+      }
+      await expect.poll(valueOf(m)).toEqual(doc(p(t('x')), list, p(t('y'))))
+      expect(m.element.querySelector('ol')?.getAttribute('start') ?? null, start).toBe(
+        kept === undefined ? null : String(kept),
+      )
+    }
+  })
+
+  it('inserts pasted text that is only white space as it is', async () => {
+    const m = mount({ value: doc(p(t('ab'))) })
+    await focusEnd(m)
+    paste(m, { text: ' ' })
+    await expect.poll(valueOf(m)).toEqual(doc(p(t('ab '))))
+    paste(m, { text: '\t' })
+    await expect.poll(valueOf(m)).toEqual(doc(p(t('ab \t'))))
+    paste(m, { text: ' \n ' })
+    await expect.poll(valueOf(m)).toEqual(doc(p(t('ab \t '), br, t(' '))))
+  })
+})
+
+describe('typed shortcuts inside code', () => {
+  it.each([
+    ['#x', '#', ' ', '# x'],
+    ['##x', '##', ' ', '## x'],
+    ['-x', '-', ' ', '- x'],
+    ['*x', '*', ' ', '* x'],
+    ['1.x', '1.', ' ', '1. x'],
+    ['>x', '>', ' ', '> x'],
+    ['```x', '```', ' ', '``` x'],
+    ['```tsx', '```ts', ' ', '```ts x'],
+    ['a **b* c', 'a **b*', '*', 'a **b** c'],
+    ['a *b c', 'a *b', '*', 'a *b* c'],
+    ['a _b c', 'a _b', '_', 'a _b_ c'],
+    ['a ~~b~ c', 'a ~~b~', '~', 'a ~~b~~ c'],
+    ['a `b c', 'a `b', '`', 'a `b` c'],
+  ] as const)(
+    'keeps what is typed in inline code and in a code block: %j',
+    async (text, before, typed, after) => {
+      const inline = mount({ value: doc(p(t(text, 'code'))) })
+      await focusEnd(inline)
+      await caretAfter(inline, before)
+      await userEvent.keyboard(typed)
+      await expect.poll(valueOf(inline)).toEqual(doc(p(t(after, 'code'))))
+      const block = mount({ value: doc(code(text)) })
+      await focusEnd(block)
+      await caretAfter(block, before)
+      await userEvent.keyboard(typed)
+      await expect.poll(valueOf(block)).toEqual(doc(code(after)))
+    },
+  )
+
+  it('starts no code block with Enter after a fence in inline code', async () => {
+    const m = mount({ value: doc(p(t('```ts', 'code'))) })
+    await focusEnd(m)
+    await userEvent.keyboard('{Enter}')
+    await expect.poll(valueOf(m)).toEqual(doc(p(t('```ts', 'code')), p()))
+  })
+})
+
+describe('a code block’s language', () => {
+  it('is the name typed after three backticks, with a space or Enter', async () => {
+    const spaced = mount()
+    await focusEnd(spaced)
+    await userEvent.keyboard('```c++ int x;')
+    await expect.poll(valueOf(spaced)).toEqual(doc(code('int x;', 'c++')))
+    const entered = mount()
+    await focusEnd(entered)
+    await userEvent.keyboard('```python{Enter}x = 1')
+    await expect.poll(valueOf(entered)).toEqual(doc(code('x = 1', 'python')))
+    expect(entered.element.querySelector('pre')?.getAttribute('data-language')).toBe('python')
+    expect(entered.events).toContainEqual({ type: 'format', format: 'codeBlock', active: true })
+    const bare = mount()
+    await focusEnd(bare)
+    await userEvent.keyboard('```{Enter}y')
+    await expect.poll(valueOf(bare)).toEqual(doc(code('y')))
+  })
+
+  it('is not a name with a character no language name has, which stays text', async () => {
+    const m = mount()
+    await focusEnd(m)
+    await userEvent.keyboard('```e=mc ')
+    await expect.poll(valueOf(m)).toEqual(doc(p(t('```e=mc '))))
+  })
+
+  it.each([
+    [mod('z'), doc(p(t('```ts')))],
+    ['{Backspace}', doc(p(t('```ts')))],
+  ])('gives the fence back when undone directly after Enter (%s)', async (undo, back) => {
+    const m = mount()
+    await focusEnd(m)
+    await userEvent.keyboard('```ts{Enter}')
+    await expect.poll(valueOf(m)).toEqual(doc(code('', 'ts')))
+    await userEvent.keyboard(undo)
+    await expect.poll(valueOf(m)).toEqual(back)
+  })
+
+  it('is kept from a pasted block that states it, as a language name', async () => {
+    const m = mount()
+    await focusEnd(m)
+    paste(m, {
+      html: [
+        '<pre class="language-ts"><code>a</code></pre>',
+        '<pre><code class="hljs language-python">b</code></pre>',
+        '<pre class="lang-rb">c</pre>',
+        '<pre data-language="Visual Basic">d</pre>',
+        '<pre class="language-">e</pre>',
+      ].join(''),
+    })
+    await expect
+      .poll(valueOf(m))
+      .toEqual(doc(code('a', 'ts'), code('b', 'python'), code('c', 'rb'), code('d'), code('e')))
+  })
+})
+
+/*
+ * The HTML below is what each source puts on the clipboard. The Google Docs,
+ * Google Sheets, Word and VS Code samples are written from what those
+ * applications produce, trimmed of styles that change nothing here; they were
+ * not captured from the applications in this run.
+ */
+
+const GOOGLE_DOCS = [
+  '<meta charset="utf-8">',
+  '<b style="font-weight:normal;" id="docs-internal-guid-1f2e3d4c-7fff-a1b2-c3d4-5e6f7a8b9c0d">',
+  '<p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;">',
+  '<span style="font-size:11pt;font-family:Arial,sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;">Plain </span>',
+  '<span style="font-size:11pt;font-family:Arial,sans-serif;color:#000000;background-color:transparent;font-weight:700;font-style:normal;text-decoration:none;white-space:pre-wrap;">bold</span>',
+  '<span style="font-size:11pt;font-family:Arial,sans-serif;color:#000000;font-weight:400;font-style:italic;text-decoration:none;white-space:pre-wrap;"> italic</span>',
+  '<span style="font-size:11pt;font-family:Arial,sans-serif;color:#000000;font-weight:400;font-style:normal;text-decoration:line-through;-webkit-text-decoration-skip:none;text-decoration-skip-ink:none;white-space:pre-wrap;"> gone</span>',
+  '<span style="font-size:18pt;font-family:Courier New,monospace;color:#ff0000;background-color:#ffff00;font-weight:400;white-space:pre-wrap;"> red</span>',
+  '</p>',
+  '<h1 dir="ltr" style="line-height:1.38;margin-top:20pt;margin-bottom:6pt;"><span style="font-size:20pt;font-family:Arial,sans-serif;color:#000000;font-weight:400;font-style:normal;white-space:pre-wrap;">Title</span></h1>',
+  '<ul style="margin-top:0;margin-bottom:0;padding-inline-start:48px;">',
+  '<li dir="ltr" style="list-style-type:disc;font-size:11pt;font-family:Arial,sans-serif;" aria-level="1"><p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;" role="presentation"><span style="font-size:11pt;font-weight:400;white-space:pre-wrap;">One</span></p></li>',
+  '</ul>',
+  '<p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"><a href="https://example.com/x" style="text-decoration:none;"><span style="font-size:11pt;color:#1155cc;font-weight:400;text-decoration:underline;-webkit-text-decoration-skip:none;text-decoration-skip-ink:none;white-space:pre-wrap;">link</span></a></p>',
+  '</b><br class="Apple-interchange-newline">',
+].join('')
+
+const GOOGLE_SHEETS = [
+  '<google-sheets-html-origin><style type="text/css"><!--td {border: 1px solid #cccccc;}br {mso-data-placement:same-cell;}--></style>',
+  '<table xmlns="http://www.w3.org/1999/xhtml" cellspacing="0" cellpadding="0" dir="ltr" border="1" style="table-layout:fixed;font-size:10pt;font-family:Arial;width:0px;border-collapse:collapse;border:none" data-sheets-root="1">',
+  '<colgroup><col width="100"/><col width="100"/></colgroup><tbody>',
+  '<tr style="height:21px;"><td style="overflow:hidden;padding:2px 3px 2px 3px;vertical-align:bottom;font-weight:bold;">Name</td><td style="overflow:hidden;padding:2px 3px 2px 3px;vertical-align:bottom;font-weight:bold;">Age</td></tr>',
+  '<tr style="height:21px;"><td style="overflow:hidden;padding:2px 3px 2px 3px;vertical-align:bottom;">Ada</td><td style="overflow:hidden;padding:2px 3px 2px 3px;vertical-align:bottom;text-align:right;">36</td></tr>',
+  '</tbody></table></google-sheets-html-origin>',
+].join('')
+
+/** A word processor's list paragraph: a bullet `·` or a number like `3.`, at a level, in a list. */
+const wordItem = (text: string, drawn: string, level = 1, list = 1) =>
+  `<p class=MsoListParagraphCxSpMiddle style='margin-left:${0.5 * level}in;mso-add-space:auto;text-indent:-.25in;mso-list:l${list - 1} level${level} lfo${list}'><![if !supportLists]><span style='font-family:Symbol;mso-fareast-font-family:Symbol;mso-bidi-font-family:Symbol'><span style='mso-list:Ignore'>${drawn}<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span></span><![endif]>${text}<o:p></o:p></p>\n`
+
+const WORD = [
+  '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style><!-- p.MsoNormal {margin:0in;} --></style></head><body lang=EN-US style="tab-interval:.5in"><!--StartFragment-->',
+  wordItem('One', '·'),
+  wordItem('Nested', 'o', 2),
+  wordItem('<b>Two</b>', '·'),
+  '<p class=MsoNormal>Between<o:p></o:p></p>\n',
+  wordItem('Third', '3.', 1, 2),
+  wordItem('Fourth', '4.', 1, 2),
+  wordItem('Lettered', 'a)', 2, 2),
+  '<!--EndFragment--></body></html>',
+].join('')
+
+const VS_CODE = [
+  "<meta charset='utf-8'>",
+  '<div style="color: #cccccc;background-color: #1f1f1f;font-family: Menlo, Monaco, \'Courier New\', monospace;font-weight: normal;font-size: 12px;line-height: 18px;white-space: pre;">',
+  '<div><span style="color: #569cd6;">const</span><span style="color: #cccccc;"> </span><span style="color: #4fc1ff;">x</span><span style="color: #cccccc;"> </span><span style="color: #d4d4d4;">=</span><span style="color: #cccccc;"> </span><span style="color: #b5cea8;">1</span></div>',
+  '<br>',
+  '<div><span style="color: #c586c0;">return</span><span style="color: #cccccc;">   x</span></div>',
+  '</div>',
+].join('')
+
+describe('pasted from other applications', () => {
+  it('reads a document editor’s bold, italic and strike from its styles, and no other style', async () => {
+    const m = mount()
+    await focusEnd(m)
+    paste(m, { html: GOOGLE_DOCS, text: 'ignored' })
+    await expect
+      .poll(valueOf(m))
+      .toEqual(
+        doc(
+          p(
+            t('Plain '),
+            t('bold', 'bold'),
+            t(' italic', 'italic'),
+            t(' gone', 'strike'),
+            t(' red'),
+          ),
+          h(1, t('Title')),
+          ul([p(t('One'))]),
+          p(link('link', 'https://example.com/x')),
+        ),
+      )
+    expect(m.element.querySelector('[style], [id], [dir], [aria-level], [role]')).toBeNull()
+  })
+
+  it('reads emphasis written as a style anywhere, and takes it off where a style says so', async () => {
+    const m = mount()
+    await focusEnd(m)
+    paste(m, {
+      html: [
+        '<p><span style="font-weight:bold">a</span> <span style="font-weight:600">b</span>',
+        ' <span style="font-weight:500">c</span> <strong><span style="font-weight:normal">d</span></strong>',
+        ' <span style="font-style:oblique">e</span> <em><span style="font-style:normal">f</span></em>',
+        ' <span style="text-decoration-line:line-through">g</span> <span style="text-decoration:underline">h</span>',
+        ' <b style="font-weight:400">i</b>',
+        ' <span class="x" id="y" style="color:red;font-size:30px;font-family:serif;background:yellow" onclick="alert(1)">j</span></p>',
+      ].join(''),
+    })
+    await expect
+      .poll(valueOf(m))
+      .toEqual(
+        doc(
+          p(
+            t('a', 'bold'),
+            t(' '),
+            t('b', 'bold'),
+            t(' c d '),
+            t('e', 'italic'),
+            t(' f '),
+            t('g', 'strike'),
+            t(' h i j'),
+          ),
+        ),
+      )
+    expect(m.element.querySelector('[style], [id], [onclick], .x')).toBeNull()
+  })
+
+  it('reads a table as a paragraph a row, its cells separated by a tab', async () => {
+    const sheet = mount()
+    await focusEnd(sheet)
+    paste(sheet, { html: GOOGLE_SHEETS, text: 'Name\tAge\nAda\t36' })
+    await expect
+      .poll(valueOf(sheet))
+      .toEqual(doc(p(t('Name', 'bold'), t('\t'), t('Age', 'bold')), p(t('Ada\t36'))))
+    const page = mount()
+    await focusEnd(page)
+    paste(page, {
+      html: '<table><thead><tr><th>Name</th><th>Site</th></tr></thead><tbody><tr><td></td><td></td></tr><tr><td><p>Ada</p><p>Lovelace</p></td><td><a href="https://a.example">a.example</a> <img src="x.png" onerror="alert(1)"></td></tr></tbody></table>',
+    })
+    await expect
+      .poll(valueOf(page))
+      .toEqual(
+        doc(
+          p(t('Name\tSite')),
+          p(),
+          p(t('Ada Lovelace\t'), link('a.example', 'https://a.example')),
+        ),
+      )
+    expect(page.element.querySelector('img, table, td')).toBeNull()
+  })
+
+  it('reads a word processor’s list paragraphs as lists, numbered where it numbered them', async () => {
+    const m = mount()
+    await focusEnd(m)
+    paste(m, { html: WORD })
+    await expect.poll(valueOf(m)).toEqual(
+      doc(ul([p(t('One')), ul([p(t('Nested'))])], [p(t('Two', 'bold'))]), p(t('Between')), {
+        ...ol([p(t('Third'))], [p(t('Fourth')), ol([p(t('Lettered'))])]),
+        start: 3,
+      }),
+    )
+    expect(m.element.textContent).not.toMatch(/[·]|3\.|a\)/)
+    const plain = mount({ formats: ['bold'] })
+    await focusEnd(plain)
+    paste(plain, { html: WORD })
+    await expect
+      .poll(valueOf(plain))
+      .toEqual(
+        doc(
+          p(t('One')),
+          p(t('Nested')),
+          p(t('Two', 'bold')),
+          p(t('Between')),
+          p(t('Third')),
+          p(t('Fourth')),
+          p(t('Lettered')),
+        ),
+      )
+  })
+
+  it('reads a code editor’s lines as one code block in its language, and one line as text', async () => {
+    const m = mount()
+    await focusEnd(m)
+    pasteFlavours(m, {
+      'text/html': VS_CODE,
+      'text/plain': 'const x = 1\n\nreturn   x',
+      'vscode-editor-data':
+        '{"version":1,"isFromEmptySelection":false,"multicursorText":null,"mode":"typescript"}',
+    })
+    await expect.poll(valueOf(m)).toEqual(doc(code('const x = 1\n\nreturn   x', 'typescript')))
+    const line = mount({ value: doc(p(t('see '))) })
+    await focusEnd(line)
+    pasteFlavours(line, {
+      'text/html':
+        '<div style="font-family: Menlo, Monaco, \'Courier New\', monospace;white-space: pre;"><div><span style="color: #9cdcfe;">value</span></div></div>',
+      'text/plain': 'value',
+      'vscode-editor-data': '{"version":1,"mode":"typescript"}',
+    })
+    await expect.poll(valueOf(line)).toEqual(doc(p(t('see value'))))
   })
 })

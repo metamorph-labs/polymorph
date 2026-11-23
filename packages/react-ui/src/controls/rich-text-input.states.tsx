@@ -87,25 +87,48 @@ const ANNOTATED = richText(
 /** Fifty-one code points, over a limit of forty. */
 const LONG = richText(paragraph(text('A comment that runs past the limit the app has set.')))
 
+/** How many frames the entry looks for the words before it stops, as the generated fixtures do. */
+const SELECT_FRAMES = 60
+
+/** How long after the field takes focus the words are selected, as the generated fixtures do. */
+const SELECT_DELAY_MS = 60
+
 /**
  * Selects `words` in the field once the editor holds them, so the selection
- * bar shows. The editor writes its own selection back a moment after it takes
- * focus, so the selection is made after that.
+ * bar shows, as the generated fixtures' `selects` does: it looks once a frame
+ * until the field holds the words, focuses it, and selects them after the
+ * editor has written its own selection back on focus, which would otherwise
+ * replace them. The ref's cleanup stops a mount that is taken down first.
  */
 function selectOnMount(words: string) {
   return (element: HTMLDivElement | null) => {
     const view = element?.ownerDocument.defaultView
     if (element === null || view === null || view === undefined) return
-    element.focus()
-    view.setTimeout(() => {
-      const walker = element.ownerDocument.createTreeWalker(element, view.NodeFilter.SHOW_TEXT)
-      for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
-        const at = node.textContent?.indexOf(words) ?? -1
-        if (at === -1) continue
-        element.ownerDocument.getSelection()?.setBaseAndExtent(node, at, node, at + words.length)
+    let frame = 0
+    let frames = 0
+    let timer = 0
+    const select = () => {
+      if (!element.isConnected || !(element.textContent ?? '').includes(words)) {
+        frames += 1
+        if (frames < SELECT_FRAMES) frame = view.requestAnimationFrame(select)
         return
       }
-    }, 60)
+      element.focus()
+      timer = view.setTimeout(() => {
+        const walker = element.ownerDocument.createTreeWalker(element, view.NodeFilter.SHOW_TEXT)
+        for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+          const at = node.textContent?.indexOf(words) ?? -1
+          if (at === -1) continue
+          element.ownerDocument.getSelection()?.setBaseAndExtent(node, at, node, at + words.length)
+          return
+        }
+      }, SELECT_DELAY_MS)
+    }
+    frame = view.requestAnimationFrame(select)
+    return () => {
+      view.cancelAnimationFrame(frame)
+      view.clearTimeout(timer)
+    }
   }
 }
 
@@ -302,14 +325,7 @@ export const states: ComponentStates = {
   /*
    * The frame's hover and the ring on keyboard focus come from the pointer and
    * the keyboard. The placeholder and a selected entity are states the editor
-   * draws itself. The list opens above its token only where there is less room
-   * below, which the gallery's layout decides.
+   * draws itself.
    */
-  requiredSelectors: [
-    ':hover',
-    ':focus-visible',
-    '[data-placeholder]',
-    '[data-selected]',
-    '[data-placement="above"]',
-  ],
+  requiredSelectors: [':hover', ':focus-visible', '[data-placeholder]', '[data-selected]'],
 }

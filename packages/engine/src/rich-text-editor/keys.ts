@@ -1,7 +1,8 @@
 import { baseKeymap } from 'prosemirror-commands'
-import { keymap } from 'prosemirror-keymap'
+import { keydownHandler } from 'prosemirror-keymap'
 import type { Schema } from 'prosemirror-model'
-import type { Command, Plugin } from 'prosemirror-state'
+import { type Command, Plugin } from 'prosemirror-state'
+import type { EditorView } from 'prosemirror-view'
 
 import type { RichTextFormat } from '../rich-text/types'
 import {
@@ -38,7 +39,18 @@ import type { RichTextSuggestionKey } from './types'
  *
  * Tab is taken only when it sinks a list item and Shift-Tab only when it lifts
  * one; anywhere else the browser moves focus, so the field never traps Tab.
- * ProseMirror offers no key while an input method composes.
+ *
+ * No key an input method is handling is taken: ProseMirror offers none while
+ * it knows a composition is open, and a key marked `isComposing`, or one the
+ * browser reports with key code 229 (the key an input method processed, such
+ * as Safari's Enter that confirms a composition after `compositionend`), is
+ * left to the input method too. So the Enter that confirms Japanese or Chinese
+ * text never picks a suggestion and never splits a block.
+ *
+ * In a read-only field that keeps its caret (`readOnly`), only the keys that
+ * move the caret or the selection, and Mod-Enter, are the editor's: every
+ * other key is left to the browser, whose edits the editor refuses, so Tab
+ * still moves focus and no format key turns anything on.
  */
 
 export interface KeyHooks {
@@ -46,6 +58,8 @@ export interface KeyHooks {
   onSuggestionKey: () => ((key: RichTextSuggestionKey) => boolean) | undefined
   onSubmit: () => (() => void) | undefined
   onLinkRequest: () => (() => void) | undefined
+  /** Whether the field is read-only with a caret: no key that edits is the editor's. */
+  readOnly: () => boolean
 }
 
 const SUGGESTION_KEYS: readonly RichTextSuggestionKey[] = [
@@ -56,9 +70,30 @@ const SUGGESTION_KEYS: readonly RichTextSuggestionKey[] = [
   'Escape',
 ]
 
+/** The base keymap's keys that move the caret or select: a read-only field keeps them. */
+const SELECTING = new Set(['Mod-a', 'Ctrl-a', 'Ctrl-e'])
+
+/** The key code a browser reports for a key an input method processed. */
+const PROCESSED = 229
+
 function isRtl(view: { dom: HTMLElement } | undefined): boolean {
   if (!view) return false
   return view.dom.ownerDocument.defaultView?.getComputedStyle(view.dom).direction === 'rtl'
+}
+
+/** Whether a key belongs to an input method: composing, or processed by one. */
+function composingKey(view: EditorView, event: KeyboardEvent): boolean {
+  return view.composing || event.isComposing || event.keyCode === PROCESSED
+}
+
+/** A keymap that takes no key an input method is handling. */
+function keys(bindings: Record<string, Command>): Plugin {
+  const handle = keydownHandler(bindings)
+  return new Plugin({
+    props: {
+      handleKeyDown: (view, event) => !composingKey(view, event) && handle(view, event),
+    },
+  })
 }
 
 export function keyPlugins(
@@ -67,6 +102,12 @@ export function keyPlugins(
   hooks: KeyHooks,
 ): Plugin[] {
   const allowed = new Set(formats)
+  /** A command that edits: a read-only field leaves its key to the browser. */
+  const writing =
+    (command: Command): Command =>
+    (state, dispatch, view) =>
+      !hooks.readOnly() && command(state, dispatch, view)
+
   const suggestion: Record<string, Command> = {}
   for (const key of SUGGESTION_KEYS) {
     suggestion[key] = () => {
@@ -119,14 +160,24 @@ export function keyPlugins(
     Delete: deleteCommand,
     Tab: sinkCommand(schema),
     'Shift-Tab': liftCommand(schema),
+  }
+  const moving: Record<string, Command> = {
     ArrowLeft: (state, dispatch, view) => stepOverUnit(isRtl(view) ? 1 : -1)(state, dispatch),
     ArrowRight: (state, dispatch, view) => stepOverUnit(isRtl(view) ? -1 : 1)(state, dispatch),
   }
+  const base: Record<string, Command> = Object.fromEntries(
+    Object.entries(baseKeymap).map(([key, command]) => [
+      key,
+      SELECTING.has(key) ? command : writing(command),
+    ]),
+  )
+  const each = (bindings: Record<string, Command>) =>
+    Object.fromEntries(Object.entries(bindings).map(([key, command]) => [key, writing(command)]))
   return [
-    keymap(suggestion),
-    keymap(submit),
-    keymap(formatKeys),
-    keymap(editing),
-    keymap(baseKeymap),
+    keys(suggestion),
+    keys(submit),
+    keys(each(formatKeys)),
+    keys({ ...each(editing), ...moving }),
+    keys(base),
   ]
 }

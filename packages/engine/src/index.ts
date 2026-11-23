@@ -175,12 +175,22 @@ export {
   toolbarFocusIn,
   toolbarFocusOut,
   toolbarKeydown,
+  toolbarLosesFocus,
   toolbarPress,
   toolbarStop,
+  watchToolbarStop,
 } from './conventions/toolbar'
 export type { ToolbarStop } from './conventions/toolbar'
-export { followSelectionBar, placeSelectionBar, placeTokenList } from './conventions/selection-bar'
+export {
+  followSelectionBar,
+  placeSelectionBar,
+  placeTokenList,
+  visibleBox,
+  visibleViewport,
+} from './conventions/selection-bar'
 export type { ViewportBox } from './conventions/selection-bar'
+/* A press on the label FormField names a group by, which focuses the group's text. */
+export { focusOnLabelPress } from './conventions/label-press'
 /* A reader's selection in a RichTextContent and a press or a key on one of its highlights, which
    every framework's RichTextContent reads by. */
 export {
@@ -327,7 +337,7 @@ export type { CountdownListener } from './conventions/countdown-clock'
 export { CONTROL_SIZES } from './conventions/size'
 export type { ControlSize } from './conventions/size'
 
-export { gallerySlug } from './conventions/slug'
+export { gallerySlug, idPart } from './conventions/slug'
 
 export { spacingAttrs } from './conventions/spacing'
 export type { LayoutPatch, SpacingProps } from './conventions/spacing'

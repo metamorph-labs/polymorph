@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { renderToString } from 'react-dom/server'
 import { userEvent } from 'vitest/browser'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -58,9 +58,23 @@ const t = (text: string, ...marks: unknown[]) =>
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+const HINT = 'Controls for the selection are available: Alt+F10'
+
 const surface = (name = 'Comment') => screen.getByRole('textbox', { name }) as HTMLDivElement
 const status = () => screen.getAllByRole('status').at(-1) as HTMLElement
 const said = (words: string) => vi.waitFor(() => expect(status().textContent).toBe(words))
+
+/** Every text the field's status region says from now on, in order, each time it is said. */
+function listen(): string[] {
+  const texts: string[] = []
+  const region = status()
+  const observer = new MutationObserver(() => {
+    const text = region.textContent ?? ''
+    if (text !== '') texts.push(text)
+  })
+  observer.observe(region, { childList: true, subtree: true, characterData: true })
+  return texts
+}
 
 /** The handle, as the app's toolbar slot is handed it on each render. */
 function capture() {
@@ -351,15 +365,27 @@ describe('formatting', () => {
 
 describe('the toolbar’s keys', () => {
   it('is one tab stop before the text, moves with the arrows, Home and End, and Escape returns', async () => {
-    render(<RichTextInput aria-label="Comment" autoFocus defaultValue={doc(p(t('Text')))} />)
+    render(
+      <>
+        <input aria-label="Before" />
+        <RichTextInput aria-label="Comment" autoFocus defaultValue={doc(p(t('Text')))} />
+      </>,
+    )
     await focused(surface())
     const toolbar = screen.getByRole('toolbar', { name: 'Formatting' })
     const stops = () =>
       [...toolbar.querySelectorAll('button')].filter((button) => button.tabIndex === 0)
     expect(stops()).toHaveLength(1)
-    surface().focus()
-    stops()[0]?.focus()
+    // Shift+Tab from the text reaches the toolbar once, on its stop, and once more leaves it.
+    await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
     expect(document.activeElement?.getAttribute('aria-label')).toBe('Bold')
+    await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Before' }))
+    await userEvent.keyboard('{Tab}')
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Bold')
+    await userEvent.keyboard('{Tab}')
+    expect(document.activeElement).toBe(surface())
+    stops()[0]?.focus()
     await userEvent.keyboard('{ArrowRight}')
     expect(document.activeElement?.getAttribute('aria-label')).toBe('Italic')
     expect(stops().map((button) => button.getAttribute('aria-label'))).toEqual(['Italic'])
@@ -497,7 +523,7 @@ describe('entities', () => {
     await said('3 suggestions')
     expect(surface().getAttribute('aria-controls')).toBe(list.id)
     await userEvent.keyboard('gr')
-    await said('1 suggestions')
+    await said('1 suggestion')
     const option = screen.getByRole('option', { name: 'Grace Hopper Compilers' })
     expect(surface().getAttribute('aria-activedescendant')).toBe(option.id)
     await userEvent.keyboard('{Enter}')
@@ -546,7 +572,7 @@ describe('entities', () => {
     expect(surface().querySelectorAll('p')).toHaveLength(1)
     screen.getByRole('button', { name: 'Answer' }).click()
     await screen.findByRole('option', { name: 'Ada Lovelace' })
-    await said('1 suggestions')
+    await said('1 suggestion')
   })
 
   it('closes on Escape and when the caret leaves the token, and inserts nothing', async () => {
@@ -725,6 +751,11 @@ describe('disabled, read-only and pending', () => {
     expect(field.hasAttribute('tabindex')).toBe(false)
     field.focus()
     expect(document.activeElement).not.toBe(field)
+    await userEvent.click(field, { force: true })
+    await userEvent.keyboard('typed{Enter}')
+    await sleep(60)
+    expect(onChange).not.toHaveBeenCalled()
+    expect(field.textContent).toBe(richTextPlainText(CONTENT, { blockSeparator: '' }))
     for (const button of screen.getAllByRole('button', { hidden: true })) {
       expect((button as HTMLButtonElement).disabled, button.getAttribute('aria-label') ?? '').toBe(
         true,
@@ -732,20 +763,38 @@ describe('disabled, read-only and pending', () => {
     }
   })
 
-  it('read-only: focusable and selectable, not editable, the toolbar disabled', async () => {
+  it('read-only: focusable, a caret that selects with the keys, not editable, the toolbar disabled', async () => {
     const onChange = vi.fn()
+    const { seen, toolbar } = capture()
     render(
-      <RichTextInput aria-label="Comment" readOnly defaultValue={CONTENT} onChange={onChange} />,
+      <RichTextInput
+        aria-label="Comment"
+        readOnly
+        defaultValue={doc(p(t('Review these words')))}
+        onChange={onChange}
+        toolbar={toolbar}
+      />,
     )
     const field = surface()
-    await vi.waitFor(() => expect(field.getAttribute('contenteditable')).toBe('false'))
+    // The browser draws a caret in an editable element; the editor refuses every edit in it.
+    await vi.waitFor(() => expect(field.getAttribute('contenteditable')).toBe('true'))
     expect(field.getAttribute('aria-readonly')).toBe('true')
+    expect(field.getAttribute('inputmode')).toBe('none')
     expect(field.tabIndex).toBe(0)
-    field.focus()
-    expect(document.activeElement).toBe(field)
-    await userEvent.keyboard('typed')
+    seen.editor?.focus()
+    await focused(field)
+    // The caret is at the start, where focus put it.
+    await userEvent.keyboard(
+      '{Shift>}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{/Shift}',
+    )
+    await vi.waitFor(() => expect(seen.editor?.selection.text).toBe('Review'))
+    await userEvent.keyboard(mod('a'))
+    await vi.waitFor(() => expect(seen.editor?.selection.text).toBe('Review these words'))
+    await userEvent.keyboard('typed{Enter}{Backspace}')
+    await userEvent.keyboard(mod('b'))
     await sleep(60)
     expect(onChange).not.toHaveBeenCalled()
+    expect(field.textContent).toBe('Review these words')
     expect((screen.getByRole('button', { name: 'Bold' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
@@ -901,7 +950,9 @@ describe('the handle', () => {
 })
 
 describe('a server render', () => {
-  it('draws the frame, the toolbar and an empty surface, and reads no browser global', () => {
+  // That no member reads a browser global while it renders is the server-render law's, which
+  // renders every state in Node (`packages/react-ui/server-render.test.ts`).
+  it('draws the frame, the toolbar, an empty surface and the form value in a server render', () => {
     const html = renderToString(
       <RichTextInput
         aria-label="Comment"
@@ -1097,12 +1148,13 @@ describe('the selection bar', () => {
       />,
     )
     await focused(surface())
+    const heard = listen()
     expect(screen.queryByRole('toolbar')).toBeNull()
     await userEvent.keyboard(
       '{Shift>}{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}{/Shift}',
     )
     const bar = await screen.findByRole('toolbar', { name: 'Selection' })
-    await said('Controls for the selection are available: Alt+F10')
+    await said(HINT)
     expect(bar.querySelector('[aria-label="Undo"]')).toBeNull()
     // The bar is above the selection, inside the window.
     const box = bar.getBoundingClientRect()
@@ -1116,6 +1168,9 @@ describe('the selection bar', () => {
     await userEvent.keyboard('{Escape}')
     await vi.waitFor(() => expect(document.activeElement).toBe(surface()))
     expect(screen.getByRole('toolbar', { name: 'Selection' })).toBe(bar)
+    // Focus that comes back to the text from the bar has not entered the field again.
+    await sleep(60)
+    expect(heard.filter((text) => text === HINT)).toHaveLength(1)
     // Escape in the text hides it for this selection.
     await userEvent.keyboard('{Escape}')
     await vi.waitFor(() => expect(screen.queryByRole('toolbar', { name: 'Selection' })).toBeNull())
@@ -1204,10 +1259,17 @@ describe('annotations', () => {
     })
     await userEvent.click(fragment)
     await vi.waitFor(() => expect(onAnnotationSelect.mock.calls).toEqual([['thread-1']]))
+    // The caret the press placed inside the annotation is the same entry, heard once.
+    await sleep(100)
+    expect(onAnnotationSelect.mock.calls).toEqual([['thread-1']])
     await caretAfter(surface(), 'after each f', seen)
     await vi.waitFor(() =>
       expect(onAnnotationSelect.mock.calls).toEqual([['thread-1'], ['thread-2']]),
     )
+    // A caret moving inside the annotation it entered is not another entry.
+    await userEvent.keyboard('{ArrowRight}{ArrowRight}')
+    await sleep(100)
+    expect(onAnnotationSelect.mock.calls).toEqual([['thread-1'], ['thread-2']])
   })
 
   it('anchors and removes an annotation through the handle, as edits', async () => {
@@ -1233,6 +1295,451 @@ describe('annotations', () => {
     await vi.waitFor(() =>
       expect(onChange.mock.lastCall?.[0]).toEqual(doc(p(t('Anchor these words')))),
     )
+  })
+})
+
+describe('the selection bar, at the edges', () => {
+  const react = (onReact?: () => void) => (editor: RichTextInputEditor) => (
+    <Button
+      variant="ghost"
+      tone="neutral"
+      size="sm"
+      label="React"
+      onClick={() => {
+        onReact?.()
+        editor.insertText('👍')
+      }}
+    />
+  )
+
+  it('gives focus back to the text when an action in the bar replaces the selection', async () => {
+    render(
+      <RichTextInput
+        aria-label="Comment"
+        autoFocus
+        defaultValue={doc(p(t('Nice work')))}
+        selectionActions={react()}
+      />,
+    )
+    await focused(surface())
+    await userEvent.keyboard('{Shift>}{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}{/Shift}')
+    await screen.findByRole('toolbar', { name: 'Selection' })
+    await userEvent.keyboard('{Alt>}{F10}{/Alt}')
+    expect(document.activeElement?.textContent).toBe('React')
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(surface().textContent).toBe('Nice 👍'))
+    await vi.waitFor(() => expect(document.activeElement).toBe(surface()))
+    await sleep(60)
+    expect(document.activeElement).toBe(surface())
+  })
+
+  it('reaches a read-only field’s actions from the keys, for a reviewer who may not edit', async () => {
+    const reacted = vi.fn()
+    render(
+      <RichTextInput
+        aria-label="Comment"
+        readOnly
+        autoFocus
+        defaultValue={doc(p(t('Review this')))}
+        selectionActions={(editor) => (
+          <Button
+            variant="ghost"
+            tone="neutral"
+            size="sm"
+            label="Comment"
+            onClick={() => reacted(editor.selection.text)}
+          />
+        )}
+      />,
+    )
+    await focused(surface())
+    await userEvent.keyboard('{Shift>}{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}{/Shift}')
+    await screen.findByRole('toolbar', { name: 'Selection' })
+    await userEvent.keyboard('{Alt>}{F10}{/Alt}')
+    expect(document.activeElement?.textContent).toBe('Comment')
+    await userEvent.keyboard('{Enter}')
+    expect(reacted).toHaveBeenCalledWith('this')
+  })
+
+  it('keeps the bar inside the window for a selection taller than the window', async () => {
+    const long = doc(...Array.from({ length: 50 }, (_, index) => p(t(`Paragraph ${index + 1}`))))
+    render(
+      <RichTextInput
+        aria-label="Comment"
+        autoFocus
+        maxRows="none"
+        toolbarPlacement="selection"
+        defaultValue={long}
+      />,
+    )
+    await focused(surface())
+    expect(surface().getBoundingClientRect().height).toBeGreaterThan(window.innerHeight)
+    await userEvent.keyboard(mod('a'))
+    const bar = await screen.findByRole('toolbar', { name: 'Selection' })
+    await vi.waitFor(() => {
+      const box = bar.getBoundingClientRect()
+      expect(box.top).toBeGreaterThanOrEqual(0)
+      expect(box.bottom).toBeLessThanOrEqual(document.documentElement.clientHeight)
+      expect(box.right).toBeLessThanOrEqual(document.documentElement.clientWidth)
+    })
+    expect(bar.hasAttribute('data-outside')).toBe(false)
+  })
+
+  it('hides the bar while the selection is scrolled out of the field’s own box, and brings it back', async () => {
+    const { seen, toolbar } = capture()
+    const long = doc(...Array.from({ length: 30 }, (_, index) => p(t(`Line ${index + 1}.`))))
+    render(
+      <RichTextInput
+        aria-label="Comment"
+        maxRows={6}
+        toolbarPlacement="selection"
+        defaultValue={long}
+        toolbar={toolbar}
+      />,
+    )
+    await select(surface(), 'Line 1', seen)
+    const bar = await screen.findByRole('toolbar', { name: 'Selection' })
+    const box = surface().parentElement as HTMLElement
+    box.scrollTop = box.scrollHeight
+    await vi.waitFor(() => expect(bar.hasAttribute('data-outside')).toBe(true))
+    expect(getComputedStyle(bar).visibility).toBe('hidden')
+    box.scrollTop = 0
+    await vi.waitFor(() => expect(bar.hasAttribute('data-outside')).toBe(false))
+    expect(getComputedStyle(bar).visibility).toBe('visible')
+  })
+
+  it('brings the bar back for a selection hidden with Escape when it is selected again', async () => {
+    const { seen, toolbar } = capture()
+    render(
+      <RichTextInput
+        aria-label="Comment"
+        toolbarPlacement="selection"
+        defaultValue={doc(p(t('One two three')))}
+        toolbar={toolbar}
+      />,
+    )
+    const bar = () => screen.queryByRole('toolbar', { name: 'Selection' })
+    await select(surface(), 'two', seen)
+    await vi.waitFor(() => expect(bar()).not.toBeNull())
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(bar()).toBeNull())
+    await select(surface(), 'three', seen)
+    await vi.waitFor(() => expect(bar()).not.toBeNull())
+    await select(surface(), 'two', seen)
+    await sleep(60)
+    expect(bar()).not.toBeNull()
+  })
+
+  it('asks for the app’s selection actions only while the bar is drawn', async () => {
+    const actions = vi.fn(() => (
+      <Button variant="ghost" tone="neutral" size="sm" label="Comment" onClick={() => {}} />
+    ))
+    const { seen, toolbar } = capture()
+    render(
+      <RichTextInput
+        aria-label="Comment"
+        defaultValue={doc(p(t('Some words')))}
+        selectionActions={actions}
+        toolbar={toolbar}
+      />,
+    )
+    surface().focus()
+    await focused(surface())
+    await userEvent.keyboard('{End}x')
+    await sleep(60)
+    expect(actions).not.toHaveBeenCalled()
+    await select(surface(), 'words', seen)
+    await screen.findByRole('toolbar', { name: 'Selection' })
+    expect(actions).toHaveBeenCalled()
+  })
+
+  it('says the bar is there once each time focus enters the field, and not over the link form’s words', async () => {
+    const { seen, toolbar } = capture()
+    render(
+      <>
+        <RichTextInput
+          aria-label="Comment"
+          toolbarPlacement="selection"
+          defaultValue={doc(p(t('Read the guide first')))}
+          toolbar={toolbar}
+        />
+        <input aria-label="Elsewhere" />
+      </>,
+    )
+    await vi.waitFor(() => expect(seen.editor).not.toBeNull())
+    const heard = listen()
+    await select(surface(), 'guide', seen)
+    await said(HINT)
+    await userEvent.keyboard(mod('k'))
+    const address = await screen.findByRole('textbox', { name: 'Address' })
+    await vi.waitFor(() => expect(document.activeElement).toBe(address))
+    await userEvent.keyboard('example.com{Enter}')
+    await said('Link added')
+    await vi.waitFor(() => expect(document.activeElement).toBe(surface()))
+    await screen.findByRole('toolbar', { name: 'Selection' })
+    await sleep(100)
+    expect(status().textContent).toBe('Link added')
+    expect(heard.filter((text) => text === HINT)).toHaveLength(1)
+    // Leaving the field and coming back is entering it again.
+    screen.getByRole('textbox', { name: 'Elsewhere' }).focus()
+    await select(surface(), 'first', seen)
+    await vi.waitFor(() => expect(heard.filter((text) => text === HINT)).toHaveLength(2))
+  })
+})
+
+describe('the suggestion list, at the edges', () => {
+  it('names the active option by the option, so a filter that puts another first is heard', async () => {
+    render(<RichTextInput aria-label="Comment" autoFocus entities={[PEOPLE]} />)
+    await focused(surface())
+    await userEvent.keyboard('@')
+    await screen.findByRole('listbox')
+    const first = surface().getAttribute('aria-activedescendant') ?? ''
+    expect(document.getElementById(first)?.textContent).toContain('Ada Lovelace')
+    await userEvent.keyboard('g')
+    await vi.waitFor(() => expect(surface().getAttribute('aria-activedescendant')).not.toBe(first))
+    const now = surface().getAttribute('aria-activedescendant') ?? ''
+    expect(document.getElementById(now)?.textContent).toContain('Grace Hopper')
+    expect(document.getElementById(now)?.getAttribute('aria-selected')).toBe('true')
+  })
+
+  it('draws the list outside a scrolling box around the field, inside the window', async () => {
+    render(
+      <div style={{ overflow: 'auto', blockSize: '120px' }} data-testid="box">
+        <RichTextInput
+          aria-label="Comment"
+          autoFocus
+          minRows={1}
+          entities={[PEOPLE]}
+          defaultValue={doc(p(t('Thanks @')))}
+        />
+      </div>,
+    )
+    await focused(surface())
+    const panel = await vi.waitFor(() => {
+      const found = document.querySelector<HTMLElement>('[data-rich-text-input-part="suggestions"]')
+      expect(found).not.toBeNull()
+      return found as HTMLElement
+    })
+    await vi.waitFor(() => expect(panel.dataset['placement']).toBe('below'))
+    const list = panel.getBoundingClientRect()
+    const box = screen.getByTestId('box').getBoundingClientRect()
+    // It runs past the scrolling box's edge and is drawn there all the same.
+    expect(list.bottom).toBeGreaterThan(box.bottom)
+    const below = document.elementFromPoint((list.left + list.right) / 2, list.bottom - 8)
+    expect(panel.contains(below)).toBe(true)
+    expect(list.bottom).toBeLessThanOrEqual(document.documentElement.clientHeight)
+    // Its start is the token's start.
+    const words = textNodes(surface())[0]?.node as Text
+    const token = document.createRange()
+    token.setStart(words, words.data.indexOf('@'))
+    token.setEnd(words, words.data.indexOf('@') + 1)
+    expect(Math.abs(list.left - token.getBoundingClientRect().left)).toBeLessThan(1)
+  })
+})
+
+describe('focus', () => {
+  it('takes focus from a press on its FormField label, and not from a click that ends a selection of the label', async () => {
+    render(
+      <FormField label="Description">
+        <RichTextInput defaultValue={doc(p(t('Text')))} />
+      </FormField>,
+    )
+    const field = screen.getByRole('textbox', { name: 'Description' })
+    await vi.waitFor(() => expect(field.getAttribute('contenteditable')).toBe('true'))
+    const label = document.getElementById(field.getAttribute('aria-labelledby') ?? '')
+    expect(label?.tagName).toBe('LABEL')
+    await userEvent.click(label as HTMLElement)
+    await vi.waitFor(() => expect(document.activeElement).toBe(field))
+    field.blur()
+    // The press that ends a drag over the label's words leaves them selected and focus where it was.
+    const words = label?.firstChild as Text
+    document.getSelection()?.setBaseAndExtent(words, 0, words, 4)
+    label?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }))
+    await sleep(60)
+    expect(document.activeElement).not.toBe(field)
+    expect(document.getSelection()?.toString()).toBe('Desc')
+  })
+
+  it('hears focus enter and leave the field as a whole, not moves between its own parts', async () => {
+    const onFocus = vi.fn()
+    const onBlur = vi.fn()
+    render(
+      <>
+        <RichTextInput
+          aria-label="Comment"
+          defaultValue={doc(p(t('Text')))}
+          onFocus={onFocus}
+          onBlur={onBlur}
+        />
+        <input aria-label="After" />
+      </>,
+    )
+    await vi.waitFor(() => expect(surface().getAttribute('contenteditable')).toBe('true'))
+    surface().focus()
+    await focused(surface())
+    expect(onFocus).toHaveBeenCalledTimes(1)
+    await userEvent.keyboard('{Alt>}{F10}{/Alt}')
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Bold')
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(document.activeElement).toBe(surface()))
+    // The text style menu is drawn elsewhere in the document, and is the field's own.
+    screen.getByRole('button', { name: 'Text style' }).focus()
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() =>
+      expect(document.activeElement?.getAttribute('role')).toBe('menuitemcheckbox'),
+    )
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Text style' })),
+    )
+    await sleep(60)
+    expect(onBlur).not.toHaveBeenCalled()
+    expect(onFocus).toHaveBeenCalledTimes(1)
+    screen.getByRole('textbox', { name: 'After' }).focus()
+    await vi.waitFor(() => expect(onBlur).toHaveBeenCalledTimes(1))
+    surface().focus()
+    await vi.waitFor(() => expect(onFocus).toHaveBeenCalledTimes(2))
+  })
+
+  it('keeps a later version’s blocks at either end when it takes focus at mount and the person types', async () => {
+    const onChange = vi.fn()
+    const callout = (words: string) => ({ type: 'callout', content: [t(words)] })
+    render(
+      <RichTextInput
+        aria-label="Comment"
+        autoFocus
+        onChange={onChange}
+        defaultValue={doc(callout('First'), p(t('x')), callout('Last'))}
+      />,
+    )
+    await focused(surface())
+    await userEvent.keyboard('!')
+    await vi.waitFor(() =>
+      expect(onChange.mock.lastCall?.[0]).toEqual(
+        doc(callout('First'), p(t('x!')), callout('Last')),
+      ),
+    )
+  })
+})
+
+describe('the form value, through changes', () => {
+  it('keeps what the text shows when the app stops controlling the value', async () => {
+    function Held() {
+      const [value, setValue] = useState<RichTextDocument | undefined>(doc(p(t('Controlled'))))
+      return (
+        <>
+          <RichTextInput aria-label="Comment" name="body" maxLength={50} value={value} />
+          <button type="button" onClick={() => setValue(undefined)}>
+            Release
+          </button>
+        </>
+      )
+    }
+    render(
+      <form data-testid="form">
+        <Held />
+      </form>,
+    )
+    await vi.waitFor(() => expect(surface().textContent).toBe('Controlled'))
+    screen.getByRole('button', { name: 'Release' }).click()
+    const root = surface().closest('[data-member="rich-text-input"]') as HTMLElement
+    await vi.waitFor(() => expect(root.hasAttribute('data-empty')).toBe(false))
+    expect(surface().textContent).toBe('Controlled')
+    expect(
+      document.getElementById(surface().getAttribute('aria-describedby') ?? '')?.textContent,
+    ).toBe('10 / 50')
+    const data = new FormData(screen.getByTestId('form') as HTMLFormElement)
+    expect(text(parseRichText(String(data.get('body'))).value)).toBe('Controlled')
+  })
+
+  it('puts the first document back when its form is reset', async () => {
+    const onChange = vi.fn()
+    render(
+      <form data-testid="form">
+        <RichTextInput
+          aria-label="Comment"
+          name="body"
+          autoFocus
+          defaultValue={doc(p(t('First')))}
+          onChange={onChange}
+        />
+      </form>,
+    )
+    await focused(surface())
+    await userEvent.keyboard(' edit')
+    await vi.waitFor(() => expect(surface().textContent).toBe('First edit'))
+    ;(screen.getByTestId('form') as HTMLFormElement).reset()
+    await vi.waitFor(() => expect(surface().textContent).toBe('First'))
+    expect(onChange.mock.lastCall?.[0]).toEqual(doc(p(t('First'))))
+    const data = new FormData(screen.getByTestId('form') as HTMLFormElement)
+    expect(text(parseRichText(String(data.get('body'))).value)).toBe('First')
+  })
+})
+
+describe('the toolbar, as its content changes', () => {
+  it('gives the app’s controls the toolbar’s tab index when they appear on their own', async () => {
+    function Later() {
+      const [shown, setShown] = useState(false)
+      useEffect(() => {
+        const timer = setTimeout(() => setShown(true), 30)
+        return () => clearTimeout(timer)
+      }, [])
+      return shown ? (
+        <Button variant="ghost" tone="neutral" size="sm" label="Attach" onClick={() => {}} />
+      ) : null
+    }
+    render(<RichTextInput aria-label="Comment" toolbar={() => <Later />} />)
+    const attach = await screen.findByRole('button', { name: 'Attach' })
+    await vi.waitFor(() => expect(attach.tabIndex).toBe(-1))
+    const toolbar = screen.getByRole('toolbar', { name: 'Formatting' })
+    expect([...toolbar.querySelectorAll('button')].filter((b) => b.tabIndex === 0)).toHaveLength(1)
+  })
+})
+
+describe('a document of a later format', () => {
+  const LATER = {
+    format: 'polymorph-rich-text/2',
+    blocks: [
+      { type: 'paragraph', content: [{ type: 'text', text: 'Written by a later version' }] },
+    ],
+  } as unknown as RichTextDocument
+
+  it('is read-only, writes nothing, posts the stored JSON and submits it as it was given', async () => {
+    const onChange = vi.fn()
+    const onSubmit = vi.fn()
+    const { seen, toolbar } = capture()
+    render(
+      <form data-testid="form">
+        <RichTextInput
+          aria-label="Comment"
+          name="body"
+          defaultValue={LATER}
+          onChange={onChange}
+          onSubmit={onSubmit}
+          submitLabel="Save"
+          toolbar={toolbar}
+        />
+      </form>,
+    )
+    const field = surface()
+    await vi.waitFor(() => expect(field.textContent).toBe('Written by a later version'))
+    const root = field.closest('[data-member="rich-text-input"]') as HTMLElement
+    expect(root.hasAttribute('data-readonly')).toBe(true)
+    expect(field.getAttribute('aria-readonly')).toBe('true')
+    expect((screen.getByRole('button', { name: 'Bold' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(seen.editor?.disabled).toBe(true)
+    await select(field, 'later', seen)
+    await userEvent.keyboard('typed{Enter}')
+    expect(seen.editor?.annotate('thread-1')).toBe(false)
+    seen.editor?.insertText('x')
+    seen.editor?.clear()
+    await sleep(60)
+    expect(onChange).not.toHaveBeenCalled()
+    expect(field.textContent).toBe('Written by a later version')
+    const data = new FormData(screen.getByTestId('form') as HTMLFormElement)
+    expect(JSON.parse(String(data.get('body')))).toEqual(LATER)
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(onSubmit.mock.calls[0]?.[0]).toBe(LATER)
   })
 })
 
