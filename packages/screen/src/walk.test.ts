@@ -960,6 +960,41 @@ describe('an element is drawn once every prop it requires has a value', () => {
     ])
   })
 
+  it('is not drawn, once whole, where a member that reads its one child has none it can draw', () => {
+    const field = (children?: unknown[]) => ({
+      component: 'FormField',
+      props: { label: 'Name' },
+      ...(children === undefined ? {} : { children }),
+    })
+    const { screen, faults } = open({
+      document: doc(
+        {
+          component: 'Stack',
+          children: [
+            field(),
+            field([{ component: 'Buton' }]),
+            field([{ $: 'onApprove' }]),
+            field(['Ada']),
+            field([{ component: 'Input', props: { name: 'name' } }]),
+          ],
+        },
+        approve,
+      ),
+    })
+    const drawn = [0, 1, 2, 3, 4].map(
+      (index) => at(screen, `$.root.children[${index}]`).fault?.message ?? 'drawn',
+    )
+    expect(drawn).toEqual([
+      '`FormField` is missing its required child, one element',
+      '`FormField` is not drawn, as it takes one element as its child, and has none it can draw',
+      '`FormField` is not drawn, as it takes one element as its child, and has none it can draw',
+      '`FormField` is not drawn, as it takes one element as its child, and has none it can draw',
+      'drawn',
+    ])
+    expect(screen.values).toEqual({ name: '' })
+    expect(faults.filter(({ message }) => message.startsWith('`FormField`'))).toHaveLength(4)
+  })
+
   it('is left out while the document streams, and is a fault once it is whole', () => {
     const document = doc(
       {

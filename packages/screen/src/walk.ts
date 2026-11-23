@@ -111,7 +111,9 @@ import { addressFaults, ADDRESS_KEYS } from './urls'
  *    whose required prop was never written, or was refused, carries a fault
  *    that names the prop and is drawn as nothing. A required callback is
  *    stubbed, `children` are no prop here, and an address refused or data the
- *    host has not given leaves the element drawn without it.
+ *    host has not given leaves the element drawn without it. A member that
+ *    takes one element as its required child (FormField) is drawn once that
+ *    child is; while the document streams it waits for it.
  *  - **A fault never blanks the screen.** A node that cannot be drawn carries
  *    its fault and is drawn as nothing, or as the fault where the host asks;
  *    every fault reaches the host with its path (`onFault`), once in each
@@ -1252,6 +1254,39 @@ export function createScreen(options: ScreenOptions): Screen {
             // A list inside the children is drawn in its place.
             if (resolved.kind === 'list') children.push(...resolved.items)
             else children.push(resolved)
+          })
+        }
+      }
+
+      // A member that takes one element as its child, and requires it, reads that element (FormField
+      // gives its control an id), so it is not drawn without it. While the document streams it
+      // waits for the child to be drawn; once whole, a child that is missing, refused or not one
+      // element is a fault, and the member is drawn as nothing.
+      if (known.childrenKind === 'element' && types.get('children')?.optional === false) {
+        const [only, ...more] = children
+        if (only?.kind !== 'node' || only.node.fault !== null || more.length > 0) {
+          named.length = mark
+          if (streaming) return null
+          const fault: ScreenFault = {
+            path,
+            component,
+            message:
+              children.length === 0 && !Array.isArray(childValues)
+                ? `\`${component}\` is missing its required child, one element`
+                : `\`${component}\` is not drawn, as it takes one element as its child, and has none it can draw`,
+          }
+          found.push(fault)
+          return kept({
+            path,
+            key: path,
+            component,
+            element,
+            member: known.member,
+            part: known.part,
+            props: {},
+            children: [],
+            fault,
+            childrenKind: null,
           })
         }
       }

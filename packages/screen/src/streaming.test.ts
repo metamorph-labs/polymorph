@@ -102,11 +102,40 @@ function missing(screen: Screen): string[] {
   return out
 }
 
+/**
+ * Every drawn node whose member takes one element as its child (FormField) and
+ * is not handed exactly one drawn element: a member that reads its child
+ * cannot be drawn without it.
+ */
+function alone(screen: Screen): string[] {
+  const out: string[] = []
+  const visit = (value: Drawn) => {
+    if (value.kind === 'node') node(value.node)
+    else if (value.kind === 'list') value.items.forEach(visit)
+    else if (value.kind === 'record') Object.values(value.fields).forEach(visit)
+  }
+  const node = (at: ScreenNode) => {
+    if (at.fault !== null) return
+    const [only, ...more] = at.children
+    if (
+      at.childrenKind === 'element' &&
+      (only?.kind !== 'node' || only.node.fault !== null || more.length > 0)
+    ) {
+      out.push(at.path)
+    }
+    Object.values(at.props).forEach(visit)
+    at.children.forEach(visit)
+  }
+  if (screen.root !== null) node(screen.root)
+  return out
+}
+
 interface Cut {
   cut: string | null
   streaming: boolean
   handed: Map<string, string>
   missing: string[]
+  alone: string[]
 }
 
 /** A screen fed each cut of a text in turn, and what it handed a renderer at each. */
@@ -126,6 +155,7 @@ function stream(text: string): { cuts: Cut[]; whole: Map<string, string> } {
       streaming: !read.complete,
       handed: handed(screen),
       missing: missing(screen),
+      alone: alone(screen),
     })
   }
   screen.update({ document: JSON.parse(text) as unknown, open: null, cut: null, streaming: false })
@@ -140,6 +170,8 @@ describe('every cut of every screen', () => {
       for (const [at, now] of cuts.entries()) {
         // Once the document is whole every element is drawn, and what it lacks is the validator's.
         if (now.streaming) expect(now.missing, `cut ${at + 1}`).toEqual([])
+        // A member that reads its one child is never handed without it.
+        expect(now.alone, `cut ${at + 1}`).toEqual([])
         for (const [path, value] of now.handed) {
           if (whole.get(path) !== value) {
             throw new Error(
@@ -158,6 +190,32 @@ describe('every cut of every screen', () => {
       expect(cuts.some((now) => now.handed.size > 0 && now.handed.size < whole.size)).toBe(true)
     }, 60_000)
   }
+
+  it('draws each field of a form a model writes in prose and a fence only once its control is drawn', () => {
+    const fixture = readFileSync(resolve(ROOT, 'packages/screen/fixtures/book-room.json'), 'utf8')
+    const answer = `Here is a form to book the room.\n\n\`\`\`json\n${fixture}\`\`\`\n\nTell me if it fits.`
+    const screen = createScreen({
+      document: undefined,
+      vocabulary: VOCABULARY,
+      streaming: true,
+      data: { rooms: [], lengths: [], errors: [] },
+    })
+    const fields = new Set<string>()
+    for (let end = 1; end <= answer.length; end += 1) {
+      const read = parsePartial(answer.slice(0, end))
+      screen.update({
+        document: read.document,
+        open: read.open,
+        cut: read.cut,
+        streaming: !read.complete,
+      })
+      expect(alone(screen), `character ${end}`).toEqual([])
+      for (const [path, value] of handed(screen)) if (value === 'node FormField') fields.add(path)
+    }
+    // Every field was drawn by the end, each with its control.
+    expect(fields.size).toBe(5)
+    expect(screen.faults).toEqual([])
+  })
 
   it('draws a Dashboard while its last panel is still being written', () => {
     const text = readFileSync(resolve(ROOT, 'packages/screen/fixtures/usage-overview.json'), 'utf8')

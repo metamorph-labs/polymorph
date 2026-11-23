@@ -55,7 +55,9 @@ behaves the same in each of them:
   required callback, which a stub answers; `children`; and an address that was refused, as a link
   or an image without its address still reads, and is inert. A required prop bound to data the host
   has not given yet is drawn without it, with a fault, so a screen keeps its shape while its data
-  arrives;
+  arrives. A member that reads its one required child (a FormField's control) is drawn once that
+  child is: while a document streams it waits for it, and once whole, one with no child it can
+  draw is a fault;
 - an element in a structured object is drawn only where the field's data type takes a node (an
   empty state's `action`). One in a field the type does not declare, or declares as data, is a
   fault and is not drawn, so it holds no value in `values`. In an object whose type the vocabulary
