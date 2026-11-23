@@ -1,4 +1,9 @@
-import type { RichTextDocument, RichTextEntity, RichTextFormat } from '../rich-text/types'
+import type {
+  RichTextDocument,
+  RichTextEntity,
+  RichTextFormat,
+  RichTextRange,
+} from '../rich-text/types'
 
 /**
  * The editor's contract: what a member gives the editor and what it gets back
@@ -41,6 +46,8 @@ export interface RichTextEditorClasses {
   code: string
   link: string
   entity: string
+  /** Each drawn fragment of an annotation: text, or an entity. */
+  annotation: string
   /** A node of a type this version does not know, kept as one unit. */
   unknown: string
 }
@@ -88,6 +95,10 @@ export interface RichTextEditorState {
   collapsed: boolean
   /** The text in the selection, for a link form's first value. Empty for a caret. */
   selectedText: string
+  /** The selection as a range of the document's plain text. */
+  range: RichTextRange
+  /** The annotations at the selection, drawn or not: the one that starts last comes first. */
+  annotations: string[]
   /** The formats on at the selection. `link` is the target of the link the selection is in. */
   active: {
     bold: boolean
@@ -127,6 +138,14 @@ export interface RichTextEditorOptions {
   placeholder?: string
   /** The page level the document's level 1 heading is drawn at. Default 2. */
   headingLevel?: 2 | 3 | 4
+  /**
+   * The annotations drawn. `undefined` draws every one the document holds. An
+   * annotation that is not drawn stays in the document and leaves no class and
+   * no attribute on its text.
+   */
+  annotations?: readonly string[]
+  /** The drawn annotation whose fragments carry `data-active`. */
+  activeAnnotation?: string
   /** The document changed by the reader's act or a command. Not called for `setValue`. */
   onChange: (value: RichTextDocument) => void
   /** Called after each change of what `RichTextEditorState` holds. */
@@ -153,6 +172,8 @@ export type RichTextEditorUpdate = Partial<
     | 'editable'
     | 'attributes'
     | 'placeholder'
+    | 'annotations'
+    | 'activeAnnotation'
     | 'onChange'
     | 'onState'
     | 'onEvent'
@@ -190,6 +211,20 @@ export interface RichTextEditor {
   insertText(text: string): void
   /** Replaces the open suggestion token with the entity and a space, or inserts it at the selection. */
   insertEntity(entity: Omit<RichTextEntity, 'type'>): void
+  /**
+   * Anchors `id` to the selection: every text and entity in it takes the
+   * annotation. Returns false for a caret, and for a selection that holds
+   * nothing an annotation can sit on (a code block's text). An edit: `onChange`
+   * is called and undo reverses it.
+   */
+  annotate(id: string): boolean
+  /** Removes every mark of the annotation `id`. Returns false when the document holds none. An edit. */
+  removeAnnotation(id: string): boolean
+  /**
+   * Where the selection is on screen now, for a bar the member places at it:
+   * the box around every selected line. Null for a caret.
+   */
+  selectionRect(): RichTextRect | null
   /** Closes the suggestion for the token the caret is in. It stays closed while the caret is in that token. */
   dismissSuggestion(): void
   /** Empties the document, as the reader's own act: `onChange` is called and undo restores it. */

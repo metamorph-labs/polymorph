@@ -10,7 +10,7 @@
  * marking it absent on iOS, removes it here and lowers the count in the same
  * change.
  */
-export const PENDING: readonly string[] = ['RichTextContent']
+export const PENDING: readonly string[] = []
 
 /** Something a spec's contract asks of a member that its SwiftUI rendering cannot do. */
 export interface PlatformGap {

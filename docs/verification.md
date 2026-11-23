@@ -1498,6 +1498,7 @@ The mapping, from the type the registry prints:
 | `File` | `PMFile`, declared in the foundation: the file's URL, name, size in bytes and media type |
 | `Blob` | `Data`: ImageEditor's `onConfirm` hands over the framed image's bytes |
 | `unknown`, a JSON value a member shows without interpreting it (JsonTree's `data`) | `PMJSONValue`, declared in the foundation: null, a boolean, a number, a string, an array, or an object whose keys keep their order |
+| a name in `JSON_TYPES` (`mapping.ts`): a document an app stores and a tolerant reader reads, which keeps the nodes of a later version (RichTextContent's `RichTextDocument`) | `PMJSONValue`, the JSON the app stored, which the member reads itself |
 | a function type the web names, which the registry prints by name (`StepperSpoken`), in `FUNCTION_ALIASES` | its definition, by this table: `(@MainActor (PMStepperSpokenStep) -> String)?` |
 | an object type the web writes inline, whose fields a shape in `SHAPES` with a `native` reason names (`ApprovalCard`'s `messages`) | `PM<Name>`, that shape's struct: `PMApprovalCardMessages`; BarChart's `onSelect` payload is `PMChartSeriesSelection` |
 | a union whose branches are objects the web writes inline, told apart by a literal field the shapes name as their `discriminant` (`ChartAnnotation`'s `kind`) | an enum of one case per branch, each holding its shape's struct less that field: `PMChartAnnotation.line(PMChartLineAnnotation)` |
@@ -1887,6 +1888,7 @@ The mapping is the Swift one's, from the same resolution, written in Kotlin:
 | `File` | `PMFile`, declared in the foundation: the URI, name, size and media type |
 | `Blob` | `ByteArray`: ImageEditor's `onConfirm` hands over the framed image's bytes |
 | `unknown` | `PMJSONValue`, any JSON value, declared in the foundation: JsonTree's `data`, ToolCall's `input` |
+| a name in `JSON_TYPES` (RichTextContent's `RichTextDocument`) | `PMJSONValue`, as on iOS |
 | `T \| null` | `T?` |
 | an optional prop that also takes `null` | `PMSome<T?>?`: `null` is absent, and `PMSome(null)` is the value `null`, as Swift's `T??` is |
 

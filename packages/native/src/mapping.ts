@@ -1743,6 +1743,20 @@ export const FUNCTION_ALIASES: Readonly<Record<string, string>> = {
   StepperSpoken: '(step: { position: number; count: number; state: StepperSpokenState }) => string',
 }
 
+/**
+ * Named types a native contract carries as JSON, the dialect's type for the
+ * web's `unknown` (`PMJSONValue`), each with why. Such a type is the JSON an
+ * app stored, read by a tolerant reader, so a typed native tree would drop
+ * what the reader keeps. `contracts.test.ts` holds each to a type the web
+ * exports.
+ */
+export const JSON_TYPES: Readonly<Record<string, string>> = {
+  RichTextDocument:
+    'A rich-text document crosses as the JSON a server stored, as the web member takes any ' +
+    'JSON: its readers keep the nodes of a later version, which a typed tree would have no case ' +
+    'for.',
+}
+
 /** One branch of a union: its case's name, and its type as the web writes it. */
 export interface UnionCase {
   name: string
@@ -2471,6 +2485,9 @@ export class Pass {
     if (args.length > 0) throw new Unsupported(`the generic type \`${name}<…>\``)
     const equivalent = this.dialect.equivalents[name]
     if (equivalent !== undefined) return equivalent
+    if (JSON_TYPES[name] !== undefined && this.dialect.unknown !== undefined) {
+      return this.dialect.unknown
+    }
     const props = /^(.+)Props$/.exec(name)?.[1]
     if (props !== undefined && this.memberNames.has(props)) return `PM${props}Props`
     const opaque = assertIdentifier(

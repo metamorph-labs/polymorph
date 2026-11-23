@@ -36,12 +36,10 @@ import { readRecipeNumbers, RECIPE_NUMBERS } from './recipes'
  * mapping learns a type, and raise it only with the reason in the change. The
  * counts are Android's own, because Android renders fewer members: the charts
  * are absent there. ImageEditor's `Blob` is a `ByteArray`, as Swift holds it as
- * `Data`. One type is opaque, RichTextContent's `RichTextDocument`, for the
- * reason `contracts.test.ts` gives; the member stays in `kotlin-pending.ts`
- * until its Compose rendering decides it.
+ * `Data`, so no type is opaque.
  */
 const UNSUPPORTED_COUNT = 10
-const OPAQUE_COUNT = 1
+const OPAQUE_COUNT = 0
 
 const ROOT = resolve(import.meta.dirname, '../../..')
 const registry = buildRegistry(ROOT)
@@ -263,6 +261,8 @@ describe('the Kotlin mapping', () => {
     field('Select', 'options: List<PMSelectOptionEntry>')
     field('Toast', 'action: PMToastAction? = null')
     field('DataTable', 'emptyState: PMEmptyStateProps')
+    // A name in `JSON_TYPES` crosses as the JSON an app stored.
+    field('RichTextContent', 'value: PMJSONValue')
   })
 
   it('maps a function that returns an element to a composable slot of its parameters', () => {

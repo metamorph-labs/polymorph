@@ -35,7 +35,7 @@ import { UNDRAWN, type UndrawnProps } from './undrawn'
  * member to it and raises this number; implementing a member means removing it
  * from `pending.ts` and lowering this number in the same change.
  */
-const PENDING_COUNT = 1
+const PENDING_COUNT = 0
 
 const ROOT = resolve(import.meta.dirname, '../../..')
 const registry = buildRegistry(ROOT)

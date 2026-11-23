@@ -89,6 +89,8 @@ export interface RichTextEntity {
   id: string
   /** The words drawn and read, with any leading character they carry: `@Ada Lovelace`. */
   label: string
+  /** The annotations the entity is inside. An entity keeps no other mark. Omitted when it has none. */
+  marks?: RichTextMark[]
 }
 
 export type RichTextMark =
@@ -97,6 +99,40 @@ export type RichTextMark =
   | { type: 'strike' }
   | { type: 'code' }
   | { type: 'link'; href: string }
+  | RichTextAnnotationMark
+
+/**
+ * An anchor for something the application keeps about these words: a comment
+ * thread, a review note, a suggestion. The mark holds the application's
+ * identifier and nothing else, and it moves with its text through every edit.
+ * Several annotations may cover the same text. It is not a format: a field
+ * always holds it, and `restrictRichText` keeps it.
+ */
+export interface RichTextAnnotationMark {
+  type: 'annotation'
+  /** The application's identifier for what is anchored here. */
+  id: string
+}
+
+/**
+ * A stretch of a document, in code points of its plain text with no separator
+ * between blocks: `richTextPlainText(doc, { blockSeparator: '' })`, the units
+ * `richTextLength` counts. `end` is exclusive. A caret is a range whose ends
+ * are equal.
+ */
+export interface RichTextRange {
+  start: number
+  end: number
+}
+
+/** One annotation as `richTextAnnotations` lists it. */
+export interface RichTextAnnotation {
+  id: string
+  /** The plain text the annotation covers, an entity as its label. */
+  text: string
+  /** From its first character to its last. An annotation in several pieces is one entry that spans them. */
+  range: RichTextRange
+}
 
 /** What a field may be told to allow. Entities and hard breaks are not formats: a field always holds them. */
 export type RichTextFormat =

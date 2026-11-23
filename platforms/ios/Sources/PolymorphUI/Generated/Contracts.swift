@@ -6674,14 +6674,14 @@ public struct PMRichTextContentProps {
   public var size: PMRichTextContentSize?
   /// The stored document. Any JSON is read as far as it can be; what is not a document draws
   /// nothing.
-  public var value: PMRichTextDocument
+  public var value: PMJSONValue
 
   public init(
     entity: (@MainActor (PMRichTextEntity) -> PMContent)? = nil,
     headingLevel: PMRichTextContentHeadingLevel? = nil,
     onNavigate: (@MainActor (String) -> Void)? = nil,
     size: PMRichTextContentSize? = nil,
-    value: PMRichTextDocument
+    value: PMJSONValue
   ) {
     self.entity = entity
     self.headingLevel = headingLevel
@@ -11683,9 +11683,3 @@ public struct PMValueFormat {
 }
 
 // MARK: - Opaque types
-
-/// The web's `RichTextDocument`, opaque here: the registry prints it by name, not by shape. Used by
-/// RichTextContent.value.
-public struct PMRichTextDocument {
-  public init() {}
-}

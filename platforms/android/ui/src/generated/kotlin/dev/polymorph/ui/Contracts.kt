@@ -4533,7 +4533,7 @@ data class PMRichTextContentProps(
      * The stored document. Any JSON is read as far as it can be; what is not a document draws
      * nothing.
      */
-    val value: PMRichTextDocument,
+    val value: PMJSONValue,
 )
 
 /**
@@ -7248,9 +7248,3 @@ data class PMTreeMessages(
 )
 
 // Opaque types
-
-/**
- * The web's `RichTextDocument`, opaque here: the registry prints it by name, not by shape. Used by
- * RichTextContent.value.
- */
-class PMRichTextDocument

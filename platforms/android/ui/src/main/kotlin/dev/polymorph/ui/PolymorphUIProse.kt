@@ -1,6 +1,7 @@
 // The parts the prose members share: the caret StreamingText draws and
-// Markdown restates, the rule a Markdown quote and ReasoningDisclosure's
-// reasoning share, and the marks a paragraph carries inline (Citation's mark,
+// Markdown restates, the rule a Markdown quote, a RichTextContent quote and
+// ReasoningDisclosure's reasoning share, the list Markdown and RichTextContent
+// draw, and the marks a paragraph carries inline (Citation's mark,
 // an external link's glyph), each a composable set in the text as Compose's
 // inline content, so it follows the word before it wherever the paragraph
 // wraps, with the room Citation's marks keep for their touch areas: before a
@@ -9,13 +10,18 @@
 package dev.polymorph.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +38,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -101,6 +108,48 @@ fun Modifier.pmQuoteRule(): Modifier {
         }
         .padding(start = theme.defaultDensity.spacing.s4)
 }
+
+/* Lists -------------------------------------------------------------------- */
+
+/**
+ * A list as Markdown and RichTextContent draw it (`markdown.md`,
+ * `rich-text-content.md`), so a list in a reply and a list in a comment are one
+ * decision: a column of `count` items `space.2` apart, each a row of its marker
+ * and its blocks, which `item` draws `space.2` apart. The marker stands at the
+ * end of a column `space.6` wide, `space.2` before the blocks, in
+ * `text.secondary` at `step`: the item's number from `start` and a full stop in
+ * a numbered list, and in a bulleted one a bullet that changes with `depth`,
+ * the number of lists around this one, as a browser draws them.
+ */
+@Composable
+internal fun PMProseList(
+    count: Int,
+    ordered: Boolean,
+    start: Long,
+    depth: Int,
+    step: PMTextStyle,
+    item: @Composable (index: Int) -> Unit,
+) {
+    val theme = PM.theme
+    val space = theme.defaultDensity.spacing
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(space.s2)) {
+        for (index in 0 until count) {
+            Row(Modifier.fillMaxWidth()) {
+                Text(
+                    text = if (ordered) "${start + index}." else PROSE_BULLETS[depth % PROSE_BULLETS.size],
+                    style = step.textStyle,
+                    color = theme.colors.textSecondary.color,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.width(space.s6).padding(end = space.s2),
+                )
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(space.s2)) { item(index) }
+            }
+        }
+    }
+}
+
+/** A bulleted list's bullets by depth, as a browser draws them: disc, circle, square. */
+private val PROSE_BULLETS = listOf("•", "◦", "▪")
 
 /* Marks in a paragraph ----------------------------------------------------- */
 

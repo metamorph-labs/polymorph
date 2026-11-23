@@ -497,8 +497,9 @@ The foundation (`PolymorphUI.kt`) is the Compose counterpart of the SwiftUI one:
   The room this takes changes the spacing a recipe draws, so each member's spec records its
   Android measure ("On Android" in `tag-input.md`, `number-input.md`, `time-input.md`,
   `month-input.md`, `duration-input.md`,
-  `citation.md`, `markdown.md`, `prompt-input.md`, `attachment-chip.md`, `source-list.md`,
-  `banner.md`, `list.md`, `section-nav.md`, `table-of-contents.md`, `tree.md` and `diff.md`),
+  `citation.md`, `markdown.md`, `rich-text-content.md`, `prompt-input.md`, `attachment-chip.md`,
+  `source-list.md`, `banner.md`, `list.md`, `section-nav.md`, `table-of-contents.md`, `tree.md` and
+  `diff.md`),
   and Carousel, whose dot rail changes form, is adapted.
 - **Field names.** A text field's name is on a node inside the editable one (`pmFieldName`),
   where Material's text field draws its label, and TalkBack reads it with the field. It is never

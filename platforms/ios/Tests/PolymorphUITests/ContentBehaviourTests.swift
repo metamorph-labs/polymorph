@@ -6,10 +6,10 @@
 
   @testable import PolymorphUI
 
-  /// What Plan, TableOfContents, CommentThread and Tour say and do, read
-  /// through the accessibility tree AppKit publishes, as an assistive client
-  /// reads it, and the logic each computes from its props. The scene is
-  /// `BehaviourTests.Scene`.
+  /// What Plan, TableOfContents, CommentThread, Tour and RichTextContent say
+  /// and do, read through the accessibility tree AppKit publishes, as an
+  /// assistive client reads it, and the logic each computes from its props.
+  /// The scene is `BehaviourTests.Scene`.
   @MainActor
   final class ContentBehaviourTests: XCTestCase {
     typealias Scene = BehaviourTests.Scene
@@ -248,6 +248,119 @@
       press(try XCTUnwrap(last.element(role: .button, named: words.previous)))
       press(try XCTUnwrap(last.element(role: .button, named: words.done)))
       XCTAssertEqual(pressed, ["next", "close", "previous", "next"])
+    }
+
+    // MARK: RichTextContent
+
+    private static func richText(_ blocks: String) -> PMJSONValue {
+      .string(#"{"format":"polymorph-rich-text/1","blocks":[\#(blocks)]}"#)
+    }
+
+    /// The levels of the Headings under `scene`'s host, in order.
+    private func headingLevels(in scene: Scene) -> [String] {
+      Scene.elements(in: scene.host).compactMap { element in
+        PMMember.parse(attribute(element, "accessibilityIdentifier") ?? "").flatMap {
+          $0.name == "Heading" ? $0.attributes["level"] : nil
+        }
+      }
+    }
+
+    /// The document's level 1 is drawn at `headingLevel`, each deeper level one
+    /// more, never past 4 (`rich-text-content.md`, The document); a heading
+    /// with no text is not drawn.
+    func testARichTextHeadingIsDrawnAtThePageLevelOfItsDocumentLevel() {
+      let blocks = Self.richText(
+        #"""
+        {"type":"heading","level":1,"content":[{"type":"text","text":"One"}]},
+        {"type":"heading","level":2,"content":[{"type":"text","text":"Two"}]},
+        {"type":"heading","level":3,"content":[{"type":"text","text":"Three"}]},
+        {"type":"heading","level":1,"content":[{"type":"text","text":"  "}]}
+        """#)
+      let drawn = Scene(PMRichTextContent(props: PMRichTextContentProps(value: blocks)))
+      defer { drawn.close() }
+      XCTAssertEqual(headingLevels(in: drawn), ["2", "3", "4"])
+      let deeper = Scene(
+        PMRichTextContent(props: PMRichTextContentProps(headingLevel: .headingLevel3, value: blocks)))
+      defer { deeper.close() }
+      XCTAssertEqual(headingLevels(in: deeper), ["3", "4", "4"])
+    }
+
+    /// A link without a scheme goes to `onNavigate`, as Link's does
+    /// (`link.md`, Routing); one with a scheme opens as the environment says.
+    /// Each is a link VoiceOver lists. AppKit's element for a link inside a
+    /// Text takes no press, and a synthetic click does not open it, so the
+    /// paragraph's routing is called as its open-URL action calls it.
+    func testARichTextLinkWithoutASchemeGoesToTheAppsRouter() throws {
+      let value = Self.richText(
+        #"""
+        {"type":"paragraph","content":[
+          {"type":"text","text":"Read "},
+          {"type":"text","text":"the guide","marks":[{"type":"link","href":"/docs/guide"}]},
+          {"type":"text","text":" or "},
+          {"type":"text","text":"the site","marks":[{"type":"link","href":"https://example.org"}]}
+        ]}
+        """#)
+      let scene = Scene(
+        PMRichTextContent(props: PMRichTextContentProps(onNavigate: { _ in }, value: value)))
+      defer { scene.close() }
+      XCTAssertNotNil(scene.element(role: .link, named: "the guide"))
+      XCTAssertNotNil(scene.element(role: .link, named: "the site"))
+
+      guard case .paragraph(let inlines)? = PMRichTextReader.read(value).first else {
+        return XCTFail("no paragraph")
+      }
+      let routes = PMRichTextPiece.routes(PMRichTextPiece.pieces(inlines))
+      var navigated: [String] = []
+      var opened: [String] = []
+      let around = OpenURLAction { url in
+        opened.append(url.absoluteString)
+        return .handled
+      }
+      for target in ["/docs/guide", "https://example.org"] {
+        _ = PMRichTextRoutes.open(
+          try XCTUnwrap(URL(string: target)), routes: routes, onNavigate: { navigated.append($0) },
+          otherwise: around)
+      }
+      XCTAssertEqual(navigated, ["/docs/guide"])
+      XCTAssertEqual(opened, ["https://example.org"])
+    }
+
+    /// An entity the app draws is the app's view in the paragraph's line, and
+    /// an entity left to the token is read as its label; the text between them
+    /// is read as one stretch each (`rich-text-content.md`, A11y).
+    func testARichTextEntityTheAppDrawsStandsInItsParagraph() throws {
+      var opened: [String] = []
+      let scene = Scene(
+        PMRichTextContent(
+          props: PMRichTextContentProps(
+            entity: { entity in
+              entity.kind == "user"
+                ? PMContent(
+                  PMLink(props: PMLinkProps(children: entity.label, href: "/people/\(entity.id)")))
+                : PMRichTextContent.entityToken(entity)
+            },
+            value: Self.richText(
+              #"""
+              {"type":"paragraph","content":[
+                {"type":"entity","kind":"user","id":"u_ada","label":"@Ada Lovelace"},
+                {"type":"text","text":" can you review the fix for "},
+                {"type":"entity","kind":"issue","id":"i_142","label":"#142"},
+                {"type":"text","text":" before Friday?"}
+              ]}
+              """#)))
+        .environment(
+          \.openURL,
+          OpenURLAction { url in
+            opened.append(url.absoluteString)
+            return .handled
+          }))
+      defer { scene.close() }
+      XCTAssertNotNil(scene.element(named: " can you review the fix for "), "the first stretch")
+      XCTAssertNotNil(scene.element(named: "#142"), "the token")
+      XCTAssertNotNil(scene.element(named: " before Friday?"), "the second stretch")
+      XCTAssertNil(scene.element(named: "review "), "a word read on its own")
+      press(try XCTUnwrap(scene.element(role: .link, named: "@Ada Lovelace")))
+      XCTAssertEqual(opened, ["/people/u_ada"])
     }
 
     // MARK: Helpers

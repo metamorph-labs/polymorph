@@ -108,6 +108,7 @@ extension PMFixtures {
       ReasoningDisclosureStates(),
       RecordButtonStates(),
       RelativeTimeStates(),
+      RichTextContentStates(),
       ScatterChartStates(),
       ScrollAreaStates(),
       SearchInputStates(),

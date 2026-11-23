@@ -356,7 +356,8 @@
       "status": "native"
     },
     "RichTextContent": {
-      "status": "native"
+      "status": "native",
+      "reason": "A Swift closure returns a view for every entity, so an app’s `entity` returns `PMRichTextContent.entityToken` for a kind it leaves to the token, and a paragraph that holds the app’s view wraps between words, because SwiftUI’s Text cannot hold a view."
     },
     "RichTextInput": {
       "status": "absent",

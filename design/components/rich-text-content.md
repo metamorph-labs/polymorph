@@ -94,6 +94,15 @@ links a mention to the person's page, or opens their card on hover, passes `enti
 a Link or a HoverCard. It returns `undefined` for a kind it leaves to the token, so an app can
 draw people itself and leave issues as tokens.
 
+**On Android**: the entity token is a run of the paragraph's text, so a long label wraps as the
+words around it do. A run's background has no corner radius, so the token's wash is square, and a
+narrow no-break space either side stands for its padding, as Markdown's code spans are drawn.
+`entity` is a composable, which draws rather than returns, so the token stands where it draws
+nothing. What the app draws is measured and set in the line in a place of that size, centred on
+the text: a Link keeps its 48dp touch area in the line, and that line grows to hold it. The size
+reaches the line on the frame after the drawing is first measured, and the token stands in until
+then.
+
 ## Recipes (exact tokens)
 
 | Part | Tokens |

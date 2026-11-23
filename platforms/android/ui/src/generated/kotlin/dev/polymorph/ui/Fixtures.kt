@@ -102,6 +102,7 @@ val PMFixtures.all: List<PMStates>
         ReasoningDisclosureStates,
         RecordButtonStates,
         RelativeTimeStates,
+        RichTextContentStates,
         ScrollAreaStates,
         SearchInputStates,
         SearchPageStates,
