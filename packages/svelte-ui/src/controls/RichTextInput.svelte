@@ -16,9 +16,14 @@ import {
   createRichTextEditor,
   emptyRichText,
   enterToolbar,
+  focusOnLabelPress,
+  followFieldFocus,
+  followFormReset,
   followSelectionBar,
   holdToolbarEscape,
+  idPart,
   isRichTextEmpty,
+  isRichTextNewer,
   joinSlot,
   placeSelectionBar,
   placeTokenList,
@@ -31,6 +36,7 @@ import {
   toolbarFocusIn,
   toolbarFocusOut,
   toolbarKeydown,
+  toolbarLosesFocus,
   toolbarPress,
   toolbarStop,
   useControlRef,
@@ -360,6 +366,8 @@ const slots = {
 }
 // svelte-ignore state_referenced_locally
 let own = $state(defaultValue ?? emptyRichText())
+// svelte-ignore state_referenced_locally
+let initial = $state(defaultValue ?? emptyRichText())
 let editorState = $state(null as RichTextEditorState | null)
 let said = $state({ text: '', at: 0 })
 let highlight = $state({ key: '', index: 0 })
@@ -389,6 +397,8 @@ let toolbarRow = $state<HTMLElement | null>(null)
 const held = $derived({
   editor: null as RichTextEditor | null,
   handle: null as RichTextInputEditor | null,
+  lastValue: undefined as RichTextDocument | undefined,
+  saidNow: false,
 })
 const say = $derived({
   ...{
@@ -429,7 +439,7 @@ const say = $derived({
     submitOverLimit: (over: number) =>
       `Remove ${over} ${over === 1 ? 'character' : 'characters'} to submit.`,
     submitPending: 'Still saving.',
-    suggestions: (count: number) => `${count} suggestions`,
+    suggestions: (count: number) => (count === 1 ? '1 suggestion' : `${count} suggestions`),
     loadingSuggestions: 'Loading suggestions…',
     noSuggestions: 'No results',
   },
@@ -442,7 +452,8 @@ const empty = $derived(isRichTextEmpty(doc))
 const length = $derived(richTextLength(doc))
 const over = $derived(maxLength === undefined ? 0 : Math.max(0, length - maxLength))
 const overLimit = $derived(over > 0)
-const unwritable = $derived(readOnly || pending)
+const newer = $derived(isRichTextNewer(doc))
+const unwritable = $derived(readOnly || pending || newer)
 const locked = $derived(disabled || unwritable)
 const editable = $derived(!locked)
 const allowed = $derived(
@@ -487,6 +498,10 @@ const selection = $derived({
 const focusText = $derived(() => held.editor?.focus())
 const announce = $derived((words: string) => {
   said = { text: words, at: said.at + 1 }
+  held.saidNow = true
+  queueMicrotask(() => {
+    held.saidNow = false
+  })
 })
 const formatName = $derived((format: Exclude<RichTextFormat, 'link'>): string =>
   format === 'heading' ? say.textStyle : say[format],
@@ -502,6 +517,7 @@ const heard = $derived((event: RichTextEditorEvent) => {
   else announce(say.redone)
 })
 const changed = $derived((next: RichTextDocument) => {
+  if (newer) return
   if (maxLength !== undefined) {
     const was = richTextLength(doc) > maxLength
     const nextOver = Math.max(0, richTextLength(next) - maxLength)
@@ -514,6 +530,15 @@ const changed = $derived((next: RichTextDocument) => {
 const replace = $derived((editor: RichTextEditor, next: RichTextDocument) => {
   editor.setValue(next)
   changed(editor.getValue())
+})
+const reset = $derived(() => {
+  const editor = held.editor
+  if (editor === null || serializeRichText(editor.getValue()) === serializeRichText(initial)) return
+  replace(editor, initial)
+})
+const followValue = $derived(() => {
+  if (value === undefined && held.lastValue !== undefined) own = held.lastValue
+  held.lastValue = value
 })
 const collator = $derived(new Intl.Collator(undefined, { usage: 'search', sensitivity: 'base' }))
 const suggestion = $derived(editable ? (editorState?.suggestion ?? null) : null)
@@ -787,7 +812,16 @@ const releaseSelecting = $derived((element: HTMLElement) => {
 const holding = $derived(open || barOpen)
 const toolbarStops = $derived(toolbarStop())
 const barStops = $derived(toolbarStop())
-const placeBar = $derived(() => placeSelectionBar(bar, held.editor?.selectionRect()))
+const placeBar = $derived(() => placeSelectionBar(bar, held.editor?.selectionRect(), surface))
+const barLeft = $derived(() => {
+  if (toolbarLosesFocus(bar, barStops)) held.editor?.focus()
+})
+const placeList = $derived(() =>
+  placeTokenList(panel, root, held.editor?.tokenRect() ?? suggestion?.rect),
+)
+const optionId = $derived(
+  (option: RichTextEntityOption) => `${uid}-suggestion-${idPart(option.id)}`,
+)
 const describedByAll = $derived(
   [ariaDescribedby, maxLength === undefined ? undefined : countId]
     .filter((part) => part !== undefined)
@@ -809,16 +843,17 @@ const attributes = $derived({
   'aria-autocomplete': suggesting ? 'list' : undefined,
   'aria-haspopup': suggesting ? 'listbox' : undefined,
   'aria-controls': open && shown.length > 0 ? listId : undefined,
-  'aria-activedescendant':
-    open && shown.length > 0 && activeOption !== -1
-      ? `${uid}-suggestion-${activeOption}`
-      : undefined,
+  'aria-activedescendant': ((entry: RichTextEntityOption | undefined) =>
+    open && entry !== undefined ? optionId(entry) : undefined)(
+    activeOption === -1 ? undefined : shown[activeOption],
+  ),
 } as Record<string, string | undefined>)
 const options = $derived(
   JSON.stringify([
     allowed,
     kinds,
     editable,
+    !disabled && unwritable,
     attributes,
     placeholder ?? null,
     annotations ?? null,
@@ -831,6 +866,7 @@ const editorUpdate = $derived(() => ({
   formats: allowed,
   entities: kinds,
   editable,
+  readOnly: !disabled && unwritable,
   attributes,
   placeholder,
   annotations,
@@ -863,6 +899,7 @@ const mountEditor = $derived((element: HTMLElement) => {
       unknown: styles.unknown ?? '',
     },
     editable,
+    readOnly: !disabled && unwritable,
     attributes,
     placeholder,
     annotations,
@@ -874,11 +911,6 @@ const mountEditor = $derived((element: HTMLElement) => {
     onLinkRequest: () => requestLink(),
     onSuggestionKey: (key) => suggestionKey(key),
     onFiles: listening.files ? (files) => onFiles?.(files) : undefined,
-    onFocus: () => {
-      barHeard = false
-      onFocus?.()
-    },
-    onBlur: () => onBlur?.(),
   })
   held.editor = editor
   // The editor publishes its state after a change, and not at mount.
@@ -896,16 +928,6 @@ const command = $derived((event: MouseEvent, act: (live: RichTextEditor) => unkn
   if (event.detail > 0) live.focus()
 })
 const surfaceKey = $derived((event: KeyboardEvent) => {
-  if (
-    unwritable &&
-    event.key === 'Enter' &&
-    (event.metaKey || event.ctrlKey) &&
-    !event.isComposing
-  ) {
-    event.preventDefault()
-    submit()
-    return
-  }
   if (!event.altKey || event.key !== 'F10') return
   event.preventDefault()
   if (barOpen) enterToolbar(bar, barStops)
@@ -934,7 +956,19 @@ const barLeave = $derived((event: FocusEvent) => {
   const to = event.relatedTarget
   if (to instanceof Node && surface?.contains(to) === true) textFocused = true
   if (!(to instanceof Node) || !(event.currentTarget as HTMLElement).contains(to)) barFocus = false
+  // A browser that moves focus off the leaving, inert bar to the page does so here.
+  if (to === null && !barOpen) barLeft()
 })
+const followFocus = $derived((element: HTMLElement) =>
+  followFieldFocus(element, {
+    panels: () => [linkForm?.closest('[data-member="popover"]') ?? null],
+    entered: () => {
+      barHeard = false
+      onFocus?.()
+    },
+    left: () => onBlur?.(),
+  }),
+)
 const fixed = $derived(toolbarPlacement === 'fixed')
 const toolbarDrawn = $derived(fixed || !!slots.toolbar)
 const defaultFooter = $derived(!slots.footer && submitLabel !== undefined && listening.submit)
@@ -950,52 +984,102 @@ useControlRef(
 let release1: (() => void) | undefined
 const effect1 = () => {
   release1?.()
-  const ran = surface ? mountEditor(surface) : () => {}
+  const ran = root ? followFocus(root) : () => {}
   release1 = () => {
     ran()
   }
 }
 watchEffect(effect1)
 onDestroy(() => release1?.())
+let release2: (() => void) | undefined
 const effect2 = () => {
+  release2?.()
+  const ran = surface ? mountEditor(surface) : () => {}
+  release2 = () => {
+    ran()
+  }
+}
+watchEffect(effect2)
+onDestroy(() => release2?.())
+let release3: (() => void) | undefined
+const effect3 = () => {
+  release3?.()
+  const ran = root ? followFormReset(root, () => reset()) : () => {}
+  release3 = () => {
+    ran()
+  }
+}
+watchEffect(effect3)
+onDestroy(() => release3?.())
+let release4: (() => void) | undefined
+const effect4 = () => {
+  release4?.()
+  const ran = surface
+    ? focusOnLabelPress(
+        surface,
+        () => held.editor?.focus(),
+        () => !disabled,
+      )
+    : () => {}
+  release4 = () => {
+    ran()
+  }
+}
+watchEffect(effect4, { watch: () => ariaLabelledby })
+onDestroy(() => release4?.())
+const effect5 = () => {
+  followValue()
+}
+watchEffect(effect5, { watch: () => value })
+const effect6 = () => {
   held.editor?.update(editorUpdate())
 }
-watchEffect(effect2, { watch: () => options, mount: false })
-const effect3 = () => {
+watchEffect(effect6, { watch: () => options, mount: false })
+const effect7 = () => {
   value === undefined || held.editor?.setValue(value)
 }
-watchEffect(effect3, { watch: () => [value, own], mount: false })
-const effect4 = () => {
+watchEffect(effect7, { watch: () => [value, own], mount: false })
+const effect8 = () => {
   listStatus === null || announce(listStatus)
 }
-watchEffect(effect4, { watch: () => listStatus })
-const effect5 = () => {
-  placeTokenList(panel, root, suggestion?.rect)
+watchEffect(effect8, { watch: () => listStatus })
+const effect9 = () => {
+  placeList()
 }
-watchEffect(effect5, { watch: () => [suggestion, shown.length, loading, failed] })
-let release6: (() => void) | undefined
-const effect6 = () => {
-  release6?.()
+watchEffect(effect9, { watch: () => [suggestion, shown.length, loading, failed] })
+let release10: (() => void) | undefined
+const effect10 = () => {
+  release10?.()
+  const ran = open && panel ? followSelectionBar(panel, placeList) : () => {}
+  release10 = () => {
+    ran()
+  }
+}
+watchEffect(effect10, { watch: () => open })
+onDestroy(() => release10?.())
+let release11: (() => void) | undefined
+const effect11 = () => {
+  release11?.()
   const ran = holding && surface ? holdSurfaceEscape(surface) : () => {}
-  release6 = () => {
+  release11 = () => {
     ran()
   }
 }
-watchEffect(effect6, { watch: () => holding })
-onDestroy(() => release6?.())
-let release7: (() => void) | undefined
-const effect7 = () => {
-  release7?.()
+watchEffect(effect11, { watch: () => holding })
+onDestroy(() => release11?.())
+let release12: (() => void) | undefined
+const effect12 = () => {
+  release12?.()
   const ran = selecting && root ? releaseSelecting(root) : () => {}
-  release7 = () => {
+  release12 = () => {
     ran()
   }
 }
-watchEffect(effect7, { watch: () => selecting })
-onDestroy(() => release7?.())
-let release8: (() => void) | undefined
-const effect8 = () => {
-  release8?.()
+watchEffect(effect12, { watch: () => selecting })
+onDestroy(() => release12?.())
+let release13: (() => void) | undefined
+const effect13 = () => {
+  release13?.()
   const run = () => {
     syncToolbarStop(toolbarRow, toolbarStops)
   }
@@ -1008,26 +1092,26 @@ const effect8 = () => {
         subtree: true,
         attributeFilter: ['disabled', 'aria-disabled', 'hidden', 'inert'],
       })
-  release8 = () => {
+  release13 = () => {
     mutation?.disconnect()
   }
   run()
 }
-watchEffect(effect8, { watch: () => toolbarDrawn })
-onDestroy(() => release8?.())
-let release9: (() => void) | undefined
-const effect9 = () => {
-  release9?.()
+watchEffect(effect13, { watch: () => toolbarDrawn })
+onDestroy(() => release13?.())
+let release14: (() => void) | undefined
+const effect14 = () => {
+  release14?.()
   const ran = toolbarDrawn && toolbarRow ? holdEscapeIn(toolbarRow, () => toolbarRow) : () => {}
-  release9 = () => {
+  release14 = () => {
     ran()
   }
 }
-watchEffect(effect9, { watch: () => toolbarDrawn })
-onDestroy(() => release9?.())
-let release10: (() => void) | undefined
-const effect10 = () => {
-  release10?.()
+watchEffect(effect14, { watch: () => toolbarDrawn })
+onDestroy(() => release14?.())
+let release15: (() => void) | undefined
+const effect15 = () => {
+  release15?.()
   const run = () => {
     syncToolbarStop(bar, barStops)
   }
@@ -1040,52 +1124,60 @@ const effect10 = () => {
         subtree: true,
         attributeFilter: ['disabled', 'aria-disabled', 'hidden', 'inert'],
       })
-  release10 = () => {
+  release15 = () => {
     mutation?.disconnect()
   }
   run()
 }
-watchEffect(effect10, { watch: () => barPresent.current })
-onDestroy(() => release10?.())
-let release11: (() => void) | undefined
-const effect11 = () => {
-  release11?.()
+watchEffect(effect15, { watch: () => barPresent.current })
+onDestroy(() => release15?.())
+let release16: (() => void) | undefined
+const effect16 = () => {
+  release16?.()
   const ran = barPresent.current && bar ? holdEscapeIn(bar, () => bar) : () => {}
-  release11 = () => {
+  release16 = () => {
     ran()
   }
 }
-watchEffect(effect11, { watch: () => barPresent.current })
-onDestroy(() => release11?.())
-const effect12 = () => {
+watchEffect(effect16, { watch: () => barPresent.current })
+onDestroy(() => release16?.())
+const effect17 = () => {
   barOpen && placeBar()
 }
-watchEffect(effect12, { watch: () => [barOpen, editorState] })
-let release13: (() => void) | undefined
-const effect13 = () => {
-  release13?.()
+watchEffect(effect17, { watch: () => [barOpen, editorState] })
+let release18: (() => void) | undefined
+const effect18 = () => {
+  release18?.()
   const ran = barOpen && bar ? followSelectionBar(bar, placeBar) : () => {}
-  release13 = () => {
+  release18 = () => {
     ran()
   }
 }
-watchEffect(effect13, { watch: () => barOpen })
-onDestroy(() => release13?.())
-const effect14 = () => {
-  barOpen && !barHeard && ((barHeard = true), announce(say.selectionBarReady))
+watchEffect(effect18, { watch: () => barOpen })
+onDestroy(() => release18?.())
+const effect19 = () => {
+  barOpen || barLeft()
 }
-watchEffect(effect14, { watch: () => barOpen })
-const effect15 = () => {
+watchEffect(effect19, { watch: () => barOpen, mount: false })
+const effect20 = () => {
+  barOpen && !barHeard && ((barHeard = true), held.saidNow || announce(say.selectionBarReady))
+}
+watchEffect(effect20, { watch: () => barOpen })
+const effect21 = () => {
+  barDismissed !== null && (selection.empty || barDismissed !== rangeKey) && (barDismissed = null)
+}
+watchEffect(effect21, { watch: () => [rangeKey, selection.empty], mount: false })
+const effect22 = () => {
   linkOpen || linkClosed()
 }
-watchEffect(effect15, { watch: () => linkOpen, mount: false })
-const effect16 = () => {
+watchEffect(effect22, { watch: () => linkOpen, mount: false })
+const effect23 = () => {
   headingOpen || headingClosed()
 }
-watchEffect(effect16, { watch: () => headingOpen, mount: false })
-let release17: (() => void) | undefined
-const effect17 = () => {
-  release17?.()
+watchEffect(effect23, { watch: () => headingOpen, mount: false })
+let release24: (() => void) | undefined
+const effect24 = () => {
+  release24?.()
   const ran = agentMember({
     member: 'RichTextInput',
     element: () => surface,
@@ -1101,6 +1193,7 @@ const effect17 = () => {
         argument: 'text',
         run: (value) =>
           (() => {
+            if (newer) throw new Error('The document is of a later format than this field writes.')
             if (unwritable) throw new Error('The field is read-only.')
             const editor = held.editor
             if (editor === null) throw new Error('The field is not ready.')
@@ -1109,6 +1202,7 @@ const effect17 = () => {
       },
       clear: () =>
         (() => {
+          if (newer) throw new Error('The document is of a later format than this field writes.')
           if (unwritable) throw new Error('The field is read-only.')
           const editor = held.editor
           if (editor === null) throw new Error('The field is not ready.')
@@ -1125,12 +1219,12 @@ const effect17 = () => {
     },
     withholds: () => [controls, actions, bar, linkForm?.closest('[data-member="popover"]') ?? null],
   })
-  release17 = () => {
+  release24 = () => {
     ran()
   }
 }
-watchEffect(effect17)
-onDestroy(() => release17?.())
+watchEffect(effect24)
+onDestroy(() => release24?.())
 </script>
 
 {@render joined.start?.()
@@ -1503,7 +1597,7 @@ onDestroy(() => release17?.())
             >{#each shown as option, index (option.id)
               }<li
                 class={styles.option}
-                id={`${uid}-suggestion-${index}`}
+                id={optionId(option)}
                 role="option"
                 aria-selected={index === activeOption ? 'true' : 'false'}
                 data-highlighted={(index === activeOption) ? '' : undefined}

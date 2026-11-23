@@ -238,6 +238,37 @@ export const states: ComponentStates = {
       ),
     },
     {
+      name: 'one suggestion — the one person a query matches',
+      render: (overrides = {}) => (
+        <RichTextInput
+          aria-label="Comment"
+          defaultValue={normalizeRichText({
+            format: 'polymorph-rich-text/1',
+            blocks: [{ type: 'paragraph', content: [{ type: 'text', text: 'Thanks @gr' }] }],
+          })}
+          autoFocus={true}
+          entities={[
+            {
+              kind: 'user',
+              trigger: '@',
+              label: 'People',
+              options: [
+                {
+                  id: 'ada',
+                  label: 'Ada Lovelace',
+                  description: 'Engineering',
+                  leading: <Avatar name="Ada Lovelace" size="sm" />,
+                },
+                { id: 'grace', label: 'Grace Hopper', description: 'Compilers' },
+                { id: 'alan', label: 'Alan Turing', description: 'Research' },
+              ],
+            },
+          ]}
+          {...overrides}
+        />
+      ),
+    },
+    {
       name: 'the app’s footer — its own controls under the field',
       render: (overrides = {}) => (
         <RichTextInput
@@ -491,6 +522,28 @@ export const states: ComponentStates = {
             ],
           })}
           submitLabel="Comment"
+          onSubmit={() => {}}
+          {...overrides}
+        />
+      ),
+      expect: { 'data-readonly': '' },
+    },
+    {
+      name: 'later format — a document a later version wrote, opened read-only',
+      render: (overrides = {}) => (
+        <RichTextInput
+          aria-label="Comment"
+          name="body"
+          defaultValue={normalizeRichText({
+            format: 'polymorph-rich-text/2',
+            blocks: [
+              {
+                type: 'paragraph',
+                content: [{ type: 'text', text: 'Written by a later version of the format.' }],
+              },
+            ],
+          })}
+          submitLabel="Save"
           onSubmit={() => {}}
           {...overrides}
         />

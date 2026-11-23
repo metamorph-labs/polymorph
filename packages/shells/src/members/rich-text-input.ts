@@ -77,6 +77,11 @@ const ANNOTATED = richText(
   ),
 )
 
+/** A document a later version of the format wrote, which this version reads and never writes. */
+const LATER = js(
+  `normalizeRichText(${JSON.stringify({ format: 'polymorph-rich-text/2', blocks: [paragraph(textRun('Written by a later version of the format.'))] })})`,
+)
+
 /** Fifty-one code points, over a limit of forty. */
 const LONG = richText(paragraph(textRun('A comment that runs past the limit the app has set.')))
 
@@ -149,7 +154,7 @@ const DEFAULT_MESSAGES = `{
   submitEmpty: 'There is nothing to submit yet.',
   submitOverLimit: (over: number) => \`Remove \${over} \${over === 1 ? 'character' : 'characters'} to submit.\`,
   submitPending: 'Still saving.',
-  suggestions: (count: number) => \`\${count} suggestions\`,
+  suggestions: (count: number) => (count === 1 ? '1 suggestion' : \`\${count} suggestions\`),
   loadingSuggestions: 'Loading suggestions…',
   noSuggestions: 'No results',
 }`
@@ -413,9 +418,11 @@ const toolbarHandlers = (
  *
  * The editor's callbacks are closures over the member's scope, which each
  * framework reads when the editor calls them, so the editor is made once. The
- * toolbars' keys and the places of the selection bar and of the suggestion
- * list are the engine's (`toolbarKeydown`, `placeSelectionBar`,
- * `placeTokenList`), which the React member calls too.
+ * toolbars' keys, the places of the selection bar and of the suggestion list,
+ * focus entering and leaving the field, a press on its label and a form's
+ * reset are the engine's (`toolbarKeydown`, `placeSelectionBar`,
+ * `placeTokenList`, `followFieldFocus`, `focusOnLabelPress`,
+ * `followFormReset`), which the React member calls too.
  */
 export default describeMember({
   member: 'RichTextInput',
@@ -450,6 +457,8 @@ export default describeMember({
   state: {
     // The document while the caller does not control it.
     own: 'defaultValue ?? emptyRichText()',
+    // The first document, which a form's reset puts back.
+    initial: 'defaultValue ?? emptyRichText()',
     // What the editor last published; null until it is mounted.
     editorState: 'null as RichTextEditorState | null',
     // The status region's words, each with a number of its own so the same words are heard again.
@@ -480,14 +489,15 @@ export default describeMember({
     selecting: 'false',
     // The selection Escape hid the bar for.
     barDismissed: 'null as string | null',
-    // Whether the bar's first appearance since the text took focus has been said.
+    // Whether the bar's first appearance since focus entered the field has been said.
     barHeard: 'false',
   },
   derived: {
     // The mounted editor, held outside the framework's reactivity: the field reads it when a
     // control or a callback runs, and the editor's state re-renders the field. Beside it, the
-    // handle the app's slots were last given (`handle`).
-    held: '{ editor: null as RichTextEditor | null, handle: null as RichTextInputEditor | null }',
+    // handle the app's slots were last given (`handle`), the value the caller last gave
+    // (`lastValue`), and whether the code running now has said something (`saidNow`).
+    held: '{ editor: null as RichTextEditor | null, handle: null as RichTextInputEditor | null, lastValue: undefined as RichTextDocument | undefined, saidNow: false }',
     say: `({ ...${DEFAULT_MESSAGES}, ...(messages === undefined ? {} : Object.fromEntries(Object.entries(messages).filter(([, words]) => words !== undefined))) }) as Required<RichTextInputMessages>`,
 
     // The document, its length and the limit.
@@ -496,7 +506,9 @@ export default describeMember({
     length: 'richTextLength(doc)',
     over: 'maxLength === undefined ? 0 : Math.max(0, length - maxLength)',
     overLimit: 'over > 0',
-    unwritable: 'readOnly || pending',
+    // A document of a later format, which this version reads and never writes over.
+    newer: 'isRichTextNewer(doc)',
+    unwritable: 'readOnly || pending || newer',
     // Disabled, read-only or pending: nothing edits the text.
     locked: 'disabled || unwritable',
     editable: '!locked',
@@ -519,8 +531,13 @@ export default describeMember({
       "({ empty: editorState?.collapsed ?? true, text: editorState?.selectedText ?? '', range: editorState?.range ?? { start: 0, end: 0 } })",
     focusText: '() => held.editor?.focus()',
 
-    // Announcements.
-    announce: '(words: string) => { said = { text: words, at: said.at + 1 } }',
+    // Announcements. Whether the code running now has said something, so the selection bar's
+    // words are not said over it.
+    announce: `(words: string) => {
+      said = { text: words, at: said.at + 1 }
+      held.saidNow = true
+      queueMicrotask(() => { held.saidNow = false })
+    }`,
     formatName:
       "(format: Exclude<RichTextFormat, 'link'>): string => format === 'heading' ? say.textStyle : say[format]",
     heard: `(event: RichTextEditorEvent) => {
@@ -534,6 +551,7 @@ export default describeMember({
     // The document the person or a command changed: the field's own copy, the app's handler and
     // the limit, said once as the text crosses it each way.
     changed: `(next: RichTextDocument) => {
+      if (newer) return
       if (maxLength !== undefined) {
         const was = richTextLength(doc) > maxLength
         const nextOver = Math.max(0, richTextLength(next) - maxLength)
@@ -546,6 +564,18 @@ export default describeMember({
     // Replaces the document as one change, as an agent's fill does.
     replace:
       '(editor: RichTextEditor, next: RichTextDocument) => { editor.setValue(next); changed(editor.getValue()) }',
+    // A form's reset puts the first document back, as the person's act, as Checkbox's does.
+    reset: `() => {
+      const editor = held.editor
+      if (editor === null || serializeRichText(editor.getValue()) === serializeRichText(initial)) return
+      replace(editor, initial)
+    }`,
+    // A field that stops being controlled keeps the last value the caller gave, which the editor
+    // holds.
+    followValue: `() => {
+      if (value === undefined && held.lastValue !== undefined) own = held.lastValue
+      held.lastValue = value
+    }`,
 
     // The suggestion list. Combobox's filter: the locale's collation at base sensitivity.
     collator: "new Intl.Collator(undefined, { usage: 'search', sensitivity: 'base' })",
@@ -777,7 +807,14 @@ export default describeMember({
     // Each toolbar's tab stop, one object per toolbar for the field's life.
     toolbarStops: 'toolbarStop()',
     barStops: 'toolbarStop()',
-    placeBar: '() => placeSelectionBar(bar, held.editor?.selectionRect())',
+    placeBar: '() => placeSelectionBar(bar, held.editor?.selectionRect(), surface)',
+    // The bar left with focus in it (an app's control in it replaced the selection): focus goes
+    // back to the text.
+    barLeft: '() => { if (toolbarLosesFocus(bar, barStops)) held.editor?.focus() }',
+    // The list at its token, measured now, as the page scrolls under it.
+    placeList: '() => placeTokenList(panel, root, held.editor?.tokenRect() ?? suggestion?.rect)',
+    // The option ids, by each option's own id, so the active one's id changes with the option.
+    optionId: '(option: RichTextEntityOption) => `${uid}-suggestion-${idPart(option.id)}`',
 
     // The surface's attributes, which the field draws and the editor keeps.
     describedByAll:
@@ -798,16 +835,17 @@ export default describeMember({
       'aria-autocomplete': suggesting ? 'list' : undefined,
       'aria-haspopup': suggesting ? 'listbox' : undefined,
       'aria-controls': open && shown.length > 0 ? listId : undefined,
-      'aria-activedescendant': open && shown.length > 0 && activeOption !== -1 ? \`\${uid}-suggestion-\${activeOption}\` : undefined,
+      'aria-activedescendant': ((entry: RichTextEntityOption | undefined) => open && entry !== undefined ? optionId(entry) : undefined)(activeOption === -1 ? undefined : shown[activeOption]),
     }) as Record<string, string | undefined>`,
     // What changes without a new editor, as one key: the schema's formats and kinds, editing, the
     // attributes, the placeholder and the annotations.
     options:
-      'JSON.stringify([allowed, kinds, editable, attributes, placeholder ?? null, annotations ?? null, activeAnnotation ?? null, listening.submit, listening.files])',
+      'JSON.stringify([allowed, kinds, editable, !disabled && unwritable, attributes, placeholder ?? null, annotations ?? null, activeAnnotation ?? null, listening.submit, listening.files])',
     editorUpdate: `() => ({
       formats: allowed,
       entities: kinds,
       editable,
+      readOnly: !disabled && unwritable,
       attributes,
       placeholder,
       annotations,
@@ -825,6 +863,7 @@ export default describeMember({
         entities: kinds,
         classes: ${CLASSES},
         editable,
+        readOnly: !disabled && unwritable,
         attributes,
         placeholder,
         annotations,
@@ -836,8 +875,6 @@ export default describeMember({
         onLinkRequest: () => requestLink(),
         onSuggestionKey: (key) => suggestionKey(key),
         onFiles: listening.files ? (files) => emit('files', files) : undefined,
-        onFocus: () => { barHeard = false; emit('focus') },
-        onBlur: () => emit('blur'),
       })
       held.editor = editor
       // The editor publishes its state after a change, and not at mount.
@@ -858,15 +895,9 @@ export default describeMember({
       if (event.detail > 0) live.focus()
     }`,
 
-    // The surface's own keys: Mod+Enter on text that takes no editing (the editor takes no key
-    // then, so a pending field says why it does not submit), and Alt+F10 to the controls, the bar
-    // while it is drawn.
+    // The surface's own key: Alt+F10 to the controls, the bar while it is drawn. Mod+Enter is the
+    // editor's, a read-only field's too.
     surfaceKey: `(event: KeyboardEvent) => {
-      if (unwritable && event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !event.isComposing) {
-        event.preventDefault()
-        submit()
-        return
-      }
       if (!event.altKey || event.key !== 'F10') return
       event.preventDefault()
       if (barOpen) enterToolbar(bar, barStops)
@@ -896,7 +927,18 @@ export default describeMember({
       const to = event.relatedTarget
       if (to instanceof Node && surface?.contains(to) === true) textFocused = true
       if (!(to instanceof Node) || !(event.currentTarget as HTMLElement).contains(to)) barFocus = false
+      // A browser that moves focus off the leaving, inert bar to the page does so here.
+      if (to === null && !barOpen) barLeft()
     }`,
+
+    // Focus entering and leaving the field as a whole: the text, the toolbars, the footer, the link
+    // form's panel and the text style menu. The bar's words are said once for each entering.
+    followFocus: `(element: HTMLElement) =>
+      followFieldFocus(element, {
+        panels: () => [linkForm?.closest('[data-member="popover"]') ?? null],
+        entered: () => { barHeard = false; emit('focus') },
+        left: () => emit('blur'),
+      })`,
 
     // What is drawn.
     fixed: "toolbarPlacement === 'fixed'",
@@ -910,7 +952,19 @@ export default describeMember({
     barPresent: { open: 'barOpen', ref: 'bar' },
   },
   effects: [
+    { run: 'root ? followFocus(root) : () => {}', release: 'ran()' },
     { run: 'surface ? mountEditor(surface) : () => {}', release: 'ran()' },
+    // A form's reset puts the first document back.
+    { run: 'root ? followFormReset(root, () => reset()) : () => {}', release: 'ran()' },
+    // A press on the FormField's label focuses the text: a group is named by `aria-labelledby`,
+    // which a label's `for` cannot reach.
+    {
+      watch: 'ariaLabelledby',
+      run: 'surface ? focusOnLabelPress(surface, () => held.editor?.focus(), () => !disabled) : () => {}',
+      release: 'ran()',
+    },
+    // The last value the caller gave, kept for when it stops controlling the field.
+    { watch: 'value', run: 'followValue()' },
     // The options that change without a new editor.
     { watch: 'options', mount: false, run: 'held.editor?.update(editorUpdate())' },
     // A controlled value is the document. The editor compares it with its own and replaces only a
@@ -922,10 +976,13 @@ export default describeMember({
     },
     // The list's status, said each time it changes while the list is open.
     { watch: 'listStatus', run: 'listStatus === null || announce(listStatus)' },
-    // The list at its token, each time the token or the list's height may have changed.
+    // The list at its token, each time the token or the list's height may have changed, and as the
+    // page scrolls and the window resizes under it.
+    { watch: '[suggestion, shown.length, loading, failed]', run: 'placeList()' },
     {
-      watch: '[suggestion, shown.length, loading, failed]',
-      run: 'placeTokenList(panel, root, suggestion?.rect)',
+      watch: 'open',
+      run: 'open && panel ? followSelectionBar(panel, placeList) : () => {}',
+      release: 'ran()',
     },
     {
       watch: 'holding',
@@ -968,10 +1025,19 @@ export default describeMember({
       run: 'barOpen && bar ? followSelectionBar(bar, placeBar) : () => {}',
       release: 'ran()',
     },
-    // The first time a bar appears after the text took focus, the status says so.
+    // The bar leaving with focus in it gives focus back to the text.
+    { watch: 'barOpen', mount: false, run: 'barOpen || barLeft()' },
+    // The first time a bar appears after focus entered the field, the status says so, unless the
+    // code running now has said something else.
     {
       watch: 'barOpen',
-      run: 'barOpen && !barHeard && ((barHeard = true), announce(say.selectionBarReady))',
+      run: 'barOpen && !barHeard && ((barHeard = true), held.saidNow || announce(say.selectionBarReady))',
+    },
+    // Escape hides the bar for one selection: another selection, or a caret, ends that.
+    {
+      watch: '[rangeKey, selection.empty]',
+      mount: false,
+      run: 'barDismissed !== null && (selection.empty || barDismissed !== rangeKey) && (barDismissed = null)',
     },
     { watch: 'linkOpen', mount: false, run: 'linkOpen || linkClosed()' },
     { watch: 'headingOpen', mount: false, run: 'headingOpen || headingClosed()' },
@@ -994,6 +1060,7 @@ export default describeMember({
       fill: {
         argument: 'text',
         run: `(() => {
+          if (newer) throw new Error('The document is of a later format than this field writes.')
           if (unwritable) throw new Error('The field is read-only.')
           const editor = held.editor
           if (editor === null) throw new Error('The field is not ready.')
@@ -1001,6 +1068,7 @@ export default describeMember({
         })()`,
       },
       clear: `(() => {
+        if (newer) throw new Error('The document is of a later format than this field writes.')
         if (unwritable) throw new Error('The field is read-only.')
         const editor = held.editor
         if (editor === null) throw new Error('The field is not ready.')
@@ -1214,7 +1282,7 @@ export default describeMember({
                           part: 'option',
                           class: ['option'],
                           attrs: {
-                            id: '`${uid}-suggestion-${index}`',
+                            id: 'optionId(option)',
                             role: lit('option'),
                             'aria-selected': "index === activeOption ? 'true' : 'false'",
                             'data-highlighted': flag('index === activeOption'),
@@ -1373,6 +1441,16 @@ export default describeMember({
       },
     },
     {
+      // Focused on mount, because the list opens while the caret is in a token.
+      name: 'one suggestion — the one person a query matches',
+      props: {
+        'aria-label': 'Comment',
+        defaultValue: richText(paragraph(textRun('Thanks @gr'))),
+        autoFocus: true,
+        entities: [PEOPLE],
+      },
+    },
+    {
       name: 'the app’s footer — its own controls under the field',
       props: {
         'aria-label': 'Description',
@@ -1432,6 +1510,17 @@ export default describeMember({
         pending: true,
         defaultValue: CONTENT,
         submitLabel: 'Comment',
+        onSubmit: noop,
+      },
+      expect: { 'data-readonly': '' },
+    },
+    {
+      name: 'later format — a document a later version wrote, opened read-only',
+      props: {
+        'aria-label': 'Comment',
+        name: 'body',
+        defaultValue: LATER,
+        submitLabel: 'Save',
         onSubmit: noop,
       },
       expect: { 'data-readonly': '' },

@@ -211,6 +211,35 @@ export const states: ComponentStates = {
       },
     },
     {
+      name: 'one suggestion — the one person a query matches',
+      html: `<poly-rich-text-input aria-label="Comment" auto-focus></poly-rich-text-input>`,
+      subject: 'poly-rich-text-input',
+      setup: (find) => {
+        const e0 = find('poly-rich-text-input', 0)
+        e0.defaultValue = normalizeRichText({
+          format: 'polymorph-rich-text/1',
+          blocks: [{ type: 'paragraph', content: [{ type: 'text', text: 'Thanks @gr' }] }],
+        })
+        e0.entities = [
+          {
+            kind: 'user',
+            trigger: '@',
+            label: 'People',
+            options: [
+              {
+                id: 'ada',
+                label: 'Ada Lovelace',
+                description: 'Engineering',
+                leading: create('poly-avatar', { name: 'Ada Lovelace', size: 'sm' }, []),
+              },
+              { id: 'grace', label: 'Grace Hopper', description: 'Compilers' },
+              { id: 'alan', label: 'Alan Turing', description: 'Research' },
+            ],
+          },
+        ]
+      },
+    },
+    {
       name: 'the app’s footer — its own controls under the field',
       html: `<poly-rich-text-input aria-label="Description" max-length="2000"></poly-rich-text-input>`,
       subject: 'poly-rich-text-input',
@@ -449,6 +478,25 @@ export const states: ComponentStates = {
                   ],
                 },
               ],
+            },
+          ],
+        })
+        listen(e0, 'poly-submit', () => {})
+      },
+      expect: { 'data-readonly': '' },
+    },
+    {
+      name: 'later format — a document a later version wrote, opened read-only',
+      html: `<poly-rich-text-input aria-label="Comment" name="body" submit-label="Save"></poly-rich-text-input>`,
+      subject: 'poly-rich-text-input',
+      setup: (find) => {
+        const e0 = find('poly-rich-text-input', 0)
+        e0.defaultValue = normalizeRichText({
+          format: 'polymorph-rich-text/2',
+          blocks: [
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Written by a later version of the format.' }],
             },
           ],
         })

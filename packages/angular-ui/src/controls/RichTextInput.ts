@@ -23,9 +23,14 @@ import {
   emptyRichText,
   enterToolbar,
   fieldValue,
+  focusOnLabelPress,
+  followFieldFocus,
+  followFormReset,
   followSelectionBar,
   holdToolbarEscape,
+  idPart,
   isRichTextEmpty,
+  isRichTextNewer,
   isTemplate,
   measured,
   mergeParts,
@@ -43,6 +48,7 @@ import {
   toolbarFocusIn,
   toolbarFocusOut,
   toolbarKeydown,
+  toolbarLosesFocus,
   toolbarPress,
   toolbarStop,
   uniqueId,
@@ -605,7 +611,7 @@ role="listbox"
 >@for (option of e162(); track e163(option); let index = $index) {<!-- option -->
 <li
 [attr.class]="e164()"
-[attr.id]="e165(index)"
+[attr.id]="e165(option)"
 role="option"
 [attr.aria-selected]="e166(index)"
 [attr.data-highlighted]="e167(index)"
@@ -858,6 +864,7 @@ export class RichTextInput {
   protected readonly $p = this.$.props
   protected readonly uid = uniqueId()
   protected readonly own = cell(() => this.$p.defaultValue ?? emptyRichText())
+  protected readonly initial = cell(() => this.$p.defaultValue ?? emptyRichText())
   protected readonly editorState = cell(() => null as RichTextEditorState | null)
   protected readonly said = cell(() => ({ text: '', at: 0 }))
   protected readonly highlight = cell(() => ({ key: '', index: 0 }))
@@ -887,6 +894,8 @@ export class RichTextInput {
   protected readonly held = derived(() => ({
     editor: null as RichTextEditor | null,
     handle: null as RichTextInputEditor | null,
+    lastValue: undefined as RichTextDocument | undefined,
+    saidNow: false,
   }))
   protected readonly say = derived(
     () =>
@@ -929,7 +938,7 @@ export class RichTextInput {
           submitOverLimit: (over: number) =>
             `Remove ${over} ${over === 1 ? 'character' : 'characters'} to submit.`,
           submitPending: 'Still saving.',
-          suggestions: (count: number) => `${count} suggestions`,
+          suggestions: (count: number) => (count === 1 ? '1 suggestion' : `${count} suggestions`),
           loadingSuggestions: 'Loading suggestions…',
           noSuggestions: 'No results',
         },
@@ -947,7 +956,10 @@ export class RichTextInput {
     this.$p.maxLength === undefined ? 0 : Math.max(0, this.length.value - this.$p.maxLength),
   )
   protected readonly overLimit = derived(() => this.over.value > 0)
-  protected readonly unwritable = derived(() => this.$p.readOnly || this.$p.pending)
+  protected readonly newer = derived(() => isRichTextNewer(this.doc.value))
+  protected readonly unwritable = derived(
+    () => this.$p.readOnly || this.$p.pending || this.newer.value,
+  )
   protected readonly locked = derived(() => this.$p.disabled || this.unwritable.value)
   protected readonly editable = derived(() => !this.locked.value)
   protected readonly allowed = derived(() =>
@@ -996,6 +1008,10 @@ export class RichTextInput {
   protected readonly focusText = derived(() => () => this.held.value.editor?.focus())
   protected readonly announce = derived(() => (words: string) => {
     this.said.value = { text: words, at: this.said.value.at + 1 }
+    this.held.value.saidNow = true
+    queueMicrotask(() => {
+      this.held.value.saidNow = false
+    })
   })
   protected readonly formatName = derived(
     () =>
@@ -1021,6 +1037,7 @@ export class RichTextInput {
     else this.announce.value(this.say.value.redone)
   })
   protected readonly changed = derived(() => (next: RichTextDocument) => {
+    if (this.newer.value) return
     if (this.$p.maxLength !== undefined) {
       const was = richTextLength(this.doc.value) > this.$p.maxLength
       const nextOver = Math.max(0, richTextLength(next) - this.$p.maxLength)
@@ -1033,6 +1050,20 @@ export class RichTextInput {
   protected readonly replace = derived(() => (editor: RichTextEditor, next: RichTextDocument) => {
     editor.setValue(next)
     this.changed.value(editor.getValue())
+  })
+  protected readonly reset = derived(() => () => {
+    const editor = this.held.value.editor
+    if (
+      editor === null ||
+      serializeRichText(editor.getValue()) === serializeRichText(this.initial.value)
+    )
+      return
+    this.replace.value(editor, this.initial.value)
+  })
+  protected readonly followValue = derived(() => () => {
+    if (this.$p.value === undefined && this.held.value.lastValue !== undefined)
+      this.own.value = this.held.value.lastValue
+    this.held.value.lastValue = this.$p.value
   })
   protected readonly collator = derived(
     () => new Intl.Collator(undefined, { usage: 'search', sensitivity: 'base' }),
@@ -1359,7 +1390,26 @@ export class RichTextInput {
   protected readonly toolbarStops = derived(() => toolbarStop())
   protected readonly barStops = derived(() => toolbarStop())
   protected readonly placeBar = derived(
-    () => () => placeSelectionBar(this.bar.value, this.held.value.editor?.selectionRect()),
+    () => () =>
+      placeSelectionBar(
+        this.bar.value,
+        this.held.value.editor?.selectionRect(),
+        this.surface.value,
+      ),
+  )
+  protected readonly barLeft = derived(() => () => {
+    if (toolbarLosesFocus(this.bar.value, this.barStops.value)) this.held.value.editor?.focus()
+  })
+  protected readonly placeList = derived(
+    () => () =>
+      placeTokenList(
+        this.panel.value,
+        this.root.value,
+        this.held.value.editor?.tokenRect() ?? this.suggestion.value?.rect,
+      ),
+  )
+  protected readonly optionId = derived(
+    () => (option: RichTextEntityOption) => `${this.uid}-suggestion-${idPart(option.id)}`,
   )
   protected readonly describedByAll = derived(
     () =>
@@ -1389,10 +1439,10 @@ export class RichTextInput {
         'aria-haspopup': this.suggesting.value ? 'listbox' : undefined,
         'aria-controls':
           this.open.value && this.shown.value.length > 0 ? this.listId.value : undefined,
-        'aria-activedescendant':
-          this.open.value && this.shown.value.length > 0 && this.activeOption.value !== -1
-            ? `${this.uid}-suggestion-${this.activeOption.value}`
-            : undefined,
+        'aria-activedescendant': ((entry: RichTextEntityOption | undefined) =>
+          this.open.value && entry !== undefined ? this.optionId.value(entry) : undefined)(
+          this.activeOption.value === -1 ? undefined : this.shown.value[this.activeOption.value],
+        ),
       }) as Record<string, string | undefined>,
   )
   protected readonly options = derived(() =>
@@ -1400,6 +1450,7 @@ export class RichTextInput {
       this.allowed.value,
       this.kinds.value,
       this.editable.value,
+      !this.$p.disabled && this.unwritable.value,
       this.attributes.value,
       this.$p.placeholder ?? null,
       this.$p.annotations ?? null,
@@ -1412,6 +1463,7 @@ export class RichTextInput {
     formats: this.allowed.value,
     entities: this.kinds.value,
     editable: this.editable.value,
+    readOnly: !this.$p.disabled && this.unwritable.value,
     attributes: this.attributes.value,
     placeholder: this.$p.placeholder,
     annotations: this.$p.annotations,
@@ -1446,6 +1498,7 @@ export class RichTextInput {
         unknown: styles.unknown ?? '',
       },
       editable: this.editable.value,
+      readOnly: !this.$p.disabled && this.unwritable.value,
       attributes: this.attributes.value,
       placeholder: this.$p.placeholder,
       annotations: this.$p.annotations,
@@ -1459,11 +1512,6 @@ export class RichTextInput {
       onFiles: this.$.listening(this.onFiles, 'onFiles')
         ? (files) => this.$.emit(this.onFiles, 'onFiles', files)
         : undefined,
-      onFocus: () => {
-        this.barHeard.value = false
-        this.$.emit(this.onFocus, 'onFocus')
-      },
-      onBlur: () => this.$.emit(this.onBlur, 'onBlur'),
     })
     this.held.value.editor = editor
     // The editor publishes its state after a change, and not at mount.
@@ -1483,16 +1531,6 @@ export class RichTextInput {
     },
   )
   protected readonly surfaceKey = derived(() => (event: KeyboardEvent) => {
-    if (
-      this.unwritable.value &&
-      event.key === 'Enter' &&
-      (event.metaKey || event.ctrlKey) &&
-      !event.isComposing
-    ) {
-      event.preventDefault()
-      this.submit.value()
-      return
-    }
     if (!event.altKey || event.key !== 'F10') return
     event.preventDefault()
     if (this.barOpen.value) enterToolbar(this.bar.value, this.barStops.value)
@@ -1525,7 +1563,20 @@ export class RichTextInput {
       this.textFocused.value = true
     if (!(to instanceof Node) || !(event.currentTarget as HTMLElement).contains(to))
       this.barFocus.value = false
+    // A browser that moves focus off the leaving, inert bar to the page does so here.
+    if (to === null && !this.barOpen.value) this.barLeft.value()
   })
+  protected readonly followFocus = derived(
+    () => (element: HTMLElement) =>
+      followFieldFocus(element, {
+        panels: () => [this.linkForm.value?.closest('[data-member="popover"]') ?? null],
+        entered: () => {
+          this.barHeard.value = false
+          this.$.emit(this.onFocus, 'onFocus')
+        },
+        left: () => this.$.emit(this.onBlur, 'onBlur'),
+      }),
+  )
   protected readonly fixed = derived(() => this.$p.toolbarPlacement === 'fixed')
   protected readonly toolbarDrawn = measured(
     () => this.fixed.value || !!(this.$p.toolbar !== undefined),
@@ -1547,102 +1598,137 @@ export class RichTextInput {
   )
   protected readonly template = isTemplate
   private release1: (() => void) | undefined
-  private release6: (() => void) | undefined
-  private release7: (() => void) | undefined
-  private release8: (() => void) | undefined
-  private release9: (() => void) | undefined
+  private release2: (() => void) | undefined
+  private release3: (() => void) | undefined
+  private release4: (() => void) | undefined
   private release10: (() => void) | undefined
   private release11: (() => void) | undefined
+  private release12: (() => void) | undefined
   private release13: (() => void) | undefined
-  private release17: (() => void) | undefined
+  private release14: (() => void) | undefined
+  private release15: (() => void) | undefined
+  private release16: (() => void) | undefined
+  private release18: (() => void) | undefined
+  private release24: (() => void) | undefined
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.release1?.())
     mountEffect(() => this.effect1())
+    inject(DestroyRef).onDestroy(() => this.release2?.())
+    mountEffect(() => this.effect2())
+    inject(DestroyRef).onDestroy(() => this.release3?.())
+    mountEffect(() => this.effect3())
+    inject(DestroyRef).onDestroy(() => this.release4?.())
     watchEffect(
-      () => this.options.value,
-      () => this.effect2(),
-      false,
-    )
-    watchEffect(
-      () => [this.$p.value, this.own.value],
-      () => this.effect3(),
-      false,
-    )
-    watchEffect(
-      () => this.listStatus.value,
+      () => this.$p['aria-labelledby'],
       () => this.effect4(),
       true,
     )
     watchEffect(
-      () => [this.suggestion.value, this.shown.value.length, this.loading.value, this.failed.value],
+      () => this.$p.value,
       () => this.effect5(),
       true,
     )
-    inject(DestroyRef).onDestroy(() => this.release6?.())
     watchEffect(
-      () => this.holding.value,
+      () => this.options.value,
       () => this.effect6(),
-      true,
+      false,
     )
-    inject(DestroyRef).onDestroy(() => this.release7?.())
     watchEffect(
-      () => this.selecting.value,
+      () => [this.$p.value, this.own.value],
       () => this.effect7(),
-      true,
+      false,
     )
-    inject(DestroyRef).onDestroy(() => this.release8?.())
     watchEffect(
-      () => this.toolbarDrawn.value,
+      () => this.listStatus.value,
       () => this.effect8(),
       true,
     )
-    inject(DestroyRef).onDestroy(() => this.release9?.())
     watchEffect(
-      () => this.toolbarDrawn.value,
+      () => [this.suggestion.value, this.shown.value.length, this.loading.value, this.failed.value],
       () => this.effect9(),
       true,
     )
     inject(DestroyRef).onDestroy(() => this.release10?.())
     watchEffect(
-      () => this.barPresent.value(),
+      () => this.open.value,
       () => this.effect10(),
       true,
     )
     inject(DestroyRef).onDestroy(() => this.release11?.())
     watchEffect(
-      () => this.barPresent.value(),
+      () => this.holding.value,
       () => this.effect11(),
       true,
     )
+    inject(DestroyRef).onDestroy(() => this.release12?.())
     watchEffect(
-      () => [this.barOpen.value, this.editorState.value],
+      () => this.selecting.value,
       () => this.effect12(),
       true,
     )
     inject(DestroyRef).onDestroy(() => this.release13?.())
     watchEffect(
-      () => this.barOpen.value,
+      () => this.toolbarDrawn.value,
       () => this.effect13(),
       true,
     )
+    inject(DestroyRef).onDestroy(() => this.release14?.())
     watchEffect(
-      () => this.barOpen.value,
+      () => this.toolbarDrawn.value,
       () => this.effect14(),
       true,
     )
+    inject(DestroyRef).onDestroy(() => this.release15?.())
+    watchEffect(
+      () => this.barPresent.value(),
+      () => this.effect15(),
+      true,
+    )
+    inject(DestroyRef).onDestroy(() => this.release16?.())
+    watchEffect(
+      () => this.barPresent.value(),
+      () => this.effect16(),
+      true,
+    )
+    watchEffect(
+      () => [this.barOpen.value, this.editorState.value],
+      () => this.effect17(),
+      true,
+    )
+    inject(DestroyRef).onDestroy(() => this.release18?.())
+    watchEffect(
+      () => this.barOpen.value,
+      () => this.effect18(),
+      true,
+    )
+    watchEffect(
+      () => this.barOpen.value,
+      () => this.effect19(),
+      false,
+    )
+    watchEffect(
+      () => this.barOpen.value,
+      () => this.effect20(),
+      true,
+    )
+    watchEffect(
+      () => [this.rangeKey.value, this.selection.value.empty],
+      () => this.effect21(),
+      false,
+    )
     watchEffect(
       () => this.linkOpen.value,
-      () => this.effect15(),
+      () => this.effect22(),
       false,
     )
     watchEffect(
       () => this.headingOpen.value,
-      () => this.effect16(),
+      () => this.effect23(),
       false,
     )
-    inject(DestroyRef).onDestroy(() => this.release17?.())
-    mountEffect(() => this.effect17())
+    inject(DestroyRef).onDestroy(() => this.release24?.())
+    mountEffect(() => this.effect24())
   }
 
   protected e1() {
@@ -2954,10 +3040,10 @@ export class RichTextInput {
     return styles.option
   }
 
-  protected e165(index: number) {
+  protected e165(option: Each<ReturnType<RichTextInput['e162']>>) {
     if (!(this.open.value && this.source.value !== undefined)) return undefined as never
     if (!(this.shown.value.length > 0)) return undefined as never
-    return `${this.uid}-suggestion-${index}`
+    return this.optionId.value(option)
   }
 
   protected e166(index: number) {
@@ -3169,52 +3255,99 @@ export class RichTextInput {
 
   private effect1(): void {
     this.release1?.()
-    const ran = this.surface.value ? this.mountEditor.value(this.surface.value) : () => {}
+    const ran = this.root.value ? this.followFocus.value(this.root.value) : () => {}
     this.release1 = () => {
       ran()
     }
   }
 
   private effect2(): void {
-    this.held.value.editor?.update(this.editorUpdate.value())
+    this.release2?.()
+    const ran = this.surface.value ? this.mountEditor.value(this.surface.value) : () => {}
+    this.release2 = () => {
+      ran()
+    }
   }
 
   private effect3(): void {
-    void (this.$p.value === undefined || this.held.value.editor?.setValue(this.$p.value))
+    this.release3?.()
+    const ran = this.root.value
+      ? followFormReset(this.root.value, () => this.reset.value())
+      : () => {}
+    this.release3 = () => {
+      ran()
+    }
   }
 
   private effect4(): void {
-    void (this.listStatus.value === null || this.announce.value(this.listStatus.value))
+    this.release4?.()
+    const ran = this.surface.value
+      ? focusOnLabelPress(
+          this.surface.value,
+          () => this.held.value.editor?.focus(),
+          () => !this.$p.disabled,
+        )
+      : () => {}
+    this.release4 = () => {
+      ran()
+    }
   }
 
   private effect5(): void {
-    placeTokenList(this.panel.value, this.root.value, this.suggestion.value?.rect)
+    this.followValue.value()
   }
 
   private effect6(): void {
-    this.release6?.()
+    this.held.value.editor?.update(this.editorUpdate.value())
+  }
+
+  private effect7(): void {
+    void (this.$p.value === undefined || this.held.value.editor?.setValue(this.$p.value))
+  }
+
+  private effect8(): void {
+    void (this.listStatus.value === null || this.announce.value(this.listStatus.value))
+  }
+
+  private effect9(): void {
+    this.placeList.value()
+  }
+
+  private effect10(): void {
+    this.release10?.()
+    const ran =
+      this.open.value && this.panel.value
+        ? followSelectionBar(this.panel.value, this.placeList.value)
+        : () => {}
+    this.release10 = () => {
+      ran()
+    }
+  }
+
+  private effect11(): void {
+    this.release11?.()
     const ran =
       this.holding.value && this.surface.value
         ? this.holdSurfaceEscape.value(this.surface.value)
         : () => {}
-    this.release6 = () => {
+    this.release11 = () => {
       ran()
     }
   }
 
-  private effect7(): void {
-    this.release7?.()
+  private effect12(): void {
+    this.release12?.()
     const ran =
       this.selecting.value && this.root.value
         ? this.releaseSelecting.value(this.root.value)
         : () => {}
-    this.release7 = () => {
+    this.release12 = () => {
       ran()
     }
   }
 
-  private effect8(): void {
-    this.release8?.()
+  private effect13(): void {
+    this.release13?.()
     const run = () => {
       syncToolbarStop(this.toolbarRow.value, this.toolbarStops.value)
     }
@@ -3227,25 +3360,25 @@ export class RichTextInput {
           subtree: true,
           attributeFilter: ['disabled', 'aria-disabled', 'hidden', 'inert'],
         })
-    this.release8 = () => {
+    this.release13 = () => {
       mutation?.disconnect()
     }
     run()
   }
 
-  private effect9(): void {
-    this.release9?.()
+  private effect14(): void {
+    this.release14?.()
     const ran =
       this.toolbarDrawn.value && this.toolbarRow.value
         ? this.holdEscapeIn.value(this.toolbarRow.value, () => this.toolbarRow.value)
         : () => {}
-    this.release9 = () => {
+    this.release14 = () => {
       ran()
     }
   }
 
-  private effect10(): void {
-    this.release10?.()
+  private effect15(): void {
+    this.release15?.()
     const run = () => {
       syncToolbarStop(this.bar.value, this.barStops.value)
     }
@@ -3258,56 +3391,69 @@ export class RichTextInput {
           subtree: true,
           attributeFilter: ['disabled', 'aria-disabled', 'hidden', 'inert'],
         })
-    this.release10 = () => {
+    this.release15 = () => {
       mutation?.disconnect()
     }
     run()
   }
 
-  private effect11(): void {
-    this.release11?.()
+  private effect16(): void {
+    this.release16?.()
     const ran =
       this.barPresent.value() && this.bar.value
         ? this.holdEscapeIn.value(this.bar.value, () => this.bar.value)
         : () => {}
-    this.release11 = () => {
+    this.release16 = () => {
       ran()
     }
   }
 
-  private effect12(): void {
+  private effect17(): void {
     void (this.barOpen.value && this.placeBar.value())
   }
 
-  private effect13(): void {
-    this.release13?.()
+  private effect18(): void {
+    this.release18?.()
     const ran =
       this.barOpen.value && this.bar.value
         ? followSelectionBar(this.bar.value, this.placeBar.value)
         : () => {}
-    this.release13 = () => {
+    this.release18 = () => {
       ran()
     }
   }
 
-  private effect14(): void {
+  private effect19(): void {
+    void (this.barOpen.value || this.barLeft.value())
+  }
+
+  private effect20(): void {
     void (
       this.barOpen.value &&
       !this.barHeard.value &&
-      ((this.barHeard.value = true), this.announce.value(this.say.value.selectionBarReady))
+      ((this.barHeard.value = true),
+      this.held.value.saidNow || this.announce.value(this.say.value.selectionBarReady))
     )
   }
 
-  private effect15(): void {
+  private effect21(): void {
+    void (
+      this.barDismissed.value !== null &&
+      (this.selection.value.empty || this.barDismissed.value !== this.rangeKey.value) &&
+      (this.barDismissed.value = null)
+    )
+  }
+
+  private effect22(): void {
     void (this.linkOpen.value || this.linkClosed.value())
   }
 
-  private effect16(): void {
+  private effect23(): void {
     void (this.headingOpen.value || this.headingClosed.value())
   }
 
-  private effect17(): void {
-    this.release17?.()
+  private effect24(): void {
+    this.release24?.()
     const ran = agentMember({
       member: 'RichTextInput',
       element: () => this.surface.value,
@@ -3323,6 +3469,8 @@ export class RichTextInput {
           argument: 'text',
           run: (value) =>
             (() => {
+              if (this.newer.value)
+                throw new Error('The document is of a later format than this field writes.')
               if (this.unwritable.value) throw new Error('The field is read-only.')
               const editor = this.held.value.editor
               if (editor === null) throw new Error('The field is not ready.')
@@ -3331,6 +3479,8 @@ export class RichTextInput {
         },
         clear: () =>
           (() => {
+            if (this.newer.value)
+              throw new Error('The document is of a later format than this field writes.')
             if (this.unwritable.value) throw new Error('The field is read-only.')
             const editor = this.held.value.editor
             if (editor === null) throw new Error('The field is not ready.')
@@ -3360,7 +3510,7 @@ export class RichTextInput {
         this.linkForm.value?.closest('[data-member="popover"]') ?? null,
       ],
     })
-    this.release17 = () => {
+    this.release24 = () => {
       ran()
     }
   }

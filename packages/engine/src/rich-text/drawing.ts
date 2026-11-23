@@ -1,6 +1,6 @@
 import { isRichTextEmpty, richTextNodeText } from './text'
 import { parseRichText } from './read'
-import { positionOf, walkRichText } from './ranges'
+import { positionCounter, walkRichText } from './ranges'
 import type {
   RichTextBlock,
   RichTextDocument,
@@ -471,15 +471,18 @@ function drawBlock(block: RichTextBlock, context: Context): RichTextDrawnBlock |
   }
 }
 
-/** Where each node the model's walk counts is, in code points of the plain text (`ranges.ts`). */
+/**
+ * Where each node the model's walk counts is, in code points of the plain text
+ * (`ranges.ts`). The pieces follow each other in the text, so one counter
+ * counts the whole text once.
+ */
 function positionsOf(doc: RichTextDocument): Map<unknown, RichTextPosition> {
   const walked = walkRichText(doc)
+  const position = positionCounter(walked.text)
   const positions = new Map<unknown, RichTextPosition>()
   for (const counted of walked.pieces) {
-    positions.set(counted.node, {
-      start: positionOf(walked.text, counted.from),
-      end: positionOf(walked.text, counted.to),
-    })
+    const start = position(counted.from)
+    positions.set(counted.node, { start, end: position(counted.to) })
   }
   return positions
 }

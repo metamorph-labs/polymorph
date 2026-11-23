@@ -89,83 +89,102 @@ aria-label="Comment"
 [entities]="e21()"
 [pmOverrides]="overrides()"
 ></pm-rich-text-input>}
-@case (6) {<ng-template #t5 let-editor><pm-button
+@case (6) {<ng-template #t5><pm-avatar
+name="Ada Lovelace"
+size="sm"
+></pm-avatar></ng-template>
+<pm-rich-text-input
+aria-label="Comment"
+[defaultValue]="e22()"
+[autoFocus]="e23()"
+[entities]="e24(t5)"
+[pmOverrides]="overrides()"
+></pm-rich-text-input>}
+@case (7) {<ng-template #t6 let-editor><pm-button
 variant="ghost"
 tone="neutral"
 size="sm"
 label="Save draft"
-(click)="e24()($event)"
+(click)="e27()($event)"
 ></pm-button><pm-button
 variant="solid"
 tone="accent"
 size="sm"
 label="Publish"
-[disabled]="e25(editor)"
-(click)="e26()($event)"
+[disabled]="e28(editor)"
+(click)="e29()($event)"
 ></pm-button></ng-template>
 <pm-rich-text-input
 aria-label="Description"
-[defaultValue]="e22()"
-[maxLength]="e23()"
-[footer]="t5"
+[defaultValue]="e25()"
+[maxLength]="e26()"
+[footer]="t6"
 [pmOverrides]="overrides()"
 ></pm-rich-text-input>}
-@case (7) {<pm-rich-text-input
+@case (8) {<pm-rich-text-input
 aria-label="Comment"
-[defaultValue]="e27()"
-[maxLength]="e28()"
-[formats]="e29()"
+[defaultValue]="e30()"
+[maxLength]="e31()"
+[formats]="e32()"
 [pmOverrides]="overrides()"
 ></pm-rich-text-input>}
-@case (8) {<pm-form-field
+@case (9) {<pm-form-field
 label="Description"
 error="Describe what changed."
-[required]="e31()"
+[required]="e34()"
 ><pm-rich-text-input
-[formats]="e30()"
+[formats]="e33()"
 [pmOverrides]="overrides()"
 ></pm-rich-text-input></pm-form-field>}
-@case (9) {<pm-rich-text-input
-aria-label="Comment"
-[disabled]="e32()"
-[defaultValue]="e33()"
-[pmOverrides]="overrides()"
-></pm-rich-text-input>}
 @case (10) {<pm-rich-text-input
 aria-label="Comment"
-[readOnly]="e34()"
-[defaultValue]="e35()"
+[disabled]="e35()"
+[defaultValue]="e36()"
 [pmOverrides]="overrides()"
 ></pm-rich-text-input>}
 @case (11) {<pm-rich-text-input
 aria-label="Comment"
-[pending]="e36()"
-[defaultValue]="e37()"
-submitLabel="Comment"
-(submit)="e38()($event)"
+[readOnly]="e37()"
+[defaultValue]="e38()"
 [pmOverrides]="overrides()"
 ></pm-rich-text-input>}
 @case (12) {<pm-rich-text-input
-aria-label="Description"
-[defaultValue]="e39()"
-[annotations]="e40()"
-activeAnnotation="thread-2"
-(annotationSelect)="e41()($event)"
+aria-label="Comment"
+[pending]="e39()"
+[defaultValue]="e40()"
+submitLabel="Comment"
+(submit)="e41()($event)"
 [pmOverrides]="overrides()"
 ></pm-rich-text-input>}
-@case (13) {<ng-template #t6><pm-button
+@case (13) {<pm-rich-text-input
+aria-label="Comment"
+name="body"
+[defaultValue]="e42()"
+submitLabel="Save"
+(submit)="e43()($event)"
+[pmOverrides]="overrides()"
+></pm-rich-text-input>}
+@case (14) {<pm-rich-text-input
+aria-label="Description"
+[defaultValue]="e44()"
+[annotations]="e45()"
+activeAnnotation="thread-2"
+(annotationSelect)="e46()($event)"
+[pmOverrides]="overrides()"
+></pm-rich-text-input>}
+@case (15) {<ng-template #t7><pm-button
 variant="ghost"
 tone="neutral"
 size="sm"
 icon="comment"
 label="Comment"
-(click)="e43()($event)"
+(click)="e48()($event)"
 ></pm-button></ng-template>
 <pm-rich-text-input
 aria-label="Description"
-[defaultValue]="e42()"
+[defaultValue]="e47()"
 toolbarPlacement="selection"
-[selectionActions]="t6"
+[selectionActions]="t7"
 [pmOverrides]="overrides()"
 ></pm-rich-text-input>}
 }`,
@@ -176,7 +195,7 @@ export class RichTextInputStates {
 
   constructor() {
     selectOnce(() =>
-      this.entry() === 13
+      this.entry() === 15
         ? { in: '[data-rich-text-input-part="surface"]', text: 'growing wait' }
         : undefined,
     )
@@ -389,6 +408,37 @@ export class RichTextInputStates {
   protected e22(): RichTextInputProps['defaultValue'] {
     return normalizeRichText({
       format: 'polymorph-rich-text/1',
+      blocks: [{ type: 'paragraph', content: [{ type: 'text', text: 'Thanks @gr' }] }],
+    })
+  }
+
+  protected e23(): RichTextInputProps['autoFocus'] {
+    return true
+  }
+
+  protected e24(t5: TemplateRef<unknown>): RichTextInputProps['entities'] {
+    return [
+      {
+        kind: 'user',
+        trigger: '@',
+        label: 'People',
+        options: [
+          {
+            id: 'ada',
+            label: 'Ada Lovelace',
+            description: 'Engineering',
+            leading: t5 as TemplateRef<never>,
+          },
+          { id: 'grace', label: 'Grace Hopper', description: 'Compilers' },
+          { id: 'alan', label: 'Alan Turing', description: 'Research' },
+        ],
+      },
+    ]
+  }
+
+  protected e25(): RichTextInputProps['defaultValue'] {
+    return normalizeRichText({
+      format: 'polymorph-rich-text/1',
       blocks: [
         { type: 'heading', level: 1, content: [{ type: 'text', text: 'Webhook retries' }] },
         {
@@ -411,23 +461,23 @@ export class RichTextInputStates {
     })
   }
 
-  protected e23(): RichTextInputProps['maxLength'] {
+  protected e26(): RichTextInputProps['maxLength'] {
     return 2000
   }
 
-  protected e24() {
+  protected e27() {
     return (() => {}) as (...args: unknown[]) => unknown
   }
 
-  protected e25(editor: { empty: boolean; overLimit: boolean }): ButtonProps['disabled'] {
+  protected e28(editor: { empty: boolean; overLimit: boolean }): ButtonProps['disabled'] {
     return editor.empty || editor.overLimit
   }
 
-  protected e26() {
+  protected e29() {
     return (() => {}) as (...args: unknown[]) => unknown
   }
 
-  protected e27(): RichTextInputProps['defaultValue'] {
+  protected e30(): RichTextInputProps['defaultValue'] {
     return normalizeRichText({
       format: 'polymorph-rich-text/1',
       blocks: [
@@ -439,27 +489,27 @@ export class RichTextInputStates {
     })
   }
 
-  protected e28(): RichTextInputProps['maxLength'] {
+  protected e31(): RichTextInputProps['maxLength'] {
     return 40
   }
 
-  protected e29(): RichTextInputProps['formats'] {
+  protected e32(): RichTextInputProps['formats'] {
     return ['bold', 'italic', 'link']
   }
 
-  protected e30(): RichTextInputProps['formats'] {
+  protected e33(): RichTextInputProps['formats'] {
     return ['bold', 'italic', 'link', 'bulletList']
   }
 
-  protected e31(): FormFieldProps['required'] {
+  protected e34(): FormFieldProps['required'] {
     return true
   }
 
-  protected e32(): RichTextInputProps['disabled'] {
+  protected e35(): RichTextInputProps['disabled'] {
     return true
   }
 
-  protected e33(): RichTextInputProps['defaultValue'] {
+  protected e36(): RichTextInputProps['defaultValue'] {
     return normalizeRichText({
       format: 'polymorph-rich-text/1',
       blocks: [
@@ -506,11 +556,11 @@ export class RichTextInputStates {
     })
   }
 
-  protected e34(): RichTextInputProps['readOnly'] {
+  protected e37(): RichTextInputProps['readOnly'] {
     return true
   }
 
-  protected e35(): RichTextInputProps['defaultValue'] {
+  protected e38(): RichTextInputProps['defaultValue'] {
     return normalizeRichText({
       format: 'polymorph-rich-text/1',
       blocks: [
@@ -557,11 +607,11 @@ export class RichTextInputStates {
     })
   }
 
-  protected e36(): RichTextInputProps['pending'] {
+  protected e39(): RichTextInputProps['pending'] {
     return true
   }
 
-  protected e37(): RichTextInputProps['defaultValue'] {
+  protected e40(): RichTextInputProps['defaultValue'] {
     return normalizeRichText({
       format: 'polymorph-rich-text/1',
       blocks: [
@@ -608,11 +658,27 @@ export class RichTextInputStates {
     })
   }
 
-  protected e38() {
+  protected e41() {
     return (() => {}) as (...args: unknown[]) => unknown
   }
 
-  protected e39(): RichTextInputProps['defaultValue'] {
+  protected e42(): RichTextInputProps['defaultValue'] {
+    return normalizeRichText({
+      format: 'polymorph-rich-text/2',
+      blocks: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'Written by a later version of the format.' }],
+        },
+      ],
+    })
+  }
+
+  protected e43() {
+    return (() => {}) as (...args: unknown[]) => unknown
+  }
+
+  protected e44(): RichTextInputProps['defaultValue'] {
     return normalizeRichText({
       format: 'polymorph-rich-text/1',
       blocks: [
@@ -638,15 +704,15 @@ export class RichTextInputStates {
     })
   }
 
-  protected e40(): RichTextInputProps['annotations'] {
+  protected e45(): RichTextInputProps['annotations'] {
     return ['thread-1', 'thread-2']
   }
 
-  protected e41() {
+  protected e46() {
     return (() => {}) as (...args: unknown[]) => unknown
   }
 
-  protected e42(): RichTextInputProps['defaultValue'] {
+  protected e47(): RichTextInputProps['defaultValue'] {
     return normalizeRichText({
       format: 'polymorph-rich-text/1',
       blocks: [
@@ -671,7 +737,7 @@ export class RichTextInputStates {
     })
   }
 
-  protected e43() {
+  protected e48() {
     return (() => {}) as (...args: unknown[]) => unknown
   }
 }
@@ -695,6 +761,7 @@ export const states: ComponentStates = {
     },
     { name: 'suggesting — the people an @ lists under the token' },
     { name: 'suggestions loading — the app looks people up for the query' },
+    { name: 'one suggestion — the one person a query matches' },
     { name: 'the app’s footer — its own controls under the field' },
     {
       name: 'over the limit — the count in danger, the field invalid',
@@ -704,6 +771,10 @@ export const states: ComponentStates = {
     { name: 'disabled', expect: { 'data-disabled': '', 'data-readonly': null } },
     { name: 'read-only — selectable, not editable', expect: { 'data-readonly': '' } },
     { name: 'pending — the app is saving the comment', expect: { 'data-readonly': '' } },
+    {
+      name: 'later format — a document a later version wrote, opened read-only',
+      expect: { 'data-readonly': '' },
+    },
     { name: 'annotated — two comment threads, one active' },
     { name: 'the selection bar — the format controls and a comment at the selected words' },
   ],

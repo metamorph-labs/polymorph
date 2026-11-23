@@ -25,9 +25,14 @@ import {
   createRichTextEditor,
   emptyRichText,
   enterToolbar,
+  focusOnLabelPress,
+  followFieldFocus,
+  followFormReset,
   followSelectionBar,
   holdToolbarEscape,
+  idPart,
   isRichTextEmpty,
+  isRichTextNewer,
   placeSelectionBar,
   placeTokenList,
   richTextFromText,
@@ -39,6 +44,7 @@ import {
   toolbarFocusIn,
   toolbarFocusOut,
   toolbarKeydown,
+  toolbarLosesFocus,
   toolbarPress,
   toolbarStop,
   useControlRef,
@@ -261,6 +267,7 @@ const slots = useTrackedSlots(callerSlots)
 const uid = useId()
 const listening = useListening()
 const own = ref(props.defaultValue ?? emptyRichText())
+const initial = ref(props.defaultValue ?? emptyRichText())
 const editorState = ref(null as RichTextEditorState | null)
 const said = ref({ text: '', at: 0 })
 const highlight = ref({ key: '', index: 0 })
@@ -290,6 +297,8 @@ const [surface, attachSurface] = useControlRef(() => props.controlRef)
 const held = computed(() => ({
   editor: null as RichTextEditor | null,
   handle: null as RichTextInputEditor | null,
+  lastValue: undefined as RichTextDocument | undefined,
+  saidNow: false,
 }))
 const say = computed(
   () =>
@@ -332,7 +341,7 @@ const say = computed(
         submitOverLimit: (over: number) =>
           `Remove ${over} ${over === 1 ? 'character' : 'characters'} to submit.`,
         submitPending: 'Still saving.',
-        suggestions: (count: number) => `${count} suggestions`,
+        suggestions: (count: number) => (count === 1 ? '1 suggestion' : `${count} suggestions`),
         loadingSuggestions: 'Loading suggestions…',
         noSuggestions: 'No results',
       },
@@ -350,7 +359,8 @@ const over = computed(() =>
   props.maxLength === undefined ? 0 : Math.max(0, length.value - props.maxLength),
 )
 const overLimit = computed(() => over.value > 0)
-const unwritable = computed(() => props.readOnly || props.pending)
+const newer = computed(() => isRichTextNewer(doc.value))
+const unwritable = computed(() => props.readOnly || props.pending || newer.value)
 const locked = computed(() => props.disabled || unwritable.value)
 const editable = computed(() => !locked.value)
 const allowed = computed(() =>
@@ -397,6 +407,10 @@ const selection = computed(() => ({
 const focusText = computed(() => () => held.value.editor?.focus())
 const announce = computed(() => (words: string) => {
   said.value = { text: words, at: said.value.at + 1 }
+  held.value.saidNow = true
+  queueMicrotask(() => {
+    held.value.saidNow = false
+  })
 })
 const formatName = computed(
   () =>
@@ -417,6 +431,7 @@ const heard = computed(() => (event: RichTextEditorEvent) => {
   else announce.value(say.value.redone)
 })
 const changed = computed(() => (next: RichTextDocument) => {
+  if (newer.value) return
   if (props.maxLength !== undefined) {
     const was = richTextLength(doc.value) > props.maxLength
     const nextOver = Math.max(0, richTextLength(next) - props.maxLength)
@@ -429,6 +444,17 @@ const changed = computed(() => (next: RichTextDocument) => {
 const replace = computed(() => (editor: RichTextEditor, next: RichTextDocument) => {
   editor.setValue(next)
   changed.value(editor.getValue())
+})
+const reset = computed(() => () => {
+  const editor = held.value.editor
+  if (editor === null || serializeRichText(editor.getValue()) === serializeRichText(initial.value))
+    return
+  replace.value(editor, initial.value)
+})
+const followValue = computed(() => () => {
+  if (props.value === undefined && held.value.lastValue !== undefined)
+    own.value = held.value.lastValue
+  held.value.lastValue = props.value
 })
 const collator = computed(
   () => new Intl.Collator(undefined, { usage: 'search', sensitivity: 'base' }),
@@ -723,7 +749,21 @@ const holding = computed(() => open.value || barOpen.value)
 const toolbarStops = computed(() => toolbarStop())
 const barStops = computed(() => toolbarStop())
 const placeBar = computed(
-  () => () => placeSelectionBar(bar.value, held.value.editor?.selectionRect()),
+  () => () => placeSelectionBar(bar.value, held.value.editor?.selectionRect(), surface.value),
+)
+const barLeft = computed(() => () => {
+  if (toolbarLosesFocus(bar.value, barStops.value)) held.value.editor?.focus()
+})
+const placeList = computed(
+  () => () =>
+    placeTokenList(
+      panel.value,
+      root.value,
+      held.value.editor?.tokenRect() ?? suggestion.value?.rect,
+    ),
+)
+const optionId = computed(
+  () => (option: RichTextEntityOption) => `${uid}-suggestion-${idPart(option.id)}`,
 )
 const describedByAll = computed(
   () =>
@@ -749,10 +789,10 @@ const attributes = computed(
       'aria-autocomplete': suggesting.value ? 'list' : undefined,
       'aria-haspopup': suggesting.value ? 'listbox' : undefined,
       'aria-controls': open.value && shown.value.length > 0 ? listId.value : undefined,
-      'aria-activedescendant':
-        open.value && shown.value.length > 0 && activeOption.value !== -1
-          ? `${uid}-suggestion-${activeOption.value}`
-          : undefined,
+      'aria-activedescendant': ((entry: RichTextEntityOption | undefined) =>
+        open.value && entry !== undefined ? optionId.value(entry) : undefined)(
+        activeOption.value === -1 ? undefined : shown.value[activeOption.value],
+      ),
     }) as Record<string, string | undefined>,
 )
 const options = computed(() =>
@@ -760,6 +800,7 @@ const options = computed(() =>
     allowed.value,
     kinds.value,
     editable.value,
+    !props.disabled && unwritable.value,
     attributes.value,
     props.placeholder ?? null,
     props.annotations ?? null,
@@ -772,6 +813,7 @@ const editorUpdate = computed(() => () => ({
   formats: allowed.value,
   entities: kinds.value,
   editable: editable.value,
+  readOnly: !props.disabled && unwritable.value,
   attributes: attributes.value,
   placeholder: props.placeholder,
   annotations: props.annotations,
@@ -804,6 +846,7 @@ const mountEditor = computed(() => (element: HTMLElement) => {
       unknown: styles.unknown ?? '',
     },
     editable: editable.value,
+    readOnly: !props.disabled && unwritable.value,
     attributes: attributes.value,
     placeholder: props.placeholder,
     annotations: props.annotations,
@@ -815,11 +858,6 @@ const mountEditor = computed(() => (element: HTMLElement) => {
     onLinkRequest: () => requestLink.value(),
     onSuggestionKey: (key) => suggestionKey.value(key),
     onFiles: listening.files ? (files) => emit('files', files) : undefined,
-    onFocus: () => {
-      barHeard.value = false
-      emit('focus')
-    },
-    onBlur: () => emit('blur'),
   })
   held.value.editor = editor
   // The editor publishes its state after a change, and not at mount.
@@ -837,16 +875,6 @@ const command = computed(() => (event: MouseEvent, act: (live: RichTextEditor) =
   if (event.detail > 0) live.focus()
 })
 const surfaceKey = computed(() => (event: KeyboardEvent) => {
-  if (
-    unwritable.value &&
-    event.key === 'Enter' &&
-    (event.metaKey || event.ctrlKey) &&
-    !event.isComposing
-  ) {
-    event.preventDefault()
-    submit.value()
-    return
-  }
   if (!event.altKey || event.key !== 'F10') return
   event.preventDefault()
   if (barOpen.value) enterToolbar(bar.value, barStops.value)
@@ -876,7 +904,20 @@ const barLeave = computed(() => (event: FocusEvent) => {
   if (to instanceof Node && surface.value?.contains(to) === true) textFocused.value = true
   if (!(to instanceof Node) || !(event.currentTarget as HTMLElement).contains(to))
     barFocus.value = false
+  // A browser that moves focus off the leaving, inert bar to the page does so here.
+  if (to === null && !barOpen.value) barLeft.value()
 })
+const followFocus = computed(
+  () => (element: HTMLElement) =>
+    followFieldFocus(element, {
+      panels: () => [linkForm.value?.closest('[data-member="popover"]') ?? null],
+      entered: () => {
+        barHeard.value = false
+        emit('focus')
+      },
+      left: () => emit('blur'),
+    }),
+)
 const fixed = computed(() => props.toolbarPlacement === 'fixed')
 const toolbarDrawn = computed(() => fixed.value || !!slots.toolbar)
 const defaultFooter = computed(
@@ -887,58 +928,112 @@ const barPresent = usePresence(() => barOpen.value, bar)
 let release1: (() => void) | undefined
 const effect1 = () => {
   release1?.()
-  const ran = surface.value ? mountEditor.value(surface.value) : () => {}
+  const ran = root.value ? followFocus.value(root.value) : () => {}
   release1 = () => {
     ran()
   }
 }
 onMounted(effect1)
 onBeforeUnmount(() => release1?.())
+let release2: (() => void) | undefined
 const effect2 = () => {
-  held.value.editor?.update(editorUpdate.value())
+  release2?.()
+  const ran = surface.value ? mountEditor.value(surface.value) : () => {}
+  release2 = () => {
+    ran()
+  }
 }
-watch(() => options.value, effect2, { flush: 'post' })
+onMounted(effect2)
+onBeforeUnmount(() => release2?.())
+let release3: (() => void) | undefined
 const effect3 = () => {
-  props.value === undefined || held.value.editor?.setValue(props.value)
+  release3?.()
+  const ran = root.value ? followFormReset(root.value, () => reset.value()) : () => {}
+  release3 = () => {
+    ran()
+  }
 }
-watch(() => [props.value, own.value], effect3, { flush: 'post' })
+onMounted(effect3)
+onBeforeUnmount(() => release3?.())
+let release4: (() => void) | undefined
 const effect4 = () => {
-  listStatus.value === null || announce.value(listStatus.value)
+  release4?.()
+  const ran = surface.value
+    ? focusOnLabelPress(
+        surface.value,
+        () => held.value.editor?.focus(),
+        () => !props.disabled,
+      )
+    : () => {}
+  release4 = () => {
+    ran()
+  }
 }
 onMounted(effect4)
-watch(() => listStatus.value, effect4, { flush: 'post' })
+watch(() => props.ariaLabelledby, effect4, { flush: 'post' })
+onBeforeUnmount(() => release4?.())
 const effect5 = () => {
-  placeTokenList(panel.value, root.value, suggestion.value?.rect)
+  followValue.value()
 }
 onMounted(effect5)
-watch(() => [suggestion.value, shown.value.length, loading.value, failed.value], effect5, {
+watch(() => props.value, effect5, { flush: 'post' })
+const effect6 = () => {
+  held.value.editor?.update(editorUpdate.value())
+}
+watch(() => options.value, effect6, { flush: 'post' })
+const effect7 = () => {
+  props.value === undefined || held.value.editor?.setValue(props.value)
+}
+watch(() => [props.value, own.value], effect7, { flush: 'post' })
+const effect8 = () => {
+  listStatus.value === null || announce.value(listStatus.value)
+}
+onMounted(effect8)
+watch(() => listStatus.value, effect8, { flush: 'post' })
+const effect9 = () => {
+  placeList.value()
+}
+onMounted(effect9)
+watch(() => [suggestion.value, shown.value.length, loading.value, failed.value], effect9, {
   flush: 'post',
 })
-let release6: (() => void) | undefined
-const effect6 = () => {
-  release6?.()
+let release10: (() => void) | undefined
+const effect10 = () => {
+  release10?.()
+  const ran =
+    open.value && panel.value ? followSelectionBar(panel.value, placeList.value) : () => {}
+  release10 = () => {
+    ran()
+  }
+}
+onMounted(effect10)
+watch(() => open.value, effect10, { flush: 'post' })
+onBeforeUnmount(() => release10?.())
+let release11: (() => void) | undefined
+const effect11 = () => {
+  release11?.()
   const ran = holding.value && surface.value ? holdSurfaceEscape.value(surface.value) : () => {}
-  release6 = () => {
+  release11 = () => {
     ran()
   }
 }
-onMounted(effect6)
-watch(() => holding.value, effect6, { flush: 'post' })
-onBeforeUnmount(() => release6?.())
-let release7: (() => void) | undefined
-const effect7 = () => {
-  release7?.()
+onMounted(effect11)
+watch(() => holding.value, effect11, { flush: 'post' })
+onBeforeUnmount(() => release11?.())
+let release12: (() => void) | undefined
+const effect12 = () => {
+  release12?.()
   const ran = selecting.value && root.value ? releaseSelecting.value(root.value) : () => {}
-  release7 = () => {
+  release12 = () => {
     ran()
   }
 }
-onMounted(effect7)
-watch(() => selecting.value, effect7, { flush: 'post' })
-onBeforeUnmount(() => release7?.())
-let release8: (() => void) | undefined
-const effect8 = () => {
-  release8?.()
+onMounted(effect12)
+watch(() => selecting.value, effect12, { flush: 'post' })
+onBeforeUnmount(() => release12?.())
+let release13: (() => void) | undefined
+const effect13 = () => {
+  release13?.()
   const run = () => {
     syncToolbarStop(toolbarRow.value, toolbarStops.value)
   }
@@ -951,31 +1046,31 @@ const effect8 = () => {
         subtree: true,
         attributeFilter: ['disabled', 'aria-disabled', 'hidden', 'inert'],
       })
-  release8 = () => {
+  release13 = () => {
     mutation?.disconnect()
   }
   run()
 }
-onMounted(effect8)
-watch(() => toolbarDrawn.value, effect8, { flush: 'post' })
-onBeforeUnmount(() => release8?.())
-let release9: (() => void) | undefined
-const effect9 = () => {
-  release9?.()
+onMounted(effect13)
+watch(() => toolbarDrawn.value, effect13, { flush: 'post' })
+onBeforeUnmount(() => release13?.())
+let release14: (() => void) | undefined
+const effect14 = () => {
+  release14?.()
   const ran =
     toolbarDrawn.value && toolbarRow.value
       ? holdEscapeIn.value(toolbarRow.value, () => toolbarRow.value)
       : () => {}
-  release9 = () => {
+  release14 = () => {
     ran()
   }
 }
-onMounted(effect9)
-watch(() => toolbarDrawn.value, effect9, { flush: 'post' })
-onBeforeUnmount(() => release9?.())
-let release10: (() => void) | undefined
-const effect10 = () => {
-  release10?.()
+onMounted(effect14)
+watch(() => toolbarDrawn.value, effect14, { flush: 'post' })
+onBeforeUnmount(() => release14?.())
+let release15: (() => void) | undefined
+const effect15 = () => {
+  release15?.()
   const run = () => {
     syncToolbarStop(bar.value, barStops.value)
   }
@@ -988,60 +1083,70 @@ const effect10 = () => {
         subtree: true,
         attributeFilter: ['disabled', 'aria-disabled', 'hidden', 'inert'],
       })
-  release10 = () => {
+  release15 = () => {
     mutation?.disconnect()
   }
   run()
 }
-onMounted(effect10)
-watch(() => barPresent.value, effect10, { flush: 'post' })
-onBeforeUnmount(() => release10?.())
-let release11: (() => void) | undefined
-const effect11 = () => {
-  release11?.()
+onMounted(effect15)
+watch(() => barPresent.value, effect15, { flush: 'post' })
+onBeforeUnmount(() => release15?.())
+let release16: (() => void) | undefined
+const effect16 = () => {
+  release16?.()
   const ran =
     barPresent.value && bar.value ? holdEscapeIn.value(bar.value, () => bar.value) : () => {}
-  release11 = () => {
+  release16 = () => {
     ran()
   }
 }
-onMounted(effect11)
-watch(() => barPresent.value, effect11, { flush: 'post' })
-onBeforeUnmount(() => release11?.())
-const effect12 = () => {
+onMounted(effect16)
+watch(() => barPresent.value, effect16, { flush: 'post' })
+onBeforeUnmount(() => release16?.())
+const effect17 = () => {
   barOpen.value && placeBar.value()
 }
-onMounted(effect12)
-watch(() => [barOpen.value, editorState.value], effect12, { flush: 'post' })
-let release13: (() => void) | undefined
-const effect13 = () => {
-  release13?.()
+onMounted(effect17)
+watch(() => [barOpen.value, editorState.value], effect17, { flush: 'post' })
+let release18: (() => void) | undefined
+const effect18 = () => {
+  release18?.()
   const ran = barOpen.value && bar.value ? followSelectionBar(bar.value, placeBar.value) : () => {}
-  release13 = () => {
+  release18 = () => {
     ran()
   }
 }
-onMounted(effect13)
-watch(() => barOpen.value, effect13, { flush: 'post' })
-onBeforeUnmount(() => release13?.())
-const effect14 = () => {
+onMounted(effect18)
+watch(() => barOpen.value, effect18, { flush: 'post' })
+onBeforeUnmount(() => release18?.())
+const effect19 = () => {
+  barOpen.value || barLeft.value()
+}
+watch(() => barOpen.value, effect19, { flush: 'post' })
+const effect20 = () => {
   barOpen.value &&
     !barHeard.value &&
-    ((barHeard.value = true), announce.value(say.value.selectionBarReady))
+    ((barHeard.value = true), held.value.saidNow || announce.value(say.value.selectionBarReady))
 }
-onMounted(effect14)
-watch(() => barOpen.value, effect14, { flush: 'post' })
-const effect15 = () => {
+onMounted(effect20)
+watch(() => barOpen.value, effect20, { flush: 'post' })
+const effect21 = () => {
+  barDismissed.value !== null &&
+    (selection.value.empty || barDismissed.value !== rangeKey.value) &&
+    (barDismissed.value = null)
+}
+watch(() => [rangeKey.value, selection.value.empty], effect21, { flush: 'post' })
+const effect22 = () => {
   linkOpen.value || linkClosed.value()
 }
-watch(() => linkOpen.value, effect15, { flush: 'post' })
-const effect16 = () => {
+watch(() => linkOpen.value, effect22, { flush: 'post' })
+const effect23 = () => {
   headingOpen.value || headingClosed.value()
 }
-watch(() => headingOpen.value, effect16, { flush: 'post' })
-let release17: (() => void) | undefined
-const effect17 = () => {
-  release17?.()
+watch(() => headingOpen.value, effect23, { flush: 'post' })
+let release24: (() => void) | undefined
+const effect24 = () => {
+  release24?.()
   const ran = agentMember({
     member: 'RichTextInput',
     element: () => surface.value,
@@ -1057,6 +1162,8 @@ const effect17 = () => {
         argument: 'text',
         run: (value) =>
           (() => {
+            if (newer.value)
+              throw new Error('The document is of a later format than this field writes.')
             if (unwritable.value) throw new Error('The field is read-only.')
             const editor = held.value.editor
             if (editor === null) throw new Error('The field is not ready.')
@@ -1065,6 +1172,8 @@ const effect17 = () => {
       },
       clear: () =>
         (() => {
+          if (newer.value)
+            throw new Error('The document is of a later format than this field writes.')
           if (unwritable.value) throw new Error('The field is read-only.')
           const editor = held.value.editor
           if (editor === null) throw new Error('The field is not ready.')
@@ -1088,12 +1197,12 @@ const effect17 = () => {
       linkForm.value?.closest('[data-member="popover"]') ?? null,
     ],
   })
-  release17 = () => {
+  release24 = () => {
     ran()
   }
 }
-onMounted(effect17)
-onBeforeUnmount(() => release17?.())
+onMounted(effect24)
+onBeforeUnmount(() => release24?.())
 </script>
 
 <template>
@@ -1553,7 +1662,7 @@ onBeforeUnmount(() => release17?.())
           <!-- option -->
           <li
             :class="styles.option"
-            :id="`${uid}-suggestion-${index}`"
+            :id="optionId(option)"
             role="option"
             :aria-selected="index === activeOption ? 'true' : 'false'"
             :data-highlighted="index === activeOption ? '' : undefined"

@@ -20,9 +20,15 @@ import {
   elementRef,
   emptyRichText,
   enterToolbar,
+  focusOnLabelPress,
+  followFieldFocus,
+  followFormReset,
   followSelectionBar,
   holdToolbarEscape,
+  idPart,
   isRichTextEmpty,
+  isRichTextNewer,
+  itemOf,
   placeSelectionBar,
   placeTokenList,
   richTextFromText,
@@ -35,6 +41,7 @@ import {
   toolbarFocusIn,
   toolbarFocusOut,
   toolbarKeydown,
+  toolbarLosesFocus,
   toolbarPress,
   toolbarStop,
   useControlRef,
@@ -291,6 +298,7 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
   return scope(() => {
     const uid = createUniqueId()
     const own = createCell(props.defaultValue ?? emptyRichText())
+    const initial = createCell(props.defaultValue ?? emptyRichText())
     const editorState = createCell(null as RichTextEditorState | null)
     const said = createCell({ text: '', at: 0 })
     const highlight = createCell({ key: '', index: 0 })
@@ -320,6 +328,8 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
     const held = createDerived(() => ({
       editor: null as RichTextEditor | null,
       handle: null as RichTextInputEditor | null,
+      lastValue: undefined as RichTextDocument | undefined,
+      saidNow: false,
     }))
     const say = createDerived(
       () =>
@@ -362,7 +372,7 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
             submitOverLimit: (over: number) =>
               `Remove ${over} ${over === 1 ? 'character' : 'characters'} to submit.`,
             submitPending: 'Still saving.',
-            suggestions: (count: number) => `${count} suggestions`,
+            suggestions: (count: number) => (count === 1 ? '1 suggestion' : `${count} suggestions`),
             loadingSuggestions: 'Loading suggestions…',
             noSuggestions: 'No results',
           },
@@ -380,7 +390,8 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
       props.maxLength === undefined ? 0 : Math.max(0, length.value - props.maxLength),
     )
     const overLimit = createDerived(() => over.value > 0)
-    const unwritable = createDerived(() => props.readOnly || props.pending)
+    const newer = createDerived(() => isRichTextNewer(doc.value))
+    const unwritable = createDerived(() => props.readOnly || props.pending || newer.value)
     const locked = createDerived(() => props.disabled || unwritable.value)
     const editable = createDerived(() => !locked.value)
     const allowed = createDerived(() =>
@@ -427,6 +438,10 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
     const focusText = createDerived(() => () => held.value.editor?.focus())
     const announce = createDerived(() => (words: string) => {
       said.value = { text: words, at: said.value.at + 1 }
+      held.value.saidNow = true
+      queueMicrotask(() => {
+        held.value.saidNow = false
+      })
     })
     const formatName = createDerived(
       () =>
@@ -447,6 +462,7 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
       else announce.value(say.value.redone)
     })
     const changed = createDerived(() => (next: RichTextDocument) => {
+      if (newer.value) return
       if (props.maxLength !== undefined) {
         const was = richTextLength(doc.value) > props.maxLength
         const nextOver = Math.max(0, richTextLength(next) - props.maxLength)
@@ -459,6 +475,20 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
     const replace = createDerived(() => (editor: RichTextEditor, next: RichTextDocument) => {
       editor.setValue(next)
       changed.value(editor.getValue())
+    })
+    const reset = createDerived(() => () => {
+      const editor = held.value.editor
+      if (
+        editor === null ||
+        serializeRichText(editor.getValue()) === serializeRichText(initial.value)
+      )
+        return
+      replace.value(editor, initial.value)
+    })
+    const followValue = createDerived(() => () => {
+      if (props.value === undefined && held.value.lastValue !== undefined)
+        own.value = held.value.lastValue
+      held.value.lastValue = props.value
     })
     const collator = createDerived(
       () => new Intl.Collator(undefined, { usage: 'search', sensitivity: 'base' }),
@@ -765,7 +795,21 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
     const toolbarStops = createDerived(() => toolbarStop())
     const barStops = createDerived(() => toolbarStop())
     const placeBar = createDerived(
-      () => () => placeSelectionBar(bar.value, held.value.editor?.selectionRect()),
+      () => () => placeSelectionBar(bar.value, held.value.editor?.selectionRect(), surface.value),
+    )
+    const barLeft = createDerived(() => () => {
+      if (toolbarLosesFocus(bar.value, barStops.value)) held.value.editor?.focus()
+    })
+    const placeList = createDerived(
+      () => () =>
+        placeTokenList(
+          panel.value,
+          root.value,
+          held.value.editor?.tokenRect() ?? suggestion.value?.rect,
+        ),
+    )
+    const optionId = createDerived(
+      () => (option: RichTextEntityOption) => `${uid}-suggestion-${idPart(option.id)}`,
     )
     const describedByAll = createDerived(
       () =>
@@ -791,10 +835,10 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
           'aria-autocomplete': suggesting.value ? 'list' : undefined,
           'aria-haspopup': suggesting.value ? 'listbox' : undefined,
           'aria-controls': open.value && shown.value.length > 0 ? listId.value : undefined,
-          'aria-activedescendant':
-            open.value && shown.value.length > 0 && activeOption.value !== -1
-              ? `${uid}-suggestion-${activeOption.value}`
-              : undefined,
+          'aria-activedescendant': ((entry: RichTextEntityOption | undefined) =>
+            open.value && entry !== undefined ? optionId.value(entry) : undefined)(
+            activeOption.value === -1 ? undefined : shown.value[activeOption.value],
+          ),
         }) as Record<string, string | undefined>,
     )
     const options = createDerived(() =>
@@ -802,6 +846,7 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
         allowed.value,
         kinds.value,
         editable.value,
+        !props.disabled && unwritable.value,
         attributes.value,
         props.placeholder ?? null,
         props.annotations ?? null,
@@ -814,6 +859,7 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
       formats: allowed.value,
       entities: kinds.value,
       editable: editable.value,
+      readOnly: !props.disabled && unwritable.value,
       attributes: attributes.value,
       placeholder: props.placeholder,
       annotations: props.annotations,
@@ -846,6 +892,7 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
           unknown: styles.unknown ?? '',
         },
         editable: editable.value,
+        readOnly: !props.disabled && unwritable.value,
         attributes: attributes.value,
         placeholder: props.placeholder,
         annotations: props.annotations,
@@ -857,11 +904,6 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
         onLinkRequest: () => requestLink.value(),
         onSuggestionKey: (key) => suggestionKey.value(key),
         onFiles: props.onFiles !== undefined ? (files) => props.onFiles?.(files) : undefined,
-        onFocus: () => {
-          barHeard.value = false
-          props.onFocus?.()
-        },
-        onBlur: () => props.onBlur?.(),
       })
       held.value.editor = editor
       // The editor publishes its state after a change, and not at mount.
@@ -881,16 +923,6 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
       },
     )
     const surfaceKey = createDerived(() => (event: KeyboardEvent) => {
-      if (
-        unwritable.value &&
-        event.key === 'Enter' &&
-        (event.metaKey || event.ctrlKey) &&
-        !event.isComposing
-      ) {
-        event.preventDefault()
-        submit.value()
-        return
-      }
       if (!event.altKey || event.key !== 'F10') return
       event.preventDefault()
       if (barOpen.value) enterToolbar(bar.value, barStops.value)
@@ -920,7 +952,20 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
       if (to instanceof Node && surface.value?.contains(to) === true) textFocused.value = true
       if (!(to instanceof Node) || !(event.currentTarget as HTMLElement).contains(to))
         barFocus.value = false
+      // A browser that moves focus off the leaving, inert bar to the page does so here.
+      if (to === null && !barOpen.value) barLeft.value()
     })
+    const followFocus = createDerived(
+      () => (element: HTMLElement) =>
+        followFieldFocus(element, {
+          panels: () => [linkForm.value?.closest('[data-member="popover"]') ?? null],
+          entered: () => {
+            barHeard.value = false
+            props.onFocus?.()
+          },
+          left: () => props.onBlur?.(),
+        }),
+    )
     const fixed = createDerived(() => props.toolbarPlacement === 'fixed')
     const toolbarDrawn = createDerived(() => fixed.value || !!(props.toolbar !== undefined))
     const defaultFooter = createDerived(
@@ -937,76 +982,139 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
     let release1: (() => void) | undefined
     const effect1 = () => {
       release1?.()
-      const ran = surface.value ? mountEditor.value(surface.value) : () => {}
+      const ran = root.value ? followFocus.value(root.value) : () => {}
       release1 = () => {
         ran()
       }
     }
     onMount(effect1)
     onCleanup(() => release1?.())
+    let release2: (() => void) | undefined
     const effect2 = () => {
+      release2?.()
+      const ran = surface.value ? mountEditor.value(surface.value) : () => {}
+      release2 = () => {
+        ran()
+      }
+    }
+    onMount(effect2)
+    onCleanup(() => release2?.())
+    let release3: (() => void) | undefined
+    const effect3 = () => {
+      release3?.()
+      const ran = root.value ? followFormReset(root.value, () => reset.value()) : () => {}
+      release3 = () => {
+        ran()
+      }
+    }
+    onMount(effect3)
+    onCleanup(() => release3?.())
+    let release4: (() => void) | undefined
+    const effect4 = () => {
+      release4?.()
+      const ran = surface.value
+        ? focusOnLabelPress(
+            surface.value,
+            () => held.value.editor?.focus(),
+            () => !props.disabled,
+          )
+        : () => {}
+      release4 = () => {
+        ran()
+      }
+    }
+    watchEffect(
+      createMemo(() => props['aria-labelledby']),
+      effect4,
+      true,
+    )
+    onCleanup(() => release4?.())
+    const effect5 = () => {
+      followValue.value()
+    }
+    watchEffect(
+      createMemo(() => props.value),
+      effect5,
+      true,
+    )
+    const effect6 = () => {
       held.value.editor?.update(editorUpdate.value())
     }
     watchEffect(
       createMemo(() => options.value),
-      effect2,
+      effect6,
       false,
     )
-    const effect3 = () => {
+    const effect7 = () => {
       void (props.value === undefined || held.value.editor?.setValue(props.value))
     }
     watchEffect(
       createMemo(() => [props.value, own.value]),
-      effect3,
+      effect7,
       false,
     )
-    const effect4 = () => {
+    const effect8 = () => {
       void (listStatus.value === null || announce.value(listStatus.value))
     }
     watchEffect(
       createMemo(() => listStatus.value),
-      effect4,
+      effect8,
       true,
     )
-    const effect5 = () => {
-      placeTokenList(panel.value, root.value, suggestion.value?.rect)
+    const effect9 = () => {
+      placeList.value()
     }
     watchEffect(
       createMemo(() => [suggestion.value, shown.value.length, loading.value, failed.value]),
-      effect5,
+      effect9,
       true,
     )
-    let release6: (() => void) | undefined
-    const effect6 = () => {
-      release6?.()
+    let release10: (() => void) | undefined
+    const effect10 = () => {
+      release10?.()
+      const ran =
+        open.value && panel.value ? followSelectionBar(panel.value, placeList.value) : () => {}
+      release10 = () => {
+        ran()
+      }
+    }
+    watchEffect(
+      createMemo(() => open.value),
+      effect10,
+      true,
+    )
+    onCleanup(() => release10?.())
+    let release11: (() => void) | undefined
+    const effect11 = () => {
+      release11?.()
       const ran = holding.value && surface.value ? holdSurfaceEscape.value(surface.value) : () => {}
-      release6 = () => {
+      release11 = () => {
         ran()
       }
     }
     watchEffect(
       createMemo(() => holding.value),
-      effect6,
+      effect11,
       true,
     )
-    onCleanup(() => release6?.())
-    let release7: (() => void) | undefined
-    const effect7 = () => {
-      release7?.()
+    onCleanup(() => release11?.())
+    let release12: (() => void) | undefined
+    const effect12 = () => {
+      release12?.()
       const ran = selecting.value && root.value ? releaseSelecting.value(root.value) : () => {}
-      release7 = () => {
+      release12 = () => {
         ran()
       }
     }
     watchEffect(
       createMemo(() => selecting.value),
-      effect7,
+      effect12,
       true,
     )
-    onCleanup(() => release7?.())
-    let release8: (() => void) | undefined
-    const effect8 = () => {
-      release8?.()
+    onCleanup(() => release12?.())
+    let release13: (() => void) | undefined
+    const effect13 = () => {
+      release13?.()
       const run = () => {
         syncToolbarStop(toolbarRow.value, toolbarStops.value)
       }
@@ -1020,37 +1128,37 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
             subtree: true,
             attributeFilter: ['disabled', 'aria-disabled', 'hidden', 'inert'],
           })
-      release8 = () => {
+      release13 = () => {
         mutation?.disconnect()
       }
       run()
     }
     watchEffect(
       createMemo(() => toolbarDrawn.value),
-      effect8,
+      effect13,
       true,
     )
-    onCleanup(() => release8?.())
-    let release9: (() => void) | undefined
-    const effect9 = () => {
-      release9?.()
+    onCleanup(() => release13?.())
+    let release14: (() => void) | undefined
+    const effect14 = () => {
+      release14?.()
       const ran =
         toolbarDrawn.value && toolbarRow.value
           ? holdEscapeIn.value(toolbarRow.value, () => toolbarRow.value)
           : () => {}
-      release9 = () => {
+      release14 = () => {
         ran()
       }
     }
     watchEffect(
       createMemo(() => toolbarDrawn.value),
-      effect9,
+      effect14,
       true,
     )
-    onCleanup(() => release9?.())
-    let release10: (() => void) | undefined
-    const effect10 = () => {
-      release10?.()
+    onCleanup(() => release14?.())
+    let release15: (() => void) | undefined
+    const effect15 = () => {
+      release15?.()
       const run = () => {
         syncToolbarStop(bar.value, barStops.value)
       }
@@ -1064,86 +1172,106 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
             subtree: true,
             attributeFilter: ['disabled', 'aria-disabled', 'hidden', 'inert'],
           })
-      release10 = () => {
+      release15 = () => {
         mutation?.disconnect()
       }
       run()
     }
     watchEffect(
       createMemo(() => barPresent()),
-      effect10,
+      effect15,
       true,
     )
-    onCleanup(() => release10?.())
-    let release11: (() => void) | undefined
-    const effect11 = () => {
-      release11?.()
+    onCleanup(() => release15?.())
+    let release16: (() => void) | undefined
+    const effect16 = () => {
+      release16?.()
       const ran =
         barPresent() && bar.value ? holdEscapeIn.value(bar.value, () => bar.value) : () => {}
-      release11 = () => {
+      release16 = () => {
         ran()
       }
     }
     watchEffect(
       createMemo(() => barPresent()),
-      effect11,
+      effect16,
       true,
     )
-    onCleanup(() => release11?.())
-    const effect12 = () => {
+    onCleanup(() => release16?.())
+    const effect17 = () => {
       void (barOpen.value && placeBar.value())
     }
     watchEffect(
       createMemo(() => [barOpen.value, editorState.value]),
-      effect12,
+      effect17,
       true,
     )
-    let release13: (() => void) | undefined
-    const effect13 = () => {
-      release13?.()
+    let release18: (() => void) | undefined
+    const effect18 = () => {
+      release18?.()
       const ran =
         barOpen.value && bar.value ? followSelectionBar(bar.value, placeBar.value) : () => {}
-      release13 = () => {
+      release18 = () => {
         ran()
       }
     }
     watchEffect(
       createMemo(() => barOpen.value),
-      effect13,
+      effect18,
       true,
     )
-    onCleanup(() => release13?.())
-    const effect14 = () => {
+    onCleanup(() => release18?.())
+    const effect19 = () => {
+      void (barOpen.value || barLeft.value())
+    }
+    watchEffect(
+      createMemo(() => barOpen.value),
+      effect19,
+      false,
+    )
+    const effect20 = () => {
       void (
         barOpen.value &&
         !barHeard.value &&
-        ((barHeard.value = true), announce.value(say.value.selectionBarReady))
+        ((barHeard.value = true), held.value.saidNow || announce.value(say.value.selectionBarReady))
       )
     }
     watchEffect(
       createMemo(() => barOpen.value),
-      effect14,
+      effect20,
       true,
     )
-    const effect15 = () => {
+    const effect21 = () => {
+      void (
+        barDismissed.value !== null &&
+        (selection.value.empty || barDismissed.value !== rangeKey.value) &&
+        (barDismissed.value = null)
+      )
+    }
+    watchEffect(
+      createMemo(() => [rangeKey.value, selection.value.empty]),
+      effect21,
+      false,
+    )
+    const effect22 = () => {
       void (linkOpen.value || linkClosed.value())
     }
     watchEffect(
       createMemo(() => linkOpen.value),
-      effect15,
+      effect22,
       false,
     )
-    const effect16 = () => {
+    const effect23 = () => {
       void (headingOpen.value || headingClosed.value())
     }
     watchEffect(
       createMemo(() => headingOpen.value),
-      effect16,
+      effect23,
       false,
     )
-    let release17: (() => void) | undefined
-    const effect17 = () => {
-      release17?.()
+    let release24: (() => void) | undefined
+    const effect24 = () => {
+      release24?.()
       const ran = agentMember({
         member: 'RichTextInput',
         element: () => surface.value,
@@ -1159,6 +1287,8 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
             argument: 'text',
             run: (value) =>
               (() => {
+                if (newer.value)
+                  throw new Error('The document is of a later format than this field writes.')
                 if (unwritable.value) throw new Error('The field is read-only.')
                 const editor = held.value.editor
                 if (editor === null) throw new Error('The field is not ready.')
@@ -1167,6 +1297,8 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
           },
           clear: () =>
             (() => {
+              if (newer.value)
+                throw new Error('The document is of a later format than this field writes.')
               if (unwritable.value) throw new Error('The field is read-only.')
               const editor = held.value.editor
               if (editor === null) throw new Error('The field is not ready.')
@@ -1190,12 +1322,12 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
           linkForm.value?.closest('[data-member="popover"]') ?? null,
         ],
       })
-      release17 = () => {
+      release24 = () => {
         ran()
       }
     }
-    onMount(effect17)
-    onCleanup(() => release17?.())
+    onMount(effect24)
+    onCleanup(() => release24?.())
     return (
       <div
         class={styles.root}
@@ -1724,7 +1856,7 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
                   {(option, index) => (
                     <li
                       class={styles.option}
-                      id={`${uid}-suggestion-${index()}`}
+                      id={optionId.value(itemOf(option))}
                       role="option"
                       aria-selected={index() === activeOption.value ? 'true' : 'false'}
                       data-highlighted={index() === activeOption.value ? '' : undefined}

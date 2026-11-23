@@ -411,12 +411,14 @@ annotated entity, whose ring is a shadow that forced colours remove.
 | a description editor | `minRows={6}` `maxRows={24}`, every format, `maxLength` under it | `data-min-rows="6"`, `data-max-rows="24"`, no `data-invalid` |
 | suggesting | `Thanks @`, `autoFocus`, people | the list under the token, its first option active |
 | suggestions loading | `Ask @gr`, `autoFocus`, a source with `filter: false` and `loading` | three skeleton rows; the status says it loads |
+| one suggestion | `Thanks @gr`, `autoFocus`, people | one option; the status says "1 suggestion" |
 | the app's footer | `footer` with two Buttons, the count | — |
 | over the limit | 51 code points, `maxLength={40}` | `data-invalid`, the count in danger text |
 | invalid | in a FormField with an error, required | the FormField's `data-invalid`; the surface `aria-invalid` and `aria-required` |
 | disabled | `disabled`, with content | `data-disabled` |
 | read-only | `readOnly`, with content | `data-readonly` |
 | pending | `pending`, the default footer | `data-readonly`, the submit loading |
+| later format | a document of format `polymorph-rich-text/2`, `name`, the default footer | `data-readonly`; the form value is the document as stored |
 | annotated | two annotations, the second active | — |
 | the selection bar | `toolbarPlacement="selection"`, `selectionActions`, words selected on mount | the bar at the selection |
 
@@ -485,6 +487,14 @@ attr surface aria-disabled=true when disabled
 attr root data-disabled when disabled
 attr surface aria-readonly=true when read-only
 attr surface tabindex=0 when read-only
+attr surface spellcheck=false when read-only
+attr surface spellcheck=false when later format
+key Enter nothing on surface when read-only
+key Backspace nothing on surface when read-only
+attr surface aria-readonly=true when later format
+attr root data-readonly when later format
+key Enter nothing on surface when later format
+announces live:polite "1 suggestion" when one suggestion
 announces busy when pending
 ```
 

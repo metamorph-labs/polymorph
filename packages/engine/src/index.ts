@@ -189,8 +189,11 @@ export {
   visibleViewport,
 } from './conventions/selection-bar'
 export type { ViewportBox } from './conventions/selection-bar'
-/* A press on the label FormField names a group by, which focuses the group's text. */
+/* A press on the label FormField names a group by, which focuses the group's text; focus
+   entering and leaving a field of several parts; and a form's reset reaching it. */
 export { focusOnLabelPress } from './conventions/label-press'
+export { followFieldFocus, followFormReset, inField } from './conventions/field-focus'
+export type { FieldFocusHooks } from './conventions/field-focus'
 /* A reader's selection in a RichTextContent and a press or a key on one of its highlights, which
    every framework's RichTextContent reads by. */
 export {

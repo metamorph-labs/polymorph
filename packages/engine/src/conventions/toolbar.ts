@@ -118,20 +118,24 @@ export function watchToolbarStop(
 }
 
 /**
- * Whether focus was in a toolbar that is leaving (made inert or about to be
- * removed) and is still in it or has fallen to the page from it: the member
- * then hands focus back (to its text, or to where focus came from), so focus
- * does not fall to the page when a selection bar leaves under the control the
- * person used. The stop no longer holds focus afterwards.
+ * Whether focus was in a toolbar that is leaving (made inert, or already
+ * removed, which a framework may do before its effects run) and is still in it
+ * or has fallen to the page from it: the member then hands focus back (to its
+ * text, or to where focus came from), so focus does not fall to the page when
+ * a selection bar leaves under the control the person used. The stop no
+ * longer holds focus afterwards.
  */
 export function toolbarLosesFocus(
   toolbar: HTMLElement | null | undefined,
   stop: ToolbarStop,
 ): boolean {
-  if (!stop.holding || toolbar === null || toolbar === undefined) return false
-  const owner = toolbar.ownerDocument
+  const owner = (toolbar ?? stop.control)?.ownerDocument
+  if (!stop.holding || owner === undefined) return false
   const active = owner.activeElement
-  const lost = active === null || active === owner.body || toolbar.contains(active)
+  const lost =
+    active === null ||
+    active === owner.body ||
+    (toolbar !== null && toolbar !== undefined && toolbar.contains(active))
   if (lost) stop.holding = false
   return lost
 }

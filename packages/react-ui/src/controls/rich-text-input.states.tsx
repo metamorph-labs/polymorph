@@ -84,6 +84,12 @@ const ANNOTATED = richText(
   ),
 )
 
+/** A document a later version of the format wrote, which this version reads and never writes. */
+const LATER = {
+  format: 'polymorph-rich-text/2',
+  blocks: [paragraph(text('Written by a later version of the format.'))],
+} as unknown as RichTextDocument
+
 /** Fifty-one code points, over a limit of forty. */
 const LONG = richText(paragraph(text('A comment that runs past the limit the app has set.')))
 
@@ -220,6 +226,18 @@ export const states: ComponentStates = {
       ),
     },
     {
+      // Focused on mount, because the list opens while the caret is in a token.
+      name: 'one suggestion — the one person a query matches',
+      render: () => (
+        <RichTextInput
+          aria-label="Comment"
+          defaultValue={richText(paragraph(text('Thanks @gr')))}
+          autoFocus
+          entities={[PEOPLE]}
+        />
+      ),
+    },
+    {
       name: 'the app’s footer — its own controls under the field',
       render: () => (
         <RichTextInput
@@ -281,6 +299,19 @@ export const states: ComponentStates = {
           pending
           defaultValue={CONTENT}
           submitLabel="Comment"
+          onSubmit={noop}
+        />
+      ),
+      expect: { 'data-readonly': '' },
+    },
+    {
+      name: 'later format — a document a later version wrote, opened read-only',
+      render: () => (
+        <RichTextInput
+          aria-label="Comment"
+          name="body"
+          defaultValue={LATER}
+          submitLabel="Save"
           onSubmit={noop}
         />
       ),

@@ -8,7 +8,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type FocusEvent,
   type FormEvent,
   type MouseEvent,
   type ReactNode,
@@ -20,6 +19,8 @@ import {
   createRichTextEditor,
   emptyRichText,
   focusOnLabelPress,
+  followFieldFocus,
+  followFormReset,
   followSelectionBar,
   Icon,
   type IconRole,
@@ -1124,61 +1125,25 @@ export function RichTextInput(props: RichTextInputProps) {
     [labelledBy, surfaceRef],
   )
 
-  // A form's reset puts the first document back.
+  // A form's reset puts the first document back (`followFormReset`).
   useEffect(() => {
-    const form = rootRef.current?.closest('form')
-    if (form === null || form === undefined) return
-    const reset = () => latestRef.current?.reset()
-    form.addEventListener('reset', reset)
-    return () => form.removeEventListener('reset', reset)
+    const root = rootRef.current
+    if (root === null) return
+    return followFormReset(root, () => latestRef.current?.reset())
   }, [])
 
-  /**
-   * Whether an element is part of the field: inside its root, in the link
-   * form's panel, or in a popup a control of the field controls (the text
-   * style menu), which are drawn elsewhere in the document.
-   */
-  function inField(node: EventTarget | null): boolean {
+  // Focus entering and leaving the field as a whole (`followFieldFocus`): `onFocus`, `onBlur` and
+  // the selection bar's announcement hear these, not each move between the field's own parts,
+  // the link form's panel and the text style menu among them.
+  useEffect(() => {
     const root = rootRef.current
-    if (!(node instanceof Node) || root === null) return false
-    if (root.contains(node) || linkPanelRef.current?.contains(node) === true) return true
-    for (let at = node instanceof Element ? node : node.parentElement; at !== null;) {
-      if (at.id !== '' && root.querySelector(`[aria-controls~="${CSS.escape(at.id)}"]`) !== null)
-        return true
-      at = at.parentElement
-    }
-    return false
-  }
-
-  /**
-   * Focus entering and leaving the field as a whole: `onFocus`, `onBlur` and
-   * the selection bar's announcement hear these, not each move between the
-   * field's own parts. Focus that leaves for no element (a control removed, or
-   * the editor ending an input method's composition) is read once the moves
-   * running now have finished, so focus that comes straight back never left.
-   */
-  const focusRef = useRef({ inside: false, moves: 0 })
-  const focusProps = {
-    onFocus: () => {
-      const focus = focusRef.current
-      focus.moves += 1
-      if (focus.inside) return
-      focus.inside = true
-      latestRef.current?.entered()
-    },
-    onBlur: (event: FocusEvent) => {
-      const focus = focusRef.current
-      if (!focus.inside || inField(event.relatedTarget)) return
-      const move = (focus.moves += 1)
-      const leave = () => {
-        if (focus.moves !== move || !focus.inside) return
-        focus.inside = false
-        latestRef.current?.left()
-      }
-      if (event.relatedTarget === null) queueMicrotask(leave)
-      else leave()
-    },
-  }
+    if (root === null) return
+    return followFieldFocus(root, {
+      panels: () => [linkPanelRef.current],
+      entered: () => latestRef.current?.entered(),
+      left: () => latestRef.current?.left(),
+    })
+  }, [])
 
   /* The agent -------------------------------------------------------------- */
 
@@ -1416,7 +1381,6 @@ export function RichTextInput(props: RichTextInputProps) {
       data-readonly={!disabled && unwritable ? '' : undefined}
       data-invalid={invalid || overLimit ? '' : undefined}
       {...memberAttr('RichTextInput')}
-      {...focusProps}
     >
       <div className={styles.frame}>
         {toolbarDrawn ? (
