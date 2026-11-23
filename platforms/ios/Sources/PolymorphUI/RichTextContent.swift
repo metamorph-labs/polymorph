@@ -42,6 +42,29 @@
 // wraps between them. VoiceOver reads each stretch of text between two of them
 // as one, each link as a link and each view as the app made it.
 //
+// Annotations, the anchors an app keeps something against such as a comment
+// thread, are drawn on the runs they mark, nested per paragraph as the editor
+// nests them (the innermost starts last, then ends first, then goes by id):
+// the innermost's `warning.subtle` wash, `warning.subtle-active` for
+// `activeAnnotation`, and a rule under the words in `warning.border`, a run's
+// underline. A run has no outline, so the active one's frame is not drawn: the
+// stronger wash marks it. An annotated entity token keeps its own wash, edged on
+// either side with the annotation's. A link inside an annotation keeps its own
+// line on the wash. `annotations` names the ones drawn, every one when it is
+// absent. A heading that holds a drawn annotation is drawn here, in Heading's
+// step, traits and level, because Heading's string cannot carry a highlight.
+//
+// With `onAnnotationSelect`, a highlight's runs link to their innermost
+// annotation, because a link is the one part of a Text a tap reaches, and the
+// paragraph's open-URL action calls the handler with its id. A link inside an
+// annotation keeps its own target, so a tap on it follows the link, and a view
+// the app draws takes its own taps. VoiceOver offers each annotation as an
+// action of the text that holds it, named by its words, and lists its runs
+// among the text's links. Without the handler a highlight takes no tap and
+// offers no action. `selectionActions` and `messages` are not drawn: a SwiftUI
+// Text with selection on copies its whole text and reports no selected range
+// (`packages/native/src/undrawn.ts`).
+//
 // The reader below is the engine's (`packages/engine/src/rich-text/`), ported
 // for what drawing needs, and the functions it mirrors are named where they
 // are: `parseRichText`'s walk (`read.ts`), `richTextHref` with the Markdown
@@ -69,10 +92,13 @@ public struct PMRichTextContent: PMRichTextContentRendering {
     let size = props.size ?? .md
     let blocks = PMRichTextReader.read(props.value)
     let empty = PMRichTextReader.isEmpty(blocks)
+    let marking = PMRichTextMarking(
+      shown: props.annotations.map(Set.init), active: props.activeAnnotation,
+      onSelect: props.onAnnotationSelect)
     let context = PMRichTextContext(
       step: size == .sm ? theme.text.sm : theme.text.md,
       top: (props.headingLevel ?? .headingLevel2).rawValue, entity: props.entity,
-      onNavigate: props.onNavigate, listDepth: 0)
+      onNavigate: props.onNavigate, marking: marking, listDepth: 0)
 
     VStack(alignment: .leading, spacing: theme.defaultDensity.space.s4) {
       if !empty {
@@ -136,6 +162,8 @@ struct PMRichTextMarks: Equatable {
   var code = false
   /// The target of the run's link, cleaned, once `richTextHref` has passed it.
   var link: String?
+  /// The ids of the annotations on the run, one per id, in id order.
+  var annotations: [String] = []
 }
 
 /// The engine's tolerant reader, for drawing. Every function takes any JSON
@@ -316,7 +344,11 @@ enum PMRichTextReader {
         if let kind = word(inline.field("kind")), let id = word(inline.field("id")),
           let label
         {
-          out.append(.entity(PMRichTextEntity(kind: kind, id: id, label: label)))
+          let marks = readEntityMarks(inline.field("marks"))
+          out.append(
+            .entity(
+              PMRichTextEntity(kind: kind, id: id, label: label, marks: marks.isEmpty ? nil : marks)
+            ))
         } else if let label {
           out.append(.text(label, PMRichTextMarks()))
         }
@@ -330,9 +362,11 @@ enum PMRichTextReader {
   }
 
   /// A run's marks. The first link whose target passes `href(_:)` is kept, and
-  /// a link that fails loses its mark while its text is drawn.
+  /// a link that fails loses its mark while its text is drawn. An annotation
+  /// with no id, or an empty one, loses its mark; one per id is kept.
   private static func readMarks(_ value: PMJSONValue?) -> PMRichTextMarks {
     var marks = PMRichTextMarks()
+    var annotations = Set<String>()
     for mark in value?.array ?? [] {
       switch mark.nodeType {
       case "link"?:
@@ -341,10 +375,45 @@ enum PMRichTextReader {
       case "italic"?: marks.italic = true
       case "strike"?: marks.strike = true
       case "code"?: marks.code = true
+      case "annotation"?: if let id = word(mark.field("id")) { annotations.insert(id) }
       default: break
       }
     }
+    marks.annotations = annotations.sorted(by: inCodeUnits)
     return marks
+  }
+
+  /// An entity's marks, as the app's `entity` is handed them: the marks of a
+  /// type this version does not know, kept as they are, then the annotations,
+  /// one per id, in id order. A format means nothing on an entity, so one is
+  /// dropped, and an annotation with no id is too.
+  private static func readEntityMarks(_ value: PMJSONValue?) -> [PMJSONValue] {
+    var unknown: [PMJSONValue] = []
+    var annotations = Set<String>()
+    for mark in value?.array ?? [] {
+      guard let type = mark.nodeType else { continue }
+      switch type {
+      case "annotation": if let id = word(mark.field("id")) { annotations.insert(id) }
+      case "link", "bold", "italic", "strike", "code": continue
+      default: if !unknown.contains(mark) { unknown.append(mark) }
+      }
+    }
+    return unknown
+      + annotations.sorted(by: inCodeUnits).map {
+        .object([PMJSONMember("type", "annotation"), PMJSONMember("id", .string($0))])
+      }
+  }
+
+  /// The ids of the annotations an entity's marks hold, in their order.
+  static func annotations(of entity: PMRichTextEntity) -> [String] {
+    (entity.marks ?? []).compactMap { mark in
+      mark.nodeType == "annotation" ? word(mark.field("id")) : nil
+    }
+  }
+
+  /// JavaScript's order of strings, by UTF-16 code unit, which the model sorts ids by.
+  static func inCodeUnits(_ a: String, _ b: String) -> Bool {
+    a.utf16.lexicographicallyPrecedes(b.utf16)
   }
 
   // MARK: Link targets (`richTextHref`, `cleanHref`)
@@ -566,19 +635,51 @@ extension PMJSONValue {
 
 // MARK: - Drawing
 
+/// Which annotations are drawn and how: the ids `annotations` names, every one
+/// when it is absent, the active one, and the app's handler for a press,
+/// without which a highlight takes no press.
+struct PMRichTextMarking {
+  let shown: Set<String>?
+  let active: String?
+  let onSelect: (@MainActor (String) -> Void)?
+
+  func drawn(_ id: String) -> Bool { shown?.contains(id) ?? true }
+
+  /// The scheme of the link a pressable annotation's runs carry. A run of a
+  /// Text takes a tap only as a link, so a highlight is one, and the
+  /// paragraph's open-URL action takes it as a press on the annotation.
+  static let scheme = "x-polymorph-annotation"
+
+  /// The link a run of the annotation `id` carries, its id percent-encoded.
+  static func url(_ id: String) -> URL? {
+    var components = URLComponents()
+    components.scheme = scheme
+    components.percentEncodedPath = id.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? ""
+    return components.url
+  }
+
+  /// The annotation a link of `url(_:)` names, or `nil` for any other link.
+  static func id(_ url: URL) -> String? {
+    guard url.scheme == scheme else { return nil }
+    return URLComponents(url: url, resolvingAgainstBaseURL: false)?.path
+  }
+}
+
 /// What every block's drawing reads: the body step, the page level of the
-/// document's level 1, the app's entity and router, and how deep in lists the
-/// block is.
+/// document's level 1, the app's entity and router, the annotations, and how
+/// deep in lists the block is.
 private struct PMRichTextContext {
   let step: PMTextStyle
   let top: Int
   let entity: (@MainActor (PMRichTextEntity) -> PMContent)?
   let onNavigate: (@MainActor (String) -> Void)?
+  let marking: PMRichTextMarking
   let listDepth: Int
 
   func nested() -> PMRichTextContext {
     PMRichTextContext(
-      step: step, top: top, entity: entity, onNavigate: onNavigate, listDepth: listDepth + 1)
+      step: step, top: top, entity: entity, onNavigate: onNavigate, marking: marking,
+      listDepth: listDepth + 1)
   }
 
   /// The page level a document heading is drawn at: level 1 at `top`, each
@@ -609,13 +710,22 @@ private struct PMRichTextBlockView: View {
     switch block {
     case .paragraph(let inlines):
       if !inlines.isEmpty {
-        PMRichTextParagraph(inlines: inlines, context: context)
+        PMRichTextParagraph(inlines: inlines, step: context.step, context: context)
       }
     case .heading(let level, let inlines):
       // A heading names the section under it, so one with no name is not drawn.
       let text = headingText(inlines)
-      if !PMRichTextReader.isBlank(text) {
-        PMHeading(props: PMHeadingProps(children: text, level: context.level(level)))
+      let drawn = context.level(level)
+      if PMRichTextReader.isBlank(text) {
+        EmptyView()
+      } else if PMRichTextPiece.holdsDrawnAnnotation(inlines, marking: context.marking) {
+        // Heading's children are a string, which cannot carry a highlight, so
+        // a heading that holds one is drawn here in Heading's step and traits.
+        PMRichTextParagraph(
+          inlines: PMRichTextPiece.headingInlines(inlines),
+          step: PMHeading.style(drawn, in: theme), heading: drawn, context: context)
+      } else {
+        PMHeading(props: PMHeadingProps(children: text, level: drawn))
       }
     case .list(let ordered, let start, let items):
       PMRichTextList(ordered: ordered, start: start, items: items, context: context)
@@ -632,7 +742,7 @@ private struct PMRichTextBlockView: View {
     case .found(let text, let holdsEntity):
       if !text.isEmpty {
         PMRichTextParagraph(
-          inlines: [.found(text, holdsEntity: holdsEntity)], context: context)
+          inlines: [.found(text, holdsEntity: holdsEntity)], step: context.step, context: context)
       }
     }
   }
@@ -693,39 +803,53 @@ private struct PMRichTextList: View {
 }
 
 /// A paragraph's inlines as they are drawn: neighbouring runs with one link
-/// target are one link, carrying the marks every one of them has.
+/// target are one link, carrying the marks every one of them has. Each piece
+/// carries its drawn annotations, innermost first.
 enum PMRichTextPiece {
-  case run(String, PMRichTextMarks)
-  case link(String, href: String, marks: PMRichTextMarks)
+  case run(String, PMRichTextMarks, annotations: [String])
+  case link(String, href: String, marks: PMRichTextMarks, annotations: [String])
   case lineBreak
-  case entity(PMRichTextEntity)
+  case entity(PMRichTextEntity, annotations: [String])
 
-  static func pieces(_ inlines: [PMRichTextInline]) -> [PMRichTextPiece] {
+  static func pieces(
+    _ inlines: [PMRichTextInline], drawn: @escaping (String) -> Bool = { _ in true }
+  ) -> [PMRichTextPiece] {
+    let order = nesting(inlines, drawn: drawn)
     var found: [PMRichTextPiece] = []
-    for inline in inlines {
-      switch inline {
+    var index = 0
+    while index < inlines.count {
+      switch inlines[index] {
       case .text(let text, let marks):
         guard let href = marks.link else {
-          found.append(.run(text, marks))
-          continue
+          found.append(.run(text, marks, annotations: order([index])))
+          break
         }
-        let own = PMRichTextMarks(bold: marks.bold, italic: marks.italic, strike: marks.strike)
-        if case .link(let joined, let previous, let shared)? = found.last, previous == href {
-          found[found.count - 1] = .link(
-            joined + text, href: href,
-            marks: PMRichTextMarks(
-              bold: shared.bold && own.bold, italic: shared.italic && own.italic,
-              strike: shared.strike && own.strike))
-        } else {
-          found.append(.link(text, href: href, marks: own))
+        // The link's runs, and the emphasis every one of them has. An
+        // annotation on any run is drawn on the whole link, which is one
+        // name, as the web draws it around the Link.
+        var joined = ""
+        var shared = PMRichTextMarks(bold: true, italic: true, strike: true)
+        var indexes: [Int] = []
+        var end = index
+        while end < inlines.count, case .text(let run, let own) = inlines[end], own.link == href {
+          joined += run
+          shared.bold = shared.bold && own.bold
+          shared.italic = shared.italic && own.italic
+          shared.strike = shared.strike && own.strike
+          indexes.append(end)
+          end += 1
         }
+        found.append(.link(joined, href: href, marks: shared, annotations: order(indexes)))
+        index = end
+        continue
       case .lineBreak:
         found.append(.lineBreak)
       case .entity(let entity):
-        found.append(.entity(entity))
+        found.append(.entity(entity, annotations: order([index])))
       case .found(let text, _):
-        if !text.isEmpty { found.append(.run(text, PMRichTextMarks())) }
+        if !text.isEmpty { found.append(.run(text, PMRichTextMarks(), annotations: [])) }
       }
+      index += 1
     }
     // A break that ends a paragraph starts no line, as a browser draws a `<br>`
     // at the end of a block.
@@ -733,13 +857,112 @@ enum PMRichTextPiece {
     return found
   }
 
+  /// The ids of the annotations a text or an entity carries.
+  private static func annotations(_ inline: PMRichTextInline) -> [String]? {
+    switch inline {
+    case .text(_, let marks): marks.annotations
+    case .entity(let entity): PMRichTextReader.annotations(of: entity)
+    default: nil
+    }
+  }
+
+  /// The drawn annotations of a line's inlines, innermost first, nested as the
+  /// editor nests them (`nesting` in the web member). An annotation's stretch
+  /// is a run of consecutive texts and entities that carry it; a break or an
+  /// inline of a later version neither ends a stretch nor belongs to one.
+  /// Where annotations overlap, the innermost is the one whose stretch starts
+  /// last, then the one that ends first, then by id. The result reads the
+  /// inlines at `indexes`, each annotation ordered by its stretch at the first
+  /// of them that carries it.
+  static func nesting(
+    _ inlines: [PMRichTextInline], drawn: @escaping (String) -> Bool
+  ) -> ([Int]) -> [String] {
+    var stretches: [String: [ClosedRange<Int>]] = [:]
+    var open: [String: Int] = [:]
+    for (index, inline) in inlines.enumerated() {
+      guard let ids = annotations(inline) else { continue }
+      for id in Array(open.keys) where !ids.contains(id) { open[id] = nil }
+      for id in ids {
+        if let at = open[id], let first = stretches[id]?[at].lowerBound {
+          stretches[id]?[at] = first...index
+        } else {
+          stretches[id, default: []].append(index...index)
+          open[id] = (stretches[id]?.count ?? 1) - 1
+        }
+      }
+    }
+    return { indexes in
+      var keys: [String: ClosedRange<Int>] = [:]
+      var ids: [String] = []
+      for index in indexes {
+        for id in annotations(inlines[index]) ?? [] where keys[id] == nil && drawn(id) {
+          guard let stretch = stretches[id]?.first(where: { $0.contains(index) }) else { continue }
+          keys[id] = stretch
+          ids.append(id)
+        }
+      }
+      return ids.sorted { a, b in
+        guard let x = keys[a], let y = keys[b] else { return false }
+        if x.lowerBound != y.lowerBound { return x.lowerBound > y.lowerBound }
+        if x.upperBound != y.upperBound { return x.upperBound < y.upperBound }
+        return PMRichTextReader.inCodeUnits(a, b)
+      }
+    }
+  }
+
+  /// Whether a heading's inlines carry an annotation that is drawn.
+  static func holdsDrawnAnnotation(_ inlines: [PMRichTextInline], marking: PMRichTextMarking)
+    -> Bool
+  {
+    inlines.contains { (annotations($0) ?? []).contains(where: marking.drawn) }
+  }
+
+  /// A heading's inlines as a heading draws them: its words without emphasis
+  /// and a link's text without the link, inline code as Code's face, and a
+  /// break as a space, as Heading's string reads them.
+  static func headingInlines(_ inlines: [PMRichTextInline]) -> [PMRichTextInline] {
+    inlines.map { inline in
+      switch inline {
+      case .text(let text, let marks):
+        .text(text, PMRichTextMarks(code: marks.code, annotations: marks.annotations))
+      case .lineBreak: .text(" ", PMRichTextMarks())
+      default: inline
+      }
+    }
+  }
+
   /// Each link `onNavigate` takes, one without a scheme, by its URL.
   static func routes(_ pieces: [PMRichTextPiece]) -> [URL: String] {
     var routes: [URL: String] = [:]
-    for case .link(_, let href, _) in pieces where !PMRichTextReader.external(href) {
+    for case .link(_, let href, _, _) in pieces where !PMRichTextReader.external(href) {
       if let url = URL(string: href) { routes[url] = href }
     }
     return routes
+  }
+
+  /// The annotations VoiceOver offers as actions, in reading order, each named
+  /// by its first fragment where it is the innermost, as the web names an
+  /// annotation's stop: a run's words or a token's label, not white space
+  /// alone. A link and an entity the app draws are controls of their own, so
+  /// they name no annotation, and an annotation with no other fragment has no
+  /// action, as on the web it has no stop.
+  static func actions(_ pieces: [PMRichTextPiece], appDrawsEntities: Bool) -> [PMRichTextAction] {
+    var found: [PMRichTextAction] = []
+    for piece in pieces {
+      let fragment: (String, String)?
+      switch piece {
+      case .run(let text, _, let ids): fragment = ids.first.map { ($0, text) }
+      case .entity(let entity, let ids):
+        fragment = appDrawsEntities ? nil : ids.first.map { ($0, entity.label) }
+      default: fragment = nil
+      }
+      guard case let (id, text)? = fragment, !found.contains(where: { $0.id == id }) else {
+        continue
+      }
+      let words = PMRichTextReader.trimmed(text)
+      if !words.isEmpty { found.append(PMRichTextAction(id: id, words: words)) }
+    }
+    return found
   }
 
   var isEntity: Bool {
@@ -767,10 +990,17 @@ enum PMRichTextPiece {
   }
 }
 
+/// An annotation VoiceOver offers on the text that holds it.
+struct PMRichTextAction: Equatable {
+  let id: String
+  let words: String
+}
+
 /// The inline members' recipes as runs of one Text.
 private struct PMRichTextRuns {
   let theme: PMTheme
   let scale: CGFloat
+  let marking: PMRichTextMarking
 
   /// The narrow no-break space that stands for a wash's inline padding.
   static let pad = "\u{202F}"
@@ -783,36 +1013,82 @@ private struct PMRichTextRuns {
 
   func text(_ piece: PMRichTextPiece) -> Text {
     switch piece {
-    case .run(let text, let marks): Text(run(text, marks))
-    case .link(let text, let href, let marks): link(text, href: href, marks: marks)
+    case .run(let text, let marks, let ids): Text(run(text, marks, annotations: ids))
+    case .link(let text, let href, let marks, let ids):
+      link(text, href: href, marks: marks, annotations: ids)
     case .lineBreak: Text(verbatim: "\n")
-    case .entity(let entity): Text(token(entity.label))
+    case .entity(let entity, let ids): Text(token(entity.label, annotations: ids))
     }
   }
 
-  /// A run: bold, italic and strike as the type's own, and inline code in
-  /// Code's face and wash, padded at its two ends.
-  func run(_ text: String, _ marks: PMRichTextMarks) -> AttributedString {
-    var piece = AttributedString(marks.code ? Self.pad + text + Self.pad : text)
+  /// A run: bold, italic and strike as the type's own, inline code in Code's
+  /// face and wash, padded at its two ends, and its innermost annotation's
+  /// highlight on the words, inside the code's wash.
+  func run(_ text: String, _ marks: PMRichTextMarks, annotations ids: [String]) -> AttributedString
+  {
+    var words = AttributedString(text)
     var intent = InlinePresentationIntent()
     if marks.bold { intent.insert(.stronglyEmphasized) }
     if marks.italic { intent.insert(.emphasized) }
     if marks.strike { intent.insert(.strikethrough) }
-    if !intent.isEmpty { piece.inlinePresentationIntent = intent }
-    if marks.code {
-      piece.swiftUI.font = theme.text.sm.set(in: theme.fonts.mono).runFont(scale: scale)
-      piece.swiftUI.foregroundColor = theme.colors.textPrimary.color
-      piece.swiftUI.backgroundColor = theme.colors.bgSubtle.color
+    if !intent.isEmpty { words.inlinePresentationIntent = intent }
+    if marks.code { code(&words) }
+    highlight(&words, ids)
+    guard marks.code else { return words }
+    var edge = AttributedString(Self.pad)
+    code(&edge)
+    return edge + words + edge
+  }
+
+  private func code(_ piece: inout AttributedString) {
+    piece.swiftUI.font = theme.text.sm.set(in: theme.fonts.mono).runFont(scale: scale)
+    piece.swiftUI.foregroundColor = theme.colors.textPrimary.color
+    piece.swiftUI.backgroundColor = theme.colors.bgSubtle.color
+  }
+
+  /// A drawn annotation on a run (the recipe's `annotation`): the innermost's
+  /// `warning.subtle` wash, or `warning.subtle-active` for the active one, and
+  /// a rule under the words in `warning.border`, a run's underline. A run has
+  /// no outline, so the active annotation's frame is not drawn: the stronger
+  /// wash marks it. With `onAnnotationSelect` the run links to the innermost
+  /// annotation in the text's own colour, because a link is the one part of a
+  /// Text that takes a tap.
+  private func highlight(
+    _ piece: inout AttributedString, _ ids: [String], wash: Bool = true, rule: Bool = true,
+    press: Bool = true
+  ) {
+    guard let innermost = ids.first else { return }
+    let colors = theme.colors
+    if wash {
+      piece.swiftUI.backgroundColor =
+        (innermost == marking.active ? colors.warningSubtleActive : colors.warningSubtle).color
     }
-    return piece
+    if rule {
+      piece.swiftUI.underlineStyle = Text.LineStyle(
+        pattern: .solid, color: colors.warningBorder.color)
+    }
+    if press, marking.onSelect != nil, let url = PMRichTextMarking.url(innermost) {
+      piece.link = url
+      if piece.swiftUI.foregroundColor == nil {
+        piece.swiftUI.foregroundColor = colors.textPrimary.color
+      }
+    }
   }
 
   /// Link's inline recipe: `accent.text` with the `accent.underline` line, and
   /// the `open-external` glyph a narrow space after a target with a scheme. A
-  /// target that is not a URL draws its text alone, as Link does.
-  private func link(_ text: String, href: String, marks: PMRichTextMarks) -> Text {
-    var piece = run(text, marks)
-    guard let url = URL(string: href) else { return Text(piece) }
+  /// target that is not a URL draws its text alone, as Link does. An
+  /// annotation on a link is its wash; the link keeps its own line, and a tap
+  /// on it is the link's.
+  private func link(
+    _ text: String, href: String, marks: PMRichTextMarks, annotations ids: [String]
+  ) -> Text {
+    var piece = run(text, marks, annotations: [])
+    guard let url = URL(string: href) else {
+      highlight(&piece, ids)
+      return Text(piece)
+    }
+    highlight(&piece, ids, rule: false, press: false)
     piece.link = url
     piece.swiftUI.foregroundColor = theme.colors.accentText.color
     piece.swiftUI.underlineStyle = Text.LineStyle(
@@ -822,35 +1098,56 @@ private struct PMRichTextRuns {
       + Text.pmIcon(.openExternal).foregroundStyle(theme.colors.accentText.color)
   }
 
-  /// The entity token as a run.
-  private func token(_ label: String) -> AttributedString {
-    var piece = AttributedString(Self.pad + label + Self.pad)
-    piece.swiftUI.foregroundColor = theme.colors.accentText.color
-    piece.swiftUI.backgroundColor = theme.colors.accentSubtle.color
-    return piece
+  /// The entity token as a run. An annotated token keeps its own wash and is
+  /// edged on either side with the annotation's, the rule under the whole, as
+  /// the recipe rings an annotated entity.
+  private func token(_ label: String, annotations ids: [String]) -> AttributedString {
+    var words = AttributedString(label)
+    words.swiftUI.foregroundColor = theme.colors.accentText.color
+    words.swiftUI.backgroundColor = theme.colors.accentSubtle.color
+    var edge = AttributedString(Self.pad)
+    if ids.isEmpty {
+      edge.swiftUI.backgroundColor = theme.colors.accentSubtle.color
+    } else {
+      highlight(&edge, ids)
+      highlight(&words, ids, wash: false)
+    }
+    return edge + words + edge
   }
 }
 
-/// A paragraph: Text's recipe at the body step, one Text of its runs, or the
-/// flow when it holds an entity the app draws.
+/// A paragraph, or a heading that holds a highlight: Text's recipe at `step`,
+/// one Text of its runs, or the flow when it holds an entity the app draws.
+/// A heading carries Heading's traits and level.
 private struct PMRichTextParagraph: View {
   @Environment(\.pmTheme) private var theme
   private var scale = PMTextScale()
   let pieces: [PMRichTextPiece]
+  let step: PMTextStyle
+  let heading: PMHeadingLevel?
   let context: PMRichTextContext
 
-  init(inlines: [PMRichTextInline], context: PMRichTextContext) {
-    self.pieces = PMRichTextPiece.pieces(inlines)
+  init(
+    inlines: [PMRichTextInline], step: PMTextStyle, heading: PMHeadingLevel? = nil,
+    context: PMRichTextContext
+  ) {
+    self.pieces = PMRichTextPiece.pieces(inlines, drawn: context.marking.drawn)
+    self.step = step
+    self.heading = heading
     self.context = context
   }
 
   var body: some View {
-    let runs = PMRichTextRuns(theme: theme, scale: scale.factor)
+    let runs = PMRichTextRuns(theme: theme, scale: scale.factor, marking: context.marking)
+    let flows = context.entity != nil && pieces.contains(where: \.isEntity)
     Group {
-      if let entity = context.entity, pieces.contains(where: \.isEntity) {
-        PMRichTextFlowParagraph(pieces: pieces, runs: runs, step: context.step, entity: entity)
+      if let entity = context.entity, flows {
+        PMRichTextFlowParagraph(
+          pieces: pieces, runs: runs, step: step, entity: entity, marking: context.marking)
       } else {
-        runs.text(pieces).pmTextStyle(context.step)
+        runs.text(pieces).pmTextStyle(step)
+          .pmAnnotationActions(
+            PMRichTextPiece.actions(pieces, appDrawsEntities: false), onSelect: context.marking.onSelect)
       }
     }
     .foregroundStyle(theme.colors.textPrimary.color)
@@ -858,40 +1155,88 @@ private struct PMRichTextParagraph: View {
     .multilineTextAlignment(.leading)
     .fixedSize(horizontal: false, vertical: true)
     .frame(maxWidth: .infinity, alignment: .leading)
+    .modifier(PMRichTextHeadingTraits(level: heading))
     .modifier(
-      PMRichTextRoutes(routes: PMRichTextPiece.routes(pieces), onNavigate: context.onNavigate))
+      PMRichTextRoutes(
+        routes: PMRichTextPiece.routes(pieces), onNavigate: context.onNavigate,
+        onAnnotationSelect: context.marking.onSelect))
+  }
+}
+
+/// Heading's traits on a heading the member draws itself.
+private struct PMRichTextHeadingTraits: ViewModifier {
+  let level: PMHeadingLevel?
+
+  func body(content: Content) -> some View {
+    if let level {
+      content.accessibilityAddTraits(.isHeader).accessibilityHeading(PMHeading.heading(level))
+    } else {
+      content
+    }
+  }
+}
+
+extension View {
+  /// The annotations a text holds, as VoiceOver's actions on it: each named
+  /// by its words, and each calls `onSelect` with its id, as a tap on it does.
+  /// Without `onSelect` a highlight takes no press, so there are none.
+  fileprivate func pmAnnotationActions(
+    _ actions: [PMRichTextAction], onSelect: (@MainActor (String) -> Void)?
+  ) -> some View {
+    accessibilityActions {
+      if let onSelect {
+        ForEach(actions, id: \.id) { action in
+          Button {
+            onSelect(action.id)
+          } label: {
+            Text(verbatim: action.words)
+          }
+        }
+      }
+    }
   }
 }
 
 /// The routing seam, Link's (`link.md` §Routing) for every link of a
 /// paragraph: with `onNavigate`, a link without a scheme calls it with its
 /// target in place of the environment's `openURL`, and every other link opens
-/// as the environment around says.
+/// as the environment around says. A tap on a highlight, which is a link to
+/// its annotation, calls `onAnnotationSelect`.
 struct PMRichTextRoutes: ViewModifier {
   @Environment(\.openURL) private var openURL
   let routes: [URL: String]
   let onNavigate: (@MainActor (String) -> Void)?
+  let onAnnotationSelect: (@MainActor (String) -> Void)?
 
   func body(content: Content) -> some View {
-    if let onNavigate, !routes.isEmpty {
+    if (onNavigate != nil && !routes.isEmpty) || onAnnotationSelect != nil {
       content.environment(
         \.openURL,
         OpenURLAction { url in
-          Self.open(url, routes: routes, onNavigate: onNavigate, otherwise: openURL)
+          Self.open(
+            url, routes: routes, onNavigate: onNavigate, onAnnotationSelect: onAnnotationSelect,
+            otherwise: openURL)
         })
     } else {
       content
     }
   }
 
-  /// Opens a link of the paragraph: a target `routes` holds goes to
-  /// `onNavigate`, and any other to the action around the paragraph.
+  /// Opens a link of the paragraph: a highlight's goes to `onAnnotationSelect`
+  /// with its annotation's id, a target `routes` holds to `onNavigate`, and
+  /// any other to the action around the paragraph.
   @MainActor
   static func open(
-    _ url: URL, routes: [URL: String], onNavigate: @MainActor (String) -> Void,
-    otherwise: OpenURLAction
+    _ url: URL, routes: [URL: String], onNavigate: (@MainActor (String) -> Void)?,
+    onAnnotationSelect: (@MainActor (String) -> Void)?, otherwise: OpenURLAction
   ) -> OpenURLAction.Result {
-    if let href = routes[url] { onNavigate(href) } else { otherwise(url) }
+    if let id = PMRichTextMarking.id(url) {
+      onAnnotationSelect?(id)
+    } else if let onNavigate, let href = routes[url] {
+      onNavigate(href)
+    } else {
+      otherwise(url)
+    }
     return .handled
   }
 }
@@ -900,13 +1245,16 @@ struct PMRichTextRoutes: ViewModifier {
 /// cannot hold a view, so the paragraph is a flow of its words, its links and
 /// those views, at the body step, wrapping between them. Each stretch of text
 /// between two of them is read as one: its first word carries the stretch's
-/// text and the others are hidden. A link is one piece, read as a link, and
-/// inline code is one piece, because its spaces are content.
+/// text and its annotations' actions, and the others are hidden. A link is one
+/// piece, read as a link, and inline code is one piece, because its spaces are
+/// content. A view the app draws inside an annotation sits on its wash, and a
+/// tap on it is its own.
 private struct PMRichTextFlowParagraph: View {
   let pieces: [PMRichTextPiece]
   let runs: PMRichTextRuns
   let step: PMTextStyle
   let entity: @MainActor (PMRichTextEntity) -> PMContent
+  let marking: PMRichTextMarking
 
   /// One piece of the flow: whether it ends its line, and whether it is a
   /// view the app draws, which may reach past the line.
@@ -934,21 +1282,24 @@ private struct PMRichTextFlowParagraph: View {
     func close() {
       let spoken = stretch.map { piece -> String in
         switch piece {
-        case .run(let text, _): text
+        case .run(let text, _, _): text
         case .lineBreak: "\n"
         default: ""
         }
       }.joined()
+      let actions = PMRichTextPiece.actions(stretch, appDrawsEntities: true)
       var labelled = PMRichTextReader.isBlank(spoken)
       for piece in stretch {
         switch piece {
-        case .run(let text, let marks):
+        case .run(let text, let marks, let ids):
           for word in marks.code ? [text] : PMRichTextPiece.words(text) {
-            let drawn = Text(runs.run(word, marks)).pmTextStyle(step)
+            let drawn = Text(runs.run(word, marks, annotations: ids)).pmTextStyle(step)
             if labelled {
               items.append(Item(view: AnyView(drawn.accessibilityHidden(true))))
             } else {
-              items.append(Item(view: AnyView(drawn.accessibilityLabel(Text(verbatim: spoken)))))
+              let named = drawn.accessibilityLabel(Text(verbatim: spoken))
+                .pmAnnotationActions(actions, onSelect: marking.onSelect)
+              items.append(Item(view: AnyView(named)))
               labelled = true
             }
           }
@@ -968,13 +1319,22 @@ private struct PMRichTextFlowParagraph: View {
       case .link:
         close()
         items.append(Item(view: AnyView(runs.text(piece).pmTextStyle(step))))
-      case .entity(let found):
+      case .entity(let found, let ids):
         close()
-        items.append(Item(view: AnyView(entity(found).pmTextStyle(step)), overhangs: true))
+        let drawn = entity(found).pmTextStyle(step)
+          .background(washes(ids))
+        items.append(Item(view: AnyView(drawn), overhangs: true))
       }
     }
     close()
     return items
+  }
+
+  /// The wash of a view's innermost drawn annotation, or none.
+  private func washes(_ ids: [String]) -> Color {
+    guard let innermost = ids.first else { return .clear }
+    let colors = runs.theme.colors
+    return (innermost == marking.active ? colors.warningSubtleActive : colors.warningSubtle).color
   }
 }
 
@@ -1220,11 +1580,56 @@ public struct RichTextContentStates: PMStates {
 
   static let empty = document()
 
+  /// An annotation mark: a comment thread's anchor.
+  private static func thread(_ id: String) -> PMJSONValue {
+    node("annotation", PMJSONMember("id", .string(id)))
+  }
+
+  /// A text node with these marks.
+  private static func marked(_ text: String, _ marks: PMJSONValue...) -> PMJSONValue {
+    node("text", PMJSONMember("text", .string(text)), PMJSONMember("marks", .array(marks)))
+  }
+
+  /// Two comment threads on one paragraph, as the field's fixture has them.
+  static let annotated = document(
+    paragraph(
+      run("The retry policy "), marked("doubles the wait", thread("thread-1")),
+      run(" after each failure, "), marked("up to five times", thread("thread-2")), run(".")))
+
+  /// A thread on a phrase, and a second thread on words inside it, which nests
+  /// inside the first.
+  static let overlapping = document(
+    paragraph(
+      run("Each retry waits "), marked("twice ", thread("thread-1")),
+      marked("as long", node("bold"), thread("thread-1"), thread("thread-2")),
+      marked(" as the last one", thread("thread-1")), run(", up to five times.")))
+
+  /// A mention inside a thread: the entity carries the annotation as the text
+  /// around it does.
+  static let annotatedEntity = document(
+    paragraph(
+      run("Ask "),
+      node(
+        "entity", PMJSONMember("kind", "user"), PMJSONMember("id", "u_ada"),
+        PMJSONMember("label", "@Ada Lovelace"), PMJSONMember("marks", .array([thread("thread-3")]))),
+      marked(" to review the fix", thread("thread-3")), run(" before Friday.")))
+
+  /// A thread on a heading's words, which the member draws in Heading's step.
+  static let annotatedHeading = document(
+    node(
+      "heading", PMJSONMember("level", 1),
+      PMJSONMember("content", .array([run("Webhook "), marked("retries", thread("thread-4"))]))),
+    paragraph(run("A failed delivery is retried on a schedule.")))
+
   private static func content(
-    _ value: PMJSONValue, size: PMRichTextContentSize? = nil,
+    _ value: PMJSONValue, size: PMRichTextContentSize? = nil, annotations: [String]? = nil,
+    activeAnnotation: String? = nil, onAnnotationSelect: (@MainActor (String) -> Void)? = nil,
     entity: (@MainActor (PMRichTextEntity) -> PMContent)? = nil
   ) -> PMRichTextContent {
-    PMRichTextContent(props: PMRichTextContentProps(entity: entity, size: size, value: value))
+    PMRichTextContent(
+      props: PMRichTextContentProps(
+        activeAnnotation: activeAnnotation, annotations: annotations, entity: entity,
+        onAnnotationSelect: onAnnotationSelect, size: size, value: value))
   }
 
   public var entries: [PMStateEntry] {
@@ -1284,6 +1689,31 @@ public struct RichTextContentStates: PMStates {
       ) {
         Self.content(Self.empty)
       },
+      PMStateEntry("annotated — two comment threads, one active", expect: ["size": "md"]) {
+        Self.content(
+          Self.annotated, annotations: ["thread-1", "thread-2"], activeAnnotation: "thread-2",
+          onAnnotationSelect: { _ in })
+      },
+      PMStateEntry(
+        "overlapping annotations — a thread inside another, nested as the editor nests them",
+        expect: ["size": "md"]
+      ) {
+        Self.content(Self.overlapping, activeAnnotation: "thread-2", onAnnotationSelect: { _ in })
+      },
+      PMStateEntry(
+        "an annotated entity — a mention inside a thread, ringed with its wash",
+        expect: ["size": "md"]
+      ) {
+        Self.content(Self.annotatedEntity)
+      },
+      PMStateEntry(
+        "an annotated heading — a thread on a heading’s words, drawn as Heading draws it",
+        expect: ["size": "md"]
+      ) {
+        Self.content(Self.annotatedHeading, onAnnotationSelect: { _ in })
+      },
+      // The web's selection bar entry has no counterpart: `selectionActions`
+      // is not drawn on iOS (`packages/native/src/undrawn.ts`).
     ]
   }
 }

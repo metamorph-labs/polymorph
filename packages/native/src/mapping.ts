@@ -1420,6 +1420,32 @@ export const SHAPES: Readonly<Record<string, Shape>> = {
       },
     ],
   },
+  RichTextContentMessages: {
+    fields: [
+      {
+        name: 'selectionBar',
+        type: 'string',
+        optional: true,
+        doc: 'The selection bar’s name. Default: `Selection`.',
+      },
+      {
+        name: 'selectionBarReady',
+        type: 'string',
+        optional: true,
+        doc: 'Said once, when the selection bar first appears.',
+      },
+    ],
+  },
+  RichTextContentSelection: {
+    fields: [
+      {
+        name: 'range',
+        type: 'RichTextRange',
+        doc: 'The selection in the document’s plain text, which `annotateRichText` takes.',
+      },
+      { name: 'text', type: 'string', doc: 'The selected text, an entity as its label.' },
+    ],
+  },
   // A case of the document's inlines, whose `type` is always `'entity'`, so the
   // shape leaves the discriminant out as Menu's entries leave out `kind`.
   RichTextEntity: {
@@ -1435,6 +1461,28 @@ export const SHAPES: Readonly<Record<string, Shape>> = {
         name: 'label',
         type: 'string',
         doc: 'The words drawn and read, with any leading character: `@Ada Lovelace`.',
+      },
+      {
+        name: 'marks',
+        type: 'RichTextMark[]',
+        optional: true,
+        doc:
+          'The annotations the entity is inside, each `{ type: "annotation", id }`, and marks ' +
+          'of a later version. Absent when it has none.',
+      },
+    ],
+  },
+  RichTextRange: {
+    fields: [
+      {
+        name: 'start',
+        type: 'number',
+        doc: 'The first code point, of the plain text with nothing between blocks.',
+      },
+      {
+        name: 'end',
+        type: 'number',
+        doc: 'The code point after the last; equal to `start` for a caret.',
       },
     ],
   },
@@ -1755,6 +1803,10 @@ export const JSON_TYPES: Readonly<Record<string, string>> = {
     'A rich-text document crosses as the JSON a server stored, as the web member takes any ' +
     'JSON: its readers keep the nodes of a later version, which a typed tree would have no case ' +
     'for.',
+  RichTextMark:
+    'A mark is part of the stored document, as a node is: its readers keep the marks of a later ' +
+    'version, so an entity’s marks cross as the JSON they were stored as, and an app reads an ' +
+    'annotation’s `id` from it.',
 }
 
 /** One branch of a union: its case's name, and its type as the web writes it. */

@@ -65,7 +65,11 @@ kinds:
   Textarea's `resize`, a sticky header in a scroll container the member does not own;
 - what a platform map adapts a member without: Citation's hover preview, Stat's spark on Android;
 - a name, a level or a state for something the platform's own control does not have: a month
-  button in Material's range picker, a heading's level on Android, a busy region on Android.
+  button in Material's range picker, a heading's level on Android, a busy region on Android;
+- what the platform's text does not report: RichTextContent's selection bar (`selectionActions`
+  and its `messages`) on iOS, because a SwiftUI Text with selection on copies its whole text and
+  reports no selected range, and on Android, where the member's text is not selectable and
+  Compose gives a selection's words to its content without their place in the text.
 
 The law finds a field that is not read. It does not prove that a field is drawn: any read outside
 the identifier counts, whatever the rendering does with the value. A presence check such as

@@ -362,7 +362,8 @@
       "reason": "Its words are the app’s, from the platform’s formatter, because the member module reaches no time zone and no locale’s time format. Without them its phrases are English, and its absolute form writes the date and an instant’s 24-hour time in UTC, said as UTC."
     },
     "RichTextContent": {
-      "status": "native"
+      "status": "native",
+      "reason": "It draws annotations, and a tap on one calls onAnnotationSelect, through the platform’s text links. The selection bar is not drawn: the text is not selectable, and the selection toolbar is the platform’s, so an app anchors a comment from its own control."
     },
     "RichTextInput": {
       "status": "absent",

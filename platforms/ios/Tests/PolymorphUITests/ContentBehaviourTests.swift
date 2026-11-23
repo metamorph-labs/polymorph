@@ -319,7 +319,7 @@
       for target in ["/docs/guide", "https://example.org"] {
         _ = PMRichTextRoutes.open(
           try XCTUnwrap(URL(string: target)), routes: routes, onNavigate: { navigated.append($0) },
-          otherwise: around)
+          onAnnotationSelect: nil, otherwise: around)
       }
       XCTAssertEqual(navigated, ["/docs/guide"])
       XCTAssertEqual(opened, ["https://example.org"])
@@ -361,6 +361,109 @@
       XCTAssertNil(scene.element(named: "review "), "a word read on its own")
       press(try XCTUnwrap(scene.element(role: .link, named: "@Ada Lovelace")))
       XCTAssertEqual(opened, ["/people/u_ada"])
+    }
+
+    /// The custom actions of the elements under `scene`'s host, by name: what
+    /// VoiceOver offers on a text that holds annotations.
+    private func customActions(in scene: Scene) -> [String: NSAccessibilityCustomAction] {
+      var found: [String: NSAccessibilityCustomAction] = [:]
+      for element in Scene.elements(in: scene.host)
+      where element.responds(to: NSSelectorFromString("accessibilityCustomActions")) {
+        for action in element.value(forKey: "accessibilityCustomActions")
+          as? [NSAccessibilityCustomAction] ?? []
+        {
+          found[action.name] = action
+        }
+      }
+      return found
+    }
+
+    /// A tap on a highlight goes to its innermost annotation (`rich-text-content.md`,
+    /// Behaviour). Each run of a highlight is a link of the paragraph, the part
+    /// of a Text a tap reaches, whose open-URL action calls `onAnnotationSelect`;
+    /// VoiceOver offers each annotation as an action named by its first fragment
+    /// where it is the innermost.
+    func testARichTextHighlightCallsTheAppWithItsInnermostAnnotation() throws {
+      var selected: [String] = []
+      let scene = Scene(
+        PMRichTextContent(
+          props: PMRichTextContentProps(
+            activeAnnotation: "thread-2", onAnnotationSelect: { selected.append($0) },
+            value: RichTextContentStates.overlapping)))
+      defer { scene.close() }
+      for words in ["twice ", "as long", " as the last one"] {
+        XCTAssertNotNil(scene.element(role: .link, named: words), "\(words) takes no tap")
+      }
+      let actions = customActions(in: scene)
+      XCTAssertEqual(Set(actions.keys), ["twice", "as long"])
+      _ = actions["as long"]?.handler?()
+      _ = actions["twice"]?.handler?()
+      XCTAssertEqual(selected, ["thread-2", "thread-1"])
+
+      // A tap on a highlight's run opens its link, which the paragraph's action takes.
+      _ = PMRichTextRoutes.open(
+        try XCTUnwrap(PMRichTextMarking.url("thread-2")), routes: [:], onNavigate: nil,
+        onAnnotationSelect: { selected.append($0) }, otherwise: OpenURLAction { _ in .discarded })
+      XCTAssertEqual(selected, ["thread-2", "thread-1", "thread-2"])
+    }
+
+    /// A link inside an annotation is the link's: a tap on it follows it, and
+    /// an annotation only on a link is offered nowhere, as it has no stop on
+    /// the web.
+    func testALinkInsideARichTextAnnotationIsTheLinks() throws {
+      var selected: [String] = []
+      var navigated: [String] = []
+      let value = Self.richText(
+        #"""
+        {"type":"paragraph","content":[
+          {"type":"text","text":"see ","marks":[{"type":"annotation","id":"t1"}]},
+          {"type":"text","text":"the guide","marks":[{"type":"link","href":"/docs/guide"},{"type":"annotation","id":"t1"},{"type":"annotation","id":"t2"}]}
+        ]}
+        """#)
+      let scene = Scene(
+        PMRichTextContent(
+          props: PMRichTextContentProps(
+            onAnnotationSelect: { selected.append($0) }, onNavigate: { navigated.append($0) },
+            value: value)))
+      defer { scene.close() }
+      XCTAssertNotNil(scene.element(role: .link, named: "the guide"))
+      XCTAssertEqual(Set(customActions(in: scene).keys), ["see"])
+
+      guard case .paragraph(let inlines)? = PMRichTextReader.read(value).first else {
+        return XCTFail("no paragraph")
+      }
+      _ = PMRichTextRoutes.open(
+        try XCTUnwrap(URL(string: "/docs/guide")),
+        routes: PMRichTextPiece.routes(PMRichTextPiece.pieces(inlines)),
+        onNavigate: { navigated.append($0) }, onAnnotationSelect: { selected.append($0) },
+        otherwise: OpenURLAction { _ in .discarded })
+      XCTAssertEqual(navigated, ["/docs/guide"])
+      XCTAssertEqual(selected, [])
+    }
+
+    /// Without `onAnnotationSelect` a highlight takes no tap and offers no
+    /// action: it is drawn, and nothing else.
+    func testARichTextHighlightWithoutAHandlerTakesNoPress() {
+      let scene = Scene(
+        PMRichTextContent(props: PMRichTextContentProps(value: RichTextContentStates.annotated)))
+      defer { scene.close() }
+      XCTAssertNil(scene.element(role: .link, named: "doubles the wait"))
+      XCTAssertEqual(customActions(in: scene).count, 0)
+    }
+
+    /// A heading that holds a highlight is still a heading, read whole, and
+    /// offers its annotation as the paragraph does.
+    func testARichTextHeadingWithAHighlightIsAHeadingThatOffersIt() {
+      var selected: [String] = []
+      let scene = Scene(
+        PMRichTextContent(
+          props: PMRichTextContentProps(
+            onAnnotationSelect: { selected.append($0) },
+            value: RichTextContentStates.annotatedHeading)))
+      defer { scene.close() }
+      XCTAssertNotNil(scene.element(role: .init(rawValue: "AXHeading"), named: "Webhook retries"))
+      _ = customActions(in: scene)["retries"]?.handler?()
+      XCTAssertEqual(selected, ["thread-4"])
     }
 
     // MARK: Helpers

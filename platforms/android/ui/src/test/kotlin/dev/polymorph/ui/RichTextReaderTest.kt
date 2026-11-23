@@ -503,6 +503,68 @@ class RichTextReaderTest {
         )
     }
 
+    /* Annotations ------------------------------------------------------------ */
+
+    private fun annotation(id: Any?) = mapOf("type" to "annotation", "id" to id)
+
+    @Test
+    fun keepsATextsAnnotationsOncePerIdOrderedById() {
+        val blocks = read(
+            p(
+                t("both", annotation("thread-b"), bold, annotation("thread-a"), annotation("thread-b")),
+                t("linked", link("/x"), annotation("thread-a")),
+            ),
+        )
+        assertEquals(
+            listOf(
+                para(
+                    PMRichTextInline.Run("both", bold = true, annotations = listOf("thread-a", "thread-b")),
+                    PMRichTextInline.Run("linked", href = "/x", annotations = listOf("thread-a")),
+                ),
+            ),
+            blocks,
+        )
+    }
+
+    @Test
+    fun dropsAnAnnotationWithNoId() {
+        val blocks = read(p(t("kept", annotation(null), annotation(""), annotation(5), mapOf("type" to "annotation"), annotation("thread-a"))))
+        assertEquals(listOf(para(PMRichTextInline.Run("kept", annotations = listOf("thread-a")))), blocks)
+    }
+
+    @Test
+    fun keepsAnEntitysAnnotationsAndUnknownMarksAndDropsItsFormats() {
+        val highlight = mapOf("type" to "highlight", "colour" to "yellow")
+        val blocks = read(
+            p(
+                ada + mapOf("marks" to listOf(annotation("thread-b"), bold, highlight, link("/x"), annotation("thread-a"), annotation(""), highlight)),
+                ada + mapOf("marks" to "bold"),
+                mapOf("type" to "entity", "label" to "@Ada", "marks" to listOf(annotation("thread-a"))),
+            ),
+        )
+        val marks = listOf(PMJSONValue.of(highlight), PMJSONValue.of(annotation("thread-a")), PMJSONValue.of(annotation("thread-b")))
+        assertEquals(
+            listOf(
+                para(
+                    PMRichTextInline.Entity(
+                        PMRichTextEntity(kind = "user", id = "u_ada", label = "@Ada Lovelace", marks = marks),
+                        listOf("thread-a", "thread-b"),
+                    ),
+                    adaEntity,
+                    // An entity with no kind or id is its label as text, with no mark.
+                    run("@Ada"),
+                ),
+            ),
+            blocks,
+        )
+    }
+
+    @Test
+    fun keepsAnnotationsInWhatItFlattens() {
+        val (_, inside) = innermost(read(nested(PMRichTextReader.MAX_DEPTH, quote(p(t("deep", annotation("thread-a")))))))
+        assertEquals(listOf(para(PMRichTextInline.Run("deep", annotations = listOf("thread-a")))), inside)
+    }
+
     /* Emptiness (`isRichTextEmpty`) ------------------------------------------- */
 
     private fun empty(vararg blocks: Any?) = PMRichTextReader.isEmpty(read(*blocks))

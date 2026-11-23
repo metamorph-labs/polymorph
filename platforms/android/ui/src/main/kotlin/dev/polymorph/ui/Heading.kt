@@ -33,7 +33,8 @@ object PMHeading : PMHeadingRendering {
         )
     }
 
-    private fun style(theme: PMTheme, level: PMHeadingLevel): PMTextStyle = when (level) {
+    /** The step a level is drawn at, which RichTextContent's heading with a highlight draws its own text at. */
+    internal fun style(theme: PMTheme, level: PMHeadingLevel): PMTextStyle = when (level) {
         PMHeadingLevel.Level2 -> theme.text.xl
         PMHeadingLevel.Level3 -> theme.text.lg
         PMHeadingLevel.Level4 -> theme.text.md.weighted(like = theme.text.xl)

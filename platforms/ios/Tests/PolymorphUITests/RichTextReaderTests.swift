@@ -52,9 +52,12 @@ final class RichTextReaderTests: XCTestCase {
         let flags =
           [marks.bold ? "b" : nil, marks.italic ? "i" : nil, marks.strike ? "s" : nil,
            marks.code ? "c" : nil, marks.link.map { "→\($0)" }].compactMap { $0 }
+          + marks.annotations.map { "#\($0)" }
         return flags.isEmpty ? text : "{\(flags.joined(separator: " "))}\(text)"
       case .lineBreak: return "⏎"
-      case .entity(let entity): return "@{\(entity.kind):\(entity.id):\(entity.label)}"
+      case .entity(let entity):
+        let ids = PMRichTextReader.annotations(of: entity).map { "#\($0)" }.joined()
+        return "@{\(entity.kind):\(entity.id):\(entity.label)\(ids)}"
       case .found(let text, _): return "?{\(text)}"
       }
     }.joined()
@@ -235,11 +238,12 @@ final class RichTextReaderTests: XCTestCase {
     guard case .paragraph(let inlines)? = blocks.first else { return XCTFail("no paragraph") }
     let pieces = PMRichTextPiece.pieces(inlines).map { piece -> String in
       switch piece {
-      case .link(let text, let href, let marks):
-        "link(\(text)→\(href)\(marks.bold ? " b" : "")\(marks.italic ? " i" : "")\(marks.code ? " c" : ""))"
-      case .run(let text, _): text
-      case .lineBreak: "⏎"
-      case .entity: "@"
+      case .link(let text, let href, let marks, _):
+        let flags = (marks.bold ? " b" : "") + (marks.italic ? " i" : "") + (marks.code ? " c" : "")
+        return "link(\(text)→\(href)\(flags))"
+      case .run(let text, _, _): return text
+      case .lineBreak: return "⏎"
+      case .entity: return "@"
       }
     }
     // The paragraph's last break starts no line.
@@ -337,6 +341,164 @@ final class RichTextReaderTests: XCTestCase {
           document(
             #"{"type":"callout","text":" ","content":[{"type":"entity","kind":"user","id":"u","label":"@Ada"}]}"#
           ))))
+  }
+
+  // MARK: Annotations
+
+  func testAnAnnotationIsKeptOncePerIdInCodeUnitOrderAndOneWithNoIdIsDropped() {
+    XCTAssertEqual(
+      read(
+        #"""
+        {"type":"paragraph","content":[{"type":"text","text":"a","marks":[
+          {"type":"annotation","id":"b"},{"type":"annotation","id":"a"},{"type":"annotation","id":"a"},
+          {"type":"annotation"},{"type":"annotation","id":""},{"type":"annotation","id":3},
+          {"type":"bold"},{"type":"annotation","id":"～"},{"type":"annotation","id":"😀"}
+        ]}]}
+        """#),
+      // JavaScript orders by UTF-16 code unit, so the surrogate pair of 😀 sorts before ～.
+      "p({b #a #b #😀 #～}a)")
+  }
+
+  func testAnEntityKeepsItsAnnotationsAndUnknownMarksAndDropsItsFormats() throws {
+    let blocks = PMRichTextReader.read(
+      document(
+        #"""
+        {"type":"paragraph","content":[
+          {"type":"entity","kind":"user","id":"u","label":"@Ada","marks":[
+            {"type":"bold"},{"type":"annotation","id":"t2"},{"type":"highlight","colour":"x"},
+            {"type":"annotation","id":"t1"},{"type":"annotation"},{"type":"link","href":"/x"}
+          ]},
+          {"type":"entity","label":"@label only","marks":[{"type":"annotation","id":"t3"}]}
+        ]}
+        """#))
+    XCTAssertEqual(spell(blocks), "p(@{user:u:@Ada#t1#t2}@label only)")
+    guard case .paragraph(let inlines)? = blocks.first, case .entity(let entity)? = inlines.first
+    else { return XCTFail("no entity") }
+    let marks = try XCTUnwrap(entity.marks)
+    XCTAssertEqual(marks.count, 3)
+    // The decoder lists an object's keys in no fixed order, so the unknown mark
+    // is compared by its members.
+    guard case .object(let unknown)? = marks.first else { return XCTFail("no unknown mark") }
+    XCTAssertEqual(
+      Set(unknown.map { "\($0.key)=\($0.value)" }),
+      ["type=\(PMJSONValue.string("highlight"))", "colour=\(PMJSONValue.string("x"))"])
+    XCTAssertEqual(
+      Array(marks.dropFirst()),
+      [
+        .object([PMJSONMember("type", "annotation"), PMJSONMember("id", "t1")]),
+        .object([PMJSONMember("type", "annotation"), PMJSONMember("id", "t2")]),
+      ])
+  }
+
+  /// The drawn annotations of each piece, innermost first.
+  private func nested(_ value: PMJSONValue, drawn: Set<String>? = nil) -> [String] {
+    guard case .paragraph(let inlines)? = PMRichTextReader.read(value).first else { return [] }
+    return PMRichTextPiece.pieces(inlines, drawn: { drawn?.contains($0) ?? true }).map { piece in
+      switch piece {
+      case .run(let text, _, let ids), .link(let text, _, _, let ids):
+        return "\(text)\(ids.map { "#\($0)" }.joined())"
+      case .entity(let entity, let ids): return "\(entity.label)\(ids.map { "#\($0)" }.joined())"
+      case .lineBreak: return "⏎"
+      }
+    }
+  }
+
+  func testOverlappingAnnotationsNestAsTheEditorNestsThem() {
+    // The inner thread starts later, so it is innermost where both stand.
+    XCTAssertEqual(
+      nested(RichTextContentStates.overlapping),
+      [
+        "Each retry waits ", "twice #thread-1", "as long#thread-2#thread-1",
+        " as the last one#thread-1", ", up to five times.",
+      ])
+    // Of two that start together, the one that ends first is innermost; of two
+    // that cover the same stretch, the first by id. A break ends no stretch.
+    XCTAssertEqual(
+      nested(
+        document(
+          #"""
+          {"type":"paragraph","content":[
+            {"type":"text","text":"a","marks":[{"type":"annotation","id":"long"},{"type":"annotation","id":"short"},{"type":"annotation","id":"y"},{"type":"annotation","id":"x"}]},
+            {"type":"break"},
+            {"type":"text","text":"b","marks":[{"type":"annotation","id":"long"},{"type":"annotation","id":"y"},{"type":"annotation","id":"x"}]}
+          ]}
+          """#)),
+      ["a#short#long#x#y", "⏎", "b#long#x#y"])
+    // Only the drawn ones are drawn.
+    XCTAssertEqual(
+      nested(RichTextContentStates.overlapping, drawn: ["thread-1"])[2], "as long#thread-1")
+  }
+
+  func testAnAnnotationOnAnyRunOfALinkIsOnTheWholeLink() {
+    XCTAssertEqual(
+      nested(
+        document(
+          #"""
+          {"type":"paragraph","content":[
+            {"type":"text","text":"the ","marks":[{"type":"link","href":"/a"}]},
+            {"type":"text","text":"guide","marks":[{"type":"link","href":"/a"},{"type":"annotation","id":"t"}]}
+          ]}
+          """#)),
+      ["the guide#t"])
+  }
+
+  func testEachAnnotationIsOfferedByItsFirstFragmentWhereItIsInnermost() {
+    let actions = { (value: PMJSONValue, appDraws: Bool) -> [String] in
+      guard case .paragraph(let inlines)? = PMRichTextReader.read(value).first else { return [] }
+      return PMRichTextPiece.actions(PMRichTextPiece.pieces(inlines), appDrawsEntities: appDraws)
+        .map { "\($0.id)=\($0.words)" }
+    }
+    XCTAssertEqual(
+      actions(RichTextContentStates.annotated, false),
+      ["thread-1=doubles the wait", "thread-2=up to five times"])
+    XCTAssertEqual(
+      actions(RichTextContentStates.overlapping, false), ["thread-1=twice", "thread-2=as long"])
+    XCTAssertEqual(
+      actions(RichTextContentStates.annotatedEntity, false), ["thread-3=@Ada Lovelace"])
+    // An entity the app draws is its own control, so the words after it name the thread.
+    XCTAssertEqual(
+      actions(RichTextContentStates.annotatedEntity, true), ["thread-3=to review the fix"])
+    // One only on a link, or only on white space, is offered nowhere.
+    XCTAssertEqual(
+      actions(
+        document(
+          #"""
+          {"type":"paragraph","content":[
+            {"type":"text","text":"the guide","marks":[{"type":"link","href":"/a"},{"type":"annotation","id":"on-link"}]},
+            {"type":"text","text":"  ","marks":[{"type":"annotation","id":"blank"}]}
+          ]}
+          """#), false),
+      [])
+  }
+
+  func testAHeadingDrawsItsWordsWithoutEmphasisOrLinkAndKeepsItsAnnotations() throws {
+    guard
+      case .heading(_, let inlines)? = PMRichTextReader.read(
+        document(
+          #"""
+          {"type":"heading","level":1,"content":[
+            {"type":"text","text":"a","marks":[{"type":"bold"},{"type":"link","href":"/x"},{"type":"annotation","id":"t"}]},
+            {"type":"break"},
+            {"type":"text","text":"b","marks":[{"type":"code"},{"type":"italic"}]}
+          ]}
+          """#)
+      ).first
+    else { return XCTFail("no heading") }
+    XCTAssertEqual(
+      spell([.paragraph(PMRichTextPiece.headingInlines(inlines))]), "p({#t}a {c}b)")
+    let marking = { (shown: Set<String>?) in
+      PMRichTextMarking(shown: shown, active: nil, onSelect: nil)
+    }
+    XCTAssertTrue(PMRichTextPiece.holdsDrawnAnnotation(inlines, marking: marking(nil)))
+    XCTAssertFalse(PMRichTextPiece.holdsDrawnAnnotation(inlines, marking: marking(["other"])))
+  }
+
+  func testAHighlightsLinkNamesItsAnnotationAndNoOtherLink() throws {
+    for id in ["thread-1", "a b", "thread/1?x#y", "ü", "//x"] {
+      XCTAssertEqual(PMRichTextMarking.id(try XCTUnwrap(PMRichTextMarking.url(id))), id)
+    }
+    XCTAssertNil(PMRichTextMarking.id(try XCTUnwrap(URL(string: "/x-polymorph-annotation/a"))))
+    XCTAssertNil(PMRichTextMarking.id(try XCTUnwrap(URL(string: "https://example.org/a"))))
   }
 
   // MARK: Words

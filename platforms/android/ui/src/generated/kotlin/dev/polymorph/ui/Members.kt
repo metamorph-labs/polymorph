@@ -2005,13 +2005,18 @@ fun PMRelativeTime(
  */
 @Composable
 fun PMRichTextContent(
+    activeAnnotation: String? = null,
+    annotations: List<String>? = null,
     entity: (@Composable (PMRichTextEntity) -> Unit)? = null,
     headingLevel: PMRichTextContentHeadingLevel? = null,
+    messages: PMRichTextContentMessages? = null,
+    onAnnotationSelect: ((String) -> Unit)? = null,
     onNavigate: ((String) -> Unit)? = null,
+    selectionActions: (@Composable (PMRichTextContentSelection) -> Unit)? = null,
     size: PMRichTextContentSize? = null,
     value: PMJSONValue,
 ) {
-    PMRichTextContent.Render(PMRichTextContentProps(entity = entity, headingLevel = headingLevel, onNavigate = onNavigate, size = size, value = value))
+    PMRichTextContent.Render(PMRichTextContentProps(activeAnnotation = activeAnnotation, annotations = annotations, entity = entity, headingLevel = headingLevel, messages = messages, onAnnotationSelect = onAnnotationSelect, onNavigate = onNavigate, selectionActions = selectionActions, size = size, value = value))
 }
 
 /**

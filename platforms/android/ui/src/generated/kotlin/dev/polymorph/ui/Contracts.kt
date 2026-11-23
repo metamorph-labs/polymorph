@@ -4524,6 +4524,10 @@ enum class PMRichTextContentSize(val value: String) {
  * drawn through the vocabulary.
  */
 data class PMRichTextContentProps(
+    /** The drawn annotation that is active, such as the thread the app shows. */
+    val activeAnnotation: String? = null,
+    /** The annotations drawn. Default: every one the document holds. */
+    val annotations: List<String>? = null,
     /**
      * The app's rendering of an entity: a Link to the person's page, a HoverCard with their card.
      * `undefined` draws the entity token, so an app can draw one kind itself and leave the others
@@ -4535,8 +4539,14 @@ data class PMRichTextContentProps(
      * 4. Default 2, one level under the page's title.
      */
     val headingLevel: PMRichTextContentHeadingLevel? = null,
+    /** The selection bar's words, in the app's language. */
+    val messages: PMRichTextContentMessages? = null,
+    /** A press on a drawn annotation. Without it the highlights take no press and no focus. */
+    val onAnnotationSelect: ((String) -> Unit)? = null,
     /** The app's router, handed to every Link the document draws (`link.md`). */
     val onNavigate: ((String) -> Unit)? = null,
+    /** The app's controls for the reader's selected text, in a bar at the selection. */
+    val selectionActions: (@Composable (PMRichTextContentSelection) -> Unit)? = null,
     /** The body text step (Text's `sm` or `md`), which does not change the heading scale. */
     val size: PMRichTextContentSize? = null,
     /**
@@ -6967,6 +6977,28 @@ data class PMRelativeTimeMessages(
     val both: (String, String) -> String,
 )
 
+/**
+ * The web's `RichTextContentMessages`, field for field (`SHAPES` in
+ * `packages/native/src/mapping.ts`).
+ */
+data class PMRichTextContentMessages(
+    /** The selection bar’s name. Default: `Selection`. */
+    val selectionBar: String? = null,
+    /** Said once, when the selection bar first appears. */
+    val selectionBarReady: String? = null,
+)
+
+/**
+ * The web's `RichTextContentSelection`, field for field (`SHAPES` in
+ * `packages/native/src/mapping.ts`).
+ */
+data class PMRichTextContentSelection(
+    /** The selection in the document’s plain text, which `annotateRichText` takes. */
+    val range: PMRichTextRange,
+    /** The selected text, an entity as its label. */
+    val text: String,
+)
+
 /** The web's `RichTextEntity`, field for field (`SHAPES` in `packages/native/src/mapping.ts`). */
 data class PMRichTextEntity(
     /** The app’s name for the kind of thing: `user`, `issue`. */
@@ -6975,6 +7007,19 @@ data class PMRichTextEntity(
     val id: String,
     /** The words drawn and read, with any leading character: `@Ada Lovelace`. */
     val label: String,
+    /**
+     * The annotations the entity is inside, each `{ type: "annotation", id }`, and marks of a later
+     * version. Absent when it has none.
+     */
+    val marks: List<PMJSONValue>? = null,
+)
+
+/** The web's `RichTextRange`, field for field (`SHAPES` in `packages/native/src/mapping.ts`). */
+data class PMRichTextRange(
+    /** The first code point, of the plain text with nothing between blocks. */
+    val start: Double,
+    /** The code point after the last; equal to `start` for a caret. */
+    val end: Double,
 )
 
 /** The web's `SectionNavItem`, field for field (`SHAPES` in `packages/native/src/mapping.ts`). */

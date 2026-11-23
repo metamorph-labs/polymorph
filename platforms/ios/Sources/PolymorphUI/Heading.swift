@@ -22,16 +22,18 @@ public struct PMHeading: PMHeadingRendering {
     let level = props.level ?? .level2
 
     Text(props.children)
-      .pmTextStyle(style(level))
+      .pmTextStyle(Self.style(level, in: theme))
       .foregroundStyle(theme.colors.textPrimary.color)
       .multilineTextAlignment(.leading)
       .fixedSize(horizontal: false, vertical: true)
       .accessibilityAddTraits(.isHeader)
-      .accessibilityHeading(heading(level))
+      .accessibilityHeading(Self.heading(level))
       .pmMember("Heading", ["level": String(level.rawValue)])
   }
 
-  private func style(_ level: PMHeadingLevel) -> PMTextStyle {
+  /// A level's type step. RichTextContent reads it for a heading it draws
+  /// itself, one whose words carry a highlight, which a string cannot.
+  static func style(_ level: PMHeadingLevel, in theme: PMTheme) -> PMTextStyle {
     switch level {
     case .level2: theme.text.xl
     case .level3: theme.text.lg
@@ -39,7 +41,8 @@ public struct PMHeading: PMHeadingRendering {
     }
   }
 
-  private func heading(_ level: PMHeadingLevel) -> AccessibilityHeadingLevel {
+  /// A level as VoiceOver's headings rotor lists it.
+  static func heading(_ level: PMHeadingLevel) -> AccessibilityHeadingLevel {
     switch level {
     case .level2: .h2
     case .level3: .h3

@@ -357,7 +357,7 @@
     },
     "RichTextContent": {
       "status": "native",
-      "reason": "A Swift closure returns a view for every entity, so an app’s `entity` returns `PMRichTextContent.entityToken` for a kind it leaves to the token, and a paragraph that holds the app’s view wraps between words, because SwiftUI’s Text cannot hold a view."
+      "reason": "A Swift closure returns a view for every entity, so an app’s `entity` returns `PMRichTextContent.entityToken` for a kind it leaves to the token, and a paragraph that holds the app’s view wraps between words, because SwiftUI’s Text cannot hold a view. The selection bar (`selectionActions`, `messages`) is not drawn, because a SwiftUI Text with selection on copies its whole text and reports no selected range."
     },
     "RichTextInput": {
       "status": "absent",

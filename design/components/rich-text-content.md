@@ -136,6 +136,19 @@ the text: a Link keeps its 48dp touch area in the line, and that line grows to h
 reaches the line on the frame after the drawing is first measured, and the token stands in until
 then.
 
+**On iOS**: the entity token is a run of the paragraph's text, with a square wash and a narrow
+no-break space either side for its padding, as on Android. A Swift closure returns a view for every
+entity, so an app's `entity` returns `PMRichTextContent.entityToken` for a kind it leaves to the
+token, and a paragraph that holds the app's view is a flow of its words and that view, wrapping
+between words, because SwiftUI's Text cannot hold a view. A highlight is drawn on the runs it
+marks: the wash, and the rule as the run's underline, which a link inside keeps as its own. A run
+has no outline, so the active annotation has no frame: its stronger wash marks it. With
+`onAnnotationSelect`, a highlight's runs link to the innermost annotation, because a link is the
+one part of a Text a tap reaches, and VoiceOver offers each annotation as an action of the text that
+holds it, named by its first fragment where it is the innermost, in place of a tab stop.
+`selectionActions` and `messages` are not drawn: a SwiftUI Text with selection on copies its whole
+text and reports no selected range (`packages/native/src/undrawn.ts`).
+
 ## Behaviour
 
 **Annotations** are anchors an app keeps something against, such as a comment thread: an
@@ -189,6 +202,23 @@ content's end, and one anywhere else outside the content draws no bar.
 - **After the app anchors.** When `value` changes, the old positions name other words, so the
   member collapses a selection in it and the bar leaves; focus in the bar goes back where it came
   from.
+
+**On Android**: a highlight is the warning wash as the background of its words' run, square as the
+entity token's is, and a heading that holds one is drawn by the member at Heading's step, still a
+heading to TalkBack. A run carries no line in a colour of its own, so the rule under the words and
+the active annotation's frame are drawn over the text from its layout, as Link draws its own
+underline: the rule a hairline at the foot of each line the words are on, where the wash ends, and
+the frame the prose stroke around the words on each line. Where annotations overlap, the innermost
+one's wash is drawn. The token's padding takes the highlight's wash, which rings an annotated
+token. With `onAnnotationSelect`, each stretch of words whose innermost annotation is one id is a
+link of the text (`LinkAnnotation.Clickable`): a tap calls it with that id, and TalkBack lists it
+with the paragraph's links and activates it there, as it does a link. A stretch the innermost
+annotation leaves for another, or for a link, is a link of its own, so an annotation broken by
+another is listed once for each piece. TalkBack says nothing of which one is active, because a
+link of the text carries no state. The selection bar is not drawn, nor its `messages`: the text
+is not selectable, as Markdown's is not, Compose gives its content the selected words without
+their place in the document, and the toolbar a selection opens is the platform's own
+(`packages/native/src/undrawn.ts`). An app anchors a comment from a control of its own.
 
 ## Recipes (exact tokens)
 

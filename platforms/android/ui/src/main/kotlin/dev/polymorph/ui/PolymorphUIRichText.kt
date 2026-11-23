@@ -17,6 +17,9 @@
 //   or no id is its label as text; an empty text is no run; a text's first
 //   link whose target may be followed is its link; quotes and lists inside
 //   `RICH_TEXT_MAX_DEPTH` (8) quotes and lists are flattened to paragraphs.
+//   A text and an entity keep their annotations (`annotation` marks), one per
+//   id, ordered by id; one with no id is dropped. An entity keeps its
+//   annotations and the marks this version does not know, and no format.
 // - `richTextHref` (`href.ts`), with `cleanHref` (`markdown/parse.ts`).
 // - `richTextFormatVersion` (`migrate.ts`).
 // - `richTextNodeText` and `isRichTextEmpty` (`text.ts`).
@@ -25,7 +28,9 @@
 // merged runs and key order, the fields a node does not know, and the
 // migration steps, of which there are none. The web reader also parses a JSON
 // string; the contract hands the member a parsed value (`PMJSONValue`), so a
-// string here is not a document.
+// string here is not a document. An entity's marks reach the app as they were
+// written, a repeated one once, where the web orders the ones it does not know
+// by their JSON.
 
 package dev.polymorph.ui
 
@@ -53,7 +58,11 @@ internal sealed interface PMRichTextBlock {
 
 /** What a paragraph's or a heading's line holds. */
 internal sealed interface PMRichTextInline {
-    /** A run of text with its marks. `href` is its link's target, one `PMRichTextReader.href` accepted. */
+    /**
+     * A run of text with its marks. `href` is its link's target, one
+     * `PMRichTextReader.href` accepted; `annotations` the ids of the
+     * annotations it is inside, ordered by id.
+     */
     data class Run(
         val text: String,
         val href: String? = null,
@@ -61,12 +70,14 @@ internal sealed interface PMRichTextInline {
         val italic: Boolean = false,
         val strike: Boolean = false,
         val code: Boolean = false,
+        val annotations: List<String> = emptyList(),
     ) : PMRichTextInline
 
     /** A line break the writer asked for. */
     data object Break : PMRichTextInline
 
-    data class Entity(val entity: PMRichTextEntity) : PMRichTextInline
+    /** An entity, with the ids of the annotations it is inside, ordered by id, which its `marks` hold too. */
+    data class Entity(val entity: PMRichTextEntity, val annotations: List<String> = emptyList()) : PMRichTextInline
 
     /** A node this version does not draw in a line: drawn as `text`. */
     data class Unknown(val text: String, val holdsEntity: Boolean) : PMRichTextInline
@@ -133,6 +144,10 @@ internal object PMRichTextReader {
     private const val ITALIC = "italic"
     private const val STRIKE = "strike"
     private const val CODE = "code"
+    private const val ANNOTATION = "annotation"
+
+    /** The formats, which mean nothing on an entity. */
+    private val FORMATS = setOf(LINK, BOLD, ITALIC, STRIKE, CODE)
 
     private val BLOCK_TYPES = setOf(PARAGRAPH, HEADING, LIST, BLOCKQUOTE, CODE_BLOCK)
     private val NODE_TYPES = BLOCK_TYPES + setOf(TEXT_NODE, BREAK, ENTITY, LIST_ITEM)
@@ -298,7 +313,11 @@ internal object PMRichTextReader {
                     val id = word(node.field(ID))
                     val label = word(node.field(LABEL))
                     if (kind != null && id != null && label != null) {
-                        out += PMRichTextInline.Entity(PMRichTextEntity(kind = kind, id = id, label = label))
+                        val (marks, annotations) = entityMarks(node.field(MARKS))
+                        out += PMRichTextInline.Entity(
+                            PMRichTextEntity(kind = kind, id = id, label = label, marks = marks.ifEmpty { null }),
+                            annotations,
+                        )
                     } else if (label != null) {
                         out += PMRichTextInline.Run(label)
                     }
@@ -314,20 +333,43 @@ internal object PMRichTextReader {
      * A run with the marks this version draws. A mark it does not know draws
      * nothing. The first link whose target may be followed is the run's link;
      * a link with no target, or one that may not be followed, is removed and
-     * its text kept.
+     * its text kept. An annotation is kept once per id, and one with no id is
+     * removed.
      */
     private fun run(text: String, marks: PMJSONValue?): PMRichTextInline.Run {
         var link: String? = null
         val types = mutableSetOf<String>()
+        val annotations = mutableSetOf<String>()
         for (mark in (marks as? PMJSONValue.Array)?.items.orEmpty()) {
-            val type = mark.type() ?: continue
-            if (type == LINK) {
-                if (link == null) link = (mark.field(HREF) as? PMJSONValue.Text)?.value?.let { href(it) }
-            } else {
-                types += type
+            when (val type = mark.type() ?: continue) {
+                ANNOTATION -> word(mark.field(ID))?.let { annotations += it }
+                LINK -> if (link == null) link = (mark.field(HREF) as? PMJSONValue.Text)?.value?.let { href(it) }
+                else -> types += type
             }
         }
-        return PMRichTextInline.Run(text, link, BOLD in types, ITALIC in types, STRIKE in types, CODE in types)
+        return PMRichTextInline.Run(text, link, BOLD in types, ITALIC in types, STRIKE in types, CODE in types, annotations.sorted())
+    }
+
+    /**
+     * An entity's marks as the app is handed them, and the ids of its
+     * annotations: the marks this version does not know, each once, then the
+     * annotations, one per id and ordered by id. A format means nothing on an
+     * entity, so one written there is dropped, and so is an annotation with no
+     * id. Marks that are not a list are none.
+     */
+    private fun entityMarks(marks: PMJSONValue?): Pair<List<PMJSONValue>, List<String>> {
+        val others = mutableListOf<PMJSONValue>()
+        val annotations = mutableMapOf<String, PMJSONValue>()
+        for (mark in (marks as? PMJSONValue.Array)?.items.orEmpty()) {
+            val type = mark.type() ?: continue
+            when {
+                type == ANNOTATION -> word(mark.field(ID))?.let { if (it !in annotations) annotations[it] = mark }
+                type in FORMATS -> {}
+                mark !in others -> others += mark
+            }
+        }
+        val ids = annotations.keys.sorted()
+        return others + ids.map { annotations.getValue(it) } to ids
     }
 
     /* Links ----------------------------------------------------------------- */

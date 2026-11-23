@@ -381,8 +381,16 @@ describe('the mapping', () => {
     field('PromptInput', 'onAttach: (@MainActor ([PMFile]) -> Void)?')
     field('JsonTree', 'data: PMJSONValue')
     field('ToolCall', 'input: PMJSONValue?')
-    // A name in `JSON_TYPES` crosses as the JSON an app stored.
+    // A name in `JSON_TYPES` crosses as the JSON an app stored: the document, and an entity's marks.
     field('RichTextContent', 'value: PMJSONValue')
+    expect(file).toContain('  public var marks: [PMJSONValue]?\n')
+    field(
+      'RichTextContent',
+      'selectionActions: (@MainActor (PMRichTextContentSelection) -> PMContent)?',
+    )
+    expect(file).toMatch(
+      /public struct PMRichTextContentSelection \{[^}]*public var range: PMRichTextRange\n/,
+    )
     // `StepperSpoken` maps as its definition, whose step is an object the web writes inline.
     field('Stepper', 'spoken: (@MainActor (PMStepperSpokenStep) -> String)?')
     field('ApprovalCard', 'messages: PMApprovalCardMessages?')

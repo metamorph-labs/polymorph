@@ -6681,6 +6681,10 @@ public enum PMRichTextContentSize: String, CaseIterable, Sendable {
 /// RichTextContent's props (`design/components/rich-text-content.md`): A stored rich-text document
 /// drawn through the vocabulary.
 public struct PMRichTextContentProps {
+  /// The drawn annotation that is active, such as the thread the app shows.
+  public var activeAnnotation: String?
+  /// The annotations drawn. Default: every one the document holds.
+  public var annotations: [String]?
   /// The app's rendering of an entity: a Link to the person's page, a HoverCard with their card.
   /// `undefined` draws the entity token, so an app can draw one kind itself and leave the others as
   /// tokens.
@@ -6688,8 +6692,14 @@ public struct PMRichTextContentProps {
   /// The page level the document's level 1 heading is drawn at. Each deeper level adds one, up to
   /// 4. Default 2, one level under the page's title.
   public var headingLevel: PMRichTextContentHeadingLevel?
+  /// The selection bar's words, in the app's language.
+  public var messages: PMRichTextContentMessages?
+  /// A press on a drawn annotation. Without it the highlights take no press and no focus.
+  public var onAnnotationSelect: (@MainActor (String) -> Void)?
   /// The app's router, handed to every Link the document draws (`link.md`).
   public var onNavigate: (@MainActor (String) -> Void)?
+  /// The app's controls for the reader's selected text, in a bar at the selection.
+  public var selectionActions: (@MainActor (PMRichTextContentSelection) -> PMContent)?
   /// The body text step (Text's `sm` or `md`), which does not change the heading scale.
   public var size: PMRichTextContentSize?
   /// The stored document. Any JSON is read as far as it can be; what is not a document draws
@@ -6697,15 +6707,25 @@ public struct PMRichTextContentProps {
   public var value: PMJSONValue
 
   public init(
+    activeAnnotation: String? = nil,
+    annotations: [String]? = nil,
     entity: (@MainActor (PMRichTextEntity) -> PMContent)? = nil,
     headingLevel: PMRichTextContentHeadingLevel? = nil,
+    messages: PMRichTextContentMessages? = nil,
+    onAnnotationSelect: (@MainActor (String) -> Void)? = nil,
     onNavigate: (@MainActor (String) -> Void)? = nil,
+    selectionActions: (@MainActor (PMRichTextContentSelection) -> PMContent)? = nil,
     size: PMRichTextContentSize? = nil,
     value: PMJSONValue
   ) {
+    self.activeAnnotation = activeAnnotation
+    self.annotations = annotations
     self.entity = entity
     self.headingLevel = headingLevel
+    self.messages = messages
+    self.onAnnotationSelect = onAnnotationSelect
     self.onNavigate = onNavigate
+    self.selectionActions = selectionActions
     self.size = size
     self.value = value
   }
@@ -11100,6 +11120,40 @@ public struct PMRelativeTimeMessages {
   }
 }
 
+/// The web's `RichTextContentMessages`, field for field (`SHAPES` in
+/// `packages/native/src/mapping.ts`).
+public struct PMRichTextContentMessages {
+  /// The selection bar’s name. Default: `Selection`.
+  public var selectionBar: String?
+  /// Said once, when the selection bar first appears.
+  public var selectionBarReady: String?
+
+  public init(
+    selectionBar: String? = nil,
+    selectionBarReady: String? = nil
+  ) {
+    self.selectionBar = selectionBar
+    self.selectionBarReady = selectionBarReady
+  }
+}
+
+/// The web's `RichTextContentSelection`, field for field (`SHAPES` in
+/// `packages/native/src/mapping.ts`).
+public struct PMRichTextContentSelection {
+  /// The selection in the document’s plain text, which `annotateRichText` takes.
+  public var range: PMRichTextRange
+  /// The selected text, an entity as its label.
+  public var text: String
+
+  public init(
+    range: PMRichTextRange,
+    text: String
+  ) {
+    self.range = range
+    self.text = text
+  }
+}
+
 /// The web's `RichTextEntity`, field for field (`SHAPES` in `packages/native/src/mapping.ts`).
 public struct PMRichTextEntity {
   /// The app’s name for the kind of thing: `user`, `issue`.
@@ -11108,15 +11162,36 @@ public struct PMRichTextEntity {
   public var id: String
   /// The words drawn and read, with any leading character: `@Ada Lovelace`.
   public var label: String
+  /// The annotations the entity is inside, each `{ type: "annotation", id }`, and marks of a later
+  /// version. Absent when it has none.
+  public var marks: [PMJSONValue]?
 
   public init(
     kind: String,
     id: String,
-    label: String
+    label: String,
+    marks: [PMJSONValue]? = nil
   ) {
     self.kind = kind
     self.id = id
     self.label = label
+    self.marks = marks
+  }
+}
+
+/// The web's `RichTextRange`, field for field (`SHAPES` in `packages/native/src/mapping.ts`).
+public struct PMRichTextRange {
+  /// The first code point, of the plain text with nothing between blocks.
+  public var start: Double
+  /// The code point after the last; equal to `start` for a caret.
+  public var end: Double
+
+  public init(
+    start: Double,
+    end: Double
+  ) {
+    self.start = start
+    self.end = end
   }
 }
 
