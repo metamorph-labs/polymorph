@@ -1534,8 +1534,9 @@ function nearest(
   const byName = [...components.keys(), ...primitives.keys()].filter(
     (candidate) => fold(candidate).includes(wanted) || wanted.includes(fold(candidate)),
   )
+  const lowered = name.toLowerCase()
   const byPurpose = registry.components
-    .filter((component) => component.purpose.toLowerCase().includes(name.toLowerCase()))
+    .filter((component) => component.purpose.toLowerCase().includes(lowered))
     .map((component) => component.name)
 
   const near = [...new Set([...byName, ...byPurpose])].slice(0, 3)
