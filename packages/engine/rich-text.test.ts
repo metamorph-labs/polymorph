@@ -101,9 +101,9 @@ const WRITTEN: RichTextDocument = {
 
 describe('a document this version wrote', () => {
   it('reads with no faults and comes back unchanged', () => {
-    const { document, faults } = parseRichText(WRITTEN)
+    const { value, faults } = parseRichText(WRITTEN)
     expect(faults).toEqual([])
-    expect(document).toEqual(WRITTEN)
+    expect(value).toEqual(WRITTEN)
     // The keys are already in the order the reader writes them.
     expect(serializeRichText(WRITTEN)).toBe(JSON.stringify(WRITTEN))
   })
@@ -112,8 +112,8 @@ describe('a document this version wrote', () => {
     const stored = serializeRichText(WRITTEN)
     const read = parseRichText(stored)
     expect(read.faults).toEqual([])
-    expect(read.document).toEqual(WRITTEN)
-    expect(serializeRichText(read.document)).toBe(stored)
+    expect(read.value).toEqual(WRITTEN)
+    expect(serializeRichText(read.value)).toBe(stored)
   })
 
   it('is a new object, not the input', () => {
@@ -125,7 +125,7 @@ describe('a document this version wrote', () => {
   it('is the empty document when it has no blocks', () => {
     expect(emptyRichText()).toEqual({ format: 'polymorph-rich-text/1', blocks: [] })
     expect(emptyRichText()).not.toBe(emptyRichText())
-    expect(parseRichText(emptyRichText())).toEqual({ document: emptyRichText(), faults: [] })
+    expect(parseRichText(emptyRichText())).toEqual({ value: emptyRichText(), faults: [] })
   })
 })
 
@@ -184,13 +184,13 @@ describe('the normal form', () => {
     const read = parseRichText(
       doc({ type: 'list', ordered: true, items: [] }, quote(), quote(quote()), p(t('kept'))),
     )
-    expect(read.document.blocks).toEqual([p(t('kept'))])
+    expect(read.value.blocks).toEqual([p(t('kept'))])
     expect(read.faults).toEqual([])
   })
 
   it('removes a link whose target is unsafe and keeps its text, joined to its neighbours', () => {
     const read = parseRichText(doc(p(t('a '), t('click', link('javascript:alert(1)')), t(' b'))))
-    expect(read.document.blocks).toEqual([p(t('a click b'))])
+    expect(read.value.blocks).toEqual([p(t('a click b'))])
     expect(read.faults).toEqual([
       {
         code: 'unsafe-link',
@@ -243,9 +243,9 @@ describe('the normal form', () => {
       { type: 'codeBlock', language: '', text: 'x' },
     )
     const once = parseRichText(messy)
-    const twice = parseRichText(once.document)
+    const twice = parseRichText(once.value)
     expect(twice.faults).toEqual([])
-    expect(twice.document).toEqual(once.document)
+    expect(twice.value).toEqual(once.value)
     expect(serializeRichText(serializeRichText(messy))).toBe(serializeRichText(messy))
   })
 
@@ -278,7 +278,7 @@ describe('depth', () => {
   it(`keeps ${RICH_TEXT_MAX_DEPTH} quotes inside each other`, () => {
     const read = parseRichText(doc(nested(RICH_TEXT_MAX_DEPTH)))
     expect(read.faults).toEqual([])
-    expect(depthOf(read.document.blocks)).toBe(RICH_TEXT_MAX_DEPTH)
+    expect(depthOf(read.value.blocks)).toBe(RICH_TEXT_MAX_DEPTH)
   })
 
   it('flattens a quote inside them to paragraphs of its text', () => {
@@ -290,8 +290,8 @@ describe('depth', () => {
       { type: 'callout', text: 'kept' },
     )
     const read = parseRichText(doc(nested(RICH_TEXT_MAX_DEPTH, inner)))
-    expect(depthOf(read.document.blocks)).toBe(RICH_TEXT_MAX_DEPTH)
-    let innermost = read.document.blocks as unknown[]
+    expect(depthOf(read.value.blocks)).toBe(RICH_TEXT_MAX_DEPTH)
+    let innermost = read.value.blocks as unknown[]
     for (let index = 0; index < RICH_TEXT_MAX_DEPTH; index += 1) {
       innermost = (innermost[0] as { content: unknown[] }).content
     }
@@ -331,8 +331,8 @@ describe('depth', () => {
     const source = `{"format":"${RICH_TEXT_FORMAT}","blocks":[${'{"type":"blockquote","content":['.repeat(depth)}{"type":"paragraph","content":[{"type":"text","text":"bottom"}]}${']}'.repeat(depth)}]}`
     const read = parseRichText(source)
     expect(read.faults.map((fault) => fault.code)).toEqual(['too-deep'])
-    expect(depthOf(read.document.blocks)).toBe(RICH_TEXT_MAX_DEPTH)
-    expect(serializeRichText(read.document)).toContain('"bottom"')
+    expect(depthOf(read.value.blocks)).toBe(RICH_TEXT_MAX_DEPTH)
+    expect(serializeRichText(read.value)).toContain('"bottom"')
   })
 
   it(`cuts what is nested more than ${OPAQUE_MAX_DEPTH} deep inside a node it keeps`, () => {
@@ -343,9 +343,9 @@ describe('depth', () => {
       ['unknown-node', ['blocks', 0]],
       ['too-deep', ['blocks', 0]],
     ])
-    expect(read.document.blocks[1]).toEqual(p(t('after')))
+    expect(read.value.blocks[1]).toEqual(p(t('after')))
     // Everything down to the limit is kept, counting the node as the first level.
-    let kept: unknown = read.document.blocks[0]
+    let kept: unknown = read.value.blocks[0]
     let levels = 1
     for (;;) {
       const next =
@@ -368,8 +368,8 @@ describe('what this version does not know', () => {
 
   it('keeps an unknown block where it is, as the same JSON', () => {
     const read = parseRichText(doc(p(t('before')), callout, p(t('after'))))
-    expect(read.document.blocks[1]).toEqual(callout)
-    expect(read.document.blocks.map((block) => block.type)).toEqual([
+    expect(read.value.blocks[1]).toEqual(callout)
+    expect(read.value.blocks.map((block) => block.type)).toEqual([
       'paragraph',
       'callout',
       'paragraph',
@@ -387,7 +387,7 @@ describe('what this version does not know', () => {
   it('keeps an unknown inline where it is, and does not join the text around it', () => {
     const emoji = { type: 'emoji', name: 'wave', label: '👋' }
     const read = parseRichText(doc(p(t('hi '), emoji, t(' there'))))
-    expect(read.document.blocks).toEqual([p(t('hi '), emoji, t(' there'))])
+    expect(read.value.blocks).toEqual([p(t('hi '), emoji, t(' there'))])
     expect(read.faults.map((fault) => [fault.code, fault.path])).toEqual([
       ['unknown-node', ['blocks', 0, 'content', 1]],
     ])
@@ -396,7 +396,7 @@ describe('what this version does not know', () => {
   it('keeps an unknown mark on its text, after the known ones', () => {
     const highlight = { type: 'highlight', colour: 'yellow' }
     const read = parseRichText(doc(p(t('x', highlight, bold), t('y', bold, highlight))))
-    expect(read.document.blocks).toEqual([p(t('xy', bold, highlight))])
+    expect(read.value.blocks).toEqual([p(t('xy', bold, highlight))])
     expect(read.faults.map((fault) => [fault.code, fault.path])).toEqual([
       ['unknown-mark', ['blocks', 0, 'content', 0, 'marks', 0]],
       ['unknown-mark', ['blocks', 0, 'content', 1, 'marks', 1]],
@@ -412,7 +412,7 @@ describe('what this version does not know', () => {
       }),
     )
     expect(read.faults).toEqual([])
-    expect(serializeRichText(read.document)).toBe(
+    expect(serializeRichText(read.value)).toBe(
       JSON.stringify(
         doc({
           type: 'paragraph',
@@ -430,7 +430,7 @@ describe('what this version does not know', () => {
   it('keeps a node of a known type in a place its kind cannot be, as it is', () => {
     const stray = t('loose', bold)
     const read = parseRichText(doc(stray, item(p(t('i')))))
-    expect(read.document.blocks).toEqual([stray, item(p(t('i')))])
+    expect(read.value.blocks).toEqual([stray, item(p(t('i')))])
     expect(read.faults.map((fault) => [fault.code, fault.message])).toEqual([
       ['malformed', 'A "text" cannot stand among blocks. It is kept and drawn as its text.'],
       ['malformed', 'A "listItem" cannot stand among blocks. It is kept and drawn as its text.'],
@@ -444,7 +444,7 @@ describe('what this version does not know', () => {
       items: [p(t('plain')), callout, item(p(t('real')))],
     }
     const read = parseRichText(doc(list))
-    expect(read.document.blocks).toEqual([
+    expect(read.value.blocks).toEqual([
       {
         type: 'list',
         ordered: false,
@@ -523,11 +523,11 @@ describe('faults', () => {
     ]
     for (const input of notDocuments) {
       const read = parseRichText(input)
-      expect(read.document, JSON.stringify(input)).toEqual(emptyRichText())
+      expect(read.value, JSON.stringify(input)).toEqual(emptyRichText())
       expect(
         read.faults.map((fault) => fault.code),
         JSON.stringify(input),
-      ).toEqual(['not-a-document'])
+      ).toEqual(['unreadable'])
     }
   })
 
@@ -537,7 +537,7 @@ describe('faults', () => {
       blocks: [p(t('known')), { type: 'table', rows: [] }],
     }
     const read = parseRichText(later)
-    expect(read.document).toEqual(doc(p(t('known')), { type: 'table', rows: [] }))
+    expect(read.value).toEqual(doc(p(t('known')), { type: 'table', rows: [] }))
     expect(read.faults.map((fault) => [fault.code, fault.path])).toEqual([
       ['newer-format', ['format']],
       ['unknown-node', ['blocks', 1]],
@@ -586,7 +586,7 @@ describe('faults', () => {
     ]
     for (const [block, blocks, path] of cases) {
       const read = parseRichText(doc(block))
-      expect(read.document.blocks, JSON.stringify(block)).toEqual(blocks)
+      expect(read.value.blocks, JSON.stringify(block)).toEqual(blocks)
       expect(
         read.faults.map((fault) => [fault.code, fault.path]),
         JSON.stringify(block),
@@ -614,7 +614,7 @@ describe('faults', () => {
         ),
       ),
     )
-    expect(read.document.blocks).toEqual([
+    expect(read.value.blocks).toEqual([
       p(
         t('a@Ada'),
         { type: 'entity', kind: 'user', id: 'u', label: '@Grace' },
@@ -649,7 +649,7 @@ describe('faults', () => {
         { type: 'list', ordered: false, items: [null, [item(p())], item(p(t('i')))] },
       ),
     )
-    expect(read.document.blocks).toEqual([
+    expect(read.value.blocks).toEqual([
       p(t('ok')),
       { type: 'list', ordered: false, items: [item(p(t('i')))] },
     ])
@@ -670,10 +670,10 @@ describe('faults', () => {
     expect([...all].sort()).toEqual([
       'malformed',
       'newer-format',
-      'not-a-document',
       'too-deep',
       'unknown-mark',
       'unknown-node',
+      'unreadable',
       'unsafe-link',
     ])
   })
@@ -691,26 +691,26 @@ describe('hostile input', () => {
     const text = 'a'.repeat(5_000_000)
     const read = parseRichText(JSON.stringify(doc(p(t(text)))))
     expect(read.faults).toEqual([])
-    expect(
-      (read.document.blocks[0] as { content: { text: string }[] }).content[0]?.text.length,
-    ).toBe(5_000_000)
+    expect((read.value.blocks[0] as { content: { text: string }[] }).content[0]?.text.length).toBe(
+      5_000_000,
+    )
   })
 
   it('keeps a __proto__ key as data and changes no prototype', () => {
     const source = `{"format":"${RICH_TEXT_FORMAT}","__proto__":{"polluted":1},"blocks":[{"type":"paragraph","__proto__":{"polluted":2},"content":[]},{"type":"embed","__proto__":{"polluted":3},"data":{"__proto__":{"polluted":4}}}]}`
     const read = parseRichText(source)
-    const [paragraph, embed] = read.document.blocks as unknown as Record<string, unknown>[]
-    expect(Object.getPrototypeOf(read.document)).toBe(Object.prototype)
+    const [paragraph, embed] = read.value.blocks as unknown as Record<string, unknown>[]
+    expect(Object.getPrototypeOf(read.value)).toBe(Object.prototype)
     expect(Object.getPrototypeOf(paragraph)).toBe(Object.prototype)
     expect(Object.getPrototypeOf(embed)).toBe(Object.prototype)
     expect(Object.getPrototypeOf(embed?.data)).toBe(Object.prototype)
     expect(({} as Record<string, unknown>).polluted).toBeUndefined()
-    expect('polluted' in read.document).toBe(false)
-    expect(Object.getOwnPropertyDescriptor(read.document, '__proto__')?.value).toEqual({
+    expect('polluted' in read.value).toBe(false)
+    expect(Object.getOwnPropertyDescriptor(read.value, '__proto__')?.value).toEqual({
       polluted: 1,
     })
     // The keys survive the round trip as they were read.
-    expect(JSON.parse(serializeRichText(read.document))).toEqual(JSON.parse(source))
+    expect(JSON.parse(serializeRichText(read.value))).toEqual(JSON.parse(source))
   })
 
   it('ignores a field a node inherits rather than holds', () => {
@@ -726,13 +726,13 @@ describe('hostile input', () => {
     const loop: Record<string, unknown> = { type: 'blockquote', content: [] }
     ;(loop.content as unknown[]).push(loop, p(t('x')))
     const read = parseRichText(doc(embed, loop))
-    expect(read.document.blocks[0]).toEqual({ type: 'embed', list: [null] })
+    expect(read.value.blocks[0]).toEqual({ type: 'embed', list: [null] })
     expect(read.faults.map((fault) => fault.code)).toEqual([
       'unknown-node',
       'malformed',
       'too-deep',
     ])
-    expect(serializeRichText(read.document)).toContain('"x"')
+    expect(serializeRichText(read.value)).toContain('"x"')
   })
 
   it('never throws, and reads a value that throws as no document', () => {
@@ -743,10 +743,10 @@ describe('hostile input', () => {
       },
     }
     expect(parseRichText(throwing)).toEqual({
-      document: emptyRichText(),
+      value: emptyRichText(),
       faults: [
         {
-          code: 'not-a-document',
+          code: 'unreadable',
           path: [],
           message: 'The input could not be read: reading it threw.',
         },
@@ -772,7 +772,7 @@ describe('hostile input', () => {
     const blocks = Array.from({ length: 50_000 }, (_, index) => p(t(`line ${index}`)))
     const read = parseRichText(JSON.stringify(doc(...blocks)))
     expect(read.faults).toEqual([])
-    expect(read.document.blocks).toHaveLength(50_000)
+    expect(read.value.blocks).toHaveLength(50_000)
   })
 })
 
@@ -796,13 +796,13 @@ describe('migration', () => {
     const steps = [
       {
         from: 1,
-        migrate: (document: Record<string, unknown>) => ({ ...document, trail: ['1→2'] }),
+        migrate: (older: Record<string, unknown>) => ({ ...older, trail: ['1→2'] }),
       },
       {
         from: 2,
-        migrate: (document: Record<string, unknown>) => ({
-          ...document,
-          trail: [...(document.trail as string[]), `${String(document.format)}→3`],
+        migrate: (older: Record<string, unknown>) => ({
+          ...older,
+          trail: [...(older.trail as string[]), `${String(older.format)}→3`],
         }),
       },
     ]

@@ -211,8 +211,8 @@ export function richTextNodeText(node: unknown, options?: RichTextPlainTextOptio
  * `options.listMarkers`, each list item starts with `- ` or its number and a
  * full stop, for a preview.
  */
-export function richTextPlainText(document: unknown, options?: RichTextPlainTextOptions): string {
-  return blocksText(normalizeRichText(document).blocks, walkOf(options))
+export function richTextPlainText(doc: unknown, options?: RichTextPlainTextOptions): string {
+  return blocksText(normalizeRichText(doc).blocks, walkOf(options))
 }
 
 /**
@@ -220,10 +220,10 @@ export function richTextPlainText(document: unknown, options?: RichTextPlainText
  * space, cut to `maxLength` code points with `…` as the last of them when it
  * is longer. A cut never splits a surrogate pair.
  */
-export function richTextExcerpt(document: unknown, maxLength: number): string {
+export function richTextExcerpt(doc: unknown, maxLength: number): string {
   const limit = Math.floor(maxLength)
   if (!(limit > 0)) return ''
-  const text = richTextPlainText(document, { blockSeparator: ' ' }).replace(/\s+/g, ' ').trim()
+  const text = richTextPlainText(doc, { blockSeparator: ' ' }).replace(/\s+/g, ' ').trim()
   if (codePoints(text) <= limit) return text
   return `${text.slice(0, codePointEnd(text, limit - 1)).trimEnd()}…`
 }
@@ -235,8 +235,8 @@ export function richTextExcerpt(document: unknown, maxLength: number): string {
  * boundary counts nothing. Code points, not grapheme clusters or UTF-16 units,
  * because a server in any language counts code points the same way.
  */
-export function richTextLength(document: unknown): number {
-  return codePoints(richTextPlainText(document, { blockSeparator: '' }))
+export function richTextLength(doc: unknown): number {
+  return codePoints(richTextPlainText(doc, { blockSeparator: '' }))
 }
 
 function collectEntities(node: unknown, found: RichTextEntity[], walk: Walk): void {
@@ -271,8 +271,8 @@ function entitiesOf(blocks: readonly RichTextBlock[]): RichTextEntity[] {
 }
 
 /** Every entity in the document, in the order a person reads them: the people to notify of a mention. */
-export function richTextEntities(document: unknown): RichTextEntity[] {
-  return entitiesOf(normalizeRichText(document).blocks)
+export function richTextEntities(doc: unknown): RichTextEntity[] {
+  return entitiesOf(normalizeRichText(doc).blocks)
 }
 
 /**
@@ -280,8 +280,8 @@ export function richTextEntities(document: unknown): RichTextEntity[] {
  * whitespace. An empty heading, list item, quote, code block or line break is
  * not content.
  */
-export function isRichTextEmpty(document: unknown): boolean {
-  const { blocks } = normalizeRichText(document)
+export function isRichTextEmpty(doc: unknown): boolean {
+  const { blocks } = normalizeRichText(doc)
   if (entitiesOf(blocks).length > 0) return false
   return blocksText(blocks, walkOf({ blockSeparator: '' })).trim() === ''
 }

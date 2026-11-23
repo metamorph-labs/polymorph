@@ -36,10 +36,12 @@ import { readRecipeNumbers, RECIPE_NUMBERS } from './recipes'
  * mapping learns a type, and raise it only with the reason in the change. The
  * counts are Android's own, because Android renders fewer members: the charts
  * are absent there. ImageEditor's `Blob` is a `ByteArray`, as Swift holds it as
- * `Data`, so no type is opaque.
+ * `Data`. One type is opaque, RichTextContent's `RichTextDocument`, for the
+ * reason `contracts.test.ts` gives; the member stays in `kotlin-pending.ts`
+ * until its Compose rendering decides it.
  */
 const UNSUPPORTED_COUNT = 10
-const OPAQUE_COUNT = 0
+const OPAQUE_COUNT = 1
 
 const ROOT = resolve(import.meta.dirname, '../../..')
 const registry = buildRegistry(ROOT)

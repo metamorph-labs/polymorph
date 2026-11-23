@@ -295,7 +295,7 @@ describe('richTextFromText', () => {
 
   it('is a document in normal form', () => {
     const made = richTextFromText('one\ntwo\n\nthree')
-    expect(parseRichText(made)).toEqual({ document: made, faults: [] })
+    expect(parseRichText(made)).toEqual({ value: made, faults: [] })
   })
 })
 
@@ -304,7 +304,7 @@ describe('restrictRichText', () => {
     restrictRichText(doc(...blocks), formats).blocks
 
   it('is the normal form with every format allowed', () => {
-    expect(restrictRichText(REPLY, RICH_TEXT_FORMATS)).toEqual(parseRichText(REPLY).document)
+    expect(restrictRichText(REPLY, RICH_TEXT_FORMATS)).toEqual(parseRichText(REPLY).value)
   })
 
   it('makes a heading a paragraph', () => {
@@ -373,6 +373,6 @@ describe('restrictRichText', () => {
 
   it('is a document in normal form', () => {
     const made = restrictRichText(REPLY, ['bold'])
-    expect(parseRichText(made)).toEqual({ document: made, faults: [] })
+    expect(parseRichText(made)).toEqual({ value: made, faults: [] })
   })
 })

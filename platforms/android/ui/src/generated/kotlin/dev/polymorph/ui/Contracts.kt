@@ -4494,6 +4494,57 @@ fun interface PMRelativeTimeRendering {
     fun Render(props: PMRelativeTimeProps)
 }
 
+// RichTextContent
+
+/** `RichTextContent.headingLevel`: one of 2, 3, 4. */
+enum class PMRichTextContentHeadingLevel(val value: Int) {
+    HeadingLevel2(2),
+    HeadingLevel3(3),
+    HeadingLevel4(4),
+}
+
+/** `RichTextContent.size`. */
+enum class PMRichTextContentSize(val value: String) {
+    Sm("sm"),
+    Md("md"),
+}
+
+/**
+ * RichTextContent's props (`design/components/rich-text-content.md`): A stored rich-text document
+ * drawn through the vocabulary.
+ */
+data class PMRichTextContentProps(
+    /**
+     * The app's rendering of an entity: a Link to the person's page, a HoverCard with their card.
+     * `undefined` draws the entity token, so an app can draw one kind itself and leave the others
+     * as tokens.
+     */
+    val entity: (@Composable (PMRichTextEntity) -> Unit)? = null,
+    /**
+     * The page level the document's level 1 heading is drawn at. Each deeper level adds one, up to
+     * 4. Default 2, one level under the page's title.
+     */
+    val headingLevel: PMRichTextContentHeadingLevel? = null,
+    /** The app's router, handed to every Link the document draws (`link.md`). */
+    val onNavigate: ((String) -> Unit)? = null,
+    /** The body text step (Text's `sm` or `md`), which does not change the heading scale. */
+    val size: PMRichTextContentSize? = null,
+    /**
+     * The stored document. Any JSON is read as far as it can be; what is not a document draws
+     * nothing.
+     */
+    val value: PMRichTextDocument,
+)
+
+/**
+ * Draws RichTextContent from its props. The member's file declares `PMRichTextContent`, an object
+ * that implements it.
+ */
+fun interface PMRichTextContentRendering {
+    @Composable
+    fun Render(props: PMRichTextContentProps)
+}
+
 // ScrollArea
 
 /** `ScrollArea.orientation`. */
@@ -6906,6 +6957,16 @@ data class PMRelativeTimeMessages(
     val both: (String, String) -> String,
 )
 
+/** The web's `RichTextEntity`, field for field (`SHAPES` in `packages/native/src/mapping.ts`). */
+data class PMRichTextEntity(
+    /** The app’s name for the kind of thing: `user`, `issue`. */
+    val kind: String,
+    /** The app’s identifier for the thing. */
+    val id: String,
+    /** The words drawn and read, with any leading character: `@Ada Lovelace`. */
+    val label: String,
+)
+
 /** The web's `SectionNavItem`, field for field (`SHAPES` in `packages/native/src/mapping.ts`). */
 data class PMSectionNavItem(
     val label: String,
@@ -7187,3 +7248,9 @@ data class PMTreeMessages(
 )
 
 // Opaque types
+
+/**
+ * The web's `RichTextDocument`, opaque here: the registry prints it by name, not by shape. Used by
+ * RichTextContent.value.
+ */
+class PMRichTextDocument

@@ -48,10 +48,14 @@ import { BRAND_DRAWINGS } from '../../engine/src/icon/brands'
  * The opaque types are counted the same way. A field of one can be passed
  * along but holds no value a member can read, so each is a gap as much as an
  * unsupported prop is: give the type a shape in `SHAPES` and lower the number.
- * None is left.
+ * One is left: RichTextContent's `RichTextDocument`. It is a recursive tree
+ * whose readers keep the nodes of a later version, and how a native app hands
+ * one over is decided with the member's SwiftUI rendering. Until then the
+ * member stays in `pending.ts`, and the law below keeps a rendering from
+ * reading the type opaque.
  */
 const UNSUPPORTED_COUNT = 10
-const OPAQUE_COUNT = 0
+const OPAQUE_COUNT = 1
 
 const ROOT = resolve(import.meta.dirname, '../../..')
 const registry = buildRegistry(ROOT)

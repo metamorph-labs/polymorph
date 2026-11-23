@@ -36,7 +36,7 @@ export function richTextFormatVersion(format: unknown): number | null {
 /** One step: a document of format `from`, rewritten as format `from + 1`. */
 export interface RichTextMigrationStep {
   from: number
-  migrate: (document: Json) => Json
+  migrate: (doc: Json) => Json
 }
 
 /** Every step, oldest first. Empty while there is one format. */
@@ -55,14 +55,14 @@ export function migrateRichTextWith(
   if (!isJson(input)) return input
   const version = richTextFormatVersion(own(input, 'format'))
   if (version === null || version >= current) return input
-  let document = input
+  let doc = input
   for (let at = version; at < current; at += 1) {
     const step = steps.find((candidate) => candidate.from === at)
     // A version with no step to the next is not one this reader can upgrade.
     if (step === undefined) return input
-    document = { ...step.migrate(document), format: richTextFormatName(at + 1) }
+    doc = { ...step.migrate(doc), format: richTextFormatName(at + 1) }
   }
-  return document
+  return doc
 }
 
 /**

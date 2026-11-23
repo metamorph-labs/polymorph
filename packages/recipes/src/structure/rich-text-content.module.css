@@ -1,16 +1,44 @@
 /* RichTextContent — `design/components/rich-text-content.md`.
  *
- * DECIDE: the recipe. Every length, colour, radius, shadow and duration below
- * comes from a `--pm-*` token: Stylelint's `polymorph/token-values-only` refuses
- * a raw value, and `packages/rules/src/token-references.test.ts` refuses a token
- * that does not exist — a misspelled name throws its whole declaration away
- * without a word, which is the failure that law was written for.
+ * Most styling comes from other members through composition: paragraphs are
+ * Text, headings are Heading, code blocks are CodeBlock, inline code is Code
+ * and links are Link. The spacing between blocks, a list's markers and a
+ * quote's rule are Markdown's, composed and not restated, so a list in a reply
+ * and a list in a comment are one decision. The entity token is this sheet's
+ * own.
  *
- * `design/components/README.md` assigns radius and size by component class;
- * `pnpm registry` prints the token set with its values. */
+ * Each part is one class, and no rule reaches through the root, because
+ * RichTextInput's editable surface composes the same classes so that a
+ * document looks the same while it is written. */
 
 .root {
-  display: flex;
-  flex-direction: column;
-  gap: var(--pm-space-3);
+  composes: root from '../ai/markdown.module.css';
+}
+
+.list {
+  composes: list from '../ai/markdown.module.css';
+}
+
+.item {
+  composes: item from '../ai/markdown.module.css';
+}
+
+.quote {
+  composes: quote from '../ai/markdown.module.css';
+}
+
+/* A reference to something the app owns, such as a person or an issue, on the
+   accent wash. The label carries its trigger character (`@Ada Lovelace`), so
+   the token is never marked by colour alone. It takes the surrounding text's
+   step and weight, as Code keeps its weight. Padding is on the inline axis
+   only, as Code's is, so a line holding a token keeps the line box of a line
+   without one. A long label breaks inside the token and each line's part keeps
+   the padding and the radius, Code's long-string cell. */
+.entity {
+  padding-inline: var(--pm-space-1);
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+  border-radius: var(--pm-radius-sm);
+  overflow-wrap: anywhere;
+  box-decoration-break: clone;
 }

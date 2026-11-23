@@ -6643,6 +6643,60 @@ public protocol PMRelativeTimeRendering: View {
   init(props: PMRelativeTimeProps)
 }
 
+// MARK: - RichTextContent
+
+/// `RichTextContent.headingLevel`: one of 2, 3, 4.
+public enum PMRichTextContentHeadingLevel: Int, CaseIterable, Sendable {
+  case headingLevel2 = 2
+  case headingLevel3 = 3
+  case headingLevel4 = 4
+}
+
+/// `RichTextContent.size`.
+public enum PMRichTextContentSize: String, CaseIterable, Sendable {
+  case sm
+  case md
+}
+
+/// RichTextContent's props (`design/components/rich-text-content.md`): A stored rich-text document
+/// drawn through the vocabulary.
+public struct PMRichTextContentProps {
+  /// The app's rendering of an entity: a Link to the person's page, a HoverCard with their card.
+  /// `undefined` draws the entity token, so an app can draw one kind itself and leave the others as
+  /// tokens.
+  public var entity: (@MainActor (PMRichTextEntity) -> PMContent)?
+  /// The page level the document's level 1 heading is drawn at. Each deeper level adds one, up to
+  /// 4. Default 2, one level under the page's title.
+  public var headingLevel: PMRichTextContentHeadingLevel?
+  /// The app's router, handed to every Link the document draws (`link.md`).
+  public var onNavigate: (@MainActor (String) -> Void)?
+  /// The body text step (Text's `sm` or `md`), which does not change the heading scale.
+  public var size: PMRichTextContentSize?
+  /// The stored document. Any JSON is read as far as it can be; what is not a document draws
+  /// nothing.
+  public var value: PMRichTextDocument
+
+  public init(
+    entity: (@MainActor (PMRichTextEntity) -> PMContent)? = nil,
+    headingLevel: PMRichTextContentHeadingLevel? = nil,
+    onNavigate: (@MainActor (String) -> Void)? = nil,
+    size: PMRichTextContentSize? = nil,
+    value: PMRichTextDocument
+  ) {
+    self.entity = entity
+    self.headingLevel = headingLevel
+    self.onNavigate = onNavigate
+    self.size = size
+    self.value = value
+  }
+}
+
+/// A view that renders RichTextContent from its props. The member's file declares
+/// `PMRichTextContent`, which conforms to it.
+public protocol PMRichTextContentRendering: View {
+  init(props: PMRichTextContentProps)
+}
+
 // MARK: - ScatterChart
 
 /// ScatterChart's props (`design/components/scatter-chart.md`): A scatter chart for correlation
@@ -11026,6 +11080,26 @@ public struct PMRelativeTimeMessages {
   }
 }
 
+/// The web's `RichTextEntity`, field for field (`SHAPES` in `packages/native/src/mapping.ts`).
+public struct PMRichTextEntity {
+  /// The app’s name for the kind of thing: `user`, `issue`.
+  public var kind: String
+  /// The app’s identifier for the thing.
+  public var id: String
+  /// The words drawn and read, with any leading character: `@Ada Lovelace`.
+  public var label: String
+
+  public init(
+    kind: String,
+    id: String,
+    label: String
+  ) {
+    self.kind = kind
+    self.id = id
+    self.label = label
+  }
+}
+
 /// The web's `ScatterBubble`, field for field (`SHAPES` in `packages/native/src/mapping.ts`).
 public struct PMScatterBubble {
   public var key: String
@@ -11609,3 +11683,9 @@ public struct PMValueFormat {
 }
 
 // MARK: - Opaque types
+
+/// The web's `RichTextDocument`, opaque here: the registry prints it by name, not by shape. Used by
+/// RichTextContent.value.
+public struct PMRichTextDocument {
+  public init() {}
+}

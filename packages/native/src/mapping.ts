@@ -1420,6 +1420,24 @@ export const SHAPES: Readonly<Record<string, Shape>> = {
       },
     ],
   },
+  // A case of the document's inlines, whose `type` is always `'entity'`, so the
+  // shape leaves the discriminant out as Menu's entries leave out `kind`.
+  RichTextEntity: {
+    discriminant: 'type',
+    fields: [
+      {
+        name: 'kind',
+        type: 'string',
+        doc: 'The app’s name for the kind of thing: `user`, `issue`.',
+      },
+      { name: 'id', type: 'string', doc: 'The app’s identifier for the thing.' },
+      {
+        name: 'label',
+        type: 'string',
+        doc: 'The words drawn and read, with any leading character: `@Ada Lovelace`.',
+      },
+    ],
+  },
   ScatterBubble: {
     fields: [
       { name: 'key', type: 'string' },

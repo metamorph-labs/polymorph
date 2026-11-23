@@ -153,11 +153,15 @@ const card = renderSystemCard(registry)
  * status is an AuthPage builds a page for "not found" from a Stack and a
  * Heading.
  *
+ * It also includes RichTextContent, one line. A model not told about it draws
+ * a stored comment's document with Markdown, which reads a string, or walks
+ * the JSON into Text and Heading itself and drops the nodes it does not know.
+ *
  * `packages/mcp/src/tools.test.ts` and `packages/mcp/transcript.test.ts` check
  * the same number from the tool that serves the card, so the three move
  * together.
  */
-const BUDGET_CHARS = 38_220
+const BUDGET_CHARS = 38_350
 /**
  * A platform card says, for every adapted member, how it renders there, which
  * the web card never has to; those notes are the only thing that makes the

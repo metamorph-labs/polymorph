@@ -84,11 +84,11 @@ function restrictBlocks(blocks: readonly unknown[], allowed: ReadonlySet<string>
  * With every format allowed it is the document's normal form.
  */
 export function restrictRichText(
-  document: unknown,
+  doc: unknown,
   formats: readonly RichTextFormat[],
 ): RichTextDocument {
   const allowed: ReadonlySet<string> = new Set(Array.isArray(formats) ? formats : [])
-  const read = normalizeRichText(document)
+  const read = normalizeRichText(doc)
   // The normal form again, so runs a removed mark separated are one run, and
   // a list item whose first block came out of a quote starts with a paragraph.
   return normalizeRichText({ ...read, blocks: restrictBlocks(read.blocks, allowed) })

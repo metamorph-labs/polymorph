@@ -110,6 +110,8 @@ extension PMCatalogue {
     PMCatalogueEntry(name: "ReasoningDisclosure", status: .native),
     PMCatalogueEntry(name: "RecordButton", status: .native),
     PMCatalogueEntry(name: "RelativeTime", status: .native),
+    PMCatalogueEntry(name: "RichTextContent", status: .native),
+    PMCatalogueEntry(name: "RichTextInput", status: .absent, substitute: "Textarea"),
     PMCatalogueEntry(name: "ScatterChart", status: .native, rendersAs: "Swift Charts"),
     PMCatalogueEntry(name: "ScrollArea", status: .native),
     PMCatalogueEntry(name: "SearchInput", status: .native),

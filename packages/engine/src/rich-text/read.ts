@@ -751,12 +751,12 @@ function readDocument(input: unknown, faults: RichTextFault[]): RichTextDocument
     try {
       value = JSON.parse(value) as unknown
     } catch {
-      fault(faults, 'not-a-document', [], 'The input is text that is not JSON.')
+      fault(faults, 'unreadable', [], 'The input is text that is not JSON.')
       return emptyRichText()
     }
   }
   if (!isJson(value)) {
-    fault(faults, 'not-a-document', [], `The input is ${described(value)}, not a document.`)
+    fault(faults, 'unreadable', [], `The input is ${described(value)}, not a rich-text value.`)
     return emptyRichText()
   }
   const format = own(value, 'format')
@@ -764,7 +764,7 @@ function readDocument(input: unknown, faults: RichTextFault[]): RichTextDocument
   if (version === null) {
     fault(
       faults,
-      'not-a-document',
+      'unreadable',
       ['format'],
       typeof format === 'string'
         ? `The format ${named(format)} is not a rich-text format.`
@@ -784,7 +784,7 @@ function readDocument(input: unknown, faults: RichTextFault[]): RichTextDocument
     if (!isJson(value) || richTextFormatVersion(own(value, 'format')) !== RICH_TEXT_VERSION) {
       fault(
         faults,
-        'not-a-document',
+        'unreadable',
         ['format'],
         `The format ${named(format as string)} is one this version cannot upgrade.`,
       )
@@ -793,14 +793,14 @@ function readDocument(input: unknown, faults: RichTextFault[]): RichTextDocument
   }
   const blocks = own(value, 'blocks')
   if (!Array.isArray(blocks)) {
-    fault(faults, 'not-a-document', ['blocks'], 'The input has no blocks list.')
+    fault(faults, 'unreadable', ['blocks'], 'The input has no blocks list.')
     return emptyRichText()
   }
-  const document: RichTextDocument = {
+  const doc: RichTextDocument = {
     format: RICH_TEXT_FORMAT,
     blocks: readBlocks(blocks, 0, ['blocks'], faults),
   }
-  return assign(document, readExtras(value, DOCUMENT_KEYS, [], faults))
+  return assign(doc, readExtras(value, DOCUMENT_KEYS, [], faults))
 }
 
 /**
@@ -811,14 +811,14 @@ function readDocument(input: unknown, faults: RichTextFault[]): RichTextDocument
 export function parseRichText(input: unknown): RichTextParseResult {
   const faults: RichTextFault[] = []
   try {
-    return { document: readDocument(input, faults), faults }
+    return { value: readDocument(input, faults), faults }
   } catch {
     // A value passed in memory can throw from a getter or a proxy. JSON cannot.
     return {
-      document: emptyRichText(),
+      value: emptyRichText(),
       faults: [
         {
-          code: 'not-a-document',
+          code: 'unreadable',
           path: [],
           message: 'The input could not be read: reading it threw.',
         },
@@ -829,7 +829,7 @@ export function parseRichText(input: unknown): RichTextParseResult {
 
 /** The document in normal form: what `parseRichText` returns, without the faults. */
 export function normalizeRichText(input: unknown): RichTextDocument {
-  return parseRichText(input).document
+  return parseRichText(input).value
 }
 
 /**

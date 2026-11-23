@@ -127,7 +127,7 @@ export const RICH_TEXT_FORMATS: readonly RichTextFormat[] = [
 
 export type RichTextFaultCode =
   /** The input is not an object with a `format` and a `blocks` array. The result is the empty document. */
-  | 'not-a-document'
+  | 'unreadable'
   /** The document's format is later than this reader's. It is read as far as it can be. */
   | 'newer-format'
   /** A node of a type this reader does not know. It is kept and drawn as its readable text. */
@@ -150,7 +150,7 @@ export interface RichTextFault {
 
 export interface RichTextParseResult {
   /** The document in normal form. Always usable, whatever the input was. */
-  document: RichTextDocument
+  value: RichTextDocument
   /** What the reader repaired, removed or did not know. Empty for a document this version wrote. */
   faults: RichTextFault[]
 }

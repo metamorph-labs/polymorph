@@ -250,7 +250,7 @@ describe('get_system_card and get_theme_axes', () => {
     expect(card.length).toBeGreaterThan(5_000)
     // The budget is set and justified in `packages/registry/src/card.test.ts`.
     // This is the same number, checked from the tool that serves the card.
-    expect(card.length).toBeLessThan(38_220)
+    expect(card.length).toBeLessThan(38_350)
   })
 
   it('renders the card for a platform, from the registry, and the web card by default', () => {
