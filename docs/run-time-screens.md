@@ -518,8 +518,8 @@ a fault and draws nothing deeper. No document makes the core throw
 ### Faults
 
 A fault never blanks the screen. A node that cannot be drawn (a component the host does not
-allow, a member that throws) draws nothing in its place, and the rest of the screen draws
-(`packages/screen/src/walk.test.ts`, `packages/react/src/screen/screen.test.tsx`,
+allow, a member that throws as it first renders) draws nothing in its place, and the rest of the
+screen draws (`packages/screen/src/walk.test.ts`, `packages/react/src/screen/screen.test.tsx`,
 `packages/elements-ui/src/bridge/kept.test.ts`). Each fault is `{ path, message, component? }`,
 with the validator's paths (`$.root.children[2]`). It is told to the host once, when it first
 appears: to `onFault` in React, and as `poly-fault` on `<poly-screen>`. While the document
@@ -681,7 +681,7 @@ It draws the first of these that holds a document:
 | `text` (property) | a model's answer so far |
 | `data` (property) | the host's data, by input name |
 | `streaming` (attribute and property) | more of the document is to come. The page sets it while an answer arrives and clears it when the answer ends |
-| `members` (attribute and property) | the members the host allows. The attribute holds names separated by spaces, or a JSON array. A change starts the drawing again |
+| `members` (attribute and property) | the members the host allows; the elements' default when absent. The attribute holds names separated by spaces, or a JSON array. A value that is not a list of names allows no member and is a fault at the path `members`. A change starts the drawing again |
 | `faults` (attribute and property) | `hidden` (the default) or `inline`, which draws each fault as a `poly-alert` in its node's place |
 | `values` (property, read only) | each named control's current value |
 | `check()` (method) | a promise of what `checkScreen` says of the document it draws, with its members. The first call fetches the validator |
