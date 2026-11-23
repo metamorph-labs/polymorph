@@ -63,18 +63,18 @@ import { addressFault, addressMessage, ADDRESS_KEYS } from './urls'
  *    its fault and is drawn as nothing, or as the fault where the host asks;
  *    every fault reaches the host with its path (`onFault`). A renderer
  *    reports a member that throws with `fail`.
- *  - **Streaming.** While `streaming`, an element still being written is not
- *    drawn: one the text ends inside (`cut`, from `parsePartial`), before its
- *    `children` have begun. It is left out of its parent, or of `root`, until
- *    the text moves past its own fields, so a member is drawn once its props
- *    are whole and never with a part of them, and a container is drawn as soon
- *    as its children begin, which then arrive one by one. Its fields are
- *    written before its `children` in the schema's order; a document that
- *    writes `props` after `children` has its element drawn before its props
- *    arrive. A prop or a callback that has not arrived is no fault, and the
- *    string still being written (`open`) is drawn only as a child or as a prop
- *    that takes free text. A node whose content did not change keeps its
- *    object, so a renderer redraws only what did.
+ *  - **Streaming.** While `streaming`, an element is drawn once every prop it
+ *    requires is written and the text (`cut`, from `parsePartial`) ends
+ *    outside it, in its `children`, or in an element one of its props holds;
+ *    until then it is left out of its parent, or of `root`. Once drawn it
+ *    stays drawn, and a prop written after that arrives when it is whole, as
+ *    an update. So a member is never drawn without a prop it requires nor with
+ *    a half-written value, and a page is drawn while the elements in its
+ *    props and its children are still being written. A prop or a callback
+ *    that has not arrived is no fault, and the string still being written
+ *    (`open`) is drawn only as a child or as a prop that takes free text. A
+ *    node whose content did not change keeps its object, so a renderer
+ *    redraws only what did.
  *
  * Paths are the validator's: `$.root`, `$.root.children[0]`,
  * `$.root.props.emptyState.secondaryAction`.
@@ -172,8 +172,10 @@ export interface ScreenOptions {
   open?: string | null
   /**
    * Where the text ends while it streams (`parsePartial`'s `cut`). An element
-   * the cut is inside, before its `children`, is still being written and is
-   * not drawn. Absent or `null`, every element that has arrived is drawn.
+   * is drawn once every prop it requires is written and the cut is outside it,
+   * in its `children`, or in an element one of its props holds; a prop written
+   * after that arrives when it is whole. Absent or `null`, every element that
+   * has arrived is drawn.
    */
   cut?: string | null
   /**
@@ -389,6 +391,14 @@ interface Choice {
 
 const faultKey = (fault: ScreenFault) => `${fault.path}\u0000${fault.message}`
 
+/** Whether a value is an element, or a list or a structured object with an element in it, at any depth. */
+function holdsElement(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(holdsElement)
+  if (!isRecord(value)) return false
+  if (typeof value['component'] === 'string') return true
+  return isRecord(value['$object']) && Object.values(value['$object']).some(holdsElement)
+}
+
 /** Whether a path is the other or inside it: `$.root.children[1].props` is within `$.root.children[1]`. */
 const within = (path: string, outer: string): boolean =>
   path === outer || path.startsWith(`${outer}.`) || path.startsWith(`${outer}[`)
@@ -432,6 +442,8 @@ export function createScreen(options: ScreenOptions): Screen {
   let reported: { fault: ScreenFault; node: ScreenNode | undefined }[] = []
   let values: Record<string, JsonValue> = {}
   let told = new Set<string>()
+  /** The elements drawn while the document streams, by `path#component`: each stays drawn. */
+  let drawnBefore = new Set<string>()
   const listeners = new Set<() => void>()
 
   const action = (name: string): Handler => {
@@ -504,15 +516,71 @@ export function createScreen(options: ScreenOptions): Screen {
     const { streaming, open } = state
     const cut = streaming ? state.cut : null
 
+    const drawnNow = new Set<string>()
+
     /**
-     * Whether an element has been written as far as it is drawn: the text does
-     * not end inside it, or ends inside its `children`, or its `children` have
-     * begun and it ends after them. Once its children begin, an element stays
-     * drawn whatever follows them.
+     * Where the text ends in a value written at `at`: in a place that holds an
+     * element (an element, or a list or a structured object with an element
+     * among its items or fields, at any depth), where it is an element being
+     * written (`element`); in data (`data`); or not inside the value (`null`).
      */
-    const arrived = (element: SpecElement, path: string): boolean => {
-      if (cut === null || !within(cut, path)) return true
-      return within(cut, `${path}.children`) || element.children !== undefined
+    const cutIn = (value: unknown, at: string): 'element' | 'data' | null => {
+      if (cut === null || !within(cut, at)) return null
+      let current = value
+      let rest = cut.slice(at.length)
+      for (;;) {
+        if (holdsElement(current)) return 'element'
+        if (rest === '') return 'data'
+        const step = /^\.([^.[]+)|^\[(\d+)\]/.exec(rest)
+        if (step === null) return 'data'
+        rest = rest.slice(step[0].length)
+        if (step[2] !== undefined) {
+          current = Array.isArray(current) ? current[Number(step[2])] : undefined
+        } else {
+          // A structured object's fields sit at its own path, as the validator writes them.
+          const fields =
+            isRecord(current) && isRecord(current['$object']) ? current['$object'] : current
+          current = isRecord(fields) ? fields[step[1] as string] : undefined
+        }
+      }
+    }
+
+    /**
+     * Whether an element is drawn while the document streams. An element drawn
+     * before stays drawn. Otherwise it is drawn once every prop it requires is
+     * written (a callback the walk stubs aside): whole, or, for a prop that is
+     * an element, far enough for that element to be drawn. And the text must
+     * end outside it, in its `children`, or in an element one of its props
+     * holds: not in a prop's data, and not between its own fields or its props.
+     */
+    const drawable = (element: SpecElement, path: string): boolean => {
+      if (cut === null) return true
+      const key = `${path}#${element.component}`
+      if (drawnBefore.has(key)) return true
+      const written = isRecord(element.props) ? element.props : {}
+      const required = surfaceOf(vocabulary, element.component)?.props ?? []
+      for (const prop of required) {
+        if (prop.optional || prop.name === 'children' || isCallback(prop.type)) continue
+        if (!Object.prototype.hasOwnProperty.call(written, prop.name)) return false
+        const value = written[prop.name]
+        const at = `${path}.props.${prop.name}`
+        const where = cutIn(value, at)
+        if (where === 'data') return false
+        // A prop that is an element being written is there once that element is drawn.
+        if (
+          where === 'element' &&
+          isElement(value as SpecValue) &&
+          !drawable(value as SpecElement, at)
+        ) {
+          return false
+        }
+      }
+      if (!within(cut, path) || within(cut, `${path}.children`)) return true
+      for (const [name, value] of Object.entries(written)) {
+        const where = cutIn(value, `${path}.props.${name}`)
+        if (where !== null) return where === 'element'
+      }
+      return false
     }
 
     const resolveValue = (
@@ -522,6 +590,9 @@ export function createScreen(options: ScreenOptions): Screen {
       text: boolean,
     ): Drawn | undefined => {
       const value = written as SpecValue
+      // Data still being written arrives when it is whole. Where things are drawn, text arrives as
+      // it is written.
+      if (!drawn && cutIn(value, path) === 'data') return undefined
       if (Array.isArray(value)) {
         const holds = drawn || value.some((item) => !Array.isArray(item) && isElement(item))
         const items: Drawn[] = []
@@ -566,7 +637,7 @@ export function createScreen(options: ScreenOptions): Screen {
         return { kind: 'value', value: plain, from: 'document' }
       }
       if (isElement(value)) {
-        return arrived(value, path) ? { kind: 'node', node: node(value, path) } : undefined
+        return drawable(value, path) ? { kind: 'node', node: node(value, path) } : undefined
       }
       // A string still being written is drawn only where it reads as what it will say.
       if (typeof value === 'string' && path === open && !text) return undefined
@@ -782,13 +853,14 @@ export function createScreen(options: ScreenOptions): Screen {
       const before = previous.get(next.path)
       const node = before !== undefined && sameNode(before, next) ? before : next
       nodes.set(node.path, node)
+      drawnNow.add(`${node.path}#${node.component}`)
       return node
     }
 
     const document = state.document
     const rootElement = isRecord(document) ? document['root'] : undefined
     root =
-      isElement(rootElement as SpecValue) && arrived(rootElement as SpecElement, '$.root')
+      isElement(rootElement as SpecValue) && drawable(rootElement as SpecElement, '$.root')
         ? node(rootElement as SpecElement, '$.root')
         : null
     if (root === null && !streaming) {
@@ -804,6 +876,7 @@ export function createScreen(options: ScreenOptions): Screen {
       ({ fault, node: at }) => at === undefined || nodes.get(fault.path) === at,
     )
     previous = nodes
+    drawnBefore = streaming ? drawnNow : new Set()
     bases = nextBases
     bound = nextBound
     walked = found
@@ -872,6 +945,8 @@ export function createScreen(options: ScreenOptions): Screen {
         changed = true
       }
       if ('streaming' in next) {
+        // A stream that begins again draws its elements as they are written again.
+        if (next.streaming === true && !state.streaming) drawnBefore = new Set()
         state.streaming = next.streaming ?? false
         changed = true
       }

@@ -11,14 +11,15 @@ import { createScreen, type Drawn, type Screen, type ScreenNode } from './walk'
 /**
  * When an element a model is still writing is drawn.
  *
- * While a document streams, an element the text ends inside is not drawn
- * until the text has moved past its own fields: a member is drawn once its
- * props are whole, and a container as soon as its children begin. So a
- * renderer is never handed a member whose required prop has not arrived, nor
- * one whose `value` arrives after it was first drawn. The laws, over every cut
- * of every screen in `design/screens/` and in the fixtures: an element is never
- * drawn with props other than the ones it has in the whole document, and an
- * element once drawn stays drawn.
+ * While a document streams, an element is drawn once every prop it requires
+ * is written whole and the text ends outside it, in its `children`, or in an
+ * element one of its props holds. A prop written after that arrives when it is
+ * whole. So a renderer is never handed a member without a prop it requires,
+ * nor a half-written value, and a container or a page is drawn while its
+ * children or the elements in its props are still being written. The laws,
+ * over every cut of every screen in `design/screens/` and in the fixtures: a
+ * drawn element has every prop it requires, every value it is given is the
+ * whole document's, and an element once drawn stays drawn.
  */
 
 const ROOT = resolve(import.meta.dirname, '../../..')
@@ -41,27 +42,77 @@ const SCREENS = [
   })),
 ]
 
-/** Every node a renderer is handed, by path: its component and the props it is given. */
-function drawn(screen: Screen): Map<string, string> {
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/**
+ * What a renderer is handed, as leaves by path: each node as its component,
+ * each value it is given as JSON, each function the screen makes as `fn`.
+ * Text children are left out: they are drawn as they are written.
+ */
+function handed(screen: Screen): Map<string, string> {
   const found = new Map<string, string>()
+  const leaf = (value: Drawn, at: string) => {
+    if (value.kind === 'node') node(value.node)
+    else if (value.kind === 'list')
+      value.items.forEach((item, index) => leaf(item, `${at}[${index}]`))
+    else if (value.kind === 'record') {
+      for (const [key, field] of Object.entries(value.fields)) leaf(field, `${at}.${key}`)
+    } else if (value.kind === 'value') data(value.value, at)
+    else if (value.kind === 'binding') data(value.value, at)
+  }
+  // Data is compared leaf by leaf, so an object that later holds an element too compares alike.
+  const data = (value: unknown, at: string) => {
+    if (Array.isArray(value)) value.forEach((item, index) => data(item, `${at}[${index}]`))
+    else if (isRecord(value))
+      for (const [key, item] of Object.entries(value)) data(item, `${at}.${key}`)
+    else found.set(at, typeof value === 'function' ? 'fn' : JSON.stringify(value))
+  }
+  const node = (at: ScreenNode) => {
+    found.set(at.path, `node ${at.component}`)
+    for (const [name, value] of Object.entries(at.props)) leaf(value, `${at.path}.props.${name}`)
+    for (const child of at.children) if (child.kind === 'node') node(child.node)
+  }
+  if (screen.root !== null) node(screen.root)
+  return found
+}
+
+/** Every drawn node without a prop its member requires: a callback is stubbed, a binding may find no data. */
+function missing(screen: Screen): string[] {
+  const out: string[] = []
   const visit = (value: Drawn) => {
     if (value.kind === 'node') node(value.node)
     else if (value.kind === 'list') value.items.forEach(visit)
     else if (value.kind === 'record') Object.values(value.fields).forEach(visit)
   }
   const node = (at: ScreenNode) => {
-    found.set(at.path, `${at.component}(${Object.keys(at.props).sort().join(', ')})`)
+    const written = isRecord(at.element.props) ? at.element.props : {}
+    for (const prop of at.fault === null
+      ? (surfaceOf(VOCABULARY, at.component)?.props ?? [])
+      : []) {
+      if (prop.optional || prop.name === 'children' || prop.name in at.props) continue
+      const value = written[prop.name]
+      if (isRecord(value) && typeof value['$'] === 'string') continue
+      out.push(`${at.path}.props.${prop.name}`)
+    }
     Object.values(at.props).forEach(visit)
     at.children.forEach(visit)
   }
   if (screen.root !== null) node(screen.root)
-  return found
+  return out
 }
 
-/** A screen fed each cut of a text in turn, and what it drew at each. */
-function stream(text: string): { cuts: Map<string, string>[]; whole: Map<string, string> } {
+interface Cut {
+  cut: string | null
+  streaming: boolean
+  handed: Map<string, string>
+  missing: string[]
+}
+
+/** A screen fed each cut of a text in turn, and what it handed a renderer at each. */
+function stream(text: string): { cuts: Cut[]; whole: Map<string, string> } {
   const screen = createScreen({ document: undefined, vocabulary: VOCABULARY, streaming: true })
-  const cuts: Map<string, string>[] = []
+  const cuts: Cut[] = []
   for (let end = 1; end < text.length; end += 1) {
     const read = parsePartial(text.slice(0, end))
     screen.update({
@@ -70,40 +121,107 @@ function stream(text: string): { cuts: Map<string, string>[]; whole: Map<string,
       cut: read.cut,
       streaming: !read.complete,
     })
-    cuts.push(drawn(screen))
+    cuts.push({
+      cut: read.cut,
+      streaming: !read.complete,
+      handed: handed(screen),
+      missing: missing(screen),
+    })
   }
   screen.update({ document: JSON.parse(text) as unknown, open: null, cut: null, streaming: false })
-  return { cuts, whole: drawn(screen) }
+  return { cuts, whole: handed(screen) }
 }
 
 describe('every cut of every screen', () => {
   for (const { file, text } of SCREENS) {
-    it(`${file}: draws an element only with its whole props, and keeps it drawn`, () => {
+    it(`${file}: draws an element with every prop it requires and whole values, and keeps it drawn`, () => {
       const { cuts, whole } = stream(text)
       let before = new Map<string, string>()
       for (const [at, now] of cuts.entries()) {
-        for (const [path, props] of now) {
-          if (whole.get(path) !== props) {
+        // Once the document is whole every element is drawn, and what it lacks is the validator's.
+        if (now.streaming) expect(now.missing, `cut ${at + 1}`).toEqual([])
+        for (const [path, value] of now.handed) {
+          if (whole.get(path) !== value) {
             throw new Error(
-              `cut ${at + 1}: ${path} is drawn as ${props}, and whole as ${whole.get(path) ?? 'nothing'}`,
+              `cut ${at + 1}: ${path} is handed ${value}, and whole ${whole.get(path) ?? 'nothing'}`,
             )
           }
         }
-        for (const path of before.keys()) {
-          if (!now.has(path)) throw new Error(`cut ${at + 1}: ${path} was drawn, and is not now`)
+        for (const [path, value] of before) {
+          if (value.startsWith('node ') && !now.handed.has(path)) {
+            throw new Error(`cut ${at + 1}: ${path} was drawn, and is not now`)
+          }
         }
-        before = now
+        before = now.handed
       }
-      // The law held over a stream that draws before it ends. A root whose content is all props
-      // (a Dashboard's panels) is drawn whole once its props close; a root with children is drawn
-      // as they begin.
-      expect(cuts.some((now) => now.size > 0)).toBe(true)
-      expect(whole.size).toBeGreaterThan(3)
-      if ('children' in (JSON.parse(text) as { root: object }).root) {
-        expect(cuts.some((now) => now.size > 0 && now.size < whole.size)).toBe(true)
-      }
+      // The law held over a stream that draws part of the screen before it ends.
+      expect(cuts.some((now) => now.handed.size > 0 && now.handed.size < whole.size)).toBe(true)
     }, 60_000)
   }
+
+  it('draws a Dashboard while its last panel is still being written', () => {
+    const text = readFileSync(resolve(ROOT, 'packages/screen/fixtures/usage-overview.json'), 'utf8')
+    const { cuts } = stream(text)
+    const early = cuts.filter(
+      (now) =>
+        now.handed.get('$.root') === 'node Dashboard' &&
+        now.cut !== null &&
+        now.cut.startsWith('$.root.props.secondary'),
+    )
+    expect(early.length).toBeGreaterThan(0)
+    // The panel being written is drawn as soon as its children begin.
+    expect(
+      early.some((now) => now.handed.get('$.root.props.secondary') === 'node Dashboard.Panel'),
+    ).toBe(true)
+  })
+
+  /**
+   * A prop an element requires, written after a prop that holds an element:
+   * the element waits for it, and is drawn once it is whole. Two screens write
+   * one, and each element waits.
+   */
+  it('waits for a required data prop written after a prop that holds an element', () => {
+    const late: { file: string; at: string; name: string; text: string }[] = []
+    const holds = (value: unknown): boolean =>
+      Array.isArray(value)
+        ? value.some(holds)
+        : isRecord(value) &&
+          (typeof value['component'] === 'string' ||
+            (isRecord(value['$object']) && Object.values(value['$object']).some(holds)))
+    const visit = (value: unknown, at: string, file: string, text: string) => {
+      if (Array.isArray(value)) {
+        value.forEach((item, index) => visit(item, `${at}[${index}]`, file, text))
+        return
+      }
+      if (!isRecord(value)) return
+      if (typeof value['component'] === 'string' && isRecord(value['props'])) {
+        const required = new Set(
+          (surfaceOf(VOCABULARY, value['component'])?.props ?? [])
+            .filter((prop) => !prop.optional && prop.name !== 'children')
+            .map((prop) => prop.name),
+        )
+        let slot = false
+        for (const [name, prop] of Object.entries(value['props'])) {
+          if (holds(prop)) slot = true
+          else if (slot && required.has(name)) late.push({ file, at, name, text })
+        }
+      }
+      for (const [key, item] of Object.entries(value)) visit(item, `${at}.${key}`, file, text)
+    }
+    for (const { file, text } of SCREENS) {
+      visit((JSON.parse(text) as { root: unknown }).root, '$.root', file, text)
+    }
+    expect(late.map(({ file, at, name }) => `${file} ${at}.props.${name}`)).toEqual([
+      'design/screens/agent-loop/attempt-1.json $.root.props.emptyState',
+      'fixtures/ticket-queue.json $.root.props.actions.props.items',
+    ])
+    for (const { file, at, name, text } of late) {
+      const { cuts } = stream(text)
+      const writing = cuts.filter((now) => now.cut?.startsWith(`${at}.props.${name}`) === true)
+      expect(writing.length, file).toBeGreaterThan(0)
+      for (const now of writing) expect(now.handed.has(at), `${file} ${now.cut}`).toBe(false)
+    }
+  })
 })
 
 describe('an element still being written', () => {

@@ -39,9 +39,10 @@ behaves the same in each of them:
   `mailto:` or `tel:`;
 - a member that hosts another library's code (`ThirdParty`) is drawn only where the host names it;
 - a node that cannot be drawn is drawn as nothing and reported with its path;
-- while a document streams, an element still being written (`parsePartial`'s `cut`) is left out
-  until its props are whole, so a member is never drawn with part of its props, and a container
-  is drawn as soon as its children begin.
+- while a document streams, an element is drawn once every prop it requires is written and the
+  text (`parsePartial`'s `cut`) has moved past its plain props, so a member is never drawn without
+  a prop it requires nor with a half-written value, and a page is drawn while the elements in its
+  props and its children are still being written; a prop written later arrives when it is whole.
 
 ## Asking a model for a screen
 

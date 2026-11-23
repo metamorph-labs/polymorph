@@ -38,7 +38,10 @@ import { VOCABULARY } from './vocabulary'
  * no options. The section prints each type once, a function field that
  * returns a value as `fn`, and a member's props type as a pointer to the
  * member's line. It also includes the output contract's sentence that a
- * callback returning a value is answered and never told to the host.
+ * callback returning a value is answered and never told to the host, and the
+ * one that asks for an element's plain props before its props that hold
+ * elements, because a screen drawn as it is written draws an element once its
+ * plain props are whole.
  */
 const BUDGET_CHARS = 57_000
 const SUBSET_BUDGET_CHARS = 13_500
@@ -184,6 +187,9 @@ describe('the output contract', () => {
     const contract = outputContract()
     expect(contract).toContain('`polymorph-screen/1`')
     expect(contract).toContain('and `root` last')
+    expect(contract.replace(/\s+/g, ' ')).toContain(
+      'Write an element’s plain props before its props that hold elements, and `props` before `children`',
+    )
     for (const key of ADDRESS_KEYS) expect(contract).toContain(`\`${key}\``)
     expect(contract).toContain('`DensityScope` is rung 2')
     expect(contract).toContain('`Bespoke` is rung 4')
