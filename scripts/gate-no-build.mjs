@@ -34,14 +34,22 @@
  *  - `polymorph-all.js` renders the same elements with no chunk, and its
  *    bridge lists and presses them; with either setting it registers the
  *    tools at load and fetches nothing;
+ *  - a `<poly-screen>` draws the document in its `<script
+ *    type="application/json">` child, a press of its Button dispatches
+ *    `poly-action` with the named Input's text in `values`, and `loadScreen`
+ *    resolves to the functions a page draws, checks and prompts with; the
+ *    screen's renderer is fetched only by a page that draws one, and its
+ *    validator and card only when the page asks for them;
  *  - an attribute an element cannot read is reported in the console, by
  *    either script, and the element renders without that prop: the files
  *    name no `process`, which a browser does not have;
  *  - no page logs an error.
  *
- * `node scripts/gate-no-build.mjs [engine…] [--no-build]`: an engine's name
- * (`chromium`, `firefox`, `webkit`) runs that engine alone, and every engine
- * runs when none is named. `--no-build` skips building the two elements
+ * `node scripts/gate-no-build.mjs [engine…] [stage…] [--no-build]`: an
+ * engine's name (`chromium`, `firefox`, `webkit`) runs that engine alone, and
+ * every engine runs when none is named; a stage's name (`rendered`, `screen`,
+ * the names in `STAGES` below) runs that stage alone, and every stage runs when
+ * none is named. `--no-build` skips building the two elements
  * packages, for a tree whose `pnpm build:packages` has just run. `pnpm gate`
  * runs it on Chromium after the builds, and `pnpm gate:engines` on Firefox and
  * WebKit. `docs/verification.md` has the check's place among the gates.
@@ -66,9 +74,25 @@ const ENGINES = [
   { name: 'webkit', type: webkit },
 ]
 
+/** The stages, in the order they run, by the names a command line gives them. */
+const STAGE_NAMES = [
+  'beforeDefinition',
+  'whileLoading',
+  'rendered',
+  'posts',
+  'agent',
+  'setting',
+  'reports',
+  'all',
+  'screen',
+]
+
 const args = process.argv.slice(2)
 const named = args.filter((arg) => ENGINES.some(({ name }) => name === arg))
-const unknown = args.filter((arg) => !named.includes(arg) && arg !== '--no-build')
+const stagesNamed = args.filter((arg) => STAGE_NAMES.includes(arg))
+const unknown = args.filter(
+  (arg) => !named.includes(arg) && !stagesNamed.includes(arg) && arg !== '--no-build',
+)
 if (unknown.length > 0) fail(`unknown argument ${unknown.join(' ')}`)
 const selected = named.length > 0 ? ENGINES.filter(({ name }) => named.includes(name)) : ENGINES
 
@@ -1005,6 +1029,138 @@ async function setting(run, context) {
 }
 
 /* -------------------------------------------------------------------------- */
+/* A run-time screen                                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The chunks of `dist/cdn/` that hold a part of the run-time screen, each
+ * found by a string only that part holds, which the minifier keeps: the
+ * renderer dispatches `poly-action`, the vocabulary table holds each member's
+ * purpose (Alert's is "Inline status callout"), the validator suggests a name
+ * ("did you mean"), and the card opens "# Writing a screen".
+ */
+function screenChunks() {
+  const dir = join(CDN, 'chunks')
+  const holding = (marker) =>
+    readdirSync(dir)
+      .filter((name) => marker.test(readFileSync(join(dir, name), 'utf8')))
+      .map((name) => `/polymorph/chunks/${name}`)
+  return {
+    renderer: holding(/["'`]poly-action["'`]/),
+    table: holding(/Inline status callout/),
+    validator: holding(/did you mean/),
+    card: holding(/# Writing a screen/),
+  }
+}
+
+/**
+ * A `<poly-screen>` on a page with no build: it draws the document a server
+ * wrote in its script child, its Button's press reaches the page as
+ * `poly-action`, and `loadScreen` gives the page's own script the rest. A page
+ * with no `<poly-screen>` fetches none of the screen's code, and a page that
+ * only draws one fetches neither the validator nor the card.
+ */
+async function screen(run, context) {
+  const parts = screenChunks()
+  run.check(
+    'screen: the renderer, the table, the validator and the card are chunks',
+    Object.values(parts).every((files) => files.length > 0),
+    JSON.stringify(parts),
+  )
+  const read = readFileSync(join(CDN, 'polymorph.js'), 'utf8')
+  run.check(
+    'screen: polymorph.js holds none of the renderer, the table, the validator or the card',
+    !/["'`]poly-action["'`]|Inline status callout|did you mean|# Writing a screen/.test(read),
+  )
+  const fetched = (requests, files) =>
+    requests.filter((url) => files.some((file) => url.endsWith(file)))
+
+  {
+    const page = await run.page(context)
+    const requests = []
+    page.on('request', (request) => requests.push(request.url()))
+    await page.goto(`${origin}/`, { waitUntil: 'load' })
+    await settled(page)
+    const any = Object.values(parts).flat()
+    run.check(
+      'screen: a page with no poly-screen fetches none of its code',
+      fetched(requests, any).length === 0,
+      fetched(requests, any).join(', '),
+    )
+    await page.close()
+  }
+
+  const page = await run.page(context)
+  const requests = []
+  page.on('request', (request) => requests.push(request.url()))
+  await page.goto(`${origin}/screen.html`, { waitUntil: 'load' })
+  await settled(page)
+  const heading = page.getByRole('heading', { name: 'New contact', exact: true })
+  run.check(
+    'screen: draws the document in its script child',
+    await heading.waitFor({ state: 'visible', timeout: 10_000 }).then(
+      () => true,
+      () => false,
+    ),
+  )
+  run.check(
+    'screen: draws no box of its own',
+    (await display(page, 'poly-screen')) === 'contents',
+    `display ${await display(page, 'poly-screen')}`,
+  )
+  await page.getByRole('textbox', { name: 'Email' }).fill('ada@example.com')
+  await page.getByRole('button', { name: 'Save' }).click()
+  const actions = await page.evaluate(() => window.screenPage.actions)
+  run.check(
+    'screen: a press dispatches poly-action with the named field in values',
+    JSON.stringify(actions) ===
+      JSON.stringify([{ name: 'onSave', args: [], values: { email: 'ada@example.com' } }]),
+    JSON.stringify(actions),
+  )
+  run.check(
+    'screen: a page that draws a screen fetches its renderer and table',
+    fetched(requests, parts.renderer).length > 0 && fetched(requests, parts.table).length > 0,
+  )
+  run.check(
+    'screen: a page that only draws fetches neither the validator nor the card',
+    fetched(requests, [...parts.validator, ...parts.card]).length === 0,
+    fetched(requests, [...parts.validator, ...parts.card]).join(', '),
+  )
+  const loaded = await page.evaluate(async () => {
+    const screen = await window.screenPage.loadScreen()
+    const document = JSON.parse(window.document.querySelector('#document').text)
+    return {
+      functions: ['drawScreen', 'parsePartial', 'checkScreen', 'runtimeCard', 'outputContract']
+        .filter((name) => typeof screen[name] === 'function')
+        .join(),
+      lawful: screen.checkScreen(document).ok,
+      unknown: screen.checkScreen({ ...document, root: { component: 'Buton' } }).faults.length,
+      card: screen.runtimeCard({ members: ['Stack', 'Button'] }).includes('Button'),
+      partial: screen.parsePartial(JSON.stringify(document).slice(0, 40)).complete,
+    }
+  })
+  run.check(
+    'screen: loadScreen resolves to drawScreen, parsePartial, checkScreen, runtimeCard and outputContract',
+    loaded.functions === 'drawScreen,parsePartial,checkScreen,runtimeCard,outputContract',
+    loaded.functions,
+  )
+  run.check(
+    'screen: checkScreen passes the page’s document and faults an unknown member',
+    loaded.lawful && loaded.unknown > 0,
+    JSON.stringify(loaded),
+  )
+  run.check('screen: runtimeCard lists the members it is given', loaded.card)
+  run.check('screen: parsePartial reads a cut as not complete', loaded.partial === false)
+  run.check(
+    'screen: loadScreen fetches the validator and the card',
+    fetched(requests, parts.validator).length > 0 && fetched(requests, parts.card).length > 0,
+  )
+  const faults = await page.evaluate(() => window.screenPage.faults)
+  run.check('screen: dispatches no fault', faults.length === 0, JSON.stringify(faults))
+  await page.close()
+}
+
+/* -------------------------------------------------------------------------- */
 /* The run                                                                    */
 /* -------------------------------------------------------------------------- */
 
@@ -1015,7 +1171,7 @@ for (const engine of selected) {
   const browser = await engine.type.launch()
   try {
     const context = await browser.newContext()
-    for (const stage of [
+    const stages = [
       beforeDefinition,
       whileLoading,
       rendered,
@@ -1024,7 +1180,11 @@ for (const engine of selected) {
       setting,
       reports,
       all,
-    ]) {
+      screen,
+    ]
+    for (const stage of stages.filter(
+      ({ name }) => stagesNamed.length === 0 || stagesNamed.includes(name),
+    )) {
       try {
         await stage(run, context)
       } catch (error) {

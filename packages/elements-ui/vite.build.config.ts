@@ -243,14 +243,19 @@ function noBuild(all: boolean): UserConfig {
  *
  * - The default mode writes the modules a bundler reads to `dist/`, one per
  *   source module: the index, which defines every element, each element's
- *   definition module, which defines that one, the definitions table and the
- *   loaders table, with each Solid member they render under `solid/` and its
+ *   definition module, which defines that one, the definitions table, the
+ *   loaders table and `screen/index.js` (run-time screens and `<poly-screen>`,
+ *   whose renderer and validator are modules of their own it imports when
+ *   first used), with each Solid member they render under `solid/` and its
  *   recipe, through the reach-through transform, under `recipes/`. Each
  *   module imports the stylesheet its source imported, so an element brings
  *   its member's recipe. The foundations, Solid and Zag are external.
  * - `--mode cdn` writes the files a page with no build loads to `dist/cdn/`:
- *   `polymorph.js`, which defines every tag and loads each member's chunk the
- *   first time one of its elements renders; the chunks; `polymorph.css`, which
+ *   `polymorph.js`, which defines every tag and `<poly-screen>` and loads each
+ *   member's chunk the first time one of its elements renders; the chunks,
+ *   among them the run-time screen's renderer, validator and card, which
+ *   `polymorph.js` imports only when a page draws or checks a screen;
+ *   `polymorph.css`, which
  *   holds the base layer, every recipe through the reach-through transform,
  *   Icon's stylesheet, the host rule and the rules for an element that has not
  *   rendered; a theme sheet per house pairing (`themes/<system>.css`); and
@@ -274,6 +279,7 @@ export default defineConfig(({ mode }) => {
           index: path('./src/index.ts'),
           definitions: path('./src/definitions.ts'),
           loaders: path('./src/loaders.ts'),
+          'screen/index': path('./src/screen/index.ts'),
         },
         formats: ['es'],
       },

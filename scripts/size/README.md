@@ -34,6 +34,7 @@ scripts the page names and every module they import, the chunk the loader import
 | `elements-button` | a page with no build that writes one `<poly-button>` (`elements-button.html`): `prepaint.js`, `polymorph.js` and the modules it imports, Button's chunk and what Button composes, and the stylesheets the page links, `polymorph.css` and the plain theme sheet |
 | `elements-all` | the same page loading `polymorph-all.js`, every element in one file, with the same stylesheets |
 | `elements-agent` | the `elements-button` page with `<html data-agent="on-call">`: what it fetches before any tool is called, which is the `elements-button` page and the two chunks the setting fetches, its registration and the tools' definitions |
+| `elements-screen` | a page with no build that writes one `<poly-screen>` holding a document in its `<script type="application/json">` (`elements-screen.html`): what `elements-button` fetches, the chunk the first `<poly-screen>` to connect imports and what that imports (the run-time renderer, the walk, `parsePartial` and the vocabulary table), and the chunk of each member the document names |
 | `angular-button` | Angular's runtime, zoneless, and one member from `@polymorph/angular-ui` (`angular-button.ts`, created with `createComponent` in an application from `createApplication`, which is what `<pm-button label="Save" />` in a root component renders), linked from the partial declarations the packages ship, with the Angular foundation's icon gateway and the compiled theme |
 | `agent-bridge` | a React page with a Checkbox and a Button that creates an agent bridge (`@polymorph/engine/agent`) and registers its tools with WebMCP: the bridge's runtime, its tools, the name computation, and the registry each member registers with |
 
@@ -101,6 +102,25 @@ parts. The CSS is `polymorph.css`, every recipe with the forms that reach throug
 which a page loads whichever members it uses, and the theme sheet. `elements-all` is the Solid
 vocabulary whole with Solid's runtime, the elements' bridge and the agent bridge; its largest third-party parts are Zod and
 Culori, from the theme engine, and Zag's date picker (`pnpm size --why elements-all`).
+
+`elements-screen`'s ceilings are set as `elements-button`'s are, from its measurement, rounded up to
+the next kilobyte with a kilobyte added. About two fifths of its JavaScript is the run-time
+screen: the vocabulary table, which names every member's props, parts and lawful cells (about 22
+kB, the largest part), the walk with the renderer and `parsePartial` (under 9 kB), and the chunk
+`<poly-screen>` imports (under 1 kB). The validator and the card are not on the page: they are
+chunks of their own, which `polymorph.js` imports when a page calls `check()` on a `<poly-screen>`
+or calls `loadScreen`. The rest is the `elements-button` page and the chunks of the members the
+document draws. `polymorph.js` holds `<poly-screen>`'s element, about a kilobyte, and imports
+nothing of the screen until a page writes one. The measure reads the document's members from the
+page's JSON, and finds the chunk `<poly-screen>` imports by the event its renderer dispatches
+(`poly-action`), as it finds the bridge by its marker; an agent setting's chunks are counted
+without the screen's.
+
+`elements-all`'s ceiling is its measurement, 448.9 kB, rounded up with a kilobyte added: 450 kB, up
+from 412 kB. `polymorph-all.js` holds every element and everything a page might load, and now holds
+the run-time screen as well, its renderer, the vocabulary table, the validator and the card, about
+40 kB of it, so that a page that loads the one file draws, checks and prompts for a screen with no
+other request.
 
 `elements-agent`'s ceilings are set as `elements-button`'s are, from its measurement. Its JavaScript is
 `elements-button`'s and the two chunks its setting fetches: the registration, under a quarter of a
