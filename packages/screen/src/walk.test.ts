@@ -519,6 +519,69 @@ describe('what a renderer reports, and what it is told', () => {
   })
 })
 
+describe('what a renderer passes', () => {
+  const document = doc(
+    {
+      component: 'Stack',
+      children: [
+        {
+          component: 'ListPage',
+          props: {
+            title: 'Orders',
+            emptyState: {
+              $object: {
+                title: 'None',
+                secondaryAction: { component: 'Button', props: { label: 'Add' } },
+              },
+            },
+            actions: [{ component: 'Button', props: { label: 'A' } }, 'and text', { $: 'title' }],
+          },
+          children: [{ component: 'Text', children: [{ $: 'title' }, { $object: { a: 1 } }] }],
+        },
+      ],
+    },
+    [{ name: 'title', type: 'string' }],
+  )
+
+  it('turns each kind of drawn value into what a renderer passes', () => {
+    const { screen } = open({ document, data: { title: 'Mine' } })
+    const page = at(screen, '$.root.children[0]')
+    const materials = {
+      node: (node: ScreenNode) => `<${node.component}>`,
+      binding: (path: string) => `⟨${path}⟩`,
+      fault: () => '!',
+    }
+    expect(materialize(page.props['emptyState'] as Drawn, materials)).toEqual({
+      title: 'None',
+      secondaryAction: '<Button>',
+    })
+    expect(materialize(page.props['actions'] as Drawn, materials)).toEqual([
+      '<Button>',
+      'and text',
+      '⟨title⟩',
+    ])
+    const text = at(screen, '$.root.children[0].children[0]')
+    expect(text.children.map((child) => materialize(child, materials))).toEqual(['⟨title⟩', '!'])
+    // Without a way to draw them, a binding is its value and a fault nothing.
+    expect(text.children.map((child) => materialize(child, { node: () => null }))).toEqual([
+      'Mine',
+      null,
+    ])
+  })
+
+  it('keeps every node’s object when nothing it draws changed', () => {
+    const { screen } = open({ document, data: { title: 'Mine' } })
+    const root = screen.root
+    screen.update({ document: JSON.parse(JSON.stringify(document)) as unknown })
+    expect(screen.root).toBe(root)
+    screen.update({ data: { title: 'Yours' } })
+    expect(screen.root).not.toBe(root)
+    expect(at(screen, '$.root.children[0].props.emptyState.secondaryAction')).toBe(
+      at({ root } as Screen, '$.root.children[0].props.emptyState.secondaryAction'),
+    )
+  })
+})
+
 describe('a value as JSON', () => {
   it('drops what JSON cannot say and keeps every argument at its position', () => {
     const event = { type: 'click', target: {}, preventDefault: () => {} }

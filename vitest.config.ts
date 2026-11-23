@@ -490,7 +490,7 @@ export default defineConfig({
      */
     coverage: {
       provider: 'v8',
-      include: ['packages/{theme,rules,registry,cli,mcp,spec}/src/**'],
+      include: ['packages/{theme,rules,registry,cli,mcp,spec,screen}/src/**'],
       reporter: ['text', 'html'],
       // The measured coverage behind these thresholds: statements 89.28%,
       // branches 81.17%, functions 94.36%, lines 91.69%.
