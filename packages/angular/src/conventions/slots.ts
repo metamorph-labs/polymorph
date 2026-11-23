@@ -4,6 +4,7 @@ import {
   inject,
   input,
   TemplateRef,
+  untracked,
   ViewContainerRef,
   type DoCheck,
   type EmbeddedViewRef,
@@ -83,6 +84,45 @@ export function bindSlot<Props extends object>(
         args: [props],
         named: props as Readonly<Record<string, unknown>>,
       }
+}
+
+const ELEMENT_NODE = 1
+const TEXT_NODE = 3
+
+/** Whether a node a template drew holds something to see: an element, or text that is not empty. */
+function draws(node: unknown): boolean {
+  // Read by its node type, not `instanceof Node`: a server render's document has no global `Node`.
+  if (typeof node !== 'object' || node === null || !('nodeType' in node)) return false
+  if (node.nodeType === ELEMENT_NODE) return true
+  return node.nodeType === TEXT_NODE && (node as Text).data !== ''
+}
+
+/**
+ * Whether a scoped slot's template draws anything for its props: a React
+ * render prop that returns `undefined` draws nothing, and the member draws its
+ * own content in its place (RichTextContent's entity token where the app's
+ * `entity` draws nothing for a kind). A template cannot be read without
+ * drawing it, so a view of it is made with the props, its bindings are
+ * written, its root nodes are read, and it is destroyed; it is never inserted
+ * in the document. It is made untracked, so a signal it writes is not written
+ * in the computed value that asks.
+ */
+export function slotDraws<Props extends object>(
+  template: NodeTemplate<[Props]> | undefined,
+  props: Props,
+): boolean {
+  if (template === undefined) return false
+  return untracked(() => {
+    const view = (template as TemplateRef<TemplateContext<readonly unknown[]>>).createEmbeddedView({
+      ...(props as Readonly<Record<string, unknown>>),
+      $implicit: props,
+      args: [props],
+    })
+    view.detectChanges()
+    const drawn = view.rootNodes.some(draws)
+    view.destroy()
+    return drawn
+  })
 }
 
 /** Whether a value is a template, bare or bound, rather than text. */

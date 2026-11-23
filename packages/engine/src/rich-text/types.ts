@@ -28,6 +28,11 @@ export interface RichTextParagraph {
   content: RichTextInline[]
 }
 
+/**
+ * A heading. Its text carries no bold, italic or strike: a heading is already
+ * set apart, so a reader drops those marks from a heading's text. A link,
+ * inline code and an annotation stay.
+ */
 export interface RichTextHeading {
   type: 'heading'
   /** The level inside the document: 1 is its shallowest heading. A renderer decides the page level. */
@@ -101,6 +106,11 @@ export type RichTextMark =
   | { type: 'bold' }
   | { type: 'italic' }
   | { type: 'strike' }
+  /**
+   * Inline code. Code is drawn as it was written, so text marked `code`
+   * carries no bold, italic or strike: a reader drops them. A link and an
+   * annotation stay.
+   */
   | { type: 'code' }
   | { type: 'link'; href: string }
   | RichTextAnnotationMark
@@ -168,7 +178,12 @@ export const RICH_TEXT_FORMATS: readonly RichTextFormat[] = [
 export type RichTextFaultCode =
   /** The input is not an object with a `format` and a `blocks` array. The result is the empty document. */
   | 'unreadable'
-  /** The document's format is later than this reader's. It is read as far as it can be. */
+  /**
+   * The document's format is later than this reader's (`isRichTextNewer`). It
+   * is read as far as it can be, to be drawn. What is read is not the
+   * document and is never stored in its place: an application keeps the
+   * document as it came, and a field shows it read-only.
+   */
   | 'newer-format'
   /** A node of a type this reader does not know. It is kept and drawn as its readable text. */
   | 'unknown-node'
@@ -189,7 +204,11 @@ export interface RichTextFault {
 }
 
 export interface RichTextParseResult {
-  /** The document in normal form. Always usable, whatever the input was. */
+  /**
+   * The document in normal form. Always usable for drawing, whatever the input
+   * was. For a document of a later format it is what this version could read,
+   * stamped with this version's format, and is not stored.
+   */
   value: RichTextDocument
   /** What the reader repaired, removed or did not know. Empty for a document this version wrote. */
   faults: RichTextFault[]

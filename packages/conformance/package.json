@@ -17,6 +17,7 @@
     "./tree": "./src/tree.ts",
     "./mode-switch": "./src/mode-switch.ts",
     "./prompt-triggers": "./src/prompt-triggers.ts",
+    "./rich-text-content": "./src/rich-text-content.ts",
     "./rich-text-input": "./src/rich-text-input.ts",
     "./plan": "./src/plan.ts",
     "./log-view": "./src/log-view.ts",

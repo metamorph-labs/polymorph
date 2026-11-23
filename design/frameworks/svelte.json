@@ -318,8 +318,7 @@
       "status": "native"
     },
     "RichTextContent": {
-      "status": "absent",
-      "reason": "its description is being written"
+      "status": "native"
     },
     "RichTextInput": {
       "status": "native"

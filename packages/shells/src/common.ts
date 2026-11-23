@@ -200,6 +200,17 @@ export function partShell(
 /* The states fixture                                                         */
 /* -------------------------------------------------------------------------- */
 
+/** A fixture's function that returns nodes (`renders`). */
+export interface FixtureRenders {
+  params: readonly string[]
+  renders: FixtureChild | readonly FixtureChild[]
+  /** JavaScript over the parameters: the nodes are returned only while it holds. */
+  when?: string
+}
+
+/** The keys of a `renders` value beside its brand. */
+export const RENDERS_KEYS: readonly string[] = ['params', 'when']
+
 /** The nodes a fixture's function returns (`renders`): one, or several, as a fragment holds them. */
 export const renderedChildren = (
   renders: FixtureChild | readonly FixtureChild[],

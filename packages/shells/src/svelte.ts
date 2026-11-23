@@ -60,6 +60,8 @@ import {
   registryMember,
   relativeFile,
   renderedChildren,
+  RENDERS_KEYS,
+  type FixtureRenders,
   staticString,
   templateClassNames,
   templateExpressions,
@@ -161,6 +163,8 @@ const FOUNDATION_HELPERS = new Set([
   ...ENGINE_HELPERS,
   // A function run once the pending changes are in the document.
   'afterRender',
+  // Whether a scoped slot draws anything for its argument.
+  'slotDraws',
   // The toast store's, which Toast's viewport and FormField's notice read and write.
   'toast',
   'getToasts',
@@ -722,6 +726,16 @@ export function renderSvelteMember(
    */
   const sx = (expr: Expr): string => {
     const read = expr
+      // A scoped slot drawn with its argument is its snippet bound to it, which `Render` draws,
+      // and whether it draws anything is read from a drawing of it (the foundation's `slotDraws`).
+      .replace(
+        /\bslotNode\(\s*slots\.(\w+)\s*,/g,
+        (_, slot: string) => `bindSnippet(${snippetOf(slot)},`,
+      )
+      .replace(
+        /\bslotDraws\(\s*slots\.(\w+)\s*,/g,
+        (_, slot: string) => `slotDraws(${snippetOf(slot)},`,
+      )
       // A slot as a node is its snippet, which a component draws through `Render`.
       .replace(/\bslotNode\(\s*slots\.(\w+)\s*\)/g, (_, slot: string) => snippetOf(slot))
       .replace(/\bslotted\(\s*slots\.(\w+)\s*\)/g, (_, slot: string) => `${scopeName(slot)}.read()`)
@@ -805,6 +819,8 @@ export function renderSvelteMember(
         [...context.nodeCalls].some((name) => new RegExp(`\\.${name}\\(`).test(expr)),
     )
   )
+    foundationValues.add('bindSnippet')
+  if (allSources.some((expr) => /\bslotNode\(\s*slots\.\w+\s*,/.test(expr)))
     foundationValues.add('bindSnippet')
   if (allSources.some((expr) => /\bVNode\b/.test(expr))) foundationTypes.add('RenderNode')
   if (shell.machine) foundationValues.add('normalizeProps')
@@ -1726,12 +1742,9 @@ class FixtureWriter {
       return source
     }
     if (branded(value, 'node')) return this.snippet([], [(value as { node: FixtureChild }).node])
-    if (branded(value, 'renders', ['params'])) {
-      const { params, renders } = value as {
-        params: readonly string[]
-        renders: FixtureChild | readonly FixtureChild[]
-      }
-      return this.snippet(params, renderedChildren(renders))
+    if (branded(value, 'renders', RENDERS_KEYS)) {
+      const { params, renders, when } = value as FixtureRenders
+      return this.snippet(params, renderedChildren(renders), when)
     }
     if (branded(value, 'held')) return `held.${(value as { held: string }).held}`
     if (branded(value, 'hold', ['to'])) {
@@ -1750,10 +1763,15 @@ class FixtureWriter {
   }
 
   /** A snippet at the top level for a node a value holds, by its name. */
-  private snippet(params: readonly string[], children: readonly FixtureChild[]): string {
+  private snippet(
+    params: readonly string[],
+    children: readonly FixtureChild[],
+    when?: string,
+  ): string {
     this.count += 1
     const name = `node${this.count}`
-    const content = children.map((child) => this.child(child)).join('')
+    const drawn = children.map((child) => this.child(child)).join('')
+    const content = when === undefined ? drawn : `{#if ${when}}${drawn}{/if}`
     this.needs.snippets.push(`{#snippet ${name}(${params.join(', ')})}${content}{/snippet}`)
     return name
   }

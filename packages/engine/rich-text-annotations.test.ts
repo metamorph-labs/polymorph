@@ -18,6 +18,7 @@ import {
   type RichTextRange,
   serializeRichText,
 } from './src/rich-text/index'
+import { positionCounter, positionOf } from './src/rich-text/ranges'
 
 /**
  * Annotations and ranges: the anchor mark as the reader reads it, positions in
@@ -557,5 +558,72 @@ describe('annotating a random range', () => {
     }
     // The generator made ranges that anchored something in most cases.
     expect(anchored).toBeGreaterThan(200)
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* Cost on a hostile document                                                  */
+/* -------------------------------------------------------------------------- */
+
+/** The least time `run` takes over `times` runs, in milliseconds: the run least disturbed by anything else. */
+function fastest(run: () => unknown, times: number): number {
+  let best = Infinity
+  for (let index = 0; index < times; index += 1) {
+    const start = performance.now()
+    run()
+    best = Math.min(best, performance.now() - start)
+  }
+  return best
+}
+
+describe('cost on a hostile document', () => {
+  /*
+   * Each function runs on a document and on one sixteen times its size, in
+   * the same run, so the machine's speed and load cancel out. Work that grows
+   * with the document takes about sixteen times as long on the larger one;
+   * work that counts from the start for every match or every annotation takes
+   * about 256 times as long. The bound, 64, is four times the first and a
+   * quarter of the second.
+   */
+  const SMALL = 2_000
+  const FACTOR = 16
+  const BOUND = 64
+
+  const ratio = (make: (size: number) => unknown, run: (value: unknown) => unknown) => {
+    const small = normalizeRichText(make(SMALL))
+    const large = normalizeRichText(make(SMALL * FACTOR))
+    run(large)
+    return fastest(() => run(large), 3) / fastest(() => run(small), 9)
+  }
+
+  it('finds every match of a quote in one pass, however many there are', () => {
+    const repeated = (size: number) => doc(p(t('e'.repeat(size))))
+    expect(richTextFindText(repeated(SMALL * FACTOR), 'e')).toHaveLength(SMALL * FACTOR)
+    expect(ratio(repeated, (value) => richTextFindText(value, 'e'))).toBeLessThan(BOUND)
+  })
+
+  it('lists every annotation in one pass, however many there are', () => {
+    const anchored = (size: number) =>
+      doc(p(...Array.from({ length: size }, (_, index) => t('a😀', a(`c${index}`)))))
+    const listed = richTextAnnotations(anchored(SMALL * FACTOR))
+    expect(listed).toHaveLength(SMALL * FACTOR)
+    expect(listed.at(-1)?.range).toEqual(range(2 * (SMALL * FACTOR - 1), 2 * SMALL * FACTOR))
+    expect(ratio(anchored, (value) => richTextAnnotations(value))).toBeLessThan(BOUND)
+  })
+
+  it('counts the same positions in one pass as from the start, surrogate halves included', () => {
+    const pieces = ['a', '😀', '\uD83D', '\uDE00', 'é', '']
+    const r = random(31)
+    for (let round = 0; round < 300; round += 1) {
+      const text = Array.from({ length: r.int(12) }, () => pieces[r.int(pieces.length)]).join('')
+      const indexes = Array.from({ length: r.int(8) }, () => r.int(text.length + 3)).sort(
+        (x, y) => x - y,
+      )
+      const position = positionCounter(text)
+      expect(
+        indexes.map((index) => position(index)),
+        JSON.stringify([text, indexes]),
+      ).toEqual(indexes.map((index) => positionOf(text, index)))
+    }
   })
 })

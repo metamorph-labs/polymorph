@@ -369,6 +369,13 @@ export { default as RecordButton } from './controls/RecordButton.vue'
 export type { RecordButtonProps } from './controls/RecordButton.vue'
 export { default as RelativeTime } from './structure/RelativeTime.vue'
 export type { RelativeTimeMessages, RelativeTimeProps } from './structure/RelativeTime.vue'
+export { default as RichTextContent } from './structure/RichTextContent.vue'
+export type {
+  RichTextContentMessages,
+  RichTextContentProps,
+  RichTextContentSelection,
+  RichTextContentSize,
+} from './structure/RichTextContent.vue'
 export { default as RichTextInput } from './controls/RichTextInput.vue'
 export type {
   RichTextEntityOption,

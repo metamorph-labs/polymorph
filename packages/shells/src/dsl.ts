@@ -430,7 +430,7 @@ export type FixtureValue =
   | { readonly [key: string]: FixtureValue }
   | { js: string }
   | { node: FixtureChild }
-  | { params: readonly string[]; renders: FixtureChild | readonly FixtureChild[] }
+  | { params: readonly string[]; renders: FixtureChild | readonly FixtureChild[]; when?: string }
   | { held: string }
   | { hold: string; to?: FixtureValue }
 
@@ -786,14 +786,23 @@ export const node = (child: FixtureChild): { node: FixtureChild } => ({ node: ch
  * A function a fixture passes that returns a member's node, its parameters
  * written as TypeScript (`renders(['row: { status: string }'], fx('Badge', …))`),
  * or several nodes, as a React fixture's function returns a fragment
- * (RichTextInput's footer of two Buttons).
+ * (RichTextInput's footer of two Buttons). With `when`, JavaScript over the
+ * parameters, it returns them only when that holds and nothing otherwise, as
+ * a React render prop returns `undefined` (RichTextContent's `entity` draws a
+ * person and leaves an issue to the token).
  */
 export const renders = (
   params: readonly string[],
   child: FixtureChild | readonly FixtureChild[],
-): { params: readonly string[]; renders: FixtureChild | readonly FixtureChild[] } => ({
+  when?: string,
+): {
+  params: readonly string[]
+  renders: FixtureChild | readonly FixtureChild[]
+  when?: string
+} => ({
   params,
   renders: child,
+  ...(when === undefined ? {} : { when }),
 })
 
 /** A value the fixture entry holds (`StateEntry.holds`), read as a prop. */

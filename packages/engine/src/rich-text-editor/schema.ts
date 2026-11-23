@@ -1,10 +1,13 @@
 import {
+  DOMParser as ParserOfSchema,
   DOMSerializer,
+  Fragment,
   Schema,
   type DOMOutputSpec,
   type MarkSpec,
   type Node as PMNode,
   type NodeSpec,
+  type StyleParseRule,
   type TagParseRule,
 } from 'prosemirror-model'
 
@@ -20,9 +23,16 @@ import { unknownText } from './unknown'
  * The schema holds only what the field allows. A format outside `formats` has
  * no node or mark type, so nothing can create it: a paste, a drop or a
  * browser's own editing command that would produce one is read as the text it
- * holds. That is the same mapping `restrictRichText` applies to a document: a
- * heading reads as a paragraph, a list as its items' blocks, a quote as its
- * blocks, preformatted text as a paragraph with hard breaks.
+ * holds. For a format the field does not allow, a paste ends as
+ * `restrictRichText` would make the same document: a heading reads as a
+ * paragraph, a list as its items' blocks, a quote as its blocks, preformatted
+ * text as a paragraph with hard breaks, and a mark is left off its text. A
+ * heading takes no bold, italic or strike, and inline code no other format but
+ * a link, as the model's normal form keeps them (`rich-text/read.ts`), so what
+ * the field holds is what the model keeps. A paste differs from
+ * `restrictRichText` in two ways: it never makes a node or mark this version
+ * does not know, and it keeps an entity only when the entity was copied from
+ * an editor in this page (below).
  *
  * Every element and attribute the editable surface shows is written here. Each
  * takes its class from the member's recipe (`classes`). The clipboard gets a
@@ -37,9 +47,41 @@ import { unknownText } from './unknown'
  * drawing for the same reason (`annotations.ts`).
  *
  * Which marks an inline node may carry is decided by its parent's `marks`, so
- * an entity in a paragraph can take any mark while it is edited, as a text
- * can. The conversion writes back only an entity's annotations and unknown
- * marks (`convert.ts`), because a format means nothing on an entity.
+ * a command over a selection puts a format on an entity in it, as on a text.
+ * The editor takes it off again in the same step (`marks.ts`), and the
+ * conversion writes back only an entity's annotations and unknown marks
+ * (`convert.ts`), because a format means nothing on an entity.
+ *
+ * An entity names something in the application, so a paste may not make one
+ * up: a page could put `<span data-entity-kind="user" data-entity-id="admin">`
+ * on the clipboard and the reader would mention someone they never saw. The
+ * clipboard drawing of an entity carries a token that is random for each load
+ * of this module, made the first time a copy or a paste needs it and held
+ * nowhere else, and a pasted entity is kept only when it carries that token
+ * and its kind is one the field suggests. Any other reads as its label. So an
+ * entity copied from an editor in this page pastes as an entity, and one
+ * copied from another tab or another application pastes as text. A drag inside
+ * the field moves the editor's own nodes and reads no HTML.
+ *
+ * What other applications put on the clipboard is read for the structure and
+ * the emphasis a person sees, and nothing else (the rules are each beside the
+ * node or mark they make):
+ *
+ *  - Emphasis written as a style: `font-weight` from 600 or `bold`,
+ *    `font-style: italic` and a `text-decoration` with `line-through`, as a
+ *    word processor or a document editor writes it. A weight under 600 and
+ *    `font-style: normal` take the format off what they wrap, so a wrapper
+ *    with `font-weight: normal` does not make everything bold. No colour,
+ *    size, font or other style is read.
+ *  - A table: each row a paragraph, its cells separated by a tab.
+ *  - A word processor's list paragraphs (`mso-list`): list items, numbered
+ *    when the number the word processor drew is a number or a letter followed
+ *    by `.` or `)` (`paste.ts` groups them into lists).
+ *  - A code editor's copy, a `div` with `white-space: pre` in a monospace
+ *    font holding more than one line: one code block.
+ *  - A code block's language, from `data-language` or a `language-` or
+ *    `lang-` class on the `pre` or its `code`, kept when it is a language name
+ *    (`codeLanguage`).
  */
 
 /** The node and mark names. They are the model's names where the model has one. */
@@ -100,6 +142,167 @@ function attrs(entries: Record<string, string | null | undefined>): Record<strin
   return out
 }
 
+/* -------------------------------------------------------------------------- */
+/* What a paste may keep                                                       */
+/* -------------------------------------------------------------------------- */
+
+/** The attribute an entity's clipboard drawing carries its token in. */
+export const ENTITY_TOKEN = 'data-entity-token'
+
+let token: string | null = null
+
+/**
+ * The token of this load of the module (the file's header says why). It is
+ * made from the platform's random source the first time it is asked for, and
+ * is written only into the clipboard's drawing.
+ */
+export function entityToken(): string {
+  if (token === null) {
+    const bytes = new Uint8Array(16)
+    globalThis.crypto.getRandomValues(bytes)
+    token = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+  }
+  return token
+}
+
+/**
+ * A language name a code block takes from what was typed or pasted: one to 32
+ * letters, digits, `_`, `+`, `#`, `.` or `-` (`ts`, `c++`, `c#`,
+ * `objective-c`). The model keeps any language it is given; the editor makes
+ * only a name like these, so a class list or a sentence is not one.
+ */
+export const LANGUAGE = '[A-Za-z0-9_+#.-]{1,32}'
+
+const LANGUAGE_NAME = new RegExp(`^${LANGUAGE}$`)
+
+/** The language name `raw` is, or `''` when it is not one. */
+export function codeLanguage(raw: string | null | undefined): string {
+  const name = (raw ?? '').trim()
+  return LANGUAGE_NAME.test(name) ? name : ''
+}
+
+/** The language a pasted `pre` names: its own or its `code`'s `data-language`, or a `language-` or `lang-` class. */
+function pastedLanguage(pre: HTMLElement): string {
+  const code = pre.querySelector('code')
+  for (const element of [pre, code]) {
+    if (!element) continue
+    const named = codeLanguage(element.getAttribute('data-language'))
+    if (named) return named
+    for (const name of Array.from(element.classList)) {
+      const match = /^(?:language|lang)-(.+)$/.exec(name)
+      const language = match ? codeLanguage(match[1]) : ''
+      if (language) return language
+    }
+  }
+  return ''
+}
+
+/** Whether a `font-weight` is bold: `bold`, `bolder`, or a number from 600. */
+function isBoldWeight(value: string): boolean {
+  const weight = value.trim().toLowerCase()
+  if (weight === 'bold' || weight === 'bolder') return true
+  return /^\d+$/.test(weight) && Number(weight) >= 600
+}
+
+/**
+ * A word processor's list paragraph: a `p` whose style names its list, level
+ * and list format (`mso-list:l0 level2 lfo1`), with the number or bullet the
+ * word processor drew in a span marked `mso-list:Ignore`. The style is read
+ * from the attribute, because a browser drops a property it does not know
+ * from the element's style.
+ */
+export interface WordListItem {
+  /** Which list it belongs to: the list format's number. */
+  list: string
+  /** Its level, from 1. */
+  level: number
+  /** Whether the number it drew is a number or a letter followed by `.` or `)`. */
+  ordered: boolean
+  /** The number it drew, for a numbered item whose number is in digits. */
+  start: number
+}
+
+const WORD_LIST = /mso-list:\s*l(\d+)\s+level(\d+)\s+lfo(\d+)/i
+const WORD_IGNORE = /mso-list:\s*ignore/i
+const NUMBERED = /^\(?(\d+|[a-z]|[ivxlcdm]+)[.)]$/i
+
+const styleOf = (dom: HTMLElement): string => dom.getAttribute('style') ?? ''
+
+function wordListItem(dom: HTMLElement): WordListItem | null {
+  const match = WORD_LIST.exec(styleOf(dom))
+  if (!match) return null
+  const marker = Array.from(dom.querySelectorAll('span')).find((span) =>
+    WORD_IGNORE.test(styleOf(span)),
+  )
+  const drawn = (marker?.textContent ?? '').replace(/\s+/g, '')
+  const ordered = NUMBERED.test(drawn)
+  const digits = /^\(?(\d+)[.)]$/.exec(drawn)
+  const start = digits ? Number(digits[1]) : 1
+  return {
+    list: match[3] as string,
+    level: Number(match[2]),
+    ordered,
+    start: Number.isSafeInteger(start) ? start : 1,
+  }
+}
+
+/** A monospace font, as a code editor names its own. */
+const MONOSPACE = /monospace|menlo|monaco|consolas|courier|mono\b|code\b/i
+
+/**
+ * The lines of a code editor's copy: a `div` with `white-space: pre` in a
+ * monospace font, each line a `div` of its own and an empty line a `br` or a
+ * `div` holding one. Null for any other element, and for one line, which
+ * reads as text where it lands instead of becoming a block.
+ */
+function editorLines(dom: HTMLElement): string[] | null {
+  if (!/^pre(?:-wrap)?$/.test(dom.style.whiteSpace) || !MONOSPACE.test(dom.style.fontFamily))
+    return null
+  const children = Array.from(dom.children)
+  const lines =
+    children.length > 0 &&
+    children.every((child) => child.tagName === 'DIV' || child.tagName === 'BR')
+      ? children.map((child) => (child.tagName === 'BR' ? '' : (child.textContent ?? '')))
+      : (dom.textContent ?? '').split(/\r\n?|\n/)
+  return lines.length > 1 ? lines : null
+}
+
+/**
+ * A table row's content: each cell's inline content, the cells separated by
+ * a tab, and the blocks inside one cell by a space. A cell is read through the
+ * schema's own rules with its own style, so a bold cell, a link and an entity
+ * in it stay as they would in a paragraph.
+ */
+function rowContent(row: HTMLElement, schema: Schema): Fragment {
+  const parser = ParserOfSchema.fromSchema(schema)
+  const out: PMNode[] = []
+  const cells = Array.from(row.children).filter((cell) => /^T[DH]$/.test(cell.tagName))
+  cells.forEach((cell, index) => {
+    if (index > 0) out.push(schema.text('\t'))
+    // The cell's own style is read only when the cell is inside what is parsed.
+    const holder = cell.ownerDocument.createElement('div')
+    holder.append(cell.cloneNode(true))
+    let gap = false
+    const collect = (fragment: Fragment) =>
+      fragment.forEach((node) => {
+        if (node.isInline) {
+          if (gap && out.length > 0) out.push(schema.text(' '))
+          gap = false
+          out.push(node)
+        } else {
+          gap = true
+          collect(node.content)
+          gap = true
+        }
+      })
+    collect(parser.parseSlice(holder).content)
+  })
+  // A row of empty cells is an empty paragraph, not one of tabs.
+  return out.every((node) => node.isText && /^\s*$/.test(node.text ?? ''))
+    ? Fragment.empty
+    : Fragment.from(out)
+}
+
 /**
  * The DOM for each node and mark. `classes` is null for the clipboard's
  * drawing, which carries no class and writes the document's heading levels.
@@ -135,6 +338,8 @@ function drawing(classes: RichTextEditorClasses | null, headingLevel: number) {
         class: cls((c) => c.entity),
         'data-entity-kind': node.attrs.kind as string,
         'data-entity-id': node.attrs.id as string,
+        // Only the clipboard's drawing carries the token: the field's own DOM never does.
+        [ENTITY_TOKEN]: classes ? null : entityToken(),
         contenteditable: 'false',
       }),
       node.attrs.label as string,
@@ -152,6 +357,17 @@ function drawing(classes: RichTextEditorClasses | null, headingLevel: number) {
     code: (): DOMOutputSpec => ['code', attrs({ class: cls((c) => c.code) }), 0],
     link: (href: string): DOMOutputSpec => ['a', attrs({ class: cls((c) => c.link), href }), 0],
   }
+}
+
+/** A style rule that takes the mark `name` off what an element wraps, for a value `when` accepts. */
+function clearing(style: string, name: string, when: (value: string) => boolean): StyleParseRule[] {
+  return [
+    {
+      style,
+      clearMark: (mark) => mark.type.name === name,
+      getAttrs: (value) => (when(value) ? null : false),
+    },
+  ]
 }
 
 /** A pasted link keeps its target only when the model would keep it. */
@@ -178,10 +394,30 @@ export function buildSchema(options: SchemaOptions): Schema {
   const nodes: Record<string, NodeSpec> = {
     [NODE.doc]: { attrs: { fields: FIELDS }, content: 'block+' },
     [NODE.paragraph]: {
-      attrs: { fields: FIELDS },
+      // `wordList` marks a word processor's list paragraph while a paste is
+      // read; `paste.ts` makes lists of them and clears it before the slice
+      // is inserted, so no paragraph in the document carries one.
+      attrs: { fields: FIELDS, wordList: { default: null } },
       content: 'inline*',
       group: 'block',
-      parseDOM: [{ tag: 'p' }],
+      parseDOM: [
+        {
+          tag: 'p',
+          priority: 60,
+          getAttrs: (dom) => {
+            const item = wordListItem(dom)
+            return item ? { wordList: item } : false
+          },
+        },
+        { tag: 'p' },
+        // The number or bullet a word processor drew before a list paragraph's text.
+        {
+          tag: 'span',
+          ignore: true,
+          getAttrs: (dom) => (WORD_IGNORE.test(styleOf(dom)) ? null : false),
+        },
+        { tag: 'tr', getContent: (dom, schema) => rowContent(dom as HTMLElement, schema) },
+      ],
       toDOM: draw.paragraph,
     },
   }
@@ -223,12 +459,15 @@ export function buildSchema(options: SchemaOptions): Schema {
         {
           tag: 'pre',
           preserveWhitespace: 'full',
-          getAttrs: (dom) => ({
-            language:
-              dom.getAttribute('data-language') ??
-              dom.querySelector('code')?.getAttribute('data-language') ??
-              '',
-          }),
+          getAttrs: (dom) => ({ language: pastedLanguage(dom) }),
+        },
+        {
+          tag: 'div',
+          getAttrs: (dom) => (editorLines(dom) ? { language: '' } : false),
+          getContent: (dom, schema) => {
+            const text = (editorLines(dom as HTMLElement) ?? []).join('\n')
+            return text === '' ? Fragment.empty : Fragment.from(schema.text(text))
+          },
         },
       ],
       toDOM: draw.codeBlock,
@@ -253,8 +492,10 @@ export function buildSchema(options: SchemaOptions): Schema {
         {
           tag: 'ol',
           getAttrs: (dom) => {
-            const start = Number(dom.getAttribute('start') ?? '1')
-            return { start: Number.isInteger(start) && start >= 0 ? start : 1 }
+            const written = dom.getAttribute('start')?.trim() ?? ''
+            const start = written === '' ? 1 : Number(written)
+            // The reader's rule: a whole number from 0 that every language holds exactly.
+            return { start: Number.isSafeInteger(start) && start >= 0 ? start : 1 }
           },
         },
       ],
@@ -304,17 +545,18 @@ export function buildSchema(options: SchemaOptions): Schema {
     leafText: (node) => node.attrs.label as string,
     parseDOM: [
       {
-        // A pasted entity is kept when the field suggests its kind; any other
-        // reads as its label.
-        tag: 'span[data-entity-kind][data-entity-id]',
+        // A pasted entity is kept when an editor in this page drew it and the
+        // field suggests its kind; any other reads as its label (the file's
+        // header says why).
+        tag: `span[data-entity-kind][data-entity-id][${ENTITY_TOKEN}]`,
         getAttrs: (dom) => {
           const kind = dom.getAttribute('data-entity-kind') ?? ''
-          if (!kinds.has(kind)) return false
-          return {
-            kind,
-            id: dom.getAttribute('data-entity-id') ?? '',
-            label: dom.textContent ?? '',
-          }
+          const id = dom.getAttribute('data-entity-id') ?? ''
+          const label = dom.textContent ?? ''
+          if (dom.getAttribute(ENTITY_TOKEN) !== entityToken() || !kinds.has(kind)) return false
+          // The reader turns an entity with no kind, id or label into text.
+          if (kind === '' || id === '' || label === '') return false
+          return { kind, id, label }
         },
       },
     ],
@@ -345,8 +587,14 @@ export function buildSchema(options: SchemaOptions): Schema {
       attrs: { fields: FIELDS },
       parseDOM: [
         { tag: 'strong' },
-        // A word processor wraps a whole copy in `<b style="font-weight:normal">`.
-        { tag: 'b', getAttrs: (dom) => (dom.style.fontWeight === 'normal' ? false : null) },
+        // A document editor wraps a whole copy in `<b style="font-weight:normal">`.
+        {
+          tag: 'b',
+          getAttrs: (dom) =>
+            dom.style.fontWeight && !isBoldWeight(dom.style.fontWeight) ? false : null,
+        },
+        { style: 'font-weight', getAttrs: (value) => (isBoldWeight(value) ? null : false) },
+        ...clearing('font-weight', MARK.bold, (value) => !isBoldWeight(value)),
       ],
       toDOM: draw.bold,
     }
@@ -354,14 +602,29 @@ export function buildSchema(options: SchemaOptions): Schema {
   if (allowed.has('italic')) {
     markSpecs[MARK.italic] = {
       attrs: { fields: FIELDS },
-      parseDOM: [{ tag: 'em' }, { tag: 'i' }],
+      parseDOM: [
+        { tag: 'em' },
+        { tag: 'i' },
+        {
+          style: 'font-style',
+          getAttrs: (value) => (/^(italic|oblique)/i.test(value) ? null : false),
+        },
+        ...clearing('font-style', MARK.italic, (value) => /^normal$/i.test(value)),
+      ],
       toDOM: draw.italic,
     }
   }
   if (allowed.has('strike')) {
+    const struck = (value: string) => (/line-through/i.test(value) ? null : false)
     markSpecs[MARK.strike] = {
       attrs: { fields: FIELDS },
-      parseDOM: [{ tag: 's' }, { tag: 'del' }, { tag: 'strike' }],
+      parseDOM: [
+        { tag: 's' },
+        { tag: 'del' },
+        { tag: 'strike' },
+        { style: 'text-decoration', getAttrs: struck },
+        { style: 'text-decoration-line', getAttrs: struck },
+      ],
       toDOM: draw.strike,
     }
   }

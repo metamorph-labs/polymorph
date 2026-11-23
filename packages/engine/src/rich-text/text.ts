@@ -1,5 +1,5 @@
 import { BLOCK_TYPES, CHILD_KEYS, isJson, NODE_TYPES, own, typeOf, type Json } from './nodes'
-import { emptyRichText, normalizeRichText, paragraphOfLines } from './read'
+import { emptyRichText, paragraphOfLines, readRichText } from './read'
 import {
   RICH_TEXT_FORMAT,
   type RichTextBlock,
@@ -14,7 +14,8 @@ import {
  * mentions. And the reverse: a document from plain text.
  *
  * Each reads the normal form, so a document and its normal form give the same
- * answer, and each answers for a node this version does not know with the
+ * answer (a document of a later format is read as far as this version can,
+ * as `parseRichText` reads it), and each answers for a node this version does not know with the
  * readable text found in it (`richTextNodeText`). That rule is simple on
  * purpose, because every renderer draws an unknown node with it, the native
  * ones included:
@@ -212,7 +213,7 @@ export function richTextNodeText(node: unknown, options?: RichTextPlainTextOptio
  * full stop, for a preview.
  */
 export function richTextPlainText(doc: unknown, options?: RichTextPlainTextOptions): string {
-  return blocksText(normalizeRichText(doc).blocks, walkOf(options))
+  return blocksText(readRichText(doc).blocks, walkOf(options))
 }
 
 /**
@@ -272,7 +273,7 @@ function entitiesOf(blocks: readonly RichTextBlock[]): RichTextEntity[] {
 
 /** Every entity in the document, in the order a person reads them: the people to notify of a mention. */
 export function richTextEntities(doc: unknown): RichTextEntity[] {
-  return entitiesOf(normalizeRichText(doc).blocks)
+  return entitiesOf(readRichText(doc).blocks)
 }
 
 /**
@@ -281,7 +282,7 @@ export function richTextEntities(doc: unknown): RichTextEntity[] {
  * not content.
  */
 export function isRichTextEmpty(doc: unknown): boolean {
-  const { blocks } = normalizeRichText(doc)
+  const { blocks } = readRichText(doc)
   if (entitiesOf(blocks).length > 0) return false
   return blocksText(blocks, walkOf({ blockSeparator: '' })).trim() === ''
 }

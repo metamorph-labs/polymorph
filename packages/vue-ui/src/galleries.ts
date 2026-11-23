@@ -15,6 +15,7 @@ import { states as headingStates } from './structure/heading.states'
 import { states as textStates } from './structure/text.states'
 import { states as codeStates } from './structure/code.states'
 import { states as codeBlockStates } from './structure/code-block.states'
+import { states as richTextContentStates } from './structure/rich-text-content.states'
 import { states as jsonTreeStates } from './structure/json-tree.states'
 import { states as diffStates } from './structure/diff.states'
 import { states as highlightStates } from './structure/highlight.states'
@@ -157,6 +158,7 @@ export const GALLERIES: readonly ComponentStates[] = [
   textStates,
   codeStates,
   codeBlockStates,
+  richTextContentStates,
   jsonTreeStates,
   diffStates,
   highlightStates,

@@ -1,6 +1,7 @@
 import { Mark, type Node as PMNode, type NodeType, type Schema } from 'prosemirror-model'
 
 import { normalizeRichText } from '../rich-text/index'
+import { put } from '../rich-text/nodes'
 import { RICH_TEXT_FORMAT, type RichTextDocument } from '../rich-text/types'
 import { MARK, NODE } from './schema'
 
@@ -20,7 +21,8 @@ import { MARK, NODE } from './schema'
  *  - a field a known node or mark does not have is kept in the node's or
  *    mark's `fields` attribute, and a text's in a `textFields` mark, so it
  *    follows its text through an edit and is written back beside the known
- *    fields.
+ *    fields. A field named `__proto__` is kept and written as data, as the
+ *    reader keeps it, so no object's prototype is set.
  *
  * The editor's document always holds one block, because a caret needs a
  * textblock to stand in. The empty document is one empty paragraph here, and
@@ -67,14 +69,15 @@ function fieldsOf(raw: Json, kind: keyof typeof KNOWN_FIELDS): Json | null {
   const known = KNOWN_FIELDS[kind]!
   let out: Json | null = null
   for (const key of Object.keys(raw)) {
-    if (!known.has(key)) (out ??= {})[key] = raw[key]
+    if (!known.has(key)) put((out ??= {}), key, raw[key])
   }
   return out
 }
 
 /** A node or mark written back: its known fields, then the fields this version kept for it. */
 function withFields<T extends object>(known: T, fields: unknown): T {
-  return isObject(fields) ? Object.assign(known, fields) : known
+  if (isObject(fields)) for (const key of Object.keys(fields)) put(known as Json, key, fields[key])
+  return known
 }
 
 /**
@@ -202,7 +205,11 @@ function block(schema: Schema, raw: Json): PMNode[] {
       }
       if (items.length === 0) return []
       const fields = fieldsOf(raw, 'list')
-      const start = typeof raw.start === 'number' && Number.isInteger(raw.start) ? raw.start : 1
+      // The reader's rule: a whole number from 0 that every language holds exactly.
+      const start =
+        typeof raw.start === 'number' && Number.isSafeInteger(raw.start) && raw.start >= 0
+          ? raw.start
+          : 1
       const attrs = type.name === NODE.orderedList ? { start, fields } : { fields }
       return [
         type.create(
@@ -235,7 +242,8 @@ function block(schema: Schema, raw: Json): PMNode[] {
   }
 }
 
-function blocks(schema: Schema, content: unknown): PMNode[] {
+/** The editor's blocks for a list of the model's blocks in normal form. */
+export function blocks(schema: Schema, content: unknown): PMNode[] {
   return array(content)
     .filter(isObject)
     .flatMap((raw) => block(schema, raw))
@@ -313,7 +321,8 @@ function inlineJson(parent: PMNode): Json[] {
   return out
 }
 
-function blockJson(node: PMNode): Json {
+/** A block of the editor's document as the model writes it, before the reader's normal form. */
+export function blockJson(node: PMNode): Json {
   const fields = node.attrs.fields
   switch (node.type.name) {
     case NODE.heading:

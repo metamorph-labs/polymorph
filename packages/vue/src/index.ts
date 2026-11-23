@@ -55,6 +55,7 @@ export {
 export {
   definedProps,
   slotted,
+  slotDraws,
   slotNode,
   slottedElements,
   useDeparture,

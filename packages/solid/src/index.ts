@@ -75,6 +75,7 @@ export type { PageTransitionProps } from './conventions/page-transitions'
 export {
   BORROWED,
   claimSlot,
+  drawSlot,
   hostMember,
   IDENTITY,
   ownerContext,
@@ -82,6 +83,7 @@ export {
   ResolvedSlot,
   resolveSlot,
   scope,
+  slotDraws,
   useDeparture,
 } from './conventions/slotted'
 export type { BorrowedHolder, Slot, SlotPass, Slotted } from './conventions/slotted'

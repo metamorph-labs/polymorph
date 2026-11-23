@@ -13,8 +13,10 @@ import {
   richTextAnnotations,
   richTextRangeText,
 } from '@polymorph/react'
+import { richTextContentLaw } from '@polymorph/conformance/rich-text-content'
 import { createAgentBridge } from '@polymorph/engine/agent'
 import { agentRegistrations, installTestTheme } from '@polymorph/engine/testing'
+import { reactAdapter } from '../conformance/react'
 import { Button } from '../controls/Button'
 import { Link } from '../controls/Link'
 import { RichTextInput } from '../controls/RichTextInput'
@@ -1428,3 +1430,9 @@ describe('the positions the member writes', () => {
     ])
   })
 })
+
+/*
+ * What the member draws for a document, as `@polymorph/conformance/rich-text-content` states it
+ * for every web shell, read through the states fixture.
+ */
+richTextContentLaw({ shell: 'React', adapter: reactAdapter })

@@ -57,6 +57,7 @@ export type { RefList } from './conventions/effects.svelte'
 export { joinSlot, SlotScope, SlotText } from './conventions/slotted.svelte'
 export type { Joined, Slotted, SlotScopeOptions } from './conventions/slotted.svelte'
 export { default as SlotOutlet } from './conventions/SlotOutlet.svelte'
+export { slotDraws } from './conventions/probe'
 
 export { bindSnippet, isBound } from './conventions/render'
 export type { BoundSnippet, RenderNode } from './conventions/render'

@@ -16,6 +16,7 @@ export const LOADERS: Readonly<Record<string, () => Promise<unknown>>> = {
   'poly-text': () => import('./structure/Text'),
   'poly-code': () => import('./structure/Code'),
   'poly-code-block': () => import('./structure/CodeBlock'),
+  'poly-rich-text-content': () => import('./structure/RichTextContent'),
   'poly-json-tree': () => import('./structure/JsonTree'),
   'poly-diff': () => import('./structure/Diff'),
   'poly-highlight': () => import('./structure/Highlight'),

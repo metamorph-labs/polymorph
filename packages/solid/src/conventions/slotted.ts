@@ -491,3 +491,27 @@ export function useDeparture(
     },
   }
 }
+
+/**
+ * A render prop drawn with its argument, as a node another component draws:
+ * RichTextContent's parts draw the app's `entity` through it. The function is
+ * called untracked, so the computation that draws the node does not run
+ * again for what the app's function reads; its own bindings follow that.
+ */
+export function drawSlot<Arg>(
+  render: ((arg: Arg) => JSX.Element) | undefined,
+  arg: Arg,
+): JSX.Element | undefined {
+  return render === undefined ? undefined : untrack(() => render(arg))
+}
+
+/**
+ * Whether a render prop draws anything for its argument: a React render prop
+ * that returns `undefined` draws nothing, and the member draws its own content
+ * in its place (RichTextContent's entity token where the app's `entity` draws
+ * nothing for a kind). `null` and `false` draw nothing too, as in JSX.
+ */
+export function slotDraws<Arg>(render: ((arg: Arg) => JSX.Element) | undefined, arg: Arg): boolean {
+  const drawn = drawSlot(render, arg)
+  return drawn !== undefined && drawn !== null && drawn !== false
+}

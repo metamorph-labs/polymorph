@@ -1,5 +1,5 @@
 import { isJson, own, typeOf, type Json } from './nodes'
-import { normalizeRichText } from './read'
+import { readRichText } from './read'
 import { codePointEnd, codePoints, richTextNodeText } from './text'
 import type { RichTextDocument, RichTextRange } from './types'
 
@@ -156,6 +156,32 @@ export function positionOf(text: string, index: number): number {
   return codePoints(text.slice(0, index))
 }
 
+const isHigh = (code: number): boolean => code >= 0xd800 && code <= 0xdbff
+const isLow = (code: number): boolean => code >= 0xdc00 && code <= 0xdfff
+
+/**
+ * `positionOf` for many indexes of one text, counted in one pass: each call
+ * takes an index no smaller than the one before and counts on from where that
+ * one stopped. A function that lists ranges calls it in order, so a document
+ * with many matches or many annotations costs its length once, not once per
+ * range.
+ */
+export function positionCounter(text: string): (index: number) => number {
+  // `at` never falls between the two halves of a surrogate pair.
+  let at = 0
+  let count = 0
+  return (index) => {
+    while (at < index && at < text.length) {
+      const pair = isHigh(text.charCodeAt(at)) && isLow(text.charCodeAt(at + 1))
+      // An index between the halves of a pair: the high half counts alone, as `codePoints` counts it.
+      if (pair && index === at + 1) return count + 1
+      at += pair ? 2 : 1
+      count += 1
+    }
+    return count
+  }
+}
+
 /**
  * A range as UTF-16 indexes into the joined text, clamped to it, or null when
  * it holds no code point. Indexes fall on code point boundaries, so a split at
@@ -179,7 +205,7 @@ export function unitsOf(range: unknown, text: string): { from: number; to: numbe
  * one that holds nothing, gives the empty string.
  */
 export function richTextRangeText(doc: unknown, range: RichTextRange): string {
-  const { text } = walkRichText(normalizeRichText(doc))
+  const { text } = walkRichText(readRichText(doc))
   const units = unitsOf(range, text)
   return units === null ? '' : text.slice(units.from, units.to)
 }
@@ -192,9 +218,11 @@ export function richTextRangeText(doc: unknown, range: RichTextRange): string {
  */
 export function richTextFindText(doc: unknown, text: string): RichTextRange[] {
   if (typeof text !== 'string' || text === '') return []
-  const walked = walkRichText(normalizeRichText(doc))
+  const walked = walkRichText(readRichText(doc))
   const found: RichTextRange[] = []
   const { pieces } = walked
+  // Matches are found in reading order, so their ends never go back.
+  const position = positionCounter(walked.text)
   let index = 0
   while (index < pieces.length) {
     const first = pieces[index] as Piece
@@ -203,10 +231,8 @@ export function richTextFindText(doc: unknown, text: string): RichTextRange[] {
     const from = first.from
     const line = walked.text.slice(from, (pieces[next - 1] as Piece).to)
     for (let at = line.indexOf(text); at >= 0; at = line.indexOf(text, at + text.length)) {
-      found.push({
-        start: positionOf(walked.text, from + at),
-        end: positionOf(walked.text, from + at + text.length),
-      })
+      const start = position(from + at)
+      found.push({ start, end: position(from + at + text.length) })
     }
     index = next
   }

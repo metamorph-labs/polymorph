@@ -121,6 +121,9 @@ export const FOUNDATION_TYPES = new Set([
   'RichTextEditorEvent',
   'RichTextEditorState',
   'RichTextSuggestionKey',
+  // What RichTextContent draws for a document (`richTextDrawing`).
+  'RichTextDrawnBlock',
+  'RichTextDrawnInline',
 ])
 
 /**
@@ -282,6 +285,16 @@ export const ENGINE_HELPERS: readonly string[] = [
   'placeSelectionBar',
   'followSelectionBar',
   'placeTokenList',
+  // RichTextContent's: the drawing of a document, a reader's selection in it, and a press or a
+  // key on a highlight.
+  'richTextDrawing',
+  'richTextPositionAttrs',
+  'richTextAnnotations',
+  'mapRichTextSelection',
+  'richTextSelectionBox',
+  'richTextPressedAnnotation',
+  'richTextKeyedAnnotation',
+  'RICH_TEXT_STOP',
   // The chart engine's, which the chart frame's builders name (`chart-frame.ts`).
   ...CHART_HELPERS,
   // The segmented field's, which the date field's builders name (`date-field.ts`).

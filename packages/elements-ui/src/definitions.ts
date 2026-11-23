@@ -100,6 +100,25 @@ export const DEFINITIONS: Readonly<Record<string, ElementDefinition>> = {
     events: {},
     slots: ['children'],
   },
+  'poly-rich-text-content': {
+    tag: 'poly-rich-text-content',
+    member: 'RichTextContent',
+    props: {
+      activeAnnotation: 'string',
+      annotations: 'json',
+      entity: 'property',
+      headingLevel: 'number',
+      messages: 'json',
+      selectionActions: 'property',
+      size: 'string',
+      value: 'json',
+    },
+    events: {
+      onAnnotationSelect: { type: 'poly-annotation-select', listened: true },
+      onNavigate: { type: 'poly-navigate', listened: true },
+    },
+    slots: [],
+  },
   'poly-json-tree': {
     tag: 'poly-json-tree',
     member: 'JsonTree',

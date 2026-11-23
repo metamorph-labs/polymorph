@@ -61,6 +61,7 @@ export { migrateRichText } from './migrate'
 export { isRichTextBlockKnown, isRichTextInlineKnown, isRichTextMarkKnown } from './nodes'
 export {
   emptyRichText,
+  isRichTextNewer,
   normalizeRichText,
   parseRichText,
   richTextEquals,

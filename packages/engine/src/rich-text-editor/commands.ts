@@ -36,7 +36,7 @@ import { liftTarget } from 'prosemirror-transform'
 import { richTextHref } from '../rich-text/index'
 import { RICH_TEXT_MAX_DEPTH, type RichTextEntity, type RichTextFormat } from '../rich-text/types'
 import { annotationsInside, setAnnotations, withInside } from './annotations'
-import { MARK, NODE } from './schema'
+import { LANGUAGE, MARK, NODE } from './schema'
 import type { RichTextEditorEvent } from './types'
 
 /**
@@ -112,14 +112,63 @@ export function markActive(state: EditorState, type: MarkType | undefined): bool
   return found && !missing
 }
 
+/**
+ * Whether every text from `from` to `to` that may carry the mark carries it.
+ * Text that is only white space does not count, as `prosemirror-commands`
+ * counts it, and neither does an entity, a hard break or a node this version
+ * does not know: none of them carries a format (`marks.ts`), so the format is
+ * on a selection whose text all has it, whatever else the selection holds.
+ */
+function allTextCarries(doc: PMNode, from: number, to: number, type: MarkType): boolean {
+  let missing = false
+  doc.nodesBetween(from, to, (node, pos, parent) => {
+    if (missing) return false
+    if (!node.isText || !parent?.type.allowsMarkType(type) || type.isInSet(node.marks)) return true
+    const text = node.text ?? ''
+    missing = !/^\s*$/.test(text.slice(Math.max(0, from - pos), Math.min(text.length, to - pos)))
+    return false
+  })
+  return !missing
+}
+
 export function markCommand(
   schema: Schema,
   format: 'bold' | 'italic' | 'strike' | 'code',
 ): Command {
   const type = schema.marks[format]
   if (!type) return () => false
-  // Applied to all of a partly formatted selection, and removed only when all of it has it.
-  return withEvent(toggleMark(type, null, { removeWhenPresent: false }), { type: 'toggle', format })
+  const atCaret = toggleMark(type)
+  // Applied to all of a partly formatted selection, and removed only when all of its text has it.
+  const toggle: Command = (state, dispatch, view) => {
+    const { empty, ranges } = state.selection
+    if (empty || !atCaret(state)) return atCaret(state, dispatch, view)
+    if (!dispatch) return true
+    const add = !ranges.every(({ $from, $to }) =>
+      allTextCarries(state.doc, $from.pos, $to.pos, type),
+    )
+    const tr = state.tr
+    for (const { $from, $to } of ranges) {
+      if (!add) {
+        tr.removeMark($from.pos, $to.pos, type)
+        continue
+      }
+      // White space at either end is left as it was, as `toggleMark` leaves it.
+      let from = $from.pos
+      let to = $to.pos
+      const start = $from.nodeAfter
+      const end = $to.nodeBefore
+      const lead = start?.isText ? (/^\s*/.exec(start.text ?? '')?.[0].length ?? 0) : 0
+      const trail = end?.isText ? (/\s*$/.exec(end.text ?? '')?.[0].length ?? 0) : 0
+      if (from + lead < to) {
+        from += lead
+        to -= trail
+      }
+      tr.addMark(from, to, type.create())
+    }
+    dispatch(tr.scrollIntoView())
+    return true
+  }
+  return withEvent(toggle, { type: 'toggle', format })
 }
 
 /** The nearest list around the selection's start, with its depth. */
@@ -387,7 +436,8 @@ export function textCommand(text: string): Command {
 }
 
 /**
- * The entity and one space, in place of `range` or the selection. Both take
+ * The entity and one space, in place of `range` or the selection, or nothing
+ * for an entity with an empty kind, id or label. Both take
  * the annotations the replaced range is inside, as typed text would, so an
  * entity picked inside an annotated sentence leaves no gap in it; the space
  * also takes the start's formats, which an entity does not keep.
@@ -398,6 +448,10 @@ export function entityCommand(
   range: { from: number; to: number } | null,
 ): Command {
   return (state, dispatch) => {
+    // The reader turns an entity with no kind, id or label into text, so the
+    // field inserts none: what it would show is not what it would keep.
+    const word = (value: unknown) => typeof value === 'string' && value !== ''
+    if (!word(entity.kind) || !word(entity.id) || !word(entity.label)) return false
     if (!dispatch) return true
     const from = range ? range.from : state.selection.from
     const to = range ? range.to : state.selection.to
@@ -461,9 +515,55 @@ function liftEmptyItem(schema: Schema): Command {
   }
 }
 
+/**
+ * A paragraph's whole text when it opens a code block: three backticks and a
+ * language name or nothing (`codeLanguage` says what a name is). The typed
+ * shortcut fires on a space after it (`rules.ts`) and Enter here.
+ */
+export const CODE_FENCE = new RegExp(`^\`\`\`(${LANGUAGE})?$`)
+
+/**
+ * Enter at the end of a paragraph that holds only a code fence: the paragraph
+ * becomes a code block in that language, as the typed shortcut makes one with
+ * a space. It is recorded as the typed shortcuts are, so undo or Backspace
+ * directly after it gives the characters back. Inside inline code it does
+ * nothing, as no typed shortcut does.
+ */
+export function codeFenceCommand(schema: Schema): Command {
+  const type = schema.nodes[NODE.codeBlock]
+  return (state, dispatch) => {
+    const { $from, empty } = state.selection
+    const parent = $from.parent
+    if (!type || !empty || parent.type.name !== NODE.paragraph) return false
+    if ($from.parentOffset !== parent.content.size) return false
+    let plain = true
+    parent.forEach((child) => {
+      if (!child.isText || child.marks.some((mark) => mark.type.spec.code)) plain = false
+    })
+    const match = plain ? CODE_FENCE.exec(parent.textContent) : null
+    if (!match) return false
+    if (!$from.node(-1).canReplaceWith($from.index(-1), $from.indexAfter(-1), type)) return false
+    if (dispatch) {
+      const start = $from.start()
+      const tr = state.tr
+        .delete(start, $from.pos)
+        .setBlockType(start, start, type, { language: match[1] ?? '' })
+        .setMeta(EVENT_META, { type: 'format', format: 'codeBlock', active: true })
+      // What `prosemirror-inputrules` records for a rule, so `undoInputRule` takes it back.
+      const rules = state.plugins.find(
+        (plugin) => (plugin.spec as { isInputRules?: boolean }).isInputRules,
+      )
+      if (rules) tr.setMeta(rules, { transform: tr, from: $from.pos, to: $from.pos, text: '' })
+      dispatch(tr.scrollIntoView())
+    }
+    return true
+  }
+}
+
 export function enterCommand(schema: Schema): Command {
   const item = listItemTypes(schema)
   return chainCommands(
+    codeFenceCommand(schema),
     exitCodeOnEmptyLine,
     newlineInCode,
     ...(item ? [splitListItem(item), liftEmptyItem(schema)] : []),

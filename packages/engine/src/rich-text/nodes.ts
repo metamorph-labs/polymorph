@@ -61,6 +61,24 @@ export function own(node: Json, key: string): unknown {
   return hasOwn.call(node, key) ? node[key] : undefined
 }
 
+/**
+ * Sets an own property. `__proto__` is the one key an assignment would not
+ * set as data: it would change the object's prototype. JSON can hold the key,
+ * so every reader and writer keeps it as data, as `JSON.parse` does.
+ */
+export function put(target: Json, key: string, value: unknown): void {
+  if (key === '__proto__') {
+    Object.defineProperty(target, key, {
+      value,
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    })
+  } else {
+    target[key] = value
+  }
+}
+
 /** The node's `type` when it is an object with a string type, otherwise `null`. */
 export function typeOf(node: unknown): string | null {
   if (!isJson(node)) return null

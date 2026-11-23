@@ -307,9 +307,13 @@ describe('restrictRichText', () => {
     expect(restrictRichText(REPLY, RICH_TEXT_FORMATS)).toEqual(parseRichText(REPLY).value)
   })
 
-  it('makes a heading a paragraph', () => {
-    expect(restricted([], heading(2, t('Title', bold)))).toEqual([p(t('Title'))])
-    expect(restricted(['bold'], heading(2, t('Title', bold)))).toEqual([p(t('Title', bold))])
+  it('makes a heading a paragraph of the text a heading holds', () => {
+    const title = heading(2, t('Title ', bold), t('code', { type: 'code' }), t(' ', link('/x')))
+    expect(restricted([], title)).toEqual([p(t('Title code '))])
+    // A heading's text carries no bold, so its paragraph has none to keep.
+    expect(restricted(['bold', 'code'], title)).toEqual([
+      p(t('Title '), t('code', { type: 'code' }), t(' ')),
+    ])
   })
 
   it('makes a list its items’ blocks, each kind by its own format', () => {

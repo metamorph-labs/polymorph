@@ -535,6 +535,35 @@ describe('a states fixture in element form writes the markup a page writes', () 
     expect(out).toContain("presses: 'button'")
   })
 
+  it('creates a function’s node only for the arguments its condition holds for, and several nodes as a list', () => {
+    const out = statesOf([
+      {
+        name: 'drawn',
+        props: {
+          label: 'A',
+          format: renders(
+            ['value: number'],
+            fx('Badge', {}, { default: [js('String(value)')] }),
+            'value > 0',
+          ),
+        },
+      },
+      {
+        name: 'two',
+        props: {
+          label: 'A',
+          format: renders(['value: number'], [fx('Badge', {}), fx('Badge', {})]),
+        },
+      },
+    ])
+    expect(out).toContain(
+      "e0.format = (value: number) => (value > 0) ? create('poly-badge', {  }, [String(value)]) : undefined",
+    )
+    expect(out).toContain(
+      "e0.format = (value: number) => [create('poly-badge', {  }, []), create('poly-badge', {  }, [])]",
+    )
+  })
+
   it('names the words an entry selects, for the mount', () => {
     const out = statesOf([
       { name: 'selected', props: { label: 'A' }, selects: { in: '[role="textbox"]', text: 'ab' } },

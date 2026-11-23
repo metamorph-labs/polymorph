@@ -37,6 +37,8 @@ import {
   presenceExpressions,
   relativeFile,
   renderedChildren,
+  RENDERS_KEYS,
+  type FixtureRenders,
   staticString,
   templateClassNames,
   templateExpressions,
@@ -118,8 +120,10 @@ const FOUNDATION_HELPERS = new Set([
   'BrandMark',
   'PageTransition',
   'slotted',
-  // A slot as a node another component renders (a declared Toast's content).
+  // A slot as a node another component renders (a declared Toast's content), and whether a
+  // scoped slot draws anything for its props.
   'slotNode',
+  'slotDraws',
   // A function run once the pending changes are in the document.
   'afterRender',
   // The toast store's, which Toast's viewport and FormField's notice read and write.
@@ -1169,13 +1173,11 @@ function literal(value: FixtureValue, needs: FixtureNeeds): string {
     return source
   }
   if (branded(value, 'node')) return childCode((value as { node: FixtureChild }).node, needs)
-  if (branded(value, 'renders', ['params'])) {
-    const { params, renders } = value as {
-      params: readonly string[]
-      renders: FixtureChild | readonly FixtureChild[]
-    }
+  if (branded(value, 'renders', RENDERS_KEYS)) {
+    const { params, renders, when } = value as FixtureRenders
     const children = renderedChildren(renders).map((child) => childCode(child, needs))
-    return `(${params.join(', ')}) => ${children.length === 1 ? children[0] : `[${children.join(', ')}]`}`
+    const drawn = children.length === 1 ? children[0] : `[${children.join(', ')}]`
+    return `(${params.join(', ')}) => ${when === undefined ? drawn : `(${when}) ? ${drawn} : undefined`}`
   }
   if (branded(value, 'held')) return `held.${(value as { held: string }).held}`
   if (branded(value, 'hold', ['to'])) {
@@ -1265,12 +1267,11 @@ function slotsCode(
         `${key(name)}: () => [${children.map((child) => childCode(child, needs)).join(', ')}]`,
     ),
     ...scoped.map(([name, value]) => {
-      const { params, renders } = value as {
-        params: readonly string[]
-        renders: FixtureChild | readonly FixtureChild[]
-      }
-      const children = renderedChildren(renders).map((child) => childCode(child, needs))
-      return `${key(name)}: (${params.join(', ')}) => [${children.join(', ')}]`
+      const { params, renders, when } = value as FixtureRenders
+      const children = `[${renderedChildren(renders)
+        .map((child) => childCode(child, needs))
+        .join(', ')}]`
+      return `${key(name)}: (${params.join(', ')}) => ${when === undefined ? children : `(${when}) ? ${children} : []`}`
     }),
   ]
   return entries.length === 0 ? null : `{ ${entries.join(', ')} }`
@@ -1289,7 +1290,7 @@ function vnode(
   renderProps: ReadonlyMap<string, string> = new Map(),
 ): string {
   const scopedSlot = ([prop, value]: readonly [string, FixtureValue]): boolean =>
-    renderProps.has(prop) && branded(value, 'renders', ['params'])
+    renderProps.has(prop) && branded(value, 'renders', RENDERS_KEYS)
   const given = Object.entries(props ?? {})
   const scoped = given
     .filter(scopedSlot)

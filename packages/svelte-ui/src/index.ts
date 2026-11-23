@@ -381,6 +381,13 @@ export { default as RecordButton } from './controls/RecordButton.svelte'
 export type { RecordButtonProps } from './controls/RecordButton.svelte'
 export { default as RelativeTime } from './structure/RelativeTime.svelte'
 export type { RelativeTimeMessages, RelativeTimeProps } from './structure/RelativeTime.svelte'
+export { default as RichTextContent } from './structure/RichTextContent.svelte'
+export type {
+  RichTextContentMessages,
+  RichTextContentProps,
+  RichTextContentSelection,
+  RichTextContentSize,
+} from './structure/RichTextContent.svelte'
 export { default as RichTextInput } from './controls/RichTextInput.svelte'
 export type {
   RichTextEntityOption,

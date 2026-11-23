@@ -49,7 +49,10 @@ import {
   presenceReads,
   registryMember,
   relativeFile,
+  composed,
   renderedChildren,
+  RENDERS_KEYS,
+  type FixtureRenders,
   statement,
   staticString,
   STRUCTURAL_TAGS,
@@ -118,6 +121,8 @@ export interface AngularContext {
   generic: (name: string) => boolean
   /** The tag of an internal part whose element is its host (`li` for `TagInputChip`). */
   hostTag: (name: string) => string | undefined
+  /** The members and parts a described member's or part's template composes, by its component's name. */
+  composes?: (name: string) => ReadonlySet<string>
 }
 
 /** A member's component file. */
@@ -543,6 +548,11 @@ interface Spelling {
   filled(slot: string): string
   /** `slotted(slots.x)`, `slotText(slots.x)` and `slotNode(slots.x)`. */
   slot(slot: string, read: 'slotted' | 'text' | 'node'): string
+  /**
+   * `slotNode(slots.x, arg)` and `slotDraws(slots.x, arg)` for a render prop: the
+   * call's head, up to its argument (`bindSlot(this.$p.x, `).
+   */
+  scoped(slot: string, call: 'node' | 'draws'): string
   /** `listening.x`: whether anyone handles the event. */
   listening(event: string): string
   /** Properties holding a function that returns a node, whose calls bind a template. */
@@ -617,6 +627,22 @@ function classExpr(expr: Expr, spelling: Spelling): string {
             text: `${head}, `,
           })
         }
+        for (const argument of node.arguments.slice(1)) visit(argument, bound)
+        return
+      }
+      if (
+        (callee === 'slotNode' || callee === 'slotDraws') &&
+        !bound.has(callee) &&
+        second !== undefined
+      ) {
+        // A render prop drawn with its argument, or whether it draws anything for it.
+        const slot = slotOf(first, bound)
+        if (slot === null) throw new Error(`shells: ${callee}() reads "${expr}", not a slot`)
+        edits.push({
+          start: node.getStart(source),
+          end: second.getStart(source),
+          text: spelling.scoped(slot, callee === 'slotNode' ? 'node' : 'draws'),
+        })
         for (const argument of node.arguments.slice(1)) visit(argument, bound)
         return
       }
@@ -952,6 +978,13 @@ export function renderAngularMember(
       // A slot's content as a node another component draws is the template it is projected into.
       if (read === 'node') return `this.$.template('${entry.binding}')`
       return `this.$.${read === 'slotted' ? 'slotted' : 'text'}('${entry.binding}')`
+    },
+    scoped: (slot, call) => {
+      const entry = slotProps.get(slot)
+      if (entry?.kind !== 'template') throw new Error(`shells: ${shell.member} reads slots.${slot}`)
+      const helper = call === 'node' ? 'bindSlot' : 'slotDraws'
+      foundationValues.add(helper)
+      return `${helper}(${access('this.$p', entry.name)}, `
     },
     listening: (event) => {
       const prop = outputOf(event)
@@ -1904,7 +1937,12 @@ export function renderAngularMember(
     const location = context.locations.get(name)
     if (location === undefined)
       throw new Error(`shells: ${name} is composed but has no description`)
-    importedMembers.push(name)
+    // Two parts that draw each other (a list's item holds a quote, which holds a list) are
+    // declared before each other only through `forwardRef`.
+    if (context.composes?.(name).has(shell.member) === true) {
+      core.add('forwardRef')
+      importedMembers.push(`forwardRef(() => ${name})`)
+    } else importedMembers.push(name)
     const typed = propTypes.has(name) ? [`type ${name}Props`] : []
     if (location.home === 'foundation' && home === 'vocabulary') {
       foundationValues.add(name)
@@ -2317,14 +2355,11 @@ export function renderAngularStates(
     // A template of `never` context fits any template a member takes: the fixture's takes anything.
     if (branded(value, 'node'))
       return `(${declare((value as { node: FixtureChild }).node, [], place)} as TemplateRef<never>)`
-    if (branded(value, 'renders', ['params'])) {
-      const { params, renders } = value as {
-        params: readonly string[]
-        renders: FixtureChild | readonly FixtureChild[]
-      }
+    if (branded(value, 'renders', RENDERS_KEYS)) {
+      const { params, renders, when } = value as FixtureRenders
       if (params.length > 1)
         throw new Error(`shells: ${shell.member}'s fixture renders with more than one parameter`)
-      return `(${declare(renders, params.flatMap(parameterParts), place)} as TemplateRef<never>)`
+      return `(${declare(renders, params.flatMap(parameterParts), place, when)} as TemplateRef<never>)`
     }
     if (branded(value, 'held')) return `this.${heldName(place, (value as { held: string }).held)}()`
     if (branded(value, 'hold', ['to'])) {
@@ -2344,14 +2379,20 @@ export function renderAngularStates(
     child: FixtureChild | readonly FixtureChild[],
     variables: readonly TemplateVariable[],
     place: Place,
+    when?: string,
   ): string => {
     templates += 1
     const name = `t${templates}`
     const inner: Place = { ...place, scope: [...place.scope, ...variables] }
+    const drawn = renderedChildren(child)
+      .map((entry) => childMarkup(entry, inner).text)
+      .join('')
+    // A function that returns its nodes only while `when` holds: the template draws them under it.
     const markup = {
-      text: renderedChildren(child)
-        .map((entry) => childMarkup(entry, inner).text)
-        .join(''),
+      text:
+        when === undefined
+          ? drawn
+          : `@if (${method(`(${when})`, inner.scope, 'boolean')}) {${drawn}}`,
     }
     const bound = variables
       .map((variable) =>
@@ -2596,6 +2637,10 @@ export function renderAngularStates(
     entryLines.push(`{ ${fieldsOf.join(', ')} }`)
   })
 
+  // A template bound to an input directly needs no type; only a cast or a parameter names it.
+  if (![...methods, ...fields].some((line) => line.includes('TemplateRef'))) {
+    core.delete('type TemplateRef')
+  }
   const fixtureClass = `${shell.member}States`
   const lines = [
     '/**',
@@ -2775,9 +2820,18 @@ export function renderAngularFiles(
   const parts = new Map<string, RegistryMemberLike>()
   const generics = new Set<string>()
   const hostTags = new Map<string, string>()
+  const composing = new Map<string, ReadonlySet<string>>()
   for (const shell of shells) {
     if (shell.generic !== undefined) generics.add(shell.member)
+    composing.set(
+      shell.member,
+      composed(Array.isArray(shell.template) ? shell.template : [shell.template]),
+    )
     for (const part of shell.parts ?? []) {
+      composing.set(
+        `${shell.member}${part.name}`,
+        composed(Array.isArray(part.template) ? part.template : [part.template]),
+      )
       parts.set(
         `${shell.member}${part.name}`,
         partShell(shell, part, member(shell.member)).component,
@@ -2809,6 +2863,7 @@ export function renderAngularFiles(
       lookup,
       generic: (name) => generics.has(name),
       hostTag: (name) => hostTags.get(name),
+      composes: (name) => composing.get(name) ?? new Set(),
     }
     files.set(
       angularComponentPath(shell),

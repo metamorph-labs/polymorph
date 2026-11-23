@@ -351,6 +351,13 @@ export { RecordButton } from './controls/RecordButton'
 export type { RecordButtonProps } from './controls/RecordButton'
 export { RelativeTime } from './structure/RelativeTime'
 export type { RelativeTimeMessages, RelativeTimeProps } from './structure/RelativeTime'
+export { RichTextContent } from './structure/RichTextContent'
+export type {
+  RichTextContentMessages,
+  RichTextContentProps,
+  RichTextContentSelection,
+  RichTextContentSize,
+} from './structure/RichTextContent'
 export { RichTextInput } from './controls/RichTextInput'
 export type {
   RichTextEntityOption,

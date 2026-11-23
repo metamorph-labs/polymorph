@@ -15,6 +15,7 @@ import { states as headingStates } from './structure/heading.states.svelte'
 import { states as textStates } from './structure/text.states.svelte'
 import { states as codeStates } from './structure/code.states.svelte'
 import { states as codeBlockStates } from './structure/code-block.states.svelte'
+import { states as richTextContentStates } from './structure/rich-text-content.states.svelte'
 import { states as jsonTreeStates } from './structure/json-tree.states.svelte'
 import { states as diffStates } from './structure/diff.states.svelte'
 import { states as highlightStates } from './structure/highlight.states.svelte'
@@ -157,6 +158,7 @@ export const GALLERIES: readonly ComponentStates[] = [
   textStates,
   codeStates,
   codeBlockStates,
+  richTextContentStates,
   jsonTreeStates,
   diffStates,
   highlightStates,

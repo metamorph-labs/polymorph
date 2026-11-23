@@ -49,6 +49,8 @@ import {
   registryMember,
   relativeFile,
   renderedChildren,
+  RENDERS_KEYS,
+  type FixtureRenders,
   statement,
   staticString,
   templateClassNames,
@@ -384,6 +386,11 @@ interface Spelling {
   filled(slot: string): string
   /** `slotted(slots.x)`, `slotText(slots.x)` and `slotNode(slots.x)`. */
   slot(slot: string, read: 'slotted' | 'text' | 'node'): string
+  /**
+   * `slotNode(slots.x, arg)` and `slotDraws(slots.x, arg)` for a render prop: the
+   * call's head, up to its argument (`drawSlot(props.x, `).
+   */
+  scoped(slot: string, call: 'node' | 'draws'): string
   /** `listening.x`: whether the caller handles the event. */
   listening(event: string): string
   /**
@@ -494,6 +501,22 @@ function solidExpr(expr: Expr, spelling: Spelling): string {
         } else {
           edits.push({ start: node.getStart(source), end: second.getStart(source), text: replaced })
         }
+        for (const argument of node.arguments.slice(1)) visitArgument(argument, bound, true)
+        return
+      }
+      if (
+        (callee === 'slotNode' || callee === 'slotDraws') &&
+        !bound.has(callee) &&
+        second !== undefined
+      ) {
+        // A render prop drawn with its argument, or whether it draws anything for it.
+        const slot = slotOf(first, bound)
+        if (slot === null) throw new Error(`shells: ${callee}() reads "${expr}", not a slot`)
+        edits.push({
+          start: node.getStart(source),
+          end: second.getStart(source),
+          text: spelling.scoped(slot, callee === 'slotNode' ? 'node' : 'draws'),
+        })
         for (const argument of node.arguments.slice(1)) visitArgument(argument, bound, true)
         return
       }
@@ -872,6 +895,14 @@ export function renderSolidMember(
       // A slot as a node: the content the slot read, which another component draws.
       if (read === 'node') return `(${variable}.filled() ? ${variable}() : undefined)`
       return `${variable}.${read === 'slotted' ? 'slotted' : 'text'}()`
+    },
+    scoped: (slot, call) => {
+      const entry = slotProps.get(slot)
+      if (entry?.kind !== 'scoped-slot')
+        throw new Error(`shells: ${shell.member} reads slots.${slot}`)
+      const helper = call === 'node' ? 'drawSlot' : 'slotDraws'
+      foundationValues.add(helper)
+      return `${helper}(${access('props', entry.name)}, `
     },
     listening: (event) => {
       const prop = events.get(event)
@@ -1754,13 +1785,11 @@ function literal(value: FixtureValue, needs: FixtureNeeds): string {
     return source
   }
   if (branded(value, 'node')) return childCode((value as { node: FixtureChild }).node, needs)
-  if (branded(value, 'renders', ['params'])) {
-    const { params, renders } = value as {
-      params: readonly string[]
-      renders: FixtureChild | readonly FixtureChild[]
-    }
+  if (branded(value, 'renders', RENDERS_KEYS)) {
+    const { params, renders, when } = value as FixtureRenders
     const children = renderedChildren(renders).map((child) => childCode(child, needs))
-    return `(${params.join(', ')}) => ${children.length === 1 ? children[0] : `[${children.join(', ')}]`}`
+    const drawn = children.length === 1 ? children[0] : `[${children.join(', ')}]`
+    return `(${params.join(', ')}) => ${when === undefined ? drawn : `(${when}) ? ${drawn} : undefined`}`
   }
   if (branded(value, 'held')) return `held.${(value as { held: string }).held}`
   if (branded(value, 'hold', ['to'])) {

@@ -501,7 +501,13 @@ pnpm exec vitest run src/conformance.test -t "agent"                    # the ag
   words that announce it, the link form, the text style Menu, a pick from the suggestion list,
   the selection bar at selected words, the handle its slots receive and a submit are held by
   `richTextInputLaw` (`packages/conformance/src/rich-text-input.ts`), which every shell's
-  `rich-text-input.test` calls with its adapter, and the React member's test too. A Plan's steps
+  `rich-text-input.test` calls with its adapter, and the React member's test too.
+  RichTextContent draws a document as other members: the member each node is drawn as, the
+  levels and numbers, the app's entity where it draws one and the token where it does not,
+  highlights nested as the editor nests them, a press and Enter on a highlight, and the selection
+  bar at selected words with the positions it maps them by are held by `richTextContentLaw`
+  (`packages/conformance/src/rich-text-content.ts`), which every shell's
+  `rich-text-content.test` calls with its adapter, and the React member's test too. A Plan's steps
   change while its run goes on. Which step its
   status line names, and that the line changes only when the front of the run does, are held by
   `planLaw` (`packages/conformance/src/plan.ts`), which every shell's `plan.test` calls with a

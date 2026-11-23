@@ -1,6 +1,6 @@
 import { ANNOTATION, own, typeOf, type Json } from './nodes'
-import { normalizeRichText } from './read'
-import { positionOf, unitsOf, walkRichText } from './ranges'
+import { laterRichText, normalizeRichText, readRichText } from './read'
+import { positionCounter, unitsOf, walkRichText } from './ranges'
 import type { RichTextAnnotation, RichTextDocument, RichTextRange } from './types'
 
 /**
@@ -10,7 +10,10 @@ import type { RichTextAnnotation, RichTextDocument, RichTextRange } from './type
  *
  * Each function reads the normal form and positions with the walk in
  * `ranges.ts`, so a range an application found with `richTextFindText`, or
- * read from the editor's selection, names the same words here. Only a text and
+ * read from the editor's selection, names the same words here. A document of
+ * a later format is listed as far as this version reads it, and is returned
+ * unchanged by the two functions that change a document, which cannot write
+ * that format back (`isRichTextNewer`). Only a text and
  * an entity carry an annotation. A hard break, a code block's text and a node
  * this version does not know carry none, so a range over only those anchors
  * nothing.
@@ -36,9 +39,12 @@ const isAnnotation = (mark: unknown, id: string): boolean =>
  * node this version does not know cannot carry the mark and is left as it is.
  * When the range holds nothing, lies outside the document or covers nothing
  * that can carry the mark, or `id` is not a non-empty string, the result is
- * the document's normal form unchanged. The input is not changed.
+ * the document's normal form unchanged. The input is not changed. A document
+ * of a later format is returned as it came.
  */
 export function annotateRichText(doc: unknown, range: RichTextRange, id: string): RichTextDocument {
+  const later = laterRichText(doc)
+  if (later !== null) return later
   const read = normalizeRichText(doc)
   if (typeof id !== 'string' || id === '') return read
   const units = unitsOf(range, walkRichText(read).text)
@@ -73,8 +79,14 @@ export function annotateRichText(doc: unknown, range: RichTextRange, id: string)
   return carried ? normalizeRichText({ ...read, blocks: walked.blocks }) : read
 }
 
-/** The document with every mark of the annotation `id` removed, in normal form. The input is not changed. */
+/**
+ * The document with every mark of the annotation `id` removed, in normal form.
+ * The input is not changed. A document of a later format is returned as it
+ * came.
+ */
 export function removeRichTextAnnotation(doc: unknown, id: string): RichTextDocument {
+  const later = laterRichText(doc)
+  if (later !== null) return later
   const read = normalizeRichText(doc)
   if (typeof id !== 'string') return read
   let removed = false
@@ -101,7 +113,7 @@ export function removeRichTextAnnotation(doc: unknown, id: string): RichTextDocu
  * annotation whose last character was deleted is no longer listed.
  */
 export function richTextAnnotations(doc: unknown): RichTextAnnotation[] {
-  const walked = walkRichText(normalizeRichText(doc))
+  const walked = walkRichText(readRichText(doc))
   const found = new Map<string, { from: number; to: number; text: string }>()
   for (const piece of walked.pieces) {
     if (!piece.carrier) continue
@@ -119,11 +131,18 @@ export function richTextAnnotations(doc: unknown): RichTextAnnotation[] {
       }
     }
   }
+  // Every end counted in one pass, in order, whatever the number of annotations.
+  const indexes = [...found.values()]
+    .flatMap((entry) => [entry.from, entry.to])
+    .sort((a, b) => a - b)
+  const position = positionCounter(walked.text)
+  const positions = new Map<number, number>()
+  for (const index of indexes) if (!positions.has(index)) positions.set(index, position(index))
   return [...found]
     .map(([id, entry]) => ({
       id,
       text: entry.text,
-      range: { start: positionOf(walked.text, entry.from), end: positionOf(walked.text, entry.to) },
+      range: { start: positions.get(entry.from) ?? 0, end: positions.get(entry.to) ?? 0 },
     }))
     .sort((a, b) => a.range.start - b.range.start || byKey(a.id, b.id))
 }

@@ -1,5 +1,5 @@
 import { own, typeOf, type Json } from './nodes'
-import { linesOf, normalizeRichText, paragraphOfLines } from './read'
+import { laterRichText, linesOf, normalizeRichText, paragraphOfLines } from './read'
 import type { RichTextDocument, RichTextFormat } from './types'
 
 /**
@@ -82,11 +82,18 @@ function restrictBlocks(blocks: readonly unknown[], allowed: ReadonlySet<string>
 /**
  * The document as a field that allows only `formats` holds it, in normal form.
  * With every format allowed it is the document's normal form.
+ *
+ * A document of a later format is returned as it came (`isRichTextNewer`):
+ * this version cannot write that format, and a version 1 document made from
+ * it would lose what it does not understand once it was stored. A server that
+ * enforces a field's formats refuses such a document instead.
  */
 export function restrictRichText(
   doc: unknown,
   formats: readonly RichTextFormat[],
 ): RichTextDocument {
+  const later = laterRichText(doc)
+  if (later !== null) return later
   const allowed: ReadonlySet<string> = new Set(Array.isArray(formats) ? formats : [])
   const read = normalizeRichText(doc)
   // The normal form again, so runs a removed mark separated are one run, and

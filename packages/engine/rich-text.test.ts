@@ -1,16 +1,26 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  annotateRichText,
   emptyRichText,
   isRichTextBlockKnown,
+  isRichTextNewer,
   isRichTextInlineKnown,
   isRichTextMarkKnown,
   migrateRichText,
   normalizeRichText,
   parseRichText,
+  removeRichTextAnnotation,
+  restrictRichText,
   RICH_TEXT_FORMAT,
+  RICH_TEXT_FORMATS,
   RICH_TEXT_MAX_DEPTH,
+  richTextAnnotations,
+  richTextEntities,
   richTextEquals,
+  richTextFindText,
+  richTextLength,
+  richTextPlainText,
   type RichTextDocument,
   type RichTextFaultCode,
   serializeRichText,
@@ -138,9 +148,11 @@ describe('the normal form', () => {
 
   it('writes marks in one order, each once, and omits an empty list of marks', () => {
     const read = normalizeRichText(
-      doc(p(t('a', code, bold, link('/x'), italic, bold, strike), t('b'))),
+      doc(p(t('a', strike, bold, link('/x'), italic, bold), t('b', code, link('/y')))),
     )
-    expect(read.blocks).toEqual([p(t('a', link('/x'), bold, italic, strike, code), t('b'))])
+    expect(read.blocks).toEqual([
+      p(t('a', link('/x'), bold, italic, strike), t('b', link('/y'), code)),
+    ])
     expect(normalizeRichText(doc(p({ type: 'text', text: 'x', marks: [] }))).blocks).toEqual([
       p(t('x')),
     ])
@@ -814,5 +826,174 @@ describe('migration', () => {
     // A version with no step to the next is left as it is.
     const old = { format: 'polymorph-rich-text/1', blocks: [] }
     expect(migrateRichTextWith(old, steps.slice(1), 3)).toBe(old)
+  })
+})
+
+describe('emphasis a heading and inline code do not carry', () => {
+  const annotation = { type: 'annotation', id: 'c1' }
+  const highlight = { type: 'highlight' }
+
+  it('drops bold, italic and strike from a heading’s text with no fault, and keeps the rest', () => {
+    const read = parseRichText(
+      doc({
+        type: 'heading',
+        level: 2,
+        content: [
+          t('Big ', bold, italic, strike),
+          t('call()', code, bold),
+          t(' and ', strike),
+          t('docs', link('/docs'), bold, annotation, highlight),
+          { type: 'entity', kind: 'user', id: 'u', label: '@U', marks: [bold, annotation] },
+        ],
+      }),
+    )
+    expect(read.value.blocks).toEqual([
+      {
+        type: 'heading',
+        level: 2,
+        content: [
+          t('Big '),
+          t('call()', code),
+          t(' and '),
+          t('docs', link('/docs'), highlight, annotation),
+          { type: 'entity', kind: 'user', id: 'u', label: '@U', marks: [annotation] },
+        ],
+      },
+    ])
+    expect(read.faults.map((fault) => fault.code)).toEqual(['unknown-mark'])
+  })
+
+  it('drops bold, italic and strike from inline code anywhere, and keeps a link and an annotation', () => {
+    const read = parseRichText(
+      doc(
+        p(t('a', bold), t('b', bold, code), t('c', italic, strike, code, link('/x'), annotation)),
+      ),
+    )
+    expect(read.faults).toEqual([])
+    expect(read.value.blocks).toEqual([
+      p(t('a', bold), t('b', code), t('c', link('/x'), code, annotation)),
+    ])
+  })
+
+  it('joins the runs that differed only in what was dropped', () => {
+    expect(
+      normalizeRichText(doc({ type: 'heading', level: 1, content: [t('a', bold), t('b')] })).blocks,
+    ).toEqual([{ type: 'heading', level: 1, content: [t('ab')] }])
+  })
+
+  it('reads a heading of a level past 3 as a heading, and one with no level as a paragraph that keeps its bold', () => {
+    expect(
+      normalizeRichText(doc({ type: 'heading', level: 5, content: [t('h', bold)] })).blocks,
+    ).toEqual([{ type: 'heading', level: 3, content: [t('h')] }])
+    expect(normalizeRichText(doc({ type: 'heading', content: [t('h', bold)] })).blocks).toEqual([
+      p(t('h', bold)),
+    ])
+  })
+
+  it('is kept by restrictRichText and annotateRichText, which give the normal form', () => {
+    const value = doc(
+      { type: 'heading', level: 1, content: [t('Title', bold)] },
+      p(t('x', bold, code)),
+    )
+    const expected = [{ type: 'heading', level: 1, content: [t('Title')] }, p(t('x', code))]
+    expect(restrictRichText(value, RICH_TEXT_FORMATS).blocks).toEqual(expected)
+    expect(restrictRichText(value, ['bold', 'heading']).blocks).toEqual([expected[0], p(t('x'))])
+    expect(annotateRichText(value, { start: 0, end: 1 }, 'c1').blocks).toEqual([
+      { type: 'heading', level: 1, content: [t('T', annotation), t('itle')] },
+      p(t('x', code)),
+    ])
+  })
+})
+
+describe('a document of a later format', () => {
+  const later = {
+    format: 'polymorph-rich-text/2',
+    blocks: [
+      { type: 'paragraph', content: [{ type: 'text', text: 'Hi ', marks: [{ type: 'bold' }] }] },
+      { type: 'table', rows: [{ cells: ['a'] }], text: 'a table' },
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'entity', kind: 'user', id: 'u', label: '@U' },
+          { type: 'text', text: ' and you', marks: [{ type: 'annotation', id: 'c1' }] },
+        ],
+      },
+    ],
+    meta: { b: 1, a: 2 },
+  }
+  const stored = JSON.stringify(later)
+
+  it('is told apart from one this version reads', () => {
+    expect(isRichTextNewer(later)).toBe(true)
+    expect(isRichTextNewer(stored)).toBe(true)
+    expect(isRichTextNewer({ format: 'polymorph-rich-text/12', blocks: 'not a list' })).toBe(true)
+    for (const input of [
+      doc(p(t('x'))),
+      serializeRichText(doc(p(t('x')))),
+      { format: 'polymorph-rich-text/0', blocks: [] },
+      { format: 'polymorph-rich-text/2.1', blocks: [] },
+      { format: 'markdown', blocks: [] },
+      'not json',
+      null,
+      undefined,
+      [],
+      Object.create({ format: 'polymorph-rich-text/2' }) as object,
+    ]) {
+      expect(isRichTextNewer(input), JSON.stringify(input)).toBe(false)
+    }
+  })
+
+  it('is still read as far as this version can, to be drawn, with a fault that says not to store it', () => {
+    const read = parseRichText(later)
+    expect(read.value.format).toBe(RICH_TEXT_FORMAT)
+    expect(read.value.blocks[1]).toEqual(later.blocks[1])
+    expect(read.faults[0]?.code).toBe('newer-format')
+    expect(read.faults[0]?.message).toContain('not stored')
+  })
+
+  it('comes back as it came from every function that returns a document', () => {
+    expect(normalizeRichText(later)).toBe(later)
+    expect(normalizeRichText(stored)).toEqual(later)
+    expect(restrictRichText(later, [])).toBe(later)
+    expect(restrictRichText(stored, ['bold'])).toEqual(later)
+    expect(annotateRichText(later, { start: 0, end: 2 }, 'c9')).toBe(later)
+    expect(removeRichTextAnnotation(later, 'c1')).toBe(later)
+    expect(removeRichTextAnnotation(stored, 'c1')).toEqual(later)
+    // Nothing returned is a version 1 document made from it.
+    for (const value of [normalizeRichText(stored), restrictRichText(stored, [])]) {
+      expect(value.format).toBe('polymorph-rich-text/2')
+    }
+  })
+
+  it('serializes as its own JSON, never as a version 1 document', () => {
+    expect(serializeRichText(stored)).toBe(stored)
+    const spaced = JSON.stringify(later, null, 2)
+    expect(serializeRichText(spaced)).toBe(spaced)
+    expect(serializeRichText(later)).toBe(stored)
+    // A value JSON cannot hold as it is: what JSON keeps of it, still in its format.
+    const looped: Record<string, unknown> = { ...later }
+    looped.self = looped
+    expect(JSON.parse(serializeRichText(looped)).format).toBe('polymorph-rich-text/2')
+    expect(() => serializeRichText({ ...later, big: BigInt(1) })).not.toThrow()
+  })
+
+  it('is counted, searched and listed as far as this version reads it', () => {
+    expect(richTextPlainText(later)).toBe('Hi \na table\n@U and you')
+    expect(richTextLength(stored)).toBe('Hi a table@U and you'.length)
+    expect(richTextFindText(later, 'you')).toEqual([{ start: 17, end: 20 }])
+    expect(richTextAnnotations(later)).toEqual([
+      { id: 'c1', text: ' and you', range: { start: 12, end: 20 } },
+    ])
+    expect(richTextEntities(later)).toEqual([
+      { type: 'entity', kind: 'user', id: 'u', label: '@U' },
+    ])
+  })
+
+  it('equals a document only of its own format', () => {
+    expect(richTextEquals(later, stored)).toBe(true)
+    expect(richTextEquals(later, { ...later, meta: { a: 2, b: 1 } })).toBe(true)
+    expect(richTextEquals(later, parseRichText(later).value)).toBe(false)
+    expect(richTextEquals(later, { ...later, format: 'polymorph-rich-text/3' })).toBe(false)
+    expect(richTextEquals(later, { ...later, blocks: [] })).toBe(false)
   })
 })

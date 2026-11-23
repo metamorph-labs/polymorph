@@ -102,6 +102,7 @@ export {
   isTemplate,
   Portal,
   Render,
+  slotDraws,
   SlotOutlet,
   SlotTemplate,
 } from './conventions/slots'

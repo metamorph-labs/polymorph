@@ -18,8 +18,19 @@ export type RenderNode = Snippet | BoundSnippet
 export function bindSnippet<Args extends unknown[]>(
   snippet: Snippet<Args>,
   ...args: Args
-): BoundSnippet {
-  return { snippet: snippet as unknown as Snippet<never[]>, args }
+): BoundSnippet
+/** A snippet a caller may not have passed: nothing to draw without one (a member's own render prop). */
+export function bindSnippet<Args extends unknown[]>(
+  snippet: Snippet<Args> | undefined,
+  ...args: Args
+): BoundSnippet | undefined
+export function bindSnippet<Args extends unknown[]>(
+  snippet: Snippet<Args> | undefined,
+  ...args: Args
+): BoundSnippet | undefined {
+  return snippet === undefined
+    ? undefined
+    : { snippet: snippet as unknown as Snippet<never[]>, args }
 }
 
 export function isBound(node: unknown): node is BoundSnippet {

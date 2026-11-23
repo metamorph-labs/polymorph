@@ -8,6 +8,7 @@ import {
   MARK_TYPES,
   NODE_TYPES,
   own,
+  put,
   typeOf,
   type Json,
 } from './nodes'
@@ -46,6 +47,12 @@ import {
  *    with or without it. A writer that formats a selection with an entity in
  *    it writes one there, so dropping it is not a fault, as dropping a mark
  *    written twice is not.
+ *  - A heading's text carries no bold, italic or strike, because a heading is
+ *    already set apart, and neither does text marked `code`, which is drawn as
+ *    it was written. A writer that formats a selection across a heading or a
+ *    code span writes one there, so these are dropped without a fault too. A
+ *    link, inline code in a heading, an annotation and a mark this version
+ *    does not know stay.
  *  - `start` is omitted when it is 1 or the list is bulleted, and `language`
  *    when it is empty.
  *  - Every node in a list's `items` is a list item, and a list item's first
@@ -145,24 +152,6 @@ function orderedKeys(value: object): string[] {
   return Object.keys(value).sort((a, b) =>
     a === b ? 0 : a === 'type' ? -1 : b === 'type' ? 1 : a < b ? -1 : 1,
   )
-}
-
-/**
- * Sets an own property. `__proto__` is the one key an assignment would not
- * set as data: it would change the object's prototype. JSON can hold the key,
- * so the reader keeps it as data, as `JSON.parse` does.
- */
-function put(target: Json, key: string, value: unknown): void {
-  if (key === '__proto__') {
-    Object.defineProperty(target, key, {
-      value,
-      enumerable: true,
-      writable: true,
-      configurable: true,
-    })
-  } else {
-    target[key] = value
-  }
 }
 
 function assign<T extends object>(target: T, entries: Entries): T {
@@ -312,8 +301,15 @@ function keep(
 
 const isWord = (value: unknown): value is string => typeof value === 'string' && value !== ''
 
-/** What holds a list of marks: a text, or an entity, which keeps only annotations and unknown marks. */
-type Holder = 'text' | 'entity'
+/**
+ * What holds a list of marks: a text in a paragraph, a text in a heading,
+ * which carries no emphasis, or an entity, which keeps only annotations and
+ * unknown marks.
+ */
+type Holder = 'text' | 'heading' | 'entity'
+
+/** The marks a heading's text and a code span carry none of (the file's header says why). */
+const EMPHASIS: ReadonlySet<string> = new Set(['bold', 'italic', 'strike'])
 
 const byKey = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0)
 
@@ -329,9 +325,9 @@ function readMarks(
       faults,
       'malformed',
       path,
-      holder === 'text'
-        ? "A text's marks are not a list. The text is kept without them."
-        : "An entity's marks are not a list. The entity is kept without them.",
+      holder === 'entity'
+        ? "An entity's marks are not a list. The entity is kept without them."
+        : "A text's marks are not a list. The text is kept without them.",
     )
     return []
   }
@@ -339,6 +335,8 @@ function readMarks(
   const annotations = new Map<string, Json>()
   const others: { key: string; mark: unknown }[] = []
   const seen = new Set<string>()
+  const plain =
+    holder === 'heading' || (holder === 'text' && value.some((mark) => typeOf(mark) === 'code'))
   for (let index = 0; index < value.length; index += 1) {
     const mark: unknown = value[index]
     const at = [...path, index]
@@ -355,7 +353,7 @@ function readMarks(
           faults,
           'malformed',
           at,
-          `An annotation has no id. It is removed and ${holder === 'text' ? 'its text' : 'the entity'} kept.`,
+          `An annotation has no id. It is removed and ${holder === 'entity' ? 'the entity' : 'its text'} kept.`,
         )
         continue
       }
@@ -364,8 +362,10 @@ function readMarks(
         annotations.set(id, assign({ type, id }, readExtras(json, ANNOTATION_KEYS, at, faults)))
       continue
     }
-    // A format on an entity: dropped without a fault (the file's header says why).
+    // A format on an entity, and emphasis in a heading or on code: dropped
+    // without a fault (the file's header says why).
     if (holder === 'entity' && MARK_TYPES.has(type)) continue
+    if (plain && EMPHASIS.has(type)) continue
     if (type === 'link') {
       const href = own(json, 'href')
       if (typeof href !== 'string') {
@@ -428,6 +428,7 @@ function readInlines(
   nodes: readonly unknown[],
   path: Path,
   faults: RichTextFault[],
+  heading = false,
 ): RichTextInline[] {
   const out: unknown[] = []
   let last: { text: string } | null = null
@@ -464,7 +465,7 @@ function readInlines(
       }
       pushText(
         text,
-        readMarks(own(json, 'marks'), [...at, 'marks'], faults),
+        readMarks(own(json, 'marks'), [...at, 'marks'], faults, heading ? 'heading' : 'text'),
         readExtras(json, TEXT_KEYS, at, faults),
       )
       continue
@@ -494,9 +495,14 @@ function readInlines(
   return out as RichTextInline[]
 }
 
-function readContent(node: Json, path: Path, faults: RichTextFault[]): RichTextInline[] {
+function readContent(
+  node: Json,
+  path: Path,
+  faults: RichTextFault[],
+  heading = false,
+): RichTextInline[] {
   const content = own(node, 'content')
-  if (Array.isArray(content)) return readInlines(content, [...path, 'content'], faults)
+  if (Array.isArray(content)) return readInlines(content, [...path, 'content'], faults, heading)
   fault(
     faults,
     'malformed',
@@ -595,11 +601,15 @@ function readBlock(
       return
     case 'heading': {
       const level = own(json, 'level')
-      const content = readContent(json, path, faults)
+      // The level decides first whether this is a heading, and so whether its
+      // text may carry emphasis: one read as a paragraph keeps its bold.
+      const known = level === 1 || level === 2 || level === 3
+      const deepest = !known && Number.isSafeInteger(level) && (level as number) > 3
+      const content = readContent(json, path, faults, known || deepest)
       const extras = readExtras(json, HEADING_KEYS, path, faults)
-      if (level === 1 || level === 2 || level === 3) {
+      if (known) {
         out.push(assign({ type, level, content }, extras))
-      } else if (Number.isSafeInteger(level) && (level as number) > 3) {
+      } else if (deepest) {
         fault(
           faults,
           'malformed',
@@ -715,6 +725,17 @@ function tooDeep(container: Json, path: Path, faults: RichTextFault[], out: unkn
   flatten(container, path, faults, out)
 }
 
+/**
+ * The paragraphs the reader makes of a quote or list that sits too deep, for
+ * the editor, which flattens what a paste nested too deep with this same rule
+ * so that the field shows what its value holds.
+ */
+export function flattenedBlocks(container: unknown): RichTextBlock[] {
+  const out: unknown[] = []
+  if (isJson(container)) flatten(container, [], [], out)
+  return out as RichTextBlock[]
+}
+
 /** `depth` is the number of quotes and lists around the blocks. */
 function readBlocks(
   nodes: readonly unknown[],
@@ -788,15 +809,39 @@ export function emptyRichText(): RichTextDocument {
   return { format: RICH_TEXT_FORMAT, blocks: [] }
 }
 
+/** Text that is not JSON. */
+const NOT_JSON = Symbol('not JSON')
+
+/** The input as a value: a string is read as JSON. */
+function jsonOf(input: unknown): unknown {
+  if (typeof input !== 'string') return input
+  try {
+    return JSON.parse(input) as unknown
+  } catch {
+    return NOT_JSON
+  }
+}
+
+/**
+ * The format a value names when it is a rich-text format later than this
+ * reader's, otherwise null. A value whose reading throws names none.
+ */
+function laterFormat(value: unknown): string | null {
+  try {
+    if (!isJson(value)) return null
+    const format = own(value, 'format')
+    const version = richTextFormatVersion(format)
+    return version !== null && version > RICH_TEXT_VERSION ? (format as string) : null
+  } catch {
+    return null
+  }
+}
+
 function readDocument(input: unknown, faults: RichTextFault[]): RichTextDocument {
   let value = input
-  if (typeof value === 'string') {
-    try {
-      value = JSON.parse(value) as unknown
-    } catch {
-      fault(faults, 'unreadable', [], 'The input is text that is not JSON.')
-      return emptyRichText()
-    }
+  if (value === NOT_JSON) {
+    fault(faults, 'unreadable', [], 'The input is text that is not JSON.')
+    return emptyRichText()
   }
   if (!isJson(value)) {
     fault(faults, 'unreadable', [], `The input is ${described(value)}, not a rich-text value.`)
@@ -820,7 +865,7 @@ function readDocument(input: unknown, faults: RichTextFault[]): RichTextDocument
       faults,
       'newer-format',
       ['format'],
-      `The format ${named(format as string)} is later than this version's ${RICH_TEXT_FORMAT}. It is read as far as this version can, and written as ${RICH_TEXT_FORMAT}.`,
+      `The format ${named(format as string)} is later than this version's ${RICH_TEXT_FORMAT}. It is read as far as this version can, to be drawn; what is read is not stored in its place.`,
     )
   } else {
     value = migrateRichText(value)
@@ -846,15 +891,10 @@ function readDocument(input: unknown, faults: RichTextFault[]): RichTextDocument
   return assign(doc, readExtras(value, DOCUMENT_KEYS, [], faults))
 }
 
-/**
- * Reads any JSON, or a JSON string, as a document: migrated to this version's
- * format, in normal form, with what the reader repaired, removed or did not
- * know. It never throws. A document this version wrote has no faults.
- */
-export function parseRichText(input: unknown): RichTextParseResult {
+function read(value: unknown): RichTextParseResult {
   const faults: RichTextFault[] = []
   try {
-    return { value: readDocument(input, faults), faults }
+    return { value: readDocument(value, faults), faults }
   } catch {
     // A value passed in memory can throw from a getter or a proxy. JSON cannot.
     return {
@@ -870,21 +910,102 @@ export function parseRichText(input: unknown): RichTextParseResult {
   }
 }
 
-/** The document in normal form: what `parseRichText` returns, without the faults. */
+/**
+ * Reads any JSON, or a JSON string, as a document: migrated to this version's
+ * format, in normal form, with what the reader repaired, removed or did not
+ * know. It never throws. A document this version wrote has no faults.
+ *
+ * A document of a later format (`isRichTextNewer`) is read as far as this
+ * version can, with a `newer-format` fault. That value is for drawing: it is
+ * stamped with this version's format and holds only what this version
+ * understood, so it must never be stored in place of the document, which an
+ * application keeps as it came.
+ */
+export function parseRichText(input: unknown): RichTextParseResult {
+  return read(jsonOf(input))
+}
+
+/**
+ * What every projection reads: the document as `parseRichText` reads it, a
+ * later format included, so a document of a later format is counted, searched
+ * and drawn as far as this version can. Never handed back as a document.
+ */
+export function readRichText(input: unknown): RichTextDocument {
+  return read(jsonOf(input)).value
+}
+
+/**
+ * Whether the input is a document of a format later than this version's: one
+ * a later version wrote. Such a document is drawn as far as this version can,
+ * and is not edited or rewritten here, because a version that does not know
+ * its format cannot write it back without losing what it does not understand.
+ * A field shows it read-only, and a server stores it as it came.
+ */
+export function isRichTextNewer(input: unknown): boolean {
+  return laterFormat(jsonOf(input)) !== null
+}
+
+/**
+ * A document of a later format as the value it came as, a string parsed, or
+ * null for any other input: what every function that returns a document
+ * returns for one, unchanged.
+ */
+export function laterRichText(input: unknown): RichTextDocument | null {
+  const value = jsonOf(input)
+  return laterFormat(value) === null ? null : (value as RichTextDocument)
+}
+
+/**
+ * The document in normal form: what `parseRichText` returns, without the
+ * faults.
+ *
+ * A document of a later format is returned as it came (a string parsed), not
+ * read: its normal form is one only a later version knows, and a version 1
+ * document made from it would lose what this version does not understand once
+ * it was stored.
+ */
 export function normalizeRichText(input: unknown): RichTextDocument {
-  return parseRichText(input).value
+  const value = jsonOf(input)
+  return laterFormat(value) === null ? read(value).value : (value as RichTextDocument)
 }
 
 /**
  * The document as the string an application stores: the normal form's JSON,
  * whose keys the reader writes in one order, so equal documents give equal
  * strings. `parseRichText` reads it back.
+ *
+ * A document of a later format is its own JSON, for the reason
+ * `normalizeRichText` gives: a string is returned as it is, and a value as
+ * `JSON.stringify` writes it.
  */
 export function serializeRichText(input: unknown): string {
-  return JSON.stringify(normalizeRichText(input))
+  const value = jsonOf(input)
+  if (laterFormat(value) !== null) {
+    if (typeof input === 'string') return input
+    try {
+      const text = JSON.stringify(value)
+      if (typeof text === 'string') return text
+    } catch {
+      // A value passed in memory that JSON cannot hold as it is: a cycle, a bigint.
+    }
+    try {
+      return JSON.stringify(copyJson(value, 1, copyState()))
+    } catch {
+      // A getter or a proxy that throws: the value cannot be read, as `parseRichText` says.
+    }
+  }
+  return JSON.stringify(read(value).value)
 }
 
-/** Whether two documents are the same document: equal normal forms. */
+/**
+ * Whether two documents are the same document: the same format and equal
+ * normal forms. A document of a later format is compared as far as this
+ * version reads it, and never equals one of this version's format.
+ */
 export function richTextEquals(a: unknown, b: unknown): boolean {
-  return serializeRichText(a) === serializeRichText(b)
+  const identity = (input: unknown): string => {
+    const value = jsonOf(input)
+    return JSON.stringify([laterFormat(value) ?? RICH_TEXT_FORMAT, read(value).value])
+  }
+  return identity(a) === identity(b)
 }
