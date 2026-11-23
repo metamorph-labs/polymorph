@@ -34,5 +34,7 @@ import { ScreenView } from '@polymorph/react/screen'
 - `onAction` is told `{ name, args, values }` when a member calls a callback input that returns
   nothing, and a promise it returns is what the member waits on: a ConfirmDialog stays busy until
   it settles. A callback input that returns a value is answered by its type and never told.
+- A screen renders on a server with no handler run. A member that throws there leaves the
+  screen's place empty for the browser to draw, and the page around it is still served.
 - `useScreen` and `ScreenDrawing` are its two halves, for reading the screen's `values` or drawing
   it somewhere of your own. `componentFor(members, name)` is the rule a name resolves by.
