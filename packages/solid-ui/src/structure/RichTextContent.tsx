@@ -141,6 +141,9 @@ export default function RichTextContent(given: RichTextContentProps): JSX.Elemen
         return entityNode.value
       },
     })
+    const bar = elementRef<HTMLElement>()
+    const root = elementRef<HTMLElement>()
+    const status = elementRef<HTMLElement>()
     const selected = createCell({
       now: null as { range: RichTextRange; text: string; key: string } | null,
       last: null as { range: RichTextRange; text: string; key: string } | null,
@@ -150,9 +153,6 @@ export default function RichTextContent(given: RichTextContentProps): JSX.Elemen
     const barFocus = createCell(false)
     const said = createCell({ text: '', at: 0 })
     const barHeard = createCell(false)
-    const bar = elementRef<HTMLElement>()
-    const root = elementRef<HTMLElement>()
-    const status = elementRef<HTMLElement>()
     const held = createDerived(() => ({
       range: null as Range | null,
       cameFrom: null as HTMLElement | null,

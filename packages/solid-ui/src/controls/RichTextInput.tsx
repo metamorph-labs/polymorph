@@ -16,6 +16,7 @@ import {
   claimSlot,
   createCell,
   createDerived,
+  createKept,
   createRichTextEditor,
   elementRef,
   emptyRichText,
@@ -296,7 +297,16 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
     claimSlot(given, 'group'),
   )
   return scope(() => {
+    const entitiesKept = createKept(() => props.entities)
     const uid = createUniqueId()
+    const actions = elementRef<HTMLElement>()
+    const bar = elementRef<HTMLElement>()
+    const controls = elementRef<HTMLElement>()
+    const linkForm = elementRef<HTMLElement>()
+    const panel = elementRef<HTMLElement>()
+    const root = elementRef<HTMLElement>()
+    const toolbarRow = elementRef<HTMLElement>()
+    const surface = useControlRef(() => props.controlRef)
     const own = createCell(props.defaultValue ?? emptyRichText())
     const initial = createCell(props.defaultValue ?? emptyRichText())
     const editorState = createCell(null as RichTextEditorState | null)
@@ -317,14 +327,6 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
     const selecting = createCell(false)
     const barDismissed = createCell(null as string | null)
     const barHeard = createCell(false)
-    const actions = elementRef<HTMLElement>()
-    const bar = elementRef<HTMLElement>()
-    const controls = elementRef<HTMLElement>()
-    const linkForm = elementRef<HTMLElement>()
-    const panel = elementRef<HTMLElement>()
-    const root = elementRef<HTMLElement>()
-    const toolbarRow = elementRef<HTMLElement>()
-    const surface = useControlRef(() => props.controlRef)
     const held = createDerived(() => ({
       editor: null as RichTextEditor | null,
       handle: null as RichTextInputEditor | null,
@@ -399,7 +401,7 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
     )
     const has = createDerived(() => (format: RichTextFormat) => allowed.value.includes(format))
     const kinds = createDerived(() =>
-      props.entities.map((entry) => ({ kind: entry.kind, trigger: entry.trigger })),
+      entitiesKept.value.map((entry) => ({ kind: entry.kind, trigger: entry.trigger })),
     )
     const marks = createDerived(() =>
       (
@@ -498,7 +500,7 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
     )
     const source = createDerived(() =>
       ((token) =>
-        token === null ? undefined : props.entities.find((entry) => entry.kind === token.kind))(
+        token === null ? undefined : entitiesKept.value.find((entry) => entry.kind === token.kind))(
         suggestion.value,
       ),
     )
@@ -600,7 +602,7 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
       editorState.value = next
       const token = next.suggestion
       const nextSource =
-        token === null ? undefined : props.entities.find((entry) => entry.kind === token.kind)
+        token === null ? undefined : entitiesKept.value.find((entry) => entry.kind === token.kind)
       const key = token === null || nextSource === undefined ? null : token.key + ':' + token.query
       if (key !== reported.value) {
         reported.value = key
@@ -817,7 +819,7 @@ export default function RichTextInput(given: RichTextInputProps): JSX.Element {
           .filter((part) => part !== undefined)
           .join(' ') || undefined,
     )
-    const suggesting = createDerived(() => props.entities.length > 0)
+    const suggesting = createDerived(() => entitiesKept.value.length > 0)
     const attributes = createDerived(
       () =>
         ({
