@@ -58,7 +58,7 @@ pnpm native:contracts        # regenerate the Swift and Kotlin contracts (--chec
 pnpm emit:native             # regenerate the native token sources (--check: fail if stale)
 pnpm emit:examples           # regenerate the native example screens from their specs (--check)
 pnpm emit <spec.json> [out]  # emit a screen for a web framework, SwiftUI or Compose
-pnpm build:packages          # the published builds of the engine, rules, react and each framework's packages
+pnpm build:packages          # the published builds of the engine, rules, the run-time core, react and each framework's packages
 pnpm size                    # what a consumer ships, against budgets, a page with no build included (needs build:packages; --why)
 pnpm layout                  # the layout measure over every gallery and sample page, at two widths (needs build)
 pnpm new:member <Name> --tier <tier>   # scaffold a new member and every entry it needs (see CONTRIBUTING.md)
