@@ -166,6 +166,22 @@ export { followHighlight, returnFocus, roveRadio } from './conventions/roving'
 
 export { revealInline } from './conventions/reveal'
 
+/* A toolbar's roving tab stop and keys, and the places of a bar at the selected
+   text and of a list at a token, which every framework's RichTextInput draws by. */
+export {
+  enterToolbar,
+  holdToolbarEscape,
+  syncToolbarStop,
+  toolbarFocusIn,
+  toolbarFocusOut,
+  toolbarKeydown,
+  toolbarPress,
+  toolbarStop,
+} from './conventions/toolbar'
+export type { ToolbarStop } from './conventions/toolbar'
+export { followSelectionBar, placeSelectionBar, placeTokenList } from './conventions/selection-bar'
+export type { ViewportBox } from './conventions/selection-bar'
+
 /* A scroll region held at its end while content arrives, which every
    framework's ChatThread and LogView follow by. */
 export { FOLLOW_SLACK_PX, followEnd, jumpToEnd } from './conventions/follow'

@@ -39,6 +39,7 @@ import { states as searchInputStates } from './controls/search-input.states'
 import { states as passwordInputStates } from './controls/password-input.states'
 import { states as oTPInputStates } from './controls/otp-input.states'
 import { states as textareaStates } from './controls/textarea.states'
+import { states as richTextInputStates } from './controls/rich-text-input.states'
 import { states as tagInputStates } from './controls/tag-input.states'
 import { states as fileUploadStates } from './controls/file-upload.states'
 import { states as checkboxStates } from './controls/checkbox.states'
@@ -180,6 +181,7 @@ export const GALLERIES: readonly ComponentStates[] = [
   passwordInputStates,
   oTPInputStates,
   textareaStates,
+  richTextInputStates,
   tagInputStates,
   fileUploadStates,
   checkboxStates,

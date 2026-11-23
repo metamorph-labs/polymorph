@@ -322,8 +322,7 @@
       "reason": "its description is being written"
     },
     "RichTextInput": {
-      "status": "absent",
-      "reason": "its description is being written"
+      "status": "native"
     },
     "ScatterChart": {
       "status": "native"

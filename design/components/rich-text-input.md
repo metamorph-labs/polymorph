@@ -348,9 +348,7 @@ key End moves-focus-last on control
 | inline code | Code, composed |
 | link | Link, composed, with the inline variant's underline · `cursor: text` |
 | selected entity or unknown node | `--pm-selection-text` on `--pm-selection-bg` (one label, `README.md` §11) |
-| annotation (`mark`) | bg `--pm-warning-subtle`, opaque, so overlapping ones read the same · `color: inherit`, so a link or code keeps its look · outline `1px solid transparent` · `box-decoration-break: clone`, unprefixed as Code's |
-| annotation active | bg `--pm-warning-subtle-active` · outline `2px solid --pm-warning-border` |
-| annotated entity | a `2px` ring of the annotation's wash (`box-shadow`), `--pm-warning-subtle`, or `--pm-warning-subtle-active` in the active one, because the entity's own wash covers the highlight |
+| annotation (`mark`), active, annotated entity | RichTextContent's annotation, composed (`rich-text-content.md`, Recipes): the warning wash, a rule under the words in `--pm-warning-border`, the active one's pressed wash and frame, and an annotated entity's ring |
 | footer | wrapping row · gap `--pm-space-2`; the default controls at the inline end: cancel `Button ghost/neutral/sm`, submit `Button solid/accent/sm` |
 | count | `text.xs` quartet · `--pm-text-muted` · tabular numerals; over the limit `--pm-danger-text`; under the frame, padding-inline `--pm-space-3` |
 | suggestions | PromptInput's panel, composed · inline-size `min(100%, --pm-space-10 × 4)` (Popover's width) · inline start at the token, clamped inside the root · `--pm-space-1` under the token's line (`data-placement="below"`) or above its top (`"above"`) · below `30rem`, `inset-inline: 0` |
@@ -361,9 +359,9 @@ key End moves-focus-last on control
 | selection bar | `selection-bar.module.css`: fixed · `--pm-z-overlay` · wrapping row · gap `--pm-space-1` · padding `--pm-space-1` · bg `--pm-bg-overlay` · border `1px solid --pm-border-subtle` · radius `--pm-radius-surface` · shadow `--pm-shadow-transient` · max-inline-size `100vw` − 2 × `--pm-space-2` · glass as Popover's panel; its controls as the toolbar's |
 
 **Forced colours** have no rule of their own, as Input's and PromptInput's: the focus ring is an
-outline, which forced colours keep. The annotation's transparent outline is drawn in forced
-colours, where its wash is not, and the active one's is thicker; it also frames an annotated
-entity, whose ring is a shadow that forced colours remove.
+outline, which forced colours keep. The annotation's transparent outline and its rule are drawn in
+forced colours, where its wash is not, and the active one's outline is thicker; they also mark an
+annotated entity, whose ring is a shadow that forced colours remove.
 
 ## States
 

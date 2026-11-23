@@ -381,6 +381,18 @@ export { default as RecordButton } from './controls/RecordButton.svelte'
 export type { RecordButtonProps } from './controls/RecordButton.svelte'
 export { default as RelativeTime } from './structure/RelativeTime.svelte'
 export type { RelativeTimeMessages, RelativeTimeProps } from './structure/RelativeTime.svelte'
+export { default as RichTextInput } from './controls/RichTextInput.svelte'
+export type {
+  RichTextEntityOption,
+  RichTextEntitySource,
+  RichTextInputEditor,
+  RichTextInputMaxRows,
+  RichTextInputMessages,
+  RichTextInputMinRows,
+  RichTextInputProps,
+  RichTextInputSelection,
+  RichTextToolbarPlacement,
+} from './controls/RichTextInput.svelte'
 export { default as ScatterChart } from './charts/ScatterChart.svelte'
 export type { ScatterChartProps } from './charts/ScatterChart.svelte'
 export { default as ScrollArea } from './structure/ScrollArea.svelte'

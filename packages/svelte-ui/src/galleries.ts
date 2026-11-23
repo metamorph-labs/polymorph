@@ -39,6 +39,7 @@ import { states as searchInputStates } from './controls/search-input.states.svel
 import { states as passwordInputStates } from './controls/password-input.states.svelte'
 import { states as oTPInputStates } from './controls/otp-input.states.svelte'
 import { states as textareaStates } from './controls/textarea.states.svelte'
+import { states as richTextInputStates } from './controls/rich-text-input.states.svelte'
 import { states as tagInputStates } from './controls/tag-input.states.svelte'
 import { states as fileUploadStates } from './controls/file-upload.states.svelte'
 import { states as checkboxStates } from './controls/checkbox.states.svelte'
@@ -180,6 +181,7 @@ export const GALLERIES: readonly ComponentStates[] = [
   passwordInputStates,
   oTPInputStates,
   textareaStates,
+  richTextInputStates,
   tagInputStates,
   fileUploadStates,
   checkboxStates,

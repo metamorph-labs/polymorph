@@ -134,4 +134,4 @@ export type { IconProps } from './icon/Icon'
 
 export { classes, fieldValue, getters, presence } from './conventions/classes'
 export type { Each, Emitted } from './conventions/types'
-export { pressOnce, typeInto } from './conventions/typing'
+export { pressOnce, selectOnce, typeInto } from './conventions/typing'

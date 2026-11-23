@@ -11,7 +11,19 @@ import {
   type RefObject,
 } from 'react'
 
-import type { RichTextRect } from '@polymorph/react'
+import {
+  enterToolbar,
+  followSelectionBar,
+  holdToolbarEscape,
+  placeSelectionBar,
+  syncToolbarStop,
+  toolbarFocusIn,
+  toolbarFocusOut,
+  toolbarKeydown,
+  toolbarPress,
+  toolbarStop,
+  type RichTextRect,
+} from '@polymorph/react'
 import styles from '@polymorph/recipes/controls/selection-bar.module.css'
 
 /**
@@ -31,37 +43,11 @@ import styles from '@polymorph/recipes/controls/selection-bar.module.css'
  * as the page scrolls and the window resizes. Application code may not place
  * anything, so the member draws the bar and the application gives it
  * controls.
+ *
+ * The keys and the placement are the engine's (`conventions/toolbar.ts`,
+ * `conventions/selection-bar.ts`), which every framework's member calls; this
+ * module binds them to React's elements and events.
  */
-
-/** What a toolbar's keys move between: its own controls, and none of a toolbar inside it. */
-const CONTROLS = 'button, [href], input, select, textarea, [tabindex]'
-
-/** A text field takes the arrow keys and the pointer itself. */
-const TEXT_ENTRY = 'input, textarea, select, [contenteditable="true"]'
-
-function enabled(element: HTMLElement): boolean {
-  return (
-    !element.matches(':disabled') &&
-    element.getAttribute('aria-disabled') !== 'true' &&
-    element.closest('[hidden], [inert]') === null
-  )
-}
-
-/** Every control of the toolbar, enabled or not, in document order. */
-function everyControl(toolbar: HTMLElement): HTMLElement[] {
-  return Array.from(toolbar.querySelectorAll<HTMLElement>(CONTROLS)).filter(
-    (element) => element.closest('[role="toolbar"]') === toolbar,
-  )
-}
-
-/** The first enabled control after `element` in document order. */
-function after(element: HTMLElement, controls: readonly HTMLElement[]): HTMLElement | undefined {
-  if (!element.isConnected) return undefined
-  return controls.find(
-    (control) =>
-      (element.compareDocumentPosition(control) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
-  )
-}
 
 export interface ToolbarKeys {
   /** Spread on the toolbar element. */
@@ -76,7 +62,7 @@ export interface ToolbarKeys {
 }
 
 /**
- * The roving tab stop of a toolbar. Each render gives the stop's control
+ * The roving tab stop of a toolbar (`syncToolbarStop`). Each render gives the stop's control
  * `tabindex="0"` and every other control `-1`, so Tab reaches the toolbar once
  * and arrives on the control it left from, the first one before that. A
  * control that is disabled while it has focus hands focus to the next enabled
@@ -91,127 +77,52 @@ export function useToolbarKeys(
   ref: RefObject<HTMLElement | null>,
   onEscape: () => void,
 ): ToolbarKeys {
-  /** The control that holds the tab stop. */
-  const stop = useRef<HTMLElement | null>(null)
-  /** Whether focus is in the toolbar, kept while it falls to the page from a control that was disabled. */
-  const holding = useRef(false)
+  /** The control that holds the tab stop, and whether focus is in the toolbar: one object, kept. */
+  const [held] = useState(toolbarStop)
 
   useLayoutEffect(() => {
-    const toolbar = ref.current
-    if (toolbar === null) return
-    const every = everyControl(toolbar)
-    const controls = every.filter(enabled)
-    const previous = stop.current
-    const kept = previous !== null && controls.includes(previous) ? previous : null
-    const next = kept ?? (previous === null ? undefined : after(previous, controls)) ?? controls[0]
-    stop.current = next ?? null
-    for (const control of every) control.tabIndex = control === next ? 0 : -1
-    if (kept !== null || next === undefined || !holding.current) return
-    const active = toolbar.ownerDocument.activeElement
-    if (active === null || active === toolbar.ownerDocument.body || active === previous) {
-      next.focus()
-    }
+    syncToolbarStop(ref.current, held)
   })
 
-  // Escape is the toolbar's. A dialog's layer hears it on the document before the toolbar does
-  // and closes unless the key's default is prevented, so the toolbar prevents it on the window,
-  // which the key reaches first, and then hands focus back in its own handler. The window is the
-  // toolbar's own, read once the toolbar is drawn: a selection bar is drawn after its member.
-  const listening = useRef<{ view: Window; hold: (event: globalThis.KeyboardEvent) => void }>(null)
+  // Escape is the toolbar's (`holdToolbarEscape`). The window is the toolbar's own, read once the
+  // toolbar is drawn: a selection bar is drawn after its member.
+  const listening = useRef<{ view: Window; release: () => void }>(null)
   useLayoutEffect(() => {
     const view = ref.current?.ownerDocument.defaultView ?? null
     if (listening.current?.view === view) return
-    if (listening.current !== null) {
-      listening.current.view.removeEventListener('keydown', listening.current.hold, true)
-      listening.current = null
-    }
+    listening.current?.release()
+    listening.current = null
     if (view === null) return
-    const hold = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== 'Escape' || event.isComposing) return
-      const target = event.target
-      if (target instanceof Node && ref.current?.contains(target) === true) event.preventDefault()
-    }
-    view.addEventListener('keydown', hold, true)
-    listening.current = { view, hold }
+    listening.current = { view, release: holdToolbarEscape(view, () => ref.current) }
   })
   useLayoutEffect(
     () => () => {
-      if (listening.current === null) return
-      listening.current.view.removeEventListener('keydown', listening.current.hold, true)
+      listening.current?.release()
       listening.current = null
     },
     [],
   )
 
-  function controlsNow(): HTMLElement[] {
-    return ref.current === null ? [] : everyControl(ref.current).filter(enabled)
-  }
-
-  function mine(target: EventTarget | null): target is HTMLElement {
-    return target instanceof HTMLElement && ref.current?.contains(target) === true
-  }
-
-  function move(to: HTMLElement | undefined) {
-    if (to === undefined) return
-    stop.current = to
-    to.focus()
-  }
-
   return {
     props: {
       onKeyDown: (event) => {
-        if (!mine(event.target) || event.nativeEvent.isComposing) return
-        if (event.key === 'Escape') {
-          event.preventDefault()
+        const toolbar = ref.current
+        if (toolbar === null) return
+        // The key stops here in React's tree too, where a popup's events also travel.
+        if (toolbarKeydown(toolbar, event.nativeEvent, held, onEscape) && event.key === 'Escape')
           event.stopPropagation()
-          onEscape()
-          return
-        }
-        if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return
-        if (event.target.closest(TEXT_ENTRY) !== null) return
-        const controls = controlsNow()
-        const at = controls.findIndex((control) => control.contains(event.target as Node))
-        if (at === -1 || controls.length === 0) return
-        const view = event.currentTarget.ownerDocument.defaultView
-        const rtl = view?.getComputedStyle(event.currentTarget).direction === 'rtl'
-        const forward = rtl ? 'ArrowLeft' : 'ArrowRight'
-        const backward = rtl ? 'ArrowRight' : 'ArrowLeft'
-        const count = controls.length
-        let to: HTMLElement | undefined
-        if (event.key === forward) to = controls[(at + 1) % count]
-        else if (event.key === backward) to = controls[(at - 1 + count) % count]
-        else if (event.key === 'Home') to = controls[0]
-        else if (event.key === 'End') to = controls[count - 1]
-        else return
-        event.preventDefault()
-        move(to)
       },
       onFocus: (event) => {
-        if (!mine(event.target)) return
-        holding.current = true
-        const control = controlsNow().find((candidate) => candidate.contains(event.target as Node))
-        if (control === undefined || ref.current === null) return
-        stop.current = control
-        for (const other of everyControl(ref.current)) other.tabIndex = other === control ? 0 : -1
+        if (ref.current !== null) toolbarFocusIn(ref.current, event.nativeEvent, held)
       },
       onBlur: (event) => {
-        if (!mine(event.target)) return
-        const to = event.relatedTarget
-        // Focus that falls to the page (a control disabled while it had focus) stays the toolbar's.
-        if (to instanceof Node && ref.current?.contains(to) !== true) holding.current = false
+        if (ref.current !== null) toolbarFocusOut(ref.current, event.nativeEvent, held)
       },
       onMouseDown: (event) => {
-        if (!mine(event.target) || event.target.closest(TEXT_ENTRY) !== null) return
-        // The press does not take focus, so the selection in the text stays.
-        event.preventDefault()
+        if (ref.current !== null) toolbarPress(ref.current, event.nativeEvent)
       },
     },
-    enter: () => {
-      const to = stop.current?.isConnected === true ? stop.current : controlsNow()[0]
-      if (to === undefined) return false
-      to.focus()
-      return true
-    },
+    enter: () => enterToolbar(ref.current, held),
   }
 }
 
@@ -234,31 +145,6 @@ export interface SelectionBarProps {
   keys: ToolbarKeys
   children: ReactNode
 }
-
-/** Where the bar's top-left corner goes, in viewport coordinates. */
-function placement(
-  bar: HTMLElement,
-  rect: RichTextRect,
-): { x: number; y: number; side: 'top' | 'bottom' } | null {
-  const owner = bar.ownerDocument
-  const view = owner.defaultView
-  if (view === null) return null
-  const viewport = owner.documentElement.clientWidth
-  const width = bar.offsetWidth
-  const height = bar.offsetHeight
-  // The edge margin is the one the bar's own maximum width leaves on each side.
-  const widest = Number.parseFloat(view.getComputedStyle(bar).maxWidth)
-  const margin = Number.isFinite(widest) ? Math.max(0, (viewport - widest) / 2) : 0
-  const centre = (rect.left + rect.right) / 2
-  const x = Math.max(margin, Math.min(centre - width / 2, viewport - margin - width))
-  const coarse = view.matchMedia?.('(pointer: coarse)').matches ?? false
-  const side = coarse || rect.top - margin < height + margin ? 'bottom' : 'top'
-  const y = side === 'top' ? rect.top - margin - height : rect.bottom + margin
-  return { x, y, side }
-}
-
-const px = (bar: HTMLElement, property: string) =>
-  Number.parseFloat(bar.style.getPropertyValue(property)) || 0
 
 export function SelectionBar({
   open,
@@ -283,26 +169,10 @@ export function SelectionBar({
     latest.current = measure
   })
 
-  /**
-   * Places the bar. A transformed or contained ancestor is the containing block
-   * of a fixed box, and moves it, so the offset between where the bar was put
-   * and where it is drawn is read back and taken off.
-   */
+  /** Places the bar at the selection (`placeSelectionBar`). */
   const place = useRef(() => {})
   useLayoutEffect(() => {
-    place.current = () => {
-      const bar = barRef.current
-      const rect = latest.current()
-      if (bar === null || rect === null) return
-      const at = placement(bar, rect)
-      if (at === null) return
-      const box = bar.getBoundingClientRect()
-      const originX = box.left - px(bar, '--pm-selection-bar-x')
-      const originY = box.top - px(bar, '--pm-selection-bar-y')
-      bar.style.setProperty('--pm-selection-bar-x', `${at.x - originX}px`)
-      bar.style.setProperty('--pm-selection-bar-y', `${at.y - originY}px`)
-      bar.dataset['side'] = at.side
-    }
+    place.current = () => placeSelectionBar(barRef.current, latest.current())
   })
 
   // Every render of an open bar: the selection or the bar's contents may have moved.
@@ -313,19 +183,8 @@ export function SelectionBar({
   // The selection moves under the bar as the page scrolls and the window resizes.
   useLayoutEffect(() => {
     const bar = barRef.current
-    const view = bar?.ownerDocument.defaultView
-    if (!open || bar === null || view === null || view === undefined) return
-    const follow = () => place.current()
-    view.addEventListener('scroll', follow, true)
-    view.addEventListener('resize', follow)
-    const observer =
-      typeof view.ResizeObserver === 'function' ? new view.ResizeObserver(follow) : null
-    observer?.observe(bar)
-    return () => {
-      view.removeEventListener('scroll', follow, true)
-      view.removeEventListener('resize', follow)
-      observer?.disconnect()
-    }
+    if (!open || bar === null) return
+    return followSelectionBar(bar, () => place.current())
   }, [open, barRef])
 
   // A bar with no leaving motion (reduced motion) is gone at once.

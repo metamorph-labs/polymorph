@@ -36,11 +36,13 @@ import {
   presenceEntries,
   presenceExpressions,
   relativeFile,
+  renderedChildren,
   staticString,
   templateClassNames,
   templateExpressions,
   typeParameters,
   pressStatements,
+  selectStatements,
   TYPING_FRAMES,
   usesNode,
   withAgent,
@@ -684,6 +686,8 @@ export function renderVueMember(
   const defaultNames = Object.values(shell.defaults ?? {}).flatMap((expr) => [...freeNames(expr)])
   for (const name of [...scriptNames, ...templateNames, ...defaultNames]) {
     if (FOUNDATION_HELPERS.has(name)) foundationValues.add(name)
+    // A type an expression names (`null as RichTextEditorState | null`) is the foundation's too.
+    if (FOUNDATION_TYPES.has(name)) foundationTypes.add(name)
   }
   if (usesNode(template, (node) => node.kind === 'element' && node.tag === 'Glyph'))
     foundationValues.add('Glyph')
@@ -1166,8 +1170,12 @@ function literal(value: FixtureValue, needs: FixtureNeeds): string {
   }
   if (branded(value, 'node')) return childCode((value as { node: FixtureChild }).node, needs)
   if (branded(value, 'renders', ['params'])) {
-    const { params, renders } = value as { params: readonly string[]; renders: FixtureChild }
-    return `(${params.join(', ')}) => ${childCode(renders, needs)}`
+    const { params, renders } = value as {
+      params: readonly string[]
+      renders: FixtureChild | readonly FixtureChild[]
+    }
+    const children = renderedChildren(renders).map((child) => childCode(child, needs))
+    return `(${params.join(', ')}) => ${children.length === 1 ? children[0] : `[${children.join(', ')}]`}`
   }
   if (branded(value, 'held')) return `held.${(value as { held: string }).held}`
   if (branded(value, 'hold', ['to'])) {
@@ -1257,8 +1265,12 @@ function slotsCode(
         `${key(name)}: () => [${children.map((child) => childCode(child, needs)).join(', ')}]`,
     ),
     ...scoped.map(([name, value]) => {
-      const { params, renders } = value as { params: readonly string[]; renders: FixtureChild }
-      return `${key(name)}: (${params.join(', ')}) => [${childCode(renders, needs)}]`
+      const { params, renders } = value as {
+        params: readonly string[]
+        renders: FixtureChild | readonly FixtureChild[]
+      }
+      const children = renderedChildren(renders).map((child) => childCode(child, needs))
+      return `${key(name)}: (${params.join(', ')}) => [${children.join(', ')}]`
     }),
   ]
   return entries.length === 0 ? null : `{ ${entries.join(', ')} }`
@@ -1309,6 +1321,16 @@ function statefulEntry(entry: StateEntry, rendered: string[], needs: FixtureNeed
   if (entry.presses !== undefined) {
     setup.push(pressStatements(literal(entry.presses, needs), 'onMounted', 'onBeforeUnmount'))
   }
+  if (entry.selects !== undefined) {
+    setup.push(
+      selectStatements(
+        literal(entry.selects.in, needs),
+        literal(entry.selects.text, needs),
+        'onMounted',
+        'onBeforeUnmount',
+      ),
+    )
+  }
   return `h({ setup() { ${setup.join('; ')}${setup.length > 0 ? '; ' : ''}return () => [${rendered.join(', ')}] } })`
 }
 
@@ -1332,7 +1354,8 @@ function entryCode(
     entry.holds !== undefined ||
     entry.before !== undefined ||
     entry.types !== undefined ||
-    entry.presses !== undefined
+    entry.presses !== undefined ||
+    entry.selects !== undefined
   // What comes before the member, then the member's instances, then what comes after.
   const before = (entry.before ?? []).map((child) => childCode(child, needs))
   if (entry.many !== undefined) {
@@ -1398,7 +1421,8 @@ export function renderVueStates(
     entryCode(shell, entry, needs, renderProps),
   )
   const types = shell.states.some(
-    (entry) => entry.types !== undefined || entry.presses !== undefined,
+    (entry) =>
+      entry.types !== undefined || entry.presses !== undefined || entry.selects !== undefined,
   )
   const holding = shell.states.some((entry) => entry.holds !== undefined)
   const vue = [

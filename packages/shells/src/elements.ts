@@ -46,6 +46,7 @@ import {
   partShell,
   registryMember,
   relativeFile,
+  renderedChildren,
   STRUCTURAL_TAGS,
   typeParameters,
   type RegistryMemberLike,
@@ -843,8 +844,12 @@ function literal(value: FixtureValue, w: Writing): string {
   }
   if (branded(value, 'node')) return nodeCode((value as { node: FixtureChild }).node, w)
   if (branded(value, 'renders', ['params'])) {
-    const { params, renders } = value as { params: readonly string[]; renders: FixtureChild }
-    return `(${params.join(', ')}) => ${nodeCode(renders, w)}`
+    const { params, renders } = value as {
+      params: readonly string[]
+      renders: FixtureChild | readonly FixtureChild[]
+    }
+    const children = renderedChildren(renders).map((child) => nodeCode(child, w))
+    return `(${params.join(', ')}) => ${children.length === 1 ? children[0] : `[${children.join(', ')}]`}`
   }
   if (branded(value, 'held') || branded(value, 'hold', ['to'])) {
     throw new Error(`shells: ${w.shell.member}'s fixture holds a value inside another value`)
@@ -1276,6 +1281,11 @@ function entryCode(
     )
   }
   if (entry.presses !== undefined) fields.push(`presses: ${jsString(entry.presses)}`)
+  if (entry.selects !== undefined) {
+    fields.push(
+      `selects: { in: ${jsString(entry.selects.in)}, text: ${jsString(entry.selects.text)} }`,
+    )
+  }
   if (entry.expect) {
     fields.push(
       `expect: { ${Object.entries(entry.expect)

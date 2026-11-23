@@ -182,6 +182,12 @@ export const PARTS: Readonly<Record<string, Readonly<Record<string, string>>>> =
     // A control of the toolbar: a Button, or the trigger a Menu or a Popover draws as one.
     control: ':scope [data-member="rich-text-input"] [data-rich-text-input-part="toolbar"] button',
   },
+  RichTextContent: {
+    // A highlight's first fragment, which is its tab stop in the annotated entry; found by its
+    // element and id, not by the role and tab index the contract states.
+    highlight: ':scope [data-member="rich-text-content"] mark[data-annotation-id]',
+    current: ':scope [data-member="rich-text-content"] mark[data-annotation-id][data-active]',
+  },
   TagInput: {
     field: ':scope [data-member="tag-input"] input:not([type="hidden"])',
   },
@@ -606,6 +612,9 @@ export const HANDLERS: Readonly<Record<string, readonly string[]>> = {
   PromptInput: ['onSubmit'],
   // Enter while the suggestions load neither picks nor submits.
   RichTextInput: ['onSubmit'],
+  // Enter, Space and a press on a highlight's tab stop report the annotation, and change nothing on
+  // screen until the application answers.
+  RichTextContent: ['onAnnotationSelect'],
   // A press on a row selects, and one on the row that asks for more shows nothing until the
   // application answers.
   Tree: ['onChange', 'onExpandedChange', 'onLoadMore'],

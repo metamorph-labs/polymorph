@@ -291,6 +291,8 @@ export { PolyRecordButton } from './controls/RecordButton'
 export type { PolyRecordButtonElement } from './controls/RecordButton'
 export { PolyRelativeTime } from './structure/RelativeTime'
 export type { PolyRelativeTimeElement } from './structure/RelativeTime'
+export { PolyRichTextInput } from './controls/RichTextInput'
+export type { PolyRichTextInputElement } from './controls/RichTextInput'
 export { PolyScatterChart } from './charts/ScatterChart'
 export type { PolyScatterChartElement } from './charts/ScatterChart'
 export { PolyScrollArea } from './structure/ScrollArea'
@@ -624,6 +626,15 @@ export type {
   RecordButtonProps,
   RelativeTimeMessages,
   RelativeTimeProps,
+  RichTextEntityOption,
+  RichTextEntitySource,
+  RichTextInputEditor,
+  RichTextInputMaxRows,
+  RichTextInputMessages,
+  RichTextInputMinRows,
+  RichTextInputProps,
+  RichTextInputSelection,
+  RichTextToolbarPlacement,
   RowProps,
   ScatterChartProps,
   ScopeElement,

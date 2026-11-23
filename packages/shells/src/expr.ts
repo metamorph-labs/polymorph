@@ -44,8 +44,13 @@ export function rewrite(expr: Expr, map: (name: string) => string | null): strin
     if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
       const inner = new Set(bound)
       for (const parameter of node.parameters) bindingNames(parameter.name, inner)
-      for (const parameter of node.parameters)
+      for (const parameter of node.parameters) {
         if (parameter.initializer) visit(parameter.initializer, bound)
+        // A type a parameter or the result names is read too (`(event: RichTextEditorEvent) => …`),
+        // so a renderer imports it.
+        if (parameter.type) visit(parameter.type, bound)
+      }
+      if (node.type) visit(node.type, bound)
       visit(node.body, inner)
       return
     }
@@ -67,6 +72,9 @@ export function rewrite(expr: Expr, map: (name: string) => string | null): strin
       // A qualified type name's right side (`CalendarDate` in `zag.CalendarDate`) names a member of its left.
       if (ts.isQualifiedName(parent) && parent.right === node) return
       if (ts.isPropertyAssignment(parent) && parent.name === node) return
+      // A member of an object type (`{ toString: … }`) names no value.
+      if ((ts.isPropertySignature(parent) || ts.isMethodSignature(parent)) && parent.name === node)
+        return
       if (ts.isParameter(parent) && parent.name === node) return
       if (bound.has(node.text)) return
       const mapped = map(node.text)

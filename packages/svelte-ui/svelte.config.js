@@ -5,9 +5,9 @@
  * The members are generated to the React members' DOM contract, which the axe
  * law and the conformance law check in the rendered document
  * (`src/laws.test.ts`, `src/conformance.test.ts`). The compiler's
- * accessibility hints read the markup instead, and six of them report
+ * accessibility hints read the markup instead, and some of them report
  * elements whose role the markup does not show or whose contract is React's.
- * Those six are not reported, each for the reason beside it. Every other hint
+ * Those are not reported, each for the reason beside it. Every other hint
  * fails `svelte-check`.
  */
 const NOT_REPORTED = new Set([
@@ -32,6 +32,9 @@ const NOT_REPORTED = new Set([
   'a11y_no_static_element_interactions',
   // DataTable's selection cell, whose Checkbox takes the keys.
   'a11y_click_events_have_key_events',
+  // A toolbar's keys on the toolbar, whose tab stop is one of its controls and not the toolbar,
+  // as WAI-ARIA's toolbar pattern has it: RichTextInput's fixed toolbar and its selection bar.
+  'a11y_interactive_supports_focus',
 ])
 
 export default {

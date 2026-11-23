@@ -369,6 +369,18 @@ export { default as RecordButton } from './controls/RecordButton.vue'
 export type { RecordButtonProps } from './controls/RecordButton.vue'
 export { default as RelativeTime } from './structure/RelativeTime.vue'
 export type { RelativeTimeMessages, RelativeTimeProps } from './structure/RelativeTime.vue'
+export { default as RichTextInput } from './controls/RichTextInput.vue'
+export type {
+  RichTextEntityOption,
+  RichTextEntitySource,
+  RichTextInputEditor,
+  RichTextInputMaxRows,
+  RichTextInputMessages,
+  RichTextInputMinRows,
+  RichTextInputProps,
+  RichTextInputSelection,
+  RichTextToolbarPlacement,
+} from './controls/RichTextInput.vue'
 export { default as ScatterChart } from './charts/ScatterChart.vue'
 export type { ScatterChartProps } from './charts/ScatterChart.vue'
 export { default as ScrollArea } from './structure/ScrollArea.vue'

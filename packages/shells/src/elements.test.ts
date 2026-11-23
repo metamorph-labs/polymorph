@@ -535,6 +535,13 @@ describe('a states fixture in element form writes the markup a page writes', () 
     expect(out).toContain("presses: 'button'")
   })
 
+  it('names the words an entry selects, for the mount', () => {
+    const out = statesOf([
+      { name: 'selected', props: { label: 'A' }, selects: { in: '[role="textbox"]', text: 'ab' } },
+    ])
+    expect(out).toContain(`selects: { in: '[role="textbox"]', text: 'ab' }`)
+  })
+
   it('declares the types the fixture’s values name', () => {
     const out = renderElementsStates(
       shellOf({

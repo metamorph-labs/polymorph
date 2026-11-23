@@ -40,6 +40,13 @@ export interface StateEntry {
   types?: { into: string; text: string }
   /** A control pressed once it is in the document, for a state only a press reaches: its selector. */
   presses?: string
+  /**
+   * Words selected once their element is in the document and holds them, as a
+   * reader selects them, for a state only a selection reaches (the words
+   * RichTextInput draws its selection bar at): the element's selector and the
+   * words.
+   */
+  selects?: { in: string; text: string }
   /** Attributes the rendered root must carry. `null` asserts absence. */
   expect?: Record<string, string | null>
   /** The entry renders nothing at all, by design. */

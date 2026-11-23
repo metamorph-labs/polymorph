@@ -49,6 +49,7 @@ import {
   presenceReads,
   registryMember,
   relativeFile,
+  renderedChildren,
   statement,
   staticString,
   STRUCTURAL_TAGS,
@@ -1839,7 +1840,11 @@ export function renderAngularMember(
   /* imports ----------------------------------------------------------------- */
   if (inputs.length > 0) core.add('input')
   if (outputs.length > 0) core.add('output')
-  for (const name of names) if (FOUNDATION_HELPERS.has(name)) foundationValues.add(name)
+  for (const name of names) {
+    if (FOUNDATION_HELPERS.has(name)) foundationValues.add(name)
+    // A type an expression names (`null as RichTextEditorState | null`) is the foundation's too.
+    if (FOUNDATION_TYPES.has(name)) foundationTypes.add(name)
+  }
   if (/\bbindTemplate\(/.test([...fields, ...methods, ...constructor].join('\n')))
     foundationValues.add('bindTemplate')
   const code = [...fields, ...methods].filter((line) => !/^\s*(\/\*\*|\*)/.test(line)).join('\n')
@@ -2313,7 +2318,10 @@ export function renderAngularStates(
     if (branded(value, 'node'))
       return `(${declare((value as { node: FixtureChild }).node, [], place)} as TemplateRef<never>)`
     if (branded(value, 'renders', ['params'])) {
-      const { params, renders } = value as { params: readonly string[]; renders: FixtureChild }
+      const { params, renders } = value as {
+        params: readonly string[]
+        renders: FixtureChild | readonly FixtureChild[]
+      }
       if (params.length > 1)
         throw new Error(`shells: ${shell.member}'s fixture renders with more than one parameter`)
       return `(${declare(renders, params.flatMap(parameterParts), place)} as TemplateRef<never>)`
@@ -2333,14 +2341,18 @@ export function renderAngularStates(
 
   /** Declares a template for a node inside a value, and returns the variable that names it. */
   const declare = (
-    child: FixtureChild,
+    child: FixtureChild | readonly FixtureChild[],
     variables: readonly TemplateVariable[],
     place: Place,
   ): string => {
     templates += 1
     const name = `t${templates}`
     const inner: Place = { ...place, scope: [...place.scope, ...variables] }
-    const markup = childMarkup(child, inner)
+    const markup = {
+      text: renderedChildren(child)
+        .map((entry) => childMarkup(entry, inner).text)
+        .join(''),
+    }
     const bound = variables
       .map((variable) =>
         variable.named ? ` let-${variable.name}="${variable.name}"` : ` let-${variable.name}`,
@@ -2561,6 +2573,12 @@ export function renderAngularStates(
       values.add('pressOnce')
       constructor.push(
         `pressOnce(() => (this.entry() === ${at} ? ${jsString(entry.presses)} : undefined))`,
+      )
+    }
+    if (entry.selects !== undefined) {
+      values.add('selectOnce')
+      constructor.push(
+        `selectOnce(() => (this.entry() === ${at} ? { in: ${jsString(entry.selects.in)}, text: ${jsString(entry.selects.text)} } : undefined))`,
       )
     }
     cases.push(

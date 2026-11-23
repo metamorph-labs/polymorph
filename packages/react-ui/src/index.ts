@@ -349,7 +349,12 @@ export type { QRCodeErrorCorrection, QRCodeProps, QRCodeSize } from './structure
 export { RelativeTime } from './structure/RelativeTime'
 export type { RelativeTimeMessages, RelativeTimeProps } from './structure/RelativeTime'
 export { RichTextContent } from './structure/RichTextContent'
-export type { RichTextContentProps, RichTextContentSize } from './structure/RichTextContent'
+export type {
+  RichTextContentMessages,
+  RichTextContentProps,
+  RichTextContentSelection,
+  RichTextContentSize,
+} from './structure/RichTextContent'
 export { ScrollArea } from './structure/ScrollArea'
 export type { ScrollAreaOrientation, ScrollAreaProps, ScrollAreaType } from './structure/ScrollArea'
 export { SectionNav } from './structure/SectionNav'

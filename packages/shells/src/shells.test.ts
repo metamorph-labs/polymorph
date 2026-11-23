@@ -132,6 +132,18 @@ describe('an expression is rewritten by its scope, not its spelling', () => {
     expect(rewrite('{ checked }', props)).toBe('{ checked: props.checked }')
   })
 
+  it('reads the types a parameter and a result name, and leaves an object type’s members alone', () => {
+    const names: string[] = []
+    rewrite('(event: RichTextEditorEvent): Done => event', (name) => {
+      names.push(name)
+      return null
+    })
+    expect(names).toEqual(['RichTextEditorEvent', 'Done'])
+    expect(rewrite('null as { label: string; checked(): void } | null', props)).toBe(
+      'null as { label: string; checked(): void } | null',
+    )
+  })
+
   it('refuses what is not one expression', () => {
     expect(() => rewrite('a; b', props)).toThrow(/not one expression/)
   })
@@ -556,6 +568,29 @@ describe('the Vue fixture renderer writes what an entry says', () => {
       "cell: (row: { status: string }) => h(Badge, { tone: row.status === 'solved' ? 'success' : 'info' }, { default: () => [row.status] })",
     )
     expect(out).toContain("import Badge from './Badge.vue'")
+  })
+
+  it('renders a function that returns several nodes, as a fragment holds them', () => {
+    const out = states({
+      states: [
+        {
+          name: 'two',
+          props: {
+            cell: renders(['row: { status: string }'], [fx('Badge', {}), fx('Badge', {})]),
+          },
+        },
+      ],
+    })
+    expect(out).toContain('cell: (row: { status: string }) => [h(Badge, {}), h(Badge, {})]')
+  })
+
+  it('selects words once their element holds them, as a reader selects them', () => {
+    const out = states({
+      states: [{ name: 'selected', selects: { in: '[role="textbox"]', text: 'the wait' } }],
+    })
+    expect(out).toContain('document.querySelector<HTMLElement>(\'[role="textbox"]\')')
+    expect(out).toContain("setBaseAndExtent(node, at, node, at + 'the wait'.length)")
+    expect(out).toContain("import { h, onBeforeUnmount, onMounted } from 'vue'")
   })
 
   it('passes a function for the member’s own render prop as a scoped slot', () => {

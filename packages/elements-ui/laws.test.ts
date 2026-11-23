@@ -62,10 +62,13 @@ function entryNames(path: string): string[] {
   const source = parse(resolve(ROOT, path))
   const names: string[] = []
   const visit = (node: ts.Node) => {
+    // An entry's `name` beside its `html`; a member's `name` prop in its setup is not one.
     if (
       ts.isPropertyAssignment(node) &&
       node.name.getText(source) === 'name' &&
-      ts.isStringLiteral(node.initializer)
+      ts.isStringLiteral(node.initializer) &&
+      ts.isObjectLiteralExpression(node.parent) &&
+      node.parent.properties.some((property) => property.name?.getText(source) === 'html')
     ) {
       names.push(node.initializer.text)
     }

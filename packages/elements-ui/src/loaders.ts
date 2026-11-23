@@ -40,6 +40,7 @@ export const LOADERS: Readonly<Record<string, () => Promise<unknown>>> = {
   'poly-password-input': () => import('./controls/PasswordInput'),
   'poly-otp-input': () => import('./controls/OTPInput'),
   'poly-textarea': () => import('./controls/Textarea'),
+  'poly-rich-text-input': () => import('./controls/RichTextInput'),
   'poly-tag-input': () => import('./controls/TagInput'),
   'poly-file-upload': () => import('./controls/FileUpload'),
   'poly-checkbox': () => import('./controls/Checkbox'),

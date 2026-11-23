@@ -12,8 +12,10 @@ import {
   richTextEquals,
   richTextPlainText,
 } from '@polymorph/react'
+import { richTextInputLaw } from '@polymorph/conformance/rich-text-input'
 import { createAgentBridge } from '@polymorph/engine/agent'
 import { agentRegistrations, installTestTheme } from '@polymorph/engine/testing'
+import { reactAdapter } from '../conformance/react'
 import { Dialog } from '../overlays/Dialog'
 import { RichTextContent } from '../structure/RichTextContent'
 import { Button } from './Button'
@@ -1233,3 +1235,9 @@ describe('annotations', () => {
     )
   })
 })
+
+/*
+ * What the member adds to its editor, as `@polymorph/conformance/rich-text-input` states it for
+ * every web shell, read through the states fixture.
+ */
+richTextInputLaw({ shell: 'React', adapter: reactAdapter })

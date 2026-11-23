@@ -112,6 +112,15 @@ export const FOUNDATION_TYPES = new Set([
   'RadarAxis',
   'ScatterBubble',
   'TreemapItem',
+  // The rich-text document and its editor, from the engine's two rich-text entries.
+  'RichTextDocument',
+  'RichTextEntity',
+  'RichTextFormat',
+  'RichTextRange',
+  'RichTextEditor',
+  'RichTextEditorEvent',
+  'RichTextEditorState',
+  'RichTextSuggestionKey',
 ])
 
 /**
@@ -251,6 +260,28 @@ export const ENGINE_HELPERS: readonly string[] = [
   'actOnToastNotice',
   // The theme runtime's: ModeSwitch applies the reader's choice.
   'setMode',
+  // RichTextInput's: the document, the editor it mounts, a toolbar's roving tab stop and keys,
+  // and the places of the selection bar and of the suggestion list.
+  'createRichTextEditor',
+  'emptyRichText',
+  'isRichTextEmpty',
+  'RICH_TEXT_FORMATS',
+  'richTextFromText',
+  'richTextHref',
+  'richTextLength',
+  'richTextPlainText',
+  'serializeRichText',
+  'toolbarStop',
+  'syncToolbarStop',
+  'toolbarKeydown',
+  'toolbarFocusIn',
+  'toolbarFocusOut',
+  'toolbarPress',
+  'enterToolbar',
+  'holdToolbarEscape',
+  'placeSelectionBar',
+  'followSelectionBar',
+  'placeTokenList',
   // The chart engine's, which the chart frame's builders name (`chart-frame.ts`).
   ...CHART_HELPERS,
   // The segmented field's, which the date field's builders name (`date-field.ts`).

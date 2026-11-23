@@ -496,7 +496,13 @@ pnpm exec vitest run src/conformance.test -t "agent"                    # the ag
   follows what a reader types and the options the app loads for it: where a trigger opens, the
   filter, a pick's text and the query the app hears are held by `promptTriggersLaw`
   (`packages/conformance/src/prompt-triggers.ts`), which every shell's `prompt-input.test`
-  calls with a mount of its own. A Plan's steps change while its run goes on. Which step its
+  calls with a mount of its own. RichTextInput's editor holds a document that real input
+  changes: what the field draws and reports, a format from a key and from its control with the
+  words that announce it, the link form, the text style Menu, a pick from the suggestion list,
+  the selection bar at selected words, the handle its slots receive and a submit are held by
+  `richTextInputLaw` (`packages/conformance/src/rich-text-input.ts`), which every shell's
+  `rich-text-input.test` calls with its adapter, and the React member's test too. A Plan's steps
+  change while its run goes on. Which step its
   status line names, and that the line changes only when the front of the run does, are held by
   `planLaw` (`packages/conformance/src/plan.ts`), which every shell's `plan.test` calls with a
   mount of its own. A TreeSelect's popup

@@ -351,6 +351,18 @@ export { RecordButton } from './controls/RecordButton'
 export type { RecordButtonProps } from './controls/RecordButton'
 export { RelativeTime } from './structure/RelativeTime'
 export type { RelativeTimeMessages, RelativeTimeProps } from './structure/RelativeTime'
+export { RichTextInput } from './controls/RichTextInput'
+export type {
+  RichTextEntityOption,
+  RichTextEntitySource,
+  RichTextInputEditor,
+  RichTextInputMaxRows,
+  RichTextInputMessages,
+  RichTextInputMinRows,
+  RichTextInputProps,
+  RichTextInputSelection,
+  RichTextToolbarPlacement,
+} from './controls/RichTextInput'
 export { ScatterChart } from './charts/ScatterChart'
 export type { ScatterChartProps } from './charts/ScatterChart'
 export { ScrollArea } from './structure/ScrollArea'

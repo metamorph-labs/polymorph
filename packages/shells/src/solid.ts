@@ -48,6 +48,7 @@ import {
   presenceExpressions,
   registryMember,
   relativeFile,
+  renderedChildren,
   statement,
   staticString,
   templateClassNames,
@@ -55,6 +56,7 @@ import {
   typeOwners,
   typeParameters,
   pressStatements,
+  selectStatements,
   TYPING_FRAMES,
   usesNode,
   walk,
@@ -1254,7 +1256,11 @@ export function renderSolidMember(
       foundationTypes.add(name)
     }
   }
-  for (const name of names) if (FOUNDATION_HELPERS.has(name)) foundationValues.add(name)
+  for (const name of names) {
+    if (FOUNDATION_HELPERS.has(name)) foundationValues.add(name)
+    // A type an expression names (`null as RichTextEditorState | null`) is the foundation's too.
+    if (FOUNDATION_TYPES.has(name)) foundationTypes.add(name)
+  }
 
   const parameters = typeParameters(shell.generic)
   const declared = new Set([...Object.keys(shell.types ?? {}), ...parameters])
@@ -1749,8 +1755,12 @@ function literal(value: FixtureValue, needs: FixtureNeeds): string {
   }
   if (branded(value, 'node')) return childCode((value as { node: FixtureChild }).node, needs)
   if (branded(value, 'renders', ['params'])) {
-    const { params, renders } = value as { params: readonly string[]; renders: FixtureChild }
-    return `(${params.join(', ')}) => ${childCode(renders, needs)}`
+    const { params, renders } = value as {
+      params: readonly string[]
+      renders: FixtureChild | readonly FixtureChild[]
+    }
+    const children = renderedChildren(renders).map((child) => childCode(child, needs))
+    return `(${params.join(', ')}) => ${children.length === 1 ? children[0] : `[${children.join(', ')}]`}`
   }
   if (branded(value, 'held')) return `held.${(value as { held: string }).held}`
   if (branded(value, 'hold', ['to'])) {
@@ -1879,7 +1889,8 @@ function entryCode(shell: MemberShell, entry: StateEntry, needs: FixtureNeeds): 
     entry.holds !== undefined ||
     entry.before !== undefined ||
     entry.types !== undefined ||
-    entry.presses !== undefined
+    entry.presses !== undefined ||
+    entry.selects !== undefined
   const before = (entry.before ?? []).map((child) => childCode(child, needs))
   let rendered: string
   if (entry.many !== undefined) {
@@ -1920,6 +1931,16 @@ function entryCode(shell: MemberShell, entry: StateEntry, needs: FixtureNeeds): 
     if (entry.presses !== undefined) {
       setup.push(pressStatements(literal(entry.presses, needs), 'onMount', 'onCleanup'))
     }
+    if (entry.selects !== undefined) {
+      setup.push(
+        selectStatements(
+          literal(entry.selects.in, needs),
+          literal(entry.selects.text, needs),
+          'onMount',
+          'onCleanup',
+        ),
+      )
+    }
     render = `${parameter} => { ${setup.join('; ')}${setup.length > 0 ? '; ' : ''}return (\n${rendered}\n) }`
   } else {
     render = `${parameter} => (\n${rendered}\n)`
@@ -1952,7 +1973,8 @@ export function renderSolidStates(
     entryCode(shell, entry, needs),
   )
   const typing = shell.states.some(
-    (entry) => entry.types !== undefined || entry.presses !== undefined,
+    (entry) =>
+      entry.types !== undefined || entry.presses !== undefined || entry.selects !== undefined,
   )
   const holding = shell.states.some((entry) => entry.holds !== undefined)
   const lines = [

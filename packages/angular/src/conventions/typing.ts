@@ -66,3 +66,52 @@ export function pressOnce(selector: () => string | undefined): void {
     frame = requestAnimationFrame(press)
   })
 }
+
+/** How long after its element takes focus a fixture that selects selects the words. */
+const SELECT_DELAY_MS = 60
+
+/**
+ * Selects words once their element is in the document and holds them, as a
+ * reader selects them: a states fixture entry whose state only a selection
+ * reaches (the words RichTextInput draws its selection bar at). The element
+ * is searched in the document, as `typeInto` searches; it takes focus, and the
+ * first run of the words in one of its text nodes is selected a moment later,
+ * once an editor in it has written its own selection back. Call it in an
+ * injection context.
+ */
+export function selectOnce(spec: () => { in: string; text: string } | undefined): void {
+  let frame = 0
+  let frames = 0
+  let timer = 0
+  inject(DestroyRef).onDestroy(() => {
+    cancelAnimationFrame(frame)
+    clearTimeout(timer)
+  })
+  afterNextRender(() => {
+    const wanted = untracked(spec)
+    if (wanted === undefined) return
+    const select = () => {
+      const element = document.querySelector<HTMLElement>(wanted.in)
+      if (
+        element === null ||
+        element.getClientRects().length === 0 ||
+        !(element.textContent ?? '').includes(wanted.text)
+      ) {
+        frames += 1
+        if (frames < FRAMES) frame = requestAnimationFrame(select)
+        return
+      }
+      element.focus()
+      timer = window.setTimeout(() => {
+        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+        for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+          const at = node.textContent?.indexOf(wanted.text) ?? -1
+          if (at === -1) continue
+          document.getSelection()?.setBaseAndExtent(node, at, node, at + wanted.text.length)
+          return
+        }
+      }, SELECT_DELAY_MS)
+    }
+    frame = requestAnimationFrame(select)
+  })
+}

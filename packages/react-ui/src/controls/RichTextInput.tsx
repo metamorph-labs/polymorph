@@ -22,6 +22,7 @@ import {
   type IconRole,
   isRichTextEmpty,
   memberAttr,
+  placeTokenList,
   RICH_TEXT_FORMATS,
   type RichTextDocument,
   type RichTextEditor,
@@ -1038,29 +1039,9 @@ export function RichTextInput(props: RichTextInputProps) {
   })
 
   // The list sits at the token: its start at the token's start, under the token's line, or
-  // above it when there is less room below in the window, inside the root.
+  // above it when there is less room below in the window, inside the root (`placeTokenList`).
   useLayoutEffect(() => {
-    const panel = panelRef.current
-    const root = rootRef.current
-    const view = root?.ownerDocument.defaultView
-    if (
-      suggestion === null ||
-      panel === null ||
-      root === null ||
-      view === null ||
-      view === undefined
-    )
-      return
-    const box = root.getBoundingClientRect()
-    const token = suggestion.rect
-    const rtl = view.getComputedStyle(root).direction === 'rtl'
-    const x = rtl ? box.right - token.right : token.left - box.left
-    const below = view.innerHeight - token.bottom
-    const placement = below >= panel.offsetHeight || below >= token.top ? 'below' : 'above'
-    panel.style.setProperty('--pm-rich-text-input-x', `${Math.max(0, x)}px`)
-    panel.style.setProperty('--pm-rich-text-input-above', `${token.top - box.top}px`)
-    panel.style.setProperty('--pm-rich-text-input-below', `${token.bottom - box.top}px`)
-    panel.dataset['placement'] = placement
+    placeTokenList(panelRef.current, rootRef.current, suggestion?.rect)
   })
 
   /* The agent -------------------------------------------------------------- */
