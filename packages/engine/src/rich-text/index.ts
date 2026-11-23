@@ -1,8 +1,10 @@
 /**
  * `@polymorph/engine/rich-text`: the rich-text document
  * (`docs/rich-text.md`): its types, its tolerant reader, its normal form, its
- * projections to plain text, and the ranges and annotations that anchor an
- * application's comments to its words.
+ * projections to plain text, the ranges and annotations that anchor an
+ * application's comments to its words, and what a reader member draws for a
+ * document (`richTextDrawing`), which every framework's RichTextContent draws
+ * from.
  *
  * A subpath with no dependency and no DOM, so a server reads, checks and
  * indexes a document with the code the members use. The editor is another
@@ -39,6 +41,21 @@ export type {
 } from './types'
 
 export { annotateRichText, removeRichTextAnnotation, richTextAnnotations } from './annotations'
+export {
+  RICH_TEXT_ATOM,
+  RICH_TEXT_CODE,
+  RICH_TEXT_END,
+  RICH_TEXT_START,
+  richTextDrawing,
+  richTextPositionAttrs,
+} from './drawing'
+export type {
+  RichTextDrawing,
+  RichTextDrawingOptions,
+  RichTextDrawnBlock,
+  RichTextDrawnInline,
+  RichTextPosition,
+} from './drawing'
 export { richTextHref } from './href'
 export { migrateRichText } from './migrate'
 export { isRichTextBlockKnown, isRichTextInlineKnown, isRichTextMarkKnown } from './nodes'

@@ -181,6 +181,16 @@ export {
 export type { ToolbarStop } from './conventions/toolbar'
 export { followSelectionBar, placeSelectionBar, placeTokenList } from './conventions/selection-bar'
 export type { ViewportBox } from './conventions/selection-bar'
+/* A reader's selection in a RichTextContent and a press or a key on one of its highlights, which
+   every framework's RichTextContent reads by. */
+export {
+  mapRichTextSelection,
+  RICH_TEXT_STOP,
+  richTextKeyedAnnotation,
+  richTextPressedAnnotation,
+  richTextSelectionBox,
+} from './conventions/rich-text-selection'
+export type { RichTextSelectionFound } from './conventions/rich-text-selection'
 
 /* A scroll region held at its end while content arrives, which every
    framework's ChatThread and LogView follow by. */
