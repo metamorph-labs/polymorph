@@ -282,6 +282,37 @@ describe('what a cut keeps and what it leaves out', () => {
   })
 })
 
+describe('where the text ends', () => {
+  const doc = (root: string) => `{"spec":"polymorph-screen/1","inputs":[],"root":${root}`
+  const cut = (text: string) => parsePartial(text).cut
+
+  it('names the innermost value the text ends inside, by the validator’s paths', () => {
+    expect(cut(doc('{"component":"Button","props":{"label":"Sa'))).toBe('$.root.props.label')
+    expect(cut(doc('{"component":"Button","props":{"label":"Save",'))).toBe('$.root.props')
+    expect(cut(doc('{"component":"Button","props":{"lab'))).toBe('$.root.props')
+    expect(cut(doc('{"component":"Button","props":'))).toBe('$.root.props')
+    expect(cut(doc('{"component":"Button",'))).toBe('$.root')
+    expect(cut(doc('{"component":"Butt'))).toBe('$.root.component')
+    expect(cut(doc('{"component":"Stack","props":{"gap":1'))).toBe('$.root.props.gap')
+    expect(
+      cut(doc('{"component":"Stack","children":[{"component":"Text","children":["a"]},')),
+    ).toBe('$.root.children')
+    expect(cut(doc('{"component":"Stack","children":[{"component":"Text","children":["Hel'))).toBe(
+      '$.root.children[0].children[0]',
+    )
+    // A structured object's fields sit at its own path.
+    expect(cut(doc('{"component":"EmptyState","props":{"x":{"$object":{"title":"No'))).toBe(
+      '$.root.props.x.title',
+    )
+    expect(cut(doc('{"component":"Text","children":["a"]}'))).toBe('$')
+  })
+
+  it('is nothing when the document is whole, or has not begun', () => {
+    expect(cut(doc('{"component":"Text","children":["a"]}}'))).toBeNull()
+    expect(cut('Here it comes:')).toBeNull()
+  })
+})
+
 describe('text that stops being JSON', () => {
   it('says where, and holds what came before', () => {
     const read = parsePartial('{"name":"A","inputs":[1,],"root":{}}')

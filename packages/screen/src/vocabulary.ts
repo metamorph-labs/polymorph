@@ -15,6 +15,7 @@ export const VOCABULARY: ScreenVocabulary = /* @__PURE__ */ expandTable(TABLE)
 export {
   allowedMembers,
   CODE_HOSTS,
+  type ChildrenKind,
   defaultMembers,
   memberNames,
   surfaceOf,

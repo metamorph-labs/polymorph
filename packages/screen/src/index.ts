@@ -30,6 +30,7 @@ export { argumentsToJson, toJson, type JsonValue } from './json'
 export {
   allowedMembers,
   CODE_HOSTS,
+  type ChildrenKind,
   defaultMembers,
   memberFault,
   memberNames,

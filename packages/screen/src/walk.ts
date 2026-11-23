@@ -24,6 +24,7 @@ import {
   allowedMembers,
   memberFault,
   surfaceOf,
+  type ChildrenKind,
   type ScreenSurface,
   type ScreenVocabulary,
 } from './members'
@@ -62,11 +63,18 @@ import { addressFault, addressMessage, ADDRESS_KEYS } from './urls'
  *    its fault and is drawn as nothing, or as the fault where the host asks;
  *    every fault reaches the host with its path (`onFault`). A renderer
  *    reports a member that throws with `fail`.
- *  - **Streaming.** While `streaming`, a prop or a callback that has not
- *    arrived is no fault, and the string still being written (`open`, from
- *    `parsePartial`) is drawn only as a child or as a prop that takes free
- *    text. A node whose content did not change keeps its object, so a
- *    renderer redraws only what did.
+ *  - **Streaming.** While `streaming`, an element still being written is not
+ *    drawn: one the text ends inside (`cut`, from `parsePartial`), before its
+ *    `children` have begun. It is left out of its parent, or of `root`, until
+ *    the text moves past its own fields, so a member is drawn once its props
+ *    are whole and never with a part of them, and a container is drawn as soon
+ *    as its children begin, which then arrive one by one. Its fields are
+ *    written before its `children` in the schema's order; a document that
+ *    writes `props` after `children` has its element drawn before its props
+ *    arrive. A prop or a callback that has not arrived is no fault, and the
+ *    string still being written (`open`) is drawn only as a child or as a prop
+ *    that takes free text. A node whose content did not change keeps its
+ *    object, so a renderer redraws only what did.
  *
  * Paths are the validator's: `$.root`, `$.root.children[0]`,
  * `$.root.props.emptyState.secondaryAction`.
@@ -137,6 +145,12 @@ export interface ScreenNode {
   readonly children: readonly Drawn[]
   /** Why the node cannot be drawn (an unknown or disallowed component), or `null`. A renderer draws nothing for it, or the fault. */
   readonly fault: ScreenFault | null
+  /**
+   * How the member takes its children (`ChildrenKind`): a list of nodes, or
+   * one element or one text it reads, passed as itself. `null` when it takes
+   * none, or the node cannot be drawn.
+   */
+  readonly childrenKind?: ChildrenKind | null
 }
 
 export interface ScreenOptions {
@@ -157,6 +171,12 @@ export interface ScreenOptions {
   /** The path of the string still being written (`parsePartial`'s `open`). */
   open?: string | null
   /**
+   * Where the text ends while it streams (`parsePartial`'s `cut`). An element
+   * the cut is inside, before its `children`, is still being written and is
+   * not drawn. Absent or `null`, every element that has arrived is drawn.
+   */
+  cut?: string | null
+  /**
    * Told each action: each call of a callback input that returns nothing. A
    * promise it returns is what the member waits on (`answerFor`). A callback
    * that returns a value is never told.
@@ -168,11 +188,14 @@ export interface ScreenOptions {
 
 /** What a host changes on a screen that is drawn. Each field replaces the one it names. */
 export type ScreenUpdate = Partial<
-  Pick<ScreenOptions, 'document' | 'data' | 'streaming' | 'open' | 'onAction' | 'onFault'>
+  Pick<ScreenOptions, 'document' | 'data' | 'streaming' | 'open' | 'cut' | 'onAction' | 'onFault'>
 >
 
 export interface Screen {
-  /** What to draw: the root element's node, or `null` before the document has a root. */
+  /**
+   * What to draw: the root element's node, or `null` before the document has a
+   * root, and while the root is still being written (`cut`).
+   */
   readonly root: ScreenNode | null
   /** Every fault the drawing has now: the walk's, then those renderers reported. */
   readonly faults: readonly ScreenFault[]
@@ -366,6 +389,10 @@ interface Choice {
 
 const faultKey = (fault: ScreenFault) => `${fault.path}\u0000${fault.message}`
 
+/** Whether a path is the other or inside it: `$.root.children[1].props` is within `$.root.children[1]`. */
+const within = (path: string, outer: string): boolean =>
+  path === outer || path.startsWith(`${outer}.`) || path.startsWith(`${outer}[`)
+
 export function createScreen(options: ScreenOptions): Screen {
   const vocabulary = options.vocabulary
   const framework = options.framework ?? DEFAULT_FRAMEWORK
@@ -379,6 +406,7 @@ export function createScreen(options: ScreenOptions): Screen {
     data: options.data ?? {},
     streaming: options.streaming ?? false,
     open: options.open ?? null,
+    cut: options.cut ?? null,
     onAction: options.onAction,
     onFault: options.onFault,
   }
@@ -474,6 +502,18 @@ export function createScreen(options: ScreenOptions): Screen {
     const live = new Set<string>()
     const named: [string, JsonValue][] = []
     const { streaming, open } = state
+    const cut = streaming ? state.cut : null
+
+    /**
+     * Whether an element has been written as far as it is drawn: the text does
+     * not end inside it, or ends inside its `children`, or its `children` have
+     * begun and it ends after them. Once its children begin, an element stays
+     * drawn whatever follows them.
+     */
+    const arrived = (element: SpecElement, path: string): boolean => {
+      if (cut === null || !within(cut, path)) return true
+      return within(cut, `${path}.children`) || element.children !== undefined
+    }
 
     const resolveValue = (
       written: unknown,
@@ -525,7 +565,9 @@ export function createScreen(options: ScreenOptions): Screen {
         BUILT.add(plain)
         return { kind: 'value', value: plain, from: 'document' }
       }
-      if (isElement(value)) return { kind: 'node', node: node(value, path) }
+      if (isElement(value)) {
+        return arrived(value, path) ? { kind: 'node', node: node(value, path) } : undefined
+      }
       // A string still being written is drawn only where it reads as what it will say.
       if (typeof value === 'string' && path === open && !text) return undefined
       return { kind: 'value', value, from: 'document' }
@@ -561,6 +603,7 @@ export function createScreen(options: ScreenOptions): Screen {
           props: {},
           children: [],
           fault: faulted,
+          childrenKind: null,
         })
       }
       const known = surface as ScreenSurface
@@ -718,6 +761,7 @@ export function createScreen(options: ScreenOptions): Screen {
         props,
         children,
         fault: null,
+        childrenKind: known.childrenKind,
       })
     }
 
@@ -743,7 +787,10 @@ export function createScreen(options: ScreenOptions): Screen {
 
     const document = state.document
     const rootElement = isRecord(document) ? document['root'] : undefined
-    root = isElement(rootElement as SpecValue) ? node(rootElement as SpecElement, '$.root') : null
+    root =
+      isElement(rootElement as SpecValue) && arrived(rootElement as SpecElement, '$.root')
+        ? node(rootElement as SpecElement, '$.root')
+        : null
     if (root === null && !streaming) {
       found.push({ path: '$.root', message: 'the document has no root element' })
     }
@@ -830,6 +877,10 @@ export function createScreen(options: ScreenOptions): Screen {
       }
       if ('open' in next) {
         state.open = next.open ?? null
+        changed = true
+      }
+      if ('cut' in next) {
+        state.cut = next.cut ?? null
         changed = true
       }
       if (!changed) return

@@ -35,6 +35,16 @@ export interface PartialDocument {
   complete: boolean
   /** The path of the string still being written, when the document holds it: `$.root.children[2]`. */
   open: string | null
+  /**
+   * Where the text ends: the path of the innermost value it ends inside, in
+   * the validator's syntax. `$.root.children[1].props.label` while a label is
+   * written, `$.root.children[1].props` between two props,
+   * `$.root.children[1]` between an element's own fields, `$.root.children`
+   * between two children. `null` when the document is whole, or has not begun.
+   * A screen reads it to tell an element still being written from one that is
+   * not (`createScreen`'s `cut`).
+   */
+  cut: string | null
   /** Where the text stops being JSON before it ends, and why. The document holds what came before. */
   error: { at: number; message: string } | null
 }
@@ -124,12 +134,19 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 export function parsePartial(text: string): PartialDocument {
   const start = documentStart(text)
-  if (start === -1) return { document: undefined, complete: false, open: null, error: null }
+  if (start === -1) {
+    return { document: undefined, complete: false, open: null, cut: null, error: null }
+  }
 
   let at = start
   /** Where the readable text ends: its end, or where it stops being JSON. */
   let limit = text.length
   let error: PartialDocument['error'] = null
+  /** The path of the innermost value the cut is inside: the first one to meet it. */
+  let cutAt: string | null = null
+  const reached = (path: string) => {
+    cutAt ??= path
+  }
 
   /** The text is not JSON from here: what came before is read as a cut. */
   const fail = (message: string): never => {
@@ -214,6 +231,7 @@ export function parsePartial(text: string): PartialDocument {
     const out: Record<string, unknown> = {}
     let kind: 'element' | 'binding' | 'object' | null = null
     const cut = (last?: { key: string; parsed: Parsed }): Parsed => {
+      reached(path)
       let open: string | null = null
       if (last !== undefined && last.parsed.value !== OMIT) {
         own(out, last.key, last.parsed.value)
@@ -271,6 +289,7 @@ export function parsePartial(text: string): PartialDocument {
     const out: unknown[] = []
     const item: Context = context === 'value' ? 'value' : 'opaque'
     const cut = (last?: Parsed): Parsed => {
+      reached(path)
       if (context === 'opaque') return { value: OMIT, whole: false, open: null }
       // An input is kept only when it is whole.
       if (last !== undefined && last.value !== OMIT && context === 'value') {
@@ -333,20 +352,28 @@ export function parsePartial(text: string): PartialDocument {
 
   const value = (context: Context, reader: boolean, path: string): Parsed => {
     space()
-    if (at >= limit) return { value: OMIT, whole: false, open: null }
+    if (at >= limit) {
+      reached(path)
+      return { value: OMIT, whole: false, open: null }
+    }
     const char = text[at] as string
     if (char === '{') return object(context === 'document' ? 'document' : context, path)
     if (char === '[') return array(context, reader, path)
     if (char === '"') {
       const read = string()
       if (read.whole) return { value: read.text, whole: true, open: null }
+      reached(path)
       if (context !== 'value' || !reader) return { value: OMIT, whole: false, open: null }
       // A lone high surrogate waits for its pair.
       const last = read.text.charCodeAt(read.text.length - 1)
       const text = last >= 0xd800 && last <= 0xdbff ? read.text.slice(0, -1) : read.text
       return { value: text, whole: false, open: path }
     }
-    if (char === '-' || (char >= '0' && char <= '9')) return number()
+    if (char === '-' || (char >= '0' && char <= '9')) {
+      const read = number()
+      if (!read.whole) reached(path)
+      return read
+    }
     for (const [word, literal] of Object.entries(LITERALS)) {
       const written = text.slice(at, Math.min(limit, at + word.length))
       if (written === word) {
@@ -355,6 +382,7 @@ export function parsePartial(text: string): PartialDocument {
       }
       if (word.startsWith(written) && at + written.length >= limit) {
         at = limit
+        reached(path)
         return { value: OMIT, whole: false, open: null }
       }
     }
@@ -364,6 +392,7 @@ export function parsePartial(text: string): PartialDocument {
   let parsed: Parsed
   for (;;) {
     at = start
+    cutAt = null
     try {
       parsed = value('document', false, '$')
       break
@@ -377,6 +406,7 @@ export function parsePartial(text: string): PartialDocument {
     document: isRecord(document) || document === undefined ? document : undefined,
     complete: parsed.whole,
     open: parsed.value === OMIT ? null : parsed.open,
+    cut: parsed.whole ? null : cutAt,
     error,
   }
 }

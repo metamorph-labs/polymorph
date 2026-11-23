@@ -1,4 +1,4 @@
-import { DEFAULT_FRAMEWORK, type Framework } from '@polymorph/registry/frameworks'
+import { DEFAULT_FRAMEWORK, unionParts, type Framework } from '@polymorph/registry/frameworks'
 import { DEFAULT_PLATFORM } from '@polymorph/registry/platforms'
 import type {
   ScreenTable,
@@ -80,6 +80,37 @@ export function allowedMembers(
   return new Set(options.members ?? defaultMembers(vocabulary, options.framework))
 }
 
+/**
+ * How a member takes its children, read from its `children` prop's type:
+ *
+ *  - `nodes`: any number of nodes (`ReactNode`). A renderer passes them as a
+ *    list, even one, so a second child that arrives while a document streams
+ *    joins the first instead of replacing it.
+ *  - `element`: one element the member reads (FormField's control, which it
+ *    clones with an id). A renderer passes it as itself.
+ *  - `text`: one text the member reads (Heading's words). A renderer passes
+ *    it as itself.
+ */
+export type ChildrenKind = 'nodes' | 'element' | 'text'
+
+/** A type a member draws as any node: an element, a text, or a list of them. */
+const NODES = /^(?:React\.)?(?:ReactNode|ReactPortal)\b|^JSX\.Element\b/
+/** A type a member reads as one element. */
+const ELEMENT = /^(?:React\.)?ReactElement\b/
+
+/** How the props' `children` is taken, or `null` for a member that takes none. */
+function childrenKindOf(props: readonly TableProp[]): ChildrenKind | null {
+  const children = props.find((prop) => prop.name === 'children')
+  if (children === undefined) return null
+  const parts = unionParts(children.type)
+  if (parts.some((part) => NODES.test(part))) return 'nodes'
+  if (parts.length > 0 && parts.every((part) => ELEMENT.test(part))) return 'element'
+  if (parts.length > 0 && parts.every((part) => part === 'string' || part === 'number')) {
+    return 'text'
+  }
+  return 'nodes'
+}
+
 /** A member, a compound part or an exception primitive, as a document names it. */
 export interface ScreenSurface {
   /** The member it belongs to: `Table` for `Table.Row`. */
@@ -90,6 +121,8 @@ export interface ScreenSurface {
   props: readonly TableProp[]
   /** Each controlled prop with the event prop that reports its change. */
   controlled: Readonly<Record<string, string>>
+  /** How it takes its children, or `null` when it takes none. */
+  childrenKind: ChildrenKind | null
   /** The table entry of the member or the primitive. */
   entry: TableMember | TablePrimitive
 }
@@ -124,21 +157,25 @@ export function surfaceOf(vocabulary: ScreenVocabulary, name: string): ScreenSur
   const { members, primitives } = indexOf(vocabulary)
   const primitive = primitives.get(name)
   if (primitive !== undefined) {
+    const props = primitive.props.filter((prop) => !prop.name.includes('.'))
     return {
       member: name,
       part: null,
-      props: primitive.props.filter((prop) => !prop.name.includes('.')),
+      props,
       controlled: primitive.controlled,
+      childrenKind: childrenKindOf(props),
       entry: primitive,
     }
   }
   const member = members.get(name)
   if (member !== undefined) {
+    const props = member.props.filter((prop) => !prop.name.includes('.'))
     return {
       member: name,
       part: null,
-      props: member.props.filter((prop) => !prop.name.includes('.')),
+      props,
       controlled: member.controlled,
+      childrenKind: childrenKindOf(props),
       entry: member,
     }
   }
@@ -153,6 +190,7 @@ export function surfaceOf(vocabulary: ScreenVocabulary, name: string): ScreenSur
     part: partName,
     props: part.props,
     controlled: part.controlled,
+    childrenKind: childrenKindOf(part.props),
     entry: compound,
   }
 }

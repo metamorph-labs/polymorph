@@ -38,7 +38,10 @@ behaves the same in each of them:
   only if the member takes it, and an address only if it is relative or `http:`, `https:`,
   `mailto:` or `tel:`;
 - a member that hosts another library's code (`ThirdParty`) is drawn only where the host names it;
-- a node that cannot be drawn is drawn as nothing and reported with its path.
+- a node that cannot be drawn is drawn as nothing and reported with its path;
+- while a document streams, an element still being written (`parsePartial`'s `cut`) is left out
+  until its props are whole, so a member is never drawn with part of its props, and a container
+  is drawn as soon as its children begin.
 
 ## Asking a model for a screen
 
