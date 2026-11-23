@@ -54,14 +54,19 @@ import { unknownText } from './unknown'
  *
  * An entity names something in the application, so a paste may not make one
  * up: a page could put `<span data-entity-kind="user" data-entity-id="admin">`
- * on the clipboard and the reader would mention someone they never saw. The
- * clipboard drawing of an entity carries a token that is random for each load
- * of this module, made the first time a copy or a paste needs it and held
- * nowhere else, and a pasted entity is kept only when it carries that token
- * and its kind is one the field suggests. Any other reads as its label. So an
- * entity copied from an editor in this page pastes as an entity, and one
- * copied from another tab or another application pastes as text. A drag inside
- * the field moves the editor's own nodes and reads no HTML.
+ * on the clipboard and the reader would mention someone they never saw. Each
+ * time an editor in this page draws an entity for the clipboard, it records the
+ * entity's kind, id and label in this module under a new random value, and the
+ * drawn span carries that value. A pasted entity is kept only when its value is
+ * on record, the record's kind, id and label are the span's, and the field
+ * suggests its kind. Any other reads as its label. So an entity copied from an
+ * editor in this page pastes as an entity in any field of the page, and one
+ * copied from another tab or another application pastes as text. A page the
+ * copy was pasted into learns its values, but a value replays only the entity
+ * it was drawn for: a span with another id, label or kind reads as text. The
+ * record holds the last `ENTITY_COPIES` entities drawn, so it cannot grow
+ * without bound; an older copy pastes as text. A drag inside the field moves
+ * the editor's own nodes and reads no HTML.
  *
  * What other applications put on the clipboard is read for the structure and
  * the emphasis a person sees, and nothing else (the rules are each beside the
@@ -146,23 +151,51 @@ function attrs(entries: Record<string, string | null | undefined>): Record<strin
 /* What a paste may keep                                                       */
 /* -------------------------------------------------------------------------- */
 
-/** The attribute an entity's clipboard drawing carries its token in. */
+/** The attribute an entity's clipboard drawing carries its recorded value in. */
 export const ENTITY_TOKEN = 'data-entity-token'
 
-let token: string | null = null
+/** How many entities drawn for the clipboard the record holds. The oldest is forgotten first. */
+export const ENTITY_COPIES = 500
+
+interface Drawn {
+  kind: string
+  id: string
+  label: string
+}
 
 /**
- * The token of this load of the module (the file's header says why). It is
- * made from the platform's random source the first time it is asked for, and
- * is written only into the clipboard's drawing.
+ * The entities drawn for the clipboard, by the value each span carries, oldest
+ * first (the file's header says why). It lives only here and is never part of
+ * the document, the editable surface or a state.
  */
-export function entityToken(): string {
-  if (token === null) {
-    const bytes = new Uint8Array(16)
-    globalThis.crypto.getRandomValues(bytes)
-    token = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+const drawnEntities = new Map<string, Drawn>()
+
+/**
+ * Records an entity drawn for the clipboard and returns the value its span
+ * carries: 16 bytes from the platform's random source, new for every drawing.
+ */
+function recordEntity(entity: Drawn): string {
+  const bytes = new Uint8Array(16)
+  globalThis.crypto.getRandomValues(bytes)
+  const value = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+  drawnEntities.set(value, entity)
+  while (drawnEntities.size > ENTITY_COPIES) {
+    const oldest = drawnEntities.keys().next().value
+    if (oldest === undefined) break
+    drawnEntities.delete(oldest)
   }
-  return token
+  return value
+}
+
+/** Whether a pasted span carries a recorded value drawn for this very entity. */
+function wasDrawn(value: string | null, entity: Drawn): boolean {
+  const drawn = value === null ? undefined : drawnEntities.get(value)
+  return (
+    drawn !== undefined &&
+    drawn.kind === entity.kind &&
+    drawn.id === entity.id &&
+    drawn.label === entity.label
+  )
 }
 
 /**
@@ -332,18 +365,23 @@ function drawing(classes: RichTextEditorClasses | null, headingLevel: number) {
       attrs({ class: cls((c) => c.codeBlock), 'data-language': node.attrs.language as string }),
       ['code', attrs({ class: cls((c) => c.codeBlockText) }), 0],
     ],
-    entity: (node: PMNode): DOMOutputSpec => [
-      'span',
-      attrs({
-        class: cls((c) => c.entity),
-        'data-entity-kind': node.attrs.kind as string,
-        'data-entity-id': node.attrs.id as string,
-        // Only the clipboard's drawing carries the token: the field's own DOM never does.
-        [ENTITY_TOKEN]: classes ? null : entityToken(),
-        contenteditable: 'false',
-      }),
-      node.attrs.label as string,
-    ],
+    entity: (node: PMNode): DOMOutputSpec => {
+      const kind = node.attrs.kind as string
+      const id = node.attrs.id as string
+      const label = node.attrs.label as string
+      return [
+        'span',
+        attrs({
+          class: cls((c) => c.entity),
+          'data-entity-kind': kind,
+          'data-entity-id': id,
+          // Only the clipboard's drawing is recorded and carries a value: the field's own DOM never does.
+          [ENTITY_TOKEN]: classes ? null : recordEntity({ kind, id, label }),
+          contenteditable: 'false',
+        }),
+        label,
+      ]
+    },
     unknown:
       (tag: 'div' | 'span') =>
       (node: PMNode): DOMOutputSpec => [
@@ -545,18 +583,21 @@ export function buildSchema(options: SchemaOptions): Schema {
     leafText: (node) => node.attrs.label as string,
     parseDOM: [
       {
-        // A pasted entity is kept when an editor in this page drew it and the
-        // field suggests its kind; any other reads as its label (the file's
-        // header says why).
+        // A pasted entity is kept when an editor in this page drew this very
+        // entity for the clipboard and the field suggests its kind; any other
+        // reads as its label (the file's header says why).
         tag: `span[data-entity-kind][data-entity-id][${ENTITY_TOKEN}]`,
         getAttrs: (dom) => {
-          const kind = dom.getAttribute('data-entity-kind') ?? ''
-          const id = dom.getAttribute('data-entity-id') ?? ''
-          const label = dom.textContent ?? ''
-          if (dom.getAttribute(ENTITY_TOKEN) !== entityToken() || !kinds.has(kind)) return false
+          const entity = {
+            kind: dom.getAttribute('data-entity-kind') ?? '',
+            id: dom.getAttribute('data-entity-id') ?? '',
+            label: dom.textContent ?? '',
+          }
+          if (!wasDrawn(dom.getAttribute(ENTITY_TOKEN), entity) || !kinds.has(entity.kind))
+            return false
           // The reader turns an entity with no kind, id or label into text.
-          if (kind === '' || id === '' || label === '') return false
-          return { kind, id, label }
+          if (entity.kind === '' || entity.id === '' || entity.label === '') return false
+          return entity
         },
       },
     ],
