@@ -104,7 +104,10 @@
   color: var(--pm-text-primary);
   letter-spacing: var(--pm-text-md-tracking);
   overflow-wrap: break-word;
-  white-space: pre-wrap;
+
+  /* The spaces a person typed are kept, and one at a line's end takes room on the line, so it
+     wraps with its word and never hangs past the field's edge. */
+  white-space: break-spaces;
   font-variant-ligatures: none;
   cursor: text;
   outline: none;

@@ -125,6 +125,17 @@ describe('the selection bar', () => {
     )
   })
 
+  it('hides itself while the selection is scrolled out of the window, and comes back', () => {
+    const element = bar()
+    placeSelectionBar(element, box(height() + 400, height() + 420))
+    expect(element.hasAttribute('data-outside')).toBe(true)
+    placeSelectionBar(element, box(-420, -400))
+    expect(element.hasAttribute('data-outside')).toBe(true)
+    placeSelectionBar(element, box(300, 320))
+    expect(element.hasAttribute('data-outside')).toBe(false)
+    expect(element.getBoundingClientRect().bottom).toBe(300 - EDGE)
+  })
+
   it('hides itself while the selection is outside the element it is given, and comes back', () => {
     const scroller = document.createElement('div')
     scroller.style.cssText =

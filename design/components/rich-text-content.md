@@ -193,7 +193,8 @@ content's end, and one anywhere else outside the content draws no bar.
   stays while focus is in it.
 - **Where.** Centred over the selection's box and above it, under it when there is less room above
   and always on a coarse pointer, inside the window's inline edges, following the selection on
-  scroll and resize: the bar's own placement.
+  scroll and resize: the bar's own placement. It is hidden while none of the selection is in the
+  window, so it does not wait at the window's edge over another part of the page.
 - **Keys.** The bar is a toolbar with one tab stop. It follows the content in the document, so Tab
   from the content reaches it, and Alt+F10, with focus in the member or on no element, moves focus
   to it. Escape in it hides it for that selection and returns focus where it came from, with the

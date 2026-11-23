@@ -156,11 +156,13 @@ function placement(
  * widest it may be (`--pm-selection-bar-room`, the visible width less the
  * edges, so a classic scroll bar is not counted) and `data-side`.
  *
- * With `within`, the bar is placed at the part of the selection that element
- * shows (the field's text, inside its own scrolling box), and it is hidden
- * (`data-outside`) while none of the selection is in view there, so it never
- * sits over the page outside the field. Nothing is placed while there is no
- * bar or no selection.
+ * The bar is hidden (`data-outside`) while none of the selection is in the
+ * visible viewport, so it never waits at the window's edge over a page whose
+ * selected words are scrolled away. With `within`, the bar is placed at the
+ * part of the selection that element shows (the field's text, inside its own
+ * scrolling box), and it is hidden while none of the selection is in view
+ * there, so it never sits over the page outside the field. Nothing is placed
+ * while there is no bar or no selection.
  */
 export function placeSelectionBar(
   bar: HTMLElement | null | undefined,
@@ -171,16 +173,16 @@ export function placeSelectionBar(
   const view = bar.ownerDocument.defaultView
   if (view === null) return
   const seen = visibleViewport(view)
-  let at: ViewportBox = rect
-  if (within !== null && within !== undefined) {
-    const shown = visibleBox(within)
-    const part = shown === null ? null : overlap(rect, shown)
-    if (part === null) {
-      bar.dataset['outside'] = ''
-      return
-    }
-    at = part
+  const held = within !== null && within !== undefined
+  const shown = held ? visibleBox(within) : seen
+  const part = shown === null ? null : overlap(rect, shown)
+  if (part === null) {
+    bar.dataset['outside'] = ''
+    return
   }
+  // Inside a field the bar is at the part the field shows. On a page it is at the selection
+  // whole, so a selection taller than the window keeps the bar at its visible edge.
+  const at: ViewportBox = held ? part : rect
   delete bar.dataset['outside']
   const edge = lengthOf(bar, '--pm-selection-bar-edge')
   bar.style.setProperty(

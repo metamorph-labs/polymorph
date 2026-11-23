@@ -41,7 +41,8 @@
   animation: selection-bar-enter var(--pm-motion-duration-surface) var(--pm-motion-easing-enter);
 }
 
-/* The selection is scrolled out of the field's own box: the bar waits, unseen, for it to return. */
+/* The selection is scrolled out of the window, or out of the field's own box: the bar waits,
+   unseen, for it to return. */
 .bar[data-outside] {
   visibility: hidden;
 }

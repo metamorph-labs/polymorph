@@ -318,8 +318,8 @@ they may not edit; a disabled one draws no bar.
   keyboard or a pinch zoom makes smaller) on both axes, follows the selection as the page scrolls,
   the window resizes and that viewport moves, and wraps onto more rows at the width that part
   allows, a scroll bar not counted. It is placed at the part of the selection the field's own
-  scrolling box shows, and hidden while none of it is in view there, so it never sits over the
-  page outside the field. It is `position: fixed`, placed from the editor's `selectionRect()`.
+  scrolling box shows, and hidden while none of it is in view there or in the window, so it never
+  sits over the page outside the field. It is `position: fixed`, placed from the editor's `selectionRect()`.
 - **When.** It appears when a pointer selection ends, not while it is dragged, and at once for a
   selection made with the keys. Escape in the text hides it for that selection; the next selection
   brings it back. It leaves when the selection collapses or leaves the field.
@@ -375,7 +375,7 @@ key End moves-focus-last on control
 | a control | `Button ghost/neutral/sm iconOnly`, named by `messages`; `pressed` for a format |
 | slot | wrapping row · gap `--pm-space-1` · at the inline end |
 | viewport | `overflow-y: auto` · max-block-size `maxRows` × the body line (`--pm-text-md-size` × `--pm-text-md-line-height`) + 2 × `--pm-space-1`, one rule per lawful value; `none`: no maximum |
-| surface | RichTextContent's root, composed (column · gap `--pm-space-4`) · padding `--pm-space-1` `--pm-space-2` · `text.md` quartet · `--pm-text-primary` · `white-space: pre-wrap` · `overflow-wrap: break-word` · `font-variant-ligatures: none` · no outline · min-block-size `minRows` body lines + 2 × `--pm-space-1`, one rule per lawful value. Below `30rem` it takes the text-entry floor's size and line-height (conventions §13, metrics only), and the row rules are restated with them |
+| surface | RichTextContent's root, composed (column · gap `--pm-space-4`) · padding `--pm-space-1` `--pm-space-2` · `text.md` quartet · `--pm-text-primary` · `white-space: break-spaces`, so a space at a line's end wraps with its word · `overflow-wrap: break-word` · `font-variant-ligatures: none` · no outline · min-block-size `minRows` body lines + 2 × `--pm-space-1`, one rule per lawful value. Below `30rem` it takes the text-entry floor's size and line-height (conventions §13, metrics only), and the row rules are restated with them |
 | surface read-only | `--pm-text-secondary` |
 | surface disabled | `--pm-text-disabled` · `cursor: not-allowed` |
 | placeholder | `content: attr(data-placeholder)` · `--pm-text-muted` · over the block (absolute, `inset-inline: 0`) · no pointer events |
