@@ -3,8 +3,9 @@
 A run-time screen is a screen a model writes while your product runs, and your product draws at
 once: generated UI, drawn with the vocabulary in your own theme, with no build and no source file.
 An agent in a chat, a copilot panel or a tool result answers with a screen spec, the same
-`polymorph-screen/1` document `pnpm emit` reads. A renderer draws it while it streams in. What the
-person does with it reaches your code as data, and you send that to the model as its next turn.
+`polymorph-screen/1` document `pnpm emit` reads. A renderer draws it while it streams in. When a
+member calls one of the document's actions, most often because the person pressed or submitted
+something, your code is told as data, and you send that to the model as its next turn.
 
 This page is for the engineer who puts such a screen in a product. It covers when to use one, the
 loop a host implements, what the renderers do with a document, what a document cannot do, and
@@ -161,7 +162,10 @@ export function Assistant({ data }: { data: Record<string, unknown> }) {
 - `allow` is the list of member names a document may use, the list the card was built from.
 - `text` is the answer so far, and the renderer reads the document out of it with `parsePartial`.
 - `streaming` says that more is to come. No fault is reported for what has not arrived, and an
-  element still being written waits.
+  element still being written waits. With `text` and no `streaming`, it is whether the text's
+  document has not closed yet. A host that passes `streaming={false}` while chunks still arrive
+  gives the screen a new whole document with each chunk: each is a new drawing whose faults are
+  told again, and an element whose required props have not arrived is a fault and is not drawn.
 - `onAction` returns nothing here, so no member waits on it. A handler that returns a promise
   makes a member that waits on its callback wait for it
   ([What the handler returns](#what-the-handler-returns)).
@@ -202,7 +206,9 @@ The page loads `polymorph.js` before this script, as every elements page does
 `<poly-screen>` to connect fetches the renderer. The card for this page is
 `runtimeCard({ framework: 'elements', members })`, which lists only what the elements draw.
 `streaming` is the page's to set: on while the answer arrives, and off when it ends, so an answer
-cut short reports what it lacks. A server that renders the page can write a document it already
+cut short reports what it lacks. A page that sets `text` chunk by chunk and never sets `streaming`
+gives the element a new whole document with each chunk: each is a new drawing whose faults are
+told again, and an element whose required props have not arrived is a fault and is not drawn. A server that renders the page can write a document it already
 has into the element, as a `<script type="application/json">` child, and `<poly-screen>` draws it
 with no script on the page.
 
@@ -401,6 +407,31 @@ document's or the host's. A host that acts on an action with consequences (a pay
 a message sent) confirms it with the person outside the screen, in its own words, and does not
 take an action's name as what the person meant (`packages/screen/README.md`).
 
+An action is not proof that a person acted, either. A member calls some callbacks on its own:
+
+- `Countdown` calls `onEnd` when its time is reached, and once as it is drawn when `until` has
+  already passed (`packages/react-ui/src/structure/Countdown.tsx:47` and `:97`,
+  `packages/solid-ui/src/structure/Countdown.tsx:91`).
+- A field drawn with `autoFocus` (`Input`, `Textarea`) takes focus as it is drawn, so it calls
+  `onFocus` (`packages/react-ui/src/controls/Input.tsx:258` and `:275`,
+  `packages/solid-ui/src/controls/Input.tsx:159` and `:254`).
+- `TableOfContents` calls `onCurrentChange` with the current section as it is drawn, and again as
+  the page scrolls (`packages/react-ui/src/structure/TableOfContents.tsx:94`, through
+  `watchSections` in `packages/engine/src/conventions/sections.ts`).
+- `Toast` calls `onDismiss` when its time runs out or a newer toast evicts it
+  (`packages/engine/src/toast/store.ts:61-66` and `:240`). The elements draw it; React raises a
+  toast with `toast()`, and its default members leave `Toast` out.
+- `AudioPlayer` calls `onEnded` when a recording the person started reaches its end
+  (`packages/react-ui/src/structure/AudioPlayer.tsx:213`,
+  `packages/solid-ui/src/structure/AudioPlayer.tsx:178`).
+- An agent that operates the page through the agent bridge ([agents.md](agents.md)) presses and
+  fills as a person does, and the member calls the same callbacks.
+
+Such an action carries an empty `changed`, as a press of a plain button does, so `changed` cannot
+tell the two apart. A host that sends every action to the model therefore bounds how many turns an
+answer may start with no act of the person's between them, such as a document whose every answer
+holds a `Countdown` already past, and confirms an action with consequences outside the screen.
+
 ### Controls follow the reader
 
 A controlled prop is a prop with the event that reports its change: `value` with `onChange`, `x`
@@ -551,6 +582,12 @@ The named controls the element holds are not drawn either, so they hold no value
 While the document streams, such an element is left out, with no fault, until the prop arrives
 (`packages/screen/src/walk.test.ts`).
 
+A member that requires exactly one element as its child and reads it, as a `FormField` reads its
+control to give it an id, is held to its child the same way. It is drawn only once that child is
+drawn: while the document streams it waits for it, and once the document is whole, one with no
+child it can draw (none, one that is not drawn, or more than one) is a fault and is drawn as
+nothing (`packages/screen/src/walk.test.ts`, `packages/screen/src/streaming.test.ts`).
+
 Three cases still draw the element (`packages/screen/src/walk.test.ts`):
 
 - a required prop bound to data the host has not given yet ([Data inputs](#data-inputs));
@@ -638,13 +675,15 @@ cuts.
   and `![alt](address)`, which the page loads. It takes only `http:`, `https:`, `mailto:` and
   addresses with no scheme, relative and `//host/…` included, and draws any other as text
   (`safeHref` in `packages/engine/src/markdown/parse.ts`). No other member draws Markdown.
+- **Ids and names.** A document can set an `id` (Heading, PhoneInput) and a control's `name`. An
+  `id` can match one of the host's own, and a control inside a host's `<form>` posts with it under
+  the document's name. Draw a screen outside the host's own forms.
+- **Who called an action.** A member can call a callback with no one acting
+  ([What an action is not](#what-an-action-is-not)).
 
 A host that refuses links and remote pictures leaves out of `members` every member that takes an
 address (`Link`, `Image`, `Avatar` and the others whose props or data types take an `href`, `src`
 or `avatar`), and `Markdown`.
-- **Ids and names.** A document can set an `id` (Heading, PhoneInput) and a control's `name`. An
-  `id` can match one of the host's own, and a control inside a host's `<form>` posts with it under
-  the document's name. Draw a screen outside the host's own forms.
 
 ### Faults
 
@@ -786,8 +825,9 @@ it.
 No handler runs while React renders, so a server render, a render React discards and the second
 render of strict mode tell the host nothing. Each node draws inside its own error boundary, which
 tries again when the node changes. A server renders no error boundary, so the screen is drawn
-inside one Suspense boundary: a member that throws on the server leaves the screen's place empty
-for the browser to draw, and the page around it is still served
+inside one Suspense boundary: a member that throws on the server leaves the screen's place for
+the browser to draw, empty or holding `fallback` when the host gives one, and the page around it
+is still served
 (`packages/react/screen-server.test.ts`). In the browser, a member that is not lazy and suspends
 (one that waits on data with `use`) shows `fallback` in place of the whole screen, and a Suspense
 boundary of the host's above `ScreenView` does not see it. A lazy member waits in its own place.
@@ -919,4 +959,4 @@ members, and `--framework` a card for another framework.
   screen computes (a total, a filtered list, whether to show a warning) is the host's: compute it
   and pass it as data, or ask the model for a new document.
 - **No model, no transport.** The host calls the model, keeps the conversation and decides what an
-  action means. Polymorph draws the answer and reports what the person does.
+  action means. Polymorph draws the answer and tells the host each action a member calls.
