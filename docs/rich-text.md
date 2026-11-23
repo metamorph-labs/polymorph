@@ -376,10 +376,30 @@ link added, an entity inserted, the limit crossed, a refused submit, and the sta
 suggestions. A highlight that can be pressed is reachable by Tab and activated by Enter or Space.
 Text entered through an input method is never changed while it is being composed.
 
-## Platforms
+## Frameworks and platforms
 
-`RichTextContent` is drawn by every web framework, by SwiftUI and by Compose. The native members
-take the document as JSON and read it with their own tolerant reader, which follows the same
-rules. `RichTextInput` is a web member. On iOS and Android the platform maps name `Textarea` in
-its place, and a phone application that needs formatted input shows a web view or collects plain
-text and stores `richTextFromText` of it.
+Both members are drawn by React, Vue, Svelte, Solid, Angular and the custom elements, from one
+description each ([shells.md](shells.md)). The function props that receive the field's handle read
+as each framework's own slot:
+
+| Framework | `toolbar`, `selectionActions`, `footer` |
+| --- | --- |
+| React, Solid | a function prop: `toolbar={(editor) => …}` |
+| Vue | a scoped slot: `<template #toolbar="editor">` |
+| Svelte | a snippet: `{#snippet toolbar(editor)}` |
+| Angular | a template: `<ng-template #tools let-editor>` given as `[toolbar]="tools"` |
+| Elements | a property set from script, a function that returns a node or an array of nodes |
+
+An Angular output and an element's event carry one value. So `submit` gives the document there,
+and the handle reaches the application through the three slots.
+
+`RichTextContent` is also drawn by SwiftUI and Compose. The native members take the document as
+JSON and read it with their own tolerant reader, which follows the same rules. They draw
+annotations and report a tap on one through `onAnnotationSelect`. They do not draw
+`selectionActions`, because neither platform's text reports a selected range to a member, so a
+phone application anchors a comment from its own control with `annotateRichText` on its server or
+in a web view.
+
+`RichTextInput` is a web member. On iOS and Android the platform maps name `Textarea` in its
+place, and a phone application that needs formatted input shows a web view, or collects plain text
+and stores `richTextFromText` of it.

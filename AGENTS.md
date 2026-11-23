@@ -235,5 +235,6 @@ static-page check, on Firefox and WebKit. There is no hosted CI, so these are th
 | What may an agent on a page read and do with a member, and how do I declare it? | [docs/agents.md](docs/agents.md), then the member's `## Agent` section |
 | How do I build an AI chat screen? | [docs/conversation.md](docs/conversation.md), then `design/components/chat-thread.md` |
 | How does a product draw a screen a model writes while it runs? | [docs/run-time-screens.md](docs/run-time-screens.md) |
+| How do I let a person write formatted text, mention things or comment on words? | [docs/rich-text.md](docs/rich-text.md), then `design/components/rich-text-input.md` |
 | CLI, MCP, registry, spec DSL, workbench | [docs/tooling.md](docs/tooling.md) |
 | Native platforms: tokens, members, the screen contract, their laws | [docs/native.md](docs/native.md), then `design/native/screen-contract.md` |

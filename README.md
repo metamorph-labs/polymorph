@@ -158,6 +158,7 @@ The commands, by what they do:
 | [docs/layout.md](docs/layout.md) | Container-first responsiveness, the phone register, performance |
 | [docs/conversation.md](docs/conversation.md) | The AI conversation tier |
 | [docs/run-time-screens.md](docs/run-time-screens.md) | Screens a model writes and a product draws while it runs: the run-time card, the renderers, what a document cannot do |
+| [docs/rich-text.md](docs/rich-text.md) | Formatted text a person writes: the field, the reader, the JSON document, comments on text |
 | [docs/rules.md](docs/rules.md) | The red rules and the exception ladder |
 | [docs/verification.md](docs/verification.md) | Every gate, test project and law, `pnpm proof`, and the agent eval |
 | [docs/tooling.md](docs/tooling.md) | Registry, CLI, MCP server, spec DSL, workbench |
