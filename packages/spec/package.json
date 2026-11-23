@@ -22,7 +22,6 @@
   "license": "MIT",
   "devDependencies": {
     "@internationalized/date": "^3.12.2",
-    "@polymorph/react-ui": "workspace:*",
     "@types/react": "^19.2.7",
     "react": "^19.2.8"
   }

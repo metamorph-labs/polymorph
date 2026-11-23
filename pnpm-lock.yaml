@@ -1119,9 +1119,6 @@ importers:
       '@internationalized/date':
         specifier: ^3.12.2
         version: 3.12.2
-      '@polymorph/react-ui':
-        specifier: workspace:*
-        version: link:../react-ui
       '@types/react':
         specifier: ^19.2.7
         version: 19.2.17

@@ -2,7 +2,12 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
-    "types": []
+    "types": [],
+    // An emitted screen imports `@polymorph/react-ui`, and the round-trip tests typecheck it
+    // against the vocabulary's source, read through this path. The vocabulary is not a
+    // dependency of this package: a dependency would close a workspace cycle through
+    // `@polymorph/react`, which depends on `@polymorph/screen`, which builds on this package.
+    "paths": { "@polymorph/react-ui": ["../react-ui/src/index.ts"] }
   },
   "files": []
 }
