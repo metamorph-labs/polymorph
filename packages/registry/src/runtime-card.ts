@@ -75,7 +75,11 @@ export interface RuntimeCardOptions {
   readonly members: ReadonlySet<string>
 }
 
-/** The ARIA hooks a member takes, written once as `aria` on a member that takes all four. */
+/**
+ * The ARIA hooks a member takes, written once as `aria-*` on a member that takes all four.
+ * The mark is not a word a document could hold as a key: a model that read `aria` in a
+ * member's line wrote a prop of that name, holding an object.
+ */
 const ARIA = [...CONVENTION_PROPS].filter((name) => name.startsWith('aria-'))
 
 /** A type the vocabulary draws as a node: an element, a text, or a list of them. */
@@ -203,7 +207,7 @@ const NOTHING =
   /=> (?:void|undefined|Promise<(?:void|undefined)>)(?:\|(?:void|undefined|Promise<(?:void|undefined)>))*\)?$/
 
 /**
- * `name: type`, `*` marking a required one; the four ARIA hooks as `aria`
+ * `name: type`, `*` marking a required one; the four ARIA hooks as `aria-*`
  * where all four are taken. A ref is left out, as a document cannot hold one.
  * With `questions`, a function that returns a value is written `fn`: a
  * data type's field of that kind cannot be given by a document at all, so its
@@ -227,7 +231,7 @@ function propList(
       const question = questions && isFunctionPrint(prop.type) && !NOTHING.test(type)
       return `${prop.name}${prop.optional ? '' : '*'}: ${question ? 'fn' : type}`
     })
-  return allAria ? [...written, 'aria'] : written
+  return allAria ? [...written, 'aria-*'] : written
 }
 
 /** One member, then a line under it for each part the framework carries. */
@@ -362,9 +366,10 @@ export function renderRuntimeCard(
       'One line per member: what it is for, then its props as `name: type`, `*` marking a ' +
         'required one, then its lawful variant × tone `cells`; a part (`Member.Part`) is a line ' +
         'under its member. `node` is an element, a text, or a list of them. A function type is ' +
-        'a callback: bind it to an input of that type. `aria` is the four ARIA hooks ' +
-        `(${ARIA.map((name) => `\`${name}\``).join(', ')}). A member takes no prop it does not list, ` +
-        'and takes children only where it lists `children`.',
+        'a callback: bind it to an input of that type. `aria-*` stands for four props, each ' +
+        `written under its own name (${ARIA.map((name) => `\`${name}\``).join(', ')}); no member ` +
+        'has a prop named `aria`. A member takes no prop it does not list, and takes children ' +
+        'only where it lists `children`.',
       96,
     ),
     '',

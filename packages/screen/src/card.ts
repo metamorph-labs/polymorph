@@ -86,7 +86,8 @@ export function outputContract(options: CardOptions = {}): string {
     '- There is no condition and no loop: every element is drawn whenever the screen is. Content that',
     '  is sometimes absent is a prop bound to an input that is empty while there is nothing to show.',
     '- A control with a `name` reports its current value under that name with every action, so name',
-    '  each field a person fills in.',
+    '  each field a person fills in. A name is used once in a screen: two forms on one screen name',
+    '  their fields apart (`signInEmail`, `signUpEmail`), because one name holds one value.',
     `- An address (${addresses}) is relative, a fragment, or ${schemes.slice(0, -1).join(', ')} or ${schemes.at(-1) ?? ''}.`,
   ]
   if (rungs.length > 0) {

@@ -48,9 +48,15 @@ import { VOCABULARY } from './vocabulary'
  * RichTextContent writes its document, and one not told a paragraph holds
  * `content` and a code block `text` writes a document the reader draws as
  * nothing.
+ *
+ * It also includes two sentences a measured run needed. One says the mark for
+ * the four ARIA props is not a prop and how each is written, because a model
+ * wrote `aria` as a prop holding an object. The other says a control's name is
+ * used once in a screen, because two forms on one screen each named a field
+ * `email`.
  */
-const BUDGET_CHARS = 60_500
-const SUBSET_BUDGET_CHARS = 13_500
+const BUDGET_CHARS = 60_800
+const SUBSET_BUDGET_CHARS = 13_600
 
 /** What a host that draws forms, lists and simple pages might allow. */
 const SUBSET = [
@@ -177,6 +183,18 @@ describe('the data types a member’s props take', () => {
     expect(line(alone, 'StatDelta')).toContain(' · direction*: "up"|"down"')
   })
 
+  it('marks the four ARIA props with a word no document can hold as a key', () => {
+    // A member's line that said `aria` was read as a prop of that name, holding an object.
+    expect(line(card, 'Input')).toMatch(/ · aria-\*$/)
+    for (const row of card.split('\n').filter((row) => row.startsWith('- **'))) {
+      expect(row, row.slice(0, 40)).not.toMatch(/ · aria(?: ·|$)/)
+    }
+    expect(card.replace(/\s+/g, ' ')).toContain(
+      '`aria-*` stands for four props, each written under its own name (`aria-label`, ' +
+        '`aria-labelledby`, `aria-describedby`, `aria-required`); no member has a prop named `aria`',
+    )
+  })
+
   it('prints only the types the listed members reach, and none a callback alone names', () => {
     const select = types(runtimeCard({ members: ['Select'] })).map(
       (row) => /\*\*(.+?)\*\*/.exec(row)?.[1],
@@ -196,6 +214,8 @@ describe('the output contract', () => {
     expect(contract.replace(/\s+/g, ' ')).toContain(
       'Write an element’s plain props before its props that hold elements, and `props` before `children`',
     )
+    // Two forms on one screen each named a field `email`, and `values` holds one of them.
+    expect(contract.replace(/\s+/g, ' ')).toContain('A name is used once in a screen')
     for (const key of ADDRESS_KEYS) expect(contract).toContain(`\`${key}\``)
     expect(contract).toContain('`DensityScope` is rung 2')
     expect(contract).toContain('`Bespoke` is rung 4')
