@@ -34,7 +34,8 @@ The package has no framework, no DOM and no dependencies:
   `MAX_TYPE_LENGTH` (500) characters, and a value reduced to JSON holds at most `MAX_JSON_VALUES`
   (100,000) values. `hostile.test.ts` feeds the core documents and host data written to break it
   (deep nesting, long strings, thousands of children, an unclosed fence, cyclic and shared data,
-  input types over the limit): none makes it throw, and each kind costs in proportion to its size.
+  input types over the limit): none makes it throw, and no kind's cost grows as the square of its
+  size.
 - `runtimeCard({ framework, members })` (`@polymorph/screen/card`): the text a host puts in the
   model's system prompt: the members it allows, each with its props' types, the data types those
   props take with their fields, and the output contract.
