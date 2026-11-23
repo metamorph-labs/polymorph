@@ -1,5 +1,7 @@
+import { PassThrough } from 'node:stream'
+
 import { createElement, type ReactNode } from 'react'
-import { renderToString } from 'react-dom/server'
+import { renderToPipeableStream, renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
 import { ScreenView, type ScreenFault } from './src/screen/index'
@@ -13,7 +15,15 @@ import { ScreenView, type ScreenFault } from './src/screen/index'
  * The members are stand-ins: the vocabulary's own server rendering is the
  * Next.js gate's (`scripts/gate-next.mjs`), and what is checked here is the
  * renderer around them.
+ *
+ * A server renders no error boundary, so the screen is drawn inside one
+ * Suspense boundary (`<!--$-->` in the markup): a member that throws on the
+ * server leaves the screen's place empty, marked for the browser to draw, and
+ * the host's page is still served.
  */
+
+/** The markup a server writes around a screen it drew. */
+const served = (html: string) => `<!--$-->${html}<!--/$-->`
 
 const tag =
   (name: string) =>
@@ -47,7 +57,9 @@ describe('a server renders a screen', () => {
       }),
     )
     expect(html).toBe(
-      '<div data-member="div"><p data-member="p">From the server</p><button data-member="button">Open</button></div>',
+      served(
+        '<div data-member="div"><p data-member="p">From the server</p><button data-member="button">Open</button></div>',
+      ),
     )
     // A server runs no effect, so the host hears of the unknown component on the client.
     expect(faults).toEqual([])
@@ -64,6 +76,55 @@ describe('a server renders a screen', () => {
     const html = renderToString(
       createElement(ScreenView, { text: text.slice(0, text.indexOf('way') + 3), members }),
     )
-    expect(html).toBe('<div data-member="div"><p data-member="p">Half way</p></div>')
+    expect(html).toBe(served('<div data-member="div"><p data-member="p">Half way</p></div>'))
+  })
+
+  describe('a member that throws on the server', () => {
+    const Broken = () => {
+      throw new Error('The member broke')
+    }
+    const view = () =>
+      createElement(ScreenView, {
+        document: {
+          spec: 'polymorph-screen/1',
+          name: 'Broken',
+          purpose: 'A screen with a member that throws.',
+          inputs: [],
+          root: {
+            component: 'Stack',
+            children: [
+              { component: 'Text', children: ['Kept'] },
+              { component: 'Badge', children: ['Broken'] },
+            ],
+          },
+        },
+        members: { ...members, Badge: Broken },
+      })
+
+    it('leaves the screen to the browser, and the page around it is written', () => {
+      const html = renderToString(createElement('main', null, view()))
+      expect(html.startsWith('<main><!--$!-->')).toBe(true)
+      expect(html.endsWith('<!--/$--></main>')).toBe(true)
+      expect(html).not.toContain('Kept')
+    })
+
+    it('does the same in a stream: the shell is sent, and the error is told to the server', async () => {
+      const errors: unknown[] = []
+      const html = await new Promise<string>((resolve, reject) => {
+        let written = ''
+        const out = new PassThrough()
+        out.on('data', (chunk: Buffer) => (written += chunk.toString()))
+        out.on('end', () => resolve(written))
+        const stream = renderToPipeableStream(createElement('main', null, view()), {
+          onShellReady: () => stream.pipe(out),
+          onShellError: reject,
+          onError: (error) => {
+            errors.push(error)
+          },
+        })
+      })
+      expect(html.startsWith('<main><!--$!-->')).toBe(true)
+      expect(errors.map(String)).toEqual(['Error: The member broke'])
+    })
   })
 })

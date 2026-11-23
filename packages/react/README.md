@@ -49,7 +49,10 @@ It contains:
   ends: `parsePartial`'s `cut`) and how a member takes its children. This subpath draws what the
   core resolves: each node keyed by its path and memoized on it, so a longer document, new data or
   the reader's input mounts nothing twice, and each inside its own error boundary. A host that
-  reads the stream itself passes `document` with `parsePartial`'s `cut` and `open`. `useScreen` and `ScreenDrawing` are its two halves, and `componentFor`
+  reads the stream itself passes `document` with `parsePartial`'s `cut` and `open`. A server
+  renders no error boundary, so the screen is drawn inside one Suspense boundary: a member that
+  throws on the server (`renderToString`, `renderToPipeableStream`) leaves the screen's place
+  empty for the browser to draw, and the page around it is still served. `useScreen` and `ScreenDrawing` are its two halves, and `componentFor`
   is the rule a name resolves by among the members. The foundation knows no member, so the
   application passes them (`import * as members from '@polymorph/react-ui'`). The subpath is not a
   root export, so an application that imports the root loads none of it.

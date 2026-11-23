@@ -34,7 +34,7 @@ import { componentFor, type MemberComponent, type ScreenMembers } from './member
  * walk resolved. Three things here are React's own:
  *
  *  - **Each node keeps its element.** A node is drawn by a component keyed by
- *    its path and memoized on the node, and the walk keeps a node's object
+ *    the walk's key (its path, and a named control's name) and memoized on the node, and the walk keeps a node's object
  *    while nothing it draws changes. A longer streamed document, new data or a
  *    reader's choice redraws only the nodes it reached, and no element is
  *    mounted again, so a field keeps its text and its focus.
@@ -328,7 +328,11 @@ const MissingNode = memo(function MissingNode({ screenNode: node }: NodeProps): 
   return decorated(drawing.fault(fault, 'missing'), node, drawing)
 })
 
-/** The element that draws a node, keyed by its path. */
+/**
+ * The element that draws a node, keyed by the walk's key: its path, and for a
+ * named control its name too, so a control that takes another name at a path
+ * is mounted afresh and does not keep the text typed in the one before.
+ */
 function elementFor(node: ScreenNode, drawing: Drawing): ReactElement {
   let type: ComponentType<NodeProps>
   if (node.fault !== null) type = FaultNode
@@ -336,7 +340,7 @@ function elementFor(node: ScreenNode, drawing: Drawing): ReactElement {
     const Member = componentFor(drawing.members, node.component)
     type = Member === null ? MissingNode : nodeComponentFor(Member)
   }
-  return createElement(type, { key: node.path, screenNode: node })
+  return createElement(type, { key: node.key ?? node.path, screenNode: node })
 }
 
 /* -------------------------------------------------------------------------- */
@@ -382,5 +386,12 @@ export function ScreenDrawing({
     [screen, members, streaming, faults, renderFault, renderBinding, decorate],
   )
   if (root === null) return null
-  return <DrawingContext value={drawing}>{elementFor(root, drawing)}</DrawingContext>
+  // A server renders no error boundary, so a member that throws there would fail the host's whole
+  // page. Inside a Suspense boundary, the server sends the screen's place empty instead, and the
+  // browser draws the screen, where each node's boundary holds what throws.
+  return (
+    <DrawingContext value={drawing}>
+      <Suspense fallback={null}>{elementFor(root, drawing)}</Suspense>
+    </DrawingContext>
+  )
 }
