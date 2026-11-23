@@ -96,6 +96,16 @@ export const states: ComponentStates = {
   <poly-icon name="record" label="record"></poly-icon>
   <poly-icon name="helpful" label="helpful"></poly-icon>
   <poly-icon name="unhelpful" label="unhelpful"></poly-icon>
+  <poly-icon name="redo" label="redo"></poly-icon>
+  <poly-icon name="bold" label="bold"></poly-icon>
+  <poly-icon name="italic" label="italic"></poly-icon>
+  <poly-icon name="strikethrough" label="strikethrough"></poly-icon>
+  <poly-icon name="code" label="code"></poly-icon>
+  <poly-icon name="heading" label="heading"></poly-icon>
+  <poly-icon name="list-bulleted" label="list-bulleted"></poly-icon>
+  <poly-icon name="list-numbered" label="list-numbered"></poly-icon>
+  <poly-icon name="quote" label="quote"></poly-icon>
+  <poly-icon name="code-block" label="code-block"></poly-icon>
 </poly-inline>`,
       subject: 'poly-icon',
     },

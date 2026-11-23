@@ -15,6 +15,7 @@ public enum PMIconRole: String, CaseIterable, Sendable {
   case artifact
   case attach
   case back
+  case bold
   case briefing
   case browser
   case calendar
@@ -23,6 +24,8 @@ public enum PMIconRole: String, CaseIterable, Sendable {
   case click
   case close
   case cloud
+  case code
+  case codeBlock = "code-block"
   case collapse
   case comment
   case confirm
@@ -48,6 +51,7 @@ public enum PMIconRole: String, CaseIterable, Sendable {
   case flip
   case folder
   case forward
+  case heading
   case help
   case helpful
   case hidden
@@ -55,10 +59,13 @@ public enum PMIconRole: String, CaseIterable, Sendable {
   case inbox
   case indeterminate
   case info
+  case italic
   case kernel
   case key
   case ledger
   case link
+  case listBulleted = "list-bulleted"
+  case listNumbered = "list-numbered"
   case loading
   case local
   case locked
@@ -76,9 +83,11 @@ public enum PMIconRole: String, CaseIterable, Sendable {
   case pause
   case pinned
   case previous
+  case quote
   case rating
   case reasoning
   case record
+  case redo
   case refresh
   case remove
   case rotate
@@ -92,6 +101,7 @@ public enum PMIconRole: String, CaseIterable, Sendable {
   case sortAsc = "sort-asc"
   case sortDesc = "sort-desc"
   case stop
+  case strikethrough
   case success
   case table
   case tag
@@ -119,6 +129,7 @@ public enum PMIconRole: String, CaseIterable, Sendable {
     case .artifact: "sidebar.right"
     case .attach: "paperclip"
     case .back: "arrow.left"
+    case .bold: "bold"
     case .briefing: "sunrise"
     case .browser: "macwindow"
     case .calendar: "calendar"
@@ -127,6 +138,8 @@ public enum PMIconRole: String, CaseIterable, Sendable {
     case .click: "cursorarrow.click"
     case .close: "xmark"
     case .cloud: "cloud"
+    case .code: "chevron.left.forwardslash.chevron.right"
+    case .codeBlock: "curlybraces.square"
     case .collapse: "chevron.up"
     case .comment: "message"
     case .confirm: "checkmark"
@@ -152,6 +165,7 @@ public enum PMIconRole: String, CaseIterable, Sendable {
     case .flip: "arrow.left.and.right.righttriangle.left.righttriangle.right"
     case .folder: "folder"
     case .forward: "arrow.right"
+    case .heading: "textformat.size"
     case .help: "questionmark.circle"
     case .helpful: "hand.thumbsup"
     case .hidden: "eye.slash"
@@ -159,10 +173,13 @@ public enum PMIconRole: String, CaseIterable, Sendable {
     case .inbox: "tray"
     case .indeterminate: "minus"
     case .info: "info.circle"
+    case .italic: "italic"
     case .kernel: "checkmark.shield"
     case .key: "key"
     case .ledger: "scroll"
     case .link: "link"
+    case .listBulleted: "list.bullet"
+    case .listNumbered: "list.number"
     case .loading: "arrow.triangle.2.circlepath"
     case .local: "cpu"
     case .locked: "lock"
@@ -180,9 +197,11 @@ public enum PMIconRole: String, CaseIterable, Sendable {
     case .pause: "pause"
     case .pinned: "pin"
     case .previous: "chevron.left"
+    case .quote: "text.quote"
     case .rating: "star"
     case .reasoning: "brain"
     case .record: "mic"
+    case .redo: "arrow.uturn.forward"
     case .refresh: "arrow.clockwise"
     case .remove: "minus"
     case .rotate: "arrow.clockwise"
@@ -196,6 +215,7 @@ public enum PMIconRole: String, CaseIterable, Sendable {
     case .sortAsc: "arrow.up.to.line.compact"
     case .sortDesc: "arrow.down.to.line.compact"
     case .stop: "stop"
+    case .strikethrough: "strikethrough"
     case .success: "checkmark.circle"
     case .table: "tablecells"
     case .tag: "tag"
@@ -595,8 +615,8 @@ public protocol PMAreaChartRendering: View {
 
 /// `ArtifactPane.kind`.
 public enum PMArtifactPaneKind: String, CaseIterable, Sendable {
-  case document
   case code
+  case document
   case data
   case preview
 }

@@ -10,11 +10,13 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.automirrored.outlined.CompareArrows
+import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
 import androidx.compose.material.icons.automirrored.outlined.Help
 import androidx.compose.material.icons.automirrored.outlined.NavigateBefore
 import androidx.compose.material.icons.automirrored.outlined.NavigateNext
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.Redo
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.automirrored.outlined.Undo
@@ -35,9 +37,11 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Contrast
 import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.DataObject
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Download
@@ -50,7 +54,11 @@ import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.Flip
 import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.FormatBold
+import androidx.compose.material.icons.outlined.FormatItalic
+import androidx.compose.material.icons.outlined.FormatListNumbered
 import androidx.compose.material.icons.outlined.FormatQuote
+import androidx.compose.material.icons.outlined.FormatStrikethrough
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Inbox
@@ -92,6 +100,7 @@ import androidx.compose.material.icons.outlined.TableChart
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.ThumbDown
 import androidx.compose.material.icons.outlined.ThumbUp
+import androidx.compose.material.icons.outlined.Title
 import androidx.compose.material.icons.outlined.TrackChanges
 import androidx.compose.material.icons.outlined.Upload
 import androidx.compose.material.icons.outlined.VerifiedUser
@@ -116,6 +125,7 @@ internal val PMIconRole.vector: ImageVector
         PMIconRole.Artifact -> Icons.AutoMirrored.Outlined.ViewSidebar
         PMIconRole.Attach -> Icons.Outlined.AttachFile
         PMIconRole.Back -> Icons.AutoMirrored.Outlined.ArrowBack
+        PMIconRole.Bold -> Icons.Outlined.FormatBold
         PMIconRole.Briefing -> Icons.Outlined.WbTwilight
         PMIconRole.Browser -> Icons.Outlined.WebAsset
         PMIconRole.Calendar -> Icons.Outlined.CalendarToday
@@ -124,6 +134,8 @@ internal val PMIconRole.vector: ImageVector
         PMIconRole.Click -> Icons.Outlined.AdsClick
         PMIconRole.Close -> Icons.Outlined.Close
         PMIconRole.Cloud -> Icons.Outlined.Cloud
+        PMIconRole.Code -> Icons.Outlined.Code
+        PMIconRole.CodeBlock -> Icons.Outlined.DataObject
         PMIconRole.Collapse -> Icons.Outlined.ExpandLess
         PMIconRole.Comment -> Icons.AutoMirrored.Outlined.Comment
         PMIconRole.Confirm -> Icons.Outlined.Check
@@ -149,6 +161,7 @@ internal val PMIconRole.vector: ImageVector
         PMIconRole.Flip -> Icons.Outlined.Flip
         PMIconRole.Folder -> Icons.Outlined.Folder
         PMIconRole.Forward -> Icons.AutoMirrored.Outlined.ArrowForward
+        PMIconRole.Heading -> Icons.Outlined.Title
         PMIconRole.Help -> Icons.AutoMirrored.Outlined.Help
         PMIconRole.Helpful -> Icons.Outlined.ThumbUp
         PMIconRole.Hidden -> Icons.Outlined.VisibilityOff
@@ -156,10 +169,13 @@ internal val PMIconRole.vector: ImageVector
         PMIconRole.Inbox -> Icons.Outlined.Inbox
         PMIconRole.Indeterminate -> Icons.Outlined.Remove
         PMIconRole.Info -> Icons.Outlined.Info
+        PMIconRole.Italic -> Icons.Outlined.FormatItalic
         PMIconRole.Kernel -> Icons.Outlined.VerifiedUser
         PMIconRole.Key -> Icons.Outlined.Key
         PMIconRole.Ledger -> Icons.AutoMirrored.Outlined.ReceiptLong
         PMIconRole.Link -> Icons.Outlined.Link
+        PMIconRole.ListBulleted -> Icons.AutoMirrored.Outlined.FormatListBulleted
+        PMIconRole.ListNumbered -> Icons.Outlined.FormatListNumbered
         PMIconRole.Loading -> Icons.Outlined.Autorenew
         PMIconRole.Local -> Icons.Outlined.Memory
         PMIconRole.Locked -> Icons.Outlined.Lock
@@ -177,9 +193,11 @@ internal val PMIconRole.vector: ImageVector
         PMIconRole.Pause -> Icons.Outlined.Pause
         PMIconRole.Pinned -> Icons.Outlined.PushPin
         PMIconRole.Previous -> Icons.AutoMirrored.Outlined.NavigateBefore
+        PMIconRole.Quote -> Icons.Outlined.FormatQuote
         PMIconRole.Rating -> Icons.Outlined.StarBorder
         PMIconRole.Reasoning -> Icons.Outlined.Psychology
         PMIconRole.Record -> Icons.Outlined.Mic
+        PMIconRole.Redo -> Icons.AutoMirrored.Outlined.Redo
         PMIconRole.Refresh -> Icons.Outlined.Refresh
         PMIconRole.Remove -> Icons.Outlined.Remove
         PMIconRole.Rotate -> Icons.Outlined.Rotate90DegreesCw
@@ -193,6 +211,7 @@ internal val PMIconRole.vector: ImageVector
         PMIconRole.SortAsc -> Icons.Outlined.ArrowUpward
         PMIconRole.SortDesc -> Icons.Outlined.ArrowDownward
         PMIconRole.Stop -> Icons.Outlined.Stop
+        PMIconRole.Strikethrough -> Icons.Outlined.FormatStrikethrough
         PMIconRole.Success -> Icons.Outlined.CheckCircle
         PMIconRole.Table -> Icons.Outlined.TableChart
         PMIconRole.Tag -> Icons.Outlined.Sell

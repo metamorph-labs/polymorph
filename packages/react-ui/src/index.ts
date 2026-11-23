@@ -117,7 +117,17 @@ export type { RecordButtonProps } from './controls/RecordButton'
 export { Rating } from './controls/Rating'
 export type { RatingMessages, RatingProps, RatingSize } from './controls/Rating'
 export { RichTextInput } from './controls/RichTextInput'
-export type { RichTextInputProps } from './controls/RichTextInput'
+export type {
+  RichTextEntityOption,
+  RichTextEntitySource,
+  RichTextInputEditor,
+  RichTextInputMaxRows,
+  RichTextInputMessages,
+  RichTextInputMinRows,
+  RichTextInputProps,
+  RichTextInputSelection,
+  RichTextToolbarPlacement,
+} from './controls/RichTextInput'
 export { SearchInput } from './controls/SearchInput'
 export type { SearchInputProps } from './controls/SearchInput'
 export { SegmentedControl } from './controls/SegmentedControl'

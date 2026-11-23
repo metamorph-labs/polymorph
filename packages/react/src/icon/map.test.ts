@@ -24,7 +24,7 @@ describe('icon map', () => {
     expect(Object.keys(ICON_MAP).sort()).toEqual(Object.keys(iconSet.roles).sort())
     // Pinned so adding a role is a visible, reviewed change. `design/icons.md`
     // lists the roles by group and the steps for adding one.
-    expect(ICON_ROLES).toHaveLength(98)
+    expect(ICON_ROLES).toHaveLength(108)
   })
 
   it('points every role at the glyph the spec names', () => {

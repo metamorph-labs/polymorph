@@ -1,7 +1,8 @@
 # Textarea
 
 A multi-line text field. It uses Input's recipe extended vertically and adds nothing
-else.
+else. Text that carries formats, links or mentions is RichTextInput's (`rich-text-input.md`),
+which gives back a rich-text document instead of a string.
 
 Autosize (`autosize`) is opt-in, never the default. It is behaviour, not a styling
 change: the layout moves under the caret and interacts with focus scrolling. A form that

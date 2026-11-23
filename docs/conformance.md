@@ -339,7 +339,7 @@ runner could otherwise find only through a substrate's nesting or through the at
 checking (`data-tabs-part`, `data-accordion-part`, `data-calendar-part`, `data-menu-part`,
 `data-carousel-part`, `data-image-editor-part`, `data-image-part`, `data-split-pane-part`,
 `data-chat-thread-part`, `data-log-view-part`, `data-toast-part`, `data-tour-part`,
-`data-search-page-part`). Another shell is located by the same table, so it
+`data-search-page-part`, `data-rich-text-input-part`). Another shell is located by the same table, so it
 renders the same hooks. A selector that starts with `:scope` searches only the element the entry
 rendered into, which is how a trigger is told from the same control in a portalled panel. Any
 other selector searches the document, because overlays portal out of the mount. `root` needs no

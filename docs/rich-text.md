@@ -60,7 +60,7 @@ on its server with the same functions the members use.
 | --- | --- |
 | `text` | `text`, `marks` (omitted when none) |
 | `break` | a line break the writer asked for |
-| `entity` | `kind`, `id`, `label`, and `marks` holding annotations only |
+| `entity` | `kind`, `id`, `label`, and `marks` for the annotations it is inside. A format on an entity is dropped |
 
 | Mark | Fields |
 | --- | --- |
@@ -332,11 +332,14 @@ A server works with annotations through the same entry:
 
 A range counts code points of the document's plain text with no separator between blocks. So a
 reviewer that has only the text, a person or a model, anchors a comment by quoting words:
-`richTextFindText` gives the range and `annotateRichText` anchors it. An annotation whose text was
+`richTextFindText` gives the range and `annotateRichText` anchors it. A match lies inside one
+paragraph, heading or code block, and may cross formats, entities and line breaks. An annotation whose text was
 deleted is gone from the document, and `richTextAnnotations` no longer lists it, which is how an
 application finds a thread that lost its anchor.
 
-Pasted and dropped text carries no annotation, so a copy never anchors one thread in two places.
+Text that is pasted or dropped brings no annotation with it, so a copy never anchors one thread
+in two places. Text dragged to another place in the same field keeps its own. Text typed or pasted
+inside an annotation becomes part of it, and text typed at its edge does not.
 
 Two people editing one document at the same time is not part of this. The editor's contract names
 no library, so it can be added without changing a document or a caller.
