@@ -60,7 +60,6 @@ let {
   defaultValue,
   headingLevel = 3,
   items,
-  keepMounted,
   onValueChange,
   type = 'single',
   value,

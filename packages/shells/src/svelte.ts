@@ -987,7 +987,19 @@ export function renderSvelteMember(
   const passedProps = new Set(passing.map((prop) => prop.local))
   const ownName = (prop: SvelteProp) =>
     passedProps.has(prop.local) ? `${prop.local}Own` : prop.local
-  const destructured = face.props.map((prop) => {
+  // A prop the description lists as unread is left out of the destructure: Svelte binds each
+  // name there to a local, and the typecheck refuses a local nothing reads.
+  const unread = new Set(Object.keys(shell.unread ?? {}))
+  for (const name of unread) {
+    if (!face.props.some((prop) => prop.local === name || prop.name === name)) {
+      throw new Error(`shells: ${shell.member} lists "${name}" as unread, which is not a prop`)
+    }
+    if (names.has(name) || defaultNames.includes(name) || shell.defaults?.[name] !== undefined) {
+      throw new Error(`shells: ${shell.member} lists "${name}" as unread, and reads it`)
+    }
+  }
+  const bound = face.props.filter((prop) => !unread.has(prop.local) && !unread.has(prop.name))
+  const destructured = bound.map((prop) => {
     const given = shell.defaults?.[prop.local] ?? shell.defaults?.[prop.name]
     const local = ownName(prop)
     const binding = prop.name === local ? local : `${key(prop.name)}: ${local}`

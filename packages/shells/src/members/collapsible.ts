@@ -10,6 +10,11 @@ export default describeMember({
   dir: 'structure',
   recipe: 'structure/collapsible',
   defaults: { defaultOpen: 'false' },
+  unread: {
+    keepMounted:
+      'Zag keeps the closed region’s content in the document, `hidden`, in every case, which ' +
+      'is what the React member does only with the prop.',
+  },
   machine: {
     of: 'collapsible',
     context: { open: 'open', defaultOpen: 'defaultOpen' },
@@ -46,9 +51,6 @@ export default describeMember({
       // The recipe's height keyframes read the measured height under Radix's
       // name. Zag measures it as `--height` in the content's style object, read
       // through `Object()` because the style's type is a union of style forms.
-      // Zag keeps the closed region's content in the document, `hidden`, in
-      // every case, which is what the React member does only with
-      // `keepMounted`. So the prop is accepted and changes nothing.
       el(
         'div',
         {

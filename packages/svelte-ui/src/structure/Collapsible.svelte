@@ -53,7 +53,6 @@ export interface CollapsibleProps {
 let {
   children,
   defaultOpen = false,
-  keepMounted,
   label: labelOwn,
   onOpenChange,
   open,

@@ -84,11 +84,14 @@ export default describeMember({
       },
     },
   },
+  unread: {
+    keepMounted:
+      'A closed region keeps its content in the document, `hidden`, in every case, which is ' +
+      'what the React member does only with the prop.',
+  },
   state: { heights: 'new Map()' },
   // A region stays unhidden while its recipe plays the close keyframes, as Radix keeps it
   // mounted; Zag would hide it the moment it closes. It is found by the id the machine gives it.
-  // A closed region keeps its content in the document, `hidden`, in every case, which is what
-  // the React member does only with `keepMounted`. So the prop is accepted and changes nothing.
   presence: {
     regionPresent: {
       open: 'api.value',
