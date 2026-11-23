@@ -18,8 +18,9 @@ Terms used on this page:
   "The document" on this page is one screen spec.
 - **Run-time card**: the text a host puts in the model's system prompt: the members the host
   allows, with their props, and the output contract, which says what the answer is.
-- **Action**: a member's call of a callback input that returns nothing. The host is told
-  `{ name, args, values }`.
+- **Action**: a member's call of a callback input the document bound where a callback that
+  returns nothing receives it, such as a Button's `onClick`. The host is told
+  `{ name, args, values, changed }`.
 - **Run-time renderer**, or **renderer** on this page: what draws a document at run time.
   `@polymorph/react/screen` draws it in React, and `<poly-screen>` and
   `@polymorph/elements-ui/screen` draw it as elements.
@@ -58,8 +59,10 @@ A host does five things:
 3. **Draws the answer while it arrives.** The renderer reads the document out of the text so far
    and draws each element once its props are written.
 4. **Sends each action to the model.** A press, a submit or a choice calls an action input of the
-   document. The host is told the input's name, the call's arguments and the value of every named
-   control, and sends that to the model as the next turn.
+   document. The host is told the input's name, the call's arguments, the value of every named
+   control and which controls the person changed, and sends that to the model as the next turn.
+   An action with consequences, such as a payment or a deletion, the host confirms with the person
+   outside the screen ([What an action is not](#what-an-action-is-not)).
 5. **Changes what is drawn.** The host replaces the data whenever it changes, and the model's next
    answer replaces the document.
 
@@ -133,7 +136,7 @@ export function Assistant({ data }: { data: Record<string, unknown> }) {
   }
 
   const onAction = (action: ScreenAction) => {
-    void send(`The person used the screen: ${JSON.stringify(action)}`)
+    void send(`An action from the screen: ${JSON.stringify(action)}`)
   }
 
   return (
@@ -186,7 +189,7 @@ export function Assistant({ data }: { data: Record<string, unknown> }) {
   }
 
   screen.addEventListener('poly-action', (event) => {
-    send(`The person used the screen: ${JSON.stringify(event.detail)}`)
+    send(`An action from the screen: ${JSON.stringify(event.detail)}`)
   })
   screen.addEventListener('poly-fault', (event) => console.warn(event.detail))
 
@@ -255,12 +258,18 @@ action:
 The person types 40 and a reason, and presses the button. The host is told:
 
 ```json
-{ "name": "onSubmit", "args": [], "values": { "amount": "40", "reason": "It arrived broken." } }
+{
+  "name": "onSubmit",
+  "args": [],
+  "values": { "amount": "40", "reason": "It arrived broken." },
+  "changed": ["amount", "reason"]
+}
 ```
 
 `args` is empty because a Button's `onClick` passes only an event, which says nothing a model can
-use. `values` holds each named field's text. The host sends this to the model, which answers with
-the next screen: a confirmation, a question, or the same form with an `error` on a field.
+use. `values` holds each named field's text, and `changed` says the person typed both. The host
+sends this to the model, which answers with the next screen: a confirmation, a question, or the
+same form with an `error` on a field.
 
 ### Changing what is drawn
 
@@ -275,7 +284,9 @@ the next screen: a confirmation, a question, or the same form with an `error` on
   that in `values`.
 - **A document replaced whole.** A host that holds the document as an object passes it as
   `document` in React or `spec` on `<poly-screen>`. An element at the same place with the same
-  component keeps its rendering and its state.
+  component, and for a named control the same name, keeps its rendering and its state. A control
+  the new document moves to another place, because an element is inserted before it, is drawn as a
+  new, empty control there, named or not, and `values` no longer holds what the person typed in it.
 
 ## The run-time contract
 
@@ -290,7 +301,9 @@ An input whose type is not a function is a data input. The renderer fills it fro
 placeholder, so an optional prop bound to it takes its default. A required prop bound to it is not
 passed, and once the document is whole it is a fault:
 `` `Select` requires `options`, and the host's data holds nothing at `choices` ``
-(`packages/screen/src/walk.test.ts`).
+(`packages/screen/src/walk.test.ts`). An input whose type is longer than `MAX_TYPE_LENGTH`
+characters (500) is a fault, and is data with no value: its type is not read
+(`packages/screen/src/hostile.test.ts`).
 
 A binding names a declared input, or a dotted path into one (`order.number`). Each later name
 reads one of the value's own properties, never one it inherits, so `order.constructor` reads
@@ -298,30 +311,38 @@ nothing (`packages/screen/src/actions.test.ts`).
 
 ### Callback inputs
 
-An input whose type is a function is a callback. What it returns decides what it is:
+An input whose type is a function is a callback input. What a member is handed for it is decided
+by what receives it: the type of the prop, the list item or the structured object's field the
+document binds it to. A member calls a prop by the prop's type, whatever the input declares, so
+the receiver decides (`packages/screen/src/receivers.ts`, `packages/screen/src/walk.test.ts`):
 
-- **An action** returns nothing: its declared return type is `void`, `undefined`, or a promise of
-  either (`() => void`, `(id: string) => Promise<void>`). When a member calls it, the host is told
-  `{ name, args, values }`.
-- **A question** returns a value (`(row: Row) => string`, `(date: CalendarDate) => boolean`). A
-  member asks it while it draws: a table asks for each row's key on every drawing. The host is
-  never told. It is answered by its declared return type: for `string`, a key for its first
-  argument (the argument's `id`, the argument itself when it is text or a number, or a serial for
-  each object); for `boolean`, `false`; for `number`, `0`; for a list type, an empty list; for
-  `Promise<T>`, a promise of `T`'s answer; for anything else, nothing.
+- **Bound where a callback that returns nothing receives it** (a Button's `onClick`, a
+  Pagination's `onPageChange`), it is an action. When the member calls it, the host is told
+  `{ name, args, values, changed }`.
+- **Bound where a callback that returns a value receives it** (a DataTable's `getRowId`, a
+  Pagination's `messages.page`), it is a question the member asks while it draws: a table asks
+  for each row's key on every drawing. It is answered by the receiver's return type, and the host
+  is never told, whatever the input declares: for `string`, a key for the first argument (the
+  argument's `id`, the argument itself when it is text or a number, or a serial for each object);
+  for `boolean`, `false`; for `number`, `0`; for a list type, an empty list; for `Promise<T>`, a
+  promise of `T`'s answer; for anything else, nothing.
+- **Bound where no callback receives it** (a Button's `label`, a child, a field the data type does
+  not declare, a field of an object type the vocabulary does not name), it is a fault and nothing
+  is passed: a member could hand it on as text or call it while it draws.
+  `checkScreen` reports the same fault (`packages/screen/src/check.test.ts`).
 
 A required callback prop the document leaves unbound is answered the same way, by the prop's
 type, and the host is not told of it either. So a member that requires a handler still draws when
-the document gives it none (`packages/screen/src/actions.test.ts`,
-`packages/screen/src/walk.test.ts`).
+the document gives it none (`packages/screen/src/actions.test.ts`).
 
 ### What an action holds
 
 | Field | What it is |
 | --- | --- |
-| `name` | the callback input the member called |
-| `args` | the call's arguments, reduced to JSON |
-| `values` | each named control's current value, by its `name`, as JSON |
+| `name` | the callback input the document bound, which the member called |
+| `args` | what the member passed its callback, reduced to JSON |
+| `values` | what each named control holds, by its `name`, as JSON |
+| `changed` | the names in `values` whose value the person chose, in document order |
 
 `args` holds what the member passed its callback, reduced to what JSON can say, so a host in
 another process or another language reads it as data (`packages/screen/src/walk.test.ts`):
@@ -333,7 +354,11 @@ another process or another language reads it as data (`packages/screen/src/walk.
 - a DOM event, a DOM node, a React or Solid element and a function say nothing a host can use. One
   at the end of the list is dropped, and one before an argument that is kept is `null`, so every
   kept argument stays at its position: `onClick(event)` is `[]`;
-- a value that holds itself is cut where it does.
+- a value that holds itself is cut where it does, and one nested deeper than `MAX_DEPTH` is cut
+  there;
+- one reduction writes at most `MAX_JSON_VALUES` values (100,000), which bounds the host's data
+  that shares one object at many levels. Arguments cut there are a fault at `$`, told once, and
+  the host is told the first of them.
 
 `values` holds every control in the drawing that has a `name` and a controlled value (`value`, or
 a checkbox's `checked`), by that name, as JSON. A control's value is what the person sees in it
@@ -347,10 +372,26 @@ a checkbox's `checked`), by that name, as JSON. A control's value is what the pe
    chosen, an empty NumberInput or DatePicker), `[]` for a list (MultiSelect, CheckboxGroup),
    `false` for a checkbox or a switch, and `""` for text.
 
-So an action reports every named field, those the person left as they were included. Two
-controls with one name are a fault, and `values` holds the later one in document order. A control
-named `__proto__`, `constructor` or `prototype` is a fault and is left out of `values`, because a
-host that copies `values` into an object with `Object.assign` would set that object's prototype.
+So an action reports every named field, those the person left as they were included, and
+`changed` names the ones whose value the person chose. A control's value that holds more than
+`MAX_JSON_VALUES` values is a fault at the control, and `values` holds the first of them.
+
+Two controls with one name are a fault, and `values` holds the last of them in document order. In
+that order an element comes before the elements its props hold, those come in the order its props
+are written, and its children come last: the order of the text for a document that writes `props`
+before `children`, as the output contract asks. A control named `__proto__`, `constructor` or
+`prototype` is a fault and is left out of `values`, because a host that copies `values` into an
+object with `Object.assign` would set that object's prototype.
+
+### What an action is not
+
+An action is the document's word, not the person's. The document chose the action's `name` by
+the input it bound, and the member chose what `args` carries. `values` is what the controls hold:
+a default the document wrote, or the empty value of the control's type, until the person changes
+it. `changed` names the controls the person did change; every other value in `values` is the
+document's or the host's. A host that acts on an action with consequences (a payment, a deletion,
+a message sent) confirms it with the person outside the screen, in its own words, and does not
+take an action's name as what the person meant (`packages/screen/README.md`).
 
 ### Controls follow the reader
 
@@ -377,15 +418,18 @@ it: a ConfirmDialog stays open and busy until the promise settles. In React the 
 `onAction`. On `<poly-screen>`, a `poly-action` listener hands the member a promise with
 `event.waitUntil(promise)` (`packages/react/src/screen/screen.test.tsx`,
 `packages/elements-ui/src/screen/screen.test.ts`). Any other value the handler returns is not
-passed on. An action declared to return a promise gets a promise of nothing when the handler
-returns none.
+passed on. When the handler returns no promise and the receiving callback, or the input, is
+typed to return one, the member gets a promise of nothing.
 
 ### Updating a drawing
 
 A drawing is updated in place. The walk keeps a node's object while nothing it draws changes, and
-each renderer keys a node by its place in the document. A longer streamed document, new data or
-the person's input therefore draws again only what changed, and mounts no element twice
+gives each node a key: its place in the document, and for a named control its name as well
+(`$.root.children[0]#email`). Both renderers key a node by it. A longer streamed document, new
+data or the person's input therefore draws again only what changed, and mounts no element twice
 (`packages/react/src/screen/screen.test.tsx`, `packages/elements-ui/src/screen/screen.test.ts`).
+A control whose key changes is a new control: one that takes another name, and one a new document
+moves to another place by inserting an element before it.
 
 ## Streaming
 
@@ -452,22 +496,36 @@ that throws for a prop that has not arrived draws nothing until the document is 
 
 A document is data. The renderers read it, and run nothing it says:
 
-- **Nothing is executed or inserted as markup.** A string is drawn as text. The elements renderer
-  makes each element with `document.createElement` and sets only the props, events and slots the
-  element's definition names (`packages/elements-ui/src/screen/guards.test.ts`), and a law holds
-  that its modules name no API that reads or writes markup and hold no tag in a string
+- **Nothing is executed or inserted as markup.** A string is drawn as text in every member but
+  `Markdown`, which draws the Markdown its text holds ([below](#what-is-not-checked)). The
+  elements renderer makes each element with `document.createElement` and sets only the props,
+  events and slots the element's definition names
+  (`packages/elements-ui/src/screen/guards.test.ts`), and a law holds that its modules name no
+  API that reads or writes markup and hold no tag in a string
   (`packages/elements-ui/screen.test.ts`). No member takes markup, a script's address or an embed
   (`packages/screen/src/parity.test.ts`).
 - **A component is drawn only if the vocabulary has it, the host allows it and the framework draws
   it.** Any other is drawn as nothing and reported: `` no component called `Modal` ``.
 - **A prop is passed only if the member has it.** Any other is reported and not passed:
   `` `Button` has no prop `className` ``.
-- **Every function a member is handed is the screen's own**: an action, a stub or a control's
-  handler. A value a document writes where a member takes a function is a fault and is not passed:
-  `` `onClick` takes a function: bind it to an input whose type is one ``.
+- **A callback prop takes only a function.** A value a document writes where a member takes a
+  function is a fault and is not passed:
+  `` `onClick` takes a function: bind it to an input whose type is one ``. The functions a document
+  can bind are the screen's own: an action, a question's stub, a control's handler.
+- **A function in the host's `data` is never handed to a member as itself.** A binding whose value
+  is a function (`"onClick": { "$": "session.logout" }`) is a fault, and nothing is passed, so a
+  document cannot reach a function the host did not mean to give it. Functions inside an object
+  or a list the host binds whole, such as a column's `cell`, are the host's: they are passed as
+  the host gave them, and run when the member calls them (`packages/screen/src/walk.test.ts`).
 - **A structured object is passed only where data goes.** A `$object` among an element's children
   is a fault and is not drawn. So is a plain object a document writes where the format writes
   `$object`, in a prop, a field or a list, at any depth (`packages/screen/src/hostile.test.ts`).
+- **An element inside a structured object is drawn only where the field's data type takes a
+  node**, such as an empty state's `action`. One in a field the type does not declare, or declares
+  as data, is a fault and is not drawn, so it holds no value in `values`
+  (`packages/screen/src/walk.test.ts`). In an object whose type the vocabulary does not name, such
+  as a row of the host's own type, the walk cannot tell, and an element is drawn
+  (`fieldOf` and `takesNode` in `packages/screen/src/receivers.ts`).
 
 ### What the host decides
 
@@ -514,14 +572,24 @@ document's own values and a value a binding puts directly at an address prop or 
 and names or documents as an address is one of the three keys
 (`packages/screen/src/parity.test.ts`).
 
-### Depth
+### Limits
 
-A document nests at most `MAX_DEPTH` objects and lists inside one another, its own object
-included: 128, which leaves room for screens several times as deep as any in `design/screens/`.
-`parsePartial` stops reading text that goes deeper, with an `error`, and keeps what came before.
-`checkScreen` reports a deeper document as one fault and does not validate it, and the walk
-reports a fault and draws nothing deeper. No text and no value makes the core throw
-(`packages/screen/src/hostile.test.ts`).
+A document is read within three limits, each a constant of `@polymorph/screen`:
+
+| Constant | Value | What is held to it |
+| --- | --- | --- |
+| `MAX_DEPTH` | 128 | the objects and lists a document nests inside one another, its own object included. `parsePartial` stops reading text that goes deeper, with an `error`, and keeps what came before. `checkScreen` reports a deeper document as one fault and does not validate it, and the walk reports a fault and draws nothing deeper |
+| `MAX_TYPE_LENGTH` | 500 | the characters of an input's declared type. A longer type is a fault, and the input is data with no value |
+| `MAX_JSON_VALUES` | 100,000 | the values one reduction to JSON writes, of an action's `args` or a control's value. A cut is a fault |
+
+`packages/screen/src/hostile.test.ts` holds the core to documents written to break it. It feeds
+`parsePartial`, `checkScreen`, `createScreen` and `update` text nested thousands of levels deep,
+long strings, thousands of children, an unclosed fence line, values of the wrong shape, host data
+that is cyclic, deep or shares one object at many levels, and input types far over the limit, and
+none of them throws. It also times each kind of input at two sizes, most at one size and at eight
+times it, and fails when the larger costs twenty times the smaller or more. Host data that shares
+one object at many levels is timed at a size the `MAX_JSON_VALUES` budget holds, and at one it
+cuts.
 
 ### What is not checked
 
@@ -530,8 +598,16 @@ reports a fault and draws nothing deeper. No text and no value makes the core th
   data is the host's to check, where it is made.
 - **Where a link or a picture leads.** An `https:` link takes the person to the address the
   document names, and a picture or a recording at an `http:` or `https:` address loads from where
-  the document points. A host that wants neither leaves `Link`, `Avatar` and the other members
-  that take an address out of `members`.
+  the document points.
+- **What `Markdown` draws from its text.** `Markdown` draws the links and the pictures its own text
+  writes: `[label](address)`, an address in angle brackets, a bare `http:` or `https:` address,
+  and `![alt](address)`, which the page loads. It takes only `http:`, `https:`, `mailto:` and
+  addresses with no scheme, relative and `//host/…` included, and draws any other as text
+  (`safeHref` in `packages/engine/src/markdown/parse.ts`). No other member draws Markdown.
+
+A host that refuses links and remote pictures leaves out of `members` every member that takes an
+address (`Link`, `Image`, `Avatar` and the others whose props or data types take an `href`, `src`
+or `avatar`), and `Markdown`.
 - **Ids and names.** A document can set an `id` (Heading, PhoneInput) and a control's `name`. An
   `id` can match one of the host's own, and a control inside a host's `<form>` posts with it under
   the document's name. Draw a screen outside the host's own forms.
@@ -545,8 +621,11 @@ screen draws (`packages/screen/src/walk.test.ts`, `packages/react/src/screen/scr
 with the validator's paths (`$.root.children[2]`). It is told to the host once in a drawing, by
 its path and message, when it first appears: to `onFault` in React, and as `poly-fault` on
 `<poly-screen>`. A fault that goes and comes back within a drawing is not told again. A drawing
-begins when the screen is made, and again when a stream begins (`packages/screen/src/walk.test.ts`).
-While the document streams, nothing that has not arrived is a fault.
+begins when the screen is made, when a stream begins, and when the host gives a whole document,
+not streaming, that differs from the one drawn, whose faults are then told. A stream's chunks, its
+end, the same document given again and new `data` belong to one drawing
+(`packages/screen/src/walk.test.ts`). While the document streams, nothing that has not arrived is
+a fault.
 
 A host that wants to see the faults draws each in its node's place: `faults="inline"` on
 `ScreenView`, which draws the fault's words or what `renderFault` returns, and on
@@ -557,8 +636,11 @@ this way.
 
 `checkScreen(document, { framework, members })` (`@polymorph/screen/check`) returns
 `{ ok, faults }`. Its faults are the spec validator's, from a table generated from the registry,
-then the run-time's: a member the host does not allow, an address a screen may not hold, and a
-control's name `values` cannot hold (one two controls share, or one every object has). It needs
+then the run-time's: a member the host does not allow, an address a screen may not hold, a
+control's name `values` cannot hold (one two controls share, or one every object has), an input
+type longer than `MAX_TYPE_LENGTH`, a callback input bound where no callback receives it, and an
+element in a structured object's field that takes no node. What the walk checks of the host's
+data (an address, a function) it checks as it draws, as `checkScreen` reads only the document. It needs
 no registry and no checkout, and runs in a page, a worker and a server alike. A law holds that the
 table gives every screen in `design/screens/` and a set of faulty documents the same faults the
 full registry gives (`packages/screen/src/parity.test.ts`).
@@ -589,7 +671,8 @@ a tool ([verification.md](verification.md#the-agent-eval)).
 
 The renderers do not need it. They draw while the document streams, before it can be checked,
 and they apply the run-time rules as they draw: a member that is not allowed, an unknown prop, a
-refused address and a value where a function goes are left out and reported. A host still checks a whole answer, because a
+refused address, a value where a function goes and a callback input where none is received are
+left out and reported. A host still checks a whole answer, because a
 lawful document is the screen the model meant. A fault means part of that screen is missing from
 the drawing, and the model can supply it in one more turn. The validator also reads what the
 renderers do not, such as a variant and tone cell that does not exist and an icon role outside

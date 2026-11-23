@@ -730,9 +730,11 @@ needs some. The caller decides which pictures it gets:
   the data goes.
 
 A callback is always a stub, because JSON holds no function. The stub answers by the return type
-the input declares: nothing for `void`, `false`, `0`, an empty list, and for `string` a key for
-its first argument (its `id`, the value itself, or a serial for each object), which is what a
-`getRowId` is asked for. A key in `data` or `empty` that names no declared input, or names a
+of the prop or field the callback is bound to, as the run-time core decides
+([run-time-screens.md](run-time-screens.md#callback-inputs)): nothing for `void`, `false`, `0`, an
+empty list, and for `string` a key for its first argument (its `id`, the value itself, or a
+serial for each object), which is what a `getRowId` is asked for. A callback bound where no
+callback receives it is a fault, and the picture draws its fault in place. A key in `data` or `empty` that names no declared input, or names a
 callback, refuses the call, so a mistyped name cannot leave a sampled screen that its caller
 believes is populated. A cell renderer is code and cannot be passed, so a column given as data
 shows each row's value as text.

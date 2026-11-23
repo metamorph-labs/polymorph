@@ -1130,7 +1130,7 @@ published to a restricted registry, so `init` copies them and `polymorph update`
   elements' script it follows, so the tags are defined when it runs.
 - **A screen a model writes is a `<poly-screen>`.** It draws a `polymorph-screen/1` document from
   its `text` (a model's answer while it streams), its `spec` or a `<script type="application/json">`
-  child, and dispatches `poly-action` with what the person did. With `polymorph.js`, the renderer
+  child, and dispatches `poly-action` when a member calls one of the document's actions. With `polymorph.js`, the renderer
   is fetched by the first `<poly-screen>` on the page, and a page that writes none fetches none of
   it. `loadScreen()` resolves to `drawScreen`, `checkScreen`, `runtimeCard`, `outputContract` and
   `parsePartial` ([run-time-screens.md](run-time-screens.md#a-page-with-no-build)).
