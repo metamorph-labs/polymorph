@@ -27,7 +27,8 @@ const DIST = resolve(PACKAGE, 'dist')
 const manifest = JSON.parse(readFileSync(resolve(PACKAGE, 'package.json'), 'utf8')) as {
   exports: Record<string, string>
   files: string[]
-  dependencies: Record<string, string>
+  dependencies?: Record<string, string>
+  devDependencies: Record<string, string>
   peerDependencies?: Record<string, string>
   sideEffects: unknown
   publishConfig: { exports: Record<string, Record<string, string>> }
@@ -77,13 +78,16 @@ describe('the manifest', () => {
     expect(manifest.sideEffects).toBe(false)
   })
 
-  it('depends only on the workspace packages its build inlines', () => {
-    // `scripts/publish-packages.mjs` removes both from the published manifest (`bundled`).
-    expect(Object.keys(manifest.dependencies).sort()).toEqual([
-      '@polymorph/registry',
-      '@polymorph/spec',
-    ])
+  it('has no dependency: the workspace packages its build inlines are build-time ones', () => {
+    // The build inlines `@polymorph/spec`'s and `@polymorph/registry`'s pure modules, so the
+    // workspace needs them to build and test and an install needs nothing. The publish step drops
+    // `devDependencies`, and names the two as `bundled`.
+    expect(manifest.dependencies).toBeUndefined()
     expect(manifest.peerDependencies).toBeUndefined()
+    expect(manifest.devDependencies).toMatchObject({
+      '@polymorph/registry': 'workspace:*',
+      '@polymorph/spec': 'workspace:*',
+    })
     const script = readFileSync(resolve(PACKAGE, '../../scripts/publish-packages.mjs'), 'utf8')
     expect(script).toContain(
       "{ dir: 'packages/screen', bundled: ['@polymorph/registry', '@polymorph/spec'] }",

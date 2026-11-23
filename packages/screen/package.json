@@ -32,12 +32,10 @@
   "scripts": {
     "build": "NODE_ENV=production vite build --config vite.build.config.ts && tsc -p tsconfig.build.json && node scripts/emit-types.mjs"
   },
-  "dependencies": {
-    "@polymorph/registry": "workspace:*",
-    "@polymorph/spec": "workspace:*"
-  },
   "devDependencies": {
     "@polymorph/conformance": "workspace:*",
+    "@polymorph/registry": "workspace:*",
+    "@polymorph/spec": "workspace:*",
     "typescript": "^5.9.3",
     "vite": "^8.1.5"
   },
