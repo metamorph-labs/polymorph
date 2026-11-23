@@ -50,6 +50,7 @@
   },
   "dependencies": {
     "@polymorph/elements": "workspace:*",
+    "@polymorph/screen": "workspace:*",
     "@polymorph/solid": "workspace:*",
     "@polymorph/solid-ui": "workspace:*",
     "@zag-js/accordion": "1.46.0",
