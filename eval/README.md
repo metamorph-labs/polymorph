@@ -251,13 +251,66 @@ framework and members a run names, and the screen is judged with `checkScreen` f
 ones. One request is its own first shot, so the lawful rate is printed once. Each time is
 printed with the fastest and the slowest run beside its mean.
 
-**The run-time number:** `claude-haiku-5-5`, the CLI’s own thinking, the CLI’s default effort, through Claude Code 2.1.330, 1.0.16 (dd39eba), the react card of every member it draws (144 members, 60,235 characters) — 60% lawful (45% to 74%), 93% meeting their brief (80% to 97%), 60% lawful and meeting their brief (45% to 74%), 25,087 input tokens a run (23,962 read from the cache, 1,122 written to it and 2 uncached) and 7,742 output tokens, 33.03 s (22.25 s to 53.79 s) to the end of the answer, with no time to the first token ([2026-11-23-claude-haiku-5-5-runtime-cli.json](results/2026-11-23-claude-haiku-5-5-runtime-cli.json)). Each rate’s range is the 95% interval its 40 runs support, and each time’s runs from the fastest run to the slowest.
+**The run-time number:** `claude-haiku-5-5`, the CLI’s own thinking, the CLI’s default effort, through Claude Code 2.1.330, 1.0.16 (14d4d55), the react card of every member it draws (144 members, 60,721 characters) — 93% lawful (80% to 97%), 88% meeting their brief (74% to 95%), 83% lawful and meeting their brief (68% to 91%), 25,299 input tokens a run (24,169 read from the cache, 1,128 written to it and 2 uncached) and 8,075 output tokens, 61.61 s (15.90 s to 745.94 s) to the end of the answer, with no time to the first token ([2026-11-23-claude-haiku-5-5-runtime-cli-2.json](results/2026-11-23-claude-haiku-5-5-runtime-cli-2.json)). Each rate’s range is the 95% interval its 40 runs support, and each time’s runs from the fastest run to the slowest. Of 40 runs, 1 answered with no whole document.
 
 ### claude-haiku-5-5
 
 | Results | Version | Runner | Thinking | Effort | Card | Briefs × runs | Lawful | Meets brief | Lawful and meets brief | Input tokens | Cache read | Cache written | Uncached | Output tokens | First token | Wall time | Retries | Endings |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| [2026-11-23-claude-haiku-5-5-runtime-cli-2.json](results/2026-11-23-claude-haiku-5-5-runtime-cli-2.json) | 1.0.16 (14d4d55) | CLI 2.1.330 | the CLI’s | default | react, default (144 members, 60,721 characters) | 8 × 5 | 93% (80–97%) | 88% (74–95%) | 83% (68–91%) | 25,299 | 24,169 | 1,128 | 2 | 8,075 | — | 61.61 s (15.90–745.94 s) | 7 (71.3 s waiting, 0 tokens discarded) | 40 answered |
 | [2026-11-23-claude-haiku-5-5-runtime-cli.json](results/2026-11-23-claude-haiku-5-5-runtime-cli.json) | 1.0.16 (dd39eba) | CLI 2.1.330 | the CLI’s | default | react, default (144 members, 60,235 characters) | 8 × 5 | 60% (45–74%) | 93% (80–97%) | 60% (45–74%) | 25,087 | 23,962 | 1,122 | 2 | 7,742 | — | 33.03 s (22.25–53.79 s) | 0 | 40 answered |
+
+#### 2026-11-23-claude-haiku-5-5-runtime-cli-2.json
+
+40 runs cannot tell this eval from a second one of the same size that measures:
+
+- lawful: anything from 78% to 100% (93% here)
+- meets brief: anything from 70% to 98% (88% here)
+- lawful and meets brief: anything from 65% to 95% (83% here)
+
+Against the run before it ([2026-11-23-claude-haiku-5-5-runtime-cli.json](results/2026-11-23-claude-haiku-5-5-runtime-cli.json)), with 40 runs and 40 runs:
+
+- lawful: 93% against 60%, told apart
+- meets brief: 88% against 93%, not told apart
+- lawful and meets brief: 83% against 60%, told apart
+
+| Brief | Runs | Lawful | Meets brief | Lawful and meets brief | Requirements not met |
+| --- | --- | --- | --- | --- | --- |
+| auth-sign-in-up | 5 | 4 of 5 (38–96%) | 5 of 5 (57–100%) | 4 of 5 (38–96%) | — |
+| chat-assistant | 5 | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | — |
+| dashboard-usage | 5 | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | — |
+| detail-order | 5 | 4 of 5 (38–96%) | 3 of 5 (23–88%) | 2 of 5 (12–77%) | `write-a-comment` 2 |
+| form-booking | 5 | 4 of 5 (38–96%) | 3 of 5 (23–88%) | 3 of 5 (23–88%) | `book-and-cancel` 1, `date-not-in-the-past` 2, `error-summary` 1, `errors-beside-fields` 1, `invitees` 1, `note` 1, `pending` 1, `room-and-length` 1, `start-time` 1 |
+| list-incidents | 5 | 5 of 5 (57–100%) | 4 of 5 (38–96%) | 4 of 5 (38–96%) | `clear-filters` 1, `confirmation-names-the-incident` 1, `delete-asks-first` 1, `match-count` 1, `search` 1, `two-filters` 1 |
+| onboarding-steps | 5 | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | — |
+| settings-workspace | 5 | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | — |
+
+With 5 runs a brief, two briefs are told apart only when their counts differ by 3 runs or more.
+
+Requirements a screen did not meet, most often missed first:
+
+- `detail-order/write-a-comment`, 2 of 5 runs: A new comment can be written.
+- `form-booking/date-not-in-the-past`, 2 of 5 runs: A date is asked for, and a past one cannot be chosen.
+- `form-booking/book-and-cancel`, 1 of 5 runs: One action books the room, and another cancels.
+- `form-booking/error-summary`, 1 of 5 runs: A summary at the top lists every problem.
+- `form-booking/errors-beside-fields`, 1 of 5 runs: Each required field can say what is wrong beside it.
+- `form-booking/invitees`, 1 of 5 runs: The email addresses of the people invited can be entered.
+- `form-booking/note`, 1 of 5 runs: A note for the invitation can be written.
+- `form-booking/pending`, 1 of 5 runs: While the booking is being made the screen says so, and it cannot be made twice.
+- `form-booking/room-and-length`, 1 of 5 runs: The room and the length are each chosen from a fixed list.
+- `form-booking/start-time`, 1 of 5 runs: A start time is asked for.
+- `list-incidents/clear-filters`, 1 of 5 runs: One control clears every filter at once.
+- `list-incidents/confirmation-names-the-incident`, 1 of 5 runs: The confirmation names the incident being deleted, so its words come from the incident.
+- `list-incidents/delete-asks-first`, 1 of 5 runs: Deleting an incident asks for confirmation first.
+- `list-incidents/match-count`, 1 of 5 runs: The screen says how many incidents match.
+- `list-incidents/search`, 1 of 5 runs: A search narrows the list.
+- `list-incidents/two-filters`, 1 of 5 runs: Two filters narrow the list: one by severity, one by open or resolved.
+
+Answers that were not lawful in 2026-11-23-claude-haiku-5-5-runtime-cli-2.json, in the check’s words:
+
+- `auth-sign-in-up` #4: $.root.children[0].children[4].children[0].children[0].children[2].children: expected an array, got a string
+- `detail-order` #4: $.root.children[0].children[2].children[1].children: expected an array, got an object
+- `form-booking` #2: the answer holds no document
 
 #### 2026-11-23-claude-haiku-5-5-runtime-cli.json
 
