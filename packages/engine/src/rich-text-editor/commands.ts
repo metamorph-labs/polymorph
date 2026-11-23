@@ -35,6 +35,7 @@ import { liftTarget } from 'prosemirror-transform'
 
 import { richTextHref } from '../rich-text/index'
 import { RICH_TEXT_MAX_DEPTH, type RichTextEntity, type RichTextFormat } from '../rich-text/types'
+import { annotationsInside, setAnnotations, withInside } from './annotations'
 import { MARK, NODE } from './schema'
 import type { RichTextEditorEvent } from './types'
 
@@ -337,7 +338,12 @@ export function linkCommand(schema: Schema, href: string | null): Command {
         tr.removeMark(extent.from, extent.to, type).addMark(extent.from, extent.to, mark)
       } else {
         const text = href.trim()
-        const marks = mark.addToSet(state.storedMarks ?? state.selection.$from.marks())
+        const marks = mark.addToSet(
+          withInside(
+            state.storedMarks ?? state.selection.$from.marks(),
+            annotationsInside(state.doc, from),
+          ),
+        )
         tr.insert(from, schema.text(text, marks))
         tr.setSelection(TextSelection.create(tr.doc, from + text.length))
         tr.removeStoredMark(type)
@@ -348,17 +354,24 @@ export function linkCommand(schema: Schema, href: string | null): Command {
   }
 }
 
-/** Text inserted at the selection: a line break is a hard break outside a code block. */
+/**
+ * Text inserted at the selection: a line break is a hard break outside a code
+ * block. It takes the annotations the selection is inside, as typed text does.
+ */
 export function textCommand(text: string): Command {
   return (state, dispatch) => {
-    const { $from } = state.selection
+    const { $from, from, to } = state.selection
     if (!dispatch) return true
+    const inside = annotationsInside(state.doc, from, to)
     if ($from.parent.type.spec.code || !text.includes('\n')) {
-      dispatch(state.tr.insertText(text).scrollIntoView())
+      const tr = state.tr.insertText(text)
+      setAnnotations(tr, tr.mapping.map(from, -1), tr.mapping.map(to, 1), inside)
+      dispatch(tr.scrollIntoView())
       return true
     }
-    const marks = (state.storedMarks ?? $from.marks()).filter((m) =>
-      $from.parent.type.allowsMarkType(m.type),
+    const marks = withInside(
+      (state.storedMarks ?? $from.marks()).filter((m) => $from.parent.type.allowsMarkType(m.type)),
+      inside,
     )
     const nodes: PMNode[] = []
     text
@@ -375,9 +388,9 @@ export function textCommand(text: string): Command {
 
 /**
  * The entity and one space, in place of `range` or the selection. Both take
- * the annotations the start is inside, as typed text would, so an entity
- * picked inside an annotated sentence leaves no gap in it; the space also takes
- * the start's formats, which an entity does not keep.
+ * the annotations the replaced range is inside, as typed text would, so an
+ * entity picked inside an annotated sentence leaves no gap in it; the space
+ * also takes the start's formats, which an entity does not keep.
  */
 export function entityCommand(
   schema: Schema,
@@ -390,12 +403,16 @@ export function entityCommand(
     const to = range ? range.to : state.selection.to
     const $from = state.doc.resolve(from)
     if (!$from.parent.inlineContent || $from.parent.type.spec.code) return false
-    const marks = $from.marks().filter((m) => $from.parent.type.allowsMarkType(m.type))
+    const inside = annotationsInside(state.doc, from, to)
+    const marks = withInside(
+      $from.marks().filter((m) => $from.parent.type.allowsMarkType(m.type)),
+      inside,
+    )
     const node = schema.node(
       NODE.entity,
       { kind: entity.kind, id: entity.id, label: entity.label },
       undefined,
-      marks.filter((m) => m.type.name === MARK.annotation),
+      inside,
     )
     const tr = state.tr.replaceWith(from, to, [node, schema.text(' ', marks)])
     tr.setSelection(TextSelection.create(tr.doc, from + node.nodeSize + 1))

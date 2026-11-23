@@ -8,7 +8,7 @@ import {
 import { Plugin } from 'prosemirror-state'
 
 import { richTextFromText, richTextHref } from '../rich-text/index'
-import { annotationType, withoutAnnotations } from './annotations'
+import { annotationType, annotationsInside, insertedRange, withoutAnnotations } from './annotations'
 import { EVENT_META, linkApplies } from './commands'
 import { toEditorDoc } from './convert'
 import { MARK, clipboardSerializer } from './schema'
@@ -32,14 +32,16 @@ import { MARK, clipboardSerializer } from './schema'
  * hands them to `onFiles` and inserts nothing. A word processor puts a picture
  * of the copied text beside the text, so a paste with text is read as text.
  *
- * Nothing pasted or dropped carries an annotation, from inside the field or
- * outside it: an anchor is not content, and a copy would anchor one thread in
- * two places. The clipboard's drawing holds no annotation, and every slice
- * that enters is stripped of them, so plain text pasted inside an annotation
- * is outside it too. The one exception is a drag inside the field that moves
- * text: the text leaves one place for another and keeps its anchor. A drag
- * that copies (the platform's copy modifier held at the drop) is stripped once
- * ProseMirror has inserted it, because only the drop decides which it is.
+ * Nothing pasted or dropped brings an annotation with it, from inside the
+ * field or outside it: an anchor is not content, and a copy would anchor one
+ * thread in two places. The clipboard's drawing holds no annotation, and every
+ * slice that enters is stripped of them. What is inserted then takes the
+ * annotations its place is inside (`annotationsInside`), as typed text does,
+ * so a paste in the middle of an annotated sentence leaves no gap in it. A
+ * drag inside the field that moves text is the one slice that keeps its own
+ * annotations: the text leaves one place for another and keeps its anchor. A
+ * drag that copies (the platform's copy modifier held at the drop) is stripped
+ * once ProseMirror has inserted it, because only the drop decides which it is.
  */
 
 export interface PasteHooks {
@@ -102,12 +104,25 @@ export function pastePlugin(schema: Schema, hooks: PasteHooks): Plugin {
   let dropCopies = false
   return new Plugin({
     appendTransaction: (transactions, _old, state) => {
-      if (!dropCopies || !transactions.some((tr) => tr.getMeta('uiEvent') === 'drop')) return null
-      dropCopies = false
-      // ProseMirror selects what a drop inserted.
-      const { from, to } = state.selection
-      if (!state.doc.rangeHasMark(from, to, annotation)) return null
-      return state.tr.removeMark(from, to, annotation)
+      const index = transactions.findIndex((tr) => {
+        const event = tr.getMeta('uiEvent')
+        return event === 'paste' || event === 'drop'
+      })
+      if (index < 0) return null
+      const inserting = transactions[index]!
+      const drop = inserting.getMeta('uiEvent') === 'drop'
+      const copies = drop && dropCopies
+      if (drop) dropCopies = false
+      let range = insertedRange(inserting)
+      if (range === null) return null
+      for (const later of transactions.slice(index + 1)) {
+        range = { from: later.mapping.map(range.from, -1), to: later.mapping.map(range.to, 1) }
+      }
+      const tr = state.tr
+      if (copies) tr.removeMark(range.from, range.to, annotation)
+      for (const mark of annotationsInside(state.doc, range.from, range.to))
+        tr.addMark(range.from, range.to, mark)
+      return tr.docChanged ? tr : null
     },
     props: {
       clipboardSerializer: serializer,

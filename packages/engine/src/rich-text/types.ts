@@ -89,7 +89,11 @@ export interface RichTextEntity {
   id: string
   /** The words drawn and read, with any leading character they carry: `@Ada Lovelace`. */
   label: string
-  /** The annotations the entity is inside. An entity keeps no other mark. Omitted when it has none. */
+  /**
+   * The annotations the entity is inside, and marks of a type this version
+   * does not know, which a reader keeps. A format (bold, a link) means nothing
+   * on an entity, so a reader drops one written here. Omitted when it has none.
+   */
   marks?: RichTextMark[]
 }
 
