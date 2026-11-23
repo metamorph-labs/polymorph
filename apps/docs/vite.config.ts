@@ -9,7 +9,7 @@ import { defineConfig, type Plugin } from 'vite'
 // Imported by path rather than by package name so Vite's config loader inlines
 // the TypeScript source instead of handing it to Node. The workbench does the same.
 import { PREPAINT_SCRIPT } from '../../packages/theme/src/runtime'
-import { LLMS_PATHS, readLlmsFiles } from './src/llms'
+import { llmsPaths, readLlmsFiles } from './src/llms'
 
 const src = (p: string) => fileURLToPath(new URL(p, import.meta.url))
 
@@ -24,29 +24,39 @@ function prepaintTheme(): Plugin {
 }
 
 /**
- * Serves `/llms.txt`, `/llms-full.txt` and `/system-card.md` (`src/llms.ts`).
+ * Serves `/llms.txt`, `/llms-full.txt`, `/system-card.md` and each guide's
+ * markdown file, `/guides/<slug>.md` (`src/llms.ts`).
  *
  * They are built from `registry/registry.json`, `registry/system-card.md` and
- * `docs/rules.md` and never written to the source tree. The dev server builds
+ * `docs/` and never written to the source tree. The dev server builds
  * each one when it is requested, so it reflects the registry `predev` (or a
  * later `pnpm registry`) wrote. The build writes them into `dist/` beside the
- * pages, after `prebuild` has regenerated the registry.
+ * pages, after `prebuild` has regenerated the registry. Their links are
+ * absolute when `VITE_SITE_URL` names the site's address, as the pages'
+ * canonical links are (`src/site.ts`).
  */
 function llmsFiles(): Plugin {
   const root = src('../..')
+  const paths = llmsPaths()
+  let origin = ''
   return {
     name: 'pm-llms-files',
+    configResolved(config) {
+      origin = (config.env['VITE_SITE_URL'] as string | undefined)?.replace(/\/$/, '') ?? ''
+    },
     configureServer(server) {
       server.middlewares.use((request, response, next) => {
         const path = request.url?.split('?')[0] ?? ''
-        if (!Object.values<string>(LLMS_PATHS).includes(path)) return next()
-        const file = readLlmsFiles(root)[path]!
+        // The paths are known without a read, so any other request, a guide's
+        // text that the application imports from `docs/` among them, reads nothing.
+        if (!paths.has(path)) return next()
+        const file = readLlmsFiles(root, origin)[path]!
         response.setHeader('Content-Type', `${file.type}; charset=utf-8`)
         response.end(file.body)
       })
     },
     generateBundle() {
-      for (const [path, file] of Object.entries(readLlmsFiles(root))) {
+      for (const [path, file] of Object.entries(readLlmsFiles(root, origin))) {
         this.emitFile({ type: 'asset', fileName: path.slice(1), source: file.body })
       }
     },

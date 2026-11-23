@@ -3,7 +3,8 @@ import { resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { CLI_BIN, LLMS_PATHS, MCP_BIN, readLlmsFiles } from './llms'
+import { GUIDES, guideMarkdownPath } from './guide-catalogue'
+import { CLI_BIN, LLMS_PATHS, llmsPaths, MCP_BIN, readLlmsFiles } from './llms'
 import { MCP_CONFIG, OWN_THE_CODE, QUICK_START, TARGETS, THEME_STEPS } from './reference/install'
 import { REGISTRY } from './registry'
 
@@ -55,6 +56,74 @@ describe('/llms.txt points an agent at the contract', () => {
   })
 })
 
+describe('the files for agents', () => {
+  it('are the ones the site knows the paths of before it reads them', () => {
+    expect([...llmsPaths()].sort()).toEqual(Object.keys(files).sort())
+  })
+})
+
+describe('/llms.txt lists the guides', () => {
+  const index = text(LLMS_PATHS.index)
+
+  it('links every guide’s markdown file, which the site serves', () => {
+    for (const guide of GUIDES) {
+      const path = guideMarkdownPath(guide.slug)
+      expect(index).toContain(`- [${guide.title}](${path}): ${guide.description}`)
+      expect(files[path]?.type, path).toBe('text/markdown')
+    }
+  })
+
+  it('links only files the site serves and addresses outside it', () => {
+    for (const match of index.matchAll(/\]\(([^)\s]+)\)/g)) {
+      const href = match[1]!
+      if (!href.startsWith('/')) expect(href).toMatch(/^https:\/\//)
+      else expect(files[href], href).toBeDefined()
+    }
+  })
+
+  it('writes each link in full when the build knows the site’s address', () => {
+    const origin = 'https://site.test'
+    const absolute = readLlmsFiles(ROOT, origin)[LLMS_PATHS.index]?.body ?? ''
+    const hrefs = [...absolute.matchAll(/\]\(([^)\s]+)\)/g)].map((match) => match[1]!)
+    expect(hrefs.length).toBeGreaterThan(GUIDES.length)
+    for (const href of hrefs) expect(href).toMatch(/^https:\/\//)
+    expect(absolute).toContain(`](${origin}${guideMarkdownPath('concepts')})`)
+  })
+})
+
+describe('each guide’s markdown file', () => {
+  // A code span or a fence may show link syntax, so both are removed before a check.
+  const prose = (body: string) =>
+    body.replace(/^( *)(`{3,}|~{3,})[\s\S]*?^\1\2\s*$/gm, '').replace(/(`+)[\s\S]*?\1/g, '')
+
+  it('begins with the guide’s own heading', () => {
+    for (const guide of GUIDES) {
+      expect(text(guideMarkdownPath(guide.slug)).startsWith(`# ${guide.title}\n`), guide.slug).toBe(
+        true,
+      )
+    }
+  })
+
+  it('links the other guides by their markdown files, and nothing by a relative path', () => {
+    for (const guide of GUIDES) {
+      const body = prose(text(guideMarkdownPath(guide.slug)))
+      for (const match of body.matchAll(/\]\(([^)\s]+)\)/g)) {
+        const href = match[1]!
+        if (href.startsWith('#') || /^(https?:|mailto:)/.test(href)) continue
+        // What is left is a path from the site's root, and the site serves a file there.
+        expect(files[href.split('#')[0]!], `${guide.slug}: ${href}`).toBeDefined()
+      }
+    }
+  })
+
+  it('writes a link to another guide in full when the build knows the site’s address', () => {
+    const origin = 'https://site.test'
+    const body = readLlmsFiles(ROOT, origin)[guideMarkdownPath('concepts')]?.body ?? ''
+    expect(body).toContain(`](${origin}${guideMarkdownPath('theming')})`)
+    expect(prose(body)).not.toMatch(/\]\(\/[^)\s]*\)/)
+  })
+})
+
 describe('the install page names the same bins', () => {
   // The page's commands are built in `reference/install.ts`, so these are the strings it shows.
   const commands = [
@@ -91,7 +160,10 @@ describe('/llms-full.txt is the contract in one fetch', () => {
 
   it('holds the whole card, then the rules page', () => {
     expect(full.startsWith(card.trimEnd())).toBe(true)
-    const rules = readFileSync(resolve(ROOT, 'docs/rules.md'), 'utf8')
+    // The rules are the text the site serves as the guide's markdown file, so
+    // no link in them is relative to the repository.
+    const rules = text(guideMarkdownPath('rules'))
+    expect(rules).toContain('## The exception ladder')
     expect(full.endsWith(`${rules.trimEnd()}\n`)).toBe(true)
   })
 

@@ -21,6 +21,7 @@ import {
   GUIDES,
   groupOf,
   guideBySlug,
+  guideMarkdownPath,
   guidePath,
   guidesInGroup,
   loadGuideText,
@@ -61,6 +62,9 @@ import { SITE } from '../site'
 const MEMBER_FOR_SPEC = new Map(
   REGISTRY.components.map((component) => [component.spec, componentSlug(component.name)]),
 )
+
+/** The page above every guide, for the title and the breadcrumbs (`meta.ts`). */
+const GUIDES_TRAIL = [{ name: 'Guides', path: '/guides' }]
 
 const SLUGS: ReadonlySet<string> = new Set(GUIDES.map((guide) => guide.slug))
 
@@ -126,7 +130,13 @@ export function GuidePage({ slug }: { slug: string }) {
 }
 
 function GuideView({ guide }: { guide: Guide }) {
-  useMeta({ title: guide.title, description: guide.description })
+  useMeta({
+    title: guide.title,
+    description: guide.description,
+    trail: GUIDES_TRAIL,
+    article: true,
+    markdown: guideMarkdownPath(guide.slug),
+  })
   const text = useGuide(guide.slug)
   const group = groupOf(guide)
   const { previous, next } = neighbours(guide.slug)
