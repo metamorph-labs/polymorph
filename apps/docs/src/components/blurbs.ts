@@ -28,6 +28,8 @@ export const BLURBS: Readonly<Record<string, string>> = {
   PasswordInput: 'Hides a password as people type it, with a button to reveal it and check.',
   OTPInput: 'Separate boxes for entering a one-time code, such as the six digits sent at sign-in.',
   Textarea: 'Room to write several lines, which can grow as the text gets longer.',
+  RichTextInput:
+    'A writing box with bold, lists, links and mentions, and comments anchored to the words.',
   TagInput:
     'Type several free-form values, like email addresses to invite, and each becomes a chip.',
   FileUpload: 'Drop files in or browse for them, and see how each upload is going in a list.',
@@ -113,6 +115,8 @@ export const BLURBS: Readonly<Record<string, string>> = {
   Skeleton: 'Placeholder shapes that hold the layout steady while the real content loads.',
   List: 'A column of similar items, like notifications or accounts, to read, open or pick.',
   Tree: 'Folders and other nested lists that people open level by level to pick one item.',
+  RichTextContent:
+    'Shows formatted text someone wrote, with its mentions, links and highlighted comments.',
   CommentThread: 'The comments people leave on a record, each with its author, time and replies.',
   Table: 'A readable table of records, for scanning rows and comparing columns.',
   DataTable:
