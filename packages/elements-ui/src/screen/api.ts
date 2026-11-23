@@ -29,8 +29,9 @@ export interface ScreenDrawing extends Drawing {
  * Draws a run-time screen into `container`, a plain element, as `poly-*`
  * elements: the drawing's root element is appended to it. `update` changes
  * the document, the data or whether more is to come, and redraws only what
- * changed; `values` is each named control's current value; `check` checks the
- * document it draws now; `dispose` takes the drawing out.
+ * changed; `values` is each named control's current value, and `changed` the
+ * names of those the person changed; `check` checks the document it draws now;
+ * `dispose` takes the drawing out.
  */
 export function drawScreen(container: Element, options: DrawOptions = {}): ScreenDrawing {
   let document = options.document
@@ -39,6 +40,9 @@ export function drawScreen(container: Element, options: DrawOptions = {}): Scree
   return {
     get values() {
       return drawing.values
+    },
+    get changed() {
+      return drawing.changed
     },
     get faults() {
       return drawing.faults

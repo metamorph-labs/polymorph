@@ -96,6 +96,8 @@ export type DrawUpdate = Partial<
 export interface Drawing {
   /** Each named control's current value, by its name. */
   readonly values: Readonly<Record<string, JsonValue>>
+  /** The names in `values` whose value the person chose, in document order. */
+  readonly changed: readonly string[]
   /** Every fault the drawing has now. */
   readonly faults: readonly ScreenFault[]
   /** Changes what is drawn, in place. */
@@ -560,6 +562,9 @@ export function draw(container: Element, options: DrawOptions = {}): Drawing {
   return {
     get values() {
       return screen.values
+    },
+    get changed() {
+      return screen.changed
     },
     get faults() {
       return screen.faults

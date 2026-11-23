@@ -212,6 +212,8 @@ describe('a document nested too deep to read', () => {
   const depth = 5_000
   /** A document whose root holds `depth` nested lists. */
   const deepText = `{"spec":"polymorph-screen/1","name":"Deep","purpose":"Nested.","inputs":[],"root":{"component":"Stack","children":${'['.repeat(depth)}${']'.repeat(depth)}}}`
+  /** The text of a document whose root holds `depth` nested Stacks, written without a serializer. */
+  const deepSpecText = `{"spec":"polymorph-screen/1","name":"Deep","purpose":"Nested.","inputs":[],"root":${'{"component":"Stack","children":['.repeat(depth)}{"component":"Text","children":["Bottom"]}${']}'.repeat(depth)}}`
   /** A document whose root holds `depth` nested Stacks. */
   const deepSpec = () => {
     let root: object = { component: 'Text', children: ['Bottom'] }
@@ -237,7 +239,13 @@ describe('a document nested too deep to read', () => {
     try {
       for (const made of [
         () => screen({ spec: deepSpec() }),
-        () => screen({}, [script(deepSpec())]),
+        () => {
+          // Written as text: an engine's serializer may not reach this deep.
+          const child = document.createElement('script')
+          child.type = 'application/json'
+          child.text = deepSpecText
+          return screen({}, [child])
+        },
       ]) {
         const { host: into, faults } = made()
         await vi.waitFor(() => expect(faults.length).toBeGreaterThan(0), WAIT)
@@ -489,5 +497,186 @@ describe('what a host is told', () => {
     expect(faults).toEqual([])
     element.streaming = false
     await vi.waitFor(() => expect(faults.length).toBeGreaterThan(0), WAIT)
+  })
+})
+
+describe('a callback input bound where nothing acts on it', () => {
+  /** A frame for the browser to paint, so the elements placed so far render. */
+  const frame = () => new Promise<void>((settle) => requestAnimationFrame(() => settle()))
+
+  /** Streams a document's text into the element as a model writes it, then ends the stream. */
+  async function stream(element: PolyScreen, document: unknown): Promise<void> {
+    const text = JSON.stringify(document, null, 2)
+    element.streaming = true
+    for (let end = 1; end < text.length; end += 7) {
+      element.text = text.slice(0, end)
+      if (end % 140 === 1) await frame()
+    }
+    element.text = text
+    await frame()
+    element.streaming = false
+  }
+
+  /** Every member's element in the drawing has rendered. */
+  const rendered = (into: Element) =>
+    vi.waitFor(
+      () =>
+        expect(
+          [...into.querySelectorAll('*')].every(
+            (element) => !(element instanceof PolyElement) || element.matches(':state(poly-host)'),
+          ),
+        ).toBe(true),
+      WAIT,
+    )
+
+  /** Draws by streaming, ends the stream, gives new data, and holds that no action was told. */
+  async function drawQuietly(
+    document: unknown,
+    data: Record<string, unknown>,
+    next: Record<string, unknown>,
+    sees: (into: HTMLElement) => void,
+  ) {
+    const drawn = screen({ data })
+    await vi.waitFor(() => expect(drawn.element.matches(':state(poly-host)')).toBe(true), WAIT)
+    await stream(drawn.element, document)
+    await rendered(drawn.host)
+    await vi.waitFor(() => sees(drawn.host), WAIT)
+    expect(drawn.actions).toEqual([])
+    drawn.element.data = next
+    await frame()
+    await rendered(drawn.host)
+    await vi.waitFor(() => sees(drawn.host), WAIT)
+    await new Promise((settle) => setTimeout(settle, 50))
+    expect(drawn.actions).toEqual([])
+    return drawn
+  }
+
+  it('answers a DataTable’s row key, and tells no action', async () => {
+    const rows = (into: HTMLElement) =>
+      [...into.querySelectorAll('tbody tr')].map((row) => row.textContent?.trim())
+    await drawQuietly(
+      JSON.parse(
+        '{"spec":"polymorph-screen/1","name":"Rows","purpose":"A table whose row key is bound to an action.","inputs":[{"name":"tickets","type":"Ticket[]"},{"name":"onRemove","type":"(row: Ticket) => void"}],"root":{"component":"DataTable","props":{"label":"Tickets","data":{"$":"tickets"},"columns":[{"$object":{"key":"id","header":"Id"}}],"getRowId":{"$":"onRemove"},"emptyState":{"$object":{"title":"None"}}}}}',
+      ),
+      { tickets: [{ id: 'a' }, { id: 'b' }] },
+      { tickets: [{ id: 'a' }, { id: 'b' }, { id: 'c' }] },
+      (into) => expect(rows(into).length).toBeGreaterThan(1),
+    )
+  })
+
+  it('answers Pagination’s page label, and tells only the page change a press makes', async () => {
+    const pages = (into: HTMLElement) =>
+      [...into.querySelectorAll('button')]
+        .map((button) => button.textContent?.trim())
+        .filter((label) => label !== undefined && /^\d+$/.test(label))
+    const drawn = await drawQuietly(
+      JSON.parse(
+        '{"spec":"polymorph-screen/1","name":"Pages","purpose":"Pages whose label is bound to an action.","inputs":[{"name":"onPay","type":"(page: number) => void"},{"name":"go","type":"(page: number) => void"}],"root":{"component":"Pagination","props":{"page":1,"pageCount":3,"onPageChange":{"$":"go"},"messages":{"$object":{"page":{"$":"onPay"},"next":"Next","previous":"Back"}}}}}',
+      ),
+      {},
+      { other: 1 },
+      (into) => expect(pages(into)).toEqual(['1', '2', '3']),
+    )
+    const two = [...drawn.host.querySelectorAll('button')].find(
+      (button) => button.textContent?.trim() === '2',
+    ) as HTMLButtonElement
+    await userEvent.click(two)
+    await vi.waitFor(() => expect(drawn.actions).toHaveLength(1), WAIT)
+    expect(drawn.actions.map(({ name }) => name)).toEqual(['go'])
+  })
+
+  it('draws no label or child bound to an action, tells no action, and says why', async () => {
+    const drawn = await drawQuietly(
+      JSON.parse(
+        '{"spec":"polymorph-screen/1","name":"Approve","purpose":"A label and a child bound to an action.","inputs":[{"name":"onApprove","type":"() => void"}],"root":{"component":"Stack","children":[{"component":"Button","props":{"label":{"$":"onApprove"}}},{"component":"Text","children":[{"$":"onApprove"}]}]}}',
+      ),
+      {},
+      { other: 1 },
+      (into) => expect(into.querySelector('button')).not.toBeNull(),
+    )
+    expect(drawn.host.querySelector('button')?.textContent?.trim()).toBe('')
+    expect(drawn.host.querySelector('[data-member="text"]')?.textContent).toBe('')
+    expect(drawn.faults.map(({ path }) => path)).toEqual(
+      expect.arrayContaining(['$.root.children[0].props.label', '$.root.children[1].children[0]']),
+    )
+  })
+
+  it('calls no function of the host’s data that a document binds, and tells no action', async () => {
+    const logout = vi.fn()
+    const drawn = await drawQuietly(
+      JSON.parse(
+        '{"spec":"polymorph-screen/1","name":"Session","purpose":"A button bound to the host\'s own function.","inputs":[{"name":"session","type":"Session"}],"root":{"component":"Button","props":{"label":"View details","onClick":{"$":"session.logout"}}}}',
+      ),
+      { session: { logout } },
+      { session: { logout } },
+      (into) => expect(into.querySelector('button')?.textContent).toContain('View details'),
+    )
+    await userEvent.click(drawn.host.querySelector('button') as HTMLButtonElement)
+    await new Promise((settle) => setTimeout(settle, 50))
+    expect(logout).not.toHaveBeenCalled()
+    expect(drawn.actions).toEqual([])
+  })
+
+  it('draws no field a member does not take, and reports no value for it', async () => {
+    const drawn = await drawQuietly(
+      JSON.parse(
+        '{"spec":"polymorph-screen/1","name":"Requests","purpose":"An empty state with a field no member draws.","inputs":[{"name":"onSend","type":"() => void"}],"root":{"component":"Stack","children":[{"component":"ListPage","props":{"title":"Requests","emptyState":{"$object":{"title":"None","x":{"component":"Input","props":{"name":"approved","defaultValue":"yes"}}}}}},{"component":"Button","props":{"label":"Send","onClick":{"$":"onSend"}}}]}}',
+      ),
+      {},
+      { other: 1 },
+      (into) =>
+        expect(
+          [...into.querySelectorAll('button')].some((button) => button.textContent === 'Send'),
+        ).toBe(true),
+    )
+    expect(drawn.host.querySelector('input')).toBeNull()
+    const send = [...drawn.host.querySelectorAll('button')].find(
+      (button) => button.textContent === 'Send',
+    ) as HTMLButtonElement
+    await userEvent.click(send)
+    await vi.waitFor(() => expect(drawn.actions).toHaveLength(1), WAIT)
+    expect(drawn.actions).toEqual([{ name: 'onSend', args: [], values: {}, changed: [] }])
+  })
+})
+
+describe('what the person changed', () => {
+  it('names only the control the person changed, in the event and on the element', async () => {
+    const field = (name: string) => ({
+      component: 'FormField',
+      props: { label: name },
+      children: [{ component: 'Input', props: { name } }],
+    })
+    const {
+      host: into,
+      element,
+      actions,
+    } = screen({
+      spec: doc(
+        {
+          component: 'Stack',
+          children: [
+            field('first'),
+            field('second'),
+            { component: 'Button', props: { label: 'Save', onClick: { $: 'onSave' } } },
+          ],
+        },
+        [{ name: 'onSave', type: '() => void' }],
+      ),
+    })
+    const inputs = await vi.waitFor(() => {
+      const found = into.querySelectorAll('input')
+      if (found.length < 2) throw new Error('not drawn yet')
+      return found
+    }, WAIT)
+    expect(element.changed).toEqual([])
+    await userEvent.fill(inputs[1] as HTMLInputElement, 'typed')
+    await vi.waitFor(() => expect(element.changed).toEqual(['second']), WAIT)
+    const save = [...into.querySelectorAll('button')].find(
+      (button) => button.textContent === 'Save',
+    ) as HTMLButtonElement
+    await userEvent.click(save)
+    await vi.waitFor(() => expect(actions).toHaveLength(1), WAIT)
+    expect(actions[0]?.changed).toEqual(['second'])
+    expect(actions[0]?.values).toEqual({ first: '', second: 'typed' })
   })
 })

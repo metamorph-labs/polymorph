@@ -109,6 +109,7 @@ export function sourceOf(host: Element, state: ScreenState): ScreenSource {
 /** A drawing tied to a `<poly-screen>`. */
 export interface Controller {
   readonly values: Drawing['values']
+  readonly changed: Drawing['changed']
   /** Reads the element's state again and draws what changed. */
   sync(): void
   dispose(): void
@@ -219,6 +220,9 @@ export function control(host: HTMLElement, read: () => ScreenState): Controller 
   return {
     get values() {
       return drawing.values
+    },
+    get changed() {
+      return drawing.changed
     },
     sync,
     dispose() {

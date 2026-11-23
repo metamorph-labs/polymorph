@@ -23,11 +23,13 @@ import type { Controller, ScreenState } from './drawing'
  *   a fault in its node's place. A property set before the element is defined
  *   is read when it is.
  * - **Events.** `poly-action` when a member calls one of the document's
- *   callback inputs, with `detail` `{ name, args, values }`; a listener hands
+ *   callback inputs, with `detail` `{ name, args, values, changed }`
+ *   (`changed` names the controls the person changed); a listener hands
  *   the member a promise with `event.waitUntil`. `poly-fault` when something
  *   cannot be drawn, with `detail` `{ path, message, component? }`. Both bubble
  *   and are composed.
- * - **Script.** `values` is each named control's current value. `check()`
+ * - **Script.** `values` is each named control's current value, and
+ *   `changed` the names of those the person changed. `check()`
  *   resolves to what `checkScreen` says of the document it draws.
  * - **Box.** It draws in the light DOM and, while it draws, carries the custom
  *   state `poly-host`, which the foundation's host rule gives `display:
@@ -192,6 +194,11 @@ export class PolyScreen extends Base {
   /** Each named control's current value, by its name. */
   get values(): Readonly<Record<string, JsonValue>> {
     return this.#controller?.values ?? {}
+  }
+
+  /** The names in `values` whose value the person chose, in document order. */
+  get changed(): readonly string[] {
+    return this.#controller?.changed ?? []
   }
 
   /** What `checkScreen` says of the document the element draws, with its members. */

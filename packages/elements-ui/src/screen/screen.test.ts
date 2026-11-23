@@ -210,7 +210,9 @@ describe('a callback input is an action', () => {
     await vi.waitFor(() => expect(element.values).toEqual({ email: 'ada@example.com' }), WAIT)
     await userEvent.click(save)
     await vi.waitFor(() => expect(actions).toHaveLength(1), WAIT)
-    expect(actions).toEqual([{ name: 'onSave', args: [], values: { email: 'ada@example.com' } }])
+    expect(actions).toEqual([
+      { name: 'onSave', args: [], values: { email: 'ada@example.com' }, changed: ['email'] },
+    ])
   })
 
   it('keeps a ConfirmDialog busy and open until the promise a listener hands waitUntil settles', async () => {

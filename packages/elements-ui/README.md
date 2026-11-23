@@ -50,18 +50,20 @@ at run time, with no build. It is written by hand and draws from the run-time co
 each element with `createElement`, sets its props as properties, fills its slots with
 `fillSlot` and listens for its events, and writes no markup.
 
-- `<poly-screen>` (`src/screen/element.ts`) is an element written by hand, as `poly-icon` is: not
-  a member, with no Solid member behind it. It draws its `spec` property, its `text` property (a
+- `<poly-screen>` (`src/screen/element.ts`) is an element written by hand, as `poly-icon` is: not a
+  member, with no Solid member behind it. It draws its `spec` property, its `text` property (a
   model's answer so far, read with `parsePartial`), or the JSON in its `<script
   type="application/json">` child. `data`, `streaming`, `members` and `faults` (`hidden` or
-  `inline`) set what it draws; `values` and `check()` read it. `streaming` is the page's to set,
-  for `text` too; a `members` value that cannot be read allows no member and is a fault. It dispatches `poly-action` when a
-  member calls one of the document's callback inputs, with `{ name, args, values }` as `detail`
-  (`event.waitUntil` hands the member a promise), and `poly-fault` for what cannot be drawn. It
-  draws in the light DOM and, while it draws, draws no box of its own.
+  `inline`) set what it draws; `values`, `changed` and `check()` read it. `streaming` is the page's
+  to set, for `text` too; a `members` value that cannot be read allows no member and is a fault. It
+  dispatches `poly-action` when a member calls one of the document's callback inputs, with `{ name,
+  args, values, changed }` as `detail` (`event.waitUntil` hands the member a promise), and
+  `poly-fault` for what cannot be drawn. It draws in the light DOM and, while it draws, draws no box
+  of its own.
 - `drawScreen(container, options)` (`src/screen/api.ts`) draws into a plain element and returns a
-  drawing with `update`, `values`, `faults`, `check` and `dispose`. `checkScreen`, `runtimeCard`,
-  `outputContract` and `parsePartial` are the core's, bound to the members the elements draw.
+  drawing with `update`, `values`, `changed`, `faults`, `check` and `dispose`. `checkScreen`,
+  `runtimeCard`, `outputContract` and `parsePartial` are the core's, bound to the members the
+  elements draw.
 - `src/screen/draw.ts` is the renderer both use: a drawing is updated in place by each node's
   path, and an element whose node did not change is left alone.
 
@@ -88,9 +90,10 @@ bundler reads to `dist/`: each element's module, with the Solid member it render
 `dist/recipes/`, each module importing its own stylesheet; the foundations, Solid and Zag are
 external. `--mode cdn` writes the files a page with no build loads to `dist/cdn/`: `polymorph.js`,
 which defines every tag and `<poly-screen>` and loads each member's chunk the first time one of its
-elements renders, the chunks (the run-time screen's among them), `polymorph.css` (the base layer, every recipe through the transform, Icon's, the host
-rule and the rules for an element that has not rendered), `prepaint.js` and a theme sheet per house
-pairing (`themes/<system>.css`). `--mode cdn-all` adds `polymorph-all.js`, every element in one
-file. Everything in `dist/cdn/` is bundled, Solid included. No public URL serves those files,
-because the package is published to a restricted registry, so `polymorph init --framework
-elements` copies them into the app. It is published as `@metamorph-labs/polymorph-elements-ui`.
+elements renders, the chunks (the run-time screen's among them), `polymorph.css` (the base layer,
+every recipe through the transform, Icon's, the host rule and the rules for an element that has not
+rendered), `prepaint.js` and a theme sheet per house pairing (`themes/<system>.css`). `--mode
+cdn-all` adds `polymorph-all.js`, every element in one file. Everything in `dist/cdn/` is bundled,
+Solid included. No public URL serves those files, because the package is published to a restricted
+registry, so `polymorph init --framework elements` copies them into the app. It is published as
+`@metamorph-labs/polymorph-elements-ui`.

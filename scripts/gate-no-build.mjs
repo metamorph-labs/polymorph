@@ -1112,9 +1112,11 @@ async function screen(run, context) {
   await page.getByRole('button', { name: 'Save' }).click()
   const actions = await page.evaluate(() => window.screenPage.actions)
   run.check(
-    'screen: a press dispatches poly-action with the named field in values',
+    'screen: a press dispatches poly-action with the named field in values and changed',
     JSON.stringify(actions) ===
-      JSON.stringify([{ name: 'onSave', args: [], values: { email: 'ada@example.com' } }]),
+      JSON.stringify([
+        { name: 'onSave', args: [], values: { email: 'ada@example.com' }, changed: ['email'] },
+      ]),
     JSON.stringify(actions),
   )
   run.check(
