@@ -29,10 +29,17 @@ export const BLOCK_TYPES: ReadonlySet<string> = new Set([
 /** The inline types this version reads in a paragraph's or a heading's content. */
 export const INLINE_TYPES: ReadonlySet<string> = new Set(['text', 'break', 'entity'])
 
-/** The mark types, in the order a text's marks are written. */
+/**
+ * The formatting mark types, in the order a text's marks are written. An
+ * annotation is written after every other mark (`read.ts`), so it is not one
+ * of them.
+ */
 export const MARK_ORDER = ['link', 'bold', 'italic', 'strike', 'code'] as const
 
-export const MARK_TYPES: ReadonlySet<string> = new Set(MARK_ORDER)
+/** The anchor's mark type (`RichTextAnnotationMark`). */
+export const ANNOTATION = 'annotation'
+
+export const MARK_TYPES: ReadonlySet<string> = new Set([...MARK_ORDER, ANNOTATION])
 
 /** A node of one of these types in a place its kind cannot be is out of place, not unknown. */
 export const NODE_TYPES: ReadonlySet<string> = new Set([

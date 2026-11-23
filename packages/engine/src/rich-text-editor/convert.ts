@@ -46,13 +46,21 @@ const KNOWN_FIELDS: Record<string, ReadonlySet<string>> = {
   codeBlock: new Set(['type', 'language', 'text']),
   text: new Set(['type', 'text', 'marks']),
   break: new Set(['type']),
-  entity: new Set(['type', 'kind', 'id', 'label']),
+  entity: new Set(['type', 'kind', 'id', 'label', 'marks']),
   link: new Set(['type', 'href']),
+  annotation: new Set(['type', 'id']),
   mark: new Set(['type']),
 }
 
 /** The model's own mark names. Any other is an unknown mark. */
-const KNOWN_MARKS = new Set<string>([MARK.link, MARK.bold, MARK.italic, MARK.strike, MARK.code])
+const KNOWN_MARKS = new Set<string>([
+  MARK.link,
+  MARK.bold,
+  MARK.italic,
+  MARK.strike,
+  MARK.code,
+  MARK.annotation,
+])
 
 /** The fields of `raw` its kind does not have, or null when it has none. */
 function fieldsOf(raw: Json, kind: keyof typeof KNOWN_FIELDS): Json | null {
@@ -69,7 +77,13 @@ function withFields<T extends object>(known: T, fields: unknown): T {
   return isObject(fields) ? Object.assign(known, fields) : known
 }
 
-function marksFor(schema: Schema, raw: Json, parent: NodeType): readonly Mark[] {
+/**
+ * A text's marks, or with `entity` an entity's, which keeps only its
+ * annotations and unknown marks. The reader writes annotations last, ordered
+ * by id, and each is added in that order, so two texts with the same
+ * annotations hold them in the same order here.
+ */
+function marksFor(schema: Schema, raw: Json, parent: NodeType, entity = false): readonly Mark[] {
   let set: readonly Mark[] = Mark.none
   const add = (mark: Mark | null) => {
     if (mark && parent.allowsMarkType(mark.type)) set = mark.addToSet(set)
@@ -80,8 +94,18 @@ function marksFor(schema: Schema, raw: Json, parent: NodeType): readonly Mark[] 
       add(schema.marks[MARK.unknown]?.create({ json: item }) ?? null)
       continue
     }
+    if (item.type === MARK.annotation) {
+      if (typeof item.id !== 'string' || item.id === '') continue
+      add(
+        schema.marks[MARK.annotation]!.create({
+          id: item.id,
+          fields: fieldsOf(item, 'annotation'),
+        }),
+      )
+      continue
+    }
     const type = schema.marks[item.type]
-    if (!type) continue
+    if (!type || entity) continue
     if (item.type === MARK.link) {
       if (typeof item.href !== 'string') continue
       add(type.create({ href: item.href, fields: fieldsOf(item, 'link') }))
@@ -89,6 +113,7 @@ function marksFor(schema: Schema, raw: Json, parent: NodeType): readonly Mark[] 
       add(type.create({ fields: fieldsOf(item, 'mark') }))
     }
   }
+  if (entity) return set
   const fields = fieldsOf(raw, 'text')
   if (fields) add(schema.marks[MARK.textFields]!.create({ fields }))
   return set
@@ -109,12 +134,17 @@ function inlines(schema: Schema, content: unknown, parent: NodeType): PMNode[] {
         break
       case 'entity':
         out.push(
-          schema.node(NODE.entity, {
-            kind: String(raw.kind ?? ''),
-            id: String(raw.id ?? ''),
-            label: String(raw.label ?? ''),
-            fields: fieldsOf(raw, 'entity'),
-          }),
+          schema.node(
+            NODE.entity,
+            {
+              kind: String(raw.kind ?? ''),
+              id: String(raw.id ?? ''),
+              label: String(raw.label ?? ''),
+              fields: fieldsOf(raw, 'entity'),
+            },
+            undefined,
+            marksFor(schema, raw, parent, true),
+          ),
         )
         break
       default:
@@ -218,18 +248,35 @@ export function toEditorDoc(schema: Schema, value: RichTextDocument): PMNode {
   return schema.node(NODE.doc, { fields: fieldsOf(value as unknown as Json, 'root') }, content)
 }
 
+function markJson(mark: Mark): Json {
+  const name = mark.type.name
+  if (name === MARK.unknown) return mark.attrs.json as Json
+  if (name === MARK.link)
+    return withFields({ type: 'link', href: mark.attrs.href as string }, mark.attrs.fields)
+  if (name === MARK.annotation)
+    return withFields({ type: 'annotation', id: mark.attrs.id as string }, mark.attrs.fields)
+  return withFields({ type: name }, mark.attrs.fields)
+}
+
 function marksJson(node: PMNode): { marks: Json[]; fields: unknown } {
   const marks: Json[] = []
   let fields: unknown = null
   for (const mark of node.marks) {
-    const name = mark.type.name
-    if (name === MARK.textFields) fields = mark.attrs.fields
-    else if (name === MARK.unknown) marks.push(mark.attrs.json as Json)
-    else if (name === MARK.link)
-      marks.push(withFields({ type: 'link', href: mark.attrs.href as string }, mark.attrs.fields))
-    else marks.push(withFields({ type: name }, mark.attrs.fields))
+    if (mark.type.name === MARK.textFields) fields = mark.attrs.fields
+    else marks.push(markJson(mark))
   }
   return { marks, fields }
+}
+
+/**
+ * An entity's marks as written: its annotations and unknown marks. A format a
+ * command put on it while it was edited (bold over a selection with an entity
+ * in it) is not written, because the model keeps none on an entity.
+ */
+function entityMarksJson(node: PMNode): Json[] {
+  return node.marks
+    .filter((mark) => mark.type.name === MARK.annotation || mark.type.name === MARK.unknown)
+    .map(markJson)
 }
 
 function inlineJson(parent: PMNode): Json[] {
@@ -246,14 +293,18 @@ function inlineJson(parent: PMNode): Json[] {
       case NODE.hardBreak:
         out.push(withFields({ type: 'break' }, node.attrs.fields))
         break
-      case NODE.entity:
-        out.push(
-          withFields(
-            { type: 'entity', kind: node.attrs.kind, id: node.attrs.id, label: node.attrs.label },
-            node.attrs.fields,
-          ),
-        )
+      case NODE.entity: {
+        const entity: Json = {
+          type: 'entity',
+          kind: node.attrs.kind,
+          id: node.attrs.id,
+          label: node.attrs.label,
+        }
+        const marks = entityMarksJson(node)
+        if (marks.length) entity.marks = marks
+        out.push(withFields(entity, node.attrs.fields))
         break
+      }
       case NODE.unknownInline:
         out.push(node.attrs.json as Json)
         break

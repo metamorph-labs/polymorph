@@ -32,7 +32,14 @@ import { unknownText } from './unknown'
  *
  * Unknown nodes and marks are always in the schema: a document a later
  * version wrote must pass through an edit unchanged. They have no parse rule,
- * so a paste never creates one.
+ * so a paste never creates one. The annotation mark is always in the schema
+ * too, because it is not a format, and it has no parse rule and no clipboard
+ * drawing for the same reason (`annotations.ts`).
+ *
+ * Which marks an inline node may carry is decided by its parent's `marks`, so
+ * an entity in a paragraph can take any mark while it is edited, as a text
+ * can. The conversion writes back only an entity's annotations and unknown
+ * marks (`convert.ts`), because a format means nothing on an entity.
  */
 
 /** The node and mark names. They are the model's names where the model has one. */
@@ -58,6 +65,7 @@ export const MARK = {
   italic: 'italic',
   strike: 'strike',
   code: 'code',
+  annotation: 'annotation',
   unknown: 'unknown',
   textFields: 'textFields',
 } as const
@@ -183,9 +191,10 @@ export function buildSchema(options: SchemaOptions): Schema {
       content: 'inline*',
       group: 'block',
       // A heading holds text, entities, inline code and links: no bold,
-      // italic or strike, because a heading is already set apart.
-      marks: [MARK.link, MARK.code, MARK.unknown, MARK.textFields]
-        .filter((m) => m === MARK.unknown || m === MARK.textFields || allowed.has(m))
+      // italic or strike, because a heading is already set apart. Annotations
+      // are not formats, so a heading holds them.
+      marks: [MARK.link, MARK.code, MARK.annotation, MARK.unknown, MARK.textFields]
+        .filter((m) => (m !== MARK.link && m !== MARK.code) || allowed.has(m))
         .join(' '),
       defining: true,
       parseDOM: headingRules(),
@@ -368,6 +377,16 @@ export function buildSchema(options: SchemaOptions): Schema {
       parseDOM: [{ tag: 'code' }],
       toDOM: draw.code,
     }
+  }
+  // An anchor (`annotations.ts`). Text typed at its edge is outside it, and it
+  // excludes nothing: two annotations of different ids sit on one text, as
+  // marks of one type with different attributes do when the type does not
+  // exclude itself. Its element is drawn bare; decorations draw it.
+  markSpecs[MARK.annotation] = {
+    attrs: { id: { validate: 'string' }, fields: FIELDS },
+    inclusive: false,
+    excludes: '',
+    toDOM: () => ['span', 0],
   }
   // A mark of a type this version does not know. It draws nothing and keeps
   // its JSON; several may sit on one text.

@@ -162,8 +162,8 @@ function itemsText(list: Json, walk: Walk): string {
     .join(walk.separator)
 }
 
-/** The number of Unicode code points in a string: a surrogate pair is one. */
-function codePoints(text: string): number {
+/** The number of Unicode code points in a string: a surrogate pair is one, and a lone surrogate is one. */
+export function codePoints(text: string): number {
   let count = text.length
   for (let index = 0; index < text.length - 1; index += 1) {
     const code = text.charCodeAt(index)
@@ -179,7 +179,7 @@ function codePoints(text: string): number {
 }
 
 /** The index in `text` after its first `count` code points. */
-function codePointEnd(text: string, count: number): number {
+export function codePointEnd(text: string, count: number): number {
   let index = 0
   for (let seen = 0; seen < count && index < text.length; seen += 1) {
     const code = text.charCodeAt(index)

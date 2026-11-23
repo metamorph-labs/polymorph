@@ -1,0 +1,75 @@
+/* The selection bar — the controls a member draws at the selected text
+ * (`design/components/rich-text-input.md`, "The selection bar"). RichTextInput
+ * draws its format controls and the application's `selectionActions` in it.
+ * The bar is one part with one stylesheet, so a member that reads a document
+ * draws the same bar.
+ *
+ * It is a transient surface: Popover's panel material, radius and shadow, and
+ * Popover's motion tokens. It is `fixed` and placed by the member
+ * from the selection's box in viewport coordinates (`--pm-selection-bar-x`,
+ * `--pm-selection-bar-y`, its top-left corner), which the member measures, as
+ * Tour places its panel. The coordinates are physical, because they are the
+ * browser's. */
+
+.bar {
+  --pm-selection-bar-x: 0px;
+  --pm-selection-bar-y: 0px;
+
+  position: fixed;
+  top: var(--pm-selection-bar-y);
+  left: var(--pm-selection-bar-x);
+
+  /* Above the page, as every transient surface is. */
+  z-index: var(--pm-z-overlay);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-1);
+  align-items: center;
+
+  /* The bar wraps onto more rows at the viewport's width and is never clipped. */
+  max-inline-size: calc(100vw - var(--pm-space-2) * 2);
+  padding: var(--pm-space-1);
+  background: var(--pm-bg-overlay);
+  border: 1px solid var(--pm-border-subtle);
+  border-radius: var(--pm-radius-surface);
+  box-shadow: var(--pm-shadow-transient);
+  animation: selection-bar-enter var(--pm-motion-duration-surface) var(--pm-motion-easing-enter);
+}
+
+/* Leaving: the member keeps the bar until this ends, and it takes no press meanwhile. */
+.bar[data-state='closed'] {
+  pointer-events: none;
+  animation: selection-bar-exit var(--pm-motion-duration-surface-exit) var(--pm-motion-easing-exit)
+    forwards;
+}
+
+/* Popover's tokens with a fade only: a scale would move the box the member
+   measures to place the bar while the bar enters. */
+@keyframes selection-bar-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes selection-bar-exit {
+  to {
+    opacity: 0;
+  }
+}
+
+/* Under reduced motion the bar appears and leaves without moving or fading: it
+   follows a selection, which the reader is making with the pointer or the keys. */
+@media (prefers-reduced-motion: reduce) {
+  .bar,
+  .bar[data-state='closed'] {
+    animation: none;
+  }
+}
+
+/* Glass (`depth: glass`): Popover's panel material, unchanged. */
+@container style(--pm-axis-depth: glass) {
+  .bar {
+    background: var(--pm-material-surface);
+    backdrop-filter: blur(var(--pm-material-blur)) saturate(var(--pm-material-saturate));
+  }
+}

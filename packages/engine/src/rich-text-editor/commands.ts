@@ -373,7 +373,12 @@ export function textCommand(text: string): Command {
   }
 }
 
-/** The entity and one space, in place of `range` or the selection. */
+/**
+ * The entity and one space, in place of `range` or the selection. Both take
+ * the annotations the start is inside, as typed text would, so an entity
+ * picked inside an annotated sentence leaves no gap in it; the space also takes
+ * the start's formats, which an entity does not keep.
+ */
 export function entityCommand(
   schema: Schema,
   entity: Omit<RichTextEntity, 'type'>,
@@ -385,8 +390,13 @@ export function entityCommand(
     const to = range ? range.to : state.selection.to
     const $from = state.doc.resolve(from)
     if (!$from.parent.inlineContent || $from.parent.type.spec.code) return false
-    const node = schema.node(NODE.entity, { kind: entity.kind, id: entity.id, label: entity.label })
     const marks = $from.marks().filter((m) => $from.parent.type.allowsMarkType(m.type))
+    const node = schema.node(
+      NODE.entity,
+      { kind: entity.kind, id: entity.id, label: entity.label },
+      undefined,
+      marks.filter((m) => m.type.name === MARK.annotation),
+    )
     const tr = state.tr.replaceWith(from, to, [node, schema.text(' ', marks)])
     tr.setSelection(TextSelection.create(tr.doc, from + node.nodeSize + 1))
     dispatch(

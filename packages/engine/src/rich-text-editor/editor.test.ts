@@ -2,6 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 
 import {
+  annotateRichText,
+  richTextAnnotations,
+  richTextFindText,
+  richTextPlainText,
+  richTextRangeText,
+} from '../rich-text/index'
+import {
   RICH_TEXT_FORMAT,
   RICH_TEXT_FORMATS,
   type RichTextDocument,
@@ -44,6 +51,7 @@ const CLASSES: RichTextEditorOptions['classes'] = {
   code: 'code',
   link: 'a',
   entity: 'entity',
+  annotation: 'note',
   unknown: 'unknown',
 }
 
@@ -1291,5 +1299,667 @@ describe('commands', () => {
     expect(m.editor.toggle(format)).toBe(true)
     expect(m.editor.getState().active[format]).toBe(true)
     expect(m.events).toEqual([{ type: 'format', format, active: true }])
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* Annotations                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/** A text with formats and annotations, its marks in normal form when the ids are given in order. */
+const an = (text: string, ids: string[], ...formats: string[]) => ({
+  type: 'text',
+  text,
+  marks: [...formats.map((type) => ({ type })), ...ids.map((id) => ({ type: 'annotation', id }))],
+})
+const annotated = (entity: Record<string, unknown>, ...ids: string[]) => ({
+  ...entity,
+  marks: ids.map((id) => ({ type: 'annotation', id })),
+})
+
+/** The ids of every annotation element from a node up to the surface: how a member reads a press. */
+function idsAt(m: Mounted, node: Node): string[] {
+  const ids: string[] = []
+  for (
+    let element = node.parentElement?.closest('[data-annotation-id]') ?? null;
+    element && m.element.contains(element);
+    element = element.parentElement?.closest('[data-annotation-id]') ?? null
+  ) {
+    ids.push(element.getAttribute('data-annotation-id') ?? '')
+  }
+  return ids
+}
+
+/** The text node that holds `text`. */
+function textNode(m: Mounted, text: string): Text {
+  const hit = textNodes(m.element).find((n) => n.node.data === text)
+  if (!hit) throw new Error(`no text node ${text}`)
+  return hit.node
+}
+
+/** Selects from one offset of the element's text to another, and waits until the editor has read a selection that is not a caret. */
+async function selectOffsets(m: Mounted, from: number, to: number) {
+  const before = m.editor.getState().range
+  const [startNode, startOffset] = pointAt(m.element, from)
+  const [endNode, endOffset] = pointAt(m.element, to)
+  document.getSelection()?.setBaseAndExtent(startNode, startOffset, endNode, endOffset)
+  await vi.waitFor(() => {
+    const state = m.editor.getState()
+    expect(state.collapsed).toBe(false)
+    expect(state.range).not.toEqual(before)
+  })
+}
+
+/** The text node and offset just after the `at`th character of the element's text: in the node that holds that character. */
+function endPointAt(element: HTMLElement, at: number): [Text, number] {
+  const hit = textNodes(element).find((n) => n.start < at && at <= n.start + n.node.data.length)
+  if (!hit) throw new Error('no text')
+  return [hit.node, at - hit.start]
+}
+
+/** Selects `text`, which may end a block, and waits until the editor has read the selection. */
+async function selectWord(m: Mounted, text: string) {
+  const at = offsetOf(m, text)
+  const [startNode, startOffset] = pointAt(m.element, at)
+  const [endNode, endOffset] = endPointAt(m.element, at + text.length)
+  document.getSelection()?.setBaseAndExtent(startNode, startOffset, endNode, endOffset)
+  await vi.waitFor(() => expect(m.editor.getState().selectedText).toBe(text))
+}
+
+/** Where `text` starts in the element's text. */
+function offsetOf(m: Mounted, text: string): number {
+  const at = textNodes(m.element)
+    .map((n) => n.node.data)
+    .join('')
+    .indexOf(text)
+  if (at < 0) throw new Error(`no text ${text}`)
+  return at
+}
+
+/** A drag event carrying `transfer`, set as `paste` sets one, at a point on the screen. */
+function dragEvent(
+  type: 'dragstart' | 'drop',
+  transfer: DataTransfer,
+  at: { x: number; y: number },
+  copy = false,
+) {
+  const event = new Event(type, { bubbles: true, cancelable: true })
+  Object.defineProperties(event, {
+    dataTransfer: { value: transfer },
+    clientX: { value: at.x },
+    clientY: { value: at.y },
+    // The copy modifier is the Option key on a Mac and Control elsewhere.
+    altKey: { value: copy },
+    ctrlKey: { value: copy },
+  })
+  return event
+}
+
+/** A point inside the `index`th character of the text node holding `text`. */
+function pointIn(m: Mounted, text: string, index: number) {
+  const node = textNode(m, text)
+  const range = document.createRange()
+  range.setStart(node, index)
+  range.setEnd(node, index + 1)
+  const rect = range.getBoundingClientRect()
+  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+}
+
+describe('annotations: the schema and the conversion', () => {
+  it('gives back two annotations on one text, on an entity, in a heading and beside every format', () => {
+    const value = doc(
+      h(1, an('Title', ['c1']), an('code', ['c1'], 'code')),
+      p(an('a', ['c1', 'c2'], 'bold', 'italic'), annotated(ada, 'c2'), an('both', ['c2'], 'code'), {
+        type: 'text',
+        text: 'l',
+        marks: [
+          { type: 'link', href: '/x' },
+          { type: 'annotation', id: 'c3' },
+        ],
+      }),
+    )
+    const m = mount({ value })
+    expect(m.editor.getValue()).toEqual(value)
+  })
+
+  it('keeps the fields an annotation carries that this version does not know', () => {
+    const value = doc(
+      p({ type: 'text', text: 'x', marks: [{ type: 'annotation', id: 'c1', by: 'ada' }] }),
+    )
+    expect(mount({ value }).editor.getValue()).toEqual(value)
+  })
+
+  it('keeps both annotations when another format is turned on and off over them', async () => {
+    const m = mount({ value: doc(p(t('a '), an('word', ['c1', 'c2']), t(' b'))) })
+    await focusEnd(m)
+    await select(m, 'word')
+    expect(m.editor.toggle('bold')).toBe(true)
+    expect(m.editor.getValue()).toEqual(doc(p(t('a '), an('word', ['c1', 'c2'], 'bold'), t(' b'))))
+    expect(m.editor.toggle('code')).toBe(true)
+    expect(m.editor.getValue()).toEqual(doc(p(t('a '), an('word', ['c1', 'c2'], 'code'), t(' b'))))
+    expect(m.editor.setLink('https://a.example')).toBe(true)
+    expect(m.editor.toggle('code')).toBe(true)
+    expect(m.editor.getValue()).toEqual(
+      doc(
+        p(
+          t('a '),
+          {
+            type: 'text',
+            text: 'word',
+            marks: [
+              { type: 'link', href: 'https://a.example' },
+              { type: 'annotation', id: 'c1' },
+              { type: 'annotation', id: 'c2' },
+            ],
+          },
+          t(' b'),
+        ),
+      ),
+    )
+  })
+
+  it('writes an entity with its annotations only, whatever format was put over it', async () => {
+    const m = mount({ value: doc(p(t('x '), annotated(ada, 'c1'), t(' y'))) })
+    await focusEnd(m)
+    await select(m, 'x @Ada Lovelace y')
+    expect(m.editor.toggle('bold')).toBe(true)
+    expect(m.editor.getValue()).toEqual(
+      doc(p(t('x ', 'bold'), annotated(ada, 'c1'), t(' y', 'bold'))),
+    )
+    // The format comes off again over the whole selection, entity included.
+    expect(m.editor.toggle('bold')).toBe(true)
+    expect(m.editor.getValue()).toEqual(doc(p(t('x '), annotated(ada, 'c1'), t(' y'))))
+  })
+
+  it('loses the annotations of a block turned into a code block, which holds text only', () => {
+    const m = mount({ value: doc(p(an('code me', ['c1']))) })
+    m.editor.focus('end')
+    expect(m.editor.toggle('codeBlock')).toBe(true)
+    expect(m.editor.getValue()).toEqual(doc(code('code me')))
+  })
+})
+
+describe('annotations: drawing', () => {
+  const VALUE = doc(
+    p(t('a '), an('bold', ['c1'], 'bold'), an(' plain', ['c1']), annotated(ada, 'c1'), t(' z')),
+    p(an('other', ['c2'])),
+  )
+
+  it('draws each fragment of an annotation, text or entity, as its own mark element', () => {
+    const m = mount({ value: VALUE })
+    const drawn = Array.from(m.element.querySelectorAll('[data-annotation-id]'), (element) => [
+      element.tagName,
+      element.className,
+      element.getAttribute('data-annotation-id'),
+      element.textContent,
+    ])
+    expect(drawn).toEqual([
+      ['MARK', 'note', 'c1', 'bold'],
+      ['MARK', 'note', 'c1', ' plain'],
+      ['MARK', 'note', 'c1', '@Ada Lovelace'],
+      ['MARK', 'note', 'c2', 'other'],
+    ])
+    // The entity keeps its own element inside the annotation's.
+    const entity = m.element.querySelector('mark[data-annotation-id="c1"] > span.entity')
+    expect(entity?.getAttribute('data-entity-id')).toBe('u1')
+    // A format is drawn around the annotation, which wraps the text itself.
+    expect(textNode(m, 'bold').parentElement?.matches('mark.note')).toBe(true)
+    expect(textNode(m, 'bold').parentElement?.closest('strong')).not.toBeNull()
+    expect(m.element.querySelector('[data-active]')).toBeNull()
+  })
+
+  it('keeps an annotated entity one unit, with data-selected on its own element', async () => {
+    const m = mount({ value: doc(p(an('a', ['c1']), annotated(ada, 'c1'), an('b', ['c1']))) })
+    await focusEnd(m)
+    const span = m.element.querySelector('span.entity') as HTMLElement
+    await userEvent.click(span)
+    await vi.waitFor(() =>
+      expect(m.element.querySelector('span.entity')?.hasAttribute('data-selected')).toBe(true),
+    )
+    expect(m.element.querySelector('mark[data-selected]')).toBeNull()
+    expect(m.editor.getState().annotations).toEqual(['c1'])
+    await userEvent.keyboard('{ArrowRight}')
+    await vi.waitFor(() => expect(m.editor.getState().collapsed).toBe(true))
+    // One arrow steps back over the whole entity, to the caret inside the annotation before it.
+    await userEvent.keyboard('{ArrowLeft}x')
+    await expect
+      .poll(valueOf(m))
+      .toEqual(doc(p(an('ax', ['c1']), annotated(ada, 'c1'), an('b', ['c1']))))
+    await userEvent.keyboard('{ArrowRight}{Backspace}')
+    await expect.poll(valueOf(m)).toEqual(doc(p(an('axb', ['c1']))))
+  })
+
+  it('marks every fragment of the active annotation with data-active', () => {
+    const m = mount({ value: VALUE, activeAnnotation: 'c1' })
+    expect(
+      Array.from(m.element.querySelectorAll('[data-active]'), (element) => [
+        element.getAttribute('data-annotation-id'),
+        element.getAttribute('data-active'),
+      ]),
+    ).toEqual([
+      ['c1', ''],
+      ['c1', ''],
+      ['c1', ''],
+    ])
+  })
+
+  it('leaves no element, class or attribute for an annotation it does not draw, and keeps it in the document', () => {
+    const m = mount({ value: VALUE, annotations: ['c2'], activeAnnotation: 'c1' })
+    expect(
+      Array.from(m.element.querySelectorAll('[data-annotation-id]'), (e) =>
+        e.getAttribute('data-annotation-id'),
+      ),
+    ).toEqual(['c2'])
+    expect(m.element.querySelector('[data-active], [data-annotation-id="c1"]')).toBeNull()
+    expect(m.element.querySelectorAll('mark, .note')).toHaveLength(1)
+    expect(m.editor.getValue()).toEqual(VALUE)
+    const none = mount({ value: VALUE, annotations: [] })
+    expect(
+      none.element.querySelector('mark, .note, [data-annotation-id], [data-active]'),
+    ).toBeNull()
+    expect(none.element.textContent).toBe('a bold plain@Ada Lovelace zother')
+  })
+
+  it('nests overlapping annotations innermost first, as the state lists them', async () => {
+    // x covers "abcd", w covers "cdef": at "cd" w starts later, so it is inside.
+    const m = mount({ value: doc(p(an('ab', ['x']), an('cd', ['w', 'x']), an('ef', ['w']))) })
+    const cd = textNode(m, 'cd')
+    expect(idsAt(m, cd)).toEqual(['w', 'x'])
+    expect(idsAt(m, textNode(m, 'ab'))).toEqual(['x'])
+    expect(idsAt(m, textNode(m, 'ef'))).toEqual(['w'])
+    await focusEnd(m)
+    await caretAfter(m, 'abc')
+    await vi.waitFor(() => expect(m.editor.getState().annotations).toEqual(['w', 'x']))
+  })
+
+  it('redraws for a change of what is drawn without an edit, a state change or a moved caret', async () => {
+    const m = mount({ value: doc(p(an('one two', ['c1']), t(' three'))) })
+    await focusEnd(m)
+    await caretAfter(m, 'one t')
+    const states = m.states.length
+    const can = m.editor.getState().can
+    m.editor.update({ activeAnnotation: 'c1' })
+    expect(m.element.querySelector('mark[data-active]')?.textContent).toBe('one two')
+    m.editor.update({ annotations: ['other'] })
+    expect(m.element.querySelector('mark')).toBeNull()
+    m.editor.update({ annotations: undefined, activeAnnotation: undefined })
+    expect(m.element.querySelector('mark')?.hasAttribute('data-active')).toBe(false)
+    expect(m.states).toHaveLength(states)
+    expect(m.changes).toEqual([])
+    expect(m.editor.getState().can).toEqual(can)
+    await userEvent.keyboard('X')
+    await expect.poll(valueOf(m)).toEqual(doc(p(an('one tXwo', ['c1']), t(' three'))))
+  })
+})
+
+describe('annotations: typing', () => {
+  const VALUE = doc(p(t('one '), an('two', ['c1']), t(' three')))
+
+  it('takes no annotation for text typed at either edge, and keeps it for text typed inside', async () => {
+    const m = mount({ value: VALUE })
+    await focusEnd(m)
+    await caretAfter(m, 'one two')
+    expect(m.editor.getState().annotations).toEqual([])
+    await userEvent.keyboard('X')
+    await expect.poll(valueOf(m)).toEqual(doc(p(t('one '), an('two', ['c1']), t('X three'))))
+    await caretAfter(m, 'one ')
+    expect(m.editor.getState().annotations).toEqual([])
+    await userEvent.keyboard('Y')
+    await expect.poll(valueOf(m)).toEqual(doc(p(t('one Y'), an('two', ['c1']), t('X three'))))
+    await caretAfter(m, 'one Ytw')
+    await vi.waitFor(() => expect(m.editor.getState().annotations).toEqual(['c1']))
+    await userEvent.keyboard('Z')
+    await expect.poll(valueOf(m)).toEqual(doc(p(t('one Y'), an('twZo', ['c1']), t('X three'))))
+  })
+
+  it('keeps both pieces annotated when Enter splits a block inside an annotation', async () => {
+    const m = mount({ value: VALUE })
+    await focusEnd(m)
+    await caretAfter(m, 'one tw')
+    await userEvent.keyboard('{Enter}')
+    await expect
+      .poll(valueOf(m))
+      .toEqual(doc(p(t('one '), an('tw', ['c1'])), p(an('o', ['c1']), t(' three'))))
+    expect(richTextAnnotations(m.editor.getValue())).toEqual([
+      { id: 'c1', text: 'two', range: { start: 4, end: 7 } },
+    ])
+  })
+
+  it('removes the annotation from the document when all of its text is deleted', async () => {
+    const m = mount({ value: VALUE })
+    await focusEnd(m)
+    await select(m, 'two')
+    expect(m.editor.getState().annotations).toEqual(['c1'])
+    await userEvent.keyboard('{Backspace}')
+    await expect.poll(valueOf(m)).toEqual(doc(p(t('one  three'))))
+    expect(m.editor.getState().annotations).toEqual([])
+    expect(m.element.querySelector('mark')).toBeNull()
+  })
+
+  it('applies a typed shortcut inside annotated text and keeps the annotation', async () => {
+    const m = mount({ value: doc(p(an('say  now', ['c1']))) })
+    await focusEnd(m)
+    await caretAfter(m, 'say ')
+    await userEvent.keyboard('**b**')
+    await expect
+      .poll(valueOf(m))
+      .toEqual(doc(p(an('say ', ['c1']), an('b', ['c1'], 'bold'), an(' now', ['c1']))))
+  })
+
+  it('opens a suggestion inside annotated text, and the entity picked there takes the annotation', async () => {
+    const m = mount({ value: doc(p(an('hi  there', ['c1']))) })
+    await focusEnd(m)
+    await caretAfter(m, 'hi ')
+    await userEvent.keyboard('@ad')
+    await vi.waitFor(() => expect(m.editor.getState().suggestion?.query).toBe('ad'))
+    m.editor.insertEntity({ kind: 'user', id: 'u1', label: '@Ada Lovelace' })
+    expect(m.editor.getValue()).toEqual(
+      doc(p(an('hi ', ['c1']), annotated(ada, 'c1'), an('  there', ['c1']))),
+    )
+  })
+})
+
+describe('annotations: paste, drop and cut', () => {
+  it('reads no annotation from pasted HTML', async () => {
+    const m = mount()
+    await focusEnd(m)
+    paste(m, {
+      html: '<p><mark class="note" data-annotation-id="c9">quoted</mark> <span data-annotation-id="c9">more</span></p>',
+    })
+    await expect.poll(valueOf(m)).toEqual(doc(p(t('quoted more'))))
+  })
+
+  it('pastes plain text inside an annotation outside it', async () => {
+    const m = mount({ value: doc(p(an('ab', ['c1']))) })
+    await focusEnd(m)
+    await caretAfter(m, 'a')
+    paste(m, { text: 'X' })
+    await expect.poll(valueOf(m)).toEqual(doc(p(an('a', ['c1']), t('X'), an('b', ['c1']))))
+  })
+
+  it('cuts annotated text with no annotation on the clipboard, and pastes it back with none', async () => {
+    const m = mount({ value: doc(p(t('keep '), an('cut', ['c1']), t(' end'))) })
+    await focusEnd(m)
+    await select(m, 'cut')
+    const transfer = new DataTransfer()
+    const cut = new Event('cut', { bubbles: true, cancelable: true })
+    Object.defineProperty(cut, 'clipboardData', { value: transfer })
+    m.element.dispatchEvent(cut)
+    expect(cut.defaultPrevented).toBe(true)
+    await expect.poll(valueOf(m)).toEqual(doc(p(t('keep  end'))))
+    const html = transfer.getData('text/html')
+    expect(html).toContain('cut')
+    expect(html).not.toMatch(/annotation|note|<mark/)
+    // The caret is where the cut text was.
+    expect(m.editor.getState().range).toEqual({ start: 5, end: 5 })
+    paste(m, { html, text: transfer.getData('text/plain') })
+    await expect.poll(valueOf(m)).toEqual(doc(p(t('keep cut end'))))
+    expect(richTextAnnotations(m.editor.getValue())).toEqual([])
+  })
+
+  it('keeps the annotation of text a drag moves inside the field', async () => {
+    const m = mount({ value: doc(p(t('keep '), an('moved', ['c1']), t(' end')), p(t('target'))) })
+    await focusEnd(m)
+    await select(m, 'moved')
+    const transfer = new DataTransfer()
+    textNode(m, 'moved').parentElement?.dispatchEvent(
+      dragEvent('dragstart', transfer, pointIn(m, 'moved', 2)),
+    )
+    const drop = dragEvent('drop', transfer, pointIn(m, 'target', 5))
+    textNode(m, 'target').parentElement?.dispatchEvent(drop)
+    expect(drop.defaultPrevented).toBe(true)
+    await vi.waitFor(() =>
+      expect(richTextPlainText(m.editor.getValue(), { blockSeparator: '|' })).toMatch(
+        /^keep {2}end\|(targemovedt|targetmoved)$/,
+      ),
+    )
+    expect(richTextAnnotations(m.editor.getValue()).map(({ id, text }) => [id, text])).toEqual([
+      ['c1', 'moved'],
+    ])
+    expect(richTextAnnotations(m.editor.getValue())[0]?.range.start).toBeGreaterThan(8)
+  })
+
+  it('strips the annotation of text a drag copies inside the field', async () => {
+    const m = mount({ value: doc(p(t('keep '), an('copied', ['c1']), t(' end')), p(t('target'))) })
+    await focusEnd(m)
+    await select(m, 'copied')
+    const transfer = new DataTransfer()
+    textNode(m, 'copied').parentElement?.dispatchEvent(
+      dragEvent('dragstart', transfer, pointIn(m, 'copied', 2)),
+    )
+    const drop = dragEvent('drop', transfer, pointIn(m, 'target', 5), true)
+    textNode(m, 'target').parentElement?.dispatchEvent(drop)
+    expect(drop.defaultPrevented).toBe(true)
+    await vi.waitFor(() =>
+      expect(richTextPlainText(m.editor.getValue(), { blockSeparator: '|' })).toMatch(
+        /^keep copied end\|(targecopiedt|targetcopied)$/,
+      ),
+    )
+    expect(richTextAnnotations(m.editor.getValue())).toEqual([
+      { id: 'c1', text: 'copied', range: { start: 5, end: 11 } },
+    ])
+  })
+})
+
+describe('annotations: the selection as a range', () => {
+  const VALUE = doc(
+    h(1, t('Head 😀 one')),
+    p(t('a '), ada, br, t('two', 'bold'), { type: 'emoji', text: '👋' }, t(' three')),
+    ul([p(t('four')), ul([p(t('five'))])]),
+    quote(p(t('six'))),
+    code('let seven = 7'),
+    { type: 'callout', content: [p(t('eight'))] },
+    p(t('nine é ten')),
+  )
+
+  it('counts the same positions the model does, for words in every kind of block', async () => {
+    const m = mount({ value: VALUE })
+    await focusEnd(m)
+    const value = m.editor.getValue()
+    for (const word of [
+      'one',
+      'two',
+      'three',
+      'four',
+      'five',
+      'six',
+      'seven',
+      'nine',
+      'é',
+      'ten',
+    ]) {
+      await selectWord(m, word)
+      const found = richTextFindText(value, word)
+      expect(found, word).toHaveLength(1)
+      expect(m.editor.getState().range, word).toEqual(found[0])
+      expect(richTextRangeText(value, m.editor.getState().range)).toBe(word)
+    }
+  })
+
+  it('counts a whole entity and a hard break, and a range across blocks', async () => {
+    const m = mount({ value: VALUE })
+    await focusEnd(m)
+    const value = m.editor.getValue()
+    // From "a " to the start of "two": the entity's label and the hard break.
+    await selectOffsets(m, offsetOf(m, 'a @Ada'), offsetOf(m, 'two'))
+    expect(m.editor.getState().range).toEqual(richTextFindText(value, 'a @Ada Lovelace\n')[0])
+    // From "one" in the heading to "four" in the list.
+    await selectOffsets(m, offsetOf(m, 'one'), offsetOf(m, 'four') + 4)
+    const range = m.editor.getState().range
+    expect(range).toEqual({
+      start: richTextFindText(value, 'one')[0]!.start,
+      end: richTextFindText(value, 'four')[0]!.end,
+    })
+    expect(richTextRangeText(value, range)).toBe('onea @Ada Lovelace\ntwo👋 threefour')
+  })
+
+  it('reports a caret as an empty range, a selected entity as its label, and calls onState as it moves', async () => {
+    const m = mount({ value: doc(p(t('ab'), ada, t('c'))) })
+    await focusEnd(m)
+    expect(m.editor.getState().range).toEqual({ start: 16, end: 16 })
+    const count = m.states.length
+    await caretAfter(m, 'a')
+    expect(m.editor.getState().range).toEqual({ start: 1, end: 1 })
+    expect(m.states.length).toBeGreaterThan(count)
+    await userEvent.click(m.element.querySelector('span.entity') as HTMLElement)
+    await vi.waitFor(() => expect(m.editor.getState().range).toEqual({ start: 2, end: 15 }))
+  })
+
+  it('lists every annotation a range covers any part of, the one that starts last first', async () => {
+    const m = mount({
+      value: doc(p(an('ab', ['x']), an('cd', ['w', 'x']), an('ef', ['w']), t('gh'))),
+    })
+    await focusEnd(m)
+    await select(m, 'ef')
+    expect(m.editor.getState().annotations).toEqual(['w'])
+    await select(m, 'efg')
+    expect(m.editor.getState().annotations).toEqual(['w'])
+    await select(m, 'bcdefg')
+    expect(m.editor.getState().annotations).toEqual(['w', 'x'])
+    await select(m, 'gh')
+    expect(m.editor.getState().annotations).toEqual([])
+  })
+})
+
+describe('annotations: commands', () => {
+  it('annotates the selection as one undo step, with onChange, and keeps the selection', async () => {
+    const m = mount({ value: doc(p(t('one two three'))) })
+    await focusEnd(m)
+    expect(m.editor.annotate('c1')).toBe(false)
+    await select(m, 'two')
+    const range = m.editor.getState().range
+    expect(m.editor.annotate('c1')).toBe(true)
+    expect(m.editor.getValue()).toEqual(doc(p(t('one '), an('two', ['c1']), t(' three'))))
+    expect(m.changes).toEqual([m.editor.getValue()])
+    expect(m.editor.getState()).toMatchObject({ range, annotations: ['c1'] })
+    expect(m.element.querySelector('mark[data-annotation-id="c1"]')?.textContent).toBe('two')
+    // A second id over part of it; the same id again changes nothing.
+    await select(m, 'one tw')
+    expect(m.editor.annotate('c2')).toBe(true)
+    // c1 starts later than c2, so it comes first.
+    expect(m.editor.getState().annotations).toEqual(['c1', 'c2'])
+    await select(m, 'tw')
+    const changes = m.changes.length
+    expect(m.editor.annotate('c1')).toBe(true)
+    expect(m.changes).toHaveLength(changes)
+    expect(m.editor.annotate('')).toBe(false)
+    expect(m.editor.undo()).toBe(true)
+    expect(m.editor.getValue()).toEqual(doc(p(t('one '), an('two', ['c1']), t(' three'))))
+    expect(m.editor.undo()).toBe(true)
+    expect(m.editor.getValue()).toEqual(doc(p(t('one two three'))))
+    expect(m.editor.redo()).toBe(true)
+    expect(m.editor.getValue()).toEqual(doc(p(t('one '), an('two', ['c1']), t(' three'))))
+  })
+
+  it('refuses a selection with nothing that can carry an annotation, and skips a code block in a wider one', async () => {
+    const m = mount({ value: doc(code('let x'), p(t('after'))) })
+    await focusEnd(m)
+    await selectWord(m, 'let')
+    expect(m.editor.annotate('c1')).toBe(false)
+    await selectOffsets(m, offsetOf(m, 'let'), offsetOf(m, 'after') + 5)
+    expect(m.editor.annotate('c1')).toBe(true)
+    expect(m.editor.getValue()).toEqual(doc(code('let x'), p(an('after', ['c1']))))
+  })
+
+  it('removes every mark of an annotation as one undo step, and refuses an id the document does not hold', () => {
+    const value = doc(p(an('ab', ['c1']), t(' '), an('cd', ['c1', 'c2'])), p(annotated(ada, 'c1')))
+    const m = mount({ value })
+    expect(m.editor.removeAnnotation('missing')).toBe(false)
+    expect(m.changes).toEqual([])
+    expect(m.editor.removeAnnotation('c1')).toBe(true)
+    expect(m.editor.getValue()).toEqual(doc(p(t('ab '), an('cd', ['c2'])), p(ada)))
+    expect(m.changes).toHaveLength(1)
+    expect(m.element.querySelectorAll('[data-annotation-id="c1"]')).toHaveLength(0)
+    expect(m.editor.undo()).toBe(true)
+    expect(m.editor.getValue()).toEqual(value)
+  })
+
+  it('annotates and removes on a field that is not editable and not focused', async () => {
+    const m = mount({ editable: false, value: doc(p(t('read only text'))) })
+    await select(m, 'only')
+    expect(m.editor.getState().focused).toBe(false)
+    expect(m.editor.annotate('c1')).toBe(true)
+    expect(m.changes.at(-1)).toEqual(doc(p(t('read '), an('only', ['c1']), t(' text'))))
+    expect(m.editor.removeAnnotation('c1')).toBe(true)
+    expect(m.changes.at(-1)).toEqual(doc(p(t('read only text'))))
+    expect(m.element.getAttribute('contenteditable')).toBe('false')
+  })
+
+  it('applies a value that differs only in annotations, with no undo step, no onChange and the caret kept', async () => {
+    const m = mount({ value: doc(p(t('hello world'))) })
+    await focusEnd(m)
+    await userEvent.keyboard('!')
+    await expect.poll(valueOf(m)).toEqual(doc(p(t('hello world!'))))
+    await caretAfter(m, 'hello w')
+    const changes = m.changes.length
+    const next = annotateRichText(m.editor.getValue(), { start: 0, end: 5 }, 'c1')
+    m.editor.setValue(next)
+    expect(m.editor.getValue()).toEqual(doc(p(an('hello', ['c1']), t(' world!'))))
+    expect(m.changes).toHaveLength(changes)
+    expect(m.editor.getState().range).toEqual({ start: 7, end: 7 })
+    expect(m.element.querySelector('mark[data-annotation-id="c1"]')?.textContent).toBe('hello')
+    await userEvent.keyboard('X')
+    await expect.poll(valueOf(m)).toEqual(doc(p(an('hello', ['c1']), t(' wXorld!'))))
+    // Undo takes back the reader's typing and leaves the annotation the application set.
+    while (m.editor.undo()) {
+      // Each call undoes one step.
+    }
+    expect(m.editor.getValue()).toEqual(doc(p(an('hello', ['c1']), t(' world'))))
+  })
+})
+
+describe('annotations: where the selection is on screen', () => {
+  it('is null for a caret, and boxes every selected line across blocks', async () => {
+    const element = document.createElement('div')
+    element.style.width = '120px'
+    element.style.font = '16px/20px monospace'
+    const m = mount({
+      element,
+      value: doc(p(t('first paragraph that wraps onto lines')), p(t('second one'))),
+    })
+    await focusEnd(m)
+    expect(m.editor.selectionRect()).toBeNull()
+    // From the middle of the second line to the end of "second".
+    await selectOffsets(m, offsetOf(m, 'graph'), offsetOf(m, 'second') + 6)
+    const rect = m.editor.selectionRect()!
+    const surface = element.getBoundingClientRect()
+    const first = textNode(m, 'first paragraph that wraps onto lines')
+    const range = document.createRange()
+    range.setStart(first, 10)
+    range.setEnd(first, 11)
+    const start = range.getBoundingClientRect()
+    const last = textNode(m, 'second one')
+    range.setStart(last, 5)
+    range.setEnd(last, 6)
+    const end = range.getBoundingClientRect()
+    expect(rect.top).toBeCloseTo(start.top, 0)
+    expect(rect.bottom).toBeCloseTo(end.bottom, 0)
+    // Several lines: the box is as wide as the widest of them, inside the surface.
+    expect(rect.bottom - rect.top).toBeGreaterThan(3 * 20 - 1)
+    expect(rect.left).toBeGreaterThanOrEqual(surface.left - 1)
+    expect(rect.right).toBeLessThanOrEqual(surface.right + 1)
+    expect(rect.left).toBeLessThan(start.left)
+  })
+
+  it('follows the selection when the surface scrolls, and works with no focus', async () => {
+    const element = document.createElement('div')
+    element.style.height = '60px'
+    element.style.overflow = 'auto'
+    element.style.font = '16px/20px monospace'
+    const m = mount({
+      element,
+      value: doc(...['one', 'two', 'three', 'four', 'five', 'six'].map((word) => p(t(word)))),
+    })
+    await focusEnd(m)
+    await selectWord(m, 'four')
+    m.element.blur()
+    await vi.waitFor(() => expect(m.editor.getState().focused).toBe(false))
+    element.scrollTop = 0
+    const before = m.editor.selectionRect()!
+    expect(before.right).toBeGreaterThan(before.left)
+    element.scrollTop = 40
+    const after = m.editor.selectionRect()!
+    expect(before.top - after.top).toBeCloseTo(element.scrollTop, 0)
+    expect(after.left).toBeCloseTo(before.left, 0)
   })
 })

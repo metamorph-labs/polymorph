@@ -8,6 +8,7 @@ import {
 import { Plugin } from 'prosemirror-state'
 
 import { richTextFromText, richTextHref } from '../rich-text/index'
+import { annotationType, withoutAnnotations } from './annotations'
 import { EVENT_META, linkApplies } from './commands'
 import { toEditorDoc } from './convert'
 import { MARK, clipboardSerializer } from './schema'
@@ -30,6 +31,15 @@ import { MARK, clipboardSerializer } from './schema'
  * Files are the member's: a paste or a drop that carries files and no text
  * hands them to `onFiles` and inserts nothing. A word processor puts a picture
  * of the copied text beside the text, so a paste with text is read as text.
+ *
+ * Nothing pasted or dropped carries an annotation, from inside the field or
+ * outside it: an anchor is not content, and a copy would anchor one thread in
+ * two places. The clipboard's drawing holds no annotation, and every slice
+ * that enters is stripped of them, so plain text pasted inside an annotation
+ * is outside it too. The one exception is a drag inside the field that moves
+ * text: the text leaves one place for another and keeps its anchor. A drag
+ * that copies (the platform's copy modifier held at the drop) is stripped once
+ * ProseMirror has inserted it, because only the drop decides which it is.
  */
 
 export interface PasteHooks {
@@ -80,6 +90,7 @@ function textSlice(schema: Schema, text: string, $context: ResolvedPos): Slice {
 
 export function pastePlugin(schema: Schema, hooks: PasteHooks): Plugin {
   const serializer = clipboardSerializer(schema)
+  const annotation = annotationType(schema)
   const takeFiles = (event: ClipboardEvent | DragEvent, data: DataTransfer | null) => {
     const list = files(data)
     if (list.length === 0 || hasText(data)) return false
@@ -87,10 +98,22 @@ export function pastePlugin(schema: Schema, hooks: PasteHooks): Plugin {
     hooks.onFiles()?.(list)
     return true
   }
+  /** The field's own dragged slice is dropped as a copy: its annotations go once it is inserted. */
+  let dropCopies = false
   return new Plugin({
+    appendTransaction: (transactions, _old, state) => {
+      if (!dropCopies || !transactions.some((tr) => tr.getMeta('uiEvent') === 'drop')) return null
+      dropCopies = false
+      // ProseMirror selects what a drop inserted.
+      const { from, to } = state.selection
+      if (!state.doc.rangeHasMark(from, to, annotation)) return null
+      return state.tr.removeMark(from, to, annotation)
+    },
     props: {
       clipboardSerializer: serializer,
       clipboardTextParser: (text, $context) => textSlice(schema, text, $context),
+      transformPasted: (slice, view) =>
+        view.dragging && slice === view.dragging.slice ? slice : withoutAnnotations(slice, schema),
       handlePaste: (view, event) => {
         const data = event.clipboardData
         if (takeFiles(event, data)) return true
@@ -112,7 +135,10 @@ export function pastePlugin(schema: Schema, hooks: PasteHooks): Plugin {
         }
         return false
       },
-      handleDrop: (_view, event) => takeFiles(event, event.dataTransfer),
+      handleDrop: (view, event, slice, moved) => {
+        dropCopies = Boolean(view.dragging && slice === view.dragging.slice && !moved)
+        return takeFiles(event, event.dataTransfer)
+      },
     },
   })
 }

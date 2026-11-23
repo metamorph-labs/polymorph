@@ -18,6 +18,15 @@ import {
 } from '../rich-text/index'
 import type { RichTextDocument, RichTextFormat } from '../rich-text/types'
 import {
+  type AnnotationDrawing,
+  annotateCommand,
+  annotationsPlugin,
+  copyMarks,
+  removeAnnotationCommand,
+  sameButMarks,
+  selectionRect,
+} from './annotations'
+import {
   EVENT_META,
   type PendingEvent,
   entityCommand,
@@ -67,7 +76,13 @@ import type {
  * `dispatchTransaction`, which emits `onChange` and the announcement the
  * transaction carries. `setValue` replaces only the range that differs, with
  * no history step and no `onChange`, so a member that passes its `value` back
- * on every render keeps the caret and the undo history.
+ * on every render keeps the caret and the undo history. A value that differs
+ * only in marks (an annotation the application added with
+ * `annotateRichText`) is applied as mark changes, which move no position, so
+ * the selection stays exactly where it was.
+ *
+ * Which annotations are drawn, and which is active, are options of the
+ * drawing and not of the document: `update` changes them without an edit.
  *
  * Nothing here reads `window`, `document` or `navigator` until the function
  * runs, so the module can be imported on a server.
@@ -80,7 +95,13 @@ const FOCUS = 'polymorphRichTextFocus'
 
 type Callbacks = Omit<
   RichTextEditorUpdate,
-  'formats' | 'entities' | 'editable' | 'attributes' | 'placeholder'
+  | 'formats'
+  | 'entities'
+  | 'editable'
+  | 'attributes'
+  | 'placeholder'
+  | 'annotations'
+  | 'activeAnnotation'
 >
 
 const ZERO_RECT: RichTextRect = { top: 0, bottom: 0, left: 0, right: 0 }
@@ -99,6 +120,11 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
   let editable = options.editable
   let attributes: Readonly<Record<string, string | undefined>> = { ...options.attributes }
   let placeholder = options.placeholder
+  let drawing: AnnotationDrawing = {
+    drawn: options.annotations === undefined ? undefined : [...options.annotations],
+    active: options.activeAnnotation,
+    className: options.classes.annotation,
+  }
   const callbacks: Callbacks = {
     onChange: options.onChange,
     onState: options.onState,
@@ -212,6 +238,7 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
     suggestionPlugin(() => entities),
     pastePlugin(schema, { onFiles: () => callbacks.onFiles }),
     domPlugin,
+    annotationsPlugin(() => drawing),
   ]
 
   const configure = (doc: RichTextDocument) => {
@@ -325,9 +352,21 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
   removeUnsetAttributes()
   published = stateNow()
 
-  /** The range of the document that differs from `next`, replaced so the selection and the history map through it. */
+  /**
+   * The range of the document that differs from `next`, replaced so the
+   * selection and the history map through it. When only marks differ, the
+   * marks are changed in place and no position moves.
+   */
   const replaceWith = (next: PMNode) => {
     const current = view.state.doc
+    if (sameButMarks(current, next)) {
+      const tr = view.state.tr
+      copyMarks(tr, next)
+      if (tr.doc.eq(next)) {
+        view.dispatch(tr.setMeta('addToHistory', false).setMeta(SILENT, true))
+        return
+      }
+    }
     const start = current.content.findDiffStart(next.content)
     if (start === null) return
     const end = current.content.findDiffEnd(next.content)
@@ -405,6 +444,19 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
       if (change.attributes !== undefined) attributes = { ...change.attributes }
       if ('placeholder' in change) placeholder = change.placeholder
       if (nextEditable !== undefined) editable = nextEditable
+      if ('annotations' in change || 'activeAnnotation' in change) {
+        const drawn = 'annotations' in change ? change.annotations : drawing.drawn
+        const active = 'activeAnnotation' in change ? change.activeAnnotation : drawing.active
+        // A new object only for a new drawing, so a member that passes the same
+        // list on every render does not make the annotations plugin draw again.
+        if (JSON.stringify(drawn) !== JSON.stringify(drawing.drawn) || active !== drawing.active) {
+          drawing = {
+            ...drawing,
+            drawn: drawn === undefined ? undefined : [...drawn],
+            active,
+          }
+        }
+      }
       const schemaChanged =
         (nextFormats !== undefined && nextFormats.join() !== formats.join()) ||
         (nextEntities !== undefined &&
@@ -453,6 +505,11 @@ export function createRichTextEditor(options: RichTextEditorOptions): RichTextEd
       const open = token && !token.dismissed ? { from: token.from, to: token.to } : null
       run(entityCommand(schema, entity, open))
     },
+    // The application's act, not the reader's typing: both work on a field that
+    // is not editable, where a reviewer comments on what they may not change.
+    annotate: (id) => run(annotateCommand(id)),
+    removeAnnotation: (id) => run(removeAnnotationCommand(id)),
+    selectionRect: () => (destroyed ? null : selectionRect(view)),
     dismissSuggestion() {
       const token = tokenOf(view.state)
       if (destroyed || !token || token.dismissed) return

@@ -3,6 +3,7 @@ import type { Schema } from 'prosemirror-model'
 import { type EditorState, NodeSelection } from 'prosemirror-state'
 
 import type { RichTextFormat } from '../rich-text/types'
+import { annotationsAt, selectionRange } from './annotations'
 import {
   codeBlockCommand,
   headingCommand,
@@ -20,7 +21,8 @@ import type { RichTextEditorState, RichTextSuggestion } from './types'
 
 /**
  * What the member reads after each change: the document's emptiness and
- * length, the formats on at the selection, and which commands apply there.
+ * length, the selection as a range and the annotations at it, the formats on
+ * at the selection, and which commands apply there.
  *
  * `active` and `can` are read with the same commands the keys run, asked
  * without performing them, so a toolbar control is enabled exactly when its
@@ -103,6 +105,8 @@ export function computeState(
     focused: facts.focused,
     collapsed: selection.empty,
     selectedText,
+    range: selectionRange(state),
+    annotations: annotationsAt(state),
     active: activeFormats(state),
     can: {
       bold: applies('bold', () => commands.bold(state)),

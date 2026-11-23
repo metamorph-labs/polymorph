@@ -1,6 +1,7 @@
 import { richTextHref } from './href'
 import { migrateRichText, RICH_TEXT_VERSION, richTextFormatVersion } from './migrate'
 import {
+  ANNOTATION,
   BLOCK_TYPES,
   isJson,
   MARK_ORDER,
@@ -37,16 +38,22 @@ import {
  *
  *  - Adjacent text nodes with equal marks are one node, and an empty text node
  *    is no node.
- *  - Marks are written `link, bold, italic, strike, code`, each once, and then
- *    any mark this version does not know. `marks` is omitted when there are
- *    none.
+ *  - Marks are written `link, bold, italic, strike, code`, each once, then any
+ *    mark this version does not know, and then the annotations, one per id,
+ *    ordered by id in code unit order. `marks` is omitted when there are none.
+ *  - An entity keeps annotations and marks this version does not know, and no
+ *    other mark: a format means nothing on an entity, which is drawn the same
+ *    with or without it. A writer that formats a selection with an entity in
+ *    it writes one there, so dropping it is not a fault, as dropping a mark
+ *    written twice is not.
  *  - `start` is omitted when it is 1 or the list is bulleted, and `language`
  *    when it is empty.
  *  - Every node in a list's `items` is a list item, and a list item's first
  *    block is a paragraph: an empty one is added when it is not. A list with
  *    no items and a quote with no blocks are no block.
  *  - A link whose target `richTextHref` refuses loses its mark, and its text is
- *    kept. The target kept is the cleaned one.
+ *    kept. The target kept is the cleaned one. An annotation with no id loses
+ *    its mark the same way.
  *  - A quote or a list inside `RICH_TEXT_MAX_DEPTH` quotes and lists is
  *    flattened to paragraphs of its text, so no renderer recurses deeper.
  *  - Keys are written in one order: a known node's in the order `types.ts`
@@ -87,8 +94,9 @@ const QUOTE_KEYS: ReadonlySet<string> = new Set(['type', 'content'])
 const CODE_KEYS: ReadonlySet<string> = new Set(['type', 'language', 'text'])
 const TEXT_KEYS: ReadonlySet<string> = new Set(['type', 'text', 'marks'])
 const BREAK_KEYS: ReadonlySet<string> = new Set(['type'])
-const ENTITY_KEYS: ReadonlySet<string> = new Set(['type', 'kind', 'id', 'label'])
+const ENTITY_KEYS: ReadonlySet<string> = new Set(['type', 'kind', 'id', 'label', 'marks'])
 const LINK_KEYS: ReadonlySet<string> = new Set(['type', 'href'])
+const ANNOTATION_KEYS: ReadonlySet<string> = new Set(['type', 'id'])
 const MARK_KEYS: ReadonlySet<string> = new Set(['type'])
 
 /* -------------------------------------------------------------------------- */
@@ -302,18 +310,33 @@ function keep(
 /* Inlines and marks                                                           */
 /* -------------------------------------------------------------------------- */
 
-function readMarks(value: unknown, path: Path, faults: RichTextFault[]): unknown[] {
+const isWord = (value: unknown): value is string => typeof value === 'string' && value !== ''
+
+/** What holds a list of marks: a text, or an entity, which keeps only annotations and unknown marks. */
+type Holder = 'text' | 'entity'
+
+const byKey = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0)
+
+function readMarks(
+  value: unknown,
+  path: Path,
+  faults: RichTextFault[],
+  holder: Holder = 'text',
+): unknown[] {
   if (value === undefined) return []
   if (!Array.isArray(value)) {
     fault(
       faults,
       'malformed',
       path,
-      "A text's marks are not a list. The text is kept without them.",
+      holder === 'text'
+        ? "A text's marks are not a list. The text is kept without them."
+        : "An entity's marks are not a list. The entity is kept without them.",
     )
     return []
   }
   const known = new Map<string, Json>()
+  const annotations = new Map<string, Json>()
   const others: { key: string; mark: unknown }[] = []
   const seen = new Set<string>()
   for (let index = 0; index < value.length; index += 1) {
@@ -325,6 +348,24 @@ function readMarks(value: unknown, path: Path, faults: RichTextFault[]): unknown
       continue
     }
     const json = mark as Json
+    if (type === ANNOTATION) {
+      const id = own(json, 'id')
+      if (!isWord(id)) {
+        fault(
+          faults,
+          'malformed',
+          at,
+          `An annotation has no id. It is removed and ${holder === 'text' ? 'its text' : 'the entity'} kept.`,
+        )
+        continue
+      }
+      // One per id: a second mark with the same id is the same anchor.
+      if (!annotations.has(id))
+        annotations.set(id, assign({ type, id }, readExtras(json, ANNOTATION_KEYS, at, faults)))
+      continue
+    }
+    // A format on an entity: dropped without a fault (the file's header says why).
+    if (holder === 'entity' && MARK_TYPES.has(type)) continue
     if (type === 'link') {
       const href = own(json, 'href')
       if (typeof href !== 'string') {
@@ -372,12 +413,11 @@ function readMarks(value: unknown, path: Path, faults: RichTextFault[]): unknown
     const mark = known.get(type)
     if (mark !== undefined) marks.push(mark)
   }
-  others.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
+  others.sort((a, b) => byKey(a.key, b.key))
   for (const { mark } of others) marks.push(mark)
+  for (const id of [...annotations.keys()].sort(byKey)) marks.push(annotations.get(id))
   return marks
 }
-
-const isWord = (value: unknown): value is string => typeof value === 'string' && value !== ''
 
 /**
  * A line of inlines. Text nodes that follow each other with the same marks
@@ -434,7 +474,10 @@ function readInlines(
       const id = own(json, 'id')
       const label = own(json, 'label')
       if (isWord(kind) && isWord(id) && isWord(label)) {
-        out.push(assign({ type, kind, id, label }, readExtras(json, ENTITY_KEYS, at, faults)))
+        const entity: Json = { type, kind, id, label }
+        const marks = readMarks(own(json, 'marks'), [...at, 'marks'], faults, 'entity')
+        if (marks.length > 0) entity.marks = marks
+        out.push(assign(entity, readExtras(json, ENTITY_KEYS, at, faults)))
         last = null
       } else if (isWord(label)) {
         fault(faults, 'malformed', at, 'An entity has no kind or no id. Its label is kept as text.')
