@@ -34,6 +34,9 @@ const { assertResolvable, fontLoaders, renderFontLoaders } = await jiti.import(
   resolve(ROOT, 'packages/registry/src/fonts-gen.ts'),
 )
 const { jsonSchema, validate } = await jiti.import(resolve(ROOT, 'packages/registry/src/shape.ts'))
+const { compactTable, renderTableModule } = await jiti.import(
+  resolve(ROOT, 'packages/registry/src/screen-table.ts'),
+)
 
 const registry = buildRegistry(ROOT)
 
@@ -72,6 +75,16 @@ for (const app of ['apps/docs', 'apps/workbench']) {
   writeFileSync(resolve(dir, 'src/fonts.gen.ts'), fontsModule)
 }
 
+/*
+ * The run-time vocabulary table, derived from the same catalogue
+ * (screen-table.ts): what a screen is checked and drawn with at run time, in
+ * the package that ships it. Like the font maps, it is written on every
+ * install and never committed.
+ */
+const SCREEN_TABLE = 'packages/screen/src/vocabulary.gen.ts'
+const tableModule = renderTableModule(compactTable(registry))
+writeFileSync(resolve(ROOT, SCREEN_TABLE), tableModule)
+
 const components = registry.components.length
 const properties = registry.theme.customProperties.length
 console.log(
@@ -80,4 +93,5 @@ console.log(
 )
 console.log(`registry: system card ${card.length} chars (~${estimateTokens(card)} tokens)`)
 console.log(`registry: ${loaders.length} font loaders → apps/{docs,workbench}/src/fonts.gen.ts`)
+console.log(`registry: run-time vocabulary table ${tableModule.length} chars → ${SCREEN_TABLE}`)
 console.log(`registry: written to ${resolve(OUT)}/ — not committed, by design`)

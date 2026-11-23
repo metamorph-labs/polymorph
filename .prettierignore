@@ -5,3 +5,4 @@ coverage
 pnpm-lock.yaml
 *.md
 apps/*/src/fonts.gen.ts
+packages/screen/src/vocabulary.gen.ts

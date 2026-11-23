@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/screen.tsbuildinfo",
+    // No DOM and no node: the package runs in a page, a worker and a server
+    // alike. Its tests are the exception, and `tsconfig.node.json` reads them.
+    "lib": ["ES2023"],
+    "types": []
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts"]
+}

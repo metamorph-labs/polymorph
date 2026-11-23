@@ -29,6 +29,7 @@ export const PUBLISHED_NAMES: Readonly<Record<string, string>> = {
   '@polymorph/angular-ui': '@metamorph-labs/polymorph-angular-ui',
   '@polymorph/elements': '@metamorph-labs/polymorph-elements',
   '@polymorph/elements-ui': '@metamorph-labs/polymorph-elements-ui',
+  '@polymorph/screen': '@metamorph-labs/polymorph-screen',
 }
 
 /** The registry `polymorph init` points a new app at. The same names are public on npmjs.com. */

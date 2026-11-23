@@ -17,6 +17,7 @@ import {
   PUBLISHED_REGISTRY,
   readFrameworkPackageVersions,
   readPackageVersions,
+  RUNTIME_PACKAGES,
   SOLID_PACKAGES,
   SVELTE_PACKAGES,
   VUE_PACKAGES,
@@ -108,6 +109,16 @@ describe('the published packages', () => {
         expect(registry.packages[name], name).toBeUndefined()
         expect(INSTALLED_PACKAGES).not.toContain(name)
       }
+    }
+  })
+
+  it('publishes the run-time core, and keeps it out of an app install', () => {
+    // A host that draws a screen at run time installs it, through its renderer or by name.
+    for (const name of RUNTIME_PACKAGES) {
+      expect(workspace.get(name), `${name} is a workspace package`).toBeDefined()
+      expect(PUBLISHED_NAMES[name], name).toBeDefined()
+      expect(INSTALLED_PACKAGES).not.toContain(name)
+      expect(registry.packages[name], name).toBeUndefined()
     }
   })
 

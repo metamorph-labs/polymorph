@@ -1,0 +1,171 @@
+import { isActionType } from '@polymorph/spec/action-type'
+
+/**
+ * What a callback answers, and what fills an input a host gave no data for.
+ *
+ * A screen's callbacks are inputs: an input whose type is a function is an
+ * action the host is told of. A member that calls one may wait on what it
+ * returns (a row's key, whether a date can be picked, a promise while the
+ * host saves), so a callback answers by its declared return type when the
+ * host gives no answer of its own. A required callback the document leaves
+ * unbound answers the same way, by the member's prop type.
+ *
+ * A data input the host gave no value for is absent when the screen runs. A
+ * picture of the screen (the composer, the MCP tool `render_screen`) asks for
+ * a sample instead, from the input's type: a string is its own name in
+ * brackets, a list is empty, a domain object is absent. No data is invented.
+ */
+
+/** How one declared input was filled. The screen page's report to `render_screen` is a list of these. */
+export interface Fill {
+  name: string
+  type: string
+  /**
+   * `data`: the host gave a value under the input's name. `stub`: the input is
+   * a callback, which answers by its return type when the host does not.
+   * `sample`: no value, and the screen asked for one from the type. `absent`:
+   * no value, and the input is left out.
+   */
+  from: 'data' | 'sample' | 'stub' | 'absent'
+  /** The sampled value, or what the stub answers. Absent for data, which the caller already has. */
+  value?: string
+}
+
+/** Whether an input's or a prop's printed type is a callback: a function, alone or in a union with `undefined`. */
+export const isCallback = (type: string): boolean => isActionType(type)
+
+/**
+ * The declared return type of a callback: the first type after its last arrow.
+ * `(row: Ticket) => string` gives `string`, and `(() => Promise<void>) | undefined` gives
+ * `Promise<void>`.
+ */
+export function returnTypeOf(type: string): string {
+  const after = type.slice(type.lastIndexOf('=>') + 2)
+  let depth = 0
+  let end = after.length
+  for (let index = 0; index < after.length; index += 1) {
+    const char = after[index]
+    if (char === '<' || char === '(' || char === '[' || char === '{') depth += 1
+    else if (depth > 0 && (char === '>' || char === ')' || char === ']' || char === '}')) depth -= 1
+    else if (depth === 0 && (char === ')' || char === '|' || char === '&')) {
+      end = index
+      break
+    }
+  }
+  return after.slice(0, end).trim()
+}
+
+/** A serial for each object a key callback is asked about, so two rows never share a key. */
+const serials = new WeakMap<object, string>()
+let nextSerial = 0
+
+/**
+ * A key for a value: itself when it is text or a number, its `id` when it has one, and a serial
+ * otherwise. A callback that returns a string is nearly always asked for a row's key.
+ */
+function keyOf(value: unknown): string {
+  if (typeof value === 'string' || typeof value === 'number') return String(value)
+  if (typeof value !== 'object' || value === null) return ''
+  const id = (value as { id?: unknown }).id
+  if (typeof id === 'string' || typeof id === 'number') return String(id)
+  const known = serials.get(value)
+  if (known !== undefined) return known
+  nextSerial += 1
+  const serial = `row-${nextSerial}`
+  serials.set(value, serial)
+  return serial
+}
+
+export interface Stub {
+  stub: (...args: unknown[]) => unknown
+  /** What it answers, in words, for a `Fill`. */
+  answers: string
+}
+
+/** What a callback answers by the return type its type declares, and the words that say so. */
+export function stubFor(type: string): Stub {
+  const returns = returnTypeOf(type)
+  const promised = /^Promise<(.*)>$/.exec(returns)
+  if (promised !== null) {
+    const inner = stubFor(`=> ${promised[1] ?? 'void'}`)
+    return {
+      stub: (...args) => Promise.resolve(inner.stub(...args)),
+      answers: `a promise of ${inner.answers}`,
+    }
+  }
+  if (returns === 'string') {
+    return { stub: (first) => keyOf(first), answers: 'the key of its first argument' }
+  }
+  if (returns === 'boolean') return { stub: () => false, answers: 'false' }
+  if (returns === 'number') return { stub: () => 0, answers: '0' }
+  if (returns.endsWith('[]')) return { stub: () => [], answers: 'an empty list' }
+  return { stub: () => undefined, answers: 'nothing' }
+}
+
+/** Whether a value is a promise, or anything else a member can wait on. */
+export const isThenable = (value: unknown): value is PromiseLike<unknown> =>
+  (typeof value === 'object' || typeof value === 'function') &&
+  value !== null &&
+  typeof (value as { then?: unknown }).then === 'function'
+
+/**
+ * What a callback returns to the member that called it, given what the host's
+ * handler returned.
+ *
+ * A callback that returns nothing hands the member the host's promise, so a
+ * member that waits on its callback (ConfirmDialog while it saves) waits on
+ * the host. One that returns a promise takes the host's promise, or a promise
+ * of the host's answer, or of the stub's. Any other takes the host's answer
+ * when it is one, and the stub's otherwise.
+ */
+export function answerFor(type: string, answer: unknown, args: readonly unknown[]): unknown {
+  const returns = returnTypeOf(type)
+  if (returns === '' || returns === 'void' || returns === 'undefined') {
+    return isThenable(answer) ? answer : undefined
+  }
+  if (/^Promise<.*>$/.test(returns)) {
+    if (isThenable(answer)) return answer
+    return answer === undefined ? stubFor(type).stub(...args) : Promise.resolve(answer)
+  }
+  return answer === undefined || isThenable(answer) ? stubFor(type).stub(...args) : answer
+}
+
+/**
+ * A sample for an input with no data, from its declared type: what the
+ * composer has always drawn. A string samples as the path in brackets, so the
+ * picture shows where the data goes; a boolean is `false`, a number `0`, a
+ * list empty, a nullable type `null`; anything else, a domain object or a
+ * union, is absent, so an optional prop takes its default.
+ */
+export function sampleOf(path: string, type: string): unknown {
+  if (type === 'boolean') return false
+  if (type === 'number') return 0
+  if (type.includes('[]') || type.startsWith('readonly')) return []
+  if (type === 'string') return `⟨${path}⟩`
+  // A type that includes `null` accepts it, for example a clearable Select's "nothing chosen".
+  // `undefined` lets optional props use their defaults, whereas `null` would suggest a value
+  // exists and the member would dereference it.
+  if (type.includes('null')) return null
+  return undefined
+}
+
+/** A sampled value as a `Fill` shows it. `undefined` has no JSON form, so it is named. */
+export const shown = (value: unknown): string =>
+  value === undefined ? 'absent' : JSON.stringify(value)
+
+/**
+ * The value at a binding's path. The head names an input, and each later name reads a property.
+ * A path through a value that is absent is absent, as optional data is.
+ */
+export function valueAt(path: string, values: ReadonlyMap<string, unknown>): unknown {
+  const [head = '', ...rest] = path.split('.')
+  let value = values.get(head)
+  for (const key of rest) {
+    if (value === null || value === undefined) return undefined
+    if (typeof value !== 'object' && typeof value !== 'function') return undefined
+    // A property of the value's own, never one it inherits: `constructor` reads nothing.
+    if (!Object.prototype.hasOwnProperty.call(value, key)) return undefined
+    value = (value as Record<string, unknown>)[key]
+  }
+  return value
+}

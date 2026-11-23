@@ -1,0 +1,74 @@
+{
+  "spec": "polymorph-screen/1",
+  "name": "OrderDetail",
+  "purpose": "One order: its status, its facts and its history, with a way to cancel it.",
+  "inputs": [
+    { "name": "order", "type": "{ number: string; status: string; total: string }" },
+    { "name": "facts", "type": "DescriptionListItem[]" },
+    { "name": "history", "type": "TimelineEvent[]" },
+    { "name": "confirming", "type": "boolean" },
+    { "name": "onBack", "type": "() => void" },
+    { "name": "onCancelOrder", "type": "() => void" },
+    { "name": "onConfirmingChange", "type": "(open: boolean) => void" },
+    { "name": "onConfirmCancel", "type": "() => Promise<void>" }
+  ],
+  "root": {
+    "component": "DetailPage",
+    "props": {
+      "title": { "$": "order.number" },
+      "backLabel": "Orders",
+      "onBack": { "$": "onBack" },
+      "meta": {
+        "component": "Badge",
+        "props": { "tone": "info", "variant": "soft" },
+        "children": [{ "$": "order.status" }]
+      },
+      "actions": {
+        "component": "Button",
+        "props": {
+          "label": "Cancel order",
+          "variant": "outline",
+          "tone": "danger",
+          "onClick": { "$": "onCancelOrder" }
+        }
+      },
+      "aside": {
+        "component": "Card",
+        "props": { "title": "Total" },
+        "children": [
+          { "component": "Text", "props": { "size": "md" }, "children": [{ "$": "order.total" }] }
+        ]
+      }
+    },
+    "children": [
+      {
+        "component": "Card",
+        "props": { "title": "Details" },
+        "children": [{ "component": "DescriptionList", "props": { "items": { "$": "facts" } } }]
+      },
+      {
+        "component": "Card",
+        "props": { "title": "History" },
+        "children": [
+          {
+            "component": "Timeline",
+            "props": { "label": "Order history", "events": { "$": "history" } }
+          }
+        ]
+      },
+      {
+        "component": "ConfirmDialog",
+        "props": {
+          "title": "Cancel this order?",
+          "description": "The customer is told and the payment is refunded.",
+          "confirmLabel": "Cancel the order",
+          "cancelLabel": "Keep it",
+          "tone": "danger",
+          "open": { "$": "confirming" },
+          "onOpenChange": { "$": "onConfirmingChange" },
+          "onConfirm": { "$": "onConfirmCancel" }
+        }
+      }
+    ]
+  }
+}

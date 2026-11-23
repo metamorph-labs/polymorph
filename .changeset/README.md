@@ -31,7 +31,7 @@ not change it adds a heading with no notes under it.
 
 | Packages | Versioned | Shipped |
 | --- | --- | --- |
-| The published web packages: `@polymorph/engine`, `@polymorph/rules`, `@polymorph/recipes`, and each web framework's foundation and vocabulary (`@polymorph/react` and `@polymorph/react-ui`, and the same pair for `vue`, `svelte`, `solid`, `elements` and `angular`) | by changesets, at the release's version in each `package.json`, with a `CHANGELOG.md` | to GitHub Packages by `pnpm publish:packages` |
+| The published web packages: `@polymorph/engine`, `@polymorph/rules`, `@polymorph/recipes`, `@polymorph/screen`, and each web framework's foundation and vocabulary (`@polymorph/react` and `@polymorph/react-ui`, and the same pair for `vue`, `svelte`, `solid`, `elements` and `angular`) | by changesets, at the release's version in each `package.json`, with a `CHANGELOG.md` | to GitHub Packages by `pnpm publish:packages` |
 | The internal packages: `@polymorph/theme`, `@polymorph/registry`, `@polymorph/cli`, `@polymorph/mcp`, `@polymorph/spec`, `@polymorph/shells`, `@polymorph/conformance`, `@polymorph/native` | by changesets, the same way, for the tools' release notes | nowhere: they run from a checkout |
 | The native packages: `platforms/ios`, `platforms/android`, `platforms/dart` | by the repository's release tag | with the tag |
 

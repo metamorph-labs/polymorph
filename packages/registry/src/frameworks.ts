@@ -223,7 +223,9 @@ export interface PartsOwner<Part extends { name: string }> {
   name: string
   props: readonly { name: string }[]
   parts: readonly Part[]
-  frameworks: Readonly<Record<Framework, { readonly shell?: { readonly sources: readonly string[] } }>>
+  frameworks: Readonly<
+    Record<Framework, { readonly shell?: { readonly sources: readonly string[] } }>
+  >
 }
 
 /**

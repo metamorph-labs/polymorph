@@ -1,0 +1,63 @@
+{
+  "name": "@polymorph/screen",
+  "version": "1.0.16",
+  "description": "Screens drawn at run time: the vocabulary table, checkScreen, parsePartial, the run-time walk every renderer draws from, and the run-time card a host puts in a model's prompt. No framework, no DOM, no runtime dependencies.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./check": "./src/check.ts",
+    "./partial": "./src/partial.ts",
+    "./walk": "./src/walk.ts",
+    "./vocabulary": "./src/vocabulary.ts",
+    "./card": "./src/card.ts"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "NODE_ENV=production vite build --config vite.build.config.ts && tsc -p tsconfig.build.json && node scripts/emit-types.mjs"
+  },
+  "dependencies": {
+    "@polymorph/registry": "workspace:*",
+    "@polymorph/spec": "workspace:*"
+  },
+  "devDependencies": {
+    "@polymorph/conformance": "workspace:*",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.5"
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "exports": {
+      ".": {
+        "types": "./dist/types/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./check": {
+        "types": "./dist/types/check.d.ts",
+        "import": "./dist/check.js"
+      },
+      "./partial": {
+        "types": "./dist/types/partial.d.ts",
+        "import": "./dist/partial.js"
+      },
+      "./walk": {
+        "types": "./dist/types/walk.d.ts",
+        "import": "./dist/walk.js"
+      },
+      "./vocabulary": {
+        "types": "./dist/types/vocabulary.d.ts",
+        "import": "./dist/vocabulary.js"
+      },
+      "./card": {
+        "types": "./dist/types/card.d.ts",
+        "import": "./dist/card.js"
+      }
+    }
+  },
+  "license": "MIT"
+}
