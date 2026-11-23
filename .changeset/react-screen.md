@@ -16,7 +16,7 @@ import { ScreenView } from '@polymorph/react/screen'
   streaming={!done}
   members={members}
   data={{ tickets }}
-  onAction={({ name, args, values }) => agent.send({ name, args, values })}
+  onAction={({ name, args, values, changed }) => agent.send({ name, args, values, changed })}
 />
 ```
 
@@ -31,10 +31,17 @@ import { ScreenView } from '@polymorph/react/screen'
   another library's code, and `Toast`, which React raises with `toast()`. A node that cannot be
   drawn, or whose member throws, draws nothing and reaches `onFault`; `faults="inline"` shows it
   in place.
-- `onAction` is told `{ name, args, values }` when a member calls a callback input that returns
-  nothing, and a promise it returns is what the member waits on: a ConfirmDialog stays busy until
-  it settles. A callback input that returns a value is answered by its type and never told.
+- `onAction` is told `{ name, args, values, changed }` when a member calls a callback the document
+  bound where the member takes a function that returns nothing, and a promise it returns is what
+  the member waits on: a ConfirmDialog stays busy until it settles. `changed` names the controls
+  the person changed; `values` also holds the defaults and empty values of the ones they did not.
+  A callback bound where a member asks a question (a row's key, a page's label) is answered by
+  that prop's type and never told, and one bound where no function is taken is a fault.
 - A screen renders on a server with no handler run. A member that throws there leaves the
   screen's place empty for the browser to draw, and the page around it is still served.
+- The screen is drawn inside one Suspense boundary: a member that is not lazy and suspends in the
+  browser (one that waits on data with `use`) shows `fallback` in place of the whole screen, nothing
+  when you give none, and a Suspense boundary of your own above `ScreenView` does not see it. A lazy
+  member waits in its own place.
 - `useScreen` and `ScreenDrawing` are its two halves, for reading the screen's `values` or drawing
   it somewhere of your own. `componentFor(members, name)` is the rule a name resolves by.

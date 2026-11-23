@@ -7,14 +7,14 @@ import { installTestTheme } from '@polymorph/engine/testing'
 // The vocabulary by path: the foundation does not depend on it, and its tests draw with it.
 import * as vocabulary from '../../../react-ui/src/index'
 
-import { ScreenView, type ScreenFault, type ScreenMembers } from './index'
+import { ScreenView, type ScreenAction, type ScreenFault, type ScreenMembers } from './index'
 
 /**
  * What a document cannot do to the page that draws it, with the real
  * vocabulary in a real browser: reach an address a screen may not hold, in
  * any shape a document or the host's data can give it; take the page down by
- * nesting deep; or tell the host of one fault again and again while it
- * streams. The walk's rules are pinned in `packages/screen/src/hostile.test.ts`
+ * nesting deep; tell the host of one fault again and again while it streams;
+ * or tell the host of an action no one took. The walk's rules are pinned in `packages/screen/src/hostile.test.ts`
  * and `walk.test.ts`; these tests hold what React draws from them.
  */
 
@@ -221,6 +221,192 @@ describe('a fault is told once while a document streams', () => {
         '$.root.children[1] `Badge` has no component among the members this screen is drawn with',
         1,
       ],
+    ])
+  })
+})
+
+/**
+ * A document drawn as a model writes it, then whole, then with the host's data
+ * replaced: the three times a member calls what it was handed while no one
+ * acts. Each prefix of its text is drawn, the last with the stream ended.
+ */
+function drawThrough(
+  spec: object,
+  data: Record<string, unknown>,
+  later: Record<string, unknown>,
+  onAction: (action: ScreenAction) => unknown,
+) {
+  const told = faults()
+  const text = JSON.stringify(spec)
+  const view = (length: number, given: Record<string, unknown>) => (
+    <ScreenView
+      text={text.slice(0, length)}
+      data={given}
+      members={members}
+      onAction={onAction}
+      onFault={told.onFault}
+    />
+  )
+  const drawn = render(view(0, data))
+  for (let length = 1; length <= text.length; length += 1) drawn.rerender(view(length, data))
+  drawn.rerender(view(text.length, later))
+  return { ...drawn, told: told.told }
+}
+
+describe('no action is told that no one took', () => {
+  it('answers a row key bound to an action, and tells the host nothing', () => {
+    const onAction = vi.fn()
+    const { container, told } = drawThrough(
+      {
+        spec: 'polymorph-screen/1',
+        name: 'Rows',
+        purpose: 'A table whose row key is bound to an action.',
+        inputs: [
+          { name: 'tickets', type: 'Ticket[]' },
+          { name: 'onRemove', type: '(row: Ticket) => void' },
+        ],
+        root: {
+          component: 'DataTable',
+          props: {
+            label: 'Tickets',
+            data: { $: 'tickets' },
+            columns: [{ $object: { key: 'id', header: 'Id' } }],
+            getRowId: { $: 'onRemove' },
+            emptyState: { $object: { title: 'None' } },
+          },
+        },
+      },
+      { tickets: [{ id: 'a' }, { id: 'b' }] },
+      { tickets: [{ id: 'a' }, { id: 'b' }, { id: 'c' }] },
+      onAction,
+    )
+    expect(within(container).getAllByRole('row')).toHaveLength(4)
+    expect(onAction).not.toHaveBeenCalled()
+    expect(told).toEqual([])
+  })
+
+  it('answers a page label bound to an action, and tells the host only of the page it was asked for', async () => {
+    const onAction = vi.fn()
+    const spec = {
+      spec: 'polymorph-screen/1',
+      name: 'Pages',
+      purpose: 'Pages whose label is bound to an action.',
+      inputs: [
+        { name: 'onPay', type: '(page: number) => void' },
+        { name: 'go', type: '(page: number) => void' },
+      ],
+      root: {
+        component: 'Pagination',
+        props: {
+          page: 1,
+          pageCount: 3,
+          onPageChange: { $: 'go' },
+          messages: { $object: { page: { $: 'onPay' }, next: 'Next', previous: 'Back' } },
+        },
+      },
+    }
+    const { container } = drawThrough(spec, {}, { more: 1 }, onAction)
+    const pages = ['1', '2', '3'].map((page) =>
+      within(container).getByRole('button', { name: page }),
+    )
+    expect(pages.map((page) => page.textContent)).toEqual(['1', '2', '3'])
+    expect(onAction).not.toHaveBeenCalled()
+    await userEvent.click(pages[1] as HTMLElement)
+    expect(onAction.mock.calls.map(([action]) => action as ScreenAction)).toEqual([
+      { name: 'go', args: [2], values: {}, changed: [] },
+    ])
+  })
+
+  it('draws a label or a child bound to an action as nothing, and tells the host only the faults', () => {
+    const onAction = vi.fn()
+    const { container, told } = drawThrough(
+      {
+        spec: 'polymorph-screen/1',
+        name: 'Approve',
+        purpose: 'A label and a child bound to an action.',
+        inputs: [{ name: 'onApprove', type: '() => void' }],
+        root: {
+          component: 'Stack',
+          children: [
+            { component: 'Button', props: { label: { $: 'onApprove' } } },
+            { component: 'Text', children: [{ $: 'onApprove' }] },
+          ],
+        },
+      },
+      {},
+      { more: 1 },
+      onAction,
+    )
+    const button = within(container).getByRole('button')
+    // No function's source is drawn as text.
+    expect(container.textContent).not.toMatch(/=>|function|\{/)
+    expect(button.textContent).toBe('')
+    expect(onAction).not.toHaveBeenCalled()
+    expect(told.map(({ path }) => path)).toEqual(
+      expect.arrayContaining(['$.root.children[0].props.label', '$.root.children[1].children[0]']),
+    )
+  })
+
+  it('never calls a function in the host’s data that a document binds', async () => {
+    const onAction = vi.fn()
+    const logout = vi.fn()
+    const { container, told } = drawThrough(
+      {
+        spec: 'polymorph-screen/1',
+        name: 'Session',
+        purpose: 'A button bound to the host’s own function.',
+        inputs: [{ name: 'session', type: 'Session' }],
+        root: {
+          component: 'Button',
+          props: { label: 'View details', onClick: { $: 'session.logout' } },
+        },
+      },
+      { session: { logout } },
+      { session: { logout } },
+      onAction,
+    )
+    await userEvent.click(within(container).getByRole('button', { name: 'View details' }))
+    expect(logout).not.toHaveBeenCalled()
+    expect(onAction).not.toHaveBeenCalled()
+    expect(told.map(({ path }) => path)).toEqual(['$.root.props.onClick'])
+  })
+
+  it('holds no value for a control in a field no member draws', async () => {
+    const onAction = vi.fn()
+    const { container } = drawThrough(
+      {
+        spec: 'polymorph-screen/1',
+        name: 'Requests',
+        purpose: 'An empty state with a field no member draws.',
+        inputs: [{ name: 'onSend', type: '() => void' }],
+        root: {
+          component: 'Stack',
+          children: [
+            {
+              component: 'ListPage',
+              props: {
+                title: 'Requests',
+                emptyState: {
+                  $object: {
+                    title: 'None',
+                    x: { component: 'Input', props: { name: 'approved', defaultValue: 'yes' } },
+                  },
+                },
+              },
+            },
+            { component: 'Button', props: { label: 'Send', onClick: { $: 'onSend' } } },
+          ],
+        },
+      },
+      {},
+      { more: 1 },
+      onAction,
+    )
+    expect(container.querySelector('input, textarea')).toBeNull()
+    expect(onAction).not.toHaveBeenCalled()
+    await userEvent.click(within(container).getByRole('button', { name: 'Send' }))
+    expect(onAction.mock.calls.map(([action]) => action as ScreenAction)).toEqual([
+      { name: 'onSend', args: [], values: {}, changed: [] },
     ])
   })
 })

@@ -52,7 +52,9 @@ It contains:
   reads the stream itself passes `document` with `parsePartial`'s `cut` and `open`. A server
   renders no error boundary, so the screen is drawn inside one Suspense boundary: a member that
   throws on the server (`renderToString`, `renderToPipeableStream`) leaves the screen's place
-  empty for the browser to draw, and the page around it is still served. `useScreen` and `ScreenDrawing` are its two halves, and `componentFor`
+  empty for the browser to draw, and the page around it is still served. In the browser the same
+  boundary shows `fallback` (nothing by default) while a member that is not lazy suspends, so a
+  host's own Suspense boundary above `ScreenView` does not see it. `useScreen` and `ScreenDrawing` are its two halves, and `componentFor`
   is the rule a name resolves by among the members. The foundation knows no member, so the
   application passes them (`import * as members from '@polymorph/react-ui'`). The subpath is not a
   root export, so an application that imports the root loads none of it.

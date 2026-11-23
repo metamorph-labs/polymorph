@@ -1,5 +1,5 @@
-import { cleanup, render, within } from '@testing-library/react'
-import { lazy, useLayoutEffect, type ReactNode } from 'react'
+import { act, cleanup, render, within } from '@testing-library/react'
+import { lazy, use, useLayoutEffect, type ReactNode } from 'react'
 import { renderToString } from 'react-dom/server'
 import { userEvent } from 'vitest/browser'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -231,7 +231,7 @@ describe('what the person does reaches the host', () => {
     await userEvent.fill(labelled(container, 'Email'), 'ada@example.com')
     await userEvent.click(within(container).getByRole('button', { name: 'Save' }))
     expect(told.actions).toEqual([
-      { name: 'onSave', args: [], values: { email: 'ada@example.com' } },
+      { name: 'onSave', args: [], values: { email: 'ada@example.com' }, changed: ['email'] },
     ])
   })
 
@@ -332,7 +332,7 @@ describe('what the person does reaches the host', () => {
     )
     const dialog = await vi.waitFor(() => within(document.body).getByRole('alertdialog'))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
-    expect(told).toEqual([{ name: 'onDelete', args: [], values: {} }])
+    expect(told).toEqual([{ name: 'onDelete', args: [], values: {}, changed: [] }])
     // While the host saves, the dialog stays, its confirm busy and its cancel disabled.
     await vi.waitFor(() =>
       expect(within(dialog).getByRole('button', { name: 'Delete' }).getAttribute('aria-busy')).toBe(
@@ -696,6 +696,41 @@ describe('the host’s members', () => {
     // A name the members inherit is none of theirs.
     expect(componentFor(members, 'constructor')).toBeNull()
     expect(componentFor({ Toast: { title: 'not a component' } }, 'Toast')).toBeNull()
+  })
+
+  it('shows the host’s fallback in the screen’s place while a member that is not lazy waits', async () => {
+    let finish = () => {}
+    const ready = new Promise<void>((resolve) => {
+      finish = resolve
+    })
+    function Waiting({ children }: { children?: ReactNode }) {
+      use(ready)
+      return <vocabulary.Card>{children}</vocabulary.Card>
+    }
+    const page = doc({
+      component: 'Stack',
+      children: [
+        { component: 'Card', children: [{ component: 'Text', children: ['Inside'] }] },
+        { component: 'Text', children: ['Beside'] },
+      ],
+    })
+    // A member that suspends inside `act` is waited for only when the `act` is.
+    let container = document.body
+    await act(async () => {
+      ;({ container } = render(
+        <ScreenView
+          document={page}
+          members={{ ...members, Card: Waiting }}
+          fallback={<p>Waiting for the screen</p>}
+        />,
+      ))
+    })
+    expect(container.textContent).toBe('Waiting for the screen')
+    await act(async () => {
+      finish()
+      await ready
+    })
+    expect(container.textContent).toBe('InsideBeside')
   })
 
   it('draws a lazy member when it has loaded, and everything beside it at once', async () => {

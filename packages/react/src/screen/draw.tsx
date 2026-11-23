@@ -82,6 +82,13 @@ export interface DrawOptions {
    * design tool draws its selection around each element here.
    */
   decorate?: (drawn: ReactNode, node: ScreenNode) => ReactNode
+  /**
+   * What the screen shows in its place while a member that is not lazy
+   * suspends (one that waits on data with `use`). Nothing when absent. The
+   * screen is one Suspense boundary, so a host's own boundary above it does
+   * not see the member wait. A lazy member waits in its own place.
+   */
+  fallback?: ReactNode
 }
 
 export interface ScreenDrawingProps extends DrawOptions {
@@ -363,6 +370,7 @@ export function ScreenDrawing({
   renderFault,
   renderBinding,
   decorate,
+  fallback = null,
 }: ScreenDrawingProps): ReactNode {
   const root = useSyncExternalStore(
     screen.subscribe,
@@ -388,10 +396,11 @@ export function ScreenDrawing({
   if (root === null) return null
   // A server renders no error boundary, so a member that throws there would fail the host's whole
   // page. Inside a Suspense boundary, the server sends the screen's place empty instead, and the
-  // browser draws the screen, where each node's boundary holds what throws.
+  // browser draws the screen, where each node's boundary holds what throws. The same boundary
+  // shows `fallback` while a member that is not lazy suspends in the browser.
   return (
     <DrawingContext value={drawing}>
-      <Suspense fallback={null}>{elementFor(root, drawing)}</Suspense>
+      <Suspense fallback={fallback}>{elementFor(root, drawing)}</Suspense>
     </DrawingContext>
   )
 }

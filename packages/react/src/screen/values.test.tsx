@@ -93,6 +93,47 @@ describe('a typed value stays in the control it was typed in', () => {
   })
 })
 
+describe('the controls the person changed', () => {
+  it('names only the field typed in, through a streamed chunk and a data update', async () => {
+    const told: ScreenAction[] = []
+    const text = JSON.stringify(
+      doc(
+        {
+          component: 'Stack',
+          children: [
+            { component: 'Input', props: { name: 'first', 'aria-label': 'First' } },
+            { component: 'Input', props: { name: 'second', 'aria-label': 'Second' } },
+            { component: 'Button', props: { label: 'Save', onClick: { $: 'onSave' } } },
+          ],
+        },
+        [{ name: 'onSave', type: '() => void' }],
+      ),
+    )
+    const onAction = (action: ScreenAction) => {
+      told.push(action)
+    }
+    const { seen, Probe } = drawn()
+    // The text up to the Button: both fields are drawn, and more is to come.
+    const before = text.slice(0, text.indexOf('{"component":"Button"'))
+    const { container, rerender } = render(<Probe text={before} onAction={onAction} />)
+    const second = field(container, 'Second')
+    await userEvent.fill(second, 'typed')
+    expect(seen.current?.changed).toEqual(['second'])
+
+    // The next chunk leaves both fields where they are, and adds the Button.
+    rerender(<Probe text={text} onAction={onAction} />)
+    expect(seen.current?.changed).toEqual(['second'])
+    rerender(<Probe text={text} data={{ unrelated: 1 }} onAction={onAction} />)
+    expect(field(container, 'Second')).toBe(second)
+    expect(seen.current?.changed).toEqual(['second'])
+
+    await userEvent.click(within(container).getByRole('button', { name: 'Save' }))
+    expect(told).toEqual([
+      { name: 'onSave', args: [], values: { first: '', second: 'typed' }, changed: ['second'] },
+    ])
+  })
+})
+
 describe('values are what the reader sees', () => {
   it('reports an untouched field’s default and an untouched checkbox as unchecked', async () => {
     const told: ScreenAction[] = []
@@ -121,7 +162,7 @@ describe('values are what the reader sees', () => {
     expect(field(container, 'Name').value).toBe('Ada')
     await userEvent.click(within(container).getByRole('button', { name: 'Save' }))
     expect(told).toEqual([
-      { name: 'onSave', args: [], values: { displayName: 'Ada', agree: false } },
+      { name: 'onSave', args: [], values: { displayName: 'Ada', agree: false }, changed: [] },
     ])
     expect(seen.current?.values).toEqual({ displayName: 'Ada', agree: false })
   })

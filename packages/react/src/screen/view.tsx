@@ -229,6 +229,7 @@ export function ScreenView(props: ScreenViewProps): ReactNode {
       renderFault={props.renderFault}
       renderBinding={props.renderBinding}
       decorate={props.decorate}
+      fallback={props.fallback}
     />
   )
 }
