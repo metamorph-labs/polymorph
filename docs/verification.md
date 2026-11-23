@@ -79,6 +79,15 @@ servers, one that renders every Svelte fixture entry with `svelte/server` and on
 same sources for the browser and mounts them in jsdom, and compares the two
 ([shells.md](shells.md#the-svelte-laws)). Their caches are in
 `packages/svelte-ui/node_modules/.cache/server-render`.
+`packages/{vue,solid,angular}-ui/server-render.test.ts` are three more. Each starts a Vite server
+that renders every fixture entry as a server does, in Node with no document, so an entry that reads
+`window`, `document` or a frame fails. It then installs a document (jsdom, through `lawProcess` in
+`@polymorph/conformance/server-render`), starts a second server that compiles the same sources for
+the browser, and hydrates each entry's markup. The `logic` project does not isolate its files, so
+`lawProcess` also undoes what the file set up: it closes the servers, removes the document and the
+globals that came with it, and releases the clock, which it holds at one instant so both halves
+give a member the same props. Their caches are in each package's
+`node_modules/.cache/server-render`.
 
 **`core`, `ui`, `vue`, `svelte`, `solid` and `angular`** run in a real browser because Radix and Zag overlays,
 focus and motion are unreliable in jsdom. Each is rooted at the package that installs its
@@ -216,6 +225,7 @@ project its path falls under in the table above, unless its row names another ga
 | Completeness, identity, axe, conformance | `packages/elements-ui/src/laws.test.ts`, `packages/elements-ui/src/conformance.test.ts` | an entry's markup that does not render what it promises or has an accessibility violation, a member whose `data-member` no entry shows, a contract statement that does not hold through the elements adapter |
 | Parity | `packages/elements-ui/src/parity/` | an entry whose document as an element differs from the Solid member's (each element replaced by its children), or a `[data-member]` box of another size: a slot read differently from JSX, an attribute read into another prop, a recipe rule a host breaks |
 | Server render | `packages/svelte-ui/server-render.test.ts` | a Svelte member whose server render differs from its browser render |
+| Server render and hydration | `packages/{vue,solid,angular}-ui/server-render.test.ts` | a states fixture entry that throws, warns, or reads `window`, `document` or a frame when a server renders it; an entry whose server markup a browser does not hydrate (a mismatch Vue reports, a key Solid does not find, an Angular host rendered afresh), except the Solid entries the law lists, and a listed entry that hydrates |
 | Packaging | `packages/{vue,svelte,solid,angular,elements}{,-ui}/packaging.test.ts` | a published entry the build did not write, a dependency the shipped code imports and the manifest does not declare, a stylesheet a bundler could drop; for the elements, a loader that carries a member, a Button page that loads another member, and a `polymorph.css` without the base layer, a recipe, the reach-through forms, the host rule or the rules for an element that has not rendered |
 
 ### The native members

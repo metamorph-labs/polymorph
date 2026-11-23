@@ -1054,7 +1054,11 @@ export function renderVueMember(
   lines.push('<template>')
   const out: Rendered = { lines: [] }
   renderNodes(template, 1, out)
-  lines.push(...out.lines)
+  // A member that draws nothing (Toast, which only raises a toast) still writes one node. A
+  // browser's render of an empty template is a comment, and a server's is no markup at all, so
+  // hydrating the server's markup would find the comment missing. A branch that never renders
+  // is a comment in both.
+  lines.push(...(out.lines.length > 0 ? out.lines : ['  <template v-if="false" />']))
   lines.push('</template>')
   lines.push('')
   return lines.join('\n')
