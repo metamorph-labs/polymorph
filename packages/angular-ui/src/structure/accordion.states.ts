@@ -43,6 +43,11 @@ defaultValue="policy"
 [items]="e7()"
 [pmOverrides]="overrides()"
 ></pm-accordion>}
+@case (5) {<pm-accordion
+[items]="e8()"
+[keepMounted]="e9()"
+[pmOverrides]="overrides()"
+></pm-accordion>}
 }`,
 })
 export class AccordionStates {
@@ -158,6 +163,30 @@ export class AccordionStates {
       },
     ]
   }
+
+  protected e8(): AccordionProps['items'] {
+    return [
+      {
+        value: 'delivery',
+        label: 'When will my order arrive?',
+        content: 'Two to four working days, and you get a tracking link the moment it ships.',
+      },
+      {
+        value: 'returns',
+        label: 'How do returns work?',
+        content: 'Thirty days, no reason needed. The label is in the box.',
+      },
+      {
+        value: 'sizing',
+        label: 'Do these run large or small?',
+        content: 'True to size. The one exception is the wide fit, which runs half a size up.',
+      },
+    ]
+  }
+
+  protected e9(): AccordionProps['keepMounted'] {
+    return true
+  }
 }
 
 export const states: ComponentStates = {
@@ -169,5 +198,6 @@ export const states: ComponentStates = {
     { name: 'multiple, two open' },
     { name: 'one item disabled' },
     { name: 'long content' },
+    { name: 'kept mounted — every answer in the markup while its row is closed' },
   ],
 }

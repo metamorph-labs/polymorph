@@ -10,6 +10,11 @@ export default describeMember({
   dir: 'structure',
   recipe: 'structure/collapsible',
   defaults: { defaultOpen: 'false' },
+  unread: {
+    keepMounted:
+      'Zag keeps the closed region’s content in the document, `hidden`, in every case, which ' +
+      'is what the React member does only with the prop.',
+  },
   machine: {
     of: 'collapsible',
     context: { open: 'open', defaultOpen: 'defaultOpen' },
@@ -83,6 +88,12 @@ export default describeMember({
       name: 'long content — the label, not the region, sizes the trigger',
       props: { label: 'Details', defaultOpen: true },
       slots: { default: [`${PAYLOAD} ${PAYLOAD} ${PAYLOAD}`] },
+    },
+    {
+      name: 'kept mounted — the closed region stays in the markup, hidden',
+      props: { label: 'Advanced options', keepMounted: true },
+      slots: { default: [PAYLOAD] },
+      expect: { 'data-state': 'closed' },
     },
   ],
 })

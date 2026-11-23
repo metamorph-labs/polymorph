@@ -136,6 +136,12 @@ data class PMAccordionProps(
     val defaultValue: PMChoiceValue? = null,
     val headingLevel: PMAccordionHeadingLevel? = null,
     val items: List<PMAccordionItem>,
+    /**
+     * Keeps a closed item's content in the document and `hidden`, so a page's server markup carries
+     * it and its state survives a close. Without it the React member leaves closed content out. The
+     * generated members keep it in every case.
+     */
+    val keepMounted: Boolean? = null,
     val onValueChange: ((PMChoiceValue) -> Unit)? = null,
     val type: PMAccordionType? = null,
     val value: PMChoiceValue? = null,
@@ -1263,6 +1269,12 @@ data class PMCollapsibleProps(
     val children: PMContent,
     /** Closed by default, because a disclosure that starts open hides nothing. */
     val defaultOpen: Boolean? = null,
+    /**
+     * Keeps the closed region's content in the document and `hidden`, so a page's server markup
+     * carries it and its state survives a close. Without it the React member leaves closed content
+     * out. The generated members keep it in every case.
+     */
+    val keepMounted: Boolean? = null,
     /** The trigger's text, naming what is disclosed in the product's words. */
     val label: String,
     val onOpenChange: ((Boolean) -> Unit)? = null,

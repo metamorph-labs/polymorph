@@ -237,6 +237,10 @@ public struct PMAccordionProps {
   public var defaultValue: PMChoiceValue?
   public var headingLevel: PMAccordionHeadingLevel?
   public var items: [PMAccordionItem]
+  /// Keeps a closed item's content in the document and `hidden`, so a page's server markup carries
+  /// it and its state survives a close. Without it the React member leaves closed content out. The
+  /// generated members keep it in every case.
+  public var keepMounted: Bool?
   public var onValueChange: (@MainActor (PMChoiceValue) -> Void)?
   public var type: PMAccordionType?
   public var value: PMChoiceValue?
@@ -246,6 +250,7 @@ public struct PMAccordionProps {
     defaultValue: PMChoiceValue? = nil,
     headingLevel: PMAccordionHeadingLevel? = nil,
     items: [PMAccordionItem],
+    keepMounted: Bool? = nil,
     onValueChange: (@MainActor (PMChoiceValue) -> Void)? = nil,
     type: PMAccordionType? = nil,
     value: PMChoiceValue? = nil
@@ -254,6 +259,7 @@ public struct PMAccordionProps {
     self.defaultValue = defaultValue
     self.headingLevel = headingLevel
     self.items = items
+    self.keepMounted = keepMounted
     self.onValueChange = onValueChange
     self.type = type
     self.value = value
@@ -1934,6 +1940,10 @@ public struct PMCollapsibleProps {
   public var children: PMContent
   /// Closed by default, because a disclosure that starts open hides nothing.
   public var defaultOpen: Bool?
+  /// Keeps the closed region's content in the document and `hidden`, so a page's server markup
+  /// carries it and its state survives a close. Without it the React member leaves closed content
+  /// out. The generated members keep it in every case.
+  public var keepMounted: Bool?
   /// The trigger's text, naming what is disclosed in the product's words.
   public var label: String
   public var onOpenChange: (@MainActor (Bool) -> Void)?
@@ -1943,12 +1953,14 @@ public struct PMCollapsibleProps {
   public init(
     children: PMContent,
     defaultOpen: Bool? = nil,
+    keepMounted: Bool? = nil,
     label: String,
     onOpenChange: (@MainActor (Bool) -> Void)? = nil,
     open: Bool? = nil
   ) {
     self.children = children
     self.defaultOpen = defaultOpen
+    self.keepMounted = keepMounted
     self.label = label
     self.onOpenChange = onOpenChange
     self.open = open

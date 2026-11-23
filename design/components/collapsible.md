@@ -30,6 +30,7 @@ instead.
 | `label` | `string` | required | the trigger's text — what is being disclosed, in the product's words |
 | `defaultOpen` | `boolean` | `false` | closed by default, because a disclosure that starts open hides nothing |
 | `open` / `onOpenChange(open)` | `boolean` | — | controlled pair, Radix contract |
+| `keepMounted` | `boolean` | `false` | the closed region's content stays in the document and `hidden` (Radix `forceMount`), so a page's server markup carries it for a reader or crawler that runs no script, and state inside the region survives a close. The default leaves closed content out, as Accordion's does. The generated members keep closed content in the document, `hidden`, in every case, so the prop changes nothing there |
 | `children` | `ReactNode` | required | bare strings take the content recipe; slotted components keep their own type (Accordion's rule) |
 
 Attributes come from Radix with no translation layer: root, trigger and content
@@ -57,6 +58,7 @@ and stretching this one would make it look like an Accordion.
 | open | `defaultOpen` | `data-state="open"`, `aria-expanded="true"` |
 | controlled | `open` + `onOpenChange` | state follows the prop |
 | long content | several paragraphs | trigger width unchanged, because the label sizes it, not the region |
+| kept mounted | `keepMounted` | `data-state="closed"`; the region in the DOM with its content, and `hidden`, so still not reachable |
 
 `requiredSelectors`: `:hover`, `:focus-visible`, `[data-state="open"]`,
 `[data-state="closed"]`.
@@ -69,7 +71,8 @@ measured height `--radix-collapsible-content-height` is the input; never write t
 keyframe by hand. The chevron rotates over `--pm-motion-duration-control` ×
 `--pm-motion-easing-standard`. At `none`: instant open and close, static chevron.
 Reduced motion: `collapse`'s projection, so the size changes instantly and the
-content still fades.
+content still fades. With `keepMounted`, the closing region is hidden when its close
+keyframes end, and at once when none run (reduced motion, `none`).
 
 ## Icons
 
@@ -83,8 +86,10 @@ Radix collapsible semantics: the trigger is a real
 `<button aria-expanded aria-controls>`. No heading wraps it, on purpose. Heading
 structure belongs to the page, and an "Advanced options" toggle inside a form is
 not an outline entry (the opposite of Accordion's `<h3>` decision, for the
-opposite use). Nothing focusable is hidden inside a closed region, because Radix
-unmounts closed content or makes it inert. The label carries the disclosure's
+opposite use). Nothing inside a closed region takes focus or is announced. By
+default Radix unmounts closed content. With `keepMounted` the region is in the
+document and `hidden`, which takes it out of the focus order and the
+accessibility tree. The label carries the disclosure's
 meaning, and the chevron is never the only signal. Enter and Space toggle it, as
 they press any button.
 

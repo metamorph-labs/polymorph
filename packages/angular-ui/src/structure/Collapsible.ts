@@ -37,6 +37,12 @@ export interface CollapsibleProps {
    */
   defaultOpen?: boolean
   /**
+   * Keeps the closed region's content in the document and `hidden`, so a page's server markup
+   * carries it and its state survives a close. Without it the React member leaves closed content
+   * out. The generated members keep it in every case.
+   */
+  keepMounted?: boolean
+  /**
    * The trigger's text, naming what is disclosed in the product's words.
    */
   label: string
@@ -88,6 +94,12 @@ export class Collapsible {
     transform: (value: CollapsibleProps['defaultOpen']) => (value === undefined ? false : value),
   })
   /**
+   * Keeps the closed region's content in the document and `hidden`, so a page's server markup
+   * carries it and its state survives a close. Without it the React member leaves closed content
+   * out. The generated members keep it in every case.
+   */
+  readonly keepMounted = input<CollapsibleProps['keepMounted']>(undefined)
+  /**
    * The trigger's text, naming what is disclosed in the product's words.
    */
   readonly label = input.required<CollapsibleProps['label']>()
@@ -100,6 +112,7 @@ export class Collapsible {
     events: ['openChange'],
     props: {
       defaultOpen: () => this.defaultOpen(),
+      keepMounted: () => this.keepMounted(),
       label: () => this.label(),
       open: () => this.open(),
     },

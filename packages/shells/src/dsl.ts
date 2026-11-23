@@ -631,6 +631,14 @@ export interface MemberShell {
   uses?: readonly string[]
   /** Prop defaults, as expressions. A boolean prop without one is `undefined` when absent. */
   defaults?: Readonly<Record<string, Expr>>
+  /**
+   * Props the member takes and never reads, each with the reason: the member already does what
+   * the prop asks, in every case. The prop stays in the member's props, so a screen passes it to
+   * every framework's member unchanged. A renderer that binds each prop to a local leaves these
+   * unbound, because a local nothing reads fails the typecheck. A renderer refuses an entry the
+   * description reads.
+   */
+  unread?: Readonly<Record<string, string>>
   /** Values held by the instance, by name, with their initial expressions. */
   state?: Readonly<Record<string, Expr>>
   machine?: MachineBinding

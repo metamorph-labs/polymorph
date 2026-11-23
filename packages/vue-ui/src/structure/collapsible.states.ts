@@ -68,5 +68,19 @@ export const states: ComponentStates = {
           },
         ),
     },
+    {
+      name: 'kept mounted — the closed region stays in the markup, hidden',
+      render: (overrides = {}) =>
+        h(
+          Collapsible,
+          { label: 'Advanced options', keepMounted: true, ...overrides },
+          {
+            default: () => [
+              'Retries follow the backoff schedule configured on the workspace. Delivery headers include the signature, the attempt number and the event id.',
+            ],
+          },
+        ),
+      expect: { 'data-state': 'closed' },
+    },
   ],
 }

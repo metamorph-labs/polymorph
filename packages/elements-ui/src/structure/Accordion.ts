@@ -16,6 +16,7 @@ export const definition: ElementDefinition = {
     defaultValue: { union: [], string: true, json: true },
     headingLevel: 'number',
     items: 'json',
+    keepMounted: 'boolean',
     type: 'string',
     value: { union: [], string: true, json: true },
   },
@@ -27,7 +28,7 @@ export const definition: ElementDefinition = {
 /** The `<poly-accordion>` element. */
 export type PolyAccordionElement = MemberElement<
   AccordionProps,
-  'collapsible' | 'defaultValue' | 'headingLevel' | 'items' | 'type' | 'value'
+  'collapsible' | 'defaultValue' | 'headingLevel' | 'items' | 'keepMounted' | 'type' | 'value'
 >
 
 export const PolyAccordion = define(definition, Accordion)

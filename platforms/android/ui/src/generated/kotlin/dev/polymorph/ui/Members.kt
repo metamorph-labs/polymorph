@@ -150,11 +150,12 @@ fun PMAccordion(
     defaultValue: PMChoiceValue? = null,
     headingLevel: PMAccordionHeadingLevel? = null,
     items: List<PMAccordionItem>,
+    keepMounted: Boolean? = null,
     onValueChange: ((PMChoiceValue) -> Unit)? = null,
     type: PMAccordionType? = null,
     value: PMChoiceValue? = null,
 ) {
-    PMAccordion.Render(PMAccordionProps(collapsible = collapsible, defaultValue = defaultValue, headingLevel = headingLevel, items = items, onValueChange = onValueChange, type = type, value = value))
+    PMAccordion.Render(PMAccordionProps(collapsible = collapsible, defaultValue = defaultValue, headingLevel = headingLevel, items = items, keepMounted = keepMounted, onValueChange = onValueChange, type = type, value = value))
 }
 
 /**
@@ -619,12 +620,13 @@ fun PMCodeBlock(
 @Composable
 fun PMCollapsible(
     defaultOpen: Boolean? = null,
+    keepMounted: Boolean? = null,
     label: String,
     onOpenChange: ((Boolean) -> Unit)? = null,
     open: Boolean? = null,
     children: PMContent,
 ) {
-    PMCollapsible.Render(PMCollapsibleProps(defaultOpen = defaultOpen, label = label, onOpenChange = onOpenChange, open = open, children = children))
+    PMCollapsible.Render(PMCollapsibleProps(defaultOpen = defaultOpen, keepMounted = keepMounted, label = label, onOpenChange = onOpenChange, open = open, children = children))
 }
 
 /**

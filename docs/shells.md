@@ -53,6 +53,7 @@ until it does.
 | `generic` | the React member's type parameters (`'Row'`, DataTable's row): the component is generic over them (`<script setup generic="Row">`), and so are its props interface and any type in `types` that writes its parameters first (`'<Row> { cell?: (row: Row) => VNode \| string }'`) |
 | `fixtureTypes`, `fixtureGeneric` | types the states fixture declares for its values (`TicketRow`, DataTable's rows), so a fixture's function reads a field without a cast, and the type arguments its entries give `generic`'s parameters, which Vue's `h()` cannot infer and passes to the member (`h(DataTable<TicketRow>, …)`) |
 | `defaults` | prop defaults, as expressions |
+| `unread` | props the member takes and never reads, each with the reason: the member already does what the prop asks in every case (Accordion's `keepMounted`). The prop stays in the member's props. The Svelte renderer leaves it out of the destructure, and refuses an entry the description reads |
 | `state` | values the instance holds (an uncontrolled draft) |
 | `machine` | a Zag machine: the machine's props as expressions over the member's scope, and its callbacks mapped to the member's events |
 | `derived` | values computed from the scope |

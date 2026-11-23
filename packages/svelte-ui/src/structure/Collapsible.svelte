@@ -32,6 +32,12 @@ export interface CollapsibleProps {
    */
   defaultOpen?: boolean
   /**
+   * Keeps the closed region's content in the document and `hidden`, so a page's server markup
+   * carries it and its state survives a close. Without it the React member leaves closed content
+   * out. The generated members keep it in every case.
+   */
+  keepMounted?: boolean
+  /**
    * The trigger's text, naming what is disclosed in the product's words.
    */
   label: string

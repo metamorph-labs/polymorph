@@ -24,6 +24,11 @@ export const states: ComponentStates = {
       expect: { 'data-state': 'open' },
     },
     { name: 'long content — the label, not the region, sizes the trigger', render: entry4 },
+    {
+      name: 'kept mounted — the closed region stays in the markup, hidden',
+      render: entry5,
+      expect: { 'data-state': 'closed' },
+    },
   ],
 }
 </script>
@@ -32,3 +37,4 @@ export const states: ComponentStates = {
 {#snippet entry2(overrides: Overrides)}<Collapsible label="Advanced options" defaultOpen={true} {...overrides}>Retries follow the backoff schedule configured on the workspace. Delivery headers include the signature, the attempt number and the event id.</Collapsible>{/snippet}
 {#snippet entry3(overrides: Overrides)}<Collapsible label="Raw payload" open={true} onOpenChange={() => {}} {...overrides}>Retries follow the backoff schedule configured on the workspace. Delivery headers include the signature, the attempt number and the event id.</Collapsible>{/snippet}
 {#snippet entry4(overrides: Overrides)}<Collapsible label="Details" defaultOpen={true} {...overrides}>Retries follow the backoff schedule configured on the workspace. Delivery headers include the signature, the attempt number and the event id. Retries follow the backoff schedule configured on the workspace. Delivery headers include the signature, the attempt number and the event id. Retries follow the backoff schedule configured on the workspace. Delivery headers include the signature, the attempt number and the event id.</Collapsible>{/snippet}
+{#snippet entry5(overrides: Overrides)}<Collapsible label="Advanced options" keepMounted={true} {...overrides}>Retries follow the backoff schedule configured on the workspace. Delivery headers include the signature, the attempt number and the event id.</Collapsible>{/snippet}

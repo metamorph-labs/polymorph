@@ -5,6 +5,7 @@ import { useRef, useState, type ReactNode } from 'react'
 
 import { Icon, memberAttr, useAgentMember, useDirection } from '@polymorph/react'
 import styles from '@polymorph/recipes/structure/accordion.module.css'
+import { useKeptRegion } from './kept-region'
 
 /**
  * Disclosure list (`design/components/accordion.md`).
@@ -28,6 +29,9 @@ import styles from '@polymorph/recipes/structure/accordion.module.css'
  * is always controlled with the caller's `value` or that state. So an agent's
  * expand or collapse reaches the list through the same setter a press does,
  * whether or not the caller controls the value.
+ *
+ * With `keepMounted`, a closed item's content stays in the document, hidden
+ * (`kept-region.ts`), so a page's server markup carries every answer.
  */
 
 export interface AccordionItem {
@@ -42,6 +46,13 @@ export type AccordionHeadingLevel = 3 | 4
 interface AccordionCommon {
   items: AccordionItem[]
   headingLevel?: AccordionHeadingLevel
+  /**
+   * Keeps a closed item's content in the document and `hidden`, so a page's
+   * server markup carries it and its state survives a close. Without it the
+   * React member leaves closed content out. The generated members keep it in
+   * every case.
+   */
+  keepMounted?: boolean
 }
 
 interface SingleAccordionProps extends AccordionCommon {
@@ -62,10 +73,41 @@ interface MultipleAccordionProps extends AccordionCommon {
 
 export type AccordionProps = SingleAccordionProps | MultipleAccordionProps
 
+/** One item's region, which holds its own presence when it is kept in the document. */
+function AccordionRegion({
+  open,
+  keepMounted,
+  children,
+}: {
+  open: boolean
+  keepMounted: boolean
+  children: ReactNode
+}) {
+  const region = useRef<HTMLDivElement>(null)
+  const hidden = useKeptRegion(region, open, keepMounted)
+  return (
+    // The inner wrapper holds the padding, because the content box animates
+    // its height and padding on that box would animate too, and the text
+    // would slide against the rule.
+    <AccordionPrimitive.Content
+      ref={region}
+      className={styles.content}
+      data-accordion-part="region"
+      forceMount={keepMounted || undefined}
+      // Spread conditionally rather than passed as `undefined`. Radix writes its
+      // own `hidden` before spreading ours, and an explicit `hidden: undefined`
+      // would remove the hiding the default path relies on.
+      {...(hidden === undefined ? {} : { hidden })}
+    >
+      <div className={styles.inner}>{children}</div>
+    </AccordionPrimitive.Content>
+  )
+}
+
 export function Accordion(props: AccordionProps) {
   // The document's direction, which Radix would otherwise take to be left-to-right.
   const dir = useDirection()
-  const { items, headingLevel = 3 } = props
+  const { items, headingLevel = 3, keepMounted = false } = props
   const multiple = props.type === 'multiple'
   const collapsible = multiple || (props.collapsible ?? true)
 
@@ -143,12 +185,9 @@ export function Accordion(props: AccordionProps) {
         </Heading>
       </AccordionPrimitive.Header>
 
-      {/* The inner wrapper holds the padding, because the content box animates
-          its height and padding on that box would animate too, and the text
-          would slide against the rule. */}
-      <AccordionPrimitive.Content className={styles.content} data-accordion-part="region">
-        <div className={styles.inner}>{item.content}</div>
-      </AccordionPrimitive.Content>
+      <AccordionRegion open={open.includes(item.value)} keepMounted={keepMounted}>
+        {item.content}
+      </AccordionRegion>
     </AccordionPrimitive.Item>
   ))
 

@@ -42,6 +42,12 @@ export interface AccordionProps {
   defaultValue?: string | string[]
   headingLevel?: 3 | 4
   items: AccordionItem[]
+  /**
+   * Keeps a closed item's content in the document and `hidden`, so a page's server markup
+   * carries it and its state survives a close. Without it the React member leaves closed content
+   * out. The generated members keep it in every case.
+   */
+  keepMounted?: boolean
   onValueChange?: ((value: string) => void) | ((value: string[]) => void)
   type?: 'single' | 'multiple'
   value?: string | string[]
