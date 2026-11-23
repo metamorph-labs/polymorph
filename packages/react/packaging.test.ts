@@ -17,10 +17,10 @@ import { buildReact, lockReactDist } from './dist-lock'
  * consumer's build failing on an import.
  *
  * This file runs the real build and checks what a consumer's toolchain needs:
- * the published entry points exist and import in node, the engine stays a
- * dependency instead of being bundled, the motion surface stays on its
- * subpath, the directives are present, the stylesheet is there, and the
- * declarations typecheck.
+ * the published entry points exist and import in node, the engine and the
+ * run-time screen core stay dependencies instead of being bundled, the motion
+ * surface and the screen renderer stay on their subpaths, the directives are
+ * present, the stylesheet is there, and the declarations typecheck.
  *
  * It lives at the package root, not in `src/`, because `src/**` is this
  * package's browser project and this is a node test about files on disk.
@@ -85,9 +85,14 @@ describe('the published surface exists', () => {
   it('resolves every export target to a real file', () => {
     const missing = exportTargets().filter((target) => !existsSync(dist(target)))
     expect(missing, 'a consumer resolving these would get a module-not-found').toEqual([])
-    // The two entries and the stylesheet, by name, so a shrunken exports map cannot pass.
+    // The three entries and the stylesheet, by name, so a shrunken exports map cannot pass.
     expect(exportTargets()).toEqual(
-      expect.arrayContaining(['./dist/index.js', './dist/motion.js', './dist/react.css']),
+      expect.arrayContaining([
+        './dist/index.js',
+        './dist/motion.js',
+        './dist/screen.js',
+        './dist/react.css',
+      ]),
     )
   })
 
@@ -135,18 +140,20 @@ describe('the published surface exists', () => {
    * `await import()` inside vitest goes through Vite's transform pipeline, so it
    * would test whether Vite can load the files, which no consumer needs.
    *
-   * The engine is the exception. In this workspace `@polymorph/engine` resolves
-   * to TypeScript source, which plain node cannot load. The probe answers the
-   * engine's specifiers with stand-ins that export the names the build
-   * imports from them, the technique `packages/rules/packaging.test.ts` uses,
-   * so React, `lucide` and this package's own modules load exactly as a
-   * consumer's node loads them. The engine's own packaging law checks that its
-   * build imports in node.
+   * The engine and the run-time screen core are the exception. In this
+   * workspace `@polymorph/engine` and `@polymorph/screen` resolve to TypeScript
+   * source, which plain node cannot load. The probe answers their specifiers
+   * with stand-ins that export the names the build imports from them, the
+   * technique `packages/rules/packaging.test.ts` uses, so React, `lucide` and
+   * this package's own modules load exactly as a consumer's node loads them.
+   * The engine's and the core's own packaging laws check that their builds
+   * import in node.
    */
-  it('imports both entries in node, from the built files rather than from source', () => {
+  it('imports every entry in node, from the built files rather than from source', () => {
     const fromEngine: Record<string, Set<string>> = {
       '@polymorph/engine': new Set(),
       '@polymorph/engine/motion': new Set(),
+      '@polymorph/screen/walk': new Set(),
     }
     for (const path of modules()) {
       // A subpath the build re-exports whole (`@polymorph/engine/qr`) gets a stand-in too.
@@ -156,7 +163,7 @@ describe('the published surface exists', () => {
         fromEngine[match[1] as string] ??= new Set()
       }
       for (const match of read(path).matchAll(
-        /^(?:import|export)\s*\{([^}]*)\}\s*from\s*["'](@polymorph\/engine(?:\/[a-z-]+)?)["']/gm,
+        /^(?:import|export)\s*\{([^}]*)\}\s*from\s*["'](@polymorph\/(?:engine|screen)(?:\/[a-z-]+)?)["']/gm,
       )) {
         const names = (fromEngine[match[2] as string] ??= new Set())
         for (const binding of (match[1] as string).split(',')) {
@@ -168,6 +175,7 @@ describe('the published surface exists', () => {
     // The scan found the imports, so each stand-in exports what the build names.
     expect([...(fromEngine['@polymorph/engine'] ?? [])]).toContain('memberAttr')
     expect([...(fromEngine['@polymorph/engine/motion'] ?? [])]).toContain('animateTo')
+    expect([...(fromEngine['@polymorph/screen/walk'] ?? [])]).toContain('createScreen')
 
     const standIns = Object.fromEntries(
       Object.entries(fromEngine).map(([specifier, names]) => [
@@ -188,6 +196,7 @@ describe('the published surface exists', () => {
       })
       const root = await import('./dist/index.js')
       const motion = await import('./dist/motion.js')
+      const screen = await import('./dist/screen.js')
       console.log(JSON.stringify({
         icon: typeof root.Icon,
         brandMark: typeof root.BrandMark,
@@ -197,6 +206,10 @@ describe('the published surface exists', () => {
         indicator: typeof motion.MotionIndicator,
         resolveBinding: typeof motion.resolveBinding,
         internals: ['animateTo', 'animateProperty', 'setFrame'].filter((name) => name in motion),
+        rootScreen: ['ScreenView', 'useScreen', 'ScreenDrawing'].filter((name) => name in root),
+        screen: ['ScreenView', 'useScreen', 'ScreenDrawing', 'componentFor', 'parsePartial'].map(
+          (name) => typeof screen[name],
+        ),
       }))
     `
     const out = execFileSync('node', ['--input-type=module', '-e', probe], {
@@ -215,6 +228,8 @@ describe('the published surface exists', () => {
       indicator: 'function',
       resolveBinding: 'function',
       internals: [],
+      rootScreen: [],
+      screen: ['function', 'function', 'function', 'function', 'function'],
     })
     // Spawning node and loading React and `lucide` takes over a second on an
     // idle machine and several under the full suite's load.
@@ -259,6 +274,36 @@ describe('the motion surface stays on its subpath', () => {
   })
 })
 
+/**
+ * The renderer of a run-time screen is for an application, and a member never
+ * draws one, so it lives on `./screen` and never on the root. A consumer that
+ * imports the root loads none of it and none of `@polymorph/screen`.
+ */
+describe('the screen renderer stays on its subpath', () => {
+  const code = (path: string) =>
+    read(path)
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
+
+  it('keeps the renderer out of the root entry', () => {
+    const named = ['dist/index.js', 'dist/types/index.d.ts'].flatMap((path) =>
+      ['ScreenView', 'useScreen', 'ScreenDrawing', './screen/', '@polymorph/screen']
+        .filter((name) => code(path).includes(name))
+        .map((name) => `${path}: ${name}`),
+    )
+    expect(named).toEqual([])
+  })
+
+  it('imports the run-time core only from the renderer’s own modules', () => {
+    const importers = modules().filter((path) => /from\s*["']@polymorph\/screen/.test(read(path)))
+    // The scan found the renderer, so the list is meaningful.
+    expect(importers).toEqual(expect.arrayContaining(['dist/screen.js', 'dist/screen/view.js']))
+    expect(
+      importers.filter((path) => path !== 'dist/screen.js' && !path.startsWith('dist/screen/')),
+    ).toEqual([])
+  })
+})
+
 describe('the engine stays a dependency', () => {
   it('re-exports the engine from both entries', () => {
     expect(read('dist/index.js')).toMatch(/^export \* from ["']@polymorph\/engine["'];?$/m)
@@ -276,6 +321,7 @@ describe('the engine stays a dependency', () => {
     const entries: Record<string, string> = {
       'dist/index.js': 'src/index.ts',
       'dist/motion.js': 'src/motion/index.ts',
+      'dist/screen.js': 'src/screen/index.ts',
     }
     const foreign = modules().filter((path) => {
       // The module a stylesheet import resolves to in Node. The build writes it.
@@ -309,7 +355,9 @@ describe('the engine stays a dependency', () => {
     ])
     expect([...bare].filter((name) => !declared.has(name)).sort()).toEqual([])
     // The scan found the imports, so an empty list of undeclared names is meaningful.
-    expect([...bare]).toEqual(expect.arrayContaining(['@polymorph/engine', 'react']))
+    expect([...bare]).toEqual(
+      expect.arrayContaining(['@polymorph/engine', '@polymorph/screen', 'react']),
+    )
   })
 
   it('is a production build, whatever NODE_ENV the build ran under', () => {
@@ -380,21 +428,23 @@ describe('the declarations typecheck as a strict consumer reads them', () => {
 
   /**
    * `@polymorph/theme` is bundled into the engine and never published, and the
-   * engine publishes only the subpaths in its `publishConfig.exports`. A
-   * declaration that names anything else resolves here, through the workspace,
-   * and is a missing module for the consumer. A type the compiler inferred is
-   * written as `import("…")`, so those specifiers are read as well as `from`.
+   * engine and the run-time screen core publish only the subpaths in their
+   * `publishConfig.exports`. A declaration that names anything else resolves
+   * here, through the workspace, and is a missing module for the consumer. A
+   * type the compiler inferred is written as `import("…")`, so those specifiers
+   * are read as well as `from`.
    */
-  it('names no workspace package but the engine, and only its published subpaths', () => {
-    const engine = JSON.parse(readFileSync(resolve(PACKAGE, '../engine/package.json'), 'utf8')) as {
-      publishConfig: { exports: Record<string, unknown> }
+  it('names no workspace package but the engine and the screen core, and only their published subpaths', () => {
+    const subpaths = (name: string) => {
+      const manifest = JSON.parse(
+        readFileSync(resolve(PACKAGE, `../${name}/package.json`), 'utf8'),
+      ) as { publishConfig: { exports: Record<string, unknown> } }
+      return Object.keys(manifest.publishConfig.exports).map((subpath) =>
+        subpath === '.' ? `@polymorph/${name}` : `@polymorph/${name}/${subpath.slice(2)}`,
+      )
     }
-    const published = new Set(
-      Object.keys(engine.publishConfig.exports).map((subpath) =>
-        subpath === '.' ? '@polymorph/engine' : `@polymorph/engine/${subpath.slice(2)}`,
-      ),
-    )
-    expect([...published].sort()).toEqual([
+    const published = new Set([...subpaths('engine'), ...subpaths('screen')])
+    expect([...published].filter((name) => name.startsWith('@polymorph/engine')).sort()).toEqual([
       '@polymorph/engine',
       '@polymorph/engine/agent',
       '@polymorph/engine/charts',
@@ -408,16 +458,24 @@ describe('the declarations typecheck as a strict consumer reads them', () => {
       '@polymorph/engine/webmcp',
     ])
 
+    // A docblock's example (`import * as members from '@polymorph/react-ui'`) is no import, so
+    // comments are left out.
     const named = files('dist/types')
       .filter((path) => path.endsWith('.d.ts'))
       .flatMap((path) =>
-        [...read(path).matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*)['"](@polymorph\/[^'"]*)['"]/g)].map(
-          (match) => ({ path, specifier: match[1] as string }),
-        ),
+        [
+          ...read(path)
+            .replace(/\/\*[\s\S]*?\*\//g, '')
+            .matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*)['"](@polymorph\/[^'"]*)['"]/g),
+        ].map((match) => ({ path, specifier: match[1] as string })),
       )
-    // The scan found the engine's names, so an empty list of faults is meaningful.
+    // The scan found the engine's and the core's names, so an empty list of faults is meaningful.
     expect(named.map(({ specifier }) => specifier)).toEqual(
-      expect.arrayContaining(['@polymorph/engine', '@polymorph/engine/motion']),
+      expect.arrayContaining([
+        '@polymorph/engine',
+        '@polymorph/engine/motion',
+        '@polymorph/screen/walk',
+      ]),
     )
     const internal = named
       .filter(({ specifier }) => !published.has(specifier))
@@ -434,6 +492,8 @@ describe('the build keeps client directives', () => {
     expect(startsWithDirective('dist/motion/indicator.js')).toBe(true)
     expect(startsWithDirective('dist/conventions/dev.js')).toBe(true)
     expect(startsWithDirective('dist/conventions/control-ref.js')).toBe(true)
+    expect(startsWithDirective('dist/screen/draw.js')).toBe(true)
+    expect(startsWithDirective('dist/screen/view.js')).toBe(true)
   })
 
   it('adds none to a module that does not', () => {
@@ -443,6 +503,9 @@ describe('the build keeps client directives', () => {
     expect(startsWithDirective('dist/icon/Icon.js')).toBe(false)
     expect(startsWithDirective('dist/index.js')).toBe(false)
     expect(startsWithDirective('dist/motion.js')).toBe(false)
+    // The screen entry re-exports a server-safe parser beside the client components.
+    expect(startsWithDirective('dist/screen.js')).toBe(false)
+    expect(startsWithDirective('dist/screen/members.js')).toBe(false)
   })
 })
 

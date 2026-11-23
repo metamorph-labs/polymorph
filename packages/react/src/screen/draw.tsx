@@ -298,9 +298,16 @@ function decorated(drawn: ReactNode, node: ScreenNode, drawing: Drawing): ReactN
 /** The component that draws one member's nodes, made once for each member. */
 const NODE_COMPONENTS = new WeakMap<object, ComponentType<NodeProps>>()
 
+/** React's mark on a component `lazy` made. */
+const LAZY = Symbol.for('react.lazy')
+
+const isLazy = (Member: MemberComponent): boolean =>
+  typeof Member === 'object' && (Member as { $$typeof?: unknown }).$$typeof === LAZY
+
 function nodeComponentFor(Member: MemberComponent): ComponentType<NodeProps> {
   const known = NODE_COMPONENTS.get(Member)
   if (known !== undefined) return known
+  const lazy = isLazy(Member)
 
   function DrawnMember({ screenNode: node, ...given }: NodeProps): ReactNode {
     const drawing = useDrawing()
@@ -308,13 +315,12 @@ function nodeComponentFor(Member: MemberComponent): ComponentType<NodeProps> {
     if (drawing.streaming && waits(node)) return null
     // What a member that clones this element adds (an id, a ref, `aria-describedby`) reaches the
     // member over what the document gave, as a clone of the member's own element would.
+    const member = <Member {...props} {...given} />
     return decorated(
       <NodeBoundary node={node} drawing={drawing}>
         {/* A lazy member suspends only its own node while it loads, so nothing drawn before it
             is hidden again. */}
-        <Suspense fallback={null}>
-          <Member {...props} {...given} />
-        </Suspense>
+        {lazy ? <Suspense fallback={null}>{member}</Suspense> : member}
       </NodeBoundary>,
       node,
       drawing,
