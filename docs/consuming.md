@@ -565,6 +565,14 @@ browser's, so a reader can still open a link in a new tab
 mounted from page to page, and each route renders a page archetype inside it
 ([app-shell.md](../design/archetypes/app-shell.md#routing)).
 
+The pagers take addresses too: Pagination's `getPageHref(page)`, and CursorPagination's
+`previousHref` and `nextHref`. With them, each control that goes to another page is a real
+`<a href>`, so a crawler reaches the list's later pages and a reader can open one in a new tab. A
+click that would navigate the current tab calls the pager's own handler (`onPageChange`,
+`onPrevious`, `onNext`) instead, with the browser's navigation already stopped, so the app changes
+the page as it does without addresses. A click with a modifier key opens the address
+([pagination.md](../design/components/pagination.md#behavior)).
+
 With TanStack Router:
 
 ```tsx
@@ -1211,7 +1219,7 @@ dialog.addEventListener('poly-confirm', (event) => event.waitUntil(save()))
 
 A value with no text form is a property, set from a script once the element is defined: a render
 prop (`table.rowDetail = ({ row }) => node`), a function (`field.validate`, `getRowId`,
-`formatValue`), a ref (`controlRef`), a node inside data, and data whose type holds a function,
+`formatValue`, Pagination's `getPageHref`), a ref (`controlRef`), a node inside data, and data whose type holds a function,
 such as a messages catalogue with plural functions (Pagination's, DataTable's, a chart's), whose
 English defaults apply until a script sets one. A property is the prop's camel-case name
 (`iconOnly`, `ariaLabel`), and it never writes its attribute back.

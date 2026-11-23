@@ -8,7 +8,7 @@
  */
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
-import { PAGINATION_ELLIPSIS, agentMember, paginationWindow } from '@polymorph/vue'
+import { Icon, PAGINATION_ELLIPSIS, agentMember, paginationWindow } from '@polymorph/vue'
 import styles from '@polymorph/recipes/structure/pagination.module.css'
 import Button from '../controls/Button.vue'
 import Inline from '../layout/Inline.vue'
@@ -27,6 +27,14 @@ export interface PaginationProps {
    * the current page too, and no page is asked for.
    */
   disabled?: boolean
+  /**
+   * A page's address, such as `?page=3`. Given, each control that goes to another page is a link
+   * to that page's address, so a crawler, a new tab and a reader whose script has not loaded can
+   * follow it. A click the browser would follow in this tab calls `onPageChange` in place of the
+   * navigation; a click with a modifier key opens the address. The current page, a control with
+   * nowhere to go and a held pager's controls stay buttons.
+   */
+  getPageHref?: (page: number) => string
   label?: string
   /**
    * Omit for the generic English defaults; localized hosts pass their own.
@@ -54,6 +62,7 @@ const props = withDefaults(defineProps<PaginationProps>(), {
 })
 const emit = defineEmits<{ pageChange: [page: number] }>()
 const focused = ref(null as HTMLElement | null)
+const focusedControl = ref(null as string | number | null)
 const taken = ref(null as string | number | null)
 const root = useTemplateRef<HTMLElement>('root')
 const entries = computed(() => paginationWindow(props.page, props.pageCount, props.siblingCount))
@@ -63,30 +72,66 @@ const controls = computed(() => [
   'next',
 ])
 const focusIn = computed(() => (event: FocusEvent) => {
-  focused.value = event.target as HTMLElement
+  const target = event.target as HTMLElement
+  const pager = root.value as HTMLElement | null
+  const names: readonly (string | number)[] = controls.value
+  const at = pager === null ? -1 : [...pager.querySelectorAll('button, a[href]')].indexOf(target)
+  focused.value = target
+  focusedControl.value = at < 0 ? null : (names[at] ?? null)
 })
 const focusOut = computed(() => (event: FocusEvent) => {
-  if (!(event.target as HTMLElement).matches(':disabled')) focused.value = null
+  const target = event.target as HTMLElement
+  if (target.matches(':disabled')) return
+  queueMicrotask(() => {
+    if (focused.value === target && target.isConnected) focused.value = null
+  })
 })
 const keepPlace = computed(() => () => {
   const pager = root.value as HTMLElement | null
   if (pager === null) return
   const names: readonly (string | number)[] = controls.value
+  const drawn = () => [...pager.querySelectorAll<HTMLElement>('button, a[href]')]
+  const onPage = () => document.activeElement === null || document.activeElement === document.body
+  const left = focused.value as HTMLElement | null
+  if (left !== null && !left.isConnected) {
+    focused.value = null
+    const name = focusedControl.value
+    const now = name === null ? undefined : drawn()[names.indexOf(name)]
+    if (now !== undefined && onPage()) {
+      if (now.matches(':disabled')) focused.value = now
+      else now.focus()
+    }
+  }
   if (!props.disabled) {
     const control = taken.value
     taken.value = null
     if (control === null || document.activeElement !== pager) return
-    const button = [...pager.querySelectorAll('button')][names.indexOf(control)]
-    if (button !== undefined && !button.matches(':disabled')) button.focus()
+    const element = drawn()[names.indexOf(control)]
+    if (element !== undefined && !element.matches(':disabled')) element.focus()
     return
   }
   const from = focused.value as HTMLElement | null
   if (from === null || !from.isConnected || !from.matches(':disabled')) return
   const active = document.activeElement
   if (active !== from && active !== null && active !== document.body) return
-  taken.value =
-    names[[...pager.querySelectorAll('button')].indexOf(from as HTMLButtonElement)] ?? null
+  taken.value = names[drawn().indexOf(from)] ?? null
   pager.focus()
+})
+const linked = computed(() => !props.disabled && props.getPageHref !== undefined)
+const navigatesHere = computed(
+  () =>
+    (event: MouseEvent): boolean =>
+      !event.defaultPrevented &&
+      event.button === 0 &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.shiftKey &&
+      !event.altKey,
+)
+const follow = computed(() => (event: MouseEvent, to: number): void => {
+  if (!navigatesHere.value(event)) return
+  event.preventDefault()
+  emit('pageChange', to)
 })
 let release1: (() => void) | undefined
 const effect1 = () => {
@@ -159,7 +204,25 @@ onBeforeUnmount(() => release3?.())
     @focusout="focusOut($event)"
   >
     <Inline :gap="1" align="center" :wrap="true">
+      <!-- link -->
+      <a
+        v-if="linked && page > 1"
+        :class="styles.link"
+        :href="getPageHref?.(page - 1)"
+        :aria-label="messages.previous"
+        data-variant="ghost"
+        data-size="sm"
+        data-tone="neutral"
+        data-icon-only=""
+        @click="follow($event, page - 1)"
+      >
+        <!-- glyph -->
+        <span :class="styles.linkGlyph">
+          <Icon name="previous" size="sm" />
+        </span>
+      </a>
       <Button
+        v-else
         variant="ghost"
         tone="neutral"
         size="sm"
@@ -176,6 +239,22 @@ onBeforeUnmount(() => release3?.())
         <span v-if="entry === PAGINATION_ELLIPSIS" :class="styles.ellipsis" aria-hidden="true">
           …
         </span>
+        <!-- link -->
+        <a
+          v-else-if="linked && entry !== page"
+          :class="styles.link"
+          :href="getPageHref?.(entry)"
+          :aria-label="messages.page(entry)"
+          data-variant="ghost"
+          data-size="sm"
+          data-tone="neutral"
+          @click="follow($event, entry)"
+        >
+          <!-- label -->
+          <span :class="styles.linkLabel">
+            {{ String(entry) }}
+          </span>
+        </a>
         <Button
           v-else
           :variant="entry === page ? 'soft' : 'ghost'"
@@ -188,7 +267,25 @@ onBeforeUnmount(() => release3?.())
           @click="entry !== page && emit('pageChange', entry)"
         />
       </template>
+      <!-- link -->
+      <a
+        v-if="linked && page < pageCount"
+        :class="styles.link"
+        :href="getPageHref?.(page + 1)"
+        :aria-label="messages.next"
+        data-variant="ghost"
+        data-size="sm"
+        data-tone="neutral"
+        data-icon-only=""
+        @click="follow($event, page + 1)"
+      >
+        <!-- glyph -->
+        <span :class="styles.linkGlyph">
+          <Icon name="next" size="sm" />
+        </span>
+      </a>
       <Button
+        v-else
         variant="ghost"
         tone="neutral"
         size="sm"

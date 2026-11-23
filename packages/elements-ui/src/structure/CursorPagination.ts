@@ -20,8 +20,10 @@ export const definition: ElementDefinition = {
     label: 'string',
     messages: 'json',
     mode: 'string',
+    nextHref: 'string',
     pending: 'boolean',
     position: 'string',
+    previousHref: 'string',
   },
   events: { onNext: { type: 'poly-next' }, onPrevious: { type: 'poly-previous', listened: true } },
   slots: [],
@@ -30,7 +32,16 @@ export const definition: ElementDefinition = {
 /** The `<poly-cursor-pagination>` element. */
 export type PolyCursorPaginationElement = MemberElement<
   CursorPaginationProps,
-  'disabled' | 'hasNext' | 'hasPrevious' | 'label' | 'messages' | 'mode' | 'pending' | 'position'
+  | 'disabled'
+  | 'hasNext'
+  | 'hasPrevious'
+  | 'label'
+  | 'messages'
+  | 'mode'
+  | 'nextHref'
+  | 'pending'
+  | 'position'
+  | 'previousHref'
 >
 
 export const PolyCursorPagination = define(definition, CursorPagination)

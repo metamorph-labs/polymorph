@@ -23,15 +23,17 @@ export const states: ComponentStates = {
       expect: { 'data-disabled': '' },
     },
     { name: 'localized', render: entry7 },
-    { name: 'append — more to load', render: entry8 },
-    { name: 'append — with a position', render: entry9 },
-    { name: 'append — a window is in flight', render: entry10, expect: { 'data-pending': '' } },
-    { name: 'append — held by the app', render: entry11, expect: { 'data-disabled': '' } },
-    { name: 'append — the list ran out', render: entry12 },
-    { name: 'append — one window, so nothing at all', render: entry13, rendersNothing: true },
+    { name: 'with addresses — both directions are links', render: entry8 },
+    { name: 'append — more to load', render: entry9 },
+    { name: 'append — with a position', render: entry10 },
+    { name: 'append — a window is in flight', render: entry11, expect: { 'data-pending': '' } },
+    { name: 'append — held by the app', render: entry12, expect: { 'data-disabled': '' } },
+    { name: 'append — with an address, the action is a link', render: entry13 },
+    { name: 'append — the list ran out', render: entry14 },
+    { name: 'append — one window, so nothing at all', render: entry15, rendersNothing: true },
     {
       name: 'one window — nothing at all, because one window is not a paginated list',
-      render: entry14,
+      render: entry16,
       rendersNothing: true,
     },
   ],
@@ -45,10 +47,12 @@ export const states: ComponentStates = {
 {#snippet entry5(overrides: Overrides)}<CursorPagination hasPrevious={true} hasNext={true} pending={true} position="26–50" onPrevious={() => {}} onNext={() => {}} {...overrides} />{/snippet}
 {#snippet entry6(overrides: Overrides)}<CursorPagination hasPrevious={true} hasNext={true} disabled={true} position="26–50" onPrevious={() => {}} onNext={() => {}} {...overrides} />{/snippet}
 {#snippet entry7(overrides: Overrides)}<CursorPagination hasPrevious={true} hasNext={true} label="Pagination des événements" messages={{ previous: 'Précédent', next: 'Suivant' }} onPrevious={() => {}} onNext={() => {}} {...overrides} />{/snippet}
-{#snippet entry8(overrides: Overrides)}<CursorPagination mode="append" hasPrevious={false} hasNext={true} onNext={() => {}} {...overrides} />{/snippet}
-{#snippet entry9(overrides: Overrides)}<CursorPagination mode="append" hasPrevious={false} hasNext={true} position="50 shown" onNext={() => {}} {...overrides} />{/snippet}
-{#snippet entry10(overrides: Overrides)}<CursorPagination mode="append" hasPrevious={false} hasNext={true} pending={true} position="50 shown" onNext={() => {}} {...overrides} />{/snippet}
-{#snippet entry11(overrides: Overrides)}<CursorPagination mode="append" hasPrevious={false} hasNext={true} disabled={true} position="50 shown" onNext={() => {}} {...overrides} />{/snippet}
-{#snippet entry12(overrides: Overrides)}<Held initial={{ hasNext: true }} presses={{ at: '[data-member="cursor-pagination"][aria-label="Event log"] button', frames: 60 }}>{#snippet children(held)}<CursorPagination mode="append" hasPrevious={false} hasNext={held.hasNext} position="120 shown" label="Event log" onNext={() => { held.hasNext = false }} {...overrides} />{/snippet}</Held>{/snippet}
-{#snippet entry13(overrides: Overrides)}<CursorPagination mode="append" hasPrevious={false} hasNext={false} onNext={() => {}} {...overrides} />{/snippet}
-{#snippet entry14(overrides: Overrides)}<CursorPagination hasPrevious={false} hasNext={false} onPrevious={() => {}} onNext={() => {}} {...overrides} />{/snippet}
+{#snippet entry8(overrides: Overrides)}<CursorPagination hasPrevious={true} hasNext={true} position="26–50" previousHref="#before-26" nextHref="#after-50" onPrevious={() => {}} onNext={() => {}} {...overrides} />{/snippet}
+{#snippet entry9(overrides: Overrides)}<CursorPagination mode="append" hasPrevious={false} hasNext={true} onNext={() => {}} {...overrides} />{/snippet}
+{#snippet entry10(overrides: Overrides)}<CursorPagination mode="append" hasPrevious={false} hasNext={true} position="50 shown" onNext={() => {}} {...overrides} />{/snippet}
+{#snippet entry11(overrides: Overrides)}<CursorPagination mode="append" hasPrevious={false} hasNext={true} pending={true} position="50 shown" onNext={() => {}} {...overrides} />{/snippet}
+{#snippet entry12(overrides: Overrides)}<CursorPagination mode="append" hasPrevious={false} hasNext={true} disabled={true} position="50 shown" onNext={() => {}} {...overrides} />{/snippet}
+{#snippet entry13(overrides: Overrides)}<CursorPagination mode="append" hasPrevious={false} hasNext={true} position="50 shown" nextHref="#after-50" onNext={() => {}} {...overrides} />{/snippet}
+{#snippet entry14(overrides: Overrides)}<Held initial={{ hasNext: true }} presses={{ at: '[data-member="cursor-pagination"][aria-label="Event log"] button', frames: 60 }}>{#snippet children(held)}<CursorPagination mode="append" hasPrevious={false} hasNext={held.hasNext} position="120 shown" label="Event log" onNext={() => { held.hasNext = false }} {...overrides} />{/snippet}</Held>{/snippet}
+{#snippet entry15(overrides: Overrides)}<CursorPagination mode="append" hasPrevious={false} hasNext={false} onNext={() => {}} {...overrides} />{/snippet}
+{#snippet entry16(overrides: Overrides)}<CursorPagination hasPrevious={false} hasNext={false} onPrevious={() => {}} onNext={() => {}} {...overrides} />{/snippet}

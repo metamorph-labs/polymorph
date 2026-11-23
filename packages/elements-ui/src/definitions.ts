@@ -1816,6 +1816,7 @@ export const DEFINITIONS: Readonly<Record<string, ElementDefinition>> = {
     member: 'Pagination',
     props: {
       disabled: 'boolean',
+      getPageHref: 'property',
       label: 'string',
       messages: 'property',
       page: 'number',
@@ -1836,8 +1837,10 @@ export const DEFINITIONS: Readonly<Record<string, ElementDefinition>> = {
       label: 'string',
       messages: 'json',
       mode: 'string',
+      nextHref: 'string',
       pending: 'boolean',
       position: 'string',
+      previousHref: 'string',
     },
     events: {
       onNext: { type: 'poly-next' },

@@ -57,6 +57,19 @@ import { Pagination, type PaginationProps } from './Pagination'
 @case (7) {<pm-pagination
 [page]="e17()"
 [pageCount]="e18()"
+[getPageHref]="e19()"
+[pmOverrides]="overrides()"
+></pm-pagination>}
+@case (8) {<pm-pagination
+[page]="e20()"
+[pageCount]="e21()"
+[disabled]="e22()"
+[getPageHref]="e23()"
+[pmOverrides]="overrides()"
+></pm-pagination>}
+@case (9) {<pm-pagination
+[page]="e24()"
+[pageCount]="e25()"
 [pmOverrides]="overrides()"
 ></pm-pagination>}
 }`,
@@ -130,10 +143,38 @@ export class PaginationStates {
   }
 
   protected e17(): PaginationProps['page'] {
-    return 1
+    return 3
   }
 
   protected e18(): PaginationProps['pageCount'] {
+    return 5
+  }
+
+  protected e19(): PaginationProps['getPageHref'] {
+    return (page: number) => `#page-${page}`
+  }
+
+  protected e20(): PaginationProps['page'] {
+    return 3
+  }
+
+  protected e21(): PaginationProps['pageCount'] {
+    return 5
+  }
+
+  protected e22(): PaginationProps['disabled'] {
+    return true
+  }
+
+  protected e23(): PaginationProps['getPageHref'] {
+    return (page: number) => `#page-${page}`
+  }
+
+  protected e24(): PaginationProps['page'] {
+    return 1
+  }
+
+  protected e25(): PaginationProps['pageCount'] {
     return 1
   }
 }
@@ -149,6 +190,11 @@ export const states: ComponentStates = {
     { name: 'twelve pages, with wider shoulders' },
     { name: 'two pages — no room for a gap' },
     { name: 'held by the app — no page can be asked for', expect: { 'data-disabled': '' } },
+    { name: 'with addresses — every page but the current one is a link' },
+    {
+      name: 'held, with addresses — no links, every control a disabled button',
+      expect: { 'data-disabled': '' },
+    },
     {
       name: 'one page — nothing at all, because one page is not a paginated list',
       rendersNothing: true,

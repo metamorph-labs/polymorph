@@ -142,6 +142,17 @@ export const UNDRAWN: readonly UndrawnProps[] = [
     android: ['Heading'],
   },
   {
+    props: ['getPageHref', 'previousHref', 'nextHref'],
+    reason:
+      'The web’s addresses of a pager’s pages and windows, which make its controls links a ' +
+      'crawler, a new tab and a reader whose script has not loaded can follow. A native ' +
+      'screen’s pager has no address a reader follows without a press: its controls are the ' +
+      'platform’s buttons, and each calls its handler (`onPageChange`, `onPrevious`, ' +
+      '`onNext`), which the app answers with its own navigation.',
+    ios: ['CursorPagination', 'Pagination'],
+    android: ['CursorPagination', 'Pagination'],
+  },
+  {
     props: ['name', 'startName', 'endName'],
     reason:
       'The name a web form submits the control’s value under. A native screen submits no ' +

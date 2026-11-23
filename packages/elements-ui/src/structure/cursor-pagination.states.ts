@@ -86,6 +86,16 @@ export const states: ComponentStates = {
       },
     },
     {
+      name: 'with addresses — both directions are links',
+      html: `<poly-cursor-pagination has-previous has-next position="26–50" previous-href="#before-26" next-href="#after-50"></poly-cursor-pagination>`,
+      subject: 'poly-cursor-pagination',
+      setup: (find) => {
+        const e0 = find('poly-cursor-pagination', 0)
+        listen(e0, 'poly-previous', () => {})
+        listen(e0, 'poly-next', () => {})
+      },
+    },
+    {
       name: 'append — more to load',
       html: `<poly-cursor-pagination mode="append" has-previous="false" has-next></poly-cursor-pagination>`,
       subject: 'poly-cursor-pagination',
@@ -122,6 +132,15 @@ export const states: ComponentStates = {
         listen(e0, 'poly-next', () => {})
       },
       expect: { 'data-disabled': '' },
+    },
+    {
+      name: 'append — with an address, the action is a link',
+      html: `<poly-cursor-pagination mode="append" has-previous="false" has-next position="50 shown" next-href="#after-50"></poly-cursor-pagination>`,
+      subject: 'poly-cursor-pagination',
+      setup: (find) => {
+        const e0 = find('poly-cursor-pagination', 0)
+        listen(e0, 'poly-next', () => {})
+      },
     },
     {
       name: 'append — the list ran out',

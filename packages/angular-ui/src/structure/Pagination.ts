@@ -8,6 +8,7 @@
 import { Component, DestroyRef, ViewEncapsulation, inject, input, output } from '@angular/core'
 
 import {
+  Icon,
   MEMBER_PROVIDERS,
   PAGINATION_ELLIPSIS,
   Ref,
@@ -40,6 +41,14 @@ export interface PaginationProps {
    * the current page too, and no page is asked for.
    */
   disabled?: boolean
+  /**
+   * A page's address, such as `?page=3`. Given, each control that goes to another page is a link
+   * to that page's address, so a crawler, a new tab and a reader whose script has not loaded can
+   * follow it. A click the browser would follow in this tab calls `onPageChange` in place of the
+   * navigation; a click with a modifier key opens the address. The current page, a control with
+   * nowhere to go and a held pager's controls stay buttons.
+   */
+  getPageHref?: (page: number) => string
   label?: string
   /**
    * Omit for the generic English defaults; localized hosts pass their own.
@@ -59,7 +68,7 @@ export interface PaginationProps {
   encapsulation: ViewEncapsulation.None,
   host: { style: 'display: contents' },
   providers: [...MEMBER_PROVIDERS],
-  imports: [Ref, Button, Inline],
+  imports: [Ref, Button, Icon, Inline],
   // prettier-ignore
   template: `@if (e1()) {<nav
 [attr.class]="e2()"
@@ -74,39 +83,83 @@ data-member="pagination"
 [gap]="e5()"
 align="center"
 [wrap]="e6()"
-><pm-button
+>@if (e7()) {<!-- link -->
+<a
+[attr.class]="e8()"
+[attr.href]="e9()"
+[attr.aria-label]="e10()"
+data-variant="ghost"
+data-size="sm"
+data-tone="neutral"
+[attr.data-icon-only]="e11()"
+(click)="h3($event)"
+><!-- glyph -->
+<span
+[attr.class]="e12()"
+><pm-icon
+name="previous"
+size="sm"
+></pm-icon></span></a>} @else {<pm-button
 variant="ghost"
 tone="neutral"
 size="sm"
-[iconOnly]="e7()"
+[iconOnly]="e13()"
 icon="previous"
-[label]="e8()"
-[disabled]="e9()"
-(click)="h3()"
-></pm-button>
-@for (entry of e10(); track e11(entry, $index); let at = $index) {@if (e12(entry)) {<span
-[attr.class]="e13(entry)"
+[label]="e14()"
+[disabled]="e15()"
+(click)="h4()"
+></pm-button>}
+@for (entry of e16(); track e17(entry, $index); let at = $index) {@if (e18(entry)) {<span
+[attr.class]="e19(entry)"
 aria-hidden="true"
->…</span>} @else {<pm-button
-[variant]="e14(entry)"
-[tone]="e15(entry)"
+>…</span>} @else if (e20(entry)) {<!-- link -->
+<a
+[attr.class]="e21(entry)"
+[attr.href]="e22(entry)"
+[attr.aria-label]="e23(entry)"
+data-variant="ghost"
+data-size="sm"
+data-tone="neutral"
+(click)="h5($event, entry)"
+><!-- label -->
+<span
+[attr.class]="e24(entry)"
+>{{ e25(entry) }}</span></a>} @else {<pm-button
+[variant]="e26(entry)"
+[tone]="e27(entry)"
 size="sm"
-[current]="e16(entry)"
-[label]="e17(entry)"
-[aria-label]="e18(entry)"
-[disabled]="e19(entry)"
-(click)="h4(entry)"
+[current]="e28(entry)"
+[label]="e29(entry)"
+[aria-label]="e30(entry)"
+[disabled]="e31(entry)"
+(click)="h6(entry)"
 ></pm-button>}}
-<pm-button
+@if (e32()) {<!-- link -->
+<a
+[attr.class]="e33()"
+[attr.href]="e34()"
+[attr.aria-label]="e35()"
+data-variant="ghost"
+data-size="sm"
+data-tone="neutral"
+[attr.data-icon-only]="e36()"
+(click)="h7($event)"
+><!-- glyph -->
+<span
+[attr.class]="e37()"
+><pm-icon
+name="next"
+size="sm"
+></pm-icon></span></a>} @else {<pm-button
 variant="ghost"
 tone="neutral"
 size="sm"
-[iconOnly]="e7()"
+[iconOnly]="e38()"
 icon="next"
-[label]="e20()"
-[disabled]="e21()"
-(click)="h5()"
-></pm-button></pm-inline></nav>}`,
+[label]="e39()"
+[disabled]="e40()"
+(click)="h8()"
+></pm-button>}</pm-inline></nav>}`,
 })
 export class Pagination {
   /**
@@ -119,6 +172,14 @@ export class Pagination {
   >(false, {
     transform: (value: PaginationProps['disabled']) => (value === undefined ? false : value),
   })
+  /**
+   * A page's address, such as `?page=3`. Given, each control that goes to another page is a link
+   * to that page's address, so a crawler, a new tab and a reader whose script has not loaded can
+   * follow it. A click the browser would follow in this tab calls `onPageChange` in place of the
+   * navigation; a click with a modifier key opens the address. The current page, a control with
+   * nowhere to go and a held pager's controls stay buttons.
+   */
+  readonly getPageHref = input<PaginationProps['getPageHref']>(undefined)
   readonly label = input<Exclude<PaginationProps['label'], undefined>, PaginationProps['label']>(
     'Pagination',
     {
@@ -155,6 +216,7 @@ export class Pagination {
     events: ['pageChange'],
     props: {
       disabled: () => this.disabled(),
+      getPageHref: () => this.getPageHref(),
       label: () => this.label(),
       messages: () => this.messages(),
       page: () => this.page(),
@@ -164,6 +226,7 @@ export class Pagination {
   })
   protected readonly $p = this.$.props
   protected readonly focused = cell(() => null as HTMLElement | null)
+  protected readonly focusedControl = cell(() => null as string | number | null)
   protected readonly taken = cell(() => null as string | number | null)
   protected readonly root = elementRef<HTMLElement>()
   protected readonly entries = derived(() =>
@@ -175,30 +238,66 @@ export class Pagination {
     'next',
   ])
   protected readonly focusIn = derived(() => (event: FocusEvent) => {
-    this.focused.value = event.target as HTMLElement
+    const target = event.target as HTMLElement
+    const pager = this.root.value as HTMLElement | null
+    const names: readonly (string | number)[] = this.controls.value
+    const at = pager === null ? -1 : [...pager.querySelectorAll('button, a[href]')].indexOf(target)
+    this.focused.value = target
+    this.focusedControl.value = at < 0 ? null : (names[at] ?? null)
   })
   protected readonly focusOut = derived(() => (event: FocusEvent) => {
-    if (!(event.target as HTMLElement).matches(':disabled')) this.focused.value = null
+    const target = event.target as HTMLElement
+    if (target.matches(':disabled')) return
+    queueMicrotask(() => {
+      if (this.focused.value === target && target.isConnected) this.focused.value = null
+    })
   })
   protected readonly keepPlace = derived(() => () => {
     const pager = this.root.value as HTMLElement | null
     if (pager === null) return
     const names: readonly (string | number)[] = this.controls.value
+    const drawn = () => [...pager.querySelectorAll<HTMLElement>('button, a[href]')]
+    const onPage = () => document.activeElement === null || document.activeElement === document.body
+    const left = this.focused.value as HTMLElement | null
+    if (left !== null && !left.isConnected) {
+      this.focused.value = null
+      const name = this.focusedControl.value
+      const now = name === null ? undefined : drawn()[names.indexOf(name)]
+      if (now !== undefined && onPage()) {
+        if (now.matches(':disabled')) this.focused.value = now
+        else now.focus()
+      }
+    }
     if (!this.$p.disabled) {
       const control = this.taken.value
       this.taken.value = null
       if (control === null || document.activeElement !== pager) return
-      const button = [...pager.querySelectorAll('button')][names.indexOf(control)]
-      if (button !== undefined && !button.matches(':disabled')) button.focus()
+      const element = drawn()[names.indexOf(control)]
+      if (element !== undefined && !element.matches(':disabled')) element.focus()
       return
     }
     const from = this.focused.value as HTMLElement | null
     if (from === null || !from.isConnected || !from.matches(':disabled')) return
     const active = document.activeElement
     if (active !== from && active !== null && active !== document.body) return
-    this.taken.value =
-      names[[...pager.querySelectorAll('button')].indexOf(from as HTMLButtonElement)] ?? null
+    this.taken.value = names[drawn().indexOf(from)] ?? null
     pager.focus()
+  })
+  protected readonly linked = derived(() => !this.$p.disabled && this.$p.getPageHref !== undefined)
+  protected readonly navigatesHere = derived(
+    () =>
+      (event: MouseEvent): boolean =>
+        !event.defaultPrevented &&
+        event.button === 0 &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.shiftKey &&
+        !event.altKey,
+  )
+  protected readonly follow = derived(() => (event: MouseEvent, to: number): void => {
+    if (!this.navigatesHere.value(event)) return
+    event.preventDefault()
+    this.$.emit(this.onPageChange, 'onPageChange', to)
   })
   private release1: (() => void) | undefined
   private release3: (() => void) | undefined
@@ -258,102 +357,252 @@ export class Pagination {
     return true
   }
 
-  protected e7(): ButtonProps['iconOnly'] {
+  protected e7() {
     if (!(this.entries.value.length > 0)) return undefined as never
-    return true
+    return this.linked.value && this.$p.page > 1
   }
 
-  protected e8(): ButtonProps['label'] {
+  protected e8() {
     if (!(this.entries.value.length > 0)) return undefined as never
+    if (!(this.linked.value && this.$p.page > 1)) return undefined as never
+    return styles.link
+  }
+
+  protected e9() {
+    if (!(this.entries.value.length > 0)) return undefined as never
+    if (!(this.linked.value && this.$p.page > 1)) return undefined as never
+    return this.$p.getPageHref?.(this.$p.page - 1)
+  }
+
+  protected e10() {
+    if (!(this.entries.value.length > 0)) return undefined as never
+    if (!(this.linked.value && this.$p.page > 1)) return undefined as never
     return this.$p.messages.previous
   }
 
-  protected e9(): ButtonProps['disabled'] {
+  protected e11() {
     if (!(this.entries.value.length > 0)) return undefined as never
+    if (!(this.linked.value && this.$p.page > 1)) return undefined as never
+    return ''
+  }
+
+  protected h3($event: MouseEvent): void {
+    if (!(this.entries.value.length > 0)) return
+    if (!(this.linked.value && this.$p.page > 1)) return
+    this.follow.value($event, this.$p.page - 1)
+  }
+
+  protected e12() {
+    if (!(this.entries.value.length > 0)) return undefined as never
+    if (!(this.linked.value && this.$p.page > 1)) return undefined as never
+    return styles.linkGlyph
+  }
+
+  protected e13(): ButtonProps['iconOnly'] {
+    if (!(this.entries.value.length > 0)) return undefined as never
+    if (this.linked.value && this.$p.page > 1) return undefined as never
+    return true
+  }
+
+  protected e14(): ButtonProps['label'] {
+    if (!(this.entries.value.length > 0)) return undefined as never
+    if (this.linked.value && this.$p.page > 1) return undefined as never
+    return this.$p.messages.previous
+  }
+
+  protected e15(): ButtonProps['disabled'] {
+    if (!(this.entries.value.length > 0)) return undefined as never
+    if (this.linked.value && this.$p.page > 1) return undefined as never
     return this.$p.disabled || this.$p.page <= 1
   }
 
-  protected h3(): void {
+  protected h4(): void {
     if (!(this.entries.value.length > 0)) return
+    if (this.linked.value && this.$p.page > 1) return
     this.$.emit(this.onPageChange, 'onPageChange', this.$p.page - 1)
   }
 
-  e10() {
+  e16() {
     if (!(this.entries.value.length > 0)) return undefined as never
     return this.entries.value
   }
 
-  protected e11(entry: Each<ReturnType<Pagination['e10']>>, at: number) {
+  protected e17(entry: Each<ReturnType<Pagination['e16']>>, at: number) {
     return entry === PAGINATION_ELLIPSIS ? `gap-${at}` : entry
   }
 
-  protected e12(entry: Each<ReturnType<Pagination['e10']>>) {
+  protected e18(entry: Each<ReturnType<Pagination['e16']>>) {
     if (!(this.entries.value.length > 0)) return undefined as never
     return entry === PAGINATION_ELLIPSIS
   }
 
-  protected e13(entry: Each<ReturnType<Pagination['e10']>>) {
+  protected e19(entry: Each<ReturnType<Pagination['e16']>>) {
     if (!(this.entries.value.length > 0)) return undefined as never
     if (!(entry === PAGINATION_ELLIPSIS)) return undefined as never
     return styles.ellipsis
   }
 
-  protected e14(entry: Each<ReturnType<Pagination['e10']>>): ButtonProps['variant'] {
+  protected e20(entry: Each<ReturnType<Pagination['e16']>>) {
     if (!(this.entries.value.length > 0)) return undefined as never
     if (entry === PAGINATION_ELLIPSIS) return undefined as never
-    return entry === this.$p.page ? 'soft' : 'ghost'
+    return this.linked.value && entry !== this.$p.page
   }
 
-  protected e15(entry: Each<ReturnType<Pagination['e10']>>): ButtonProps['tone'] {
+  protected e21(entry: Each<ReturnType<Pagination['e16']>>) {
     if (!(this.entries.value.length > 0)) return undefined as never
     if (entry === PAGINATION_ELLIPSIS) return undefined as never
-    return entry === this.$p.page ? 'accent' : 'neutral'
+    if (!(this.linked.value && entry !== this.$p.page)) return undefined as never
+    return styles.link
   }
 
-  protected e16(entry: Each<ReturnType<Pagination['e10']>>): ButtonProps['current'] {
+  protected e22(entry: Each<ReturnType<Pagination['e16']>>) {
     if (!(this.entries.value.length > 0)) return undefined as never
     if (entry === PAGINATION_ELLIPSIS) return undefined as never
-    return entry === this.$p.page
+    if (!(this.linked.value && entry !== this.$p.page)) return undefined as never
+    return this.$p.getPageHref?.(entry)
   }
 
-  protected e17(entry: Each<ReturnType<Pagination['e10']>>): ButtonProps['label'] {
+  protected e23(entry: Each<ReturnType<Pagination['e16']>>) {
     if (!(this.entries.value.length > 0)) return undefined as never
     if (entry === PAGINATION_ELLIPSIS) return undefined as never
-    return String(entry)
-  }
-
-  protected e18(entry: Each<ReturnType<Pagination['e10']>>): ButtonProps['aria-label'] {
-    if (!(this.entries.value.length > 0)) return undefined as never
-    if (entry === PAGINATION_ELLIPSIS) return undefined as never
+    if (!(this.linked.value && entry !== this.$p.page)) return undefined as never
     return this.$p.messages.page(entry)
   }
 
-  protected e19(entry: Each<ReturnType<Pagination['e10']>>): ButtonProps['disabled'] {
+  protected h5($event: MouseEvent, entry: Each<ReturnType<Pagination['e16']>>): void {
+    if (!(this.entries.value.length > 0)) return
+    if (entry === PAGINATION_ELLIPSIS) return
+    if (!(this.linked.value && entry !== this.$p.page)) return
+    this.follow.value($event, entry)
+  }
+
+  protected e24(entry: Each<ReturnType<Pagination['e16']>>) {
     if (!(this.entries.value.length > 0)) return undefined as never
     if (entry === PAGINATION_ELLIPSIS) return undefined as never
+    if (!(this.linked.value && entry !== this.$p.page)) return undefined as never
+    return styles.linkLabel
+  }
+
+  protected e25(entry: Each<ReturnType<Pagination['e16']>>) {
+    if (!(this.entries.value.length > 0)) return undefined as never
+    if (entry === PAGINATION_ELLIPSIS) return undefined as never
+    if (!(this.linked.value && entry !== this.$p.page)) return undefined as never
+    return String(entry)
+  }
+
+  protected e26(entry: Each<ReturnType<Pagination['e16']>>): ButtonProps['variant'] {
+    if (!(this.entries.value.length > 0)) return undefined as never
+    if (entry === PAGINATION_ELLIPSIS) return undefined as never
+    if (this.linked.value && entry !== this.$p.page) return undefined as never
+    return entry === this.$p.page ? 'soft' : 'ghost'
+  }
+
+  protected e27(entry: Each<ReturnType<Pagination['e16']>>): ButtonProps['tone'] {
+    if (!(this.entries.value.length > 0)) return undefined as never
+    if (entry === PAGINATION_ELLIPSIS) return undefined as never
+    if (this.linked.value && entry !== this.$p.page) return undefined as never
+    return entry === this.$p.page ? 'accent' : 'neutral'
+  }
+
+  protected e28(entry: Each<ReturnType<Pagination['e16']>>): ButtonProps['current'] {
+    if (!(this.entries.value.length > 0)) return undefined as never
+    if (entry === PAGINATION_ELLIPSIS) return undefined as never
+    if (this.linked.value && entry !== this.$p.page) return undefined as never
+    return entry === this.$p.page
+  }
+
+  protected e29(entry: Each<ReturnType<Pagination['e16']>>): ButtonProps['label'] {
+    if (!(this.entries.value.length > 0)) return undefined as never
+    if (entry === PAGINATION_ELLIPSIS) return undefined as never
+    if (this.linked.value && entry !== this.$p.page) return undefined as never
+    return String(entry)
+  }
+
+  protected e30(entry: Each<ReturnType<Pagination['e16']>>): ButtonProps['aria-label'] {
+    if (!(this.entries.value.length > 0)) return undefined as never
+    if (entry === PAGINATION_ELLIPSIS) return undefined as never
+    if (this.linked.value && entry !== this.$p.page) return undefined as never
+    return this.$p.messages.page(entry)
+  }
+
+  protected e31(entry: Each<ReturnType<Pagination['e16']>>): ButtonProps['disabled'] {
+    if (!(this.entries.value.length > 0)) return undefined as never
+    if (entry === PAGINATION_ELLIPSIS) return undefined as never
+    if (this.linked.value && entry !== this.$p.page) return undefined as never
     return this.$p.disabled
   }
 
-  protected h4(entry: Each<ReturnType<Pagination['e10']>>): void {
+  protected h6(entry: Each<ReturnType<Pagination['e16']>>): void {
     if (!(this.entries.value.length > 0)) return
     if (entry === PAGINATION_ELLIPSIS) return
+    if (this.linked.value && entry !== this.$p.page) return
     if (entry !== this.$p.page) {
       this.$.emit(this.onPageChange, 'onPageChange', entry)
     }
   }
 
-  protected e20(): ButtonProps['label'] {
+  protected e32() {
     if (!(this.entries.value.length > 0)) return undefined as never
+    return this.linked.value && this.$p.page < this.$p.pageCount
+  }
+
+  protected e33() {
+    if (!(this.entries.value.length > 0)) return undefined as never
+    if (!(this.linked.value && this.$p.page < this.$p.pageCount)) return undefined as never
+    return styles.link
+  }
+
+  protected e34() {
+    if (!(this.entries.value.length > 0)) return undefined as never
+    if (!(this.linked.value && this.$p.page < this.$p.pageCount)) return undefined as never
+    return this.$p.getPageHref?.(this.$p.page + 1)
+  }
+
+  protected e35() {
+    if (!(this.entries.value.length > 0)) return undefined as never
+    if (!(this.linked.value && this.$p.page < this.$p.pageCount)) return undefined as never
     return this.$p.messages.next
   }
 
-  protected e21(): ButtonProps['disabled'] {
+  protected e36() {
     if (!(this.entries.value.length > 0)) return undefined as never
+    if (!(this.linked.value && this.$p.page < this.$p.pageCount)) return undefined as never
+    return ''
+  }
+
+  protected h7($event: MouseEvent): void {
+    if (!(this.entries.value.length > 0)) return
+    if (!(this.linked.value && this.$p.page < this.$p.pageCount)) return
+    this.follow.value($event, this.$p.page + 1)
+  }
+
+  protected e37() {
+    if (!(this.entries.value.length > 0)) return undefined as never
+    if (!(this.linked.value && this.$p.page < this.$p.pageCount)) return undefined as never
+    return styles.linkGlyph
+  }
+
+  protected e38(): ButtonProps['iconOnly'] {
+    if (!(this.entries.value.length > 0)) return undefined as never
+    if (this.linked.value && this.$p.page < this.$p.pageCount) return undefined as never
+    return true
+  }
+
+  protected e39(): ButtonProps['label'] {
+    if (!(this.entries.value.length > 0)) return undefined as never
+    if (this.linked.value && this.$p.page < this.$p.pageCount) return undefined as never
+    return this.$p.messages.next
+  }
+
+  protected e40(): ButtonProps['disabled'] {
+    if (!(this.entries.value.length > 0)) return undefined as never
+    if (this.linked.value && this.$p.page < this.$p.pageCount) return undefined as never
     return this.$p.disabled || this.$p.page >= this.$p.pageCount
   }
 
-  protected h5(): void {
+  protected h8(): void {
     if (!(this.entries.value.length > 0)) return
+    if (this.linked.value && this.$p.page < this.$p.pageCount) return
     this.$.emit(this.onPageChange, 'onPageChange', this.$p.page + 1)
   }
 

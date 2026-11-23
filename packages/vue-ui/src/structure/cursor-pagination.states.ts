@@ -100,6 +100,20 @@ export const states: ComponentStates = {
         }),
     },
     {
+      name: 'with addresses — both directions are links',
+      render: (overrides = {}) =>
+        h(CursorPagination, {
+          hasPrevious: true,
+          hasNext: true,
+          position: '26–50',
+          previousHref: '#before-26',
+          nextHref: '#after-50',
+          onPrevious: () => {},
+          onNext: () => {},
+          ...overrides,
+        }),
+    },
+    {
       name: 'append — more to load',
       render: (overrides = {}) =>
         h(CursorPagination, {
@@ -149,6 +163,19 @@ export const states: ComponentStates = {
           ...overrides,
         }),
       expect: { 'data-disabled': '' },
+    },
+    {
+      name: 'append — with an address, the action is a link',
+      render: (overrides = {}) =>
+        h(CursorPagination, {
+          mode: 'append',
+          hasPrevious: false,
+          hasNext: true,
+          position: '50 shown',
+          nextHref: '#after-50',
+          onNext: () => {},
+          ...overrides,
+        }),
     },
     {
       name: 'append — the list ran out',

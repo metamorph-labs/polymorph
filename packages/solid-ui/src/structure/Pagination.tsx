@@ -9,6 +9,7 @@ import { createMemo, mergeProps, onCleanup, onMount, type JSX } from 'solid-js'
 
 import {
   Each,
+  Icon,
   PAGINATION_ELLIPSIS,
   agentMember,
   claimSlot,
@@ -39,6 +40,14 @@ export interface PaginationProps {
    * the current page too, and no page is asked for.
    */
   disabled?: boolean
+  /**
+   * A page's address, such as `?page=3`. Given, each control that goes to another page is a link
+   * to that page's address, so a crawler, a new tab and a reader whose script has not loaded can
+   * follow it. A click the browser would follow in this tab calls `onPageChange` in place of the
+   * navigation; a click with a modifier key opens the address. The current page, a control with
+   * nowhere to go and a held pager's controls stay buttons.
+   */
+  getPageHref?: (page: number) => string
   label?: string
   /**
    * Omit for the generic English defaults; localized hosts pass their own.
@@ -70,6 +79,7 @@ export default function Pagination(given: PaginationProps): JSX.Element {
   )
   return scope(() => {
     const focused = createCell(null as HTMLElement | null)
+    const focusedControl = createCell(null as string | number | null)
     const taken = createCell(null as string | number | null)
     const root = elementRef<HTMLElement>()
     const entries = createDerived(() =>
@@ -81,30 +91,68 @@ export default function Pagination(given: PaginationProps): JSX.Element {
       'next',
     ])
     const focusIn = createDerived(() => (event: FocusEvent) => {
-      focused.value = event.target as HTMLElement
+      const target = event.target as HTMLElement
+      const pager = root.value as HTMLElement | null
+      const names: readonly (string | number)[] = controls.value
+      const at =
+        pager === null ? -1 : [...pager.querySelectorAll('button, a[href]')].indexOf(target)
+      focused.value = target
+      focusedControl.value = at < 0 ? null : (names[at] ?? null)
     })
     const focusOut = createDerived(() => (event: FocusEvent) => {
-      if (!(event.target as HTMLElement).matches(':disabled')) focused.value = null
+      const target = event.target as HTMLElement
+      if (target.matches(':disabled')) return
+      queueMicrotask(() => {
+        if (focused.value === target && target.isConnected) focused.value = null
+      })
     })
     const keepPlace = createDerived(() => () => {
       const pager = root.value as HTMLElement | null
       if (pager === null) return
       const names: readonly (string | number)[] = controls.value
+      const drawn = () => [...pager.querySelectorAll<HTMLElement>('button, a[href]')]
+      const onPage = () =>
+        document.activeElement === null || document.activeElement === document.body
+      const left = focused.value as HTMLElement | null
+      if (left !== null && !left.isConnected) {
+        focused.value = null
+        const name = focusedControl.value
+        const now = name === null ? undefined : drawn()[names.indexOf(name)]
+        if (now !== undefined && onPage()) {
+          if (now.matches(':disabled')) focused.value = now
+          else now.focus()
+        }
+      }
       if (!props.disabled) {
         const control = taken.value
         taken.value = null
         if (control === null || document.activeElement !== pager) return
-        const button = [...pager.querySelectorAll('button')][names.indexOf(control)]
-        if (button !== undefined && !button.matches(':disabled')) button.focus()
+        const element = drawn()[names.indexOf(control)]
+        if (element !== undefined && !element.matches(':disabled')) element.focus()
         return
       }
       const from = focused.value as HTMLElement | null
       if (from === null || !from.isConnected || !from.matches(':disabled')) return
       const active = document.activeElement
       if (active !== from && active !== null && active !== document.body) return
-      taken.value =
-        names[[...pager.querySelectorAll('button')].indexOf(from as HTMLButtonElement)] ?? null
+      taken.value = names[drawn().indexOf(from)] ?? null
       pager.focus()
+    })
+    const linked = createDerived(() => !props.disabled && props.getPageHref !== undefined)
+    const navigatesHere = createDerived(
+      () =>
+        (event: MouseEvent): boolean =>
+          !event.defaultPrevented &&
+          event.button === 0 &&
+          !event.metaKey &&
+          !event.ctrlKey &&
+          !event.shiftKey &&
+          !event.altKey,
+    )
+    const follow = createDerived(() => (event: MouseEvent, to: number): void => {
+      if (!navigatesHere.value(event)) return
+      event.preventDefault()
+      props.onPageChange?.(to)
     })
     let release1: (() => void) | undefined
     const effect1 = () => {
@@ -188,16 +236,34 @@ export default function Pagination(given: PaginationProps): JSX.Element {
             ref={root.attach}
           >
             <Inline gap={1} align="center" wrap={true}>
-              <Button
-                variant="ghost"
-                tone="neutral"
-                size="sm"
-                iconOnly={true}
-                icon="previous"
-                label={props.messages.previous}
-                disabled={props.disabled || props.page <= 1}
-                onClick={() => props.onPageChange?.(props.page - 1)}
-              />
+              {linked.value && props.page > 1 ? (
+                <a
+                  class={styles.link}
+                  href={props.getPageHref?.(props.page - 1)}
+                  aria-label={props.messages.previous}
+                  data-variant="ghost"
+                  data-size="sm"
+                  data-tone="neutral"
+                  data-icon-only={''}
+                  onclick={($event: MouseEvent) => follow.value($event, props.page - 1)}
+                >
+                  {/* glyph */}
+                  <span class={styles.linkGlyph}>
+                    <Icon name="previous" size="sm" />
+                  </span>
+                </a>
+              ) : (
+                <Button
+                  variant="ghost"
+                  tone="neutral"
+                  size="sm"
+                  iconOnly={true}
+                  icon="previous"
+                  label={props.messages.previous}
+                  disabled={props.disabled || props.page <= 1}
+                  onClick={() => props.onPageChange?.(props.page - 1)}
+                />
+              )}
               <Each
                 of={entries.value}
                 by={(entry, at) => (entry === PAGINATION_ELLIPSIS ? `gap-${at}` : entry)}
@@ -209,6 +275,19 @@ export default function Pagination(given: PaginationProps): JSX.Element {
                       <span class={styles.ellipsis} aria-hidden="true">
                         …
                       </span>
+                    ) : linked.value && entry !== props.page ? (
+                      <a
+                        class={styles.link}
+                        href={props.getPageHref?.(itemOf(entry))}
+                        aria-label={props.messages.page(itemOf(entry))}
+                        data-variant="ghost"
+                        data-size="sm"
+                        data-tone="neutral"
+                        onclick={($event: MouseEvent) => follow.value($event, itemOf(entry))}
+                      >
+                        {/* label */}
+                        <span class={styles.linkLabel}>{String(entry)}</span>
+                      </a>
                     ) : (
                       <Button
                         variant={entry === props.page ? 'soft' : 'ghost'}
@@ -224,16 +303,34 @@ export default function Pagination(given: PaginationProps): JSX.Element {
                   </>
                 )}
               </Each>
-              <Button
-                variant="ghost"
-                tone="neutral"
-                size="sm"
-                iconOnly={true}
-                icon="next"
-                label={props.messages.next}
-                disabled={props.disabled || props.page >= props.pageCount}
-                onClick={() => props.onPageChange?.(props.page + 1)}
-              />
+              {linked.value && props.page < props.pageCount ? (
+                <a
+                  class={styles.link}
+                  href={props.getPageHref?.(props.page + 1)}
+                  aria-label={props.messages.next}
+                  data-variant="ghost"
+                  data-size="sm"
+                  data-tone="neutral"
+                  data-icon-only={''}
+                  onclick={($event: MouseEvent) => follow.value($event, props.page + 1)}
+                >
+                  {/* glyph */}
+                  <span class={styles.linkGlyph}>
+                    <Icon name="next" size="sm" />
+                  </span>
+                </a>
+              ) : (
+                <Button
+                  variant="ghost"
+                  tone="neutral"
+                  size="sm"
+                  iconOnly={true}
+                  icon="next"
+                  label={props.messages.next}
+                  disabled={props.disabled || props.page >= props.pageCount}
+                  onClick={() => props.onPageChange?.(props.page + 1)}
+                />
+              )}
             </Inline>
           </nav>
         ) : null}

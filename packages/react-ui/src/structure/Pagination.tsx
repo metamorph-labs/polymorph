@@ -5,6 +5,7 @@ import { Inline } from '../layout/Inline'
 import { memberAttr, PAGINATION_ELLIPSIS, paginationWindow, useAgentMember } from '@polymorph/react'
 import styles from '@polymorph/recipes/structure/pagination.module.css'
 import { usePagerFocus } from './pager-focus'
+import { PagerLink } from './pager-link'
 
 /**
  * Numbered page controls for paged lists (`design/components/pagination.md`).
@@ -12,6 +13,10 @@ import { usePagerFocus } from './pager-focus'
  * Numbered pages only. "Load more" and infinite scroll show more results rather
  * than jumping to a page, and one component doing both would have to guess.
  * Renders nothing below two pages, because one page is not a paginated list.
+ *
+ * With `getPageHref`, a control that goes to another page is a link to that
+ * page's address (`pager-link.tsx`), so a crawler and a new tab can follow it,
+ * and a plain click still calls `onPageChange`.
  */
 
 export type SiblingCount = 1 | 2
@@ -47,14 +52,25 @@ export interface PaginationProps {
   label?: string
   /** Omit for the generic English defaults; localized hosts pass their own. */
   messages?: PaginationMessages
+  /**
+   * A page's address, such as `?page=3`. Given, each control that goes to another page is a
+   * link to that page's address, so a crawler, a new tab and a reader whose script has not loaded
+   * can follow it. A click the browser would follow in this tab calls `onPageChange` in place of
+   * the navigation; a click with a modifier key opens the address. The current page, a control
+   * with nowhere to go and a held pager's controls stay buttons.
+   */
+  getPageHref?: (page: number) => string
 }
+
+/** The link's classes, from this member's recipe. */
+const LINK = { link: styles.link, label: styles.linkLabel, glyph: styles.linkGlyph }
 
 /**
  * The visible pages, as data (`paginationWindow`): always the first, the last
- * and `page ± siblings`, with a gap of two or more as an ellipsis. The buttons
- * are Button, so this arithmetic is the only logic that can be wrong, and it is
- * written once in the engine for every framework's Pagination. It is
- * re-exported here for the vocabulary's index.
+ * and `page ± siblings`, with a gap of two or more as an ellipsis. The controls
+ * are Buttons or links in a Button's look, so this arithmetic is the only logic
+ * that can be wrong, and it is written once in the engine for every framework's
+ * Pagination. It is re-exported here for the vocabulary's index.
  */
 export { paginationWindow }
 
@@ -66,12 +82,18 @@ export function Pagination({
   disabled = false,
   label = 'Pagination',
   messages = DEFAULT_MESSAGES,
+  getPageHref,
 }: PaginationProps) {
   const window = paginationWindow(page, pageCount, siblingCount)
 
+  // The addresses the controls link to. A held pager links to none, because a held control
+  // cannot be followed.
+  const address = disabled ? undefined : getPageHref
+
   // A hold that disables the button with focus moves focus to the root, and
-  // gives it back when the hold ends. The buttons are named in the order they
-  // are drawn, a page by its number, so a page drawn again is the same control.
+  // gives it back when the hold ends. The controls are named in the order they
+  // are drawn, a page by its number, so a page drawn again, as a new element or
+  // as a link, is the same control.
   const focus = usePagerFocus(disabled, [
     'previous',
     ...window.filter((entry) => entry !== PAGINATION_ELLIPSIS),
@@ -112,16 +134,29 @@ export function Pagination({
       {/* Wraps, because eleven pages means eleven controls: in a narrow
           container the row continues on a second line, with the same `gap`. */}
       <Inline gap={1} align="center" wrap>
-        <Button
-          variant="ghost"
-          tone="neutral"
-          size="sm"
-          iconOnly
-          icon="previous"
-          label={messages.previous}
-          disabled={disabled || page <= 1}
-          onClick={() => onPageChange(page - 1)}
-        />
+        {address !== undefined && page > 1 ? (
+          <PagerLink
+            classes={LINK}
+            href={address(page - 1)}
+            onFollow={() => onPageChange(page - 1)}
+            variant="ghost"
+            size="sm"
+            iconOnly
+            icon="previous"
+            label={messages.previous}
+          />
+        ) : (
+          <Button
+            variant="ghost"
+            tone="neutral"
+            size="sm"
+            iconOnly
+            icon="previous"
+            label={messages.previous}
+            disabled={disabled || page <= 1}
+            onClick={() => onPageChange(page - 1)}
+          />
+        )}
 
         {window.map((entry, index) =>
           entry === PAGINATION_ELLIPSIS ? (
@@ -151,6 +186,19 @@ export function Pagination({
               aria-label={messages.page(entry)}
               disabled={disabled}
             />
+          ) : address !== undefined ? (
+            // Another page, with an address: a link to it. The current page is never a link
+            // to itself.
+            <PagerLink
+              key={entry}
+              classes={LINK}
+              href={address(entry)}
+              onFollow={() => onPageChange(entry)}
+              variant="ghost"
+              size="sm"
+              label={String(entry)}
+              aria-label={messages.page(entry)}
+            />
           ) : (
             <Button
               key={entry}
@@ -165,16 +213,29 @@ export function Pagination({
           ),
         )}
 
-        <Button
-          variant="ghost"
-          tone="neutral"
-          size="sm"
-          iconOnly
-          icon="next"
-          label={messages.next}
-          disabled={disabled || page >= pageCount}
-          onClick={() => onPageChange(page + 1)}
-        />
+        {address !== undefined && page < pageCount ? (
+          <PagerLink
+            classes={LINK}
+            href={address(page + 1)}
+            onFollow={() => onPageChange(page + 1)}
+            variant="ghost"
+            size="sm"
+            iconOnly
+            icon="next"
+            label={messages.next}
+          />
+        ) : (
+          <Button
+            variant="ghost"
+            tone="neutral"
+            size="sm"
+            iconOnly
+            icon="next"
+            label={messages.next}
+            disabled={disabled || page >= pageCount}
+            onClick={() => onPageChange(page + 1)}
+          />
+        )}
       </Inline>
     </nav>
   )

@@ -334,11 +334,20 @@ export const PARTS: Readonly<Record<string, Readonly<Record<string, string>>>> =
       ':scope [data-member="data-table"] tbody tr:not([data-detail]) [data-member="button"]',
   },
   Pagination: {
-    // Pages are Buttons, which take no part hook. The current page is the one
-    // soft Button (`pagination.md`), and the others are the ghost Buttons that
+    // Pages are Buttons, which take no part hook, or links with a Button's
+    // attributes when the pages have addresses. The current page is the one
+    // soft Button (`pagination.md`), and the others are the ghost controls that
     // carry a number rather than an icon.
     current: ':scope [data-member="pagination"] [data-variant="soft"]',
     page: ':scope [data-member="pagination"] [data-variant="ghost"]:not([data-icon-only])',
+  },
+  CursorPagination: {
+    // The directions are Buttons, or links with a Button's attributes when the
+    // windows have addresses (`cursor-pagination.md`). Previous is the first
+    // ghost control of the replace form, and the append form's action is its
+    // one outline control.
+    previous: ':scope [data-member="cursor-pagination"] [data-variant="ghost"]',
+    more: ':scope [data-member="cursor-pagination"] [data-variant="outline"]',
   },
   Stepper: {
     current: ':scope [data-member="stepper"] > [data-state="active"]',
@@ -588,6 +597,8 @@ export const HANDLERS: Readonly<Record<string, readonly string[]>> = {
   Tour: ['onStepChange', 'onEnd'],
   DataTable: ['onSortChange', 'onSelectionChange', 'onRowClick', 'onExpandedChange'],
   Pagination: ['onPageChange'],
+  // A press on a direction, or on a link to its window, asks for that window.
+  CursorPagination: ['onPrevious', 'onNext'],
   Stepper: ['onStepSelect'],
   // An item is a link. With the router's handler mounted, Enter reaches it and the page stays put.
   SectionNav: ['onNavigate'],

@@ -13,9 +13,14 @@ import {
   text,
   when,
 } from '../dsl'
-import { PAGER_FOCUS, pagerFocusEffects } from './pagination'
+import { NAVIGATES_HERE } from './link'
+import { PAGER_FOCUS, pagerFocusEffects, pagerLink } from './pagination'
 
 const noop = js('() => {}')
+
+/** The windows' addresses in the fixture. Fragments, so a click a test leaves to the browser stays on the page. */
+const PREVIOUS = '#before-26'
+const NEXT = '#after-50'
 
 const ghost = { variant: lit('ghost'), tone: lit('neutral'), size: lit('sm') }
 
@@ -67,10 +72,23 @@ export default describeMember({
     // The append form's list has run out: no next window and none in flight. The template
     // renders the append form with neither only once it has paged, so `paged` holds here.
     ended: '!hasNext && !pending',
-    // The buttons in the order they are drawn. The append form's action leaves when its
-    // list runs out.
+    // The controls in the order they are drawn, as buttons or as links. The append form's
+    // action leaves when its list runs out.
     controls: "mode === 'append' ? (hasNext || pending ? ['more'] : []) : ['previous', 'next']",
     ...PAGER_FOCUS.derived,
+    // With an address, a direction that can be pressed is a link to its window (`pagerLink`).
+    // One with no window, a held pager's and either while a window is in flight stay Buttons,
+    // because a control that cannot be followed is not drawn as a link.
+    previousLink: 'previousHref !== undefined && hasPrevious && !pending && !disabled',
+    nextLink: 'nextHref !== undefined && hasNext && !pending && !disabled',
+    navigatesHere: NAVIGATES_HERE,
+    // A click the browser would follow in this tab asks for the window in place of the
+    // navigation, as a press on the direction's Button does. Every other click stays the
+    // browser's and opens the address.
+    followPrevious:
+      "(event: MouseEvent): void => { if (!navigatesHere(event)) return; event.preventDefault(); asked = 'previous'; emit('previous') }",
+    followNext:
+      "(event: MouseEvent): void => { if (!navigatesHere(event)) return; event.preventDefault(); asked = 'next'; if (mode === 'append') paged = true; emit('next') }",
   },
   state: {
     ...PAGER_FOCUS.state,
@@ -167,34 +185,58 @@ export default describeMember({
                       ),
                     ]),
                     // Outline: a lone action at the foot of a list needs an edge to read as a
-                    // control. Busy while a window is in flight, which ignores presses.
-                    cond('!ended', [
-                      member(
-                        'Button',
-                        {
-                          variant: lit('outline'),
-                          tone: lit('neutral'),
-                          size: lit('sm'),
-                          label: 'more',
-                          loading: 'pending',
-                          // A busy action is not disabled, so it keeps its focus through a hold.
-                          disabled: 'disabled && !pending',
-                        },
-                        { on: { click: run("(asked = 'next', paged = true, emit('next'))") } },
-                      ),
-                    ]),
+                    // control. Busy while a window is in flight, which ignores presses. With an
+                    // address, a link to the next window while it can be pressed.
+                    cond(
+                      '!ended && nextLink',
+                      [
+                        pagerLink(
+                          'nextHref',
+                          { variant: 'outline', label: 'more' },
+                          'followNext($event)',
+                        ),
+                      ],
+                      '!ended',
+                      [
+                        member(
+                          'Button',
+                          {
+                            variant: lit('outline'),
+                            tone: lit('neutral'),
+                            size: lit('sm'),
+                            label: 'more',
+                            loading: 'pending',
+                            // A busy action is not disabled, so it keeps its focus through a hold.
+                            disabled: 'disabled && !pending',
+                          },
+                          { on: { click: run("(asked = 'next', paged = true, emit('next'))") } },
+                        ),
+                      ],
+                    ),
                   ],
                   [
-                    member(
-                      'Button',
-                      {
-                        ...ghost,
-                        icon: lit('previous'),
-                        label: 'messages.previous',
-                        loading: "pending && asked === 'previous'",
-                        disabled: "!hasPrevious || (pending ? asked !== 'previous' : disabled)",
-                      },
-                      { on: { click: run("(asked = 'previous', emit('previous'))") } },
+                    cond(
+                      'previousLink',
+                      [
+                        pagerLink(
+                          'previousHref',
+                          { variant: 'ghost', icon: 'previous', label: 'messages.previous' },
+                          'followPrevious($event)',
+                        ),
+                      ],
+                      [
+                        member(
+                          'Button',
+                          {
+                            ...ghost,
+                            icon: lit('previous'),
+                            label: 'messages.previous',
+                            loading: "pending && asked === 'previous'",
+                            disabled: "!hasPrevious || (pending ? asked !== 'previous' : disabled)",
+                          },
+                          { on: { click: run("(asked = 'previous', emit('previous'))") } },
+                        ),
+                      ],
                     ),
                     cond('position !== undefined', [
                       // Polite: the text changes with the window, so a move is announced once.
@@ -208,16 +250,28 @@ export default describeMember({
                         [text('position')],
                       ),
                     ]),
-                    member(
-                      'Button',
-                      {
-                        ...ghost,
-                        trailingIcon: lit('next'),
-                        label: 'messages.next',
-                        loading: "pending && asked === 'next'",
-                        disabled: "!hasNext || (pending ? asked !== 'next' : disabled)",
-                      },
-                      { on: { click: run("(asked = 'next', emit('next'))") } },
+                    cond(
+                      'nextLink',
+                      [
+                        pagerLink(
+                          'nextHref',
+                          { variant: 'ghost', trailingIcon: 'next', label: 'messages.next' },
+                          'followNext($event)',
+                        ),
+                      ],
+                      [
+                        member(
+                          'Button',
+                          {
+                            ...ghost,
+                            trailingIcon: lit('next'),
+                            label: 'messages.next',
+                            loading: "pending && asked === 'next'",
+                            disabled: "!hasNext || (pending ? asked !== 'next' : disabled)",
+                          },
+                          { on: { click: run("(asked = 'next', emit('next'))") } },
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -294,6 +348,18 @@ export default describeMember({
       },
     },
     {
+      name: 'with addresses — both directions are links',
+      props: {
+        hasPrevious: true,
+        hasNext: true,
+        position: '26–50',
+        previousHref: PREVIOUS,
+        nextHref: NEXT,
+        onPrevious: noop,
+        onNext: noop,
+      },
+    },
+    {
       name: 'append — more to load',
       props: { mode: 'append', hasPrevious: false, hasNext: true, onNext: noop },
     },
@@ -330,6 +396,17 @@ export default describeMember({
         onNext: noop,
       },
       expect: { 'data-disabled': '' },
+    },
+    {
+      name: 'append — with an address, the action is a link',
+      props: {
+        mode: 'append',
+        hasPrevious: false,
+        hasNext: true,
+        position: '50 shown',
+        nextHref: NEXT,
+        onNext: noop,
+      },
     },
     {
       // The form says the list ran out once it has asked for a window, so the entry presses

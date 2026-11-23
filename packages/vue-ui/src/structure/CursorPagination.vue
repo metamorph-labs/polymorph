@@ -8,7 +8,7 @@
  */
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
-import { agentMember, devWarning, useListening } from '@polymorph/vue'
+import { Icon, agentMember, devWarning, useListening } from '@polymorph/vue'
 import styles from '@polymorph/recipes/structure/cursor-pagination.module.css'
 import Button from '../controls/Button.vue'
 import Inline from '../layout/Inline.vue'
@@ -44,6 +44,11 @@ export interface CursorPaginationProps {
    */
   mode?: 'replace' | 'append'
   /**
+   * The next window's address, as `previousHref` is the previous one's: next, or in the append
+   * form its action, is a link to it while it can be pressed, and a plain click calls `onNext`.
+   */
+  nextHref?: string
+  /**
    * The requested window has not arrived: the pressed direction shows busy and the other is
    * disabled, so a slow fetch cannot be followed by a second request.
    */
@@ -53,6 +58,14 @@ export interface CursorPaginationProps {
    * total, because the list does not return one.
    */
   position?: string
+  /**
+   * The previous window's address, such as `?before=c25`. Given, previous is a link to it while
+   * it can be pressed, so a crawler, a new tab and a reader whose script has not loaded can
+   * follow it. A click the browser would follow in this tab calls `onPrevious` in place of the
+   * navigation; a click with a modifier key opens the address. The append form does not read it:
+   * it has no previous direction.
+   */
+  previousHref?: string
 }
 
 defineOptions({ name: 'CursorPagination', inheritAttrs: false })
@@ -72,6 +85,7 @@ const props = withDefaults(defineProps<CursorPaginationProps>(), {
 const emit = defineEmits<{ next: []; previous: [] }>()
 const listening = useListening()
 const focused = ref(null as HTMLElement | null)
+const focusedControl = ref(null as string | number | null)
 const taken = ref(null as string | number | null)
 const asked = ref(null as 'previous' | 'next' | null)
 const paged = ref(false)
@@ -83,30 +97,79 @@ const controls = computed(() =>
   props.mode === 'append' ? (props.hasNext || props.pending ? ['more'] : []) : ['previous', 'next'],
 )
 const focusIn = computed(() => (event: FocusEvent) => {
-  focused.value = event.target as HTMLElement
+  const target = event.target as HTMLElement
+  const pager = root.value as HTMLElement | null
+  const names: readonly (string | number)[] = controls.value
+  const at = pager === null ? -1 : [...pager.querySelectorAll('button, a[href]')].indexOf(target)
+  focused.value = target
+  focusedControl.value = at < 0 ? null : (names[at] ?? null)
 })
 const focusOut = computed(() => (event: FocusEvent) => {
-  if (!(event.target as HTMLElement).matches(':disabled')) focused.value = null
+  const target = event.target as HTMLElement
+  if (target.matches(':disabled')) return
+  queueMicrotask(() => {
+    if (focused.value === target && target.isConnected) focused.value = null
+  })
 })
 const keepPlace = computed(() => () => {
   const pager = root.value as HTMLElement | null
   if (pager === null) return
   const names: readonly (string | number)[] = controls.value
+  const drawn = () => [...pager.querySelectorAll<HTMLElement>('button, a[href]')]
+  const onPage = () => document.activeElement === null || document.activeElement === document.body
+  const left = focused.value as HTMLElement | null
+  if (left !== null && !left.isConnected) {
+    focused.value = null
+    const name = focusedControl.value
+    const now = name === null ? undefined : drawn()[names.indexOf(name)]
+    if (now !== undefined && onPage()) {
+      if (now.matches(':disabled')) focused.value = now
+      else now.focus()
+    }
+  }
   if (!props.disabled) {
     const control = taken.value
     taken.value = null
     if (control === null || document.activeElement !== pager) return
-    const button = [...pager.querySelectorAll('button')][names.indexOf(control)]
-    if (button !== undefined && !button.matches(':disabled')) button.focus()
+    const element = drawn()[names.indexOf(control)]
+    if (element !== undefined && !element.matches(':disabled')) element.focus()
     return
   }
   const from = focused.value as HTMLElement | null
   if (from === null || !from.isConnected || !from.matches(':disabled')) return
   const active = document.activeElement
   if (active !== from && active !== null && active !== document.body) return
-  taken.value =
-    names[[...pager.querySelectorAll('button')].indexOf(from as HTMLButtonElement)] ?? null
+  taken.value = names[drawn().indexOf(from)] ?? null
   pager.focus()
+})
+const previousLink = computed(
+  () => props.previousHref !== undefined && props.hasPrevious && !props.pending && !props.disabled,
+)
+const nextLink = computed(
+  () => props.nextHref !== undefined && props.hasNext && !props.pending && !props.disabled,
+)
+const navigatesHere = computed(
+  () =>
+    (event: MouseEvent): boolean =>
+      !event.defaultPrevented &&
+      event.button === 0 &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.shiftKey &&
+      !event.altKey,
+)
+const followPrevious = computed(() => (event: MouseEvent): void => {
+  if (!navigatesHere.value(event)) return
+  event.preventDefault()
+  asked.value = 'previous'
+  emit('previous')
+})
+const followNext = computed(() => (event: MouseEvent): void => {
+  if (!navigatesHere.value(event)) return
+  event.preventDefault()
+  asked.value = 'next'
+  if (props.mode === 'append') paged.value = true
+  emit('next')
 })
 const effect1 = () => {
   props.pending || (asked.value = null)
@@ -232,8 +295,23 @@ onBeforeUnmount(() => release6?.())
         <span v-if="position !== undefined" :class="styles.position" aria-live="polite">
           {{ position }}
         </span>
+        <!-- link -->
+        <a
+          v-if="!ended && nextLink"
+          :class="styles.link"
+          :href="nextHref"
+          data-variant="outline"
+          data-size="sm"
+          data-tone="neutral"
+          @click="followNext($event)"
+        >
+          <!-- label -->
+          <span :class="styles.linkLabel">
+            {{ more }}
+          </span>
+        </a>
         <Button
-          v-if="!ended"
+          v-else-if="!ended"
           variant="outline"
           tone="neutral"
           size="sm"
@@ -244,7 +322,27 @@ onBeforeUnmount(() => release6?.())
         />
       </template>
       <template v-else>
+        <!-- link -->
+        <a
+          v-if="previousLink"
+          :class="styles.link"
+          :href="previousHref"
+          data-variant="ghost"
+          data-size="sm"
+          data-tone="neutral"
+          @click="followPrevious($event)"
+        >
+          <!-- glyph -->
+          <span :class="styles.linkGlyph">
+            <Icon name="previous" size="sm" />
+          </span>
+          <!-- label -->
+          <span :class="styles.linkLabel">
+            {{ messages.previous }}
+          </span>
+        </a>
         <Button
+          v-else
           variant="ghost"
           tone="neutral"
           size="sm"
@@ -258,7 +356,27 @@ onBeforeUnmount(() => release6?.())
         <span v-if="position !== undefined" :class="styles.position" aria-live="polite">
           {{ position }}
         </span>
+        <!-- link -->
+        <a
+          v-if="nextLink"
+          :class="styles.link"
+          :href="nextHref"
+          data-variant="ghost"
+          data-size="sm"
+          data-tone="neutral"
+          @click="followNext($event)"
+        >
+          <!-- label -->
+          <span :class="styles.linkLabel">
+            {{ messages.next }}
+          </span>
+          <!-- glyph -->
+          <span :class="styles.linkGlyph">
+            <Icon name="next" size="sm" />
+          </span>
+        </a>
         <Button
+          v-else
           variant="ghost"
           tone="neutral"
           size="sm"

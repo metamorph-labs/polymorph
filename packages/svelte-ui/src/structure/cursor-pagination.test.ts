@@ -1,6 +1,6 @@
 import { tick } from 'svelte'
 
-import { pagerHoldLaw } from '@polymorph/conformance/pager-hold'
+import { PAGER_ADDRESSES, pagerHoldLaw } from '@polymorph/conformance/pager-hold'
 
 import { render } from '../mount'
 import { live } from '../testing/live.svelte'
@@ -14,7 +14,7 @@ import CursorPagination from './CursorPagination.svelte'
 pagerHoldLaw({
   shell: 'Svelte',
   member: 'CursorPagination',
-  async mount({ append, asked }) {
+  async mount({ append, addressed, asked }) {
     const props = live({
       mode: append ? ('append' as const) : ('replace' as const),
       label: 'Tickets',
@@ -22,6 +22,8 @@ pagerHoldLaw({
       hasNext: true,
       pending: false,
       disabled: false,
+      previousHref: addressed ? PAGER_ADDRESSES.previous : undefined,
+      nextHref: addressed ? PAGER_ADDRESSES.next : undefined,
       onPrevious: append ? undefined : asked,
       onNext: asked,
     })
