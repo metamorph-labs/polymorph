@@ -709,7 +709,7 @@ reaches no other module, the walk reaches neither the table, the card nor the va
 `createScreen(options)` takes `document`, `vocabulary` (`VOCABULARY`), `framework`, `members`,
 `data`, `fill`, `streaming`, `open`, `cut`, `onAction` and `onFault`. `fill` is `absent`, the
 default, or `sample`, which fills an input with no data from its type, for a picture of the
-screen. It returns a `Screen`: `root` (the node to draw, or `null`), `faults`, `values`, `fills`
+screen. It returns a `Screen`: `root` (the node to draw, or `null`), `faults`, `values`, `changed`, `fills`
 (how each input was filled), `streaming`, `update(change)`, `subscribe(listener)` and
 `fail(fault)`, through which a renderer reports a node it could not draw.
 
@@ -721,7 +721,7 @@ it.
 | Export | What it is |
 | --- | --- |
 | `ScreenView` | draws a document, or a model's answer as text while it streams |
-| `useScreen(source)` | the screen `ScreenView` draws, kept for the component's life: read its `values`, `faults` and `fills`, or draw it with `ScreenDrawing` |
+| `useScreen(source)` | the screen `ScreenView` draws, kept for the component's life: read its `values`, `changed`, `faults` and `fills`, or draw it with `ScreenDrawing` |
 | `ScreenDrawing` | draws a `Screen` with the host's members |
 | `componentFor(members, name)` | the component a name resolves to among the members: `members.Table.Row`, or `members['Table.Row']` |
 | `parsePartial` | the core's |
@@ -761,7 +761,7 @@ has already defined keeps its element.
 
 | Export | What it is |
 | --- | --- |
-| `drawScreen(container, options)` | draws into a plain element, appending the drawing's root element to it. Returns `values`, `faults`, `update(change)`, `check()` and `dispose()` |
+| `drawScreen(container, options)` | draws into a plain element, appending the drawing's root element to it. Returns `values`, `changed`, `faults`, `update(change)`, `check()` and `dispose()` |
 | `checkScreen(document, options)` | the core's, for the elements: `members` and `vocabulary` |
 | `runtimeCard(options)`, `outputContract(options)` | the core's, for the elements: `members` |
 | `parsePartial(text)` | the core's |
@@ -795,13 +795,14 @@ It draws the first of these that holds a document:
 | `members` (attribute and property) | the members the host allows; the elements' default when absent. The attribute holds names separated by spaces, or a JSON array. A value that is not a list of names allows no member and is a fault at the path `members`. A change starts the drawing again |
 | `faults` (attribute and property) | `hidden` (the default) or `inline`, which draws each fault as a `poly-alert` in its node's place |
 | `values` (property, read only) | each named control's current value |
+| `changed` (property, read only) | the names in `values` whose value the person chose, in document order |
 | `check()` (method) | a promise of what `checkScreen` says of the document it draws, with its members. The first call fetches the validator |
 
 A property set before the element is defined is read when it is.
 
 | Event | `detail` | |
 | --- | --- | --- |
-| `poly-action` | `{ name, args, values }` | a listener hands the member a promise with `event.waitUntil` |
+| `poly-action` | `{ name, args, values, changed }` | a listener hands the member a promise with `event.waitUntil` |
 | `poly-fault` | `{ path, message, component? }` | told once for each fault |
 
 Both bubble and are composed. No member dispatches either (`packages/elements-ui/screen.test.ts`).

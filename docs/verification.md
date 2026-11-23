@@ -527,7 +527,7 @@ writes after the test projects have run. On each engine it checks:
   registers the three tools at load, a call lists the page's members, and no chunk is fetched;
 - a `<poly-screen>` draws the document in its `<script type="application/json">` child and draws no
   box of its own, a press of its Button dispatches `poly-action` with the named Input's text in
-  `values`, and `loadScreen` resolves to `drawScreen`, `parsePartial`, `checkScreen`,
+  `values` and its name in `changed`, and `loadScreen` resolves to `drawScreen`, `parsePartial`, `checkScreen`,
   `runtimeCard` and `outputContract`; a page with no `<poly-screen>` fetches none of the screen's
   code, a page that draws one fetches its renderer and the vocabulary table and not the validator
   or the card, and `loadScreen` fetches those two;
