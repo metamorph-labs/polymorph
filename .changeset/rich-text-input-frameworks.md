@@ -23,5 +23,8 @@ one description and held to the React member's contract.
   `syncToolbarStop` and the functions beside them) and the places of a bar at the selected text
   and of a list at a token (`placeSelectionBar`, `followSelectionBar`, `placeTokenList`), which
   every framework's member calls. The React member calls the same functions.
+- `@polymorph/engine` also exports what makes a field of several parts behave as one control:
+  `followFieldFocus` (focus entering and leaving the field as a whole), `followFormReset` and
+  `focusOnLabelPress`.
 - A states fixture entry can select words once they are drawn: the Svelte foundation's `Held`
   takes `selects`, and the Angular foundation exports `selectOnce`.

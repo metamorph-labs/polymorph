@@ -86,7 +86,9 @@ describe('the drawing of a document', () => {
     )
     expect(run).toEqual({
       kind: 'strong',
-      children: [{ kind: 'em', children: [{ kind: 's', children: [{ kind: 'text', text: 'x' }] }] }],
+      children: [
+        { kind: 'em', children: [{ kind: 's', children: [{ kind: 'text', text: 'x' }] }] },
+      ],
     })
     expect(chip).toEqual({ kind: 'code', text: 'k' })
   })
@@ -173,10 +175,7 @@ describe('the drawing of a document', () => {
         appDraws: (node) => node.kind === 'user',
       }).blocks[0],
     )
-    expect(inlines.map((node) => (node.kind === 'entity' ? node.app : null))).toEqual([
-      true,
-      false,
-    ])
+    expect(inlines.map((node) => (node.kind === 'entity' ? node.app : null))).toEqual([true, false])
   })
 })
 
@@ -242,7 +241,13 @@ describe('the highlights', () => {
     expect(chip).toEqual({
       kind: 'ownCode',
       children: [
-        { kind: 'mark', id: 'a', active: false, stop: false, children: [{ kind: 'text', text: 'k' }] },
+        {
+          kind: 'mark',
+          id: 'a',
+          active: false,
+          stop: false,
+          children: [{ kind: 'text', text: 'k' }],
+        },
       ],
     })
   })
