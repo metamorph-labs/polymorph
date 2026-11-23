@@ -423,9 +423,9 @@ class RichTextReaderTest {
         "java\nscript:alert(1)",
         "jav\u0000ascript:alert(1)",
         "javascript\u0000:alert(1)",
-        " javascript:alert(1)",
-        "　javascript:alert(1)",
-        "﻿javascript:alert(1)",
+        "\u00A0javascript:alert(1)",
+        "\u3000javascript:alert(1)",
+        "\uFEFFjavascript:alert(1)",
         "vbscript:msgbox(1)",
         "data:text/html,<script>alert(1)</script>",
         "blob:https://app.example/1",
@@ -565,6 +565,127 @@ class RichTextReaderTest {
         assertEquals(listOf(para(PMRichTextInline.Run("deep", annotations = listOf("thread-a")))), inside)
     }
 
+    @Test
+    fun ordersAnEntitysMarksAsTheNormalFormDoes() {
+        // The order and the copies are the engine's own `normalizeRichText` gives for these marks.
+        val entity = { marks: List<Any?> ->
+            val blocks = read(p(mapOf("type" to "entity", "kind" to "user", "id" to "u", "label" to "@U", "marks" to marks)))
+            ((blocks.single() as PMRichTextBlock.Paragraph).content.single() as PMRichTextInline.Entity).entity.marks
+        }
+        assertEquals(
+            listOf(
+                linkedMapOf("type" to "Zeta", "n" to 100),
+                linkedMapOf("type" to "highlight", "b" to 1.5e21, "colour" to "yellow"),
+                linkedMapOf("type" to "highlight", "colour" to "red"),
+                linkedMapOf("type" to "zeta"),
+                linkedMapOf("type" to "annotation", "id" to "a"),
+                linkedMapOf("type" to "annotation", "id" to "b", "at" to linkedMapOf("a" to listOf(5e-7, "q\"\u0001"), "z" to 1), "resolved" to true),
+            ).map { PMJSONValue.of(it) },
+            entity(
+                listOf(
+                    mapOf("type" to "zeta"),
+                    linkedMapOf("colour" to "yellow", "type" to "highlight", "b" to 1.5e21),
+                    linkedMapOf("type" to "annotation", "id" to "b", "resolved" to true, "at" to linkedMapOf("z" to 1, "a" to listOf(5e-7, "q\"\u0001"))),
+                    mapOf("type" to "highlight", "colour" to "red"),
+                    bold,
+                    mapOf("type" to "zeta"),
+                    annotation("a"),
+                    linkedMapOf("id" to "a", "type" to "annotation", "extra" to 1),
+                    mapOf("type" to "Zeta", "n" to 100),
+                ),
+            ),
+        )
+        // Ordered by their JSON as JavaScript writes it: a number's shortest digits, `1e+21` and
+        // `1e-7` with an exponent, and a quote and a control character escaped.
+        assertEquals(
+            listOf(
+                mapOf("type" to "m", "v" to 1.5),
+                mapOf("type" to "m", "v" to 1e21),
+                mapOf("type" to "m", "v" to 1e-7),
+                mapOf("type" to "m", "v" to 2),
+                mapOf("type" to "q", "s" to "q#"),
+                mapOf("type" to "q", "s" to "q\"x"),
+                mapOf("type" to "q", "s" to "q\u0001"),
+            ).map { PMJSONValue.of(it) },
+            entity(
+                listOf(
+                    mapOf("type" to "m", "v" to 2),
+                    mapOf("type" to "q", "s" to "q\u0001"),
+                    mapOf("type" to "m", "v" to 1e21),
+                    mapOf("type" to "q", "s" to "q\"x"),
+                    mapOf("type" to "m", "v" to 1e-7),
+                    mapOf("type" to "q", "s" to "q#"),
+                    mapOf("type" to "m", "v" to 1.5),
+                ),
+            ),
+        )
+    }
+
+    /* Emphasis a heading and inline code do not carry ------------------------- */
+
+    @Test
+    fun dropsBoldItalicAndStrikeFromAHeadingsTextAndKeepsTheRest() {
+        val highlight = mapOf("type" to "highlight")
+        val blocks = read(
+            heading(
+                2,
+                t("Big ", bold, italic, strike),
+                t("call()", code, bold),
+                t(" and ", strike),
+                t("docs", link("/docs"), bold, annotation("c1"), highlight),
+                mapOf("type" to "entity", "kind" to "user", "id" to "u", "label" to "@U", "marks" to listOf(bold, annotation("c1"))),
+            ),
+        )
+        assertEquals(
+            listOf(
+                PMRichTextBlock.Heading(
+                    2,
+                    listOf(
+                        run("Big "),
+                        PMRichTextInline.Run("call()", code = true),
+                        run(" and "),
+                        PMRichTextInline.Run("docs", href = "/docs", annotations = listOf("c1")),
+                        PMRichTextInline.Entity(
+                            PMRichTextEntity(kind = "user", id = "u", label = "@U", marks = listOf(PMJSONValue.of(annotation("c1")))),
+                            listOf("c1"),
+                        ),
+                    ),
+                ),
+            ),
+            blocks,
+        )
+    }
+
+    @Test
+    fun dropsBoldItalicAndStrikeFromInlineCodeAnywhereAndKeepsALinkAndAnAnnotation() {
+        val blocks = read(p(t("a", bold), t("b", bold, code), t("c", italic, strike, code, link("/x"), annotation("c1"))))
+        assertEquals(
+            listOf(
+                para(
+                    PMRichTextInline.Run("a", bold = true),
+                    PMRichTextInline.Run("b", code = true),
+                    PMRichTextInline.Run("c", href = "/x", code = true, annotations = listOf("c1")),
+                ),
+            ),
+            blocks,
+        )
+    }
+
+    @Test
+    fun drawsAlikeTheRunsThatDifferedOnlyInWhatWasDropped() {
+        // The web joins them into one run; this reader keeps two, which draw the same line.
+        assertEquals(listOf(PMRichTextBlock.Heading(1, listOf(run("a"), run("b")))), read(heading(1, t("a", bold), t("b"))))
+    }
+
+    @Test
+    fun readsAHeadingPastLevelThreeAsAHeadingAndOneWithNoLevelAsAParagraphThatKeepsItsBold() {
+        assertEquals(listOf(PMRichTextBlock.Heading(3, listOf(run("h")))), read(heading(5, t("h", bold))))
+        assertEquals(listOf(para(PMRichTextInline.Run("h", bold = true))), read(heading(null, t("h", bold))))
+        // A heading flattened inside blocks nested too deep is a paragraph, which keeps its bold.
+        val (_, inside) = innermost(read(nested(PMRichTextReader.MAX_DEPTH, quote(heading(1, t("h", bold))))))
+        assertEquals(listOf(para(PMRichTextInline.Run("h", bold = true))), inside)
+    }
+
     /* Emptiness (`isRichTextEmpty`) ------------------------------------------- */
 
     private fun empty(vararg blocks: Any?) = PMRichTextReader.isEmpty(read(*blocks))
@@ -574,7 +695,7 @@ class RichTextReaderTest {
         assertTrue(empty())
         assertTrue(empty(p(t("    "), br), p()))
         // JavaScript's trim removes the byte order mark and keeps U+001C.
-        assertTrue(empty(p(t("﻿  "))))
+        assertTrue(empty(p(t("\uFEFF\u00A0\u2028"))))
         assertFalse(empty(p(t("\u001C"))))
     }
 

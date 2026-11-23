@@ -7,9 +7,10 @@
 //
 // It mirrors these functions, and `RichTextReaderTest` holds it to their cases:
 //
-// - `parseRichText` (`read.ts`: `readDocument`, `readBlock`, `readItems`,
-//   `readInlines`, `readMarks`, `flatten`), for each repair that changes what
-//   is drawn: a heading deeper than 3 is a level 3 heading and one with no
+// - `parseRichText` and `readRichText` (`read.ts`: `readDocument`,
+//   `readBlock`, `readItems`, `readInlines`, `readMarks`, `flatten`,
+//   `copyJson`), for each repair that changes what is drawn or what the app's
+//   `entity` is handed: a heading deeper than 3 is a level 3 heading and one with no
 //   level a paragraph; a list that does not say it is numbered is bulleted, and
 //   one whose first number is not a whole number from 0 starts at 1; a list
 //   with no items and a quote with no blocks are left out; a list item's first
@@ -19,18 +20,21 @@
 //   `RICH_TEXT_MAX_DEPTH` (8) quotes and lists are flattened to paragraphs.
 //   A text and an entity keep their annotations (`annotation` marks), one per
 //   id, ordered by id; one with no id is dropped. An entity keeps its
-//   annotations and the marks this version does not know, and no format.
+//   annotations and the marks this version does not know, and no format, in
+//   the normal form's order (`copyJson`, and the marks sorted by their JSON).
+//   A heading's text, and text marked `code` anywhere, carry no bold, italic
+//   or strike; a heading read as a paragraph, for want of a level, keeps them.
 // - `richTextHref` (`href.ts`), with `cleanHref` (`markdown/parse.ts`).
 // - `richTextFormatVersion` (`migrate.ts`).
 // - `richTextNodeText` and `isRichTextEmpty` (`text.ts`).
 //
 // It leaves out what does not change a drawing: the faults, the normal form's
-// merged runs and key order, the fields a node does not know, and the
-// migration steps, of which there are none. The web reader also parses a JSON
+// merged runs, the key order of the nodes it draws, the fields a node does not
+// know, and the migration steps, of which there are none. The web reader also parses a JSON
 // string; the contract hands the member a parsed value (`PMJSONValue`), so a
-// string here is not a document. An entity's marks reach the app as they were
-// written, a repeated one once, where the web orders the ones it does not know
-// by their JSON.
+// string here is not a document. A document of a later format
+// (`isRichTextNewer`) is read as far as this version can and drawn, as the
+// web's `readRichText` reads it for drawing; nothing here stores it.
 
 package dev.polymorph.ui
 
@@ -207,13 +211,14 @@ internal object PMRichTextReader {
         when (type) {
             PARAGRAPH -> out += PMRichTextBlock.Paragraph(content(node))
             HEADING -> {
-                val content = content(node)
-                // A level that is not a number is no level.
+                // A level that is not a number is no level. The level decides
+                // first whether this is a heading, and so whether its text
+                // may carry emphasis: one read as a paragraph keeps its bold.
                 val level = (node.field(LEVEL) as? PMJSONValue.Number)?.value ?: Double.NaN
                 out += when {
-                    level == 1.0 || level == 2.0 || level == 3.0 -> PMRichTextBlock.Heading(level.toInt(), content)
-                    isSafeInteger(level) && level > 3 -> PMRichTextBlock.Heading(3, content)
-                    else -> PMRichTextBlock.Paragraph(content)
+                    level == 1.0 || level == 2.0 || level == 3.0 -> PMRichTextBlock.Heading(level.toInt(), content(node, heading = true))
+                    isSafeInteger(level) && level > 3 -> PMRichTextBlock.Heading(3, content(node, heading = true))
+                    else -> PMRichTextBlock.Paragraph(content(node))
                 }
             }
             CODE_BLOCK -> out += PMRichTextBlock.Code(
@@ -295,10 +300,10 @@ internal object PMRichTextReader {
     /* Lines ----------------------------------------------------------------- */
 
     /** A paragraph's or a heading's line; one with no content list is empty. */
-    private fun content(node: PMJSONValue): List<PMRichTextInline> =
-        (node.field(CONTENT) as? PMJSONValue.Array)?.let { inlines(it.items) } ?: emptyList()
+    private fun content(node: PMJSONValue, heading: Boolean = false): List<PMRichTextInline> =
+        (node.field(CONTENT) as? PMJSONValue.Array)?.let { inlines(it.items, heading) } ?: emptyList()
 
-    private fun inlines(nodes: List<PMJSONValue>): List<PMRichTextInline> {
+    private fun inlines(nodes: List<PMJSONValue>, heading: Boolean): List<PMRichTextInline> {
         val out = mutableListOf<PMRichTextInline>()
         for (node in nodes) {
             // A node that is not an object with a string type is left out.
@@ -306,7 +311,7 @@ internal object PMRichTextReader {
             when (type) {
                 TEXT_NODE -> {
                     val text = (node.field(TEXT) as? PMJSONValue.Text)?.value ?: continue
-                    if (text.isNotEmpty()) out += run(text, node.field(MARKS))
+                    if (text.isNotEmpty()) out += run(text, node.field(MARKS), heading)
                 }
                 ENTITY -> {
                     val kind = word(node.field(KIND))
@@ -334,42 +339,66 @@ internal object PMRichTextReader {
      * nothing. The first link whose target may be followed is the run's link;
      * a link with no target, or one that may not be followed, is removed and
      * its text kept. An annotation is kept once per id, and one with no id is
-     * removed.
+     * removed. A heading's text carries no bold, italic or strike, because a
+     * heading is already set apart, and neither does text marked `code`,
+     * which is drawn as it was written: those marks are dropped, and a link,
+     * code and an annotation stay.
      */
-    private fun run(text: String, marks: PMJSONValue?): PMRichTextInline.Run {
+    private fun run(text: String, marks: PMJSONValue?, heading: Boolean): PMRichTextInline.Run {
         var link: String? = null
         val types = mutableSetOf<String>()
         val annotations = mutableSetOf<String>()
-        for (mark in (marks as? PMJSONValue.Array)?.items.orEmpty()) {
+        val list = (marks as? PMJSONValue.Array)?.items.orEmpty()
+        for (mark in list) {
             when (val type = mark.type() ?: continue) {
                 ANNOTATION -> word(mark.field(ID))?.let { annotations += it }
                 LINK -> if (link == null) link = (mark.field(HREF) as? PMJSONValue.Text)?.value?.let { href(it) }
                 else -> types += type
             }
         }
-        return PMRichTextInline.Run(text, link, BOLD in types, ITALIC in types, STRIKE in types, CODE in types, annotations.sorted())
+        val emphasis = !heading && CODE !in types
+        return PMRichTextInline.Run(
+            text = text,
+            href = link,
+            bold = emphasis && BOLD in types,
+            italic = emphasis && ITALIC in types,
+            strike = emphasis && STRIKE in types,
+            code = CODE in types,
+            annotations = annotations.sorted(),
+        )
     }
 
     /**
-     * An entity's marks as the app is handed them, and the ids of its
-     * annotations: the marks this version does not know, each once, then the
-     * annotations, one per id and ordered by id. A format means nothing on an
-     * entity, so one written there is dropped, and so is an annotation with no
-     * id. Marks that are not a list are none.
+     * An entity's marks as the app is handed them, in the normal form, and the
+     * ids of its annotations (`readMarks` for an entity). The marks this
+     * version does not know come first, each copied as the web copies it and
+     * once, ordered by their JSON; then the annotations, one per id and
+     * ordered by id, each its type and id and then its other fields by name. A
+     * format means nothing on an entity, so one written there is dropped, and
+     * so is an annotation with no id. Marks that are not a list are none.
      */
     private fun entityMarks(marks: PMJSONValue?): Pair<List<PMJSONValue>, List<String>> {
-        val others = mutableListOf<PMJSONValue>()
+        val others = mutableMapOf<String, PMJSONValue>()
         val annotations = mutableMapOf<String, PMJSONValue>()
         for (mark in (marks as? PMJSONValue.Array)?.items.orEmpty()) {
             val type = mark.type() ?: continue
             when {
-                type == ANNOTATION -> word(mark.field(ID))?.let { if (it !in annotations) annotations[it] = mark }
+                type == ANNOTATION -> word(mark.field(ID))?.let { id -> if (id !in annotations) annotations[id] = annotationMark(mark, id) }
                 type in FORMATS -> {}
-                mark !in others -> others += mark
+                else -> copy(mark, 1)?.let { kept -> others.getOrPut(json(kept)) { kept } }
             }
         }
         val ids = annotations.keys.sorted()
-        return others + ids.map { annotations.getValue(it) } to ids
+        return others.keys.sorted().map { others.getValue(it) } + ids.map { annotations.getValue(it) } to ids
+    }
+
+    /** An annotation mark as the normal form writes it: its type and id, then its other fields by name, each copied. */
+    private fun annotationMark(mark: PMJSONValue, id: String): PMJSONValue {
+        val extras = fields(mark).entries.filter { it.key != TYPE && it.key != ID }.sortedBy { it.key }
+        return PMJSONValue.Object(
+            listOf(PMJSONMember(TYPE, PMJSONValue.Text(ANNOTATION)), PMJSONMember(ID, PMJSONValue.Text(id))) +
+                extras.mapNotNull { (key, value) -> copy(value, 2)?.let { PMJSONMember(key, it) } },
+        )
     }
 
     /* Links ----------------------------------------------------------------- */
@@ -466,6 +495,122 @@ internal object PMRichTextReader {
 
     /* JSON ------------------------------------------------------------------ */
 
+    /** How deep the reader copies a value it does not know, its holder the first level (`OPAQUE_MAX_DEPTH`). */
+    private const val OPAQUE_MAX_DEPTH = 64
+
+    /** An object's fields, each key once with the last value it was given, as a JSON parser keeps them. */
+    private fun fields(value: PMJSONValue): Map<String, PMJSONValue> =
+        (value as? PMJSONValue.Object)?.members?.associate { it.key to it.value }.orEmpty()
+
+    /**
+     * A value this version does not know, copied as the web copies it
+     * (`copyJson`): an object's keys `type` first and then by name, a number
+     * JSON cannot hold as null, and a list or an object deeper than
+     * `OPAQUE_MAX_DEPTH` left out, which is null in a list and absent in an
+     * object. Null when the value itself is left out.
+     */
+    private fun copy(value: PMJSONValue, depth: Int): PMJSONValue? = when (value) {
+        is PMJSONValue.Number -> if (value.value.isFinite()) value else PMJSONValue.Null
+        is PMJSONValue.Array ->
+            if (depth > OPAQUE_MAX_DEPTH) null else PMJSONValue.Array(value.items.map { copy(it, depth + 1) ?: PMJSONValue.Null })
+        is PMJSONValue.Object -> if (depth > OPAQUE_MAX_DEPTH) {
+            null
+        } else {
+            val kept = fields(value)
+            val keys = kept.keys.sortedWith(compareBy<String> { it != TYPE }.thenBy { it })
+            PMJSONValue.Object(keys.mapNotNull { key -> copy(kept.getValue(key), depth + 1)?.let { PMJSONMember(key, it) } })
+        }
+        else -> value
+    }
+
+    /** A copied value as `JSON.stringify` writes it: what the web orders the marks it does not know by. */
+    private fun json(value: PMJSONValue): String = when (value) {
+        PMJSONValue.Null -> NULL
+        is PMJSONValue.Bool -> value.value.toString()
+        is PMJSONValue.Number -> number(value.value)
+        is PMJSONValue.Text -> quoted(value.value)
+        is PMJSONValue.Array -> value.items.joinToString(COMMA, OPEN_LIST, CLOSE_LIST) { json(it) }
+        is PMJSONValue.Object -> value.members.joinToString(COMMA, OPEN_OBJECT, CLOSE_OBJECT) { quoted(it.key) + COLON + json(it.value) }
+    }
+
+    /**
+     * A finite number as JavaScript writes it (`Number.prototype.toString`):
+     * its shortest digits, in full from 1e-6 up to 1e21 and with an exponent
+     * outside, which Kotlin writes from 1e-3 and 1e7.
+     */
+    private fun number(value: Double): String {
+        if (value == 0.0) return ZERO
+        if (value < 0) return MINUS + number(-value)
+        val written = value.toString()
+        val exponent = written.substringAfter(EXPONENT, ZERO).toInt()
+        val mantissa = written.substringBefore(EXPONENT)
+        val whole = mantissa.substringBefore(POINT)
+        val all = whole + mantissa.substringAfter(POINT, NONE)
+        val digits = all.trimStart(ZERO_DIGIT).trimEnd(ZERO_DIGIT)
+        // Where the point falls, counted in digits from the first that is not zero.
+        val point = whole.length + exponent - (all.length - all.trimStart(ZERO_DIGIT).length)
+        val count = digits.length
+        return when {
+            point in count..21 -> digits + ZERO.repeat(point - count)
+            point in 1..21 -> digits.substring(0, point) + POINT + digits.substring(point)
+            point in -5..0 -> ZERO + POINT + ZERO.repeat(-point) + digits
+            else -> {
+                val power = point - 1
+                val sign = if (power < 0) MINUS else PLUS
+                val lead = if (count == 1) digits else digits.substring(0, 1) + POINT + digits.substring(1)
+                lead + EXPONENT_JS + sign + abs(power)
+            }
+        }
+    }
+
+    /** A string as `JSON.stringify` quotes it: a quote, a backslash, a control character and a lone surrogate escaped. */
+    private fun quoted(text: String): String {
+        val out = StringBuilder(QUOTE)
+        text.forEachIndexed { index, c ->
+            val paired = (c.isHighSurrogate() && text.getOrNull(index + 1)?.isLowSurrogate() == true) ||
+                (c.isLowSurrogate() && text.getOrNull(index - 1)?.isHighSurrogate() == true)
+            when {
+                c == '"' -> out.append(ESCAPED_QUOTE)
+                c == '\\' -> out.append(ESCAPED_BACKSLASH)
+                c == '\b' -> out.append(ESCAPED_BACKSPACE)
+                c == '\u000C' -> out.append(ESCAPED_FORM_FEED)
+                c == '\n' -> out.append(ESCAPED_LINE_FEED)
+                c == '\r' -> out.append(ESCAPED_RETURN)
+                c == '\t' -> out.append(ESCAPED_TAB)
+                c.code <= LAST_CONTROL || (c.isSurrogate() && !paired) ->
+                    out.append(ESCAPED_UNIT).append(c.code.toString(HEX).padStart(UNIT_DIGITS, ZERO_DIGIT))
+                else -> out.append(c)
+            }
+        }
+        return out.append(QUOTE).toString()
+    }
+
+    private const val NULL = "null"
+    private const val COMMA = ","
+    private const val COLON = ":"
+    private const val OPEN_LIST = "["
+    private const val CLOSE_LIST = "]"
+    private const val OPEN_OBJECT = "{"
+    private const val CLOSE_OBJECT = "}"
+    private const val QUOTE = "\""
+    private const val ZERO = "0"
+    private const val ZERO_DIGIT = '0'
+    private const val MINUS = "-"
+    private const val PLUS = "+"
+    private const val POINT = "."
+    private const val EXPONENT = "E"
+    private const val EXPONENT_JS = "e"
+    private const val ESCAPED_QUOTE = "\\\""
+    private const val ESCAPED_BACKSLASH = "\\\\"
+    private const val ESCAPED_BACKSPACE = "\\b"
+    private const val ESCAPED_FORM_FEED = "\\f"
+    private const val ESCAPED_LINE_FEED = "\\n"
+    private const val ESCAPED_RETURN = "\\r"
+    private const val ESCAPED_TAB = "\\t"
+    private const val ESCAPED_UNIT = "\\u"
+    private const val HEX = 16
+    private const val UNIT_DIGITS = 4
+
     /**
      * The object's member `key`, or null when it is not an object or holds
      * none. The last of two members with one key is the one read, as a JSON
@@ -491,7 +636,7 @@ internal object PMRichTextReader {
      * separators U+001C to U+001F, which JavaScript keeps, and the byte order
      * mark, which it removes.
      */
-    private fun isSpace(c: Char): Boolean = (c.isWhitespace() && c !in '\u001C'..'\u001F') || c == '﻿'
+    private fun isSpace(c: Char): Boolean = (c.isWhitespace() && c !in '\u001C'..'\u001F') || c == '\uFEFF'
 
     /** Whether a text is whitespace alone, as `text.trim() === ''` decides. */
     fun isBlank(text: String): Boolean = text.all(::isSpace)
