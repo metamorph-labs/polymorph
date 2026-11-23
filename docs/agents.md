@@ -5,6 +5,10 @@ operate the members it renders, and how a member's author declares what an agent
 do. The first half is for an application. The second half is for the author of a member, and is
 the procedure for giving a member an `## Agent` section.
 
+The bridge works the members a page already renders. An agent that shows the person a screen of
+its own, such as a form to fill or a choice to make, writes a screen spec that the application
+draws at run time ([run-time-screens.md](run-time-screens.md)).
+
 Terms used on this page:
 
 - **Agent**: a program that reads and acts on a page through an API, such as a language model

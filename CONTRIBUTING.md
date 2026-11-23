@@ -250,7 +250,7 @@ A release ships every package, each the way its kind is shipped:
 
 | Packages | Versioned by | Shipped by |
 | --- | --- | --- |
-| The published web packages: `@polymorph/engine`, `@polymorph/rules`, `@polymorph/recipes`, and the foundation and vocabulary of each web framework (`@polymorph/react`, `@polymorph/react-ui`, `@polymorph/vue`, `@polymorph/vue-ui`, `@polymorph/svelte`, `@polymorph/svelte-ui`, `@polymorph/solid`, `@polymorph/solid-ui`, `@polymorph/angular`, `@polymorph/angular-ui`) | changesets: the release's version, in each `package.json` | `pnpm publish:packages`, to GitHub Packages, and with `--to npmjs` to npmjs.com, as `@metamorph-labs/polymorph-<name>` |
+| The published web packages: `@polymorph/engine`, `@polymorph/rules`, `@polymorph/recipes`, `@polymorph/screen`, and the foundation and vocabulary of each web framework (`@polymorph/react`, `@polymorph/react-ui`, `@polymorph/vue`, `@polymorph/vue-ui`, `@polymorph/svelte`, `@polymorph/svelte-ui`, `@polymorph/solid`, `@polymorph/solid-ui`, `@polymorph/elements`, `@polymorph/elements-ui`, `@polymorph/angular`, `@polymorph/angular-ui`) | changesets: the release's version, in each `package.json` | `pnpm publish:packages`, to GitHub Packages, and with `--to npmjs` to npmjs.com, as `@metamorph-labs/polymorph-<name>` |
 | The internal packages: `@polymorph/theme`, `@polymorph/registry`, `@polymorph/cli`, `@polymorph/mcp`, `@polymorph/spec`, `@polymorph/shells`, `@polymorph/conformance`, `@polymorph/native` | changesets: the same version, with their changelogs | nothing: they run from a checkout |
 | The native packages: `platforms/ios`, `platforms/android`, `platforms/dart` | the repository's release tag | the tag: an app pins its checkout or submodule to it |
 

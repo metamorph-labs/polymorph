@@ -27,7 +27,12 @@ import { ScreenView } from '@polymorph/react/screen'
   field keeps its text and its focus. If you read the stream yourself with `parsePartial`, pass
   `document` with its `cut` and `open`. `allow` narrows the
   members a document may use, as `runtimeCard({ members })` and `checkScreen(document, { members })`
-  do. A node that cannot be drawn, or whose member throws, draws nothing and reaches `onFault`;
-  `faults="inline"` shows it in place.
+  do. Without it, a document may use every member React draws except `ThirdParty`, which hosts
+  another library's code, and `Toast`, which React raises with `toast()`. A node that cannot be
+  drawn, or whose member throws, draws nothing and reaches `onFault`; `faults="inline"` shows it
+  in place.
+- `onAction` is told `{ name, args, values }` when a member calls a callback input that returns
+  nothing, and a promise it returns is what the member waits on: a ConfirmDialog stays busy until
+  it settles. A callback input that returns a value is answered by its type and never told.
 - `useScreen` and `ScreenDrawing` are its two halves, for reading the screen's `values` or drawing
   it somewhere of your own. `componentFor(members, name)` is the rule a name resolves by.

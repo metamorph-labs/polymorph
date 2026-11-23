@@ -11,6 +11,7 @@ How an app in another repository uses polymorph, for each web framework and nati
 | a Solid app | [A Solid app](#a-solid-app) | `@polymorph/solid-ui` on `@polymorph/solid` |
 | an Angular app | [An Angular app](#an-angular-app) | `@polymorph/angular-ui` on `@polymorph/angular` |
 | a page written in HTML: no build, server-rendered, htmx or Turbo | [A page with no build](#a-page-with-no-build) | the `poly-*` elements of `@polymorph/elements-ui`, as files its static directory serves |
+| a screen a model writes while your product runs | [run-time-screens.md](run-time-screens.md) | `@polymorph/screen`, drawn by `@polymorph/react/screen` in React or by `<poly-screen>` in any web framework and on a page with no build |
 | an iOS app | [An iOS app](#an-ios-app) | `PolymorphUI` on `PolymorphTokens`, from `platforms/ios` |
 | an Android app | [An Android app](#an-android-app) | `dev.polymorph:ui` on `dev.polymorph:tokens`, from `platforms/android` |
 | a Flutter or Dart app | [Dart tokens](#dart-tokens) | `polymorph_tokens`, the tokens only |
@@ -98,6 +99,9 @@ The packages are published to npmjs.com, as public packages, and to GitHub Packa
 | `@polymorph/solid-ui` | `@metamorph-labs/polymorph-solid-ui` | `@polymorph/solid-ui` |
 | `@polymorph/angular` | `@metamorph-labs/polymorph-angular` | `@polymorph/angular` |
 | `@polymorph/angular-ui` | `@metamorph-labs/polymorph-angular-ui` | `@polymorph/angular-ui` |
+| `@polymorph/elements` | `@metamorph-labs/polymorph-elements` | `@polymorph/elements`, in an app with a build that uses the elements |
+| `@polymorph/elements-ui` | `@metamorph-labs/polymorph-elements-ui` | `@polymorph/elements-ui`, in an app with a build that uses the elements |
+| `@polymorph/screen` | `@metamorph-labs/polymorph-screen` | `@polymorph/screen`, in an app that builds a run-time card or checks a model's screen; also a dependency of `@polymorph/react` and `@polymorph/elements-ui` ([run-time-screens.md](run-time-screens.md)) |
 
 The names come from `PUBLISHED_NAMES` in `packages/registry/src/install.ts`, which
 `pnpm publish:packages` and `polymorph init` both read.
@@ -394,6 +398,8 @@ import { Button, Stack, PageHeader } from '@polymorph/react-ui'
 | `@polymorph/engine/agent` | the agent bridge: `createAgentBridge`, which reports the mounted members' declared states and runs their declared actions for an agent, `agentTools`, the same as three tools for an application's own agent, and `registerWebMCP`, which registers those tools with the browser's WebMCP API where it has one. Off the root, so a page that creates no bridge does not ship it; the root keeps only the list of mounted members it reads |
 | `@polymorph/engine/webmcp` | the bridge's tools registered before the bridge is loaded: `registerWebMCPOnCall(load, options)`, which registers the three tools at once and calls `load` (`() => import('@polymorph/engine/agent')`) on the first call, and `applyAgentSetting`, which does what a page's `<html data-agent>` says. It holds none of the bridge ([agents.md](agents.md#tools-and-webmcp)) |
 | `@polymorph/react/motion` | the React presence components and the motion bindings members are written with — for member internals, not application code ([motion.md](motion.md)) |
+| `@polymorph/react/screen` | the run-time renderer: `ScreenView`, which draws a screen a model writes, or its answer as text while it streams, with the members you pass (`import * as members from '@polymorph/react-ui'`). Off the root, so an application that draws no such screen does not ship it ([run-time-screens.md](run-time-screens.md)) |
+| `@polymorph/screen/card`, `@polymorph/screen/check`, `@polymorph/screen/partial` | the run-time card a model's system prompt holds, `checkScreen` for its answer, and `parsePartial` for the answer while it streams, with no framework in them; install `@polymorph/screen` to import them ([run-time-screens.md](run-time-screens.md#reference)) |
 | `@polymorph/engine/vite` | `polymorphTheme`, the Vite plugin that compiles themes at build time (`vite` is an optional peer, `>=6`) |
 | `@polymorph/engine/vite-env` | types only: `virtual:polymorph/theme` (`catalogue`, `defaultSystem`, `ensurePairing`), referenced once from a `.d.ts` |
 | `@polymorph/engine/testing` | `installTestTheme`, `fixedWidthHost` — a real theme under a component test ([Testing your screens](#testing-your-screens)) |
@@ -1119,9 +1125,15 @@ published to a restricted registry, so `init` copies them and `polymorph update`
   the members it uses. `polymorph-all.js` loads every member in one file. A module script does not
   load from a `file://` URL, so the page is served.
 - **The page's own module script imports from the same file.** Both scripts export `restore`,
-  `toast` and `loadAgentBridge`, and nothing else a page needs:
+  `toast`, `loadAgentBridge` and `loadScreen`, and nothing else a page needs:
   `import { restore, toast } from './polymorph/polymorph.js'`. A module script runs after the
   elements' script it follows, so the tags are defined when it runs.
+- **A screen a model writes is a `<poly-screen>`.** It draws a `polymorph-screen/1` document from
+  its `text` (a model's answer while it streams), its `spec` or a `<script type="application/json">`
+  child, and dispatches `poly-action` with what the person did. With `polymorph.js`, the renderer
+  is fetched by the first `<poly-screen>` on the page, and a page that writes none fetches none of
+  it. `loadScreen()` resolves to `drawScreen`, `checkScreen`, `runtimeCard`, `outputContract` and
+  `parsePartial` ([run-time-screens.md](run-time-screens.md#a-page-with-no-build)).
 - **An agent reads and operates the page through a bridge the page loads.** `<html
   data-agent="on-call">` registers the bridge's tools with the browser's WebMCP API at load and
   fetches the bridge on the first call; `data-agent="eager"` fetches it at load. Without the
@@ -1245,7 +1257,10 @@ belongs in a Dialog goes inside the Dialog's content.
 ### Content the page changes
 
 An element observes its own children. A node the page adds before or after the member's rendering
-(htmx's `beforeend`) joins the slot its `slot` attribute names. A swap that replaces the element's
+(htmx's `beforeend`) joins the slot its `slot` attribute names. The member reads that slot again,
+and each `poly-*` element the slot still holds keeps its rendering: a field among them keeps its
+text and its focus, and only the nodes that arrived render. A slot that holds one element is read
+as a list of one, so a node added beside it goes after it. A swap that replaces the element's
 children (htmx's `innerHTML` on the element) renders the member again from the new ones. An
 `outerHTML` swap disconnects the old element, which disposes its member, and connects a new one.
 Attributes the server sends again are read again, and a morphing swap keeps the element, because
