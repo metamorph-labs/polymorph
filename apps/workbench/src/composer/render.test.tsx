@@ -135,17 +135,39 @@ describe('the renderer shows what it cannot draw', () => {
   })
 
   it('renders a node that throws as one fault chip, not a blank canvas', () => {
-    // DataTable with no columns is an invalid intermediate state that a live editor passes
-    // through.
+    // DataTable with columns that are not a list is an invalid intermediate state a live editor
+    // passes through. Every required prop has a value, so the table is drawn, and it throws.
     const { container } = drawElement({
       component: 'Stack',
       props: { gap: 4 },
       children: [
-        { component: 'DataTable', props: { label: 'broken on purpose' } },
+        {
+          component: 'DataTable',
+          props: {
+            label: 'broken on purpose',
+            data: [{ $object: { id: 'a' } }],
+            columns: 'not a list',
+            emptyState: { $object: { title: 'None' } },
+          },
+        },
         { component: 'Badge', children: ['still here'] },
       ],
     })
     expect(container.textContent).toContain('could not render')
+    expect(container.textContent).toContain('still here')
+  })
+
+  it('renders an element with a required prop left out as one fault chip', () => {
+    // The walk draws no element whose required prop has no value, and says which it lacks.
+    const { container } = drawElement({
+      component: 'Stack',
+      props: { gap: 4 },
+      children: [
+        { component: 'DataTable', props: { label: 'missing its columns' } },
+        { component: 'Badge', children: ['still here'] },
+      ],
+    })
+    expect(container.textContent).toContain('not renderable')
     expect(container.textContent).toContain('still here')
   })
 })

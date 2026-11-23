@@ -41,10 +41,13 @@ import { componentFor, type MemberComponent, type ScreenMembers } from './member
  *  - **Each node is drawn inside its own boundary.** A member that throws is
  *    reported with `screen.fail` and drawn as nothing, or as the fault where
  *    the host asks. The boundary tries again when the node changes.
- *  - **A node is the element a member reads.** A member that reads the element
- *    it is given (FormField reads its control's kind and clones it with an id)
- *    gets it as itself, from a component that carries the member's
- *    `controlKind` and passes every prop the clone adds on to the member.
+ *  - **A node is the element a member reads.** A member that reads the
+ *    elements it is given reads what it would read in written JSX: the element
+ *    for a node carries the props its member is handed (Avatar.Group reads each
+ *    avatar's `name`, FormField its control's `disabled`, Dialog its trigger's
+ *    `onClick`), its type carries the member's `controlKind` (FormField reads
+ *    it), and every prop a member that clones it adds (an id, a label, a ref)
+ *    reaches the member as it would through a clone of the member's element.
  */
 
 /**
@@ -106,6 +109,8 @@ interface Drawing {
   fault: ((fault: ScreenFault, cause: FaultCause) => ReactNode) | null
   binding: ((path: string, value: unknown) => ReactNode) | undefined
   decorate: ((drawn: ReactNode, node: ScreenNode) => ReactNode) | undefined
+  /** Each node's props as its member is handed them, made once for each node object. */
+  props: WeakMap<ScreenNode, Record<string, unknown>>
 }
 
 const DrawingContext = createContext<Drawing | null>(null)
@@ -128,7 +133,10 @@ function faultText(fault: ScreenFault): ReactNode {
 const messageOf = (error: unknown): string =>
   error instanceof Error ? error.message : String(error)
 
-/** The props every node component takes: its node, and whatever a member that clones it adds. */
+/**
+ * The props every node component takes: its node, the props its member is
+ * handed, and whatever a member that clones it adds.
+ */
 interface NodeProps {
   screenNode: ScreenNode
   [given: string]: unknown
@@ -179,6 +187,21 @@ function memberProps(node: ScreenNode, drawing: Drawing): Record<string, unknown
     const children = node.children.map((child) => materialize(child, materials))
     const single = node.childrenKind === 'element' || node.childrenKind === 'text'
     props['children'] = children.length === 1 && single ? children[0] : children
+  }
+  return props
+}
+
+/**
+ * A node's props, made once for each node object. The walk keeps a node's
+ * object while nothing it draws changes, so an unchanged node's element
+ * carries the same values from one drawing to the next, and its memoized
+ * component draws nothing again.
+ */
+function propsFor(node: ScreenNode, drawing: Drawing): Record<string, unknown> {
+  let props = drawing.props.get(node)
+  if (props === undefined) {
+    props = memberProps(node, drawing)
+    drawing.props.set(node, props)
   }
   return props
 }
@@ -280,10 +303,10 @@ function nodeComponentFor(Member: MemberComponent): ComponentType<NodeProps> {
 
   function DrawnMember({ screenNode: node, ...given }: NodeProps): ReactNode {
     const drawing = useDrawing()
-    const props = useMemo(() => memberProps(node, drawing), [node, drawing])
-    // What a member that clones this element adds (an id, a ref, `aria-describedby`) reaches the
-    // member over what the document gave, as a clone of the member's own element would.
-    const member = <Member {...props} {...given} />
+    // The element's props are the node's (`elementFor`), with what a member that clones the
+    // element adds (an id, a ref, `aria-describedby`) over them, as on a clone of the member's own
+    // element.
+    const member = <Member {...given} />
     return decorated(
       <NodeBoundary node={node} drawing={drawing}>
         {/* A lazy member suspends only its own node while it loads, so nothing drawn before it
@@ -341,13 +364,17 @@ const MissingNode = memo(function MissingNode({ screenNode: node }: NodeProps): 
  * is mounted afresh and does not keep the text typed in the one before.
  */
 function elementFor(node: ScreenNode, drawing: Drawing): ReactElement {
-  let type: ComponentType<NodeProps>
-  if (node.fault !== null) type = FaultNode
-  else {
-    const Member = componentFor(drawing.members, node.component)
-    type = Member === null ? MissingNode : nodeComponentFor(Member)
-  }
-  return createElement(type, { key: node.key ?? node.path, screenNode: node })
+  const key = node.key ?? node.path
+  if (node.fault !== null) return createElement(FaultNode, { key, screenNode: node })
+  const Member = componentFor(drawing.members, node.component)
+  if (Member === null) return createElement(MissingNode, { key, screenNode: node })
+  // The node's props ride on its element, so a member that reads the elements it is given (an
+  // avatar's `name`, a control's `disabled`) reads them there.
+  return createElement(nodeComponentFor(Member), {
+    ...propsFor(node, drawing),
+    key,
+    screenNode: node,
+  })
 }
 
 /* -------------------------------------------------------------------------- */
@@ -390,6 +417,7 @@ export function ScreenDrawing({
       fault: faults === 'inline' ? (renderFault ?? faultText) : null,
       binding: renderBinding,
       decorate,
+      props: new WeakMap(),
     }),
     [screen, members, streaming, faults, renderFault, renderBinding, decorate],
   )
