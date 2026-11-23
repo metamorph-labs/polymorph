@@ -110,8 +110,8 @@ which a page loads whichever members it uses, and the theme sheet. `elements-all
 vocabulary whole with Solid's runtime, the elements' bridge and the agent bridge; its largest third-party parts are Zod and
 Culori, from the theme engine, and Zag's date picker (`pnpm size --why elements-all`).
 
-`elements-screen`'s ceilings are set as `elements-button`'s are, from its measurement, 82.0 kB,
-rounded up to the next kilobyte with a kilobyte added: 83 kB. About two fifths of its JavaScript is
+`elements-screen`'s ceilings are set as `elements-button`'s are, from its measurement, 83.0 kB,
+rounded up to the next kilobyte with a kilobyte added: 85 kB. About two fifths of its JavaScript is
 the run-time screen: the vocabulary table with the core's shared modules, which name every member's
 props, parts and lawful cells and hold the checks every document passes (addresses, the depth
 limit, and which prop or field receives a callback; about 27 kB, the largest part), the walk with the renderer and `parsePartial` (about 8 kB),
@@ -124,7 +124,7 @@ from the page's JSON, and finds the chunk `<poly-screen>` imports by the event i
 dispatches (`poly-action`), as it finds the bridge by its marker; an agent setting's chunks are
 counted without the screen's.
 
-`elements-all`'s ceiling is its measurement, 452.9 kB, rounded up with a kilobyte added: 454 kB, up
+`elements-all`'s ceiling is its measurement, 455.2 kB, rounded up with a kilobyte added: 457 kB, up
 from 412 kB (it measured 398.6 kB before the run-time screen). `polymorph-all.js` holds every
 element and everything a page might load, and now holds the run-time screen as well: about 36 kB of
 it draws (the vocabulary table, about 22 kB, the walk with the rule for what receives a callback,
