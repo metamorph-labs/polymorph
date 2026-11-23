@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
+import { callbackFill, isCallback, MAX_TYPE_LENGTH, stubFor } from './actions'
 import { checkScreen } from './check'
+import { argumentsToJson, reduceToJson } from './json'
 import { MAX_DEPTH, parsePartial } from './partial'
+import { addressFault } from './urls'
 import { VOCABULARY } from './vocabulary'
 import { createScreen, materialize, type Drawn, type ScreenNode } from './walk'
 
@@ -313,12 +316,6 @@ describe('nothing a document holds makes the core throw', () => {
     for (let at = 0; at < levels; at += 1) value = [value]
     return value
   }
-  const time = (run: () => void) => {
-    const start = performance.now()
-    run()
-    return performance.now() - start
-  }
-
   const tooDeep = (faults: readonly { message: string }[]) =>
     faults.some((fault) => fault.message.includes(`deeper than ${MAX_DEPTH}`))
 
@@ -359,18 +356,29 @@ describe('nothing a document holds makes the core throw', () => {
     }
   })
 
-  it('never throws, and finishes in bounded time, for any text or value', () => {
-    const big = 'x'.repeat(5_000_000)
-    const many = JSON.stringify({
-      root: { component: 'Stack', children: Array.from({ length: 100_000 }, () => 'a') },
+  /** A list of `count` text children, as text. */
+  const many = (count: number) =>
+    JSON.stringify({
+      root: { component: 'Stack', children: Array.from({ length: count }, () => 'a') },
     })
-    const cyclic: Record<string, unknown> = { a: 1 }
-    cyclic['self'] = cyclic
+  /** One object at every level, held twice by the level above: a tree of `2 ** levels` leaves. */
+  const shared = (levels: number): unknown => {
+    let value: unknown = 'leaf'
+    for (let at = 0; at < levels; at += 1) value = { left: value, right: value }
+    return value
+  }
+  const promises = (layers: number) =>
+    `() => ${'Promise<'.repeat(layers)}string${'>'.repeat(layers)}`
+  const parentheses = (pairs: number) => `${'('.repeat(pairs)}() => void${')'.repeat(pairs)}`
+  const cyclic: Record<string, unknown> = { a: 1 }
+  cyclic['self'] = cyclic
+
+  it('never throws, for any text or value', () => {
     const texts = [
       deep(3000),
-      deep(100_000),
-      `{"root":{"component":"Text","children":["${big}"]}}`,
-      many,
+      `{"root":{"component":"Text","children":["${'x'.repeat(100_000)}"]}}`,
+      many(10_000),
+      `\`\`\`${'a'.repeat(10_000)}`,
       'null',
       '42',
       '"x"',
@@ -386,49 +394,326 @@ describe('nothing a document holds makes the core throw', () => {
       [],
       { root: 'x' },
       { root: { component: 'Stack', props: 'x', children: 'y' } },
-      { inputs: 'x', root: { component: 'Text', children: [nested(100_000)] } },
-      JSON.parse(many),
+      { inputs: 'x', root: { component: 'Text', children: [nested(10_000)] } },
+      JSON.parse(many(10_000)),
       doc({ component: 'Text', props: { children: { $: 'loop' } } }, [
         { name: 'loop', type: 'Loop' },
       ]),
-      // The host's data, cyclic and deep, in a named control, which `values` reduces to JSON.
+      // The host's data in named controls, which `values` reduces to JSON: cyclic, deep, and one
+      // object shared at sixty levels.
       doc(
         {
           component: 'Stack',
-          children: [
-            { component: 'Input', props: { name: 'a', value: { $: 'loop' } } },
-            { component: 'Input', props: { name: 'b', value: { $: 'deepData' } } },
-          ],
+          children: ['loop', 'deepData', 'dag'].map((name) => ({
+            component: 'Input',
+            props: { name, value: { $: name } },
+          })),
         },
-        [
-          { name: 'loop', type: 'string' },
-          { name: 'deepData', type: 'string' },
-        ],
+        ['loop', 'deepData', 'dag'].map((name) => ({ name, type: 'string' })),
       ),
-      // Types a document declares are read as text, however long or nested.
-      doc({ component: 'Text', children: ['a'] }, [
-        { name: 'long', type: 'x'.repeat(5_000_000) },
-        { name: 'nested', type: `${'('.repeat(20_000)}() => void${')'.repeat(20_000)}` },
+      // Types longer than any screen declares, which are never read, and one at the limit.
+      doc({ component: 'Button', props: { label: 'A', onClick: { $: 'atLimit' } } }, [
+        { name: 'parentheses', type: parentheses(20_000) },
+        { name: 'promises', type: promises(20_000) },
+        { name: 'atLimit', type: parentheses((MAX_TYPE_LENGTH - 10) / 2) },
       ]),
     ]
-    const took = time(() => {
-      for (const text of texts) {
-        const read = parsePartial(text)
-        checkScreen(read.document)
-      }
-      expect(parsePartial(undefined as unknown as string).document).toBeUndefined()
-      for (const value of values) {
-        checkScreen(value)
-        const screen = createScreen({
-          document: value,
-          vocabulary: VOCABULARY,
-          data: { loop: cyclic, deepData: nested(100_000) },
-        })
-        screen.update({ document: value, data: null as unknown as Record<string, unknown> })
-        screen.update({ streaming: true, cut: '$.root.children[0]' })
-        expect(typeof screen.values).toBe('object')
-      }
+    for (const text of texts) checkScreen(parsePartial(text).document)
+    expect(parsePartial(undefined as unknown as string).document).toBeUndefined()
+    for (const value of values) {
+      checkScreen(value)
+      const screen = createScreen({
+        document: value,
+        vocabulary: VOCABULARY,
+        data: { loop: cyclic, deepData: nested(10_000), dag: shared(60) },
+      })
+      screen.update({ document: value, data: null as unknown as Record<string, unknown> })
+      screen.update({ streaming: true, cut: '$.root.children[0]' })
+      expect(typeof screen.values).toBe('object')
+    }
+    // What a host may call itself, with types no screen may declare.
+    expect(stubFor(promises(20_000)).answers).toMatch(/^a promise of a promise of .*the key/)
+    expect(callbackFill(promises(20_000))).toMatch(/^answers a promise of/)
+    expect(isCallback(parentheses(20_000))).toBe(true)
+    expect(reduceToJson(shared(60)).cut).toBe(true)
+    expect(argumentsToJson([shared(60)])).toHaveLength(1)
+  })
+
+  it('reads a type no longer than the limit, and holds a longer one to be data with no value', () => {
+    const type = parentheses(20_000)
+    const document = doc({ component: 'Button', props: { label: 'A', onClick: { $: 'act' } } }, [
+      { name: 'act', type },
+    ])
+    const screen = createScreen({ document, vocabulary: VOCABULARY })
+    expect(screen.fills).toEqual([{ name: 'act', type, from: 'absent' }])
+    expect(screen.faults.map(({ path }) => path)).toEqual(['$.inputs[0].type'])
+    expect(checkScreen(document).faults.map(({ path }) => path)).toContain('$.inputs[0].type')
+    const longest = parentheses((MAX_TYPE_LENGTH - 10) / 2)
+    expect(longest).toHaveLength(MAX_TYPE_LENGTH)
+    const lawful = createScreen({
+      document: doc({ component: 'Button', props: { label: 'A', onClick: { $: 'act' } } }, [
+        { name: 'act', type: longest },
+      ]),
+      vocabulary: VOCABULARY,
     })
-    expect(took).toBeLessThan(20_000)
-  }, 60_000)
+    expect(lawful.fills[0]?.from).toBe('stub')
+    expect(lawful.faults).toEqual([])
+  })
+})
+
+/**
+ * The core's work grows in proportion to what it reads, so no input a model or
+ * a host can write stalls a page.
+ *
+ * Each kind of input is read at one size and at eight times that size, the
+ * least of seven runs at each, the two sizes taken in turn so a machine busy
+ * with other work slows both alike. Work in proportion to the input takes
+ * about eight times as long at eight times the size, and work in proportion to
+ * its square about sixty-four times. The bound sits between, wide of both: a
+ * busy machine's collector can add half again to the larger run, and the
+ * square would still be three times the bound. A hang is the test's own
+ * timeout's to catch.
+ */
+describe('no input costs more than in proportion to its size', () => {
+  const LINEAR = 20
+  const time = (run: () => void) => {
+    const start = performance.now()
+    run()
+    return performance.now() - start
+  }
+  const growth = <Input>(
+    make: (size: number) => Input,
+    run: (input: Input) => unknown,
+    [size, larger]: readonly [number, number],
+  ): number => {
+    const small = make(size)
+    const large = make(larger)
+    let fast = Infinity
+    let slow = Infinity
+    for (let round = 0; round < 5; round += 1) {
+      fast = Math.min(
+        fast,
+        time(() => run(small)),
+      )
+      slow = Math.min(
+        slow,
+        time(() => run(large)),
+      )
+    }
+    return slow / Math.max(fast, 0.05)
+  }
+
+  const children = (count: number) =>
+    doc({ component: 'Stack', children: Array.from({ length: count }, (_, at) => `line ${at}`) })
+  const bound = (count: number) =>
+    doc(
+      {
+        component: 'Stack',
+        children: Array.from({ length: count }, (_, at) => ({
+          component: 'Button',
+          props: { label: { $: `label${at}` }, onClick: { $: `act${at}` } },
+        })),
+      },
+      Array.from({ length: count }, (_, at) => [
+        { name: `label${at}`, type: 'string' },
+        // A type for each, at the limit, so each is read once.
+        { name: `act${at}`, type: `${'('.repeat(200)}(n${at}: number) => void${')'.repeat(200)}` },
+      ]).flat(),
+    )
+  const shared = (levels: number): unknown => {
+    let value: unknown = 'leaf'
+    for (let at = 0; at < levels; at += 1) value = { left: value, right: value }
+    return value
+  }
+  /** A screen already drawn, with its data, which a run updates once. */
+  const drawn = (document: unknown, data: Record<string, unknown> = {}) => ({
+    screen: createScreen({ document, vocabulary: VOCABULARY, data }),
+    data,
+  })
+  let tick = 0
+  /** New data for a screen drawn: the same values, and one more, so the whole screen is resolved again. */
+  const update = ({ screen, data }: ReturnType<typeof drawn>) => {
+    tick += 1
+    screen.update({ data: { ...data, tick } })
+  }
+
+  // Each kind's two sizes: one, and eight times it, small enough that work in proportion to the
+  // square of the input still ends within a few seconds, so a slower reading fails and does not
+  // hang. A value shared at many levels is read at 16 levels, a tree of 65,536 leaves, and at 21,
+  // of two million: the budget holds the second to `MAX_JSON_VALUES`, and without it the second
+  // would take thirty-two times as long.
+  const kinds: {
+    name: string
+    sizes: readonly [number, number]
+    make: (size: number) => unknown
+    run: (input: never) => unknown
+  }[] = [
+    {
+      name: 'parsePartial: a long string',
+      sizes: [50_000, 400_000],
+      make: (size) => `{"root":{"component":"Text","children":["${'x'.repeat(size)}"]}}`,
+      run: (text: string) => parsePartial(text),
+    },
+    {
+      name: 'parsePartial: a fence line with no line break yet',
+      sizes: [5_000, 40_000],
+      make: (size) => `Here it is.\n\`\`\`${'a'.repeat(size)}`,
+      run: (text: string) => parsePartial(text),
+    },
+    {
+      name: 'parsePartial: many children',
+      sizes: [2_000, 16_000],
+      make: (size) => JSON.stringify(children(size)),
+      run: (text: string) => parsePartial(text),
+    },
+    {
+      name: 'parsePartial: text nested deeper than the limit',
+      sizes: [50_000, 400_000],
+      make: (size) => `{"root":${'['.repeat(size)}${']'.repeat(size)}}`,
+      run: (text: string) => parsePartial(text),
+    },
+    {
+      name: 'checkScreen: many children',
+      sizes: [1_000, 8_000],
+      make: children,
+      run: (document: unknown) => checkScreen(document),
+    },
+    {
+      name: 'checkScreen: many inputs, each bound',
+      sizes: [25, 200],
+      make: bound,
+      run: (document: unknown) => checkScreen(document),
+    },
+    {
+      name: 'checkScreen: a long name no member has',
+      sizes: [10_000, 80_000],
+      make: (size) => doc({ component: `B${'u'.repeat(size)}` }),
+      run: (document: unknown) => checkScreen(document),
+    },
+    {
+      // Ten objects of `size` fields each. An engine keeps an object of more than about a thousand
+      // fields as a table whose keys it sorts each time they are listed, which no reading of ours
+      // can avoid, so each object stays below that.
+      name: 'checkScreen: structured objects with many fields',
+      sizes: [100, 800],
+      make: (size) =>
+        doc({
+          component: 'Breadcrumbs',
+          props: {
+            items: Array.from({ length: 10 }, () => ({
+              $object: Object.fromEntries(Array.from({ length: size }, (_, at) => [`f${at}`, 'x'])),
+            })),
+          },
+        }),
+      run: (document: unknown) => checkScreen(document),
+    },
+    {
+      name: 'createScreen: many children',
+      sizes: [2_000, 16_000],
+      make: children,
+      run: (document: unknown) => drawn(document),
+    },
+    {
+      name: 'createScreen: many inputs, each bound',
+      sizes: [25, 200],
+      make: bound,
+      run: (document: unknown) => drawn(document),
+    },
+    {
+      name: 'one update of a screen drawn: many children',
+      sizes: [2_000, 16_000],
+      make: (size) => drawn(children(size)),
+      run: update,
+    },
+    {
+      name: 'one update of a screen drawn: many inputs, each bound',
+      sizes: [25, 200],
+      make: (size) => drawn(bound(size)),
+      run: update,
+    },
+    {
+      name: 'one update of a screen drawn: a control’s value shared at many levels',
+      sizes: [16, 21],
+      make: (size) =>
+        drawn(
+          doc({ component: 'Input', props: { name: 'q', value: { $: 'dag' } } }, [
+            { name: 'dag', type: 'string' },
+          ]),
+          { dag: shared(size) },
+        ),
+      run: update,
+    },
+    {
+      name: 'an action’s arguments shared at many levels',
+      sizes: [16, 21],
+      make: shared,
+      run: (value: unknown) => argumentsToJson([value]),
+    },
+    {
+      name: 'isCallback: nested parentheses',
+      sizes: [500, 4_000],
+      make: (size) => `${'('.repeat(size)}() => void${')'.repeat(size)}`,
+      run: (type: string) => isCallback(type),
+    },
+    {
+      name: 'stubFor: nested promises',
+      sizes: [500, 4_000],
+      make: (size) => `() => ${'Promise<'.repeat(size)}string${'>'.repeat(size)}`,
+      run: (type: string) => stubFor(type),
+    },
+    {
+      name: 'addressFault: a long address',
+      sizes: [100_000, 800_000],
+      make: (size) => `${' '.repeat(size)}${'a'.repeat(size)}:x`,
+      run: (address: string) => addressFault(address),
+    },
+  ]
+
+  it('updates a screen whose types are as long as a type may be as fast as one whose types are short', () => {
+    // A hundred callback inputs whose types are as long as a type may be, and a hundred whose
+    // types are short: an update of either resolves the same screen.
+    const screen = (long: boolean) =>
+      drawn(
+        doc(
+          {
+            component: 'Stack',
+            children: Array.from({ length: 100 }, (_, at) => ({
+              component: 'Button',
+              props: { label: 'A', onClick: { $: `act${at}` } },
+            })),
+          },
+          Array.from({ length: 100 }, (_, at) => ({
+            name: `act${at}`,
+            type: long
+              ? `${'('.repeat(240)}(n${at}: number) => void${')'.repeat(240)}`
+              : `(n${at}: number) => void`,
+          })),
+        ),
+      )
+    const long = screen(true)
+    const short = screen(false)
+    let slow = Infinity
+    let fast = Infinity
+    for (let round = 0; round < 5; round += 1) {
+      slow = Math.min(
+        slow,
+        time(() => update(long)),
+      )
+      fast = Math.min(
+        fast,
+        time(() => update(short)),
+      )
+    }
+    // Read in time that grows as the square of a type's length, the long types would cost a
+    // hundred times what the short ones do.
+    expect(slow / Math.max(fast, 0.05)).toBeLessThan(3)
+  })
+
+  for (const kind of kinds) {
+    it(kind.name, () => {
+      expect(growth(kind.make, kind.run as (input: unknown) => unknown, kind.sizes)).toBeLessThan(
+        LINEAR,
+      )
+    })
+  }
 })

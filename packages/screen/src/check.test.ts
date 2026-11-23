@@ -137,6 +137,58 @@ describe('a name the screen’s values cannot hold', () => {
   })
 })
 
+describe('what the walk refuses of a document, checkScreen reports in the same words', () => {
+  it('a callback input no callback receives, an element in a data field, and a type too long', () => {
+    const approved = { component: 'Input', props: { name: 'approved', defaultValue: 'yes' } }
+    const document = {
+      ...screen({
+        component: 'Stack',
+        children: [
+          { component: 'Button', props: { label: { $: 'onApprove' } } },
+          { component: 'Text', children: [{ $: 'onApprove' }] },
+          {
+            component: 'Breadcrumbs',
+            props: { items: [{ $object: { label: 'A', x: { $: 'onApprove' } } }] },
+          },
+          {
+            component: 'ListPage',
+            props: {
+              title: 'Requests',
+              emptyState: { $object: { title: 'None', x: approved, description: [approved] } },
+            },
+          },
+          {
+            component: 'Select',
+            props: { options: [{ $object: { value: 'a', label: approved } }] },
+          },
+          { component: 'Button', props: { label: 'Go', onClick: { $: 'onApprove' } } },
+        ],
+      }),
+      inputs: [
+        { name: 'onApprove', type: '() => void' },
+        { name: 'long', type: `(${'x'.repeat(600)}) => void` },
+      ],
+    }
+    const NEW = /callback input|has no field|is data, not a node|characters long/
+    const pick = (faults: readonly { path: string; message: string }[]) =>
+      faults
+        .filter(({ message }) => NEW.test(message))
+        .map(({ path, message }) => ({ path, message }))
+        .sort((a, b) => a.path.localeCompare(b.path))
+    const walked = pick(createScreen({ document, vocabulary: VOCABULARY }).faults)
+    expect(walked.map(({ path }) => path)).toEqual([
+      '$.inputs[1].type',
+      '$.root.children[0].props.label',
+      '$.root.children[1].children[0]',
+      '$.root.children[2].props.items[0].x',
+      '$.root.children[3].props.emptyState.description',
+      '$.root.children[3].props.emptyState.x',
+      '$.root.children[4].props.options[0].label',
+    ])
+    expect(pick(checkScreen(document).faults)).toEqual(walked)
+  })
+})
+
 describe('an address a screen may not hold', () => {
   it('is a fault at a prop, at an object’s key and in a list, wherever the element is', () => {
     const document = screen({

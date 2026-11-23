@@ -236,7 +236,9 @@ describe('callback inputs are actions', () => {
     const { screen, actions } = open({ document: form, data: { email: 'a@example.com' } })
     const event = { type: 'click', target: {}, preventDefault: () => {} }
     call(at(screen, '$.root.children[1]'), 'onClick', event)
-    expect(actions).toEqual([{ name: 'onSave', args: [], values: { email: 'a@example.com' } }])
+    expect(actions).toEqual([
+      { name: 'onSave', args: [], values: { email: 'a@example.com' }, changed: [] },
+    ])
   })
 
   it('hands the member the host’s promise, so a member that waits on its callback waits', async () => {
@@ -247,37 +249,58 @@ describe('callback inputs are actions', () => {
     await expect(result).resolves.toBe('saved')
   })
 
-  it('answers a question by its declared return type, and never tells the host of one', async () => {
+  it('hands a callback input by what receives it: the action, or a question’s stub', async () => {
+    const table = (props: object) => ({
+      component: 'DataTable',
+      props: {
+        label: 'Tickets',
+        data: { $: 'tickets' },
+        columns: [{ $object: { key: 'id', header: 'Id' } }],
+        emptyState: { $object: { title: 'None' } },
+        ...props,
+      },
+    })
     const document = doc(
       {
         component: 'Stack',
-        children: ['getRowId', 'isOpen', 'load', 'save'].map((name) => ({
-          component: 'Button',
-          props: { label: name, onClick: { $: name } },
-        })),
+        children: [
+          // An action input where the table asks a question of each row: the table's question.
+          table({ getRowId: { $: 'onRemove' }, isRowExpandable: { $: 'onRemove' } }),
+          // A question input where a button is pressed: the button's action.
+          { component: 'Button', props: { label: 'Key', onClick: { $: 'rowKey' } } },
+          { component: 'Button', props: { label: 'Save', onClick: { $: 'save' } } },
+        ],
       },
       [
-        { name: 'getRowId', type: '(row: Row) => string' },
-        { name: 'isOpen', type: '(id: string) => boolean' },
-        { name: 'load', type: '() => Promise<Row[]>' },
+        { name: 'tickets', type: 'Ticket[]' },
+        { name: 'onRemove', type: '(row: Ticket) => void' },
+        { name: 'rowKey', type: '(row: Ticket) => string' },
         { name: 'save', type: '() => Promise<void>' },
       ],
     )
-    // A host that would answer every call is asked nothing: a question is the member's.
-    const { screen, actions } = open({ document, onAction: () => true })
-    expect(call(at(screen, '$.root.children[0]'), 'onClick', { id: 7 })).toBe('7')
-    expect(call(at(screen, '$.root.children[1]'), 'onClick', 'a')).toBe(false)
-    await expect(call(at(screen, '$.root.children[2]'), 'onClick')).resolves.toEqual([])
+    // A host that would answer every call is asked nothing by a question: it is the member's.
+    const { screen, actions } = open({
+      document,
+      data: { tickets: [{ id: 7 }] },
+      onAction: () => true,
+    })
+    const rows = at(screen, '$.root.children[0]')
+    expect(call(rows, 'getRowId', { id: 7 })).toBe('7')
+    expect(call(rows, 'isRowExpandable', { id: 7 })).toBe(false)
+    screen.update({ data: { tickets: [{ id: 8 }] } })
+    expect(call(at(screen, '$.root.children[0]'), 'getRowId', { id: 8 })).toBe('8')
     expect(actions).toEqual([])
+    call(at(screen, '$.root.children[1]'), 'onClick', { id: 7 })
+    expect(actions.map(({ name, args }) => [name, args])).toEqual([['rowKey', [{ id: 7 }]]])
     // An action declared to return a promise is told, and with no promise from the host the
     // member waits on a promise of nothing.
-    await expect(call(at(screen, '$.root.children[3]'), 'onClick')).resolves.toBeUndefined()
-    expect(actions.map(({ name }) => name)).toEqual(['save'])
-    // The words read for a running screen and for a picture of one alike.
+    await expect(call(at(screen, '$.root.children[2]'), 'onClick')).resolves.toBeUndefined()
+    expect(actions.map(({ name }) => name)).toEqual(['rowKey', 'save'])
+    // The words say what each input declares, and read for a running screen and a picture alike.
     expect(screen.fills.map(({ name, value }) => [name, value])).toEqual([
-      ['getRowId', 'answers the key of its first argument'],
-      ['isOpen', 'answers false'],
-      ['load', 'answers a promise of an empty list'],
+      ['tickets', undefined],
+      ['onRemove', 'an action; answers nothing'],
+      ['rowKey', 'answers the key of its first argument'],
       ['save', 'an action; answers a promise'],
     ])
   })
@@ -517,7 +540,7 @@ describe('controls follow the reader', () => {
       ),
     })
     call(screen.root as ScreenNode, 'onChange', 'x')
-    expect(actions).toEqual([{ name: 'onQuery', args: ['x'], values: { q: 'x' } }])
+    expect(actions).toEqual([{ name: 'onQuery', args: ['x'], values: { q: 'x' }, changed: ['q'] }])
   })
 })
 
@@ -558,6 +581,251 @@ describe('addresses', () => {
       '$.root.children[1].props.href',
       '$.root.children[3].props.items[0].href',
     ])
+  })
+})
+
+describe('a function reaches a member only where a callback receives it', () => {
+  const approve = [{ name: 'onApprove', type: '() => void' }]
+
+  it('never tells the host of a drawing: a question’s stub where a member asks, by its type', () => {
+    // Pagination asks `messages.page(n)` for every page's label.
+    const { screen, actions } = open({
+      document: doc(
+        {
+          component: 'Pagination',
+          props: {
+            page: 1,
+            pageCount: 3,
+            onPageChange: { $: 'go' },
+            messages: { $object: { page: { $: 'onPay' }, next: 'Next', previous: 'Back' } },
+          },
+        },
+        [
+          { name: 'onPay', type: '(page: number) => void' },
+          { name: 'go', type: '(page: number) => void' },
+        ],
+      ),
+    })
+    const messages = screen.root?.props['messages'] as {
+      kind: 'value'
+      value: Record<string, unknown>
+    }
+    const page = messages.value['page'] as (page: number) => unknown
+    expect(page(3)).toBe('3')
+    screen.update({ data: {} })
+    expect(actions).toEqual([])
+    // Where a person acts, the same kind of input is the action.
+    call(screen.root as ScreenNode, 'onPageChange', 2)
+    expect(actions.map(({ name }) => name)).toEqual(['go'])
+  })
+
+  it('is a fault, and nothing is passed, where text, a node or data receives a callback input', () => {
+    const { screen, actions, faults } = open({
+      document: doc(
+        {
+          component: 'Stack',
+          children: [
+            { component: 'Button', props: { label: { $: 'onApprove' } } },
+            { component: 'Text', children: [{ $: 'onApprove' }] },
+            {
+              component: 'Breadcrumbs',
+              props: { items: [{ $object: { label: 'A', x: { $: 'onApprove' } } }] },
+            },
+          ],
+        },
+        approve,
+      ),
+    })
+    expect(at(screen, '$.root.children[0]').props['label']).toBeUndefined()
+    expect(at(screen, '$.root.children[1]').children.map(({ kind }) => kind)).toEqual(['fault'])
+    expect(at(screen, '$.root.children[2]').props['items']).toEqual({
+      kind: 'value',
+      value: [{ label: 'A' }],
+      from: 'document',
+    })
+    expect(faults.map(({ path }) => path)).toEqual([
+      '$.root.children[0].props.label',
+      '$.root.children[1].children[0]',
+      '$.root.children[2].props.items[0].x',
+    ])
+    expect(faults[0]?.message).toContain(
+      '`onApprove` is a callback input, and no callback receives it',
+    )
+    expect(actions).toEqual([])
+  })
+
+  it('passes nothing where the vocabulary does not know the object’s type, as a row of the host’s', () => {
+    const { screen, faults } = open({
+      document: doc(
+        {
+          component: 'DataTable',
+          props: {
+            label: 'Rows',
+            data: [{ $object: { id: 'a', open: { $: 'onApprove' } } }],
+            columns: [{ $object: { key: 'id', header: 'Id' } }],
+            getRowId: { $: 'rowId' },
+            emptyState: { $object: { title: 'None' } },
+          },
+        },
+        [...approve, { name: 'rowId', type: '(row: Row) => string' }],
+      ),
+    })
+    expect(screen.root?.props['data']).toEqual({
+      kind: 'value',
+      value: [{ id: 'a' }],
+      from: 'document',
+    })
+    expect(faults.map(({ path }) => path)).toEqual(['$.root.props.data[0].open'])
+  })
+
+  it('never hands on a function the host’s data holds, though a function inside data is the host’s', () => {
+    const logout = () => 'logged out'
+    const cell = () => 'cell'
+    const { screen, actions, faults } = open({
+      document: doc(
+        {
+          component: 'Stack',
+          children: [
+            {
+              component: 'Button',
+              props: { label: 'View details', onClick: { $: 'session.logout' } },
+            },
+            { component: 'Button', props: { label: { $: 'session.logout' } } },
+            {
+              component: 'DataTable',
+              props: {
+                label: 'Rows',
+                data: { $: 'rows' },
+                columns: { $: 'columns' },
+                getRowId: { $: 'rowId' },
+                emptyState: { $object: { title: 'None' } },
+              },
+            },
+          ],
+        },
+        [
+          { name: 'session', type: 'Session' },
+          { name: 'rows', type: 'Row[]' },
+          { name: 'columns', type: 'DataTableColumn<Row>[]' },
+          { name: 'rowId', type: '(row: Row) => string' },
+        ],
+      ),
+      data: { session: { logout }, rows: [], columns: [{ key: 'id', header: 'Id', cell }] },
+    })
+    expect(at(screen, '$.root.children[0]').props['onClick']).toBeUndefined()
+    expect(at(screen, '$.root.children[1]').props['label']).toBeUndefined()
+    expect(at(screen, '$.root.children[2]').props['columns']).toEqual({
+      kind: 'value',
+      value: [{ key: 'id', header: 'Id', cell }],
+      from: 'data',
+    })
+    expect(faults.map(({ path, message }) => [path, message.slice(0, 54)])).toEqual([
+      [
+        '$.root.children[0].props.onClick',
+        "the host's data holds a function at `session.logout`, ",
+      ],
+      ['$.root.children[1].props.label', "the host's data holds a function at `session.logout`, "],
+    ])
+    expect(actions).toEqual([])
+  })
+})
+
+describe('an element in a structured object is drawn only where its field takes a node', () => {
+  const approved = { component: 'Input', props: { name: 'approved', defaultValue: 'yes' } }
+  const page = (emptyState: object) =>
+    doc({
+      component: 'ListPage',
+      props: { title: 'Requests', emptyState: { $object: emptyState } },
+    })
+
+  it('is a fault, and is not drawn, in a field the type does not declare or declares as data', () => {
+    const { screen, faults } = open({
+      document: page({ title: 'None', x: approved, description: [approved] }),
+    })
+    expect(screen.values).toEqual({})
+    expect(screen.root?.props['emptyState']).toEqual({
+      kind: 'value',
+      value: { title: 'None' },
+      from: 'document',
+    })
+    expect(faults.map(({ path, message }) => [path, message])).toEqual([
+      [
+        '$.root.props.emptyState.x',
+        '`EmptyStateProps` has no field `x`, so no member draws an element there; it is left out',
+      ],
+      [
+        '$.root.props.emptyState.description',
+        '`description` of `EmptyStateProps` is data, not a node, so no member draws an element there; it is left out',
+      ],
+    ])
+  })
+
+  it('reads a list of a union of data types, as a select’s options', () => {
+    const { screen, faults } = open({
+      document: doc({
+        component: 'Select',
+        props: {
+          name: 'plan',
+          options: [
+            { $object: { value: 'a', label: approved } },
+            { $object: { value: 'b', label: 'B' } },
+          ],
+        },
+      }),
+    })
+    expect(screen.values).toEqual({ plan: null })
+    expect(faults.map(({ path, message }) => [path, message.slice(0, 40)])).toEqual([
+      ['$.root.props.options[0].label', '`label` of `SelectOption` or `SelectOpti'],
+    ])
+  })
+
+  it('is drawn, and holds a value, in a field that takes a node', () => {
+    const { screen, faults } = open({ document: page({ title: 'None', action: approved }) })
+    expect(faults).toEqual([])
+    expect(screen.values).toEqual({ approved: 'yes' })
+  })
+})
+
+describe('what the person changed', () => {
+  it('names the controls whose value the person chose, apart from what the document wrote', () => {
+    const { screen, actions } = open({
+      document: doc(
+        {
+          component: 'Stack',
+          children: [
+            { component: 'Input', props: { name: 'approved', defaultValue: 'yes' } },
+            { component: 'Input', props: { name: 'reason' } },
+            { component: 'Button', props: { label: 'Send', onClick: { $: 'onSend' } } },
+          ],
+        },
+        [{ name: 'onSend', type: '() => void' }],
+      ),
+    })
+    expect(screen.changed).toEqual([])
+    call(at(screen, '$.root.children[1]'), 'onChange', 'too slow')
+    call(at(screen, '$.root.children[2]'), 'onClick')
+    expect(actions[0]).toEqual({
+      name: 'onSend',
+      args: [],
+      values: { approved: 'yes', reason: 'too slow' },
+      changed: ['reason'],
+    })
+  })
+
+  it('holds a name two controls share as the last in document order, an element before its props', () => {
+    // The outer field comes first in the text, so the field its `trailing` prop holds is the last.
+    const { screen, faults } = open({
+      document: doc({
+        component: 'Input',
+        props: {
+          name: 'q',
+          defaultValue: 'outer',
+          trailing: { component: 'Input', props: { name: 'q', defaultValue: 'inner' } },
+        },
+      }),
+    })
+    expect(screen.values).toEqual({ q: 'inner' })
+    expect(faults.map(({ path }) => path)).toEqual(['$.root.props.trailing.props.name'])
   })
 })
 
@@ -630,13 +898,19 @@ describe('streaming', () => {
 
 describe('what a renderer reports, and what it is told', () => {
   it('collects a fault a renderer reports, tells the host once, and lets it go when the node changes', () => {
-    const { screen, faults } = open({ document: doc({ component: 'Text', children: ['a'] }) })
+    const { screen, faults } = open({
+      document: doc({ component: 'Text', children: [{ $: 'word' }] }, [
+        { name: 'word', type: 'string' },
+      ]),
+      data: { word: 'a' },
+    })
     const fault = { path: '$.root', component: 'Text', message: 'Text threw' }
     screen.fail(fault)
     screen.fail(fault)
     expect(faults).toEqual([fault])
     expect(screen.faults).toEqual([fault])
-    screen.update({ document: doc({ component: 'Text', children: ['b'] }) })
+    // New data is the same drawing: the node changes, and its fault goes with it.
+    screen.update({ data: { word: 'b' } })
     expect(screen.faults).toEqual([])
     // The renderer reports it again for the new node: it is a fault again, told once already.
     screen.fail(fault)
@@ -644,20 +918,23 @@ describe('what a renderer reports, and what it is told', () => {
     expect(faults).toEqual([fault])
   })
 
-  it('tells each fault once in a drawing, though it goes and comes back, and again in a new stream', () => {
-    const { screen, faults } = open({ document: doc({ component: 'Buton' }) })
-    const missing = doc({ component: 'Stack', children: [] })
-    screen.update({ document: missing })
-    screen.update({ document: doc({ component: 'Buton' }) })
-    expect(screen.faults.map(({ message }) => message)).toEqual(['no component called `Buton`'])
-    expect(faults.map(({ message }) => message)).toEqual(['no component called `Buton`'])
-    // A stream that begins is a new drawing.
+  it('tells each fault once in a drawing, and again in a new stream or a new whole document', () => {
+    const buton = doc({ component: 'Stack', children: [{ component: 'Buton' }] })
+    const { screen, faults } = open({ document: buton })
+    const told = () => faults.map(({ message }) => message)
+    // A stream's chunks are one drawing: a fault that goes and comes back is told once.
     screen.update({ streaming: true })
-    screen.update({ streaming: false })
-    expect(faults.map(({ message }) => message)).toEqual([
-      'no component called `Buton`',
-      'no component called `Buton`',
-    ])
+    expect(told()).toEqual(['no component called `Buton`', 'no component called `Buton`'])
+    screen.update({ document: doc({ component: 'Stack', children: [] }) })
+    screen.update({ document: buton, streaming: false })
+    expect(told()).toHaveLength(2)
+    // The same whole document again, as a renderer gives it after new data, is the same drawing.
+    screen.update({ document: JSON.parse(JSON.stringify(buton)) as unknown, data: { x: 1 } })
+    expect(told()).toHaveLength(2)
+    // A whole document that differs is a new screen, whose fault is told though the last had it.
+    const other = doc({ component: 'Stack', props: { gap: 2 }, children: [{ component: 'Buton' }] })
+    screen.update({ document: other })
+    expect(told()).toHaveLength(3)
   })
 
   it('tells subscribers of each change, and keeps the nodes the change did not reach', () => {

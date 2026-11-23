@@ -9,13 +9,46 @@ import { unionParts } from '@polymorph/registry/frameworks'
  * this and not the validator. `validate.ts` re-exports it.
  */
 
-/** The text without the parentheses around all of it. */
+/**
+ * The text without the parentheses around all of it, and without the space
+ * `trim` removes inside each pair. Each bracket's closer is found in one pass,
+ * so a text of `n` nested pairs costs `n`, not `n²`: a screen declares its
+ * input types, and the walk reads them while the screen streams.
+ */
 function unwrap(text: string): string {
-  let inner = text.trim()
-  while (inner.startsWith('(') && closingParen(inner) === inner.length - 1) {
-    inner = inner.slice(1, -1).trim()
+  const blank = (at: number) => (text[at] as string).trim() === ''
+  let start = 0
+  let end = text.length - 1
+  while (start <= end && blank(start)) start += 1
+  while (end >= start && blank(end)) end -= 1
+  if (text[start] !== '(') return text.slice(start, end + 1)
+  const closes = closers(text, start)
+  while (start <= end && text[start] === '(' && closes[start] === end) {
+    start += 1
+    end -= 1
+    while (start <= end && blank(start)) start += 1
+    while (end >= start && blank(end)) end -= 1
   }
-  return inner
+  return text.slice(start, end + 1)
+}
+
+/**
+ * For each opening bracket from `from` on, the index of the bracket that closes
+ * it as `closingParen` counts them, or -1: brackets of every kind share one
+ * depth, and `>` after `=` closes nothing.
+ */
+function closers(text: string, from: number): Int32Array {
+  const closes = new Int32Array(text.length).fill(-1)
+  const open: number[] = []
+  for (let at = from; at < text.length; at += 1) {
+    const char = text[at] as string
+    if ('(<{['.includes(char)) open.push(at)
+    else if (')}]'.includes(char) || (char === '>' && text[at - 1] !== '=')) {
+      const opener = open.pop()
+      if (opener !== undefined) closes[opener] = at
+    }
+  }
+  return closes
 }
 
 /** The index of the bracket that closes the one at 0, or -1. */

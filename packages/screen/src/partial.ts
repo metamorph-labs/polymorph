@@ -106,9 +106,17 @@ const ESCAPES: Readonly<Record<string, string>> = {
 
 class Stop extends Error {}
 
+/**
+ * A fence's line: its backticks, its info word, and the rest of the line. Each
+ * run of space and the info word is followed by what cannot extend it, so the
+ * engine never gives back part of one to the next: a fence line with no line
+ * break yet is read once, not once for each place the word could end.
+ */
+const FENCE = /^[ \t]*```[ \t]*(?![ \t])([^\s`]*)(?![^\s`])[^\n]*\n/gm
+
 /** Where the document starts in a model's answer, or -1 before it does. */
 function documentStart(text: string): number {
-  const fence = /^[ \t]*```[ \t]*([^\s`]*)[^\n]*\n/gm
+  const fence = new RegExp(FENCE)
   let inside = false
   for (const match of text.matchAll(fence)) {
     const info = (match[1] ?? '').toLowerCase()

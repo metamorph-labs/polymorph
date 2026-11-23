@@ -1,5 +1,6 @@
 import { validateSpec, type SpecFault } from '@polymorph/spec/validate'
 
+import { isCallback, MAX_TYPE_LENGTH, typeTooLong } from './actions'
 import { tooDeep, TOO_DEEP } from './depth'
 import {
   allowedMembers,
@@ -12,6 +13,18 @@ import {
   type MemberOptions,
   type ScreenVocabulary,
 } from './members'
+import {
+  callbackOf,
+  dataField,
+  elementIn,
+  fieldOf,
+  itemOf,
+  objectName,
+  takesNode,
+  undeclaredField,
+  unreceivedCallback,
+  type Receiver,
+} from './receivers'
 import { addressFaults, ADDRESS_KEYS } from './urls'
 import { VOCABULARY } from './vocabulary'
 
@@ -20,15 +33,21 @@ import { VOCABULARY } from './vocabulary'
  *
  * It is `validateSpec` (`packages/spec/src/validate.ts`) bound to the
  * run-time vocabulary table, so a page gets the faults the registry would
- * give with no registry in it, and two faults the run-time adds in the same
- * shape and voice:
+ * give with no registry in it, and the faults the walk adds for the document,
+ * in the same shape and voice:
  *
  *  - a member the host does not allow (`members`), with the reason when it
  *    is one that hosts another library's code;
  *  - an address a screen may not hold (`urls.ts`), at a prop or an object
  *    key that takes one, by the walk's rule: text, or a flat list of text;
  *  - a control's name that the screen's `values` cannot hold: one a control
- *    before it has, or one every object has (`__proto__`).
+ *    before it in document order has, or one every object has (`__proto__`);
+ *  - an input type longer than `MAX_TYPE_LENGTH`;
+ *  - a callback input bound where no callback receives it, and an element in
+ *    a structured object's field that takes no node (`receivers.ts`).
+ *
+ * What the walk checks of the host's data (an address, a function) it checks
+ * when it draws, as this reads only the document.
  *
  * A document nested deeper than `MAX_DEPTH` (`depth.ts`) is one fault, and is
  * not validated, as the validator reads it by recursion.
@@ -103,12 +122,12 @@ function runTimeFaults(
     }
   }
 
-  /** Where the control that holds each name is, as the walk reaches them. */
+  /** Where the control that holds each name is, in document order. */
   const named = new Map<string, string>()
 
   /**
    * A control's name, by the walk's rule: a name every object has is a fault, and so is a name a
-   * control before it has. A name the host's data gives is the walk's to check.
+   * control before it in document order has. A name the host's data gives is the walk's to check.
    */
   const name = (component: string, props: Record<string, unknown>, path: string): void => {
     const surface = surfaceOf(vocabulary, component)
@@ -125,37 +144,76 @@ function runTimeFaults(
     named.set(given, path)
   }
 
-  const visit = (value: unknown, path: string): void => {
+  /** A run-time fault, unless the validator faults the same path already. */
+  const fault = (path: string, message: string): void => {
+    if (!validated.has(path)) faults.push({ path, message })
+  }
+
+  // The callback inputs, which the walk hands only to a callback receiver (`receivers.ts`), and
+  // the types too long to read, which are data with no value.
+  const callbacks = new Set<string>()
+  const inputs = isRecord(document) ? document['inputs'] : undefined
+  if (Array.isArray(inputs)) {
+    inputs.forEach((input, at) => {
+      if (!isRecord(input) || typeof input['name'] !== 'string') return
+      const type = input['type']
+      if (typeof type !== 'string') return
+      if (type.length > MAX_TYPE_LENGTH) {
+        fault(`$.inputs[${at}].type`, typeTooLong(input['name'], type.length))
+      } else if (isCallback(type)) callbacks.add(input['name'])
+    })
+  }
+
+  /** A value written at `path`, where `receiver` is the type that receives it. */
+  const visit = (value: unknown, path: string, receiver: Receiver): void => {
     if (Array.isArray(value)) {
-      value.forEach((item, index) => visit(item, `${path}[${index}]`))
+      const item = itemOf(vocabulary, receiver)
+      value.forEach((entry, index) => visit(entry, `${path}[${index}]`, item))
       return
     }
     if (!isRecord(value)) return
+    if (typeof value['$'] === 'string') {
+      const binding = value['$']
+      if (callbacks.has(binding) && callbackOf(vocabulary, receiver) === null) {
+        fault(path, unreceivedCallback(binding))
+      }
+      return
+    }
     if (typeof value['component'] === 'string') {
-      const fault = memberFault(vocabulary, value['component'], allowed)
-      if (fault !== null) faults.push({ path, message: fault })
+      const component = value['component']
+      const member = memberFault(vocabulary, component, allowed)
+      if (member !== null) faults.push({ path, message: member })
+      const surface = surfaceOf(vocabulary, component)
+      const types = new Map((surface?.props ?? []).map((prop) => [prop.name, prop.type]))
       const props = value['props']
+      // In document order an element comes before what its props and children hold.
+      if (isRecord(props)) name(component, props, path)
       if (isRecord(props)) {
         for (const [key, item] of Object.entries(props)) {
           const at = `${path}.props.${key}`
           if (ADDRESS_KEYS.has(key)) address(key, item, at)
-          visit(item, at)
+          visit(item, at, types.get(key) ?? null)
         }
-        name(value['component'], props, path)
       }
-      visit(value['children'], `${path}.children`)
+      visit(value['children'], `${path}.children`, types.get('children') ?? null)
       return
     }
     const fields = value['$object']
     if (isRecord(fields)) {
       for (const [key, item] of Object.entries(fields)) {
         const at = `${path}.${key}`
+        const field = fieldOf(vocabulary, receiver, key)
+        if (field !== null && !takesNode(vocabulary, field ?? 'never') && elementIn(item)) {
+          const type = objectName(vocabulary, receiver)
+          fault(at, field === undefined ? undeclaredField(key, type) : dataField(key, type))
+          continue
+        }
         if (ADDRESS_KEYS.has(key)) address(key, item, at)
-        visit(item, at)
+        visit(item, at, field ?? null)
       }
     }
   }
 
-  if (isRecord(document)) visit(document['root'], '$.root')
+  if (isRecord(document)) visit(document['root'], '$.root', null)
   return faults
 }

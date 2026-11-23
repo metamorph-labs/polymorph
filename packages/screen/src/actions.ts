@@ -3,20 +3,24 @@ import { isActionType } from '@polymorph/spec/action-type'
 /**
  * What a callback answers, and what fills an input a host gave no data for.
  *
- * A screen's callbacks are inputs whose type is a function, and there are two
- * kinds, told apart by the declared return type.
+ * A screen's callbacks are inputs whose type is a function. What a member is
+ * handed for one is decided by the prop or the field that receives it, not by
+ * the type the input declares, as a member calls a prop by the prop's type:
  *
- *  - A callback that returns nothing (`void`, `undefined`, or a promise of
- *    either) is an **action**: the person did something, and the host is told.
- *    A member that waits on it (ConfirmDialog while it saves) waits on the
- *    promise the host's handler returns.
- *  - A callback that returns a value (`(row: Row) => string`) is a
- *    **question** the member asks while it draws: a row's key, whether a date
- *    can be picked. Its stub answers by the return type, and the host is never
- *    told, as a table asks one question per row on every drawing.
+ *  - A receiver that returns nothing (`void`, `undefined`, or a promise of
+ *    either) is handed an **action**: the person did something, and the host
+ *    is told. A member that waits on it (ConfirmDialog while it saves) waits on
+ *    the promise the host's handler returns.
+ *  - A receiver that returns a value (`getRowId: (row: Row) => string`) is
+ *    handed a **question**'s stub, which the member asks while it draws: a
+ *    row's key, whether a date can be picked. It answers by the receiver's
+ *    return type, and the host is never told, as a table asks one question per
+ *    row on every drawing.
+ *  - A receiver that is no callback is handed nothing (`walk.ts`).
  *
- * A required callback the document leaves unbound answers by the member's
- * prop type, and is never told either.
+ * The input's own type says what its `Fill` reads. A required callback the
+ * document leaves unbound answers by the member's prop type, and is never told
+ * either.
  *
  * A data input the host gave no value for is absent when the screen runs. A
  * picture of the screen (the composer, the MCP tool `render_screen`) asks for
@@ -39,6 +43,20 @@ export interface Fill {
   /** The sampled value, or what the callback does. Absent for data, which the caller already has. */
   value?: string
 }
+
+/**
+ * The longest type a screen may declare for an input, in characters. The
+ * longest any screen in `design/screens/` or the core's fixtures declares is 78
+ * (`{ open: StatProps; urgent: StatProps; response: StatProps; solved:
+ * StatProps }`). A longer type is a fault, and the input is data the host has
+ * no value for: its text is never read as a type.
+ */
+export const MAX_TYPE_LENGTH = 500
+
+/** The fault's words for an input whose type is longer than `MAX_TYPE_LENGTH`. */
+export const typeTooLong = (name: string, length: number): string =>
+  `the type of input \`${name}\` is ${length} characters long, and a type a screen declares is ` +
+  `${MAX_TYPE_LENGTH} at most; the input is data with no value`
 
 /** Whether an input's or a prop's printed type is a callback: a function, alone or in a union with `undefined`. */
 export const isCallback = (type: string): boolean => isActionType(type)
@@ -112,17 +130,40 @@ export interface Stub {
   answers: string
 }
 
-/** What a callback answers by the return type its type declares, and the words that say so. */
+/**
+ * What a callback answers by the return type its type declares, and the words
+ * that say so. Each `Promise<…>` around the return type is peeled in one pass
+ * over the text, so no depth of promises makes it throw or take longer than
+ * the text is long.
+ */
 export function stubFor(type: string): Stub {
   const returns = returnTypeOf(type)
-  const promised = /^Promise<(.*)>$/.exec(returns)
-  if (promised !== null) {
-    const inner = stubFor(`=> ${promised[1] ?? 'void'}`)
-    return {
-      stub: (...args) => Promise.resolve(inner.stub(...args)),
-      answers: `a promise of ${inner.answers}`,
+  let start = 0
+  let end = returns.length
+  let promises = 0
+  // A line break is no part of a type a member declares; a return type that holds one is no promise.
+  if (!/[\n\r\u2028\u2029]/.test(returns)) {
+    while (end - start > 'Promise<>'.length - 1 && returns.startsWith('Promise<', start)) {
+      if (returns[end - 1] !== '>') break
+      promises += 1
+      start += 'Promise<'.length
+      end -= 1
+      while (start < end && (returns[start] as string).trim() === '') start += 1
+      while (end > start && (returns[end - 1] as string).trim() === '') end -= 1
     }
   }
+  const answer = answerOf(returns.slice(start, end))
+  // A promise of a promise is one promise when awaited, so one `Promise.resolve` waits for all.
+  return promises === 0
+    ? answer
+    : {
+        stub: (...args) => Promise.resolve(answer.stub(...args)),
+        answers: `${'a promise of '.repeat(promises)}${answer.answers}`,
+      }
+}
+
+/** What a callback answers for a return type that is no promise. */
+function answerOf(returns: string): Stub {
   if (returns === 'string') {
     return { stub: (first) => keyOf(first), answers: 'the key of its first argument' }
   }

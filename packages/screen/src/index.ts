@@ -17,6 +17,7 @@ export {
   callbackFill,
   isAction,
   isCallback,
+  MAX_TYPE_LENGTH,
   returnTypeOf,
   sampleOf,
   stubFor,
@@ -26,7 +27,7 @@ export {
 } from './actions'
 export { checkScreen, type ScreenCheck, type ScreenCheckOptions } from './check'
 export { outputContract, runtimeCard, type CardOptions } from './card'
-export { argumentsToJson, toJson, type JsonValue } from './json'
+export { argumentsToJson, MAX_JSON_VALUES, toJson, type JsonValue } from './json'
 export {
   allowedMembers,
   CODE_HOSTS,

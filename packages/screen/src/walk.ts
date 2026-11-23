@@ -11,16 +11,19 @@ import {
 import {
   answerFor,
   callbackFill,
-  isAction,
   isCallback,
+  isThenable,
+  MAX_TYPE_LENGTH,
+  returnTypeOf,
   sampleOf,
   shown,
   stubFor,
+  typeTooLong,
   valueAt,
   type Fill,
 } from './actions'
 import { MAX_DEPTH, TOO_DEEP } from './depth'
-import { argumentsToJson, toJson, type JsonValue } from './json'
+import { MAX_JSON_VALUES, reduceArguments, reduceToJson, type JsonValue } from './json'
 import {
   allowedMembers,
   formPropOf,
@@ -33,6 +36,19 @@ import {
   type ScreenSurface,
   type ScreenVocabulary,
 } from './members'
+import {
+  callbackOf,
+  dataField,
+  elementIn,
+  fieldOf,
+  functionInData,
+  itemOf,
+  objectName,
+  takesNode,
+  undeclaredField,
+  unreceivedCallback,
+  type Receiver,
+} from './receivers'
 import { addressFaults, ADDRESS_KEYS } from './urls'
 
 /**
@@ -45,14 +61,23 @@ import { addressFaults, ADDRESS_KEYS } from './urls'
  * decision about what a document may do at run time is made here:
  *
  *  - **Data inputs** are filled from `data` by name. An input with no value is
- *    absent; a picture of the screen asks for a sample instead (`fill`).
- *  - **A callback input that returns nothing is an action.** A member that
- *    calls one tells the host `{ name, args, values }` (`onAction`): the
- *    input's name, the call's arguments as JSON, and the values of the named
- *    controls. A promise the host's handler returns is what the member waits
- *    on. A callback input that returns a value is a question the member asks
- *    while it draws (a row's key): its stub answers by the declared return
- *    type, and the host is never told (`actions.ts`).
+ *    absent; a picture of the screen asks for a sample instead (`fill`). An
+ *    input whose type is longer than `MAX_TYPE_LENGTH` is a fault, and is
+ *    data with no value. What an input's type says is read once for each
+ *    type, not on each drawing.
+ *  - **A callback input is handed by its receiver** (`receivers.ts`). Bound
+ *    to a prop or a field whose type is a callback that returns nothing, it is
+ *    an action: a member that calls it tells the host `{ name, args, values,
+ *    changed }` (`onAction`), and a promise the host's handler returns is what
+ *    the member waits on. Bound to a callback that returns a value, it is a
+ *    question the member asks while it draws (a row's key): a stub answers by
+ *    the receiver's return type, and the host is never told (`actions.ts`).
+ *    Bound anywhere else (a text, a node, data, a field the vocabulary does
+ *    not know), it is a fault and nothing is passed, as a renderer may call a
+ *    function it is handed as text. A function in the host's data is never
+ *    handed to a member as itself: a binding whose value is one is a fault.
+ *    Functions inside an object or a list the host's data holds are the
+ *    host's, passed as it gave them.
  *  - **Controls follow the reader.** A controlled prop (`value` with
  *    `onChange`) keeps what the reader last chose until the document or the
  *    host gives it another value, or the control's component or name changes.
@@ -61,9 +86,17 @@ import { addressFaults, ADDRESS_KEYS } from './urls'
  *    drawn again starts from it.
  *  - **`values`** holds each named control's value as JSON: what the reader
  *    chose, else the value the document or the host gives, else its default,
- *    else the empty value its type has (`emptyOf`). A name two controls share
- *    is a fault, and `values` holds the last of them. A name an object
- *    inherits (`__proto__`) is a fault, and is left out.
+ *    else the empty value its type has (`emptyOf`). `changed` names the
+ *    controls whose value is what the reader chose. A name two controls share
+ *    is a fault, and `values` holds the last of them in document order: an
+ *    element before what its props hold, what its props hold in the order the
+ *    props are written, then its children. A name an object inherits
+ *    (`__proto__`) is a fault, and is left out.
+ *  - **An element in a structured object** is drawn only where the field's
+ *    data type takes a node. One in a field the type does not declare, or
+ *    declares as data, is a fault and is dropped, so no control the person
+ *    never sees holds a value. In an object whose type the vocabulary does not
+ *    name, an element is drawn as before (`receivers.ts`).
  *  - **A required callback** the document does not bind is stubbed by its
  *    return type.
  *  - **Nothing the document says runs.** A component is drawn only if the
@@ -75,7 +108,9 @@ import { addressFaults, ADDRESS_KEYS } from './urls'
  *  - **A fault never blanks the screen.** A node that cannot be drawn carries
  *    its fault and is drawn as nothing, or as the fault where the host asks;
  *    every fault reaches the host with its path (`onFault`), once in each
- *    drawing. A renderer reports a member that throws with `fail`.
+ *    drawing. A drawing begins when the screen is made, when a stream begins,
+ *    and when the host gives a whole document that differs from the one drawn.
+ *    A renderer reports a member that throws with `fail`.
  *  - **Streaming.** While `streaming`, an element is drawn once every prop it
  *    requires is written and the text (`cut`, from `parsePartial`) ends
  *    outside it, in its `children`, or in an element one of its props holds;
@@ -100,14 +135,20 @@ export interface ScreenFault {
   component?: string
 }
 
-/** What a member's call of an action, a callback input that returns nothing, tells the host. */
+/**
+ * What a member's call of an action tells the host. The document chose the
+ * action's name, and wrote what `values` holds until the person changes it, so
+ * a host confirms a consequential action outside the screen.
+ */
 export interface ScreenAction {
   /** The callback input the member called. */
   name: string
   /** The call's arguments as JSON (`json.ts`). */
   args: JsonValue[]
-  /** Each named control's current value, by its name. */
+  /** Each named control's current value, by its name: what the controls hold, not the person's word. */
   values: Record<string, JsonValue>
+  /** The names in `values` whose value the person chose, in document order. Every other value is the document's or the host's. */
+  changed: string[]
 }
 
 /**
@@ -199,15 +240,18 @@ export interface ScreenOptions {
    */
   cut?: string | null
   /**
-   * Told each action: each call of a callback input that returns nothing. A
-   * promise it returns is what the member waits on (`answerFor`). A callback
-   * that returns a value is never told.
+   * Told each action: each call a member makes of a callback input bound where
+   * a callback that returns nothing receives it. A promise it returns is what
+   * the member waits on. A question, a callback whose receiver returns a value,
+   * is never told.
    */
   onAction?: (action: ScreenAction) => unknown
   /**
    * Told each fault once in a drawing, by its path and message, when it first
-   * appears. A drawing begins when the screen is made and again when a stream
-   * begins, so a fault that goes and comes back within one is not told again.
+   * appears. A drawing begins when the screen is made, when a stream begins,
+   * and when the host gives a whole document (not streaming) that differs
+   * from the one drawn. A fault that goes and comes back within one drawing,
+   * across a stream's chunks or the host's data, is not told again.
    */
   onFault?: (fault: ScreenFault) => void
 }
@@ -231,6 +275,8 @@ export interface Screen {
    * value its type has.
    */
   readonly values: Readonly<Record<string, JsonValue>>
+  /** The names in `values` whose value the person chose, in document order (`ScreenAction.changed`). */
+  readonly changed: readonly string[]
   /** How each declared input was filled. */
   readonly fills: readonly Fill[]
   readonly streaming: boolean
@@ -304,16 +350,37 @@ function own(target: Record<string, unknown>, key: string, value: unknown): void
 interface Input {
   name: string
   type: string
+  /** Its place among the document's inputs, for a fault's path. */
+  at: number
 }
 
 function inputsOf(document: unknown): Input[] {
   const inputs = isRecord(document) ? document['inputs'] : undefined
   if (!Array.isArray(inputs)) return []
-  return inputs.flatMap((input): Input[] =>
+  return inputs.flatMap((input, at): Input[] =>
     isRecord(input) && typeof input['name'] === 'string' && typeof input['type'] === 'string'
-      ? [{ name: input['name'], type: input['type'] }]
+      ? [{ name: input['name'], type: input['type'], at }]
       : [],
   )
+}
+
+/** What a declared type says, read once for each type a screen meets. */
+interface TypeReading {
+  /** Whether it is a callback. */
+  callback: boolean
+  /** A callback's `Fill` words. */
+  words: string
+  /** Whether a callback is declared to return a promise. */
+  promise: boolean
+}
+
+function readType(type: string): TypeReading {
+  const callback = isCallback(type)
+  return {
+    callback,
+    words: callback ? callbackFill(type) : '',
+    promise: callback && /^Promise</.test(returnTypeOf(type)),
+  }
 }
 
 /**
@@ -469,6 +536,38 @@ function holdsElement(value: unknown, depth = 0): boolean {
   return isRecord(fields) && Object.values(fields).some((item) => holdsElement(item, depth + 2))
 }
 
+/** A named control the walk reached: where, in what order, its name and value, and whether the reader chose it. */
+interface Named {
+  order: number
+  path: string
+  component: string
+  name: string
+  value: JsonValue | undefined
+  chosen: boolean
+}
+
+/** The fault's words for an action's arguments that hold more values than one reduction writes. */
+const argumentsCut = (name: string): string =>
+  `the arguments \`${name}\` was called with hold more than ${MAX_JSON_VALUES} values; the host ` +
+  'is told the first of them'
+
+/** The fault's words for a control's value that holds more values than one reduction writes. */
+const VALUE_CUT = `the value holds more than ${MAX_JSON_VALUES} values; \`values\` holds the first of them`
+
+/**
+ * Whether two documents say the same: the same object, or the same JSON. A
+ * document is at most `MAX_DEPTH` deep, so its JSON is cheap; one that cannot
+ * be written as JSON differs.
+ */
+function sameDocument(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true
+  try {
+    return JSON.stringify(a) === JSON.stringify(b)
+  } catch {
+    return false
+  }
+}
+
 /** The prop that holds a control's default: `defaultValue` for `value`. */
 const defaultProp = (prop: string) => `default${prop.charAt(0).toUpperCase()}${prop.slice(1)}`
 
@@ -496,11 +595,20 @@ export function createScreen(options: ScreenOptions): Screen {
 
   let inputs = new Map<string, Input>()
   let inputValues = new Map<string, unknown>()
+  /** The callback inputs, by name, with what their types say. */
+  let callbacks = new Map<string, TypeReading>()
   let fills: Fill[] = []
   /** Each sample, by input and type, so a sampled list is the same list in every drawing. */
   const samples = new Map<string, unknown>()
-  /** Each callback input's action, by name: one function for the screen's life. */
+  /** What each declared type says, by its text: a type is read once, not on each drawing. */
+  const readings = new Map<string, TypeReading>()
+  /**
+   * Each callback input's action, by its name and the type of the callback that receives it: one
+   * function for the screen's life.
+   */
   const actions = new Map<string, Handler>()
+  /** Each question's stub, by the type of the callback that receives it. */
+  const questions = new Map<string, Handler>()
   /**
    * Each control's handler and each stub, by `path#component#prop`: one function while a node of
    * that component is there.
@@ -514,40 +622,73 @@ export function createScreen(options: ScreenOptions): Screen {
   let walked: ScreenFault[] = []
   let reported: { fault: ScreenFault; node: ScreenNode | undefined }[] = []
   let values: Record<string, JsonValue> = {}
+  let changed: string[] = []
   /** The faults told in this drawing, by path and message. */
   let told = new Set<string>()
   /** The elements drawn while the document streams, by `path#component`: each stays drawn. */
   let drawnBefore = new Set<string>()
   const listeners = new Set<() => void>()
 
-  const action = (name: string): Handler => {
-    let made = actions.get(name)
+  /**
+   * The action a callback receiver that returns nothing is handed for a callback input: it tells
+   * the host, and hands the member the host's promise. Without one, it answers a promise of
+   * nothing where the receiver or the input returns a promise, and nothing otherwise.
+   */
+  const action = (name: string, receiver: string): Handler => {
+    const key = `${name}\u0000${receiver}`
+    let made = actions.get(key)
     if (made === undefined) {
+      const promised = /^Promise</.test(returnTypeOf(receiver))
       made = (...args: unknown[]) => {
-        const type = inputs.get(name)?.type ?? '() => void'
-        // A question a member asks while it draws is answered here and never told.
-        if (!isAction(type)) return stubFor(type).stub(...args)
+        const reduced = reduceArguments(args)
+        if (reduced.cut) tellOnce({ path: '$', message: argumentsCut(name) })
         const answer = state.onAction?.({
           name,
-          args: argumentsToJson(args),
+          args: reduced.json,
           values: { ...values },
+          changed: [...changed],
         })
-        return answerFor(type, answer, args)
+        if (isThenable(answer)) return answer
+        return promised || callbacks.get(name)?.promise === true
+          ? Promise.resolve(undefined)
+          : undefined
       }
-      actions.set(name, made)
+      actions.set(key, made)
     }
     return made
   }
 
-  const fill = () => {
+  /** The stub a callback receiver that returns a value is handed: it answers by the receiver's type. */
+  const question = (receiver: string): Handler => {
+    let made = questions.get(receiver)
+    if (made === undefined) {
+      made = stubFor(receiver).stub
+      questions.set(receiver, made)
+    }
+    return made
+  }
+
+  const fill = (found: ScreenFault[]) => {
     const declared = inputsOf(state.document)
     inputs = new Map(declared.map((input) => [input.name, input]))
     inputValues = new Map()
+    callbacks = new Map()
     fills = []
-    for (const { name, type } of declared) {
-      if (isCallback(type)) {
-        inputValues.set(name, action(name))
-        fills.push({ name, type, from: 'stub', value: callbackFill(type) })
+    for (const { name, type, at } of declared) {
+      // A type longer than any screen needs is not read: the input is data with no value.
+      if (type.length > MAX_TYPE_LENGTH) {
+        found.push({ path: `$.inputs[${at}].type`, message: typeTooLong(name, type.length) })
+        fills.push({ name, type, from: 'absent' })
+        continue
+      }
+      let reading = readings.get(type)
+      if (reading === undefined) {
+        reading = readType(type)
+        readings.set(type, reading)
+      }
+      if (reading.callback) {
+        callbacks.set(name, reading)
+        fills.push({ name, type, from: 'stub', value: reading.words })
       } else if (Object.prototype.hasOwnProperty.call(state.data, name)) {
         inputValues.set(name, state.data[name])
         fills.push({ name, type, from: 'data' })
@@ -580,16 +721,16 @@ export function createScreen(options: ScreenOptions): Screen {
 
   /** Resolves the document as it is now. */
   const resolve = () => {
-    fill()
     const found: ScreenFault[] = []
+    fill(found)
     const nodes = new Map<string, ScreenNode>()
     const nextBases = new Map<string, Drawn | undefined>()
     const nextBound = new Map<string, unknown>()
     const live = new Set<string>()
-    /** Each named control's value, by name: the last control the walk reaches with a name holds it. */
-    const named = new Map<string, JsonValue>()
-    /** Where the control that holds each name is. */
-    const namedAt = new Map<string, string>()
+    /** Each named control the walk reaches, with its place in document order (`order`). */
+    const named: Named[] = []
+    /** The next node's place in document order: an element before what its props and children hold. */
+    let order = 0
     const { streaming, open } = state
     const cut = streaming ? state.cut : null
 
@@ -672,8 +813,9 @@ export function createScreen(options: ScreenOptions): Screen {
     /**
      * A value of the document, resolved. `drawn` says it is where things are
      * drawn (a child, or a list that holds an element), `text` that a string
-     * still being written reads there as what it will say, and `depth` is how
-     * many objects and lists hold the value (`depth.ts`).
+     * still being written reads there as what it will say, `depth` is how many
+     * objects and lists hold the value (`depth.ts`), and `receiver` is the type
+     * of the prop, item or field that receives it (`receivers.ts`).
      */
     const resolveValue = (
       written: unknown,
@@ -681,6 +823,7 @@ export function createScreen(options: ScreenOptions): Screen {
       drawn: boolean,
       text: boolean,
       depth: number,
+      receiver: Receiver,
     ): Drawn | undefined => {
       const value = written as SpecValue
       if (typeof value === 'object' && value !== null && depth > MAX_DEPTH) {
@@ -691,9 +834,10 @@ export function createScreen(options: ScreenOptions): Screen {
       if (!drawn && cutIn(value, path) === 'data') return undefined
       if (Array.isArray(value)) {
         const holds = drawn || value.some((item) => !Array.isArray(item) && isElement(item))
+        const item = itemOf(vocabulary, receiver)
         const items: Drawn[] = []
-        value.forEach((item, at) => {
-          const resolved = resolveValue(item, `${path}[${at}]`, holds, holds, depth + 1)
+        value.forEach((written, at) => {
+          const resolved = resolveValue(written, `${path}[${at}]`, holds, holds, depth + 1, item)
           if (resolved !== undefined) items.push(resolved)
         })
         if (holds || items.some((item) => item.kind !== 'value')) return { kind: 'list', items }
@@ -701,13 +845,7 @@ export function createScreen(options: ScreenOptions): Screen {
         BUILT.add(plain)
         return { kind: 'value', value: plain, from: 'document' }
       }
-      if (isBinding(value)) {
-        const target = valueAt(value.$, inputValues)
-        if (drawn) return { kind: 'binding', path: value.$, value: target }
-        const head = value.$.split('.')[0] ?? value.$
-        const callback = value.$ === head && actions.get(head) === target && target !== undefined
-        return { kind: 'value', value: target, from: callback ? 'screen' : 'data' }
-      }
+      if (isBinding(value)) return bindingAt(value.$, path, drawn, receiver)
       if (isObjectValue(value)) {
         if (drawn) return faulted({ path, message: OBJECT_AS_CHILD }, true)
         if (!isRecord(value.$object)) return faulted({ path, message: PLAIN_OBJECT }, false)
@@ -715,9 +853,21 @@ export function createScreen(options: ScreenOptions): Screen {
         for (const [key, item] of Object.entries(value.$object)) {
           // A structured object's fields sit at its own path, as the validator writes them.
           const at = `${path}.${key}`
-          let resolved = resolveValue(item, at, false, false, depth + 2)
-          if (resolved !== undefined && ADDRESS_KEYS.has(key))
+          const field = fieldOf(vocabulary, receiver, key)
+          // An element is drawn only in a field that takes a node: one the type declares as data,
+          // or does not declare, no member draws, and a control there would hold a value unseen.
+          if (field !== null && !takesNode(vocabulary, field ?? 'never') && elementIn(item)) {
+            const type = objectName(vocabulary, receiver)
+            found.push({
+              path: at,
+              message: field === undefined ? undeclaredField(key, type) : dataField(key, type),
+            })
+            continue
+          }
+          let resolved = resolveValue(item, at, false, false, depth + 2, field ?? null)
+          if (resolved !== undefined && ADDRESS_KEYS.has(key)) {
             resolved = address(resolved, item, at, key)
+          }
           if (resolved === undefined) continue
           own(fields, key, resolved)
         }
@@ -747,6 +897,37 @@ export function createScreen(options: ScreenOptions): Screen {
     }
 
     /**
+     * A binding's value, by what receives it. A callback input is the screen's
+     * own function: the action where a callback that returns nothing receives
+     * it, a question's stub where one that returns a value does, and a fault
+     * anywhere else. A function the host's data holds is never handed on as
+     * itself. Anything else is the host's data, or, where things are drawn, the
+     * binding with its value.
+     */
+    const bindingAt = (
+      binding: string,
+      path: string,
+      drawn: boolean,
+      receiver: Receiver,
+    ): Drawn | undefined => {
+      const head = binding.split('.')[0] ?? binding
+      if (binding === head && callbacks.has(head)) {
+        const kind = callbackOf(vocabulary, receiver)
+        if (kind === null || receiver === null) {
+          return faulted({ path, message: unreceivedCallback(head) }, drawn)
+        }
+        const handed = kind === 'action' ? action(head, receiver) : question(receiver)
+        return { kind: 'value', value: handed, from: 'screen' }
+      }
+      const target = valueAt(binding, inputValues)
+      if (typeof target === 'function') {
+        return faulted({ path, message: functionInData(binding) }, drawn)
+      }
+      if (drawn) return { kind: 'binding', path: binding, value: target }
+      return { kind: 'value', value: target, from: 'data' }
+    }
+
+    /**
      * What is passed at a key that takes an address (`ADDRESS_KEYS`), from the
      * document or the host's data: text that is an address a screen may hold,
      * or a flat list of such text. Anything else is a fault, and nothing is
@@ -773,6 +954,9 @@ export function createScreen(options: ScreenOptions): Screen {
 
     const node = (element: SpecElement, path: string, depth: number): ScreenNode => {
       const { component } = element
+      // Its place in document order, before anything its props and children hold.
+      const place = order
+      order += 1
       const surface = surfaceOf(vocabulary, component)
       // An element's props, children and exception sit one level below it.
       const holdsDeeper =
@@ -812,7 +996,7 @@ export function createScreen(options: ScreenOptions): Screen {
         if (name === 'children') continue
         // A control's name still being written is another name, so it arrives whole.
         const text = takesText(prop) && !(name === 'name' && formProp !== null)
-        let resolved = resolveValue(value, at, false, text, depth + 2)
+        let resolved = resolveValue(value, at, false, text, depth + 2, prop.type)
         if (resolved !== undefined && ADDRESS_KEYS.has(name)) {
           resolved = address(resolved, value, at, name)
         }
@@ -936,25 +1120,22 @@ export function createScreen(options: ScreenOptions): Screen {
               : initial !== undefined
                 ? initial
                 : emptyOf(types.get(formProp)?.type ?? '')
-        if (INHERITED_NAMES.has(formName)) {
-          found.push({
-            path: `${path}.props.name`,
-            component,
-            message: inheritedNameFault(formName),
-          })
-        } else {
-          const before = namedAt.get(formName)
-          if (before !== undefined) {
-            found.push({
-              path: `${path}.props.name`,
-              component,
-              message: sharedNameFault(formName, before),
-            })
+        let json: JsonValue | undefined
+        if (value !== undefined) {
+          const reduced = reduceToJson(value)
+          json = reduced.json ?? null
+          if (reduced.cut) {
+            found.push({ path: `${path}.props.${formProp}`, component, message: VALUE_CUT })
           }
-          namedAt.set(formName, path)
-          if (value === undefined) named.delete(formName)
-          else named.set(formName, toJson(value) ?? null)
         }
+        named.push({
+          order: place,
+          path,
+          component,
+          name: formName,
+          value: json,
+          chosen: choice !== undefined,
+        })
       }
 
       // A required callback with nothing to call is stubbed by its return type, and a required prop
@@ -995,9 +1176,10 @@ export function createScreen(options: ScreenOptions): Screen {
         } else {
           const base =
             element.children !== undefined ? `${path}.children` : `${path}.props.children`
+          const childType = types.get('children')?.type ?? null
           childValues.forEach((child, at) => {
             const where = element.children !== undefined ? `${base}[${at}]` : base
-            const resolved = resolveValue(child, where, true, true, depth + 2)
+            const resolved = resolveValue(child, where, true, true, depth + 2, childType)
             if (resolved === undefined) return
             // A list inside the children is drawn in its place.
             if (resolved.kind === 'list') children.push(...resolved.items)
@@ -1060,12 +1242,44 @@ export function createScreen(options: ScreenOptions): Screen {
     reported = reported.filter(
       ({ fault, node: at }) => at === undefined || nodes.get(fault.path) === at,
     )
+    // `values` in document order: a name two controls share holds the last of them.
+    const held = new Map<string, Named>()
+    for (const control of named.sort((a, b) => a.order - b.order)) {
+      const at = `${control.path}.props.name`
+      if (INHERITED_NAMES.has(control.name)) {
+        found.push({
+          path: at,
+          component: control.component,
+          message: inheritedNameFault(control.name),
+        })
+        continue
+      }
+      const before = held.get(control.name)
+      if (before !== undefined) {
+        found.push({
+          path: at,
+          component: control.component,
+          message: sharedNameFault(control.name, before.path),
+        })
+        held.delete(control.name)
+      }
+      held.set(control.name, control)
+    }
+    const nextValues: Record<string, JsonValue> = {}
+    const nextChanged: string[] = []
+    for (const control of held.values()) {
+      if (control.value === undefined) continue
+      nextValues[control.name] = control.value
+      if (control.chosen) nextChanged.push(control.name)
+    }
+
     previous = nodes
     drawnBefore = streaming ? drawnNow : new Set()
     bases = nextBases
     bound = nextBound
     walked = found
-    values = Object.fromEntries(named)
+    values = nextValues
+    changed = nextChanged
     tell()
   }
 
@@ -1097,12 +1311,15 @@ export function createScreen(options: ScreenOptions): Screen {
    * document streams, so what was told is remembered by path and message until the next drawing.
    */
   const tell = () => {
-    for (const fault of [...walked, ...reported.map(({ fault }) => fault)]) {
-      const key = faultKey(fault)
-      if (told.has(key)) continue
-      told.add(key)
-      state.onFault?.(fault)
-    }
+    for (const fault of [...walked, ...reported.map(({ fault }) => fault)]) tellOnce(fault)
+  }
+
+  /** Tells the host a fault, unless it was told in this drawing. */
+  const tellOnce = (fault: ScreenFault) => {
+    const key = faultKey(fault)
+    if (told.has(key)) return
+    told.add(key)
+    state.onFault?.(fault)
   }
 
   resolve()
@@ -1117,6 +1334,9 @@ export function createScreen(options: ScreenOptions): Screen {
     get values() {
       return values
     },
+    get changed() {
+      return changed
+    },
     get fills() {
       return fills
     },
@@ -1126,14 +1346,25 @@ export function createScreen(options: ScreenOptions): Screen {
     update(next) {
       if ('onAction' in next) state.onAction = next.onAction
       if ('onFault' in next) state.onFault = next.onFault
-      let changed = false
+      let dirty = false
+      // A whole document that differs from the one drawn is a new drawing, whose faults are told
+      // again. One that ends a stream, or that a renderer gives again unchanged, is not.
+      const streams = 'streaming' in next ? next.streaming === true : state.streaming
+      if (
+        'document' in next &&
+        !state.streaming &&
+        !streams &&
+        !sameDocument(state.document, next.document)
+      ) {
+        told = new Set()
+      }
       if ('document' in next) {
         state.document = next.document
-        changed = true
+        dirty = true
       }
       if ('data' in next) {
         state.data = next.data ?? {}
-        changed = true
+        dirty = true
       }
       if ('streaming' in next) {
         // A stream that begins is a new drawing: its elements are drawn as they are written again,
@@ -1143,17 +1374,17 @@ export function createScreen(options: ScreenOptions): Screen {
           told = new Set()
         }
         state.streaming = next.streaming ?? false
-        changed = true
+        dirty = true
       }
       if ('open' in next) {
         state.open = next.open ?? null
-        changed = true
+        dirty = true
       }
       if ('cut' in next) {
         state.cut = next.cut ?? null
-        changed = true
+        dirty = true
       }
-      if (!changed) return
+      if (!dirty) return
       resolve()
       notify()
     },

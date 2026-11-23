@@ -9,7 +9,8 @@
  * nothing a host can use, so they are dropped. A date or a time says its ISO
  * text. This module has no DOM, so it knows each of them by its shape. A value
  * that holds itself, or nests deeper than `MAX_DEPTH` objects and lists, is cut
- * there.
+ * there, and one that holds more than `MAX_JSON_VALUES` values is cut after
+ * them.
  */
 
 import { MAX_DEPTH } from './depth'
@@ -57,7 +58,29 @@ const isTemporal = (value: Record<string, unknown>): boolean =>
   typeof value['copy'] === 'function' &&
   typeof value['toString'] === 'function'
 
-function reduce(value: unknown, seen: Set<object>, depth = 1): Reduced {
+/**
+ * The most values one reduction writes: a value, each item and each field
+ * counting one. A host's data can share one object at many levels, so a walk
+ * of its tree can be exponentially longer than the data; one past this many is
+ * cut, and the reduction says so.
+ */
+export const MAX_JSON_VALUES = 100_000
+
+/** One reduction: the objects it is inside, how many values it may still write, and whether it cut any. */
+interface Reduction {
+  seen: Set<object>
+  left: number
+  cut: boolean
+}
+
+const reduction = (): Reduction => ({ seen: new Set(), left: MAX_JSON_VALUES, cut: false })
+
+function reduce(value: unknown, within: Reduction, depth = 1): Reduced {
+  if (within.left <= 0) {
+    within.cut = true
+    return DROPPED
+  }
+  within.left -= 1
   if (value === null) return null
   if (typeof value === 'string' || typeof value === 'boolean') return value
   // JSON has no `NaN` or infinity; `JSON.stringify` writes them as `null`.
@@ -75,22 +98,30 @@ function reduce(value: unknown, seen: Set<object>, depth = 1): Reduced {
   }
   // A value that holds itself is cut where it does, as JSON has no reference, and one nested
   // deeper than a screen document may be is cut at that depth (`depth.ts`).
+  const { seen } = within
   if (seen.has(value) || depth > MAX_DEPTH) return DROPPED
   seen.add(value)
   try {
     if (Array.isArray(value) || value instanceof Set) {
-      return [...(value as Iterable<unknown>)].map((item) => {
-        const reduced = reduce(item, seen, depth + 1)
-        return reduced === DROPPED ? null : reduced
-      })
+      const out: JsonValue[] = []
+      for (const item of value as Iterable<unknown>) {
+        const reduced = reduce(item, within, depth + 1)
+        if (within.cut) break
+        out.push(reduced === DROPPED ? null : reduced)
+      }
+      return out
     }
-    const entries: [string, unknown][] =
+    const entries: Iterable<[string, unknown]> =
       value instanceof Map
-        ? [...(value as Map<unknown, unknown>)].map(([key, item]) => [String(key), item])
+        ? [...(value as Map<unknown, unknown>)].map(([key, item]): [string, unknown] => [
+            String(key),
+            item,
+          ])
         : Object.entries(value)
     const out: { [key: string]: JsonValue } = {}
     for (const [key, item] of entries) {
-      const reduced = reduce(item, seen, depth + 1)
+      const reduced = reduce(item, within, depth + 1)
+      if (within.cut) break
       if (reduced !== DROPPED) own(out, key, reduced)
     }
     return out
@@ -101,8 +132,14 @@ function reduce(value: unknown, seen: Set<object>, depth = 1): Reduced {
 
 /** A value as JSON: `undefined` when JSON cannot say it (a function, an event, a node). */
 export function toJson(value: unknown): JsonValue | undefined {
-  const reduced = reduce(value, new Set())
-  return reduced === DROPPED ? undefined : reduced
+  return reduceToJson(value).json
+}
+
+/** A value as JSON, and whether it held more than `MAX_JSON_VALUES` values and was cut. */
+export function reduceToJson(value: unknown): { json: JsonValue | undefined; cut: boolean } {
+  const within = reduction()
+  const reduced = reduce(value, within)
+  return { json: reduced === DROPPED ? undefined : reduced, cut: within.cut }
 }
 
 /**
@@ -112,7 +149,16 @@ export function toJson(value: unknown): JsonValue | undefined {
  * `onSelect(item, event, index)` is `[item, null, index]`.
  */
 export function argumentsToJson(args: readonly unknown[]): JsonValue[] {
-  const reduced = args.map((arg) => reduce(arg, new Set()))
+  return reduceArguments(args).json
+}
+
+/**
+ * A call's arguments as JSON, as `argumentsToJson` gives them, and whether
+ * they held more than `MAX_JSON_VALUES` values between them and were cut.
+ */
+export function reduceArguments(args: readonly unknown[]): { json: JsonValue[]; cut: boolean } {
+  const within = reduction()
+  const reduced = args.map((arg) => reduce(arg, within))
   while (reduced.length > 0 && reduced[reduced.length - 1] === DROPPED) reduced.pop()
-  return reduced.map((arg) => (arg === DROPPED ? null : arg))
+  return { json: reduced.map((arg) => (arg === DROPPED ? null : arg)), cut: within.cut }
 }
