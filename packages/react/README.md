@@ -44,10 +44,12 @@ It contains:
   `polymorph-screen/1` document a model writes, or the model's answer as text while it streams,
   with the members the application passes, at run time and with no build. Everything a document
   may do is decided by [`@polymorph/screen`](../screen/README.md), the core every renderer shares:
-  the walk, the fill of its inputs, its actions, the controls that follow the reader and its
-  faults. This subpath draws what the core resolves: each node keyed by its path and memoized on
-  it, so a longer document, new data or the reader's input mounts nothing twice, and each inside
-  its own error boundary. `useScreen` and `ScreenDrawing` are its two halves, and `componentFor`
+  the walk, the fill of its inputs, its actions, the controls that follow the reader, its faults,
+  when a streamed element is drawn (once the props it requires are written, from where the text
+  ends: `parsePartial`'s `cut`) and how a member takes its children. This subpath draws what the
+  core resolves: each node keyed by its path and memoized on it, so a longer document, new data or
+  the reader's input mounts nothing twice, and each inside its own error boundary. A host that
+  reads the stream itself passes `document` with `parsePartial`'s `cut` and `open`. `useScreen` and `ScreenDrawing` are its two halves, and `componentFor`
   is the rule a name resolves by among the members. The foundation knows no member, so the
   application passes them (`import * as members from '@polymorph/react-ui'`). The subpath is not a
   root export, so an application that imports the root loads none of it.

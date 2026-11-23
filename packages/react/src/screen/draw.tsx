@@ -16,7 +16,6 @@ import {
   type ReactNode,
 } from 'react'
 
-import { surfaceOf, VOCABULARY } from '@polymorph/screen/vocabulary'
 import {
   materialize,
   type Materials,
@@ -154,60 +153,15 @@ function materialsFor(drawing: Drawing, at: string): Materials<ReactElement> {
 }
 
 /**
- * Whether a component's children are passed as a list, however many there
- * are. A member whose children are nodes (`ReactNode`) takes a list, so the
- * place its children are drawn in stays one list as a streamed document adds
- * a second child, and React keeps the first child's element. Drawn as itself,
- * then in a list beside a second, it would be mounted again.
+ * What a member is given: each prop the walk resolved, and its children.
  *
- * A member whose children are one element (FormField's control) or text
- * (Heading) reads them, so it is given a single child as itself, as JSX gives
- * it: FormField clones its control, and Heading reads its words.
+ * Children are passed as the member takes them (`childrenKind`). A member of
+ * nodes gets a list, even of one, so the place its children are drawn in stays
+ * one list as a streamed document adds a second child, and React keeps the
+ * first child's element: drawn as itself and then in a list beside a second, it
+ * would be mounted again. A member that reads one element (FormField clones its
+ * control) or one text (Heading) gets it as itself, as JSX gives it.
  */
-const LISTED = new Map<string, boolean>()
-
-function listsChildren(component: string): boolean {
-  let listed = LISTED.get(component)
-  if (listed === undefined) {
-    const type = surfaceOf(VOCABULARY, component)?.props.find(
-      (prop) => prop.name === 'children',
-    )?.type
-    listed = type === undefined || /\bReactNode\b/.test(type)
-    LISTED.set(component, listed)
-  }
-  return listed
-}
-
-/** Each component's required props, other than its children, by name. */
-const REQUIRED = new Map<string, readonly string[]>()
-
-/**
- * Whether a node waits for a required prop the document has not written yet.
- * While a document streams, such a node is not drawn: a member drawn without a
- * prop it requires (a Select with no options) would throw, or show a half of
- * itself, on each step until the prop arrives. It is drawn, once, when the
- * prop has arrived. A callback the walk stubs and a prop bound to the host's
- * data count as arrived. Once the document is whole every node is drawn, and a
- * member that throws then is a fault.
- */
-function waits(node: ScreenNode): boolean {
-  let required = REQUIRED.get(node.component)
-  if (required === undefined) {
-    required = (surfaceOf(VOCABULARY, node.component)?.props ?? [])
-      .filter((prop) => !prop.optional && prop.name !== 'children')
-      .map((prop) => prop.name)
-    REQUIRED.set(node.component, required)
-  }
-  // A document still being written may hold anything where an element's props go.
-  const written: unknown = node.element.props
-  const wrote = (name: string) =>
-    typeof written === 'object' &&
-    written !== null &&
-    Object.prototype.hasOwnProperty.call(written, name)
-  return required.some((name) => !(name in node.props) && !wrote(name))
-}
-
-/** What a member is given: each prop the walk resolved, and its children. */
 function memberProps(node: ScreenNode, drawing: Drawing): Record<string, unknown> {
   const props: Record<string, unknown> = {}
   for (const [name, drawn] of Object.entries(node.props)) {
@@ -216,8 +170,8 @@ function memberProps(node: ScreenNode, drawing: Drawing): Record<string, unknown
   if (node.children.length > 0) {
     const materials = materialsFor(drawing, `${node.path}.children`)
     const children = node.children.map((child) => materialize(child, materials))
-    props['children'] =
-      children.length === 1 && !listsChildren(node.component) ? children[0] : children
+    const single = node.childrenKind === 'element' || node.childrenKind === 'text'
+    props['children'] = children.length === 1 && single ? children[0] : children
   }
   return props
 }
@@ -245,7 +199,10 @@ interface BoundaryState {
  * One node that throws draws as nothing, or as its fault, and the rest of the
  * screen is drawn.
  *
- * A member may throw while a document streams because a prop it needs has not
+ * Given where the text ends (`cut`), the walk draws an element only once the
+ * props it requires are written and whole. A host that streams a `document`
+ * with no `cut` has every element that has arrived drawn with the props it has
+ * so far, and a member may throw there because a prop it needs has not
  * arrived. That is no fault, as a missing prop is none while the document
  * streams, so it is not reported and nothing is drawn in its place. The node
  * changes when the prop arrives, which is a new attempt, and a node that threw
@@ -317,7 +274,6 @@ function nodeComponentFor(Member: MemberComponent): ComponentType<NodeProps> {
   function DrawnMember({ screenNode: node, ...given }: NodeProps): ReactNode {
     const drawing = useDrawing()
     const props = useMemo(() => memberProps(node, drawing), [node, drawing])
-    if (drawing.streaming && waits(node)) return null
     // What a member that clones this element adds (an id, a ref, `aria-describedby`) reaches the
     // member over what the document gave, as a clone of the member's own element would.
     const member = <Member {...props} {...given} />

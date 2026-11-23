@@ -384,9 +384,17 @@ describe('an element stays mounted while what it draws from changes', () => {
    * and holds every element to one mount: none is drawn twice, so none loses
    * its state. Returns the drawing at the end.
    */
+  /**
+   * Feeds a document's text one character at a time, as a model writes it. By
+   * default `ScreenView` reads the text; `read: 'host'` reads it with
+   * `parsePartial` here and passes the document, its `cut` and its `open`, as
+   * a host that reads the stream itself does. Holds the drawing to the stream's
+   * invariants and returns it at the end.
+   */
   async function stream(
     spec: unknown,
     during?: (container: HTMLElement, length: number) => Promise<void> | void,
+    read: 'text' | 'host' = 'text',
   ) {
     // The elements the whole document draws, drawn at once.
     mounts.clear()
@@ -396,17 +404,23 @@ describe('an element stays mounted while what it draws from changes', () => {
     mounts.clear()
     const text = JSON.stringify(spec)
     const told = host()
-    const view = (length: number) => (
-      <ScreenView
-        text={text.slice(0, length)}
-        members={members}
-        fill="sample"
-        decorate={counted}
-        onFault={told.onFault}
-      />
-    )
-    // A member that throws is logged by React with the error. None should: a node waits for the
-    // props it requires before it is drawn.
+    const view = (length: number) => {
+      const shared = { members, fill: 'sample', decorate: counted, onFault: told.onFault } as const
+      if (read === 'text') return <ScreenView text={text.slice(0, length)} {...shared} />
+      const cut = parsePartial(text.slice(0, length))
+      return (
+        <ScreenView
+          document={cut.document}
+          streaming={!cut.complete}
+          cut={cut.cut}
+          open={cut.open}
+          {...shared}
+        />
+      )
+    }
+    // React logs a member that throws, and a field that turns from uncontrolled to controlled.
+    // Neither happens: an element is drawn once the props it requires are written, with every
+    // value it is given whole.
     const logged = vi.spyOn(console, 'error')
     const { container, rerender } = render(view(0))
     try {
@@ -417,8 +431,8 @@ describe('an element stays mounted while what it draws from changes', () => {
     } finally {
       logged.mockRestore()
     }
-    const thrown = logged.mock.calls.filter((call) => call.some((arg) => arg instanceof Error))
-    expect(thrown.map((call) => String(call.find((arg) => arg instanceof Error)))).toEqual([])
+    const errors = logged.mock.calls.map((call) => call.map(String).join(' '))
+    expect(errors, 'React logged while the document streamed').toEqual([])
     const remounted = [...mounts].filter(([, count]) => count !== 1)
     expect(remounted, 'drawn more than once while the document streamed').toEqual([])
     // The stream ends with what the whole document draws.
@@ -431,6 +445,22 @@ describe('an element stays mounted while what it draws from changes', () => {
 
   it('draws a screen spec as it streams in, and mounts each element once', async () => {
     await stream(inbox)
+  }, 120_000)
+
+  it('draws a document a host reads with parsePartial itself, given its cut', async () => {
+    for (const spec of [inbox, orderDetail]) await stream(spec, undefined, 'host')
+  }, 120_000)
+
+  it('streams a form with no warning from React: each field is drawn with its value', async () => {
+    let first: string | null = null
+    await stream(newTicket, (drawn) => {
+      if (first !== null || !drawn.textContent?.includes('Subject')) return
+      // The field's value is bound, and the binding is written after the field begins: it is
+      // drawn once the binding is whole, so it starts controlled and never turns.
+      first = labelled(drawn, 'Subject').value
+    })
+    expect(first).toBe('⟨subject⟩')
+    await stream(bookRoom)
   }, 120_000)
 
   it('draws a model’s screen as it streams in, and mounts each element once', async () => {

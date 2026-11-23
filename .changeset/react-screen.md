@@ -22,8 +22,10 @@ import { ScreenView } from '@polymorph/react/screen'
 
 - `ScreenView` draws a `polymorph-screen/1` document, or a model's answer as text while it
   streams, with the members you pass (the vocabulary, a vendored copy, or a map with lazy
-  components). An element is drawn once and kept: a longer document, new `data` or the reader's
-  input redraws only what changed, so a field keeps its text and its focus. `allow` narrows the
+  components). While it streams, an element is drawn once the props it requires are written, and
+  then kept: a longer document, new `data` or the reader's input redraws only what changed, so a
+  field keeps its text and its focus. If you read the stream yourself with `parsePartial`, pass
+  `document` with its `cut` and `open`. `allow` narrows the
   members a document may use, as `runtimeCard({ members })` and `checkScreen(document, { members })`
   do. A node that cannot be drawn, or whose member throws, draws nothing and reaches `onFault`;
   `faults="inline"` shows it in place.

@@ -21,7 +21,7 @@ import { ScreenDrawing, type DrawOptions } from './draw'
  * render runs nothing a host sees, so a render React discards, a second one
  * in strict mode or one on a server tells the host nothing. After each
  * commit the screen is brought to the props: the host's handlers, then the
- * document, the data and whether more is to come. A change the screen draws
+ * document, the data, whether more is to come and where the text ends. A change the screen draws
  * notifies the drawing, which redraws the nodes it reached before the browser
  * paints.
  */
@@ -35,7 +35,9 @@ export interface ScreenSource {
   document?: unknown
   /**
    * A model's answer so far, as text. The document is read from it
-   * (`parsePartial`), and the screen draws what has arrived.
+   * (`parsePartial`), and the screen draws what has arrived: an element once
+   * every prop it requires is written and the text has moved past its own
+   * fields, never with part of them.
    */
   text?: string
   /** The host's data, by input name. A new object with the same values redraws nothing. */
@@ -46,6 +48,21 @@ export interface ScreenSource {
    * has not yet closed, unless given.
    */
   streaming?: boolean
+  /**
+   * Where the text ends, beside a `document` a host read with `parsePartial`
+   * itself: its `cut`. While `streaming`, an element the cut is still inside
+   * waits until its props are written, as it does with `text`. A streaming
+   * `document` with no `cut` draws every element that has arrived, with the
+   * props it has so far; a member that throws for one that has not arrived
+   * draws nothing until the document is whole. Read from the text with `text`.
+   */
+  cut?: string | null
+  /**
+   * The path of the string still being written, beside a `document` a host
+   * read with `parsePartial` itself: its `open`. That string is drawn only
+   * where it reads as what it will say. Read from the text with `text`.
+   */
+  open?: string | null
   /**
    * The members and exception primitives the screen may draw, by name; a part
    * comes with its member. Every member React draws when absent, except one
@@ -90,7 +107,7 @@ function sameData(
 }
 
 /** The fields of a screen a host can change after it is made. */
-type Given = Required<Pick<ScreenUpdate, 'document' | 'data' | 'streaming' | 'open'>>
+type Given = Required<Pick<ScreenUpdate, 'document' | 'data' | 'streaming' | 'open' | 'cut'>>
 
 /**
  * A screen for the component's life, kept up to date with `source`: what
@@ -106,7 +123,8 @@ export function useScreen(source: ScreenSource): Screen {
     document: read === null ? source.document : read.document,
     data: source.data ?? {},
     streaming: source.streaming ?? (read !== null && !read.complete),
-    open: read === null ? null : read.open,
+    open: read === null ? (source.open ?? null) : read.open,
+    cut: read === null ? (source.cut ?? null) : read.cut,
   }
 
   // A screen depends on the members it may draw and on how it fills an input, so a change to
@@ -163,6 +181,7 @@ export function useScreen(source: ScreenSource): Screen {
     if (!sameData(before.data, given.data)) change.data = given.data
     if (before.streaming !== given.streaming) change.streaming = given.streaming
     if (before.open !== given.open) change.open = given.open
+    if (before.cut !== given.cut) change.cut = given.cut
     last.current = { screen, given }
     if (Object.keys(change).length > 0) screen.update(change)
   })

@@ -81,7 +81,10 @@ export interface RenderScreenArgs {
   viewports?: Viewport[]
 }
 
-/** How one input was filled. The page writes these (`apps/workbench/src/screen/fill.ts`). */
+/**
+ * How one input was filled: the run-time core's `Fill` (`@polymorph/screen`), which the page
+ * reports for each declared input, with `empty` for one this tool filled from `empty`.
+ */
 export interface InputFill {
   name: string
   type: string
