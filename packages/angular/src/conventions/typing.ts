@@ -84,7 +84,7 @@ export function selectOnce(spec: () => { in: string; text: string } | undefined)
   let frames = 0
   let timer = 0
   inject(DestroyRef).onDestroy(() => {
-    cancelAnimationFrame(frame)
+    cancel(frame)
     clearTimeout(timer)
   })
   afterNextRender(() => {
