@@ -269,6 +269,9 @@ importers:
       '@polymorph/registry':
         specifier: workspace:*
         version: link:../../packages/registry
+      '@polymorph/screen':
+        specifier: workspace:*
+        version: link:../../packages/screen
       '@polymorph/spec':
         specifier: workspace:*
         version: link:../../packages/spec
@@ -739,6 +742,9 @@ importers:
       '@polymorph/engine':
         specifier: workspace:*
         version: link:../engine
+      '@polymorph/screen':
+        specifier: workspace:*
+        version: link:../screen
       lucide:
         specifier: ^1.27.0
         version: 1.27.0

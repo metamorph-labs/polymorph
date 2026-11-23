@@ -31,6 +31,7 @@
     "@polymorph/react": "workspace:*",
     "@polymorph/react-ui": "workspace:*",
     "@polymorph/registry": "workspace:*",
+    "@polymorph/screen": "workspace:*",
     "@polymorph/spec": "workspace:*",
     "@tiptap/core": "^3.33.1",
     "@tiptap/pm": "^3.33.1",
