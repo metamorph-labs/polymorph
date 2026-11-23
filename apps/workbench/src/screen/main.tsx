@@ -6,15 +6,17 @@ import {
   setPalette,
   setSystem,
 } from '@polymorph/engine'
+import { ScreenDrawing } from '@polymorph/react/screen'
 import { TooltipProvider } from '@polymorph/react-ui'
+import type { Fill } from '@polymorph/screen'
+import { VOCABULARY } from '@polymorph/screen/vocabulary'
+import { createScreen } from '@polymorph/screen/walk'
 import type { ScreenSpec } from '@polymorph/spec/schema'
-import type { ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 
-import { drawElement, propSource, type MemberProps } from '../composer/draw'
+import { addressOf, drawFault, EVERY_MEMBER, MEMBERS, resolveComponent } from '../composer/draw'
 import { FAMILY_LOADERS } from '../fonts'
 import { ensurePairing, installThemes, SYSTEMS } from '../themes'
-import { fillInputs, valueAt, type Fill } from './fill'
 import { measureLayout, type Measurement } from './measure'
 
 /**
@@ -22,22 +24,34 @@ import { measureLayout, type Measurement } from './measure'
  *
  * The MCP tool `render_screen` (`docs/tooling.md`) loads this page in a browser it drives, asks
  * it to draw a spec under a pairing, and then asks for the layout faults and takes the pictures.
- * The page has no route, toolbar or registry of its own. Everything it draws is in the request:
- * the spec, the members' props from the server's registry, the pairing, and the data.
+ * The page has no route, toolbar or registry of its own. What it draws is in the request (the
+ * spec, the pairing and the data), and what the spec's names mean is the run-time core's
+ * vocabulary table, which `pnpm registry` writes from the same registry the server reads.
  *
- * The spec is drawn by the composer's renderer (`../composer/draw.tsx`) with the real vocabulary,
- * so the picture is of the members a person will get. A binding is filled as `fill.ts` describes
- * instead of being shown as a placeholder.
+ * The spec is drawn as the composer draws it (`../composer/draw.tsx`): by the run-time renderer
+ * (`@polymorph/react/screen`) with the real vocabulary, so the picture is of the members a person
+ * will get. A binding is filled instead of being shown as a placeholder: with the request's data
+ * where it has some, and otherwise with a sample of the input's type. A callback answers by its
+ * declared type. The run-time core fills them (`@polymorph/screen`), and says how it filled each
+ * one (`Fill`).
  *
  * The page talks through one object on `window`, because the tool calls it from outside the
  * document. Everything that crosses is JSON.
  */
 
+/** A member's name, as the request lists the server's registry. */
+interface MemberName {
+  name: string
+}
+
 export interface DrawRequest {
   /** A spec the tool has already checked with `validateSpec`. */
   spec: ScreenSpec
-  /** Each member's props, from the server's registry. They name the callbacks to stub. */
-  members: MemberProps[]
+  /**
+   * The members of the server's registry. A layout fault names the member a screen's author
+   * wrote, by these names.
+   */
+  members: MemberName[]
   system: string
   palette: string
   mode: 'light' | 'dark'
@@ -122,22 +136,38 @@ async function draw(request: DrawRequest): Promise<DrawReport> {
 
   memberNames = Object.fromEntries(members.map((member) => [gallerySlug(member.name), member.name]))
 
-  const { values, fills } = fillInputs(spec.inputs, data)
   const failures: DrawReport['failures'] = []
-  const screen = drawElement(spec.root, {
-    inputs: spec.inputs,
-    source: propSource(members),
-    bound: (path) => valueAt(path, values),
-    // A child position takes what the emitted screen would put there: the value itself.
-    boundChild: (path) => valueAt(path, values) as ReactNode,
-    failed: (failure) => failures.push(failure),
+  const screen = createScreen({
+    document: spec,
+    vocabulary: VOCABULARY,
+    data,
+    fill: 'sample',
+    members: EVERY_MEMBER,
   })
+  // The renderer reports an element it could not draw. One that threw is a failure of the
+  // picture. One the React vocabulary has no component for (Toast, which React calls as
+  // `toast()`) is drawn as its fault chip, and is not one that threw.
+  const fail = screen.fail
+  screen.fail = (fault) => {
+    if (fault.component !== undefined && resolveComponent(fault.component) !== null) {
+      failures.push({
+        path: addressOf(fault.path),
+        component: fault.component,
+        message: fault.message,
+      })
+    }
+    fail(fault)
+  }
 
   // The delays of every Tooltip are set once for an app, at its root.
-  root.render(<TooltipProvider>{screen}</TooltipProvider>)
+  root.render(
+    <TooltipProvider>
+      <ScreenDrawing screen={screen} members={MEMBERS} faults="inline" renderFault={drawFault} />
+    </TooltipProvider>,
+  )
   await settled()
 
-  return { fills, failures }
+  return { fills: [...screen.fills], failures }
 }
 
 window.polymorphScreen = { draw, measure: () => measureLayout(memberNames) }

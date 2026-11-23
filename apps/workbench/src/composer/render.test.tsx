@@ -1,23 +1,23 @@
 /**
  * @vitest-environment jsdom
  *
- * The renderer's law. Every shipped screen spec renders without throwing. Unknown members become
- * visible faults, bindings become named placeholders, and a node that cannot render becomes one
- * fault chip rather than a blank canvas. The file requests a DOM in its docblock because it tests
- * React output. It uses jsdom rather than the browser project on purpose. The browser suite
- * checks how every member looks, over the fixtures. This file checks the tree walk, the
- * resolution and the stubbing, which jsdom can observe.
+ * The composer's drawing law. Every shipped screen spec renders without throwing. Unknown members
+ * become visible faults, bindings become named placeholders, and a node that cannot render becomes
+ * one fault chip rather than a blank canvas. The file requests a DOM in its docblock because it
+ * tests React output. It uses jsdom rather than a browser project on purpose. The renderer's own
+ * browser tests (`packages/react/src/screen/screen.test.tsx`) draw with every member in Chromium.
+ * This file checks the options the composer draws with, which jsdom can observe.
  */
 
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
 import { validateSpec } from '@polymorph/spec/validate'
-import type { ScreenSpec } from '@polymorph/spec/schema'
+import type { ScreenInput, ScreenSpec, SpecElement } from '@polymorph/spec/schema'
 import { render } from '@testing-library/react'
 import { beforeAll, describe, expect, it } from 'vitest'
 
-import { propsOf, renderElement, renderSpec, resolveComponent } from './render'
+import { propsOf, renderSpec, resolveComponent } from './render'
 import { REGISTRY } from '../registry'
 
 beforeAll(() => {
@@ -40,6 +40,15 @@ beforeAll(() => {
     disconnect() {}
   }
 })
+
+/** One element drawn as the composer draws a document whose root it is. */
+function drawElement(root: SpecElement, inputs: ScreenInput[] = []) {
+  return render(
+    <>
+      {renderSpec({ spec: 'polymorph-screen/1', name: 'Probe', purpose: 'A probe.', inputs, root })}
+    </>,
+  )
+}
 
 const SCREENS_DIR = resolve(import.meta.dirname, '../../../../design/screens')
 const shipped = readdirSync(SCREENS_DIR)
@@ -74,20 +83,15 @@ describe('every shipped screen spec renders', () => {
 
 describe('the renderer shows what it cannot draw', () => {
   it('renders an unknown member as a visible fault', () => {
-    const { container } = render(<>{renderElement({ component: 'GhostPanel' }, { inputs: [] })}</>)
+    const { container } = drawElement({ component: 'GhostPanel' })
     expect(container.textContent).toContain('unknown member')
     expect(container.textContent).toContain('GhostPanel')
   })
 
   it('renders a binding in a child position as its own name', () => {
-    const { container } = render(
-      <>
-        {renderElement(
-          { component: 'Card', children: [{ $: 'tickets' }] },
-          { inputs: [{ name: 'tickets', type: 'Ticket[]' }] },
-        )}
-      </>,
-    )
+    const { container } = drawElement({ component: 'Card', children: [{ $: 'tickets' }] }, [
+      { name: 'tickets', type: 'Ticket[]' },
+    ])
     expect(container.textContent).toContain('⟨tickets⟩')
   })
 
@@ -100,14 +104,10 @@ describe('the renderer shows what it cannot draw', () => {
   it('renders a structured value in a child position as a fault', () => {
     // `$object` is a prop form. In a children position, returning `null` would skip it silently,
     // and the canvas would not show something the document contains.
-    const { container } = render(
-      <>
-        {renderElement(
-          { component: 'Card', children: [{ $object: { label: 'a column, misplaced' } }] },
-          { inputs: [] },
-        )}
-      </>,
-    )
+    const { container } = drawElement({
+      component: 'Card',
+      children: [{ $object: { label: 'a column, misplaced' } }],
+    })
     expect(container.textContent).toContain('not a node')
     expect(container.textContent).toContain('$.children[0]')
   })
@@ -137,21 +137,14 @@ describe('the renderer shows what it cannot draw', () => {
   it('renders a node that throws as one fault chip, not a blank canvas', () => {
     // DataTable with no columns is an invalid intermediate state that a live editor passes
     // through.
-    const { container } = render(
-      <>
-        {renderElement(
-          {
-            component: 'Stack',
-            props: { gap: 4 },
-            children: [
-              { component: 'DataTable', props: { label: 'broken on purpose' } },
-              { component: 'Badge', children: ['still here'] },
-            ],
-          },
-          { inputs: [] },
-        )}
-      </>,
-    )
+    const { container } = drawElement({
+      component: 'Stack',
+      props: { gap: 4 },
+      children: [
+        { component: 'DataTable', props: { label: 'broken on purpose' } },
+        { component: 'Badge', children: ['still here'] },
+      ],
+    })
     expect(container.textContent).toContain('could not render')
     expect(container.textContent).toContain('still here')
   })

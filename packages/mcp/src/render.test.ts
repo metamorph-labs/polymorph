@@ -323,9 +323,14 @@ describe('a lawful spec, drawn', () => {
           name: 'getRowId',
           type: '(ticket: Ticket) => string',
           from: 'stub',
-          value: 'answers the key of its first argument',
+          value: 'answers the key of its first argument, and is not told to the host',
         },
-        { name: 'onNewTicket', type: '() => void', from: 'stub', value: 'answers nothing' },
+        {
+          name: 'onNewTicket',
+          type: '() => void',
+          from: 'stub',
+          value: 'is told to the host, and answers nothing',
+        },
       ])
       // One width was asked for, so one view and one picture come back.
       expect(viewsOf(answer).map((view) => view.viewport)).toEqual(['desktop'])
