@@ -363,7 +363,9 @@ and the host's data by identity. A control the document gives no value keeps its
 uncontrolled field does, and `values` still holds what the person chose. That choice is passed
 back to the member as its default, so a member drawn again, such as a field in a dialog that
 opens again, shows what `values` holds. A choice is let go when its control takes another name,
-so `values` never reports one control's text under another control's name.
+and both renderers draw a control under another name as a new control, so neither `values` nor
+the field shows one control's text under another control's name
+(`packages/react/src/screen/values.test.tsx`, `packages/elements-ui/src/screen/guards.test.ts`).
 
 When a document binds the change event to an action input (`"onChange": { "$": "onEdit" }`), the
 screen holds the new value before it tells the host, so the action's `values` already has it.
@@ -662,8 +664,11 @@ it.
 | `decorate(drawn, node)` | wraps the drawing of every node, as the composer wraps each in its selection |
 
 No handler runs while React renders, so a server render, a render React discards and the second
-render of strict mode tell the host nothing (`packages/react/screen-server.test.ts`). Each node
-draws inside its own error boundary, which tries again when the node changes.
+render of strict mode tell the host nothing. Each node draws inside its own error boundary, which
+tries again when the node changes. A server renders no error boundary, so the screen is drawn
+inside one Suspense boundary: a member that throws on the server leaves the screen's place empty
+for the browser to draw, and the page around it is still served
+(`packages/react/screen-server.test.ts`).
 
 ### `@polymorph/elements-ui/screen`
 
