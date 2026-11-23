@@ -25,9 +25,9 @@ The package has no framework, no DOM and no dependencies:
   it returns a value, nothing is passed if it may be left out and a stub answers by that type if it
   is required, and the host is never told; anywhere else, the binding is a fault and nothing is
   passed. An element whose required data prop was never written, or was refused, is not drawn,
-  with a fault that names the prop; a slot whose element is a fault leaves its page drawn. A function in the host's data is never handed to a member as itself.
-  `values` holds what the reader sees in each named control, its default or its
-  empty value included, and `changed` names the ones the person chose. An element in a structured
+  with a fault that names the prop; a slot whose element is a fault leaves its page drawn. A
+  function in the host's data is never handed to a member as itself. `values` holds what the
+  reader sees in each named control, its default or its empty value included, and `changed` names the ones the person chose. An element in a structured
   object is drawn only where the field's data type takes a node, and none at any depth below a
   field that takes data only. Each node's `key` holds a named
   control's name, so a renderer draws a renamed control afresh.
@@ -36,7 +36,8 @@ The package has no framework, no DOM and no dependencies:
   characters, and a value reduced to JSON holds at most `MAX_JSON_VALUES` (100,000) values.
   `hostile.test.ts` feeds the core documents and host data written to break it (deep nesting, long
   strings, thousands of children, an unclosed fence, cyclic and shared data, input types and keys
-  over their limits): none makes it throw, and no kind's cost grows as the square of its size.
+  over their limits): none makes it throw, and for each kind it times, eight times the input costs
+  less than twenty times as much.
 - `runtimeCard({ framework, members })` (`@polymorph/screen/card`): the text a host puts in the
   model's system prompt: the members it allows, each with its props' types, the data types those
   props take with their fields, and the output contract.
