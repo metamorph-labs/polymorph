@@ -113,8 +113,8 @@ Culori, from the theme engine, and Zag's date picker (`pnpm size --why elements-
 that loads `polymorph.js` fetches the editor only when it uses `poly-rich-text-input`, because the
 editor is in that element's chunk.
 
-`elements-screen`'s ceilings are set as `elements-button`'s are, from its measurement, 82.0 kB,
-rounded up to the next kilobyte with a kilobyte added: 83 kB. About two fifths of its JavaScript is
+`elements-screen`'s ceilings are set as `elements-button`'s are, from its measurement, 84.7 kB,
+rounded up to the next kilobyte with a kilobyte added: 86 kB. About two fifths of its JavaScript is
 the run-time screen: the vocabulary table with the core's shared modules, which name every member's
 props, parts and lawful cells and hold the checks every document passes (addresses, the depth
 limit, and which prop or field receives a callback; about 27 kB, the largest part), the walk with the renderer and `parsePartial` (about 8 kB),
