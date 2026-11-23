@@ -181,6 +181,7 @@ project its path falls under in the table above, unless its row names another ga
 | `'use client'` | `packages/rules/src/client-directive.test.ts` | a React module that needs the directive and lacks it, or has one it does not need, and a compound member that attaches its parts in a client module, where a server component reads each part as `undefined` |
 | Localization | `packages/rules/src/localization.test.ts`, `packages/react-ui/src/localization.test.tsx` | text a member renders that its host cannot replace |
 | The inventory | `packages/rules/src/inventory.test.ts` | an undeclared exception, and any change to the exceptions this repository declares |
+| The rich-text boundary | `packages/engine/rich-text-boundary.test.ts` | a file outside `packages/engine/src/rich-text-editor/` that imports a ProseMirror package, a document model that imports the editor or any package, or a type either rich-text entry exports that names a ProseMirror type |
 | No plan references | `packages/rules/src/plan-references.test.ts` | a ticket or plan identifier, a retired planning document or a phase name in any file |
 
 ### The React vocabulary

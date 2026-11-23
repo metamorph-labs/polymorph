@@ -336,10 +336,10 @@ Tour's target and placement (`tourTarget`, `tourTargetRect`, `revealTourTarget`,
 `phoneCountryOptions`), the segmented field's model
 ([The segmented field](#the-segmented-field)), the date and time values a field takes and reports
 (`Time`, `CalendarDate`, `CalendarDateTime`, which the engine re-exports from
-`@internationalized/date`), and, from the engine's `qr`, `charts` and
-`markdown` subpaths, which the foundations re-export at their roots, the QR encoder
-(`qrSymbol`, `qrPath`), the chart engine ([Charts](#charts)) and the Markdown parser with the
-decisions its tree renders by. The React members import the same
+`@internationalized/date`), and, from the engine's `qr`, `charts`, `markdown`,
+`rich-text` and `rich-text-editor` subpaths, which the foundations re-export at their roots, the
+QR encoder (`qrSymbol`, `qrPath`), the chart engine ([Charts](#charts)), the Markdown parser with
+the decisions its tree renders by, and the rich-text document's reader with its editor. The React members import the same
 functions through `@polymorph/react`, so a decision such as Pagination's window or Avatar's tone
 is written once. An expression names one, and the renderer imports it from `@polymorph/vue`
 (`ENGINE_HELPERS` in `types.ts` lists the engine's for every renderer, and `FOUNDATION_HELPERS` in

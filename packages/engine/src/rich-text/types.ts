@@ -21,11 +21,7 @@ export interface RichTextDocument {
 }
 
 export type RichTextBlock =
-  | RichTextParagraph
-  | RichTextHeading
-  | RichTextList
-  | RichTextBlockquote
-  | RichTextCodeBlock
+  RichTextParagraph | RichTextHeading | RichTextList | RichTextBlockquote | RichTextCodeBlock
 
 export interface RichTextParagraph {
   type: 'paragraph'

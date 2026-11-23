@@ -28,11 +28,15 @@ export * from '@polymorph/engine'
  * The engine's heavier helpers are subpaths, so an application that imports
  * the engine's root for its theme does not load them. A member reaches them
  * here, as it reaches the rest of the engine: the QR encoder, the chart marks'
- * paths and the Markdown parser.
+ * paths, the Markdown parser, the rich-text document and the rich-text editor.
+ * Every subpath declares no side effect, so a bundle that uses none of the
+ * editor's names drops the editor and the editing library with it.
  */
 export * from '@polymorph/engine/charts'
 export * from '@polymorph/engine/markdown'
 export * from '@polymorph/engine/qr'
+export * from '@polymorph/engine/rich-text'
+export * from '@polymorph/engine/rich-text-editor'
 
 export {
   createBindable,

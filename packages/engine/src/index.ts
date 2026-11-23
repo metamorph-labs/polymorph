@@ -22,9 +22,11 @@
  *
  * **The helpers one member family needs** are subpaths: the QR encoder
  * (`@polymorph/engine/qr`), the chart marks' paths over `d3-shape`
- * (`@polymorph/engine/charts`) and the Markdown parser
- * (`@polymorph/engine/markdown`). An application that imports the root for its
- * theme does not load them. Each foundation re-exports them, so a member
+ * (`@polymorph/engine/charts`), the Markdown parser
+ * (`@polymorph/engine/markdown`), the rich-text document
+ * (`@polymorph/engine/rich-text`) and the rich-text editor over ProseMirror
+ * (`@polymorph/engine/rich-text-editor`). An application that imports the root
+ * for its theme does not load them. Each foundation re-exports them, so a member
  * reaches them where it reaches the rest of the engine.
  *
  * **The motion engine** is a subpath (`@polymorph/engine/motion`), not a root

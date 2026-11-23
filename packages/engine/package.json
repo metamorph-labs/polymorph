@@ -9,6 +9,8 @@
     "./qr": "./src/qr/index.ts",
     "./charts": "./src/charts/index.ts",
     "./markdown": "./src/markdown/index.ts",
+    "./rich-text": "./src/rich-text/index.ts",
+    "./rich-text-editor": "./src/rich-text-editor/index.ts",
     "./agent": "./src/agent/index.ts",
     "./webmcp": "./src/webmcp.ts",
     "./testing": "./src/testing.ts",
@@ -82,6 +84,14 @@
       "./markdown": {
         "types": "./dist/types/markdown/index.d.ts",
         "import": "./dist/markdown.js"
+      },
+      "./rich-text": {
+        "types": "./dist/types/rich-text/index.d.ts",
+        "import": "./dist/rich-text.js"
+      },
+      "./rich-text-editor": {
+        "types": "./dist/types/rich-text-editor/index.d.ts",
+        "import": "./dist/rich-text-editor.js"
       },
       "./agent": {
         "types": "./dist/types/agent/index.d.ts",

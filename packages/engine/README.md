@@ -66,7 +66,12 @@ It contains:
   Sparkline's drawing, and the state machines of the frame's interaction: `observeBox` and
   `measureBox`, `createReading`, `createBrush`, `createSyncMember`, `readChartCap`), and the
   Markdown parser (`@polymorph/engine/markdown`: `parseMarkdown`, `parseInlines`, `safeHref`,
-  `inlineText`). Each foundation re-exports them, so a member reaches them where it reaches
+  `inlineText`), the rich-text document (`@polymorph/engine/rich-text`: `parseRichText`,
+  `normalizeRichText`, `serializeRichText`, `richTextHref`, `richTextPlainText`,
+  `richTextLength`, `isRichTextEmpty`, `restrictRichText` and the rest, with no dependency, so a
+  server reads and checks a document with the code the members use) and the rich-text editor
+  (`@polymorph/engine/rich-text-editor`: `createRichTextEditor`, the only entry that imports
+  ProseMirror). Each foundation re-exports them, so a member reaches them where it reaches
   the rest of the engine.
 - **The agent registry and the agent bridge.** The root keeps the list of mounted members an
   agent may read and operate: each member whose spec has an `## Agent` section registers a
@@ -109,6 +114,8 @@ In this repository the `exports` map points at source. `pnpm build:packages` bui
 | `@polymorph/engine/qr` | `src/qr/index.ts` | `dist/qr.js` |
 | `@polymorph/engine/charts` | `src/charts/index.ts` | `dist/charts.js` |
 | `@polymorph/engine/markdown` | `src/markdown/index.ts` | `dist/markdown.js` |
+| `@polymorph/engine/rich-text` | `src/rich-text/index.ts` | `dist/rich-text.js` |
+| `@polymorph/engine/rich-text-editor` | `src/rich-text-editor/index.ts` | `dist/rich-text-editor.js` |
 | `@polymorph/engine/agent` | `src/agent/index.ts` | `dist/agent.js` |
 | `@polymorph/engine/testing` | `src/testing.ts` | `dist/testing.js` |
 | `@polymorph/engine/runtime` | `src/runtime.ts` | `dist/runtime.js` |

@@ -451,6 +451,8 @@ describe('the declarations typecheck as a strict consumer reads them', () => {
       '@polymorph/engine/markdown',
       '@polymorph/engine/motion',
       '@polymorph/engine/qr',
+      '@polymorph/engine/rich-text',
+      '@polymorph/engine/rich-text-editor',
       '@polymorph/engine/runtime',
       '@polymorph/engine/testing',
       '@polymorph/engine/vite',
