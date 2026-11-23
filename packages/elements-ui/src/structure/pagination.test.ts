@@ -1,4 +1,4 @@
-import { pagerHoldLaw } from '@polymorph/conformance/pager-hold'
+import { PAGER_ADDRESSES, pagerHoldLaw } from '@polymorph/conformance/pager-hold'
 
 import { mountElement } from '../mount'
 import './Pagination'
@@ -11,10 +11,17 @@ import './Pagination'
 pagerHoldLaw({
   shell: 'Elements',
   member: 'Pagination',
-  async mount({ asked }) {
+  async mount({ addressed, asked }) {
     const { set } = await mountElement(
       'poly-pagination',
-      { label: 'Tickets', page: 3, pageCount: 7, disabled: false, onPageChange: asked },
+      {
+        label: 'Tickets',
+        page: 3,
+        pageCount: 7,
+        disabled: false,
+        ...(addressed ? { getPageHref: PAGER_ADDRESSES.page } : {}),
+        onPageChange: asked,
+      },
       { owns: ['page'] },
     )
     return { set }

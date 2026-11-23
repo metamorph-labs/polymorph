@@ -1,7 +1,8 @@
 /* Pagination — `design/components/pagination.md`.
  *
- * The controls are Buttons and the row is an Inline. This file only keeps each
- * button at least square, so the row does not shift from page 9 to 10. */
+ * The controls are Buttons, or links in Button's look when the pages have
+ * addresses, and the row is an Inline. This file keeps each control at least
+ * square, so the row does not shift from page 9 to 10. */
 
 /* The root takes focus when the app's hold disables the button that had it
    (`pagination.md`, A11y), so it draws the one focus ring. It has the
@@ -14,6 +15,28 @@
 
 .pagination button {
   min-inline-size: var(--pm-control-height-sm);
+}
+
+/* A control drawn as a link, when the app gives the pages addresses (`pagination.md`). It is
+   the Button it replaces, by reference, as Link's button variant is: composing `.button` brings
+   the base, the sizes, every rest, hover and active cell, the press feedback and the focus ring,
+   all keyed off the `data-variant` × `data-tone` × `data-size` attributes the link sets. This rule
+   removes what an `<a>` has and a `<button>` does not, the browser's underline, and keeps the
+   link at least square, as the rule above keeps a button. */
+.link {
+  composes: button from '../controls/button.module.css';
+  min-inline-size: var(--pm-control-height-sm);
+  text-decoration: none;
+}
+
+/* Button's two content slots, composed: the label that truncates with an ellipsis, and the
+   glyph's box. */
+.linkLabel {
+  composes: label from '../controls/button.module.css';
+}
+
+.linkGlyph {
+  composes: glyph from '../controls/button.module.css';
 }
 
 /* Stands for pages that are not offered. Sized like a number button so the row

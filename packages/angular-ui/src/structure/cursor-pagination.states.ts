@@ -74,25 +74,26 @@ label="Pagination des événements"
 [pmOverrides]="overrides()"
 ></pm-cursor-pagination>}
 @case (7) {<pm-cursor-pagination
-mode="append"
 [hasPrevious]="e32()"
 [hasNext]="e33()"
-(next)="e34()($event)"
+position="26–50"
+previousHref="#before-26"
+nextHref="#after-50"
+(previous)="e34()($event)"
+(next)="e35()($event)"
 [pmOverrides]="overrides()"
 ></pm-cursor-pagination>}
 @case (8) {<pm-cursor-pagination
 mode="append"
-[hasPrevious]="e35()"
-[hasNext]="e36()"
-position="50 shown"
-(next)="e37()($event)"
+[hasPrevious]="e36()"
+[hasNext]="e37()"
+(next)="e38()($event)"
 [pmOverrides]="overrides()"
 ></pm-cursor-pagination>}
 @case (9) {<pm-cursor-pagination
 mode="append"
-[hasPrevious]="e38()"
-[hasNext]="e39()"
-[pending]="e40()"
+[hasPrevious]="e39()"
+[hasNext]="e40()"
 position="50 shown"
 (next)="e41()($event)"
 [pmOverrides]="overrides()"
@@ -101,7 +102,7 @@ position="50 shown"
 mode="append"
 [hasPrevious]="e42()"
 [hasNext]="e43()"
-[disabled]="e44()"
+[pending]="e44()"
 position="50 shown"
 (next)="e45()($event)"
 [pmOverrides]="overrides()"
@@ -110,23 +111,41 @@ position="50 shown"
 mode="append"
 [hasPrevious]="e46()"
 [hasNext]="e47()"
-position="120 shown"
-label="Event log"
-(next)="e48()($event)"
+[disabled]="e48()"
+position="50 shown"
+(next)="e49()($event)"
 [pmOverrides]="overrides()"
 ></pm-cursor-pagination>}
 @case (12) {<pm-cursor-pagination
 mode="append"
-[hasPrevious]="e49()"
-[hasNext]="e50()"
-(next)="e51()($event)"
+[hasPrevious]="e50()"
+[hasNext]="e51()"
+position="50 shown"
+nextHref="#after-50"
+(next)="e52()($event)"
 [pmOverrides]="overrides()"
 ></pm-cursor-pagination>}
 @case (13) {<pm-cursor-pagination
-[hasPrevious]="e52()"
-[hasNext]="e53()"
-(previous)="e54()($event)"
+mode="append"
+[hasPrevious]="e53()"
+[hasNext]="e54()"
+position="120 shown"
+label="Event log"
 (next)="e55()($event)"
+[pmOverrides]="overrides()"
+></pm-cursor-pagination>}
+@case (14) {<pm-cursor-pagination
+mode="append"
+[hasPrevious]="e56()"
+[hasNext]="e57()"
+(next)="e58()($event)"
+[pmOverrides]="overrides()"
+></pm-cursor-pagination>}
+@case (15) {<pm-cursor-pagination
+[hasPrevious]="e59()"
+[hasNext]="e60()"
+(previous)="e61()($event)"
+(next)="e62()($event)"
 [pmOverrides]="overrides()"
 ></pm-cursor-pagination>}
 }`,
@@ -134,11 +153,11 @@ mode="append"
 export class CursorPaginationStates {
   readonly entry = input.required<number>()
   readonly overrides = input<Readonly<Record<string, unknown>>>({})
-  protected readonly held11_hasNext = signal(true)
+  protected readonly held13_hasNext = signal(true)
 
   constructor() {
     pressOnce(() =>
-      this.entry() === 11
+      this.entry() === 13
         ? '[data-member="cursor-pagination"][aria-label="Event log"] button'
         : undefined,
     )
@@ -269,7 +288,7 @@ export class CursorPaginationStates {
   }
 
   protected e32(): CursorPaginationProps['hasPrevious'] {
-    return false
+    return true
   }
 
   protected e33(): CursorPaginationProps['hasNext'] {
@@ -280,27 +299,27 @@ export class CursorPaginationStates {
     return (() => {}) as (...args: unknown[]) => unknown
   }
 
-  protected e35(): CursorPaginationProps['hasPrevious'] {
-    return false
-  }
-
-  protected e36(): CursorPaginationProps['hasNext'] {
-    return true
-  }
-
-  protected e37() {
+  protected e35() {
     return (() => {}) as (...args: unknown[]) => unknown
   }
 
-  protected e38(): CursorPaginationProps['hasPrevious'] {
+  protected e36(): CursorPaginationProps['hasPrevious'] {
     return false
   }
 
-  protected e39(): CursorPaginationProps['hasNext'] {
+  protected e37(): CursorPaginationProps['hasNext'] {
     return true
   }
 
-  protected e40(): CursorPaginationProps['pending'] {
+  protected e38() {
+    return (() => {}) as (...args: unknown[]) => unknown
+  }
+
+  protected e39(): CursorPaginationProps['hasPrevious'] {
+    return false
+  }
+
+  protected e40(): CursorPaginationProps['hasNext'] {
     return true
   }
 
@@ -316,7 +335,7 @@ export class CursorPaginationStates {
     return true
   }
 
-  protected e44(): CursorPaginationProps['disabled'] {
+  protected e44(): CursorPaginationProps['pending'] {
     return true
   }
 
@@ -329,38 +348,66 @@ export class CursorPaginationStates {
   }
 
   protected e47(): CursorPaginationProps['hasNext'] {
-    return this.held11_hasNext()
+    return true
   }
 
-  protected e48() {
-    return (_?: unknown) => this.held11_hasNext.set(false)
+  protected e48(): CursorPaginationProps['disabled'] {
+    return true
   }
 
-  protected e49(): CursorPaginationProps['hasPrevious'] {
-    return false
-  }
-
-  protected e50(): CursorPaginationProps['hasNext'] {
-    return false
-  }
-
-  protected e51() {
+  protected e49() {
     return (() => {}) as (...args: unknown[]) => unknown
   }
 
-  protected e52(): CursorPaginationProps['hasPrevious'] {
+  protected e50(): CursorPaginationProps['hasPrevious'] {
     return false
   }
 
-  protected e53(): CursorPaginationProps['hasNext'] {
-    return false
+  protected e51(): CursorPaginationProps['hasNext'] {
+    return true
   }
 
-  protected e54() {
+  protected e52() {
     return (() => {}) as (...args: unknown[]) => unknown
+  }
+
+  protected e53(): CursorPaginationProps['hasPrevious'] {
+    return false
+  }
+
+  protected e54(): CursorPaginationProps['hasNext'] {
+    return this.held13_hasNext()
   }
 
   protected e55() {
+    return (_?: unknown) => this.held13_hasNext.set(false)
+  }
+
+  protected e56(): CursorPaginationProps['hasPrevious'] {
+    return false
+  }
+
+  protected e57(): CursorPaginationProps['hasNext'] {
+    return false
+  }
+
+  protected e58() {
+    return (() => {}) as (...args: unknown[]) => unknown
+  }
+
+  protected e59(): CursorPaginationProps['hasPrevious'] {
+    return false
+  }
+
+  protected e60(): CursorPaginationProps['hasNext'] {
+    return false
+  }
+
+  protected e61() {
+    return (() => {}) as (...args: unknown[]) => unknown
+  }
+
+  protected e62() {
     return (() => {}) as (...args: unknown[]) => unknown
   }
 }
@@ -376,10 +423,12 @@ export const states: ComponentStates = {
     { name: 'pending — a window is in flight', expect: { 'data-pending': '' } },
     { name: 'held by the app — neither direction can be pressed', expect: { 'data-disabled': '' } },
     { name: 'localized' },
+    { name: 'with addresses — both directions are links' },
     { name: 'append — more to load' },
     { name: 'append — with a position' },
     { name: 'append — a window is in flight', expect: { 'data-pending': '' } },
     { name: 'append — held by the app', expect: { 'data-disabled': '' } },
+    { name: 'append — with an address, the action is a link' },
     { name: 'append — the list ran out' },
     { name: 'append — one window, so nothing at all', rendersNothing: true },
     {

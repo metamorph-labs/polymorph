@@ -8,6 +8,7 @@
 import { createMemo, mergeProps, onCleanup, onMount, type JSX } from 'solid-js'
 
 import {
+  Icon,
   agentMember,
   claimSlot,
   createCell,
@@ -53,6 +54,11 @@ export interface CursorPaginationProps {
    */
   mode?: 'replace' | 'append'
   /**
+   * The next window's address, as `previousHref` is the previous one's: next, or in the append
+   * form its action, is a link to it while it can be pressed, and a plain click calls `onNext`.
+   */
+  nextHref?: string
+  /**
    * The next window: in place of this one, or in the append form below it.
    */
   onNext: () => void
@@ -70,6 +76,14 @@ export interface CursorPaginationProps {
    * total, because the list does not return one.
    */
   position?: string
+  /**
+   * The previous window's address, such as `?before=c25`. Given, previous is a link to it while
+   * it can be pressed, so a crawler, a new tab and a reader whose script has not loaded can
+   * follow it. A click the browser would follow in this tab calls `onPrevious` in place of the
+   * navigation; a click with a modifier key opens the address. The append form does not read it:
+   * it has no previous direction.
+   */
+  previousHref?: string
 }
 
 /** Previous and next controls for a cursor-paged list. */
@@ -91,6 +105,7 @@ export default function CursorPagination(given: CursorPaginationProps): JSX.Elem
   )
   return scope(() => {
     const focused = createCell(null as HTMLElement | null)
+    const focusedControl = createCell(null as string | number | null)
     const taken = createCell(null as string | number | null)
     const asked = createCell(null as 'previous' | 'next' | null)
     const paged = createCell(false)
@@ -106,30 +121,82 @@ export default function CursorPagination(given: CursorPaginationProps): JSX.Elem
         : ['previous', 'next'],
     )
     const focusIn = createDerived(() => (event: FocusEvent) => {
-      focused.value = event.target as HTMLElement
+      const target = event.target as HTMLElement
+      const pager = root.value as HTMLElement | null
+      const names: readonly (string | number)[] = controls.value
+      const at =
+        pager === null ? -1 : [...pager.querySelectorAll('button, a[href]')].indexOf(target)
+      focused.value = target
+      focusedControl.value = at < 0 ? null : (names[at] ?? null)
     })
     const focusOut = createDerived(() => (event: FocusEvent) => {
-      if (!(event.target as HTMLElement).matches(':disabled')) focused.value = null
+      const target = event.target as HTMLElement
+      if (target.matches(':disabled')) return
+      queueMicrotask(() => {
+        if (focused.value === target && target.isConnected) focused.value = null
+      })
     })
     const keepPlace = createDerived(() => () => {
       const pager = root.value as HTMLElement | null
       if (pager === null) return
       const names: readonly (string | number)[] = controls.value
+      const drawn = () => [...pager.querySelectorAll<HTMLElement>('button, a[href]')]
+      const onPage = () =>
+        document.activeElement === null || document.activeElement === document.body
+      const left = focused.value as HTMLElement | null
+      if (left !== null && !left.isConnected) {
+        focused.value = null
+        const name = focusedControl.value
+        const now = name === null ? undefined : drawn()[names.indexOf(name)]
+        if (now !== undefined && onPage()) {
+          if (now.matches(':disabled')) focused.value = now
+          else now.focus()
+        }
+      }
       if (!props.disabled) {
         const control = taken.value
         taken.value = null
         if (control === null || document.activeElement !== pager) return
-        const button = [...pager.querySelectorAll('button')][names.indexOf(control)]
-        if (button !== undefined && !button.matches(':disabled')) button.focus()
+        const element = drawn()[names.indexOf(control)]
+        if (element !== undefined && !element.matches(':disabled')) element.focus()
         return
       }
       const from = focused.value as HTMLElement | null
       if (from === null || !from.isConnected || !from.matches(':disabled')) return
       const active = document.activeElement
       if (active !== from && active !== null && active !== document.body) return
-      taken.value =
-        names[[...pager.querySelectorAll('button')].indexOf(from as HTMLButtonElement)] ?? null
+      taken.value = names[drawn().indexOf(from)] ?? null
       pager.focus()
+    })
+    const previousLink = createDerived(
+      () =>
+        props.previousHref !== undefined && props.hasPrevious && !props.pending && !props.disabled,
+    )
+    const nextLink = createDerived(
+      () => props.nextHref !== undefined && props.hasNext && !props.pending && !props.disabled,
+    )
+    const navigatesHere = createDerived(
+      () =>
+        (event: MouseEvent): boolean =>
+          !event.defaultPrevented &&
+          event.button === 0 &&
+          !event.metaKey &&
+          !event.ctrlKey &&
+          !event.shiftKey &&
+          !event.altKey,
+    )
+    const followPrevious = createDerived(() => (event: MouseEvent): void => {
+      if (!navigatesHere.value(event)) return
+      event.preventDefault()
+      asked.value = 'previous'
+      props.onPrevious?.()
+    })
+    const followNext = createDerived(() => (event: MouseEvent): void => {
+      if (!navigatesHere.value(event)) return
+      event.preventDefault()
+      asked.value = 'next'
+      if (props.mode === 'append') paged.value = true
+      props.onNext?.()
     })
     const effect1 = () => {
       void (props.pending || (asked.value = null))
@@ -274,7 +341,19 @@ export default function CursorPagination(given: CursorPaginationProps): JSX.Elem
                       {props.position}
                     </span>
                   ) : null}
-                  {!ended.value ? (
+                  {!ended.value && nextLink.value ? (
+                    <a
+                      class={styles.link}
+                      href={props.nextHref}
+                      data-variant="outline"
+                      data-size="sm"
+                      data-tone="neutral"
+                      onclick={($event: MouseEvent) => followNext.value($event)}
+                    >
+                      {/* label */}
+                      <span class={styles.linkLabel}>{more.value}</span>
+                    </a>
+                  ) : !ended.value ? (
                     <Button
                       variant="outline"
                       tone="neutral"
@@ -292,36 +371,72 @@ export default function CursorPagination(given: CursorPaginationProps): JSX.Elem
                 </>
               ) : (
                 <>
-                  <Button
-                    variant="ghost"
-                    tone="neutral"
-                    size="sm"
-                    icon="previous"
-                    label={props.messages.previous}
-                    loading={props.pending && asked.value === 'previous'}
-                    disabled={
-                      !props.hasPrevious ||
-                      (props.pending ? asked.value !== 'previous' : props.disabled)
-                    }
-                    onClick={() => ((asked.value = 'previous'), props.onPrevious?.())}
-                  />
+                  {previousLink.value ? (
+                    <a
+                      class={styles.link}
+                      href={props.previousHref}
+                      data-variant="ghost"
+                      data-size="sm"
+                      data-tone="neutral"
+                      onclick={($event: MouseEvent) => followPrevious.value($event)}
+                    >
+                      {/* glyph */}
+                      <span class={styles.linkGlyph}>
+                        <Icon name="previous" size="sm" />
+                      </span>
+                      {/* label */}
+                      <span class={styles.linkLabel}>{props.messages.previous}</span>
+                    </a>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      tone="neutral"
+                      size="sm"
+                      icon="previous"
+                      label={props.messages.previous}
+                      loading={props.pending && asked.value === 'previous'}
+                      disabled={
+                        !props.hasPrevious ||
+                        (props.pending ? asked.value !== 'previous' : props.disabled)
+                      }
+                      onClick={() => ((asked.value = 'previous'), props.onPrevious?.())}
+                    />
+                  )}
                   {props.position !== undefined ? (
                     <span class={styles.position} aria-live="polite">
                       {props.position}
                     </span>
                   ) : null}
-                  <Button
-                    variant="ghost"
-                    tone="neutral"
-                    size="sm"
-                    trailingIcon="next"
-                    label={props.messages.next}
-                    loading={props.pending && asked.value === 'next'}
-                    disabled={
-                      !props.hasNext || (props.pending ? asked.value !== 'next' : props.disabled)
-                    }
-                    onClick={() => ((asked.value = 'next'), props.onNext?.())}
-                  />
+                  {nextLink.value ? (
+                    <a
+                      class={styles.link}
+                      href={props.nextHref}
+                      data-variant="ghost"
+                      data-size="sm"
+                      data-tone="neutral"
+                      onclick={($event: MouseEvent) => followNext.value($event)}
+                    >
+                      {/* label */}
+                      <span class={styles.linkLabel}>{props.messages.next}</span>
+                      {/* glyph */}
+                      <span class={styles.linkGlyph}>
+                        <Icon name="next" size="sm" />
+                      </span>
+                    </a>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      tone="neutral"
+                      size="sm"
+                      trailingIcon="next"
+                      label={props.messages.next}
+                      loading={props.pending && asked.value === 'next'}
+                      disabled={
+                        !props.hasNext || (props.pending ? asked.value !== 'next' : props.disabled)
+                      }
+                      onClick={() => ((asked.value = 'next'), props.onNext?.())}
+                    />
+                  )}
                 </>
               )}
             </Inline>

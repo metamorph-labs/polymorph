@@ -1,6 +1,6 @@
 import { h, nextTick, reactive } from 'vue'
 
-import { pagerHoldLaw } from '@polymorph/conformance/pager-hold'
+import { PAGER_ADDRESSES, pagerHoldLaw } from '@polymorph/conformance/pager-hold'
 
 import { mount } from '../mount'
 import Pagination from './Pagination.vue'
@@ -13,7 +13,7 @@ import Pagination from './Pagination.vue'
 pagerHoldLaw({
   shell: 'Vue',
   member: 'Pagination',
-  async mount({ asked }) {
+  async mount({ addressed, asked }) {
     const hold = reactive({ page: 3, disabled: false })
     await mount(() =>
       h(Pagination, {
@@ -21,6 +21,7 @@ pagerHoldLaw({
         page: hold.page,
         pageCount: 7,
         disabled: hold.disabled,
+        getPageHref: addressed ? PAGER_ADDRESSES.page : undefined,
         onPageChange: asked,
       }),
     )

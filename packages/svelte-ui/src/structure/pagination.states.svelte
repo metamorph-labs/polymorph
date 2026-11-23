@@ -23,9 +23,15 @@ export const states: ComponentStates = {
       render: entry7,
       expect: { 'data-disabled': '' },
     },
+    { name: 'with addresses — every page but the current one is a link', render: entry8 },
+    {
+      name: 'held, with addresses — no links, every control a disabled button',
+      render: entry9,
+      expect: { 'data-disabled': '' },
+    },
     {
       name: 'one page — nothing at all, because one page is not a paginated list',
-      render: entry8,
+      render: entry10,
       rendersNothing: true,
     },
   ],
@@ -39,4 +45,6 @@ export const states: ComponentStates = {
 {#snippet entry5(overrides: Overrides)}<Pagination page={6} pageCount={12} siblingCount={2} {...overrides} />{/snippet}
 {#snippet entry6(overrides: Overrides)}<Pagination page={1} pageCount={2} {...overrides} />{/snippet}
 {#snippet entry7(overrides: Overrides)}<Pagination page={3} pageCount={5} disabled={true} {...overrides} />{/snippet}
-{#snippet entry8(overrides: Overrides)}<Pagination page={1} pageCount={1} {...overrides} />{/snippet}
+{#snippet entry8(overrides: Overrides)}<Pagination page={3} pageCount={5} getPageHref={(page: number) => `#page-${page}`} {...overrides} />{/snippet}
+{#snippet entry9(overrides: Overrides)}<Pagination page={3} pageCount={5} disabled={true} getPageHref={(page: number) => `#page-${page}`} {...overrides} />{/snippet}
+{#snippet entry10(overrides: Overrides)}<Pagination page={1} pageCount={1} {...overrides} />{/snippet}

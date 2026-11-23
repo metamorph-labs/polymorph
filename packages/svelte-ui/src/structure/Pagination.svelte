@@ -9,6 +9,7 @@
 import { onDestroy } from 'svelte'
 
 import {
+  Icon,
   PAGINATION_ELLIPSIS,
   agentMember,
   joinSlot,
@@ -33,6 +34,14 @@ export interface PaginationProps {
    * the current page too, and no page is asked for.
    */
   disabled?: boolean
+  /**
+   * A page's address, such as `?page=3`. Given, each control that goes to another page is a link
+   * to that page's address, so a crawler, a new tab and a reader whose script has not loaded can
+   * follow it. A click the browser would follow in this tab calls `onPageChange` in place of the
+   * navigation; a click with a modifier key opens the address. The current page, a control with
+   * nowhere to go and a held pager's controls stay buttons.
+   */
+  getPageHref?: (page: number) => string
   label?: string
   /**
    * Omit for the generic English defaults; localized hosts pass their own.
@@ -51,6 +60,7 @@ export interface PaginationProps {
 <script lang="ts">
 let {
   disabled = false,
+  getPageHref,
   label: labelOwn = 'Pagination',
   messages = (() => ({
     previous: 'Previous page',
@@ -67,6 +77,7 @@ const label = $derived(
   joined.passed['label'] === undefined ? labelOwn : (joined.passed['label'] as typeof labelOwn),
 )
 let focused = $state(null as HTMLElement | null)
+let focusedControl = $state(null as string | number | null)
 let taken = $state(null as string | number | null)
 let root = $state<HTMLElement | null>(null)
 const entries = $derived(paginationWindow(page, pageCount, siblingCount))
@@ -76,29 +87,65 @@ const controls = $derived([
   'next',
 ])
 const focusIn = $derived((event: FocusEvent) => {
-  focused = event.target as HTMLElement
+  const target = event.target as HTMLElement
+  const pager = root as HTMLElement | null
+  const names: readonly (string | number)[] = controls
+  const at = pager === null ? -1 : [...pager.querySelectorAll('button, a[href]')].indexOf(target)
+  focused = target
+  focusedControl = at < 0 ? null : (names[at] ?? null)
 })
 const focusOut = $derived((event: FocusEvent) => {
-  if (!(event.target as HTMLElement).matches(':disabled')) focused = null
+  const target = event.target as HTMLElement
+  if (target.matches(':disabled')) return
+  queueMicrotask(() => {
+    if (focused === target && target.isConnected) focused = null
+  })
 })
 const keepPlace = $derived(() => {
   const pager = root as HTMLElement | null
   if (pager === null) return
   const names: readonly (string | number)[] = controls
+  const drawn = () => [...pager.querySelectorAll<HTMLElement>('button, a[href]')]
+  const onPage = () => document.activeElement === null || document.activeElement === document.body
+  const left = focused as HTMLElement | null
+  if (left !== null && !left.isConnected) {
+    focused = null
+    const name = focusedControl
+    const now = name === null ? undefined : drawn()[names.indexOf(name)]
+    if (now !== undefined && onPage()) {
+      if (now.matches(':disabled')) focused = now
+      else now.focus()
+    }
+  }
   if (!disabled) {
     const control = taken
     taken = null
     if (control === null || document.activeElement !== pager) return
-    const button = [...pager.querySelectorAll('button')][names.indexOf(control)]
-    if (button !== undefined && !button.matches(':disabled')) button.focus()
+    const element = drawn()[names.indexOf(control)]
+    if (element !== undefined && !element.matches(':disabled')) element.focus()
     return
   }
   const from = focused as HTMLElement | null
   if (from === null || !from.isConnected || !from.matches(':disabled')) return
   const active = document.activeElement
   if (active !== from && active !== null && active !== document.body) return
-  taken = names[[...pager.querySelectorAll('button')].indexOf(from as HTMLButtonElement)] ?? null
+  taken = names[drawn().indexOf(from)] ?? null
   pager.focus()
+})
+const linked = $derived(!disabled && getPageHref !== undefined)
+const navigatesHere = $derived(
+  (event: MouseEvent): boolean =>
+    !event.defaultPrevented &&
+    event.button === 0 &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.shiftKey &&
+    !event.altKey,
+)
+const follow = $derived((event: MouseEvent, to: number): void => {
+  if (!navigatesHere(event)) return
+  event.preventDefault()
+  onPageChange?.(to)
 })
 let release1: (() => void) | undefined
 const effect1 = () => {
@@ -168,18 +215,43 @@ onDestroy(() => release3?.())
       onfocusin={(event) => { focusIn(event) }}
       onfocusout={(event) => { focusOut(event) }}
       ><Inline gap={1} align="center" wrap={true}
-        ><Button
-          variant="ghost"
-          tone="neutral"
-          size="sm"
-          iconOnly={true}
-          icon="previous"
-          label={messages.previous}
-          disabled={disabled || page <= 1}
-          onClick={() => { onPageChange?.(page - 1) }}
-        />{#each entries as entry, at (entry === PAGINATION_ELLIPSIS ? `gap-${at}` : entry)
+        >{#if linked && page > 1
+          }<a
+            class={styles.link}
+            href={getPageHref?.(page - 1)}
+            aria-label={messages.previous}
+            data-variant="ghost"
+            data-size="sm"
+            data-tone="neutral"
+            data-icon-only=""
+            onclick={(event) => { follow(event, page - 1) }}
+            ><span class={styles.linkGlyph}><Icon name="previous" size="sm" /></span
+          ></a
+        >{:else
+          }<Button
+            variant="ghost"
+            tone="neutral"
+            size="sm"
+            iconOnly={true}
+            icon="previous"
+            label={messages.previous}
+            disabled={disabled || page <= 1}
+            onClick={() => { onPageChange?.(page - 1) }}
+        />{/if
+        }{#each entries as entry, at (entry === PAGINATION_ELLIPSIS ? `gap-${at}` : entry)
           }{#if entry === PAGINATION_ELLIPSIS
             }<span class={styles.ellipsis} aria-hidden="true">…</span
+          >{:else if linked && entry !== page
+            }<a
+              class={styles.link}
+              href={getPageHref?.(entry)}
+              aria-label={messages.page(entry)}
+              data-variant="ghost"
+              data-size="sm"
+              data-tone="neutral"
+              onclick={(event) => { follow(event, entry) }}
+              ><span class={styles.linkLabel}>{String(entry)}</span
+            ></a
           >{:else
             }<Button
               variant={entry === page ? 'soft' : 'ghost'}
@@ -192,16 +264,30 @@ onDestroy(() => release3?.())
               onClick={() => { if (entry !== page) onPageChange?.(entry) }}
           />{/if
         }{/each
-        }<Button
-          variant="ghost"
-          tone="neutral"
-          size="sm"
-          iconOnly={true}
-          icon="next"
-          label={messages.next}
-          disabled={disabled || page >= pageCount}
-          onClick={() => { onPageChange?.(page + 1) }}
-      /></Inline
+        }{#if linked && page < pageCount
+          }<a
+            class={styles.link}
+            href={getPageHref?.(page + 1)}
+            aria-label={messages.next}
+            data-variant="ghost"
+            data-size="sm"
+            data-tone="neutral"
+            data-icon-only=""
+            onclick={(event) => { follow(event, page + 1) }}
+            ><span class={styles.linkGlyph}><Icon name="next" size="sm" /></span
+          ></a
+        >{:else
+          }<Button
+            variant="ghost"
+            tone="neutral"
+            size="sm"
+            iconOnly={true}
+            icon="next"
+            label={messages.next}
+            disabled={disabled || page >= pageCount}
+            onClick={() => { onPageChange?.(page + 1) }}
+        />{/if
+      }</Inline
     ></nav
   >{/if
 }{/if

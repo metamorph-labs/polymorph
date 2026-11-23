@@ -9,6 +9,10 @@ import { CursorPagination } from './CursorPagination'
 
 const noop = () => {}
 
+/** The windows' addresses. Fragments, so a click a test leaves to the browser stays on the page. */
+const PREVIOUS = '#before-26'
+const NEXT = '#after-50'
+
 /** How many frames the ran-out entry waits for its action before giving up. */
 const ACTION_FRAMES = 60
 
@@ -117,6 +121,20 @@ export const states: ComponentStates = {
       ),
     },
     {
+      name: 'with addresses — both directions are links',
+      render: () => (
+        <CursorPagination
+          hasPrevious
+          hasNext
+          position="26–50"
+          previousHref={PREVIOUS}
+          nextHref={NEXT}
+          onPrevious={noop}
+          onNext={noop}
+        />
+      ),
+    },
+    {
       name: 'append — more to load',
       render: () => <CursorPagination mode="append" hasPrevious={false} hasNext onNext={noop} />,
     },
@@ -161,6 +179,19 @@ export const states: ComponentStates = {
       expect: { 'data-disabled': '' },
     },
     {
+      name: 'append — with an address, the action is a link',
+      render: () => (
+        <CursorPagination
+          mode="append"
+          hasPrevious={false}
+          hasNext
+          position="50 shown"
+          nextHref={NEXT}
+          onNext={noop}
+        />
+      ),
+    },
+    {
       name: 'append — the list ran out',
       render: () => <RanOut />,
     },
@@ -182,9 +213,10 @@ export const states: ComponentStates = {
 
   /*
    * As for Pagination: the root takes focus when a hold disables the button
-   * that had it, so it draws the focus ring. Every control is a Button, so its
-   * `:hover`, `:focus-visible`, `[data-state='loading']` and `:disabled` are
-   * asserted by `button.states.tsx`.
+   * that had it, so it draws the focus ring. Every control is a Button, or a
+   * link that composes Button's class, so its `:hover`, `:focus-visible`,
+   * `[data-state='loading']` and `:disabled` are asserted by
+   * `button.states.tsx`.
    */
   requiredSelectors: [':focus-visible'],
 }

@@ -5,7 +5,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { assertGoverned } from '@polymorph/react'
 import { createAgentBridge } from '@polymorph/engine/agent'
-import { pagerHoldLaw, type CursorHold } from '@polymorph/conformance/pager-hold'
+import { PAGER_ADDRESSES, pagerHoldLaw, type CursorHold } from '@polymorph/conformance/pager-hold'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { CursorPagination, type CursorPaginationProps } from './CursorPagination'
 
@@ -88,6 +88,218 @@ describe('CursorPagination', () => {
     expect(screen.getByRole('button', { name: 'Précédent' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Suivant' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Next' })).toBeNull()
+  })
+})
+
+/**
+ * Dispatches a click on `link` and reports whether the member took the navigation from the
+ * browser. A listener on the document hears the click after the member, reads its decision, and
+ * then stops the navigation itself, so a click the member leaves alone does not move the runner's
+ * page or open a tab.
+ */
+function taken(link: HTMLElement, init: MouseEventInit = {}): boolean {
+  let prevented = false
+  const watch = (event: MouseEvent) => {
+    prevented = event.defaultPrevented
+    event.preventDefault()
+  }
+  document.addEventListener('click', watch, { once: true })
+  try {
+    link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ...init }))
+  } finally {
+    document.removeEventListener('click', watch)
+  }
+  return prevented
+}
+
+describe('with addresses (`cursor-pagination.md`, Behavior)', () => {
+  const addresses = { previousHref: '#before-26', nextHref: '#after-50' }
+
+  it('links both directions to their windows, under their buttons’ names', () => {
+    pager({ ...addresses, position: '26–50' })
+    const previous = screen.getByRole('link', { name: 'Previous' })
+    const next = screen.getByRole('link', { name: 'Next' })
+    expect(previous.getAttribute('href')).toBe('#before-26')
+    expect(next.getAttribute('href')).toBe('#after-50')
+    expect(screen.queryAllByRole('button')).toHaveLength(0)
+  })
+
+  it('calls the direction’s handler for a plain click, in place of the browser’s navigation', () => {
+    const { onPrevious, onNext } = pager(addresses)
+    expect(taken(screen.getByRole('link', { name: 'Next' }))).toBe(true)
+    expect(onNext).toHaveBeenCalledTimes(1)
+    expect(taken(screen.getByRole('link', { name: 'Previous' }))).toBe(true)
+    expect(onPrevious).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaves a click with a modifier key or another button to the browser', () => {
+    const { onPrevious, onNext } = pager(addresses)
+    for (const name of ['Previous', 'Next']) {
+      const link = screen.getByRole('link', { name })
+      for (const init of [
+        { metaKey: true },
+        { ctrlKey: true },
+        { shiftKey: true },
+        { altKey: true },
+        { button: 1 },
+      ]) {
+        expect(taken(link, init), `${name} ${JSON.stringify(init)}`).toBe(false)
+      }
+    }
+    expect(onPrevious).not.toHaveBeenCalled()
+    expect(onNext).not.toHaveBeenCalled()
+  })
+
+  it('keeps a direction with no window a disabled button', () => {
+    pager({ ...addresses, hasPrevious: false })
+    expect(screen.getByRole('button', { name: 'Previous' })).toHaveProperty('disabled', true)
+    expect(screen.getByRole('link', { name: 'Next' })).toBeTruthy()
+  })
+
+  it('draws no link while a window is in flight or the app holds the pager', () => {
+    const { rerender } = pager({ ...addresses, pending: true })
+    expect(screen.queryAllByRole('link')).toHaveLength(0)
+    expect(screen.getAllByRole('button')).toHaveLength(2)
+
+    rerender(
+      <CursorPagination
+        hasPrevious
+        hasNext
+        disabled
+        onPrevious={vi.fn()}
+        onNext={vi.fn()}
+        {...addresses}
+      />,
+    )
+    expect(screen.queryAllByRole('link')).toHaveLength(0)
+    for (const button of screen.getAllByRole('button')) {
+      expect(button).toHaveProperty('disabled', true)
+    }
+  })
+
+  it('draws the pressed link again as the busy button, which keeps focus', async () => {
+    function Harness() {
+      const [pending, setPending] = useState(false)
+      return (
+        <CursorPagination
+          hasPrevious
+          hasNext
+          pending={pending}
+          onPrevious={() => setPending(true)}
+          onNext={() => setPending(true)}
+          {...addresses}
+        />
+      )
+    }
+    render(<Harness />)
+    const watch = (event: MouseEvent) => event.preventDefault()
+    document.addEventListener('click', watch)
+    try {
+      screen.getByRole('link', { name: 'Next' }).focus()
+      await userEvent.keyboard('{Enter}')
+    } finally {
+      document.removeEventListener('click', watch)
+    }
+
+    const next = screen.getByRole('button', { name: 'Next' })
+    expect(next.getAttribute('aria-busy')).toBe('true')
+    expect(next).toHaveProperty('disabled', false)
+    await vi.waitFor(() => expect(document.activeElement).toBe(next))
+    expect(screen.getByRole('button', { name: 'Previous' })).toHaveProperty('disabled', true)
+  })
+
+  it('makes the append form’s action a link to the next window', () => {
+    const onNext = vi.fn()
+    const { rerender } = render(
+      <CursorPagination
+        mode="append"
+        hasPrevious={false}
+        hasNext
+        nextHref="#after-50"
+        onNext={onNext}
+      />,
+    )
+    const more = screen.getByRole('link', { name: 'Load more' })
+    expect(more.getAttribute('href')).toBe('#after-50')
+    expect(more.dataset['variant']).toBe('outline')
+    expect(taken(more)).toBe(true)
+    expect(onNext).toHaveBeenCalledTimes(1)
+
+    // Busy while its window is in flight, and disabled while the app holds it: a button then.
+    for (const state of [{ pending: true }, { disabled: true }]) {
+      rerender(
+        <CursorPagination
+          mode="append"
+          hasPrevious={false}
+          hasNext
+          nextHref="#after-50"
+          onNext={onNext}
+          {...state}
+        />,
+      )
+      expect(screen.queryByRole('link')).toBeNull()
+      expect(screen.getByRole('button', { name: 'Load more' })).toBeTruthy()
+    }
+  })
+
+  it('looks like the button it replaces', () => {
+    render(
+      <CursorPagination
+        label="Buttons"
+        hasPrevious
+        hasNext
+        onPrevious={vi.fn()}
+        onNext={vi.fn()}
+      />,
+    )
+    render(
+      <CursorPagination
+        label="Links"
+        hasPrevious
+        hasNext
+        onPrevious={vi.fn()}
+        onNext={vi.fn()}
+        {...addresses}
+      />,
+    )
+    const within = (label: string, role: 'button' | 'link', name: string) =>
+      screen
+        .getAllByRole(role, { name })
+        .find((control) => control.closest('nav')?.getAttribute('aria-label') === label)
+
+    for (const name of ['Previous', 'Next']) {
+      const button = within('Buttons', 'button', name)
+      const link = within('Links', 'link', name)
+      if (button === undefined || link === undefined) throw new Error(`no ${name} control`)
+      for (const attribute of ['data-variant', 'data-tone', 'data-size']) {
+        expect(link.getAttribute(attribute), `${name} ${attribute}`).toBe(
+          button.getAttribute(attribute),
+        )
+      }
+      const drawn = getComputedStyle(button)
+      const linked = getComputedStyle(link)
+      for (const property of [
+        'color',
+        'background-color',
+        'border-radius',
+        'font-size',
+        'font-weight',
+        'text-decoration-line',
+        'cursor',
+      ] as const) {
+        expect(linked.getPropertyValue(property), `${name} ${property}`).toBe(
+          drawn.getPropertyValue(property),
+        )
+      }
+      expect(link.getBoundingClientRect().width).toBe(button.getBoundingClientRect().width)
+      expect(link.getBoundingClientRect().height).toBe(button.getBoundingClientRect().height)
+    }
+  })
+
+  it('draws only buttons without addresses', () => {
+    pager()
+    expect(screen.getByRole('navigation').querySelector('a')).toBeNull()
+    expect(screen.getAllByRole('button')).toHaveLength(2)
   })
 })
 
@@ -264,8 +476,11 @@ describe('a pager the app holds', () => {
 pagerHoldLaw({
   shell: 'React',
   member: 'CursorPagination',
-  mount({ append, asked }) {
+  mount({ append, addressed, asked }) {
     let change: (next: Partial<CursorHold>) => void = () => {}
+    const addresses = addressed
+      ? { previousHref: PAGER_ADDRESSES.previous, nextHref: PAGER_ADDRESSES.next }
+      : {}
     function Held() {
       const [hold, setHold] = useState<CursorHold>({
         disabled: false,
@@ -279,10 +494,18 @@ pagerHoldLaw({
           label="Tickets"
           hasPrevious={false}
           onNext={asked}
+          {...addresses}
           {...hold}
         />
       ) : (
-        <CursorPagination label="Tickets" hasPrevious onPrevious={asked} onNext={asked} {...hold} />
+        <CursorPagination
+          label="Tickets"
+          hasPrevious
+          onPrevious={asked}
+          onNext={asked}
+          {...addresses}
+          {...hold}
+        />
       )
     }
     render(<Held />)

@@ -487,7 +487,9 @@ pnpm exec vitest run src/conformance.test -t "agent"                    # the ag
   entry, and the runner sets props only as it mounts. Where focus goes when the app holds a
   Pagination or a CursorPagination whose button has focus, and when that hold ends, is held by
   `pagerHoldLaw` (`packages/conformance/src/pager-hold.ts`), which every shell's
-  `pagination.test` and `cursor-pagination.test` call with a mount of their own. The React
+  `pagination.test` and `cursor-pagination.test` call with a mount of their own. The law runs
+  once on a pager without addresses and once on one with them, whose controls are links while
+  they can be followed, so a press or a hold draws a control again as a new element. The React
   shell calls it from `packages/react-ui/src/structure/assemblies.test.tsx` and
   `cursor-pagination.test.tsx`. A Tree's level arrives after the mount too. Its tab stop as rows
   are replaced, who holds its open branches, and where focus is when a level or more of one

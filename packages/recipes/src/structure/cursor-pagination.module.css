@@ -1,7 +1,8 @@
 /* CursorPagination — `design/components/cursor-pagination.md`.
  *
- * The controls are Buttons and the row is an Inline, so this only styles the
- * position text between the arrows, and the append form's end line. */
+ * The controls are Buttons, or links in Button's look when the windows have
+ * addresses, and the row is an Inline, so this styles the position text
+ * between the arrows, the append form's end line and the links. */
 
 /* A column, so the append form's end line takes a line of its own under the
    row: beside the position, two muted texts would read as one phrase. The
@@ -32,4 +33,24 @@
 /* Tabular numerals, so "26–50" → "51–75" does not shift the arrow. */
 .position {
   font-variant-numeric: var(--pm-font-numeric);
+}
+
+/* A control drawn as a link, when the app gives the windows addresses (`cursor-pagination.md`).
+   It is the Button it replaces, by reference, as Link's button variant is: composing `.button`
+   brings the base, the sizes, every rest, hover and active cell, the press feedback and the focus
+   ring, all keyed off the `data-variant` × `data-tone` × `data-size` attributes the link sets.
+   This rule removes what an `<a>` has and a `<button>` does not: the browser's underline. */
+.link {
+  composes: button from '../controls/button.module.css';
+  text-decoration: none;
+}
+
+/* Button's two content slots, composed: the label that truncates with an ellipsis, and the
+   glyph's box. */
+.linkLabel {
+  composes: label from '../controls/button.module.css';
+}
+
+.linkGlyph {
+  composes: glyph from '../controls/button.module.css';
 }

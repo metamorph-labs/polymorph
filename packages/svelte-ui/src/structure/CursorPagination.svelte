@@ -8,7 +8,7 @@
  */
 import { onDestroy } from 'svelte'
 
-import { agentMember, devWarning, joinSlot, watchEffect } from '@polymorph/svelte'
+import { Icon, agentMember, devWarning, joinSlot, watchEffect } from '@polymorph/svelte'
 import styles from '@polymorph/recipes/structure/cursor-pagination.module.css'
 import Button from '../controls/Button.svelte'
 import Inline from '../layout/Inline.svelte'
@@ -44,6 +44,11 @@ export interface CursorPaginationProps {
    */
   mode?: 'replace' | 'append'
   /**
+   * The next window's address, as `previousHref` is the previous one's: next, or in the append
+   * form its action, is a link to it while it can be pressed, and a plain click calls `onNext`.
+   */
+  nextHref?: string
+  /**
    * The next window: in place of this one, or in the append form below it.
    */
   onNext?: () => void
@@ -61,6 +66,14 @@ export interface CursorPaginationProps {
    * total, because the list does not return one.
    */
   position?: string
+  /**
+   * The previous window's address, such as `?before=c25`. Given, previous is a link to it while
+   * it can be pressed, so a crawler, a new tab and a reader whose script has not loaded can
+   * follow it. A click the browser would follow in this tab calls `onPrevious` in place of the
+   * navigation; a click with a modifier key opens the address. The append form does not read it:
+   * it has no previous direction.
+   */
+  previousHref?: string
 }
 </script>
 
@@ -77,10 +90,12 @@ let {
     end: 'No more to load',
   }))(),
   mode = 'replace',
+  nextHref,
   onNext,
   onPrevious,
   pending = false,
   position,
+  previousHref,
 }: CursorPaginationProps = $props()
 const joined = joinSlot(undefined, () => ({ disabled: disabled, label: labelOwn }))
 const label = $derived(
@@ -95,6 +110,7 @@ const listening = {
   },
 }
 let focused = $state(null as HTMLElement | null)
+let focusedControl = $state(null as string | number | null)
 let taken = $state(null as string | number | null)
 let asked = $state(null as 'previous' | 'next' | null)
 let paged = $state(false)
@@ -106,29 +122,74 @@ const controls = $derived(
   mode === 'append' ? (hasNext || pending ? ['more'] : []) : ['previous', 'next'],
 )
 const focusIn = $derived((event: FocusEvent) => {
-  focused = event.target as HTMLElement
+  const target = event.target as HTMLElement
+  const pager = root as HTMLElement | null
+  const names: readonly (string | number)[] = controls
+  const at = pager === null ? -1 : [...pager.querySelectorAll('button, a[href]')].indexOf(target)
+  focused = target
+  focusedControl = at < 0 ? null : (names[at] ?? null)
 })
 const focusOut = $derived((event: FocusEvent) => {
-  if (!(event.target as HTMLElement).matches(':disabled')) focused = null
+  const target = event.target as HTMLElement
+  if (target.matches(':disabled')) return
+  queueMicrotask(() => {
+    if (focused === target && target.isConnected) focused = null
+  })
 })
 const keepPlace = $derived(() => {
   const pager = root as HTMLElement | null
   if (pager === null) return
   const names: readonly (string | number)[] = controls
+  const drawn = () => [...pager.querySelectorAll<HTMLElement>('button, a[href]')]
+  const onPage = () => document.activeElement === null || document.activeElement === document.body
+  const left = focused as HTMLElement | null
+  if (left !== null && !left.isConnected) {
+    focused = null
+    const name = focusedControl
+    const now = name === null ? undefined : drawn()[names.indexOf(name)]
+    if (now !== undefined && onPage()) {
+      if (now.matches(':disabled')) focused = now
+      else now.focus()
+    }
+  }
   if (!disabled) {
     const control = taken
     taken = null
     if (control === null || document.activeElement !== pager) return
-    const button = [...pager.querySelectorAll('button')][names.indexOf(control)]
-    if (button !== undefined && !button.matches(':disabled')) button.focus()
+    const element = drawn()[names.indexOf(control)]
+    if (element !== undefined && !element.matches(':disabled')) element.focus()
     return
   }
   const from = focused as HTMLElement | null
   if (from === null || !from.isConnected || !from.matches(':disabled')) return
   const active = document.activeElement
   if (active !== from && active !== null && active !== document.body) return
-  taken = names[[...pager.querySelectorAll('button')].indexOf(from as HTMLButtonElement)] ?? null
+  taken = names[drawn().indexOf(from)] ?? null
   pager.focus()
+})
+const previousLink = $derived(previousHref !== undefined && hasPrevious && !pending && !disabled)
+const nextLink = $derived(nextHref !== undefined && hasNext && !pending && !disabled)
+const navigatesHere = $derived(
+  (event: MouseEvent): boolean =>
+    !event.defaultPrevented &&
+    event.button === 0 &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.shiftKey &&
+    !event.altKey,
+)
+const followPrevious = $derived((event: MouseEvent): void => {
+  if (!navigatesHere(event)) return
+  event.preventDefault()
+  asked = 'previous'
+  onPrevious?.()
+})
+const followNext = $derived((event: MouseEvent): void => {
+  if (!navigatesHere(event)) return
+  event.preventDefault()
+  asked = 'next'
+  if (mode === 'append') paged = true
+  onNext?.()
 })
 const effect1 = () => {
   pending || (asked = null)
@@ -239,7 +300,17 @@ onDestroy(() => release6?.())
           }{#if position !== undefined
             }<span class={styles.position} aria-live="polite">{position}</span
           >{/if
-          }{#if !ended
+          }{#if !ended && nextLink
+            }<a
+              class={styles.link}
+              href={nextHref}
+              data-variant="outline"
+              data-size="sm"
+              data-tone="neutral"
+              onclick={(event) => { followNext(event) }}
+              ><span class={styles.linkLabel}>{more}</span
+            ></a
+          >{:else if !ended
             }<Button
               variant="outline"
               tone="neutral"
@@ -250,28 +321,54 @@ onDestroy(() => release6?.())
               onClick={() => { (asked = 'next', paged = true, onNext?.()) }}
           />{/if
         }{:else
-          }<Button
-            variant="ghost"
-            tone="neutral"
-            size="sm"
-            icon="previous"
-            label={messages.previous}
-            loading={pending && asked === 'previous'}
-            disabled={!hasPrevious || (pending ? asked !== 'previous' : disabled)}
-            onClick={() => { (asked = 'previous', onPrevious?.()) }}
-          />{#if position !== undefined
+          }{#if previousLink
+            }<a
+              class={styles.link}
+              href={previousHref}
+              data-variant="ghost"
+              data-size="sm"
+              data-tone="neutral"
+              onclick={(event) => { followPrevious(event) }}
+              ><span class={styles.linkGlyph}><Icon name="previous" size="sm" /></span
+              ><span class={styles.linkLabel}>{messages.previous}</span
+            ></a
+          >{:else
+            }<Button
+              variant="ghost"
+              tone="neutral"
+              size="sm"
+              icon="previous"
+              label={messages.previous}
+              loading={pending && asked === 'previous'}
+              disabled={!hasPrevious || (pending ? asked !== 'previous' : disabled)}
+              onClick={() => { (asked = 'previous', onPrevious?.()) }}
+          />{/if
+          }{#if position !== undefined
             }<span class={styles.position} aria-live="polite">{position}</span
           >{/if
-          }<Button
-            variant="ghost"
-            tone="neutral"
-            size="sm"
-            trailingIcon="next"
-            label={messages.next}
-            loading={pending && asked === 'next'}
-            disabled={!hasNext || (pending ? asked !== 'next' : disabled)}
-            onClick={() => { (asked = 'next', onNext?.()) }}
-        />{/if
+          }{#if nextLink
+            }<a
+              class={styles.link}
+              href={nextHref}
+              data-variant="ghost"
+              data-size="sm"
+              data-tone="neutral"
+              onclick={(event) => { followNext(event) }}
+              ><span class={styles.linkLabel}>{messages.next}</span
+              ><span class={styles.linkGlyph}><Icon name="next" size="sm" /></span
+            ></a
+          >{:else
+            }<Button
+              variant="ghost"
+              tone="neutral"
+              size="sm"
+              trailingIcon="next"
+              label={messages.next}
+              loading={pending && asked === 'next'}
+              disabled={!hasNext || (pending ? asked !== 'next' : disabled)}
+              onClick={() => { (asked = 'next', onNext?.()) }}
+          />{/if
+        }{/if
       }</Inline
       >{#if mode === 'append'
         }<span class={styles.end} role="status">{#if ended}{end}{/if}</span

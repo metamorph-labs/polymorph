@@ -1,6 +1,6 @@
 import { tick } from 'svelte'
 
-import { pagerHoldLaw } from '@polymorph/conformance/pager-hold'
+import { PAGER_ADDRESSES, pagerHoldLaw } from '@polymorph/conformance/pager-hold'
 
 import { render } from '../mount'
 import { live } from '../testing/live.svelte'
@@ -14,12 +14,13 @@ import Pagination from './Pagination.svelte'
 pagerHoldLaw({
   shell: 'Svelte',
   member: 'Pagination',
-  async mount({ asked }) {
+  async mount({ addressed, asked }) {
     const props = live({
       label: 'Tickets',
       page: 3,
       pageCount: 7,
       disabled: false,
+      getPageHref: addressed ? PAGER_ADDRESSES.page : undefined,
       onPageChange: asked,
     })
     await render(Pagination, props)

@@ -50,6 +50,25 @@ export const states: ComponentStates = {
       expect: { 'data-disabled': '' },
     },
     {
+      name: 'with addresses — every page but the current one is a link',
+      html: `<poly-pagination page="3" page-count="5"></poly-pagination>`,
+      subject: 'poly-pagination',
+      setup: (find) => {
+        const e0 = find('poly-pagination', 0)
+        e0.getPageHref = (page: number) => `#page-${page}`
+      },
+    },
+    {
+      name: 'held, with addresses — no links, every control a disabled button',
+      html: `<poly-pagination page="3" page-count="5" disabled></poly-pagination>`,
+      subject: 'poly-pagination',
+      setup: (find) => {
+        const e0 = find('poly-pagination', 0)
+        e0.getPageHref = (page: number) => `#page-${page}`
+      },
+      expect: { 'data-disabled': '' },
+    },
+    {
       name: 'one page — nothing at all, because one page is not a paginated list',
       html: `<poly-pagination page="1" page-count="1"></poly-pagination>`,
       subject: 'poly-pagination',

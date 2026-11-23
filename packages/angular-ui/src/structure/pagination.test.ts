@@ -1,6 +1,6 @@
-import { Component, signal } from '@angular/core'
+import { Component, input, signal } from '@angular/core'
 
-import { pagerHoldLaw } from '@polymorph/conformance/pager-hold'
+import { PAGER_ADDRESSES, pagerHoldLaw } from '@polymorph/conformance/pager-hold'
 
 import { mountComponent } from '../mount'
 import { Pagination } from './Pagination'
@@ -19,20 +19,23 @@ import { Pagination } from './Pagination'
     [page]="page()"
     [pageCount]="7"
     [disabled]="disabled()"
+    [getPageHref]="addressed() ? pageHref : undefined"
     (pageChange)="asked()"
   />`,
 })
 class Held {
+  readonly addressed = input(false)
   readonly page = signal(3)
   readonly disabled = signal(false)
+  readonly pageHref = PAGER_ADDRESSES.page
   asked: () => void = () => {}
 }
 
 pagerHoldLaw({
   shell: 'Angular',
   member: 'Pagination',
-  async mount({ asked }) {
-    const { ref } = await mountComponent(Held)
+  async mount({ addressed, asked }) {
+    const { ref } = await mountComponent(Held, { addressed })
     const held = ref.instance as Held
     held.asked = asked
     return {

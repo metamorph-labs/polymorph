@@ -8,6 +8,7 @@
 import { Component, DestroyRef, ViewEncapsulation, inject, input, output } from '@angular/core'
 
 import {
+  Icon,
   MEMBER_PROVIDERS,
   Ref,
   agentMember,
@@ -55,6 +56,11 @@ export interface CursorPaginationProps {
    */
   mode?: 'replace' | 'append'
   /**
+   * The next window's address, as `previousHref` is the previous one's: next, or in the append
+   * form its action, is a link to it while it can be pressed, and a plain click calls `onNext`.
+   */
+  nextHref?: string
+  /**
    * The requested window has not arrived: the pressed direction shows busy and the other is
    * disabled, so a slow fetch cannot be followed by a second request.
    */
@@ -64,6 +70,14 @@ export interface CursorPaginationProps {
    * total, because the list does not return one.
    */
   position?: string
+  /**
+   * The previous window's address, such as `?before=c25`. Given, previous is a link to it while
+   * it can be pressed, so a crawler, a new tab and a reader whose script has not loaded can
+   * follow it. A click the browser would follow in this tab calls `onPrevious` in place of the
+   * navigation; a click with a modifier key opens the address. The append form does not read it:
+   * it has no previous direction.
+   */
+  previousHref?: string
 }
 
 /** Previous and next controls for a cursor-paged list. */
@@ -72,7 +86,7 @@ export interface CursorPaginationProps {
   encapsulation: ViewEncapsulation.None,
   host: { style: 'display: contents' },
   providers: [...MEMBER_PROVIDERS],
-  imports: [Ref, Button, Inline],
+  imports: [Ref, Button, Icon, Inline],
   // prettier-ignore
   template: `@if (e1()) {<nav
 [attr.class]="e2()"
@@ -94,44 +108,91 @@ align="center"
 [attr.class]="e11()"
 aria-live="polite"
 >{{ e12() }}</span>}
-@if (e13()) {<pm-button
+@if (e13()) {<!-- link -->
+<a
+[attr.class]="e14()"
+[attr.href]="e15()"
+data-variant="outline"
+data-size="sm"
+data-tone="neutral"
+(click)="h3($event)"
+><!-- label -->
+<span
+[attr.class]="e16()"
+>{{ e17() }}</span></a>} @else if (e18()) {<pm-button
 variant="outline"
 tone="neutral"
 size="sm"
-[label]="e14()"
-[loading]="e15()"
-[disabled]="e16()"
-(click)="h3()"
-></pm-button>}} @else {<pm-button
+[label]="e19()"
+[loading]="e20()"
+[disabled]="e21()"
+(click)="h4()"
+></pm-button>}} @else {@if (e22()) {<!-- link -->
+<a
+[attr.class]="e23()"
+[attr.href]="e24()"
+data-variant="ghost"
+data-size="sm"
+data-tone="neutral"
+(click)="h5($event)"
+><!-- glyph -->
+<span
+[attr.class]="e25()"
+><pm-icon
+name="previous"
+size="sm"
+></pm-icon></span>
+<!-- label -->
+<span
+[attr.class]="e26()"
+>{{ e27() }}</span></a>} @else {<pm-button
 variant="ghost"
 tone="neutral"
 size="sm"
 icon="previous"
-[label]="e17()"
-[loading]="e18()"
-[disabled]="e19()"
-(click)="h4()"
-></pm-button>
-@if (e20()) {<!-- position -->
+[label]="e28()"
+[loading]="e29()"
+[disabled]="e30()"
+(click)="h6()"
+></pm-button>}
+@if (e31()) {<!-- position -->
 <span
-[attr.class]="e21()"
+[attr.class]="e32()"
 aria-live="polite"
->{{ e22() }}</span>}
-<pm-button
+>{{ e33() }}</span>}
+@if (e34()) {<!-- link -->
+<a
+[attr.class]="e35()"
+[attr.href]="e36()"
+data-variant="ghost"
+data-size="sm"
+data-tone="neutral"
+(click)="h7($event)"
+><!-- label -->
+<span
+[attr.class]="e37()"
+>{{ e38() }}</span>
+<!-- glyph -->
+<span
+[attr.class]="e39()"
+><pm-icon
+name="next"
+size="sm"
+></pm-icon></span></a>} @else {<pm-button
 variant="ghost"
 tone="neutral"
 size="sm"
 trailingIcon="next"
-[label]="e23()"
-[loading]="e24()"
-[disabled]="e25()"
-(click)="h5()"
-></pm-button>}</pm-inline>
+[label]="e40()"
+[loading]="e41()"
+[disabled]="e42()"
+(click)="h8()"
+></pm-button>}}</pm-inline>
 @if (e9()) {<!-- end -->
 <span
-[attr.class]="e26()"
+[attr.class]="e43()"
 role="status"
->@if (e27()) {{{ e28() }}}</span>}</nav>}`,
+>@if (e44()) {{{ e45() }}}</span>}</nav>}`,
 })
 export class CursorPagination {
   /**
@@ -186,6 +247,11 @@ export class CursorPagination {
     transform: (value: CursorPaginationProps['mode']) => (value === undefined ? 'replace' : value),
   })
   /**
+   * The next window's address, as `previousHref` is the previous one's: next, or in the append
+   * form its action, is a link to it while it can be pressed, and a plain click calls `onNext`.
+   */
+  readonly nextHref = input<CursorPaginationProps['nextHref']>(undefined)
+  /**
    * The requested window has not arrived: the pressed direction shows busy and the other is
    * disabled, so a slow fetch cannot be followed by a second request.
    */
@@ -200,6 +266,14 @@ export class CursorPagination {
    * total, because the list does not return one.
    */
   readonly position = input<CursorPaginationProps['position']>(undefined)
+  /**
+   * The previous window's address, such as `?before=c25`. Given, previous is a link to it while
+   * it can be pressed, so a crawler, a new tab and a reader whose script has not loaded can
+   * follow it. A click the browser would follow in this tab calls `onPrevious` in place of the
+   * navigation; a click with a modifier key opens the address. The append form does not read it:
+   * it has no previous direction.
+   */
+  readonly previousHref = input<CursorPaginationProps['previousHref']>(undefined)
   /**
    * The next window: in place of this one, or in the append form below it.
    */
@@ -217,12 +291,15 @@ export class CursorPagination {
       label: () => this.label(),
       messages: () => this.messages(),
       mode: () => this.mode(),
+      nextHref: () => this.nextHref(),
       pending: () => this.pending(),
       position: () => this.position(),
+      previousHref: () => this.previousHref(),
     },
   })
   protected readonly $p = this.$.props
   protected readonly focused = cell(() => null as HTMLElement | null)
+  protected readonly focusedControl = cell(() => null as string | number | null)
   protected readonly taken = cell(() => null as string | number | null)
   protected readonly asked = cell(() => null as 'previous' | 'next' | null)
   protected readonly paged = cell(() => false)
@@ -238,30 +315,84 @@ export class CursorPagination {
       : ['previous', 'next'],
   )
   protected readonly focusIn = derived(() => (event: FocusEvent) => {
-    this.focused.value = event.target as HTMLElement
+    const target = event.target as HTMLElement
+    const pager = this.root.value as HTMLElement | null
+    const names: readonly (string | number)[] = this.controls.value
+    const at = pager === null ? -1 : [...pager.querySelectorAll('button, a[href]')].indexOf(target)
+    this.focused.value = target
+    this.focusedControl.value = at < 0 ? null : (names[at] ?? null)
   })
   protected readonly focusOut = derived(() => (event: FocusEvent) => {
-    if (!(event.target as HTMLElement).matches(':disabled')) this.focused.value = null
+    const target = event.target as HTMLElement
+    if (target.matches(':disabled')) return
+    queueMicrotask(() => {
+      if (this.focused.value === target && target.isConnected) this.focused.value = null
+    })
   })
   protected readonly keepPlace = derived(() => () => {
     const pager = this.root.value as HTMLElement | null
     if (pager === null) return
     const names: readonly (string | number)[] = this.controls.value
+    const drawn = () => [...pager.querySelectorAll<HTMLElement>('button, a[href]')]
+    const onPage = () => document.activeElement === null || document.activeElement === document.body
+    const left = this.focused.value as HTMLElement | null
+    if (left !== null && !left.isConnected) {
+      this.focused.value = null
+      const name = this.focusedControl.value
+      const now = name === null ? undefined : drawn()[names.indexOf(name)]
+      if (now !== undefined && onPage()) {
+        if (now.matches(':disabled')) this.focused.value = now
+        else now.focus()
+      }
+    }
     if (!this.$p.disabled) {
       const control = this.taken.value
       this.taken.value = null
       if (control === null || document.activeElement !== pager) return
-      const button = [...pager.querySelectorAll('button')][names.indexOf(control)]
-      if (button !== undefined && !button.matches(':disabled')) button.focus()
+      const element = drawn()[names.indexOf(control)]
+      if (element !== undefined && !element.matches(':disabled')) element.focus()
       return
     }
     const from = this.focused.value as HTMLElement | null
     if (from === null || !from.isConnected || !from.matches(':disabled')) return
     const active = document.activeElement
     if (active !== from && active !== null && active !== document.body) return
-    this.taken.value =
-      names[[...pager.querySelectorAll('button')].indexOf(from as HTMLButtonElement)] ?? null
+    this.taken.value = names[drawn().indexOf(from)] ?? null
     pager.focus()
+  })
+  protected readonly previousLink = derived(
+    () =>
+      this.$p.previousHref !== undefined &&
+      this.$p.hasPrevious &&
+      !this.$p.pending &&
+      !this.$p.disabled,
+  )
+  protected readonly nextLink = derived(
+    () =>
+      this.$p.nextHref !== undefined && this.$p.hasNext && !this.$p.pending && !this.$p.disabled,
+  )
+  protected readonly navigatesHere = derived(
+    () =>
+      (event: MouseEvent): boolean =>
+        !event.defaultPrevented &&
+        event.button === 0 &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.shiftKey &&
+        !event.altKey,
+  )
+  protected readonly followPrevious = derived(() => (event: MouseEvent): void => {
+    if (!this.navigatesHere.value(event)) return
+    event.preventDefault()
+    this.asked.value = 'previous'
+    this.$.emit(this.onPrevious, 'onPrevious')
+  })
+  protected readonly followNext = derived(() => (event: MouseEvent): void => {
+    if (!this.navigatesHere.value(event)) return
+    event.preventDefault()
+    this.asked.value = 'next'
+    if (this.$p.mode === 'append') this.paged.value = true
+    this.$.emit(this.onNext, 'onNext')
   })
   private release4: (() => void) | undefined
   private release6: (() => void) | undefined
@@ -454,10 +585,10 @@ export class CursorPagination {
     )
       return undefined as never
     if (!(this.$p.mode === 'append')) return undefined as never
-    return !this.ended.value
+    return !this.ended.value && this.nextLink.value
   }
 
-  protected e14(): ButtonProps['label'] {
+  protected e14() {
     if (
       !(this.$p.mode === 'append'
         ? this.$p.hasNext || this.$p.pending || this.paged.value
@@ -465,11 +596,11 @@ export class CursorPagination {
     )
       return undefined as never
     if (!(this.$p.mode === 'append')) return undefined as never
-    if (this.ended.value) return undefined as never
-    return this.more.value
+    if (!(!this.ended.value && this.nextLink.value)) return undefined as never
+    return styles.link
   }
 
-  protected e15(): ButtonProps['loading'] {
+  protected e15() {
     if (
       !(this.$p.mode === 'append'
         ? this.$p.hasNext || this.$p.pending || this.paged.value
@@ -477,23 +608,11 @@ export class CursorPagination {
     )
       return undefined as never
     if (!(this.$p.mode === 'append')) return undefined as never
-    if (this.ended.value) return undefined as never
-    return this.$p.pending
+    if (!(!this.ended.value && this.nextLink.value)) return undefined as never
+    return this.$p.nextHref
   }
 
-  protected e16(): ButtonProps['disabled'] {
-    if (
-      !(this.$p.mode === 'append'
-        ? this.$p.hasNext || this.$p.pending || this.paged.value
-        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
-    )
-      return undefined as never
-    if (!(this.$p.mode === 'append')) return undefined as never
-    if (this.ended.value) return undefined as never
-    return this.$p.disabled && !this.$p.pending
-  }
-
-  protected h3(): void {
+  protected h3($event: MouseEvent): void {
     if (
       !(this.$p.mode === 'append'
         ? this.$p.hasNext || this.$p.pending || this.paged.value
@@ -501,45 +620,83 @@ export class CursorPagination {
     )
       return
     if (!(this.$p.mode === 'append')) return
-    if (this.ended.value) return
-    void ((this.asked.value = 'next'),
-    (this.paged.value = true),
-    this.$.emit(this.onNext, 'onNext'))
+    if (!(!this.ended.value && this.nextLink.value)) return
+    this.followNext.value($event)
   }
 
-  protected e17(): ButtonProps['label'] {
+  protected e16() {
     if (
       !(this.$p.mode === 'append'
         ? this.$p.hasNext || this.$p.pending || this.paged.value
         : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
     )
       return undefined as never
-    if (this.$p.mode === 'append') return undefined as never
-    return this.$p.messages.previous
+    if (!(this.$p.mode === 'append')) return undefined as never
+    if (!(!this.ended.value && this.nextLink.value)) return undefined as never
+    return styles.linkLabel
   }
 
-  protected e18(): ButtonProps['loading'] {
+  protected e17() {
     if (
       !(this.$p.mode === 'append'
         ? this.$p.hasNext || this.$p.pending || this.paged.value
         : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
     )
       return undefined as never
-    if (this.$p.mode === 'append') return undefined as never
-    return this.$p.pending && this.asked.value === 'previous'
+    if (!(this.$p.mode === 'append')) return undefined as never
+    if (!(!this.ended.value && this.nextLink.value)) return undefined as never
+    return this.more.value
   }
 
-  protected e19(): ButtonProps['disabled'] {
+  protected e18() {
     if (
       !(this.$p.mode === 'append'
         ? this.$p.hasNext || this.$p.pending || this.paged.value
         : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
     )
       return undefined as never
-    if (this.$p.mode === 'append') return undefined as never
-    return (
-      !this.$p.hasPrevious || (this.$p.pending ? this.asked.value !== 'previous' : this.$p.disabled)
+    if (!(this.$p.mode === 'append')) return undefined as never
+    if (!this.ended.value && this.nextLink.value) return undefined as never
+    return !this.ended.value
+  }
+
+  protected e19(): ButtonProps['label'] {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
     )
+      return undefined as never
+    if (!(this.$p.mode === 'append')) return undefined as never
+    if (!this.ended.value && this.nextLink.value) return undefined as never
+    if (this.ended.value) return undefined as never
+    return this.more.value
+  }
+
+  protected e20(): ButtonProps['loading'] {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
+    )
+      return undefined as never
+    if (!(this.$p.mode === 'append')) return undefined as never
+    if (!this.ended.value && this.nextLink.value) return undefined as never
+    if (this.ended.value) return undefined as never
+    return this.$p.pending
+  }
+
+  protected e21(): ButtonProps['disabled'] {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
+    )
+      return undefined as never
+    if (!(this.$p.mode === 'append')) return undefined as never
+    if (!this.ended.value && this.nextLink.value) return undefined as never
+    if (this.ended.value) return undefined as never
+    return this.$p.disabled && !this.$p.pending
   }
 
   protected h4(): void {
@@ -549,11 +706,148 @@ export class CursorPagination {
         : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
     )
       return
+    if (!(this.$p.mode === 'append')) return
+    if (!this.ended.value && this.nextLink.value) return
+    if (this.ended.value) return
+    void ((this.asked.value = 'next'),
+    (this.paged.value = true),
+    this.$.emit(this.onNext, 'onNext'))
+  }
+
+  protected e22() {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
+    )
+      return undefined as never
+    if (this.$p.mode === 'append') return undefined as never
+    return this.previousLink.value
+  }
+
+  protected e23() {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
+    )
+      return undefined as never
+    if (this.$p.mode === 'append') return undefined as never
+    if (!this.previousLink.value) return undefined as never
+    return styles.link
+  }
+
+  protected e24() {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
+    )
+      return undefined as never
+    if (this.$p.mode === 'append') return undefined as never
+    if (!this.previousLink.value) return undefined as never
+    return this.$p.previousHref
+  }
+
+  protected h5($event: MouseEvent): void {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
+    )
+      return
     if (this.$p.mode === 'append') return
+    if (!this.previousLink.value) return
+    this.followPrevious.value($event)
+  }
+
+  protected e25() {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
+    )
+      return undefined as never
+    if (this.$p.mode === 'append') return undefined as never
+    if (!this.previousLink.value) return undefined as never
+    return styles.linkGlyph
+  }
+
+  protected e26() {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
+    )
+      return undefined as never
+    if (this.$p.mode === 'append') return undefined as never
+    if (!this.previousLink.value) return undefined as never
+    return styles.linkLabel
+  }
+
+  protected e27() {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
+    )
+      return undefined as never
+    if (this.$p.mode === 'append') return undefined as never
+    if (!this.previousLink.value) return undefined as never
+    return this.$p.messages.previous
+  }
+
+  protected e28(): ButtonProps['label'] {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
+    )
+      return undefined as never
+    if (this.$p.mode === 'append') return undefined as never
+    if (this.previousLink.value) return undefined as never
+    return this.$p.messages.previous
+  }
+
+  protected e29(): ButtonProps['loading'] {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
+    )
+      return undefined as never
+    if (this.$p.mode === 'append') return undefined as never
+    if (this.previousLink.value) return undefined as never
+    return this.$p.pending && this.asked.value === 'previous'
+  }
+
+  protected e30(): ButtonProps['disabled'] {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
+    )
+      return undefined as never
+    if (this.$p.mode === 'append') return undefined as never
+    if (this.previousLink.value) return undefined as never
+    return (
+      !this.$p.hasPrevious || (this.$p.pending ? this.asked.value !== 'previous' : this.$p.disabled)
+    )
+  }
+
+  protected h6(): void {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
+    )
+      return
+    if (this.$p.mode === 'append') return
+    if (this.previousLink.value) return
     void ((this.asked.value = 'previous'), this.$.emit(this.onPrevious, 'onPrevious'))
   }
 
-  protected e20() {
+  protected e31() {
     if (
       !(this.$p.mode === 'append'
         ? this.$p.hasNext || this.$p.pending || this.paged.value
@@ -564,7 +858,7 @@ export class CursorPagination {
     return this.$p.position !== undefined
   }
 
-  protected e21() {
+  protected e32() {
     if (
       !(this.$p.mode === 'append'
         ? this.$p.hasNext || this.$p.pending || this.paged.value
@@ -576,7 +870,7 @@ export class CursorPagination {
     return styles.position
   }
 
-  protected e22() {
+  protected e33() {
     if (
       !(this.$p.mode === 'append'
         ? this.$p.hasNext || this.$p.pending || this.paged.value
@@ -588,7 +882,7 @@ export class CursorPagination {
     return this.$p.position
   }
 
-  protected e23(): ButtonProps['label'] {
+  protected e34() {
     if (
       !(this.$p.mode === 'append'
         ? this.$p.hasNext || this.$p.pending || this.paged.value
@@ -596,10 +890,10 @@ export class CursorPagination {
     )
       return undefined as never
     if (this.$p.mode === 'append') return undefined as never
-    return this.$p.messages.next
+    return this.nextLink.value
   }
 
-  protected e24(): ButtonProps['loading'] {
+  protected e35() {
     if (
       !(this.$p.mode === 'append'
         ? this.$p.hasNext || this.$p.pending || this.paged.value
@@ -607,10 +901,11 @@ export class CursorPagination {
     )
       return undefined as never
     if (this.$p.mode === 'append') return undefined as never
-    return this.$p.pending && this.asked.value === 'next'
+    if (!this.nextLink.value) return undefined as never
+    return styles.link
   }
 
-  protected e25(): ButtonProps['disabled'] {
+  protected e36() {
     if (
       !(this.$p.mode === 'append'
         ? this.$p.hasNext || this.$p.pending || this.paged.value
@@ -618,10 +913,11 @@ export class CursorPagination {
     )
       return undefined as never
     if (this.$p.mode === 'append') return undefined as never
-    return !this.$p.hasNext || (this.$p.pending ? this.asked.value !== 'next' : this.$p.disabled)
+    if (!this.nextLink.value) return undefined as never
+    return this.$p.nextHref
   }
 
-  protected h5(): void {
+  protected h7($event: MouseEvent): void {
     if (
       !(this.$p.mode === 'append'
         ? this.$p.hasNext || this.$p.pending || this.paged.value
@@ -629,10 +925,95 @@ export class CursorPagination {
     )
       return
     if (this.$p.mode === 'append') return
+    if (!this.nextLink.value) return
+    this.followNext.value($event)
+  }
+
+  protected e37() {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
+    )
+      return undefined as never
+    if (this.$p.mode === 'append') return undefined as never
+    if (!this.nextLink.value) return undefined as never
+    return styles.linkLabel
+  }
+
+  protected e38() {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
+    )
+      return undefined as never
+    if (this.$p.mode === 'append') return undefined as never
+    if (!this.nextLink.value) return undefined as never
+    return this.$p.messages.next
+  }
+
+  protected e39() {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
+    )
+      return undefined as never
+    if (this.$p.mode === 'append') return undefined as never
+    if (!this.nextLink.value) return undefined as never
+    return styles.linkGlyph
+  }
+
+  protected e40(): ButtonProps['label'] {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
+    )
+      return undefined as never
+    if (this.$p.mode === 'append') return undefined as never
+    if (this.nextLink.value) return undefined as never
+    return this.$p.messages.next
+  }
+
+  protected e41(): ButtonProps['loading'] {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
+    )
+      return undefined as never
+    if (this.$p.mode === 'append') return undefined as never
+    if (this.nextLink.value) return undefined as never
+    return this.$p.pending && this.asked.value === 'next'
+  }
+
+  protected e42(): ButtonProps['disabled'] {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
+    )
+      return undefined as never
+    if (this.$p.mode === 'append') return undefined as never
+    if (this.nextLink.value) return undefined as never
+    return !this.$p.hasNext || (this.$p.pending ? this.asked.value !== 'next' : this.$p.disabled)
+  }
+
+  protected h8(): void {
+    if (
+      !(this.$p.mode === 'append'
+        ? this.$p.hasNext || this.$p.pending || this.paged.value
+        : this.$p.hasPrevious || this.$p.hasNext || this.$p.pending)
+    )
+      return
+    if (this.$p.mode === 'append') return
+    if (this.nextLink.value) return
     void ((this.asked.value = 'next'), this.$.emit(this.onNext, 'onNext'))
   }
 
-  protected e26() {
+  protected e43() {
     if (
       !(this.$p.mode === 'append'
         ? this.$p.hasNext || this.$p.pending || this.paged.value
@@ -643,7 +1024,7 @@ export class CursorPagination {
     return styles.end
   }
 
-  protected e27() {
+  protected e44() {
     if (
       !(this.$p.mode === 'append'
         ? this.$p.hasNext || this.$p.pending || this.paged.value
@@ -654,7 +1035,7 @@ export class CursorPagination {
     return this.ended.value
   }
 
-  protected e28() {
+  protected e45() {
     if (
       !(this.$p.mode === 'append'
         ? this.$p.hasNext || this.$p.pending || this.paged.value

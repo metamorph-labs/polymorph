@@ -1,6 +1,6 @@
 import { h, nextTick, reactive } from 'vue'
 
-import { pagerHoldLaw, type CursorHold } from '@polymorph/conformance/pager-hold'
+import { PAGER_ADDRESSES, pagerHoldLaw, type CursorHold } from '@polymorph/conformance/pager-hold'
 
 import { mount } from '../mount'
 import CursorPagination from './CursorPagination.vue'
@@ -13,8 +13,11 @@ import CursorPagination from './CursorPagination.vue'
 pagerHoldLaw({
   shell: 'Vue',
   member: 'CursorPagination',
-  async mount({ append, asked }) {
+  async mount({ append, addressed, asked }) {
     const hold = reactive<CursorHold>({ disabled: false, pending: false, hasNext: true })
+    const addresses = addressed
+      ? { previousHref: PAGER_ADDRESSES.previous, nextHref: PAGER_ADDRESSES.next }
+      : {}
     await mount(() =>
       append
         ? h(CursorPagination, {
@@ -24,6 +27,7 @@ pagerHoldLaw({
             hasNext: hold.hasNext,
             pending: hold.pending,
             disabled: hold.disabled,
+            ...addresses,
             onNext: asked,
           })
         : h(CursorPagination, {
@@ -32,6 +36,7 @@ pagerHoldLaw({
             hasNext: hold.hasNext,
             pending: hold.pending,
             disabled: hold.disabled,
+            ...addresses,
             onPrevious: asked,
             onNext: asked,
           }),

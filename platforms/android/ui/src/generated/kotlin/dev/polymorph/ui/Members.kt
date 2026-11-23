@@ -819,12 +819,14 @@ fun PMCursorPagination(
     label: String? = null,
     messages: PMCursorPaginationMessages? = null,
     mode: PMCursorPaginationMode? = null,
+    nextHref: String? = null,
     onNext: () -> Unit,
     onPrevious: (() -> Unit)? = null,
     pending: Boolean? = null,
     position: String? = null,
+    previousHref: String? = null,
 ) {
-    PMCursorPagination.Render(PMCursorPaginationProps(disabled = disabled, hasNext = hasNext, hasPrevious = hasPrevious, label = label, messages = messages, mode = mode, onNext = onNext, onPrevious = onPrevious, pending = pending, position = position))
+    PMCursorPagination.Render(PMCursorPaginationProps(disabled = disabled, hasNext = hasNext, hasPrevious = hasPrevious, label = label, messages = messages, mode = mode, nextHref = nextHref, onNext = onNext, onPrevious = onPrevious, pending = pending, position = position, previousHref = previousHref))
 }
 
 /**
@@ -1725,6 +1727,7 @@ fun PMPageHeader(
 @Composable
 fun PMPagination(
     disabled: Boolean? = null,
+    getPageHref: ((Double) -> String)? = null,
     label: String? = null,
     messages: PMPaginationMessages? = null,
     onPageChange: (Double) -> Unit,
@@ -1732,7 +1735,7 @@ fun PMPagination(
     pageCount: Double,
     siblingCount: PMPaginationSiblingCount? = null,
 ) {
-    PMPagination.Render(PMPaginationProps(disabled = disabled, label = label, messages = messages, onPageChange = onPageChange, page = page, pageCount = pageCount, siblingCount = siblingCount))
+    PMPagination.Render(PMPaginationProps(disabled = disabled, getPageHref = getPageHref, label = label, messages = messages, onPageChange = onPageChange, page = page, pageCount = pageCount, siblingCount = siblingCount))
 }
 
 /**

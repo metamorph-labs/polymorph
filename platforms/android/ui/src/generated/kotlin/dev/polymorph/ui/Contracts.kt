@@ -1724,6 +1724,11 @@ data class PMCursorPaginationProps(
      * feed or a log read from the top.
      */
     val mode: PMCursorPaginationMode? = null,
+    /**
+     * The next window's address, as `previousHref` is the previous one's: next, or in the append
+     * form its action, is a link to it while it can be pressed, and a plain click calls `onNext`.
+     */
+    val nextHref: String? = null,
     /** The next window: in place of this one, or in the append form below it. */
     val onNext: () -> Unit,
     /** The previous window, in the replace form; the append form has no previous. */
@@ -1738,6 +1743,14 @@ data class PMCursorPaginationProps(
      * total, because the list does not return one.
      */
     val position: String? = null,
+    /**
+     * The previous window's address, such as `?before=c25`. Given, previous is a link to it while
+     * it can be pressed, so a crawler, a new tab and a reader whose script has not loaded can
+     * follow it. A click the browser would follow in this tab calls `onPrevious` in place of the
+     * navigation; a click with a modifier key opens the address. The append form does not read it:
+     * it has no previous direction.
+     */
+    val previousHref: String? = null,
 )
 
 /**
@@ -3852,6 +3865,14 @@ data class PMPaginationProps(
      * the current page too, and no page is asked for.
      */
     val disabled: Boolean? = null,
+    /**
+     * A page's address, such as `?page=3`. Given, each control that goes to another page is a link
+     * to that page's address, so a crawler, a new tab and a reader whose script has not loaded can
+     * follow it. A click the browser would follow in this tab calls `onPageChange` in place of the
+     * navigation; a click with a modifier key opens the address. The current page, a control with
+     * nowhere to go and a held pager's controls stay buttons.
+     */
+    val getPageHref: ((Double) -> String)? = null,
     val label: String? = null,
     /** Omit for the generic English defaults; localized hosts pass their own. */
     val messages: PMPaginationMessages? = null,

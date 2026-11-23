@@ -28,17 +28,20 @@ appends without a press, stays out of scope (`pagination.md`).
 ```
 [root <nav>]
   [Inline wrap]
-    [previous — Button ghost/neutral/sm, leading icon]
+    [previous — Button ghost/neutral/sm, leading icon; a link with previousHref]
     [position? — the window, in the app's words]
-    [next — Button ghost/neutral/sm, trailing icon]
+    [next — Button ghost/neutral/sm, trailing icon; a link with nextHref]
 
 mode="append":
 [root <nav>]
   [Inline wrap]
     [position? — what is on screen, in the app's words]
-    [more — Button outline/neutral/sm]   while there is more, or a window is in flight
+    [more — Button outline/neutral/sm; a link with nextHref]   while there is more, or a window is in flight
   [end — role="status", a line under the row: empty until the list runs out, then messages.end]
 ```
+
+A direction with an address is a **link** while it can be pressed: an `<a href>` with the look of
+the Button it replaces (see Recipes and Behavior).
 
 ## API
 
@@ -58,6 +61,11 @@ type CursorPaginationProps = {
     more?: string               // the append form's action; default 'Load more'
     end?: string                // the append form's last line; default 'No more to load'
   }
+  previousHref?: string         // the previous window's address ("?before=c25"): previous is a
+                                // link to it while it can be pressed; the append form does not
+                                // read it
+  nextHref?: string             // the next window's address: next, or the append form's action,
+                                // is a link to it while it can be pressed
 } & (
   | { mode?: 'replace'; onPrevious: () => void }   // the default form, with its previous direction
   | { mode: 'append'; onPrevious?: undefined }     // Load more: no previous direction
@@ -65,7 +73,8 @@ type CursorPaginationProps = {
 ```
 
 Attributes: root `data-pending?`, `data-disabled?` and `tabindex="-1"` (see A11y), plus
-`aria-busy` while pending. The Buttons carry Button's own (`data-state="loading"`, `disabled`).
+`aria-busy` while pending. The Buttons carry Button's own (`data-state="loading"`, `disabled`),
+and a link carries Button's `data-variant`, `data-tone` and `data-size`.
 
 The props are a union on `mode`, as Card's `href` and `label` are a pair. The replace form
 requires `onPrevious`, so a pager written before the append form still type-checks, and the
@@ -108,6 +117,22 @@ vocabulary.
   gives it back (see A11y).
 - **The pager does not own the cursors.** `hasPrevious`/`hasNext` are controlled, and there is
   no `cursor` prop, because a token is transport and transport belongs to the app.
+- **`previousHref` and `nextHref` make the windows followable.** Without them both directions
+  are Buttons, which a crawler does not press, so a crawler never reaches the second window of a
+  public list, and a reader cannot open one in a new tab. With them, a direction that can be
+  pressed is an `<a href>` to its window's address. A cursor pager knows no other address, so
+  these are two strings, not a function of a page. The app writes them from the cursors the list
+  returned, as it writes `hasPrevious` and `hasNext`. A link looks the same as the Button it
+  replaces (see Recipes), so nothing changes visually.
+- **A click the browser would follow in this tab calls the direction's handler.** The member
+  stops the browser's navigation and calls `onPrevious` or `onNext`, and marks that direction
+  busy while `pending`, as a press on its Button does. It is Link's rule for `onNavigate`
+  (`link.md` §Routing): a primary click with no modifier key that nothing else took. A click
+  with a modifier key or another button stays the browser's and opens the address. The handlers
+  stay required.
+- **Only a direction that can be pressed is a link.** A direction with no window, both while a
+  window is in flight (the pressed one busy, the other disabled) and both while the app holds
+  the pager stay Buttons, because an `<a>` that cannot be followed is not drawn as a link.
 
 ## Load more
 
@@ -115,6 +140,9 @@ vocabulary.
 it fetches below the ones on screen. The form keeps the replace form's rules for one window and
 for a window in flight, and adds a memory of its own:
 
+- **`nextHref` is the action's address.** While there is more and nothing is in flight, the
+  action is a link to the next window, and a plain click calls `onNext` as a press does. A
+  crawler that follows it reads the next window as a page of its own.
 - **The member remembers that it paged.** Once the reader has pressed the action, the form has
   asked for a window, and the list has grown. It never reads `hasPrevious`, so the app passes
   its query library's flags as they are: a forward feed's "has a previous page" is false
@@ -157,6 +185,7 @@ Root: `<nav>`, `display: inline-flex`, `flex-direction: column`, holding
 | pending | the pressed Button `loading`; the other `disabled` |
 | disabled | every Button `disabled`, the append form's action too; a Button that is `loading` stays busy and is not disabled |
 | more | Button `outline/neutral/sm` `label={messages.more}`, no icon; `loading` while `pending` |
+| link | with an address, a direction or the action that can be pressed: an `<a href>` with the Button's look. Its class composes Button's `button`, `label` and `glyph` classes and it sets the Button's `data-variant`, `data-tone` and `data-size`, as Link's `variant="button"` does, so Button's recipe styles it. The class removes the browser's underline |
 | end | position's type and colour, without tabular figures · a line of its own: the root is a column (`flex-direction: column`), which lays out the replace form's one row as a row, and an empty end line has no height |
 
 `ghost`, for Pagination's reason: the page's single solid button belongs to its primary
@@ -174,17 +203,19 @@ the foot of a list, with no arrows or numbers beside it, it needs an edge to rea
 | pending | `pending` | `data-pending` |
 | held by the app | `disabled` | `data-disabled`; both directions disabled |
 | localized | `label` + `messages` | — |
+| with addresses | both, `previousHref` + `nextHref` | both directions are links |
 | one window | both false | renders nothing |
 | append, more to load | `mode="append"` `hasNext` | one Button, "Load more" |
 | append, with a position | `position="50 shown"`, `hasNext` | the text before the action |
 | append, a window in flight | `pending` | `data-pending`; the action busy |
 | append, held by the app | `disabled` | `data-disabled`; the action disabled |
+| append, with an address | `hasNext` `nextHref` | the action is a link |
 | append, the list ran out | the action pressed, then `hasNext={false}` | the end line says "No more to load" |
 | append, one window | `hasNext={false}`, never pressed | renders nothing |
 
-`requiredSelectors`: `:focus-visible`, for the root's ring. Every control is a Button, so its
-`:hover`, `:focus-visible`, `[data-state='loading']` and `:disabled` are in Button's stylesheet,
-and Button's fixture asserts them (as in Pagination).
+`requiredSelectors`: `:focus-visible`, for the root's ring. Every control is a Button, or a link
+that composes Button's class, so its `:hover`, `:focus-visible`, `[data-state='loading']` and
+`:disabled` are in Button's stylesheet, and Button's fixture asserts them (as in Pagination).
 
 ## Motion
 
@@ -207,6 +238,10 @@ position and not intermediate renders. No `aria-current` anywhere, because a lis
 count has no current page, and claiming one would invent a count. In the append form the end line
 is `role="status"`, present and empty until the list runs out, so its words are announced.
 
+A link has the name of the Button it replaces ("Previous", "Next", "Load more") and the role
+`link`, because it goes to an address. Enter follows it and Space does not, which is the
+platform's behaviour for a link.
+
 **A hold keeps the reader's place.** A hold disables the pager's buttons, and a browser takes
 focus from a button as it is disabled: the page has it, and no control does. So when a hold
 disables the button that has focus, the pager moves focus to its root. The root carries
@@ -227,6 +262,14 @@ Pagination's rule (`pagination.md`).
   and focus stays on the root. The nearest enabled control does something else: previous,
   where next has run out, and a reader who presses again would go back. The root is in the
   pager and says its name, and it is never a disabled control.
+- **With addresses, focus follows a control to its new element**, as in Pagination
+  (`pagination.md`, A11y). A direction is a link while it can be pressed and a Button
+  otherwise, so pressing a link draws it again as the busy Button, and a hold draws it again as
+  a disabled Button. The browser gives focus to the page as the old element leaves. When the
+  page has focus and the control is still drawn, the pager moves focus to the control's new
+  element: the busy Button keeps it, and a disabled one under a hold passes it to the root. An
+  action that is no longer drawn (the list ran out) takes no focus, and focus stays with the
+  browser.
 
 ```contract
 role root navigation
@@ -238,6 +281,10 @@ announces busy when pending
 announces live:polite when with a position
 announces live:polite when append — more to load
 announces live:polite "No more to load" when append — the list ran out
+role previous link when with addresses
+key Enter activates on previous when with addresses
+role more link when append — with an address
+key Enter activates on more when append — with an address
 ```
 
 ## Agent

@@ -13,6 +13,7 @@ export const definition: ElementDefinition = {
   member: 'Pagination',
   props: {
     disabled: 'boolean',
+    getPageHref: 'property',
     label: 'string',
     messages: 'property',
     page: 'number',
@@ -27,7 +28,7 @@ export const definition: ElementDefinition = {
 /** The `<poly-pagination>` element. */
 export type PolyPaginationElement = MemberElement<
   PaginationProps,
-  'disabled' | 'label' | 'messages' | 'page' | 'pageCount' | 'siblingCount'
+  'disabled' | 'getPageHref' | 'label' | 'messages' | 'page' | 'pageCount' | 'siblingCount'
 >
 
 export const PolyPagination = define(definition, Pagination)

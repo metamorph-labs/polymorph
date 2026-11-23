@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { assertGoverned } from '@polymorph/react'
 import { createAgentBridge } from '@polymorph/engine/agent'
-import { pagerHoldLaw } from '@polymorph/conformance/pager-hold'
+import { PAGER_ADDRESSES, pagerHoldLaw } from '@polymorph/conformance/pager-hold'
 import { Button } from '../controls/Button'
 import { SearchInput, type SearchInputProps } from '../controls/SearchInput'
 import { fixedWidthHost, installTestTheme } from '@polymorph/engine/testing'
@@ -232,7 +232,175 @@ describe('Pagination', () => {
       expect(screen.queryByRole('navigation')).toBeNull()
     })
   })
+
+  describe('with addresses (`pagination.md`, Behavior)', () => {
+    const getPageHref = (page: number) => `#page-${page}`
+
+    it('links every other page and both arrows to their addresses, under their buttons’ names', () => {
+      pager({ getPageHref })
+
+      expect(screen.getByRole('link', { name: 'Previous page' }).getAttribute('href')).toBe(
+        '#page-2',
+      )
+      expect(screen.getByRole('link', { name: 'Next page' }).getAttribute('href')).toBe('#page-4')
+      // Pages 1, 2, 4 and 7 around the current page 3, each showing its digit.
+      for (const page of [1, 2, 4, 7]) {
+        const link = screen.getByRole('link', { name: `Page ${page}` })
+        expect(link.getAttribute('href')).toBe(`#page-${page}`)
+        expect(link.textContent).toBe(String(page))
+      }
+    })
+
+    it('keeps the current page a button, never a link to itself', () => {
+      pager({ getPageHref })
+      expect(screen.queryByRole('link', { name: 'Page 3' })).toBeNull()
+      const [current, ...others] = screen.getAllByRole('button')
+      expect(others).toHaveLength(0)
+      expect(current?.getAttribute('aria-label')).toBe('Page 3')
+      expect(current?.getAttribute('aria-current')).toBe('page')
+    })
+
+    it('keeps an arrow with nowhere to go a disabled button', () => {
+      pager({ getPageHref, page: 1 })
+      expect(screen.getByRole('button', { name: 'Previous page' })).toHaveProperty('disabled', true)
+      expect(screen.getByRole('link', { name: 'Next page' }).getAttribute('href')).toBe('#page-2')
+      cleanup()
+
+      pager({ getPageHref, page: 7 })
+      expect(screen.getByRole('button', { name: 'Next page' })).toHaveProperty('disabled', true)
+      expect(screen.getByRole('link', { name: 'Previous page' }).getAttribute('href')).toBe(
+        '#page-6',
+      )
+    })
+
+    it('draws no link while the app holds the pager', () => {
+      const onPageChange = pager({ getPageHref, disabled: true })
+      expect(screen.queryAllByRole('link')).toHaveLength(0)
+      const buttons = screen.getAllByRole('button')
+      expect(buttons).toHaveLength(7)
+      for (const button of buttons) expect(button).toHaveProperty('disabled', true)
+      expect(onPageChange).not.toHaveBeenCalled()
+    })
+
+    it('calls onPageChange for a plain click, in place of the browser’s navigation', async () => {
+      const onPageChange = pager({ getPageHref })
+      let prevented: boolean | undefined
+      const watch = (event: MouseEvent) => {
+        prevented = event.defaultPrevented
+        event.preventDefault()
+      }
+      document.addEventListener('click', watch)
+      try {
+        await userEvent.click(screen.getByRole('link', { name: 'Page 4' }))
+      } finally {
+        document.removeEventListener('click', watch)
+      }
+      expect(onPageChange).toHaveBeenCalledExactlyOnceWith(4)
+      expect(prevented).toBe(true)
+    })
+
+    it('calls onPageChange for the click Enter makes on a focused link', async () => {
+      const onPageChange = pager({ getPageHref })
+      const watch = (event: MouseEvent) => event.preventDefault()
+      document.addEventListener('click', watch)
+      try {
+        screen.getByRole('link', { name: 'Next page' }).focus()
+        await userEvent.keyboard('{Enter}')
+      } finally {
+        document.removeEventListener('click', watch)
+      }
+      expect(onPageChange).toHaveBeenCalledExactlyOnceWith(4)
+    })
+
+    it('leaves a click with a modifier key or another button to the browser', () => {
+      const onPageChange = pager({ getPageHref })
+      const link = screen.getByRole('link', { name: 'Page 4' })
+      for (const init of [
+        { metaKey: true },
+        { ctrlKey: true },
+        { shiftKey: true },
+        { altKey: true },
+        { button: 1 },
+      ]) {
+        expect(taken(link, init), JSON.stringify(init)).toBe(false)
+      }
+      expect(onPageChange).not.toHaveBeenCalled()
+    })
+
+    it('looks like the button it replaces', () => {
+      render(<Pagination label="Buttons" page={3} pageCount={7} onPageChange={vi.fn()} />)
+      render(
+        <Pagination
+          label="Links"
+          page={3}
+          pageCount={7}
+          getPageHref={getPageHref}
+          onPageChange={vi.fn()}
+        />,
+      )
+      const within = (label: string, role: 'button' | 'link', name: string) =>
+        screen
+          .getAllByRole(role, { name })
+          .find((control) => control.closest('nav')?.getAttribute('aria-label') === label)
+
+      for (const name of ['Previous page', 'Page 4', 'Next page']) {
+        const button = within('Buttons', 'button', name)
+        const link = within('Links', 'link', name)
+        if (button === undefined || link === undefined) throw new Error(`no ${name} control`)
+        for (const attribute of ['data-variant', 'data-tone', 'data-size', 'data-icon-only']) {
+          expect(link.getAttribute(attribute), `${name} ${attribute}`).toBe(
+            button.getAttribute(attribute),
+          )
+        }
+        const drawn = getComputedStyle(button)
+        const linked = getComputedStyle(link)
+        for (const property of [
+          'color',
+          'background-color',
+          'border-radius',
+          'font-size',
+          'font-weight',
+          'text-decoration-line',
+          'cursor',
+        ] as const) {
+          expect(linked.getPropertyValue(property), `${name} ${property}`).toBe(
+            drawn.getPropertyValue(property),
+          )
+        }
+        expect(link.getBoundingClientRect().width).toBe(button.getBoundingClientRect().width)
+        expect(link.getBoundingClientRect().height).toBe(button.getBoundingClientRect().height)
+      }
+    })
+
+    it('draws only buttons without addresses', () => {
+      pager()
+      expect(screen.getByRole('navigation').querySelector('a')).toBeNull()
+      // Both arrows and the pages 1, 2, 3, 4 and 7.
+      expect(screen.getAllByRole('button')).toHaveLength(7)
+    })
+  })
 })
+
+/**
+ * Dispatches a click on `link` and reports whether the member took the navigation from the
+ * browser. A listener on the document hears the click after the member, reads its decision, and
+ * then stops the navigation itself, so a click the member leaves alone does not move the runner's
+ * page or open a tab.
+ */
+function taken(link: HTMLElement, init: MouseEventInit = {}): boolean {
+  let prevented = false
+  const watch = (event: MouseEvent) => {
+    prevented = event.defaultPrevented
+    event.preventDefault()
+  }
+  document.addEventListener('click', watch, { once: true })
+  try {
+    link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ...init }))
+  } finally {
+    document.removeEventListener('click', watch)
+  }
+  return prevented
+}
 
 /**
  * Where focus goes when a hold disables the page button that has it, and when
@@ -243,7 +411,7 @@ describe('Pagination', () => {
 pagerHoldLaw({
   shell: 'React',
   member: 'Pagination',
-  mount({ asked }) {
+  mount({ addressed, asked }) {
     let change: (next: { page?: number; disabled?: boolean }) => void = () => {}
     function Held() {
       const [held, setHeld] = useState({ page: 3, disabled: false })
@@ -258,6 +426,7 @@ pagerHoldLaw({
           page={held.page}
           pageCount={7}
           disabled={held.disabled}
+          getPageHref={addressed ? PAGER_ADDRESSES.page : undefined}
           onPageChange={asked}
         />
       )

@@ -2526,6 +2526,9 @@ public struct PMCursorPaginationProps {
   /// `append` is "Load more": one action that adds the next window below the ones on screen, for a
   /// feed or a log read from the top.
   public var mode: PMCursorPaginationMode?
+  /// The next window's address, as `previousHref` is the previous one's: next, or in the append
+  /// form its action, is a link to it while it can be pressed, and a plain click calls `onNext`.
+  public var nextHref: String?
   /// The next window: in place of this one, or in the append form below it.
   public var onNext: @MainActor () -> Void
   /// The previous window, in the replace form; the append form has no previous.
@@ -2536,6 +2539,12 @@ public struct PMCursorPaginationProps {
   /// The current window in the app's words, such as "26–50" or "Newest first, page 2"; never a
   /// total, because the list does not return one.
   public var position: String?
+  /// The previous window's address, such as `?before=c25`. Given, previous is a link to it while it
+  /// can be pressed, so a crawler, a new tab and a reader whose script has not loaded can follow
+  /// it. A click the browser would follow in this tab calls `onPrevious` in place of the
+  /// navigation; a click with a modifier key opens the address. The append form does not read it:
+  /// it has no previous direction.
+  public var previousHref: String?
 
   public init(
     disabled: Bool? = nil,
@@ -2544,10 +2553,12 @@ public struct PMCursorPaginationProps {
     label: String? = nil,
     messages: PMCursorPaginationMessages? = nil,
     mode: PMCursorPaginationMode? = nil,
+    nextHref: String? = nil,
     onNext: @escaping @MainActor () -> Void,
     onPrevious: (@MainActor () -> Void)? = nil,
     pending: Bool? = nil,
-    position: String? = nil
+    position: String? = nil,
+    previousHref: String? = nil
   ) {
     self.disabled = disabled
     self.hasNext = hasNext
@@ -2555,10 +2566,12 @@ public struct PMCursorPaginationProps {
     self.label = label
     self.messages = messages
     self.mode = mode
+    self.nextHref = nextHref
     self.onNext = onNext
     self.onPrevious = onPrevious
     self.pending = pending
     self.position = position
+    self.previousHref = previousHref
   }
 }
 
@@ -5695,6 +5708,12 @@ public struct PMPaginationProps {
   /// The app holds the pager while it does something else to the list: every control is disabled,
   /// the current page too, and no page is asked for.
   public var disabled: Bool?
+  /// A page's address, such as `?page=3`. Given, each control that goes to another page is a link
+  /// to that page's address, so a crawler, a new tab and a reader whose script has not loaded can
+  /// follow it. A click the browser would follow in this tab calls `onPageChange` in place of the
+  /// navigation; a click with a modifier key opens the address. The current page, a control with
+  /// nowhere to go and a held pager's controls stay buttons.
+  public var getPageHref: (@MainActor (Double) -> String)?
   public var label: String?
   /// Omit for the generic English defaults; localized hosts pass their own.
   public var messages: PMPaginationMessages?
@@ -5706,6 +5725,7 @@ public struct PMPaginationProps {
 
   public init(
     disabled: Bool? = nil,
+    getPageHref: (@MainActor (Double) -> String)? = nil,
     label: String? = nil,
     messages: PMPaginationMessages? = nil,
     onPageChange: @escaping @MainActor (Double) -> Void,
@@ -5714,6 +5734,7 @@ public struct PMPaginationProps {
     siblingCount: PMPaginationSiblingCount? = nil
   ) {
     self.disabled = disabled
+    self.getPageHref = getPageHref
     self.label = label
     self.messages = messages
     self.onPageChange = onPageChange

@@ -1,6 +1,6 @@
 import { batch, createSignal } from 'solid-js'
 
-import { pagerHoldLaw } from '@polymorph/conformance/pager-hold'
+import { PAGER_ADDRESSES, pagerHoldLaw } from '@polymorph/conformance/pager-hold'
 
 import { mount } from '../mount'
 import Pagination from './Pagination'
@@ -13,7 +13,7 @@ import Pagination from './Pagination'
 pagerHoldLaw({
   shell: 'Solid',
   member: 'Pagination',
-  async mount({ asked }) {
+  async mount({ addressed, asked }) {
     const [page, setPage] = createSignal(3)
     const [disabled, setDisabled] = createSignal(false)
     await mount(() => (
@@ -22,6 +22,7 @@ pagerHoldLaw({
         page={page()}
         pageCount={7}
         disabled={disabled()}
+        getPageHref={addressed ? PAGER_ADDRESSES.page : undefined}
         onPageChange={asked}
       />
     ))

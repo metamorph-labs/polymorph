@@ -7,6 +7,7 @@ import { Inline } from '../layout/Inline'
 import { memberAttr, useAgentMember, useDevWarning } from '@polymorph/react'
 import styles from '@polymorph/recipes/structure/cursor-pagination.module.css'
 import { usePagerFocus } from './pager-focus'
+import { PagerLink } from './pager-link'
 
 /**
  * Previous and next controls for a cursor-paged list
@@ -21,6 +22,10 @@ import { usePagerFocus } from './pager-focus'
  * more": one action that adds the next window below the ones on screen. Both
  * forms read the same response and share every prop but the previous
  * direction, so they are one member.
+ *
+ * With `previousHref` and `nextHref`, a direction that can be pressed is a link
+ * to its window's address (`pager-link.tsx`), so a crawler and a new tab can
+ * follow it, and a plain click still calls the direction's handler.
  */
 
 /**
@@ -73,7 +78,23 @@ interface CursorPaginationShared {
   label?: string
   /** Omit for the generic English defaults; localized hosts pass their own. */
   messages?: CursorPaginationMessages
+  /**
+   * The previous window's address, such as `?before=c25`. Given, previous is a link to it
+   * while it can be pressed, so a crawler, a new tab and a reader whose script has not loaded
+   * can follow it. A click the browser would follow in this tab calls `onPrevious` in place of
+   * the navigation; a click with a modifier key opens the address. The append form does not
+   * read it: it has no previous direction.
+   */
+  previousHref?: string
+  /**
+   * The next window's address, as `previousHref` is the previous one's: next, or in the append
+   * form its action, is a link to it while it can be pressed, and a plain click calls `onNext`.
+   */
+  nextHref?: string
 }
+
+/** The link's classes, from this member's recipe. */
+const LINK = { link: styles.link, label: styles.linkLabel, glyph: styles.linkGlyph }
 
 /**
  * The two forms, as a union on `mode`, so the replace form's `onPrevious` is
@@ -109,6 +130,8 @@ export function CursorPagination({
   disabled = false,
   label = 'Pagination',
   messages,
+  previousHref,
+  nextHref,
 }: CursorPaginationProps) {
   // The direction the reader pressed. `pending` says a window is loading but not
   // which one, and the busy state belongs on the button that was pressed.
@@ -133,8 +156,9 @@ export function CursorPagination({
 
   // A hold that disables the button with focus moves focus to the root, and
   // gives it back when the hold ends. A busy button is not disabled, so it
-  // keeps focus until its window arrives. The buttons are named in the order
-  // they are drawn: the append form's action leaves when its list runs out.
+  // keeps focus until its window arrives. The controls are named in the order
+  // they are drawn, as a button or as a link: the append form's action leaves
+  // when its list runs out.
   const focus = usePagerFocus(
     disabled,
     append ? (hasNext || pending ? ['more'] : []) : ['previous', 'next'],
@@ -203,6 +227,13 @@ export function CursorPagination({
   // next one and none in flight. Under the check above, `paged` holds here.
   const ended = !hasNext && !pending
 
+  // With an address, a direction that can be pressed is a link to its window. One with no
+  // window, a held pager's and either while a window is in flight stay Buttons, because a
+  // control that cannot be followed is not drawn as a link.
+  const follows = !pending && !disabled
+  const previousLink = previousHref !== undefined && hasPrevious && follows
+  const nextLink = nextHref !== undefined && hasNext && follows
+
   return (
     <nav
       className={styles.pagination}
@@ -224,7 +255,16 @@ export function CursorPagination({
                 {position}
               </span>
             )}
-            {ended ? null : (
+            {ended ? null : nextLink ? (
+              <PagerLink
+                classes={LINK}
+                href={nextHref}
+                onFollow={go('next')}
+                variant="outline"
+                size="sm"
+                label={more}
+              />
+            ) : (
               /*
                * Outline, not ghost: a lone action at the foot of a list needs an
                * edge to read as a control, with no arrows or numbers beside it.
@@ -245,16 +285,28 @@ export function CursorPagination({
           </>
         ) : (
           <>
-            <Button
-              variant="ghost"
-              tone="neutral"
-              size="sm"
-              icon="previous"
-              label={words.previous}
-              loading={pending && asked === 'previous'}
-              disabled={!hasPrevious || (pending ? asked !== 'previous' : disabled)}
-              onClick={go('previous')}
-            />
+            {previousLink ? (
+              <PagerLink
+                classes={LINK}
+                href={previousHref}
+                onFollow={go('previous')}
+                variant="ghost"
+                size="sm"
+                icon="previous"
+                label={words.previous}
+              />
+            ) : (
+              <Button
+                variant="ghost"
+                tone="neutral"
+                size="sm"
+                icon="previous"
+                label={words.previous}
+                loading={pending && asked === 'previous'}
+                disabled={!hasPrevious || (pending ? asked !== 'previous' : disabled)}
+                onClick={go('previous')}
+              />
+            )}
 
             {position === undefined ? null : (
               /*
@@ -266,16 +318,28 @@ export function CursorPagination({
               </span>
             )}
 
-            <Button
-              variant="ghost"
-              tone="neutral"
-              size="sm"
-              trailingIcon="next"
-              label={words.next}
-              loading={pending && asked === 'next'}
-              disabled={!hasNext || (pending ? asked !== 'next' : disabled)}
-              onClick={go('next')}
-            />
+            {nextLink ? (
+              <PagerLink
+                classes={LINK}
+                href={nextHref}
+                onFollow={go('next')}
+                variant="ghost"
+                size="sm"
+                trailingIcon="next"
+                label={words.next}
+              />
+            ) : (
+              <Button
+                variant="ghost"
+                tone="neutral"
+                size="sm"
+                trailingIcon="next"
+                label={words.next}
+                loading={pending && asked === 'next'}
+                disabled={!hasNext || (pending ? asked !== 'next' : disabled)}
+                onClick={go('next')}
+              />
+            )}
           </>
         )}
       </Inline>

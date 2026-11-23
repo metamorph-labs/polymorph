@@ -45,6 +45,28 @@ export const states: ComponentStates = {
       expect: { 'data-disabled': '' },
     },
     {
+      name: 'with addresses — every page but the current one is a link',
+      render: (overrides = {}) =>
+        h(Pagination, {
+          page: 3,
+          pageCount: 5,
+          getPageHref: (page: number) => `#page-${page}`,
+          ...overrides,
+        }),
+    },
+    {
+      name: 'held, with addresses — no links, every control a disabled button',
+      render: (overrides = {}) =>
+        h(Pagination, {
+          page: 3,
+          pageCount: 5,
+          disabled: true,
+          getPageHref: (page: number) => `#page-${page}`,
+          ...overrides,
+        }),
+      expect: { 'data-disabled': '' },
+    },
+    {
       name: 'one page — nothing at all, because one page is not a paginated list',
       render: (overrides = {}) => h(Pagination, { page: 1, pageCount: 1, ...overrides }),
       rendersNothing: true,
