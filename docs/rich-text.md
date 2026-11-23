@@ -285,7 +285,7 @@ In the field, the application's control anchors a new thread to the selection:
       variant="ghost"
       iconOnly
       icon="comment"
-      aria-label="Comment"
+      label="Comment"
       onClick={() => {
         const thread = createThread(editor.selection.text)
         editor.annotate(thread.id)
@@ -306,19 +306,25 @@ On a page that only shows the document, `RichTextContent` takes the same props, 
   onAnnotationSelect={setActiveThread}
   selectionActions={({ range, text }) => (
     <Button
+      label="Comment"
       onClick={() => {
         const thread = createThread(text)
         setBody(annotateRichText(body, range, thread.id))
       }}
-    >
-      Comment
-    </Button>
+    />
   )}
 />
 ```
 
 `annotations` lists the annotations drawn. A resolved thread's anchor stays in the document and is
 left out of the list. Without the prop every annotation is drawn.
+
+With `onAnnotationSelect` each highlight is a button a person reaches by Tab, named by its own
+words. Where annotations overlap, the innermost one takes the press. A press on a link inside a
+highlight follows the link. An annotation on part of a link is drawn around the whole link, and
+its anchor stays exact. When the application stores the annotated document and the reader draws it
+again, the selection ends and the bar leaves. `messages` holds the bar's name and its
+announcement.
 
 A server works with annotations through the same entry:
 

@@ -186,7 +186,6 @@ function advance(offsets: Offsets | null, node: unknown): At | null {
 const START = 'data-rich-text-start'
 const END = 'data-rich-text-end'
 const ATOM = 'data-rich-text-atom'
-const SEGMENTS = 'data-rich-text-segments'
 const CODE = 'data-rich-text-code'
 const REGION = `[${START}]`
 
@@ -196,21 +195,14 @@ const REGION = `[${START}]`
  * node of a later version) is an atom: a selection that ends in it covers it
  * whole. A code block is an atom whose code, CodeBlock's `pre > code`, is its
  * stored text, so a selection that ends in the code ends where it does, and
- * one that ends in the block's own control covers the block. A heading's are
- * segments, because Heading draws its content as one string.
+ * one that ends in the block's own control covers the block.
  */
-function region(
-  at: At | null,
-  atom: boolean,
-  segments?: string,
-  code = false,
-): Record<string, string | undefined> {
+function region(at: At | null, atom: boolean, code = false): Record<string, string | undefined> {
   if (at === null) return {}
   return {
     [START]: String(at.start),
     [END]: String(at.end),
     [ATOM]: atom ? '' : undefined,
-    [SEGMENTS]: segments,
     [CODE]: code ? '' : undefined,
   }
 }
@@ -404,6 +396,18 @@ function drawLink(
   )
 }
 
+/**
+ * Inline code. Code takes a string, so a run that holds a drawn annotation is
+ * drawn as the same `code` element with a class that composes Code's, and the
+ * highlight inside it, as the editor draws it: the wash is on the words inside
+ * the chip.
+ */
+function drawCode(text: string, ids: readonly string[], context: RenderContext): ReactNode {
+  if (ids.length === 0) return <Code>{text}</Code>
+  // A stop is named by its words, so a fragment of white space is not one.
+  return <code className={styles.code}>{annotate(text, ids, context, text.trim() !== '')}</code>
+}
+
 function drawEntity(
   node: RichTextEntity,
   ids: readonly string[],
@@ -421,13 +425,24 @@ function drawEntity(
   return annotate(token, ids, context, true)
 }
 
-function renderInlines(nodes: readonly RichTextInline[], context: RenderContext): ReactNode[] {
+/**
+ * A paragraph's inlines, or a heading's. A heading holds text, entities,
+ * inline code and the text of links, and no emphasis, so in a heading a link's
+ * runs are drawn as their text and a hard break as a space, as Heading draws
+ * them.
+ */
+function renderInlines(
+  nodes: readonly RichTextInline[],
+  context: RenderContext,
+  within: 'paragraph' | 'heading' = 'paragraph',
+): ReactNode[] {
+  const heading = within === 'heading'
   const order = nesting(nodes, context.marking.drawn)
   const drawn: ReactNode[] = []
   let index = 0
   while (index < nodes.length) {
     const node = nodes[index] as RichTextInline
-    const href = linkOf(node)
+    const href = heading ? undefined : linkOf(node)
     if (href !== undefined) {
       const runs: RichTextText[] = []
       const indexes: number[] = []
@@ -452,15 +467,24 @@ function renderInlines(nodes: readonly RichTextInline[], context: RenderContext)
     const at = advance(context.offsets, node)
     switch (node.type) {
       case 'text': {
-        const text = has(node, 'code') ? <Code>{node.text}</Code> : node.text
+        const ids = order([index])
         // A stop is named by its words, so a fragment of white space is not one.
-        const marked = annotate(text, order([index]), context, node.text.trim() !== '')
-        const run = emphasised(marked, (type) => has(node, type))
+        const marked = has(node, 'code')
+          ? drawCode(node.text, ids, context)
+          : annotate(node.text, ids, context, node.text.trim() !== '')
+        const run = heading ? marked : emphasised(marked, (type) => has(node, type))
         drawn.push(<Fragment key={index}>{piece(run, at, false)}</Fragment>)
         break
       }
       case 'break':
-        drawn.push(<br key={index} {...region(at, true)} />)
+        // A break counts one line break, and a heading draws it as one space.
+        drawn.push(
+          heading ? (
+            <Fragment key={index}>{piece(' ', at, false)}</Fragment>
+          ) : (
+            <br key={index} {...region(at, true)} />
+          ),
+        )
         break
       case 'entity':
         drawn.push(
@@ -497,46 +521,40 @@ function headingPiece(node: RichTextInline): string {
 }
 
 /**
- * A heading. Heading takes a string, so its words are drawn without their
- * marks, and an annotation in a heading is not drawn here. While the member
- * maps selections, a box around it says where the heading is, and its
- * segments say how the string is made: a number of UTF-16 units of text, or
- * `a<units>/<code points>` for an entity or a node of a later version, whose
- * drawn text a selection covers whole.
+ * A heading. A plain document's heading is Heading, which takes a string, so
+ * its words are drawn without their marks. A heading that holds a drawn
+ * annotation, or any heading while the member maps selections, is drawn by
+ * the member as the same `h2`–`h4`, with a class that composes Heading's and
+ * the level Heading writes, so it looks the same, and its inlines are drawn
+ * one by one: a highlight, a tab stop and a selection's position then work in
+ * a heading as in a paragraph.
  */
 function drawHeading(
   block: Extract<RichTextBlock, { type: 'heading' }>,
   key: number,
   context: RenderContext,
 ): ReactNode {
-  const start = context.offsets?.at ?? 0
-  const pieces = block.content.map((node) => ({
-    text: headingPiece(node),
-    at: advance(context.offsets, node),
-    atom: node.type !== 'text' && node.type !== 'break',
-  }))
-  const text = pieces.map((part) => part.text).join('')
-  // A heading names the section under it, so one with no name is not drawn.
-  if (text.trim() === '') return null
-  const heading = (
-    <Heading key={key} level={pageLevel(block.level, context.headingLevel)}>
-      {text}
-    </Heading>
+  const level = pageLevel(block.level, context.headingLevel)
+  const text = block.content.map(headingPiece).join('')
+  const annotated = block.content.some((node) =>
+    annotationIds(node).some((id) => context.marking.drawn(id)),
   )
-  if (context.offsets === null) return heading
-  const segments = pieces.some((part) => part.atom)
-    ? pieces
-        .map((part) =>
-          part.atom
-            ? `a${part.text.length}/${(part.at?.end ?? 0) - (part.at?.start ?? 0)}`
-            : String(part.text.length),
-        )
-        .join(' ')
-    : undefined
+  if (context.offsets === null && !annotated) {
+    // A heading names the section under it, so one with no name is not drawn.
+    return text.trim() === '' ? null : (
+      <Heading key={key} level={level}>
+        {text}
+      </Heading>
+    )
+  }
+  // Drawn even when it is not shown, because the walk counts every heading's text.
+  const inlines = renderInlines(block.content, context, 'heading')
+  if (text.trim() === '') return null
+  const Element = level === 4 ? 'h4' : level === 3 ? 'h3' : 'h2'
   return (
-    <div key={key} {...region({ start, end: context.offsets.at }, false, segments)}>
-      {heading}
-    </div>
+    <Element key={key} className={styles.heading} data-level={level}>
+      {inlines}
+    </Element>
   )
 }
 
@@ -586,7 +604,7 @@ function renderBlocks(blocks: readonly RichTextBlock[], context: RenderContext):
         return at === null ? (
           code
         ) : (
-          <div key={index} {...region(at, true, undefined, true)}>
+          <div key={index} {...region(at, true, true)}>
             {code}
           </div>
         )
@@ -678,29 +696,6 @@ function textAfter(element: Element, node: Node, offset: number): string {
   return range.toString()
 }
 
-/**
- * A position in a heading: `before` is its drawn text up to the point. A text
- * segment is drawn as its plain text, so its code points are counted; an atom
- * is covered whole.
- */
-function inSegments(segments: string, text: string, start: number, before: number, side: Side) {
-  let drawnAt = 0
-  let position = start
-  for (const token of segments.split(' ')) {
-    const atom = token.startsWith('a')
-    const [units = 0, points = 0] = (atom ? token.slice(1) : token).split('/').map(Number)
-    const drawnEnd = drawnAt + units
-    const size = atom ? points : codePoints(text.slice(drawnAt, drawnEnd))
-    if (before < drawnEnd) {
-      if (!atom) return position + codePoints(text.slice(drawnAt, before))
-      return before === drawnAt || side === 'start' ? position : position + size
-    }
-    position += size
-    drawnAt = drawnEnd
-  }
-  return position
-}
-
 /** A collapsed range at a point, to compare other points with. */
 function pointRange(node: Node, offset: number): Range {
   const range = (node.ownerDocument ?? (node as Document)).createRange()
@@ -752,12 +747,7 @@ function positionOf(root: HTMLElement, node: Node, offset: number, side: Side): 
     if (textAfter(found, node, offset) === '') return end
     return side === 'start' ? start : end
   }
-  const segments = found.getAttribute(SEGMENTS)
-  const position =
-    segments === null
-      ? start + codePoints(before)
-      : inSegments(segments, found.textContent ?? '', start, before.length, side)
-  return Math.min(end, Math.max(start, position))
+  return Math.min(end, start + codePoints(before))
 }
 
 /**

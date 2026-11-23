@@ -55,9 +55,16 @@ client component when it takes a function. A document with neither `onAnnotation
 
 Inline, inside a paragraph: `strong`, `em`, `s`, Code (inline code), Link, `<br>` (a hard break),
 the entity token or what `entity` returns, and highlights: a `mark[data-annotation-id]` around
-each fragment of a drawn annotation, inside the emphasis elements and around Code, a Link or an
-entity, one per id where annotations overlap, the active one's with `data-active`. With
-`onAnnotationSelect`, each annotation's tab stop is one of its fragments, `role="button"`.
+each fragment of a drawn annotation, inside the emphasis elements, inside an annotated run's
+`code` and around a Link or an entity, one per id where annotations overlap, the active one's with
+`data-active`. With `onAnnotationSelect`, each annotation's tab stop is one of its fragments,
+`role="button"`.
+
+A heading that holds a drawn annotation, and every heading while the member maps selections, is
+the member's own `h2`–`h4` with `data-level` and the `heading` part, which composes Heading's
+class; its inlines are drawn one by one, as a paragraph's are, within what a heading holds (below).
+Inline code that holds a drawn annotation is the member's own `code` with the `code` part, which
+composes Code's class, with the highlight inside it.
 
 ## API
 
@@ -85,8 +92,8 @@ Attributes: `data-size`; `data-empty` while `isRichTextEmpty(value)` holds, when
 nothing inside it. The rest state has no `data-empty`. A highlight carries `data-annotation-id`,
 and the active annotation's fragments `data-active`. With `selectionActions`, each drawn piece of
 the document carries where it is in the plain text (`data-rich-text-start`, `data-rich-text-end`,
-and `data-rich-text-atom`, `-segments` or `-code` where its drawing is not its text), which the
-member reads to map a selection; no recipe reads them.
+and `data-rich-text-atom` or `-code` where its drawing is not its text), which the member reads to
+map a selection; no recipe reads them.
 
 ## The document
 
@@ -95,11 +102,11 @@ Each node is drawn by one member, as Markdown draws each construct:
 | Node | Drawn as |
 | --- | --- |
 | `paragraph` | Text at `size` |
-| `heading` | Heading. The document's level 1 is drawn at `headingLevel`, and each deeper level adds one, floor 4. Heading takes a string, so the content is drawn as its text: an entity as its label, a break as a space, a link and inline code as their text. A heading with no text draws nothing, because a heading names the section under it and one with no name names nothing |
+| `heading` | Heading. The document's level 1 is drawn at `headingLevel`, and each deeper level adds one, floor 4. Heading takes a string, so the content is drawn as its text: an entity as its label, a break as a space, a link and inline code as their text. A heading with no text draws nothing, because a heading names the section under it and one with no name names nothing. A heading that holds a drawn annotation, or any heading while the member maps selections, is drawn by the member as Heading's element, class and level, with its inlines one by one: text without emphasis, the entity token or what `entity` returns, inline code as Code, a link's text without the Link, a break as a space |
 | `list` | `<ul>`, or `<ol>` when `ordered`, of `<li>`, each item its own blocks; a nested list is a later block of its item. A numbered list whose first number is not 1 carries it as `start` |
 | `blockquote` | `<blockquote>` of its blocks |
 | `codeBlock` | CodeBlock, `copyable`, as Markdown's closed fence is, because a stored block is never partial. Its `label` is the block's `language`, the writer's own word for what the block holds, and the scroll region keeps CodeBlock's default name when there is none. A block with no text has nothing to copy and draws no copy control. The copy control keeps CodeBlock's default name, as in Markdown |
-| `text` | its text inside `<strong>`, `<em>` and `<s>` for `bold`, `italic` and `strike`, outermost first, around Code for `code` |
+| `text` | its text inside `<strong>`, `<em>` and `<s>` for `bold`, `italic` and `strike`, outermost first, around Code for `code`; a `code` run that holds a drawn annotation is Code's element and class, drawn by the member, with the highlight inside |
 | `text` with `link` | Link, `external` when the target has a scheme (`https:`, `mailto:`, `tel:`), with `onNavigate`. Neighbouring runs with the same target are one Link, so one link is one tab stop and one name. Link takes a string, so the marks every run of the link shares are drawn around it, and the others, and `code`, are dropped, as Markdown drops emphasis inside a link's label |
 | `break` | `<br>` |
 | `entity` | what `entity(node)` returns; the entity token when it returns `undefined` or when there is no `entity` |
@@ -137,9 +144,13 @@ then.
 one not drawn leaves no element and no attribute. Each fragment is a `mark`, nested where
 annotations overlap exactly as the editor nests them, so the two draw one document alike: per
 paragraph, the innermost is the one whose stretch starts last, then the one that ends first, then
-by id. A `mark` cannot go inside Link, Code or Heading, which take a string, so an annotation on
-any run of a link is drawn around the whole Link, one on inline code around the Code, and one in a
-heading is not drawn: Heading draws its words as text, as it draws a link's.
+by id. Link, Code and Heading take a string, so no `mark` can go inside them. A heading or a run
+of inline code that holds a drawn annotation is therefore drawn by the member as the same element
+with a class that composes the member's own, and the highlight is inside it, as in the editor. A
+link is not: an annotation on any run of a link, the whole link or part of it, is drawn around
+the whole Link, because the Link is one name and one tab stop. The anchor keeps its exact words
+(`richTextAnnotations` reads them), and the editor draws the same annotation on those words
+alone.
 
 **A press on a highlight.** With `onAnnotationSelect`, a press anywhere on a drawn annotation calls
 it with the innermost id under the press. A press that ends a selection drag selects text and calls
@@ -192,6 +203,8 @@ content's end, and one anywhere else outside the content draws no bar.
 | annotation active | bg `--pm-warning-subtle-active` · outline `2px solid --pm-warning-border`, at the base rule's specificity, so the focus ring wins on a focused stop |
 | annotated entity | a `2px` ring of the annotation's wash (`box-shadow`), `--pm-warning-subtle`, or `--pm-warning-subtle-active` in the active one, because the entity's own wash covers the highlight; the rule under it, `border-block-end 1px solid --pm-warning-border` |
 | pressable highlight | the focus convention (`focusRing`) · `cursor: pointer` |
+| heading (the member's) | Heading's class, composed, with `data-level`, so Heading's rules draw it |
+| code (the member's) | Code's class, composed |
 | selection bar | RichTextInput's: `selection-bar.module.css` |
 | actions | `display: contents`: the app's controls are the bar's own row |
 | status | the conventions' `visuallyHidden` |
@@ -223,6 +236,7 @@ ring is an outline, which forced colours keep.
 | annotated | two annotations, the second active, with `onAnnotationSelect` | — |
 | overlapping annotations | an annotation inside another, the inner one active, with `onAnnotationSelect` | — |
 | an annotated entity | a mention and the words after it in one annotation | — |
+| an annotated heading | an annotation on a heading's words, with `onAnnotationSelect` | the member's `h2`, with the highlight |
 | the selection bar | `selectionActions`, words selected once drawn | the bar at the selection |
 
 `requiredSelectors`: `:focus-visible`, a highlight's ring, which the keyboard brings. Every other
@@ -243,7 +257,7 @@ None of its own. CodeBlock brings `copy`/`confirm`; Link brings `open-external`;
 ## A11y
 
 Headings are real headings, one level below the page's by default, so a document's outline nests
-under the page's title. Lists are `<ul>`/`<ol>` with the writer's first number, quotes are
+under the page's title, whether Heading or the member draws them. Lists are `<ul>`/`<ol>` with the writer's first number, quotes are
 `<blockquote>`, code blocks are CodeBlock's `<pre><code>`, and links are real `<a href>`. The
 entity token is text with no role: its label, with its trigger character, is what a screen
 reader reads, and an entity the app draws brings its own member's semantics. The empty document

@@ -270,6 +270,25 @@ export const ANNOTATED_ENTITY: RichTextDocument = {
   ],
 }
 
+/** A thread on a heading's words, which the member draws as Heading draws the heading. */
+export const ANNOTATED_HEADING: RichTextDocument = {
+  format: RICH_TEXT_FORMAT,
+  blocks: [
+    {
+      type: 'heading',
+      level: 1,
+      content: [
+        { type: 'text', text: 'Webhook ' },
+        { type: 'text', text: 'retries', marks: [thread('thread-4')] },
+      ],
+    },
+    {
+      type: 'paragraph',
+      content: [{ type: 'text', text: 'A failed delivery is retried on a schedule.' }],
+    },
+  ],
+}
+
 /**
  * Selects `words` in the content once it is drawn, so the selection bar shows.
  * The member is drawn inside a box whose ref this is, because the member
@@ -372,6 +391,10 @@ export const states: ComponentStates = {
     {
       name: 'an annotated entity — a mention inside a thread, ringed with its wash',
       render: () => <RichTextContent value={ANNOTATED_ENTITY} />,
+    },
+    {
+      name: 'an annotated heading — a thread on a heading’s words, drawn as Heading draws it',
+      render: () => <RichTextContent value={ANNOTATED_HEADING} onAnnotationSelect={noop} />,
     },
     {
       // Words are selected once the member is drawn, because the bar is drawn at a selection.

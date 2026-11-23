@@ -4,9 +4,10 @@
  * Text, headings are Heading, code blocks are CodeBlock, inline code is Code
  * and links are Link. The spacing between blocks, a list's markers and a
  * quote's rule are Markdown's, composed and not restated, so a list in a reply
- * and a list in a comment are one decision. The entity token, the annotation,
- * the live region and the wrapper of the selection bar's controls are this
- * sheet's own.
+ * and a list in a comment are one decision. A heading or inline code the member
+ * draws itself composes Heading's or Code's class. The entity token, the
+ * annotation, the live region and the wrapper of the selection bar's controls
+ * are this sheet's own.
  *
  * Each part is one class, and no rule reaches through the root, because
  * RichTextInput's editable surface composes the same classes so that a
@@ -26,6 +27,20 @@
 
 .quote {
   composes: quote from '../ai/markdown.module.css';
+}
+
+/* A heading the member draws itself: one that holds a drawn annotation, or any
+   heading while the member maps selections. It is Heading's element with
+   Heading's class and the level Heading writes (`data-level`), so Heading's
+   rules draw it. */
+.heading {
+  composes: heading from './heading.module.css';
+}
+
+/* Inline code that holds a drawn annotation: Code's element with Code's class,
+   so the highlight sits inside the chip, as the editor draws it. */
+.code {
+  composes: code from './code.module.css';
 }
 
 /* A reference to something the app owns, such as a person or an issue, on the

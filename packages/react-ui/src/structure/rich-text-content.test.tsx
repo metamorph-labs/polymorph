@@ -555,7 +555,7 @@ describe('annotations', () => {
     expect(link.parentElement?.getAttribute('data-annotation-id')).toBe('thread-3')
   })
 
-  it('draws an annotation on any run of a Link around the whole Link, and one on inline code around Code', () => {
+  it('draws an annotation on any run of a Link around the whole Link', () => {
     render(
       <RichTextContent
         value={doc(
@@ -564,16 +564,67 @@ describe('annotations', () => {
             t('the ', { type: 'link', href: '/guide' }),
             t('delivery', { type: 'link', href: '/guide' }, note('one')),
             t(' guide', { type: 'link', href: '/guide' }),
-            t(' and '),
-            t('retry()', { type: 'code' }, note('two')),
+            t('.'),
           ),
         )}
       />,
     )
     const link = screen.getByRole('link', { name: 'the delivery guide' })
     expect(link.parentElement).toBe(marks('one')[0])
-    const code = root().querySelector('[data-member="code"]') as HTMLElement
-    expect(code.parentElement).toBe(marks('two')[0])
+    expect(marks('one')).toHaveLength(1)
+  })
+
+  it('draws annotated inline code as Code’s chip with the highlight inside it, as the field does', async () => {
+    const value = doc(
+      p(
+        t('Call '),
+        t('retry()', { type: 'code' }, note('two')),
+        t(' or '),
+        t('wait()', { type: 'code' }),
+      ),
+    )
+    render(
+      <>
+        <div data-testid="reader">
+          <RichTextContent value={value} />
+        </div>
+        <RichTextInput aria-label="Comment" defaultValue={value} />
+      </>,
+    )
+    const reader = screen.getByTestId('reader')
+    const field = screen.getByRole('textbox', { name: 'Comment' })
+    await vi.waitFor(() => expect(field.querySelector('code mark')).not.toBeNull())
+    const ours = marks('two', reader)[0]?.parentElement as HTMLElement
+    expect(ours.tagName).toBe('CODE')
+    expect(ours.textContent).toBe('retry()')
+    // A run with no drawn annotation stays Code.
+    const plain = reader.querySelector('[data-member="code"]') as HTMLElement
+    expect(plain.textContent).toBe('wait()')
+    const theirs = field.querySelector('code:has(mark)') as HTMLElement
+    const chip = [
+      'fontFamily',
+      'fontSize',
+      'color',
+      'backgroundColor',
+      'paddingInlineStart',
+      'paddingInlineEnd',
+      'borderTopLeftRadius',
+      'boxDecorationBreak',
+    ] as const
+    for (const property of chip) {
+      expect(getComputedStyle(ours)[property], property).toBe(getComputedStyle(plain)[property])
+      expect(getComputedStyle(ours)[property], property).toBe(getComputedStyle(theirs)[property])
+    }
+    const highlight = [
+      'backgroundColor',
+      'color',
+      'borderBottomColor',
+      'borderBottomWidth',
+    ] as const
+    const mark = getComputedStyle(marks('two', reader)[0] as Element)
+    const fieldMark = getComputedStyle(theirs.querySelector('mark') as Element)
+    for (const property of highlight) expect(mark[property], property).toBe(fieldMark[property])
+    expect(mark.backgroundColor).toBe(tokenColor('--pm-warning-subtle'))
   })
 
   it('draws the field’s highlight: the same wash, rule, frame and text colour', async () => {
@@ -632,6 +683,95 @@ describe('annotations', () => {
     expect(on.backgroundColor).toBe(tokenColor('--pm-warning-subtle-active'))
     expect(on.outlineColor).toBe(tokenColor('--pm-warning-border'))
     expect(on.outlineWidth).toBe('2px')
+  })
+})
+
+describe('a heading that holds a highlight', () => {
+  const HEADED = doc(
+    {
+      type: 'heading',
+      level: 2,
+      content: [
+        t('Retry '),
+        t('policy', note('h')),
+        t(' for '),
+        t('backoff()', { type: 'code' }),
+        t(' by '),
+        ada(),
+      ],
+    },
+    p(t('Body.')),
+  )
+
+  it('is drawn as Heading’s element, at Heading’s level and with Heading’s look, with the highlight in it', () => {
+    render(
+      <>
+        <div data-testid="drawn">
+          <RichTextContent value={HEADED} />
+        </div>
+        <div data-testid="plain">
+          <RichTextContent value={HEADED} annotations={[]} />
+        </div>
+      </>,
+    )
+    const ours = screen.getByTestId('drawn').querySelector('h3') as HTMLElement
+    const theirs = screen.getByTestId('plain').querySelector('h3') as HTMLElement
+    expect(theirs.getAttribute('data-member')).toBe('heading')
+    expect(ours.hasAttribute('data-member')).toBe(false)
+    expect(ours.getAttribute('data-level')).toBe(theirs.getAttribute('data-level'))
+    expect(ours.textContent).toBe(theirs.textContent)
+    expect(
+      screen.getAllByRole('heading', {
+        level: 3,
+        name: 'Retry policy for backoff() by @Ada Lovelace',
+      }),
+    ).toHaveLength(2)
+    const look = [
+      'fontFamily',
+      'fontSize',
+      'fontWeight',
+      'lineHeight',
+      'letterSpacing',
+      'color',
+      'marginTop',
+      'marginBottom',
+    ] as const
+    for (const property of look) {
+      expect(getComputedStyle(ours)[property], property).toBe(getComputedStyle(theirs)[property])
+    }
+    expect(marks('h', ours).map((mark) => mark.textContent)).toEqual(['policy'])
+    // Its inlines are drawn as a paragraph's: the entity token and inline code.
+    expect(ours.querySelector('[data-entity-kind]')?.textContent).toBe('@Ada Lovelace')
+    expect(ours.querySelector('[data-member="code"]')?.textContent).toBe('backoff()')
+  })
+
+  it('takes a press and a tab stop as a paragraph does', async () => {
+    const onAnnotationSelect = vi.fn()
+    render(<RichTextContent value={HEADED} onAnnotationSelect={onAnnotationSelect} />)
+    const stop = screen.getByRole('button', { name: 'policy' })
+    expect(stop.closest('h3')).not.toBeNull()
+    await userEvent.click(stop)
+    expect(onAnnotationSelect).toHaveBeenLastCalledWith('h')
+    stop.focus()
+    await userEvent.keyboard('{Enter}')
+    expect(onAnnotationSelect).toHaveBeenCalledTimes(2)
+  })
+
+  it('stays Heading in a document with no highlight in it, and is the member’s while it maps selections', () => {
+    const { rerender } = render(<RichTextContent value={STRUCTURE} />)
+    const names = () => screen.getAllByRole('heading').map((heading) => heading.textContent)
+    const drawnBy = () =>
+      screen.getAllByRole('heading').map((heading) => heading.getAttribute('data-member'))
+    const before = names()
+    expect(drawnBy()).toEqual(['heading', 'heading', 'heading'])
+    rerender(<RichTextContent value={STRUCTURE} selectionActions={() => null} />)
+    expect(names()).toEqual(before)
+    expect(drawnBy()).toEqual([null, null, null])
+    expect(screen.getAllByRole('heading').map((heading) => heading.tagName)).toEqual([
+      'H2',
+      'H3',
+      'H4',
+    ])
   })
 })
 
@@ -916,11 +1056,12 @@ describe('the selection, in the document’s plain text', () => {
     expect(highlighted).toEqual(['retried up to'])
   })
 
-  it('maps a selection in a heading, which Heading draws without the highlight', async () => {
+  it('maps a selection in a heading, which draws the highlight', async () => {
     const { selection, next, highlighted } = await anchor(STRUCTURE, () => selectDrawn('retries'))
     expect(selection).toEqual({ range: { start: 8, end: 15 }, text: 'retries' })
     expect(richTextAnnotations(next).map((annotation) => annotation.text)).toEqual(['retries'])
-    expect(highlighted).toEqual([])
+    expect(highlighted).toEqual(['retries'])
+    expect(marks('x')[0]?.closest('h2')).not.toBeNull()
   })
 
   it('maps a selection in a heading past an entity, which it covers whole', async () => {
@@ -928,8 +1069,9 @@ describe('the selection, in the document’s plain text', () => {
       { type: 'heading', level: 1, content: [t('Review by '), ada(), t(' today')] },
       p(t('Body.')),
     )
-    const { selection } = await anchor(value, () => selectDrawn('Ada', 'today'))
+    const { selection, highlighted } = await anchor(value, () => selectDrawn('Ada', 'today'))
     expect(selection).toEqual({ range: { start: 10, end: 29 }, text: '@Ada Lovelace today' })
+    expect(highlighted).toEqual(['@Ada Lovelace', ' today'])
   })
 
   it('maps a selection in a code block by its stored text, and anchors nothing there', async () => {
@@ -1270,7 +1412,8 @@ describe('the positions the member writes', () => {
       return [element.textContent, richTextRangeText(value, range)]
     })
     expect(pieces).toEqual([
-      ['Title @Ada Lovelace', 'Title @Ada Lovelace'],
+      ['Title ', 'Title '],
+      ['@Ada Lovelace', '@Ada Lovelace'],
       ['Plain ', 'Plain '],
       ['bold', 'bold'],
       ['', '\n'],
