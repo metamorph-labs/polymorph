@@ -246,8 +246,9 @@ final class RichTextReaderTests: XCTestCase {
       case .entity: return "@"
       }
     }
-    // The paragraph's last break starts no line.
-    XCTAssertEqual(pieces, ["link(the guide→/a b)", " and ", "link(more→https://example.org)"])
+    // The paragraph's last break starts no line. Code carries no bold, so the
+    // two runs share none.
+    XCTAssertEqual(pieces, ["link(the guide→/a)", " and ", "link(more→https://example.org)"])
     XCTAssertEqual(
       PMRichTextPiece.routes(PMRichTextPiece.pieces(inlines)), [URL(string: "/a")!: "/a"],
       "only a target without a scheme is the app's router's")
@@ -341,6 +342,64 @@ final class RichTextReaderTests: XCTestCase {
           document(
             #"{"type":"callout","text":" ","content":[{"type":"entity","kind":"user","id":"u","label":"@Ada"}]}"#
           ))))
+  }
+
+  // MARK: Emphasis a heading and inline code do not carry
+
+  func testAHeadingsTextDropsBoldItalicAndStrikeAndKeepsTheRest() {
+    XCTAssertEqual(
+      read(
+        #"""
+        {"type":"heading","level":2,"content":[
+          {"type":"text","text":"Big ","marks":[{"type":"bold"},{"type":"italic"},{"type":"strike"}]},
+          {"type":"text","text":"call()","marks":[{"type":"code"},{"type":"bold"}]},
+          {"type":"text","text":" and ","marks":[{"type":"strike"}]},
+          {"type":"text","text":"docs","marks":[{"type":"link","href":"/docs"},{"type":"bold"},{"type":"annotation","id":"c1"},{"type":"highlight"}]},
+          {"type":"entity","kind":"user","id":"u","label":"@U","marks":[{"type":"bold"},{"type":"annotation","id":"c1"}]}
+        ]}
+        """#),
+      "h2(Big {c}call() and {→/docs #c1}docs@{user:u:@U#c1})")
+  }
+
+  func testInlineCodeAnywhereDropsBoldItalicAndStrikeAndKeepsALinkAndAnAnnotation() {
+    XCTAssertEqual(
+      read(
+        #"""
+        {"type":"paragraph","content":[
+          {"type":"text","text":"a","marks":[{"type":"bold"}]},
+          {"type":"text","text":"b","marks":[{"type":"bold"},{"type":"code"}]},
+          {"type":"text","text":"c","marks":[{"type":"italic"},{"type":"strike"},{"type":"code"},{"type":"link","href":"/x"},{"type":"annotation","id":"c1"}]}
+        ]}
+        """#),
+      "p({b}a{c}b{c →/x #c1}c)")
+  }
+
+  func testRunsThatDifferedOnlyInWhatWasDroppedDrawTheSame() {
+    XCTAssertEqual(
+      read(
+        #"{"type":"heading","level":1,"content":[{"type":"text","text":"a","marks":[{"type":"bold"}]},{"type":"text","text":"b"}]}"#
+      ),
+      "h1(ab)")
+  }
+
+  func testAHeadingPastLevel3DropsItsBoldAndOneWithNoLevelIsAParagraphThatKeepsIt() {
+    XCTAssertEqual(
+      read(
+        #"""
+        {"type":"heading","level":5,"content":[{"type":"text","text":"h","marks":[{"type":"bold"}]}]},
+        {"type":"heading","content":[{"type":"text","text":"h","marks":[{"type":"bold"}]}]}
+        """#),
+      "h3(h) p({b}h)")
+  }
+
+  func testAHeadingTooDeepToKeepIsAParagraphThatKeepsItsBold() {
+    var inner =
+      #"{"type":"heading","level":1,"content":[{"type":"text","text":"h","marks":[{"type":"bold"}]}]}"#
+    for _ in 0..<(PMRichTextReader.maxDepth + 1) {
+      inner = #"{"type":"blockquote","content":[\#(inner)]}"#
+    }
+    let closes = String(repeating: "]", count: PMRichTextReader.maxDepth)
+    XCTAssertTrue(read(inner).hasSuffix("p({b}h)" + closes), read(inner))
   }
 
   // MARK: Annotations

@@ -67,11 +67,15 @@
 //
 // The reader below is the engine's (`packages/engine/src/rich-text/`), ported
 // for what drawing needs, and the functions it mirrors are named where they
-// are: `parseRichText`'s walk (`read.ts`), `richTextHref` with the Markdown
-// parser's `cleanHref` (`href.ts`, `markdown/parse.ts`), `richTextNodeText`,
-// which an unknown node is drawn as, and `isRichTextEmpty` (`text.ts`). It does
-// not write the normal form: it merges no runs and orders no keys, because what
-// is drawn does not depend on either.
+// are: `parseRichText`'s walk (`read.ts`), with its rule that a heading's text
+// and text marked `code` carry no bold, italic or strike; `richTextHref` with
+// the Markdown parser's `cleanHref` (`href.ts`, `markdown/parse.ts`);
+// `richTextNodeText`, which an unknown node is drawn as, and `isRichTextEmpty`
+// (`text.ts`). It does not write the normal form: it merges no runs and orders
+// no keys, because what is drawn does not depend on either. A document of a
+// later format (`isRichTextNewer`) is read as far as this version can and
+// drawn; the member never hands a document back, so nothing stores what it
+// read in place of the one the app keeps.
 //
 // The root is a container of its blocks. An empty document (no entity, and no
 // text but whitespace) draws nothing and exposes nothing, and its identifier
@@ -231,9 +235,17 @@ enum PMRichTextReader {
       out.append(.paragraph(readContent(node)))
     case "heading":
       // Level 1 to 3; a deeper whole level is 3; anything else is a paragraph.
-      let content = readContent(node)
-      if case .number(let level)? = node.field("level"), isWhole(level), level >= 1 {
-        out.append(.heading(level: Int(min(level, 3)), content))
+      // The level decides first whether this is a heading, and so whether its
+      // text keeps its emphasis: one read as a paragraph keeps its bold.
+      var level: Double?
+      if case .number(let number)? = node.field("level") { level = number }
+      let known = level == 1 || level == 2 || level == 3
+      let deepest = !known && level.map { isWhole($0) && $0 > 3 } == true
+      let content = readContent(node, heading: known || deepest)
+      if known, let level {
+        out.append(.heading(level: Int(level), content))
+      } else if deepest {
+        out.append(.heading(level: 3, content))
       } else {
         out.append(.paragraph(content))
       }
@@ -327,7 +339,10 @@ enum PMRichTextReader {
 
   // MARK: Inlines and marks (`readInlines`, `readMarks`)
 
-  private static func readContent(_ node: PMJSONValue) -> [PMRichTextInline] {
+  /// A line's inlines. In a heading (`heading`) the text drops its emphasis.
+  private static func readContent(_ node: PMJSONValue, heading: Bool = false)
+    -> [PMRichTextInline]
+  {
     guard let content = node.field("content")?.array else { return [] }
     var out: [PMRichTextInline] = []
     for inline in content {
@@ -336,7 +351,7 @@ enum PMRichTextReader {
       case "text":
         // A text node with no text, or an empty one, is no node.
         guard let text = inline.field("text")?.string, !text.isEmpty else { continue }
-        out.append(.text(text, readMarks(inline.field("marks"))))
+        out.append(.text(text, readMarks(inline.field("marks"), inHeading: heading)))
       case "entity":
         // An entity needs a kind, an id and a label; with a label alone it is
         // that label as text, and with none it is left out.
@@ -363,17 +378,24 @@ enum PMRichTextReader {
 
   /// A run's marks. The first link whose target passes `href(_:)` is kept, and
   /// a link that fails loses its mark while its text is drawn. An annotation
-  /// with no id, or an empty one, loses its mark; one per id is kept.
-  private static func readMarks(_ value: PMJSONValue?) -> PMRichTextMarks {
+  /// with no id, or an empty one, loses its mark; one per id is kept. A
+  /// heading's text and text marked `code` carry no bold, italic or strike: a
+  /// heading is already set apart, and code is drawn as it was written. A
+  /// link, the code mark itself and an annotation stay.
+  private static func readMarks(_ value: PMJSONValue?, inHeading heading: Bool = false)
+    -> PMRichTextMarks
+  {
     var marks = PMRichTextMarks()
     var annotations = Set<String>()
-    for mark in value?.array ?? [] {
+    let list = value?.array ?? []
+    let plain = heading || list.contains { $0.nodeType == "code" }
+    for mark in list {
       switch mark.nodeType {
       case "link"?:
         if marks.link == nil, let raw = mark.field("href")?.string { marks.link = href(raw) }
-      case "bold"?: marks.bold = true
-      case "italic"?: marks.italic = true
-      case "strike"?: marks.strike = true
+      case "bold"?: marks.bold = !plain
+      case "italic"?: marks.italic = !plain
+      case "strike"?: marks.strike = !plain
       case "code"?: marks.code = true
       case "annotation"?: if let id = word(mark.field("id")) { annotations.insert(id) }
       default: break
@@ -917,9 +939,9 @@ enum PMRichTextPiece {
     inlines.contains { (annotations($0) ?? []).contains(where: marking.drawn) }
   }
 
-  /// A heading's inlines as a heading draws them: its words without emphasis
-  /// and a link's text without the link, inline code as Code's face, and a
-  /// break as a space, as Heading's string reads them.
+  /// A heading's inlines as a heading draws them: a link's text without the
+  /// link, inline code as Code's face, and a break as a space, as Heading's
+  /// string reads them. The reader has already dropped a heading's emphasis.
   static func headingInlines(_ inlines: [PMRichTextInline]) -> [PMRichTextInline] {
     inlines.map { inline in
       switch inline {
