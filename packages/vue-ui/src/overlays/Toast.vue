@@ -109,4 +109,6 @@ onMounted(effect3)
 onBeforeUnmount(() => release3?.())
 </script>
 
-<template></template>
+<template>
+  <template v-if="false" />
+</template>

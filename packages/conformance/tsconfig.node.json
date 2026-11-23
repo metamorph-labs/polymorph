@@ -5,7 +5,8 @@
     "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/conformance-node.tsbuildinfo",
     // The node files at this package's root, and nothing else. Separate from
     // `tsconfig.json` so the runner, which runs in a browser, keeps `"types": []`.
+    "lib": ["ES2023", "DOM"],
     "types": ["node"]
   },
-  "include": ["dist-lock.ts", "dist-lock.test.ts"]
+  "include": ["dist-lock.ts", "dist-lock.test.ts", "server-render.ts"]
 }

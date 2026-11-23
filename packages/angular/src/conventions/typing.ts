@@ -4,6 +4,15 @@ import { afterNextRender, DestroyRef, inject, untracked } from '@angular/core'
 const FRAMES = 60
 
 /**
+ * Cancels a frame a fixture asked for. A server render asks for none, because
+ * `afterNextRender` runs in a browser only, and a server has no
+ * `cancelAnimationFrame` to call.
+ */
+function cancel(frame: number): void {
+  if (frame !== 0) cancelAnimationFrame(frame)
+}
+
+/**
  * Types text into a field once it is in the document, through the field's
  * `input` event, as a reader types it: a states fixture entry whose state no
  * prop sets (Command's query). The field is searched in the document, because
@@ -12,7 +21,7 @@ const FRAMES = 60
 export function typeInto(spec: () => { into: string; text: string } | undefined): void {
   let frame = 0
   let frames = 0
-  inject(DestroyRef).onDestroy(() => cancelAnimationFrame(frame))
+  inject(DestroyRef).onDestroy(() => cancel(frame))
   afterNextRender(() => {
     const wanted = untracked(spec)
     if (wanted === undefined) return
@@ -40,7 +49,7 @@ export function typeInto(spec: () => { into: string; text: string } | undefined)
 export function pressOnce(selector: () => string | undefined): void {
   let frame = 0
   let frames = 0
-  inject(DestroyRef).onDestroy(() => cancelAnimationFrame(frame))
+  inject(DestroyRef).onDestroy(() => cancel(frame))
   afterNextRender(() => {
     const wanted = untracked(selector)
     if (wanted === undefined) return

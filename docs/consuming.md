@@ -897,6 +897,20 @@ from a member works in a template without it. A screen emits as a single-file co
 `polymorph add --framework vue` vendors members as single-file components
 ([frameworks.md](frameworks.md#vendoring-vue-members-polymorph-add---framework-vue)).
 
+An app that renders on a server (Nuxt, or Vite's server rendering) renders every member there and
+hydrates it in the browser with no mismatch; `packages/vue-ui/server-render.test.ts` holds both for
+every states fixture entry. The published package has a `node` copy that imports no stylesheet, so
+Node loads it. An overlay renders through `<Teleport to="body">`, and a server render returns a
+teleport's markup apart from the application's (`teleports.body` on the render's context). Vue
+hydrates it from the start of the body, so a server places it there, before the application's
+root. Nuxt does. A hand-written server writes it there itself:
+
+```ts
+const context: SSRContext = {}
+const html = await renderToString(app, context)
+const body = `${context.teleports?.body ?? ''}<div id="app">${html}</div>`
+```
+
 ## A Svelte app
 
 The members `design/frameworks/svelte.json` marks native ship for Svelte 5 as
@@ -944,13 +958,16 @@ export default [
 their components as source under the `svelte` export condition, so the app's Svelte compiles them.
 
 An app that renders on the server has two limits. A member that reads its slot as it is made mounts
-the slot to read it (FormField, ChatThread and Avatar.Group read what it holds; CodeBlock, Markdown
-and StreamingText read its text), and a mount inside a hydration reads the server's markup as its
-own. So the app mounts its root in the browser instead of hydrating it. SvelteKit hydrates by
-default, so a SvelteKit app sets `export const ssr = false` on the routes that render members. And
-outside Vite, FormField, ChatThread, CodeBlock, Markdown and StreamingText render on the server as if
+the slot to read it (FormField, ChatThread and Avatar.Group read what it holds; Badge, CodeBlock,
+Markdown and StreamingText read its text), and a mount inside a hydration reads the server's markup
+as its own. So the app mounts its root in the browser instead of hydrating it. SvelteKit hydrates by
+default, so a SvelteKit app sets `export const ssr = false` on the routes that render members, and
+such a route sends no member's markup from the server. The limit is not confined to the members
+named here, because Badge is inside many others. No law holds a hydration. And
+outside Vite, FormField, ChatThread, Badge, CodeBlock, Markdown and StreamingText render on the server as if
 their slots were empty, and so do the members built on them; under Vite the server render reads
-their slots first ([shells.md](shells.md#the-svelte-renderer)).
+their slots first ([shells.md](shells.md#the-svelte-renderer)). The server-render law holds each
+member's server markup, under Vite, to its first render in a browser.
 
 ## A Solid app
 
@@ -999,6 +1016,17 @@ A file that imports `solid-js` reads as Solid without the settings. A screen emi
 with `pnpm emit <spec.json> <out.tsx> --framework solid` or the MCP tool `emit_screen` with
 `framework: "solid"`, and `polymorph add --framework solid` vendors the Solid members
 ([frameworks.md](frameworks.md#vendoring-svelte-and-solid-members)).
+
+An app that renders on a server (SolidStart, or Vite's server rendering) renders every member
+there: `packages/solid-ui/server-render.test.ts` renders every states fixture entry in Node. Its
+compiler reads the packages' `solid` condition, the JSX source, and compiles it for the server and,
+hydratable, for the browser; the packages' own `browser` and `node` builds are not hydratable. A
+browser hydrates most members. It does not hydrate the entries the law lists as `NOT_HYDRATING`,
+in Avatar.Group, DescriptionList, CommentThread, DataTable, ArtifactPane, AppShell, ListPage,
+Dashboard, MasterDetailPage, SearchPage and ConversationPage: each is given a node inside a value
+or a slot, and Solid throws when it hydrates one ([shells.md](shells.md#the-solid-foundation-polymorphsolid)).
+A page that holds one of these renders it in the browser only, once the page has mounted, and a
+crawler that runs no script does not get its markup.
 
 ## An Angular app
 
@@ -1070,6 +1098,12 @@ export default [
 signal inputs, callbacks included, so a container passes a callback as a function that keeps `this`
 (`[onStart]="start"`, with `start` an arrow function). `polymorph add --framework angular` vendors
 the Angular members into a Vite app ([frameworks.md](frameworks.md#vendoring-angular-members)).
+
+An app that renders on a server (`@angular/ssr`, or `@angular/platform-server` by hand) renders
+every member there and hydrates it in the browser with `provideClientHydration()`, which keeps the
+server's elements. `packages/angular-ui/server-render.test.ts` holds both for every states fixture
+entry, compiled ahead of time through Vite. No law builds an application with the Angular CLI's
+server build.
 
 ## A page with no build
 
