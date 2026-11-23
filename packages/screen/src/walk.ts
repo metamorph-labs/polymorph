@@ -29,6 +29,8 @@ import {
   formPropOf,
   INHERITED_NAMES,
   inheritedNameFault,
+  keyTooLong,
+  MAX_KEY_LENGTH,
   memberFault,
   sharedNameFault,
   surfaceOf,
@@ -42,11 +44,13 @@ import {
   elementIn,
   fieldOf,
   functionInData,
+  holdsData,
   itemOf,
   objectName,
   takesNode,
   undeclaredField,
   unreceivedCallback,
+  withoutElements,
   type Receiver,
 } from './receivers'
 import { addressFaults, ADDRESS_KEYS } from './urls'
@@ -95,10 +99,12 @@ import { addressFaults, ADDRESS_KEYS } from './urls'
  *    props are written, then its children. A name an object inherits
  *    (`__proto__`) is a fault, and is left out.
  *  - **An element in a structured object** is drawn only where the field's
- *    data type takes a node. One in a field the type does not declare, or
- *    declares as data, is a fault and is dropped, so no control the person
- *    never sees holds a value. In an object whose type the vocabulary does not
- *    name, an element is drawn as before (`receivers.ts`).
+ *    data type takes a node. A field the type does not declare, or declares as
+ *    text, numbers or booleans, loses every element below it at any depth
+ *    with one fault and keeps its data, so no control the person never sees
+ *    holds a value. In an object whose type the vocabulary does not name, an
+ *    element is drawn as before (`receivers.ts`). A key longer than
+ *    `MAX_KEY_LENGTH` is a fault at its parent, and is not read.
  *  - **A required callback** the document does not bind is stubbed by its
  *    return type.
  *  - **Nothing the document says runs.** A component is drawn only if the
@@ -107,13 +113,16 @@ import { addressFaults, ADDRESS_KEYS } from './urls'
  *    if it is one a screen may hold (`urls.ts`). An object is passed only as
  *    the format writes one (`$object`), and a document nested deeper than
  *    `MAX_DEPTH` (`depth.ts`) is drawn only down to it.
- *  - **An element is drawn once every prop it requires has a value.** One
- *    whose required prop was never written, or was refused, carries a fault
- *    that names the prop and is drawn as nothing. A required callback is
- *    stubbed, `children` are no prop here, and an address refused or data the
- *    host has not given leaves the element drawn without it. A member that
- *    takes one element as its required child (FormField) is drawn once that
- *    child is; while the document streams it waits for it.
+ *  - **An element is drawn once every data prop it requires has a value.**
+ *    One whose required data prop was never written, or was refused, carries
+ *    a fault that names the prop and is drawn as nothing. A required callback
+ *    is stubbed, `children` are no prop here, an address refused or data the
+ *    host has not given leaves the element drawn without it, and a required
+ *    slot (a prop that takes a node) whose element is a fault or missing
+ *    leaves it drawn with the slot empty, so a fault never removes the page
+ *    around it. A member that takes one element as its required child
+ *    (FormField) is drawn once that child is; while the document streams it
+ *    waits for it.
  *  - **A fault never blanks the screen.** A node that cannot be drawn carries
  *    its fault and is drawn as nothing, or as the fault where the host asks;
  *    every fault reaches the host with its path (`onFault`), once in each
@@ -862,21 +871,34 @@ export function createScreen(options: ScreenOptions): Screen {
         if (!isRecord(value.$object)) return faulted({ path, message: PLAIN_OBJECT }, false)
         const fields: Record<string, Drawn> = {}
         for (const [key, item] of Object.entries(value.$object)) {
+          // A key longer than any a member reads is not read: every path below it would carry it.
+          if (key.length > MAX_KEY_LENGTH) {
+            found.push({ path, message: keyTooLong(key.length) })
+            continue
+          }
           // A structured object's fields sit at its own path, as the validator writes them.
           const at = `${path}.${key}`
           const field = fieldOf(vocabulary, receiver, key)
           // An element is drawn only in a field that takes a node: one the type declares as data,
-          // or does not declare, no member draws, and a control there would hold a value unseen.
-          if (field !== null && !takesNode(vocabulary, field?.type ?? 'never') && elementIn(item)) {
+          // or does not declare, no member draws, and a control there would hold a value unseen. A
+          // field that takes data only loses every element below it, at any depth, and keeps its
+          // data; one of a named object type is read field by field below.
+          let held: unknown = item
+          if (field !== null && !takesNode(vocabulary, field?.type ?? 'never')) {
             const type = objectName(vocabulary, receiver)
-            found.push({
-              path: at,
-              message: field === undefined ? undeclaredField(key, type) : dataField(key, type),
-            })
-            continue
+            const message = field === undefined ? undeclaredField(key, type) : dataField(key, type)
+            if (holdsData(vocabulary, field)) {
+              const kept = withoutElements(item)
+              if (kept.removed) found.push({ path: at, message })
+              if (kept.value === undefined) continue
+              held = kept.value
+            } else if (elementIn(item)) {
+              found.push({ path: at, message })
+              continue
+            }
           }
           let resolved = resolveValue(
-            item,
+            held,
             at,
             false,
             false,
@@ -885,7 +907,7 @@ export function createScreen(options: ScreenOptions): Screen {
             field?.optional ?? false,
           )
           if (resolved !== undefined && ADDRESS_KEYS.has(key)) {
-            resolved = address(resolved, item, at, key)
+            resolved = address(resolved, held, at, key)
           }
           if (resolved === undefined) continue
           own(fields, key, resolved)
@@ -1015,6 +1037,10 @@ export function createScreen(options: ScreenOptions): Screen {
       const refused = new Set<string>()
       const empty = new Set<string>()
       for (const [name, value] of Object.entries(written)) {
+        if (name.length > MAX_KEY_LENGTH) {
+          found.push({ path, component, message: keyTooLong(name.length) })
+          continue
+        }
         const at = `${path}.props.${name}`
         const prop = types.get(name)
         if (prop === undefined) {
@@ -1052,15 +1078,11 @@ export function createScreen(options: ScreenOptions): Screen {
           // an input the document does not declare is the validator's fault, and a sample is what
           // a picture asked for.
           const binding = isBinding(value) ? value.$ : ''
-          const input = inputs.get(binding.split('.')[0] ?? '')
-          if (input !== undefined && !isCallback(input.type)) empty.add(name)
-          if (
-            !prop.optional &&
-            !streaming &&
-            fillMode === 'absent' &&
-            input !== undefined &&
-            !isCallback(input.type)
-          ) {
+          const head = binding.split('.')[0] ?? ''
+          // A data input, read from what `fill` read of the inputs: a callback is the screen's.
+          const data = inputs.has(head) && !callbacks.has(head)
+          if (data) empty.add(name)
+          if (!prop.optional && !streaming && fillMode === 'absent' && data) {
             found.push({
               path: at,
               component,
@@ -1081,6 +1103,9 @@ export function createScreen(options: ScreenOptions): Screen {
       // parts appear, or whose whole page waits on one field (a fault says what is empty).
       const lacking = known.props.find((prop) => {
         if (prop.optional || prop.name === 'children' || isCallback(prop.type)) return false
+        // A slot (a prop that takes a node) is no prop a reader needs to use the element: an empty
+        // one leaves the element drawn, as a page is drawn around a slot whose member is a fault.
+        if (takesNode(vocabulary, prop.type)) return false
         if (refused.has(prop.name) || empty.has(prop.name)) return false
         const given = props[prop.name]
         return given === undefined || (given.kind === 'node' && given.node.fault !== null)
@@ -1208,11 +1233,13 @@ export function createScreen(options: ScreenOptions): Screen {
         })
       }
 
-      // A required callback with nothing to call is stubbed by its return type, and one the
-      // document does not give is a fault once the document is whole.
+      // A required callback with nothing to call is stubbed by its return type, and a required
+      // callback or slot the document does not give is a fault once the document is whole.
       for (const prop of known.props) {
-        if (prop.optional || prop.name === 'children' || !isCallback(prop.type)) continue
-        if (props[prop.name] === undefined) {
+        if (prop.optional || prop.name === 'children') continue
+        const callback = isCallback(prop.type)
+        if (!callback && !takesNode(vocabulary, prop.type)) continue
+        if (callback && props[prop.name] === undefined) {
           own(props, prop.name, {
             kind: 'value',
             from: 'screen',

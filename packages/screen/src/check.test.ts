@@ -189,6 +189,23 @@ describe('what the walk refuses of a document, checkScreen reports in the same w
   })
 })
 
+describe('a name two controls share, where one is not drawn', () => {
+  it('is no fault in checkScreen, as in the walk, when the control lacks a prop it requires', () => {
+    // The Select lacks its required `options`, so the walk does not draw it and it holds no name.
+    const document = screen({
+      component: 'Stack',
+      children: [
+        { component: 'Select', props: { name: 'q' } },
+        { component: 'Input', props: { name: 'q' } },
+      ],
+    })
+    const named = (faults: readonly { path: string; message: string }[]) =>
+      faults.filter(({ path }) => path.endsWith('.name')).map(({ path }) => path)
+    expect(named(createScreen({ document, vocabulary: VOCABULARY }).faults)).toEqual([])
+    expect(named(checkScreen(document).faults)).toEqual([])
+  })
+})
+
 describe('an address a screen may not hold', () => {
   it('is a fault at a prop, at an object’s key and in a list, wherever the element is', () => {
     const document = screen({

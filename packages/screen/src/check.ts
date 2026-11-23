@@ -7,6 +7,8 @@ import {
   formPropOf,
   INHERITED_NAMES,
   inheritedNameFault,
+  keyTooLong,
+  MAX_KEY_LENGTH,
   memberFault,
   sharedNameFault,
   surfaceOf,
@@ -18,11 +20,13 @@ import {
   dataField,
   elementIn,
   fieldOf,
+  holdsData,
   itemOf,
   objectName,
   takesNode,
   undeclaredField,
   unreceivedCallback,
+  withoutElements,
   type Receiver,
 } from './receivers'
 import { addressFaults, ADDRESS_KEYS } from './urls'
@@ -165,10 +169,15 @@ function runTimeFaults(
   }
 
   /** A value written at `path`, where `receiver` is the type that receives it. */
-  const visit = (value: unknown, path: string, receiver: Receiver): void => {
+  /**
+   * A value written at `path`, where `receiver` is the type that receives it. `unnamed` is set
+   * below an element the walk does not draw for a prop it requires and was never written, whose
+   * controls hold no name in `values`.
+   */
+  const visit = (value: unknown, path: string, receiver: Receiver, unnamed = false): void => {
     if (Array.isArray(value)) {
       const item = itemOf(vocabulary, receiver)
-      value.forEach((entry, index) => visit(entry, `${path}[${index}]`, item))
+      value.forEach((entry, index) => visit(entry, `${path}[${index}]`, item, unnamed))
       return
     }
     if (!isRecord(value)) return
@@ -185,31 +194,55 @@ function runTimeFaults(
       if (member !== null) faults.push({ path, message: member })
       const surface = surfaceOf(vocabulary, component)
       const types = new Map((surface?.props ?? []).map((prop) => [prop.name, prop.type]))
-      const props = value['props']
+      const props = isRecord(value['props']) ? value['props'] : {}
+      const lacks = (surface?.props ?? []).some(
+        (prop) =>
+          !prop.optional &&
+          prop.name !== 'children' &&
+          !isCallback(prop.type) &&
+          !takesNode(vocabulary, prop.type) &&
+          !Object.prototype.hasOwnProperty.call(props, prop.name),
+      )
+      const silent = unnamed || lacks
       // In document order an element comes before what its props and children hold.
-      if (isRecord(props)) name(component, props, path)
-      if (isRecord(props)) {
-        for (const [key, item] of Object.entries(props)) {
-          const at = `${path}.props.${key}`
-          if (ADDRESS_KEYS.has(key)) address(key, item, at)
-          visit(item, at, types.get(key) ?? null)
+      if (!silent) name(component, props, path)
+      for (const [key, item] of Object.entries(props)) {
+        if (key.length > MAX_KEY_LENGTH) {
+          fault(path, keyTooLong(key.length))
+          continue
         }
+        const at = `${path}.props.${key}`
+        if (ADDRESS_KEYS.has(key)) address(key, item, at)
+        visit(item, at, types.get(key) ?? null, silent)
       }
-      visit(value['children'], `${path}.children`, types.get('children') ?? null)
+      visit(value['children'], `${path}.children`, types.get('children') ?? null, silent)
       return
     }
     const fields = value['$object']
     if (isRecord(fields)) {
       for (const [key, item] of Object.entries(fields)) {
-        const at = `${path}.${key}`
-        const field = fieldOf(vocabulary, receiver, key)
-        if (field !== null && !takesNode(vocabulary, field?.type ?? 'never') && elementIn(item)) {
-          const type = objectName(vocabulary, receiver)
-          fault(at, field === undefined ? undeclaredField(key, type) : dataField(key, type))
+        if (key.length > MAX_KEY_LENGTH) {
+          fault(path, keyTooLong(key.length))
           continue
         }
-        if (ADDRESS_KEYS.has(key)) address(key, item, at)
-        visit(item, at, field?.type ?? null)
+        const at = `${path}.${key}`
+        const field = fieldOf(vocabulary, receiver, key)
+        let held: unknown = item
+        if (field !== null && !takesNode(vocabulary, field?.type ?? 'never')) {
+          const type = objectName(vocabulary, receiver)
+          const message = field === undefined ? undeclaredField(key, type) : dataField(key, type)
+          if (holdsData(vocabulary, field)) {
+            const kept = withoutElements(item)
+            if (kept.removed) fault(at, message)
+            if (kept.value === undefined) continue
+            held = kept.value
+          } else if (elementIn(item)) {
+            fault(at, message)
+            continue
+          }
+        }
+        if (ADDRESS_KEYS.has(key)) address(key, held, at)
+        visit(held, at, field?.type ?? null, unnamed)
       }
     }
   }

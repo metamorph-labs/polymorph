@@ -197,6 +197,61 @@ export function fieldOf(
   return found.size === 0 ? undefined : { type: [...found].join(' | '), optional }
 }
 
+/**
+ * Whether a structured object's field takes data only, so nothing below it may
+ * be an element: a field its type does not declare, or one whose type, and its
+ * items', are text, numbers, booleans and their literals. A field of an object
+ * type the vocabulary names is read field by field, and one of a type it does
+ * not name may hold elements, as a host's row may.
+ */
+export function holdsData(vocabulary: ScreenVocabulary, field: Field | undefined): boolean {
+  if (field === undefined) return true
+  const item = itemOf(vocabulary, field.type) ?? ''
+  return partsOf(item).every((part) => SCALAR.test(part))
+}
+
+/**
+ * A value without the elements in it, at any depth through lists and
+ * structured objects, and whether it held any. What else it holds is kept: a
+ * list loses only its elements, and an object only its fields that were one.
+ */
+export function withoutElements(value: unknown, depth = 0): { value: unknown; removed: boolean } {
+  if (depth > MAX_DEPTH || typeof value !== 'object' || value === null) {
+    return { value, removed: false }
+  }
+  if (Array.isArray(value)) {
+    let removed = false
+    const kept: unknown[] = []
+    for (const item of value) {
+      const inner = withoutElements(item, depth + 1)
+      removed ||= inner.removed
+      if (inner.value !== undefined) kept.push(inner.value)
+    }
+    return removed ? { value: kept, removed } : { value, removed }
+  }
+  const record = value as Record<string, unknown>
+  if (typeof record['component'] === 'string') return { value: undefined, removed: true }
+  const fields = record['$object']
+  if (typeof fields !== 'object' || fields === null || Array.isArray(fields)) {
+    return { value, removed: false }
+  }
+  let removed = false
+  const kept: Record<string, unknown> = {}
+  for (const [key, item] of Object.entries(fields)) {
+    const inner = withoutElements(item, depth + 2)
+    removed ||= inner.removed
+    if (inner.value !== undefined) {
+      Object.defineProperty(kept, key, {
+        value: inner.value,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      })
+    }
+  }
+  return removed ? { value: { $object: kept }, removed } : { value, removed }
+}
+
 /** The name of the data type a structured object at `type` is, for a fault's words. */
 export function objectName(vocabulary: ScreenVocabulary, type: Receiver): string {
   const object = type === null ? null : objectOf(vocabulary, type)

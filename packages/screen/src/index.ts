@@ -33,6 +33,7 @@ export {
   CODE_HOSTS,
   type ChildrenKind,
   defaultMembers,
+  MAX_KEY_LENGTH,
   memberFault,
   memberNames,
   surfaceOf,

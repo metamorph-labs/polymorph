@@ -196,6 +196,20 @@ export function surfaceOf(vocabulary: ScreenVocabulary, name: string): ScreenSur
   }
 }
 
+/**
+ * The longest key a document may write: a prop's name or a structured
+ * object's field. The longest any member, part or data type declares is 21
+ * characters (`maximumFractionDigits`). Every node below a key carries it in
+ * its path, so a longer one would cost its length for each of them on every
+ * drawing: it is a fault at its parent, and what it holds is not read.
+ */
+export const MAX_KEY_LENGTH = 100
+
+/** The fault's words for a key longer than `MAX_KEY_LENGTH`. */
+export const keyTooLong = (length: number): string =>
+  `a key of ${length} characters is longer than any a member reads (${MAX_KEY_LENGTH} at most); ` +
+  'what it holds is left out'
+
 /** The prop a named control's value is in: `value`, or a checkbox's `checked`. `null` for a member that is no control. */
 export function formPropOf(surface: Pick<ScreenSurface, 'controlled'>): 'value' | 'checked' | null {
   if ('value' in surface.controlled) return 'value'

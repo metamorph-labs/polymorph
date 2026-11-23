@@ -48,20 +48,29 @@ behaves the same in each of them:
 - a component is drawn only if the vocabulary has it and the host allows it (`members`), a prop
   only if the member takes it, a callback only if it is a function, and an object only as the
   format writes one (`{ "$object": … }`);
-- an element is drawn only once every prop it requires has a value, as a member drawn without one
-  is drawn empty or unnamed. One whose required prop was never written, or was refused (a callback
-  bound where none receives it, a function in the host's data, an object or an element that is not
-  drawn), is drawn as nothing, with a fault that names the prop. Three things are not counted: a
-  required callback, which a stub answers; `children`; and an address that was refused, as a link
-  or an image without its address still reads, and is inert. A required prop bound to data the host
-  has not given yet is drawn without it, with a fault, so a screen keeps its shape while its data
-  arrives. A member that reads its one required child (a FormField's control) is drawn once that
-  child is: while a document streams it waits for it, and once whole, one with no child it can
-  draw is a fault;
+- an element is drawn only once every prop a reader needs has a value: a required prop that takes
+  data (a label, an `alt`, options), as a member drawn without one is drawn empty or unnamed. One
+  whose required data prop was never written, or was refused (a callback bound where none receives
+  it, a function in the host's data, an object or an element that is not drawn), is drawn as
+  nothing, with a fault that names the prop. Not counted: a required callback, which a stub
+  answers; `children`; an address that was refused, as a link or an image without its address
+  still reads, and is inert; a required prop bound to data the host has not given yet, drawn
+  without it with a fault, so a screen keeps its shape while its data arrives; and a required slot
+  (a prop that takes a node, such as a page's `actions`), which leaves the element drawn with the
+  slot empty when its element is a fault or is never written. So a fault in one element never
+  removes the elements around it, the page above it included. The exception is a member that
+  reads its one required child (a FormField's control): it is drawn once that child is; while a
+  document streams it waits for it, and once whole, one with no child it can draw is a fault
+  (its own parent is drawn);
 - an element in a structured object is drawn only where the field's data type takes a node (an
-  empty state's `action`). One in a field the type does not declare, or declares as data, is a
-  fault and is not drawn, so it holds no value in `values`. In an object whose type the vocabulary
-  does not name (a row of the host's own type, a type written out in full), it is drawn;
+  empty state's `action`). A field the type does not declare, or declares as text, numbers or
+  booleans, holds no element at any depth: every element below it, through lists and structured
+  objects, is left out with one fault at the field, and its other data is kept, so no control
+  there holds a value in `values`. In an object whose type the vocabulary does not name (a row of
+  the host's own type, a type written out in full), an element is drawn;
+- a key a document writes (a prop's name, a structured object's field) is at most
+  `MAX_KEY_LENGTH` (100) characters, as every node below a key carries it in its path; a longer
+  one is a fault at its parent, and what it holds is not read;
 - an address (a prop or a field named `href`, `src` or `avatar`) is passed only as text that is
   relative or `http:`, `https:`, `mailto:` or `tel:`, or a flat list of such text, from the
   document or from the host's data a binding puts there. Data nested inside an object the host

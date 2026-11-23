@@ -3,7 +3,9 @@ import { resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
+import { checkScreen } from './check'
 import { argumentsToJson, toJson } from './json'
+import { keyTooLong, MAX_KEY_LENGTH } from './members'
 import { parsePartial } from './partial'
 import { VOCABULARY } from './vocabulary'
 import {
@@ -787,9 +789,10 @@ describe('an element in a structured object is drawn only where its field takes 
       document: page({ title: 'None', x: approved, description: [approved] }),
     })
     expect(screen.values).toEqual({})
+    // A field that takes data keeps its data, and loses its elements.
     expect(screen.root?.props['emptyState']).toEqual({
       kind: 'value',
-      value: { title: 'None' },
+      value: { title: 'None', description: [] },
       from: 'document',
     })
     expect(faults.map(({ path, message }) => [path, message])).toEqual([
@@ -905,7 +908,8 @@ describe('an element is drawn once every prop it requires has a value', () => {
       '`Button` is not drawn, as its required prop `label` has no value',
       '`Button` is not drawn, as its required prop `label` has no value',
       '`SettingsRow` is not drawn, as its required prop `label` has no value',
-      '`SettingsRow` is not drawn, as its required prop `control` has no value',
+      // A slot whose member is a fault leaves its row drawn, the slot empty.
+      undefined,
     ])
     expect(at(screen, '$.root.children[3]').props).toEqual({})
     // The field the row held is drawn nowhere, so it holds no value.
@@ -920,7 +924,6 @@ describe('an element is drawn once every prop it requires has a value', () => {
       '$.root.children[3].props.label',
       '$.root.children[3]',
       '$.root.children[4].props.control',
-      '$.root.children[4]',
     ])
   })
 
@@ -1017,6 +1020,231 @@ describe('an element is drawn once every prop it requires has a value', () => {
       '$.root.children[1].props.label',
       '$.root.children[1]',
     ])
+  })
+})
+
+describe('a fault in a slot leaves its page drawn', () => {
+  const form = (actions: object) =>
+    doc({
+      component: 'FormPage',
+      props: { title: 'Book a room', actions },
+      children: [{ component: 'Text', children: ['Fields'] }],
+    })
+
+  it('draws a page whose required slot holds a member no one has, or one the host leaves out', () => {
+    const misspelt = open({ document: form({ component: 'Buton', props: { label: 'Save' } }) })
+    expect(misspelt.screen.root?.fault).toBeNull()
+    expect(draw(misspelt.screen.root)).toContain('Text()[Fields]')
+    expect(misspelt.faults.map(({ path }) => path)).toEqual(['$.root.props.actions'])
+    const left = open({
+      document: form({ component: 'Button', props: { label: 'Save' } }),
+      members: ['FormPage', 'Text'],
+    })
+    expect(left.screen.root?.fault).toBeNull()
+    expect(left.faults.map(({ path }) => path)).toEqual(['$.root.props.actions'])
+  })
+
+  it('draws a page while it streams once its slot’s element is whole, a fault or not', () => {
+    const text = JSON.stringify(form({ component: 'Buton', props: { label: 'Save' } }))
+    const screen = createScreen({ document: undefined, vocabulary: VOCABULARY, streaming: true })
+    const drawnAt: boolean[] = []
+    for (let end = 1; end <= text.length; end += 1) {
+      const read = parsePartial(text.slice(0, end))
+      screen.update({
+        document: read.document,
+        open: read.open,
+        cut: read.cut,
+        streaming: !read.complete,
+      })
+      drawnAt.push(screen.root !== null && screen.root.fault === null)
+    }
+    // Drawn from some cut on, and never taken away again.
+    const first = drawnAt.indexOf(true)
+    expect(first).toBeGreaterThan(0)
+    expect(drawnAt.slice(first).every(Boolean)).toBe(true)
+  })
+
+  it('draws a page whose required slot is never written, and says so', () => {
+    const { screen, faults } = open({
+      document: doc({ component: 'FormPage', props: { title: 'Book a room' }, children: ['x'] }),
+    })
+    expect(screen.root?.fault).toBeNull()
+    expect(faults.map(({ message }) => message)).toEqual([
+      '`FormPage` is missing its required prop `actions`',
+    ])
+  })
+
+  it('leaves every element that holds an element drawn when that element is no member', () => {
+    // Each element of every lawful screen and fixture in turn named a component no one has.
+    const SCREENS = [
+      'design/screens/inbox.json',
+      'design/screens/new-ticket.json',
+      'design/screens/settings.json',
+      'design/screens/agent-loop/attempt-1.json',
+      'design/screens/agent-loop/attempt-2.json',
+      ...[
+        'book-room',
+        'order-detail',
+        'revenue-stats',
+        'ticket-queue',
+        'usage-overview',
+        'workspace-settings',
+      ].map((name) => `packages/screen/fixtures/${name}.json`),
+    ]
+    /** Every element's path in a document, with the paths of the elements that hold it. */
+    const elements = (value: unknown, path: string, above: string[], out: [string, string[]][]) => {
+      if (Array.isArray(value)) {
+        value.forEach((item, at) => elements(item, `${path}[${at}]`, above, out))
+        return
+      }
+      if (typeof value !== 'object' || value === null) return
+      const record = value as Record<string, unknown>
+      if (typeof record['component'] === 'string') {
+        out.push([path, above])
+        const props = (record['props'] ?? {}) as Record<string, unknown>
+        for (const [key, item] of Object.entries(props)) {
+          elements(item, `${path}.props.${key}`, [...above, path], out)
+        }
+        elements(record['children'], `${path}.children`, [...above, path], out)
+        return
+      }
+      const fields = record['$object']
+      if (typeof fields === 'object' && fields !== null) {
+        for (const [key, item] of Object.entries(fields))
+          elements(item, `${path}.${key}`, above, out)
+      }
+    }
+    const drawnAt = (screen: Screen) => {
+      const found = new Map<string, ScreenNode>()
+      const visit = (drawn: Drawn) => {
+        if (drawn.kind === 'node') walk(drawn.node)
+        else if (drawn.kind === 'list') drawn.items.forEach(visit)
+        else if (drawn.kind === 'record') Object.values(drawn.fields).forEach(visit)
+      }
+      const walk = (node: ScreenNode) => {
+        if (node.fault !== null) return
+        found.set(node.path, node)
+        Object.values(node.props).forEach(visit)
+        node.children.forEach(visit)
+      }
+      if (screen.root !== null) walk(screen.root)
+      return found
+    }
+    let replaced = 0
+    for (const file of SCREENS) {
+      const document = JSON.parse(readFileSync(resolve(ROOT, file), 'utf8')) as {
+        root: unknown
+      }
+      const before = drawnAt(createScreen({ document, vocabulary: VOCABULARY, fill: 'sample' }))
+      const found: [string, string[]][] = []
+      elements(document.root, '$.root', [], found)
+      for (const [path, above] of found) {
+        const copy = JSON.parse(JSON.stringify(document)) as { root: unknown }
+        // The element at `path`, renamed in the copy.
+        const steps = path.slice('$.root'.length).match(/\.[^.[]+|\[\d+\]/g) ?? []
+        let at: Record<string, unknown> = copy as unknown as Record<string, unknown>
+        let key: string | number = 'root'
+        for (const step of steps) {
+          let next = at[key] as Record<string, unknown>
+          if (
+            typeof next === 'object' &&
+            next !== null &&
+            '$object' in next &&
+            !step.startsWith('[')
+          ) {
+            next = next['$object'] as Record<string, unknown>
+          }
+          at = next
+          key = step.startsWith('[') ? Number(step.slice(1, -1)) : step.slice(1)
+        }
+        ;(at[key] as Record<string, unknown>)['component'] = 'Zzz'
+        replaced += 1
+        const after = drawnAt(
+          createScreen({ document: copy, vocabulary: VOCABULARY, fill: 'sample' }),
+        )
+        for (const ancestor of above) {
+          // A member that reads its one child (FormField) is not drawn without it; the elements
+          // above it are.
+          const holder = before.get(ancestor)
+          if (ancestor === above.at(-1) && holder?.childrenKind === 'element') continue
+          if (holder !== undefined) {
+            expect(after.has(ancestor), `${file} ${path}: ${ancestor}`).toBe(true)
+          }
+        }
+      }
+    }
+    expect(replaced).toBeGreaterThan(100)
+  })
+})
+
+describe('an element below a field that takes no node is drawn nowhere', () => {
+  const approved = { component: 'Input', props: { name: 'approved', defaultValue: 'yes' } }
+  const page = (zz: unknown) =>
+    doc({
+      component: 'ListPage',
+      props: { title: 'Requests', emptyState: { $object: { title: 'None', zz } } },
+    })
+
+  it('is dropped, with one fault at the field, through structured objects and lists', () => {
+    for (const zz of [
+      { $object: { a: approved, count: 3 } },
+      [{ $object: { a: [approved], note: 'kept' } }],
+    ]) {
+      const document = page(zz)
+      const { screen, faults } = open({ document })
+      expect(screen.values).toEqual({})
+      expect(faults.map(({ path }) => path)).toEqual(['$.root.props.emptyState.zz'])
+      expect(checkScreen(document).faults.map(({ path }) => path)).toContain(
+        '$.root.props.emptyState.zz',
+      )
+    }
+    // The field's own data is kept.
+    const { screen } = open({ document: page({ $object: { a: approved, count: 3 } }) })
+    expect(screen.root?.props['emptyState']).toEqual({
+      kind: 'value',
+      value: { title: 'None', zz: { count: 3 } },
+      from: 'document',
+    })
+  })
+})
+
+describe('a key a document writes', () => {
+  it('is a fault at its parent when it is longer than any a member reads, and what it holds is not walked', () => {
+    const key = 'k'.repeat(MAX_KEY_LENGTH + 1)
+    const { screen, faults } = open({
+      document: doc(
+        {
+          // A table's rows are of the host's own type, so an element in them would be drawn.
+          component: 'DataTable',
+          props: {
+            label: 'Rows',
+            data: [
+              {
+                $object: {
+                  id: 'a',
+                  [key]: [{ component: 'Input', props: { name: 'hidden', defaultValue: 'x' } }],
+                },
+              },
+            ],
+            columns: [],
+            getRowId: { $: 'rowId' },
+            emptyState: { $object: { title: 'None' } },
+            [key]: 'x',
+          },
+        },
+        [{ name: 'rowId', type: '(row: Row) => string' }],
+      ),
+    })
+    expect(screen.values).toEqual({})
+    expect(faults.map(({ path, message }) => [path, message])).toEqual([
+      ['$.root.props.data[0]', keyTooLong(key.length)],
+      ['$.root', keyTooLong(key.length)],
+    ])
+    expect(screen.root?.props['data']).toEqual({
+      kind: 'value',
+      value: [{ id: 'a' }],
+      from: 'document',
+    })
   })
 })
 

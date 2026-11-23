@@ -644,6 +644,59 @@ describe('no input costs more than in proportion to its size', () => {
       run: update,
     },
     {
+      // Each Image's `alt` is bound to an input the host gives no value, whose type is as long as
+      // a hundred times the Images: read once per binding, the work would grow as their product.
+      name: 'one update of a screen drawn: bindings to an input whose type is long',
+      sizes: [10, 80],
+      make: (size) =>
+        drawn(
+          doc(
+            {
+              component: 'Stack',
+              children: Array.from({ length: size }, () => ({
+                component: 'Image',
+                props: { src: '/a.png', alt: { $: 'words' } },
+              })),
+            },
+            [{ name: 'words', type: 'x'.repeat(size * 100) }],
+          ),
+        ),
+      run: update,
+    },
+    {
+      // Elements below a structured object's key a thousand times as long as their number: read
+      // with the key in every path, the work would grow as their product.
+      name: 'one update of a screen drawn: elements below a long key',
+      sizes: [10, 80],
+      make: (size) =>
+        drawn(
+          doc(
+            {
+              // A table's rows are of the host's own type, so the elements in them are drawn.
+              component: 'DataTable',
+              props: {
+                label: 'Rows',
+                data: [
+                  {
+                    $object: {
+                      ['k'.repeat(size * 1000)]: Array.from({ length: size }, () => ({
+                        component: 'Text',
+                        children: ['a'],
+                      })),
+                    },
+                  },
+                ],
+                columns: [],
+                getRowId: { $: 'rowId' },
+                emptyState: { $object: { title: 'None' } },
+              },
+            },
+            [{ name: 'rowId', type: '(row: Row) => string' }],
+          ),
+        ),
+      run: update,
+    },
+    {
       name: 'an action’s arguments shared at many levels',
       sizes: [16, 21],
       make: shared,
