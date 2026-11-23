@@ -213,12 +213,17 @@ export interface FrameworkDocument {
   members: Record<string, FrameworkEntry>
 }
 
-/** What `shippedParts` reads of a member: its registry entry. */
+/**
+ * What `shippedParts` reads of a member: its name, its props, its parts, and
+ * the files its shell declares in each framework. The registry's entry is
+ * one; the run-time vocabulary table (`screen-table.ts`), which keeps only the
+ * files' names, is another.
+ */
 export interface PartsOwner<Part extends { name: string }> {
   name: string
   props: readonly { name: string }[]
   parts: readonly Part[]
-  frameworks: MemberFrameworks
+  frameworks: Readonly<Record<Framework, { readonly shell?: { readonly sources: readonly string[] } }>>
 }
 
 /**
@@ -586,4 +591,34 @@ export function vueBinding(prop: { name: string; type: string }): VueBinding {
   if (parts.some((part) => NODE_TYPE.test(unwrapped(part))))
     return { kind: 'slot', name: prop.name }
   return { kind: 'prop', name: prop.name }
+}
+
+/**
+ * The controlled props of a member or a part, each with the event prop that
+ * reports its change: `open` with `onOpenChange`, and `value` with
+ * `onChange` where the member has no `onValueChange`. A controlled prop is a
+ * value prop, not an event or a slot (`vueBinding`). `props` are the member's
+ * own props, without a part's dotted ones.
+ *
+ * An element follows the reader through these pairs
+ * (`packages/shells/src/elements.ts`), and so does a screen drawn at run time
+ * (`@polymorph/screen`), so the two read one rule.
+ */
+export function controlledProps(
+  props: readonly { name: string; type: string }[],
+): Record<string, string> {
+  const values: string[] = []
+  const events = new Set<string>()
+  for (const prop of props) {
+    const { kind } = vueBinding(prop)
+    if (kind === 'event') events.add(prop.name)
+    else if (kind === 'prop' || kind === 'scoped-slot') values.push(prop.name)
+  }
+  const controlled: Record<string, string> = {}
+  for (const name of values) {
+    const change = `on${name.charAt(0).toUpperCase()}${name.slice(1)}Change`
+    if (events.has(change)) controlled[name] = change
+    else if (name === 'value' && events.has('onChange')) controlled[name] = 'onChange'
+  }
+  return controlled
 }

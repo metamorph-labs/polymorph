@@ -5,15 +5,15 @@ import {
   shippedParts,
   unionParts,
   type Framework,
+  type FrameworkStatus,
 } from '@polymorph/registry/frameworks'
-import { DEFAULT_PLATFORM, NO_SUBSTITUTE, type Platform } from '@polymorph/registry/platforms'
+import {
+  DEFAULT_PLATFORM,
+  NO_SUBSTITUTE,
+  type Platform,
+  type PlatformStatus,
+} from '@polymorph/registry/platforms'
 import { validate as validateShape } from '@polymorph/registry/shape'
-import type {
-  ExceptionPrimitive,
-  Registry,
-  RegistryComponent,
-  RegistryProp,
-} from '@polymorph/registry'
 
 import {
   BINDING_PATH,
@@ -55,6 +55,70 @@ import {
 export interface SpecFault {
   path: string
   message: string
+}
+
+/* -------------------------------------------------------------------------- */
+/* What the validator reads of the registry                                   */
+/* -------------------------------------------------------------------------- */
+
+/** A prop as the validator reads it: its name, its printed type, and whether it may be left out. */
+export interface SpecProp {
+  readonly name: string
+  readonly type: string
+  readonly optional: boolean
+}
+
+/** A member's entry on one platform: its status, and for an absent one, why and what instead. */
+export interface SpecPlatformEntry {
+  readonly status: PlatformStatus
+  readonly reason?: string
+  readonly substitute?: string
+}
+
+/**
+ * A member's entry in one web framework: its status, why it is absent, and
+ * the files its shell declares there, of which `shippedParts` reads the names.
+ */
+export interface SpecFrameworkEntry {
+  readonly status: FrameworkStatus
+  readonly reason?: string
+  readonly shell?: { readonly sources: readonly string[] }
+}
+
+/** A member as the validator reads it. */
+export interface SpecMember {
+  readonly name: string
+  readonly tier: string
+  /** Searched for a correction when a name is unknown (`Modal` finds Dialog's purpose). */
+  readonly purpose: string
+  /** Its own props, and the props of the parts a native contract carries, named `Part.prop`. */
+  readonly props: readonly SpecProp[]
+  readonly parts: readonly { readonly name: string; readonly props: readonly SpecProp[] }[]
+  readonly grid: Readonly<Record<string, readonly string[]>> | null
+  readonly platforms: Readonly<Record<Platform, SpecPlatformEntry>>
+  readonly frameworks: Readonly<Record<Framework, SpecFrameworkEntry>>
+}
+
+/** An exception primitive as the validator reads it: a member that is a rung of the ladder. */
+export interface SpecPrimitive {
+  readonly name: string
+  readonly rung: number
+  readonly props: readonly SpecProp[]
+  readonly platforms: Readonly<Record<Platform, SpecPlatformEntry>>
+  readonly frameworks: Readonly<Record<Framework, SpecFrameworkEntry>>
+}
+
+/**
+ * Exactly what `validateSpec` reads of the vocabulary: the members, the
+ * exception primitives and the icon roles. The registry is one
+ * (`@polymorph/registry`'s `Registry`). The run-time vocabulary table
+ * (`@polymorph/screen`), which holds only these fields, is another, so a page
+ * checks a document with no registry in it and gets the same faults.
+ */
+export interface SpecVocabulary {
+  readonly components: readonly SpecMember[]
+  readonly exceptions: { readonly primitives: readonly SpecPrimitive[] }
+  readonly icons: { readonly roles: readonly { readonly name: string }[] }
 }
 
 export interface SpecValidation {
@@ -166,7 +230,7 @@ const PLAIN_OBJECT =
   'such as a column or an option, is written `{ "$object": { … } }`'
 
 export function validateSpec(
-  registry: Registry,
+  registry: SpecVocabulary,
   document: unknown,
   judges: SpecJudges = {},
   options: SpecOptions = {},
@@ -178,10 +242,10 @@ export function validateSpec(
   const expressions = bindingFaults(document, '$')
   if (expressions.length > 0) return { ok: false, faults: expressions }
 
-  const components = new Map<string, RegistryComponent>(
+  const components = new Map<string, SpecMember>(
     registry.components.map((component) => [component.name, component]),
   )
-  const primitives = new Map<string, ExceptionPrimitive>(
+  const primitives = new Map<string, SpecPrimitive>(
     registry.exceptions.primitives.map((primitive) => [primitive.name, primitive]),
   )
 
@@ -678,7 +742,7 @@ const STATUS_OWNED = ['empty', 'pending']
  * The action every page archetype takes on a native platform beside the
  * registry's props: loading again after it failed.
  */
-const RETRY: RegistryProp = { name: 'onRetry', type: '(() => void) | undefined', optional: true }
+const RETRY: SpecProp = { name: 'onRetry', type: '(() => void) | undefined', optional: true }
 
 /**
  * Words Swift has taken, which an input of an `ios` screen cannot be named,
@@ -804,7 +868,7 @@ export function isActionType(type: string): boolean {
 }
 
 /** A page archetype that owns the four load states: every archetype but the app's frame. */
-const ownsLoadStatus = (component: RegistryComponent | undefined) =>
+const ownsLoadStatus = (component: SpecMember | undefined) =>
   component !== undefined && component.tier === ARCHETYPES && component.name !== FRAME
 
 /**
@@ -852,8 +916,8 @@ function withNativeProps(
 function checkNativeScreen(
   spec: ScreenSpec,
   platform: NativePlatform,
-  components: Map<string, RegistryComponent>,
-  primitives: Map<string, ExceptionPrimitive>,
+  components: Map<string, SpecMember>,
+  primitives: Map<string, SpecPrimitive>,
   faults: SpecFault[],
   judges: SpecJudges,
 ): void {
@@ -1041,12 +1105,12 @@ function checkNativeScreen(
  * must pair with one tone or variant only.
  */
 function checkCell(
-  component: RegistryComponent,
+  component: SpecMember,
   props: Record<string, SpecValue>,
   path: string,
   faults: SpecFault[],
 ): void {
-  const grid = component.grid as Record<string, string[]>
+  const grid = component.grid as Readonly<Record<string, readonly string[]>>
   const variant = props['variant']
   const tone = props['tone']
   for (const [name, value] of [
@@ -1083,17 +1147,17 @@ function checkCell(
 interface Surface {
   props: Set<string>
   /** The full prop records by name: the types the values are checked against. */
-  types: Map<string, RegistryProp>
+  types: Map<string, SpecProp>
   /** Present for a vocabulary member; absent for an exception primitive. */
-  component?: RegistryComponent
-  primitive?: ExceptionPrimitive
+  component?: SpecMember
+  primitive?: SpecPrimitive
   /** Present for a compound part: its name in its member (`Panel` for `Dashboard.Panel`). */
   part?: string
 }
 
 /** A member's own props by name. A part's props, which `props` lists with the part's name, are left out. */
-function typesOf(props: RegistryProp[]): Map<string, RegistryProp> {
-  const map = new Map<string, RegistryProp>()
+function typesOf(props: readonly SpecProp[]): Map<string, SpecProp> {
+  const map = new Map<string, SpecProp>()
   for (const prop of props) {
     if (!prop.name.includes('.')) map.set(prop.name, prop)
   }
@@ -1111,8 +1175,8 @@ function typesOf(props: RegistryProp[]): Map<string, RegistryProp> {
  */
 function surfaceOf(
   name: string,
-  components: Map<string, RegistryComponent>,
-  primitives: Map<string, ExceptionPrimitive>,
+  components: Map<string, SpecMember>,
+  primitives: Map<string, SpecPrimitive>,
 ): Surface | null {
   const primitive = primitives.get(name)
   if (primitive) {
@@ -1147,7 +1211,7 @@ function surfaceOf(
  * against it.
  */
 function composableParts(
-  component: RegistryComponent,
+  component: SpecMember,
   platform: Platform,
   framework: Framework,
 ): string[] {
@@ -1158,7 +1222,7 @@ function composableParts(
 }
 
 /** `Table.Row`, `Table.Cell`: the parts of a member a screen may name, as a fault lists them. */
-function partNames(component: RegistryComponent, platform: Platform, framework: Framework): string {
+function partNames(component: SpecMember, platform: Platform, framework: Framework): string {
   const names = composableParts(component, platform, framework).map(
     (part) => `\`${component.name}.${part}\``,
   )
@@ -1197,7 +1261,7 @@ function partFault(
  */
 function partsOfOwner(
   name: string,
-  components: Map<string, RegistryComponent>,
+  components: Map<string, SpecMember>,
   platform: Platform,
   framework: Framework,
 ): string | null {
@@ -1383,7 +1447,7 @@ function scalarMatches(part: string, value: unknown): boolean {
  * agent invents.
  */
 function checkGrid(
-  component: RegistryComponent,
+  component: SpecMember,
   props: Record<string, SpecValue>,
   path: string,
   faults: SpecFault[],
@@ -1425,7 +1489,7 @@ function checkGrid(
  * icon uses that name.
  */
 function checkIcons(
-  registry: Registry,
+  registry: SpecVocabulary,
   props: Record<string, SpecValue>,
   path: string,
   faults: SpecFault[],
@@ -1526,10 +1590,10 @@ const fold = (name: string) => name.replace(/[^a-z0-9]/gi, '').toLowerCase()
  * interruption". So the purposes are searched too.
  */
 function nearest(
-  registry: Registry,
+  registry: SpecVocabulary,
   name: string,
-  components: Map<string, RegistryComponent>,
-  primitives: Map<string, ExceptionPrimitive>,
+  components: Map<string, SpecMember>,
+  primitives: Map<string, SpecPrimitive>,
 ): string {
   const wanted = fold(name)
 
