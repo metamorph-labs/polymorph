@@ -40,7 +40,7 @@ import {
 import { renderVueMember, renderVueStates } from './vue'
 import { renderSolidMember, renderSolidStates } from './solid'
 import { renderSvelteMember, renderSvelteStates, svelteContext, svelteInterface } from './svelte'
-import { renderAngularMember, type AngularContext } from './angular'
+import { renderAngularMember, renderAngularStates, type AngularContext } from './angular'
 
 /**
  * The shells' freshness law, and the generator's own checks.
@@ -130,6 +130,18 @@ describe('an expression is rewritten by its scope, not its spelling', () => {
 
   it('keeps a shorthand property’s key', () => {
     expect(rewrite('{ checked }', props)).toBe('{ checked: props.checked }')
+  })
+
+  it('reads the types a parameter and a result name, and leaves an object type’s members alone', () => {
+    const names: string[] = []
+    rewrite('(event: RichTextEditorEvent): Done => event', (name) => {
+      names.push(name)
+      return null
+    })
+    expect(names).toEqual(['RichTextEditorEvent', 'Done'])
+    expect(rewrite('null as { label: string; checked(): void } | null', props)).toBe(
+      'null as { label: string; checked(): void } | null',
+    )
   })
 
   it('refuses what is not one expression', () => {
@@ -558,6 +570,29 @@ describe('the Vue fixture renderer writes what an entry says', () => {
     expect(out).toContain("import Badge from './Badge.vue'")
   })
 
+  it('renders a function that returns several nodes, as a fragment holds them', () => {
+    const out = states({
+      states: [
+        {
+          name: 'two',
+          props: {
+            cell: renders(['row: { status: string }'], [fx('Badge', {}), fx('Badge', {})]),
+          },
+        },
+      ],
+    })
+    expect(out).toContain('cell: (row: { status: string }) => [h(Badge, {}), h(Badge, {})]')
+  })
+
+  it('selects words once their element holds them, as a reader selects them', () => {
+    const out = states({
+      states: [{ name: 'selected', selects: { in: '[role="textbox"]', text: 'the wait' } }],
+    })
+    expect(out).toContain('document.querySelector<HTMLElement>(\'[role="textbox"]\')')
+    expect(out).toContain("setBaseAndExtent(node, at, node, at + 'the wait'.length)")
+    expect(out).toContain("import { h, onBeforeUnmount, onMounted } from 'vue'")
+  })
+
   it('passes a function for the member’s own render prop as a scoped slot', () => {
     // A render prop is a scoped slot in Vue, so `h()` takes it with the slots, not the props.
     const out = renderVueStates(
@@ -899,6 +934,200 @@ describe('a slot read as a node another component draws', () => {
       source: 'probe.ts',
     })
     expect(solid).toContain('footerSlot.filled() ? footerSlot() : undefined')
+  })
+})
+
+describe('a function the app passes for a node, as a description and a fixture read it', () => {
+  const component = {
+    name: 'Probe',
+    purpose: 'A probe',
+    spec: null,
+    props: [
+      {
+        name: 'entity',
+        type: '((entity: { id: string }) => ReactNode) | undefined',
+        optional: true,
+      },
+    ],
+    grid: null,
+  }
+  const badge = {
+    name: 'Badge',
+    purpose: 'A badge',
+    spec: null,
+    props: [{ name: 'children', type: 'ReactNode', optional: true }],
+    grid: null,
+  }
+  const shell = describeMember({
+    member: 'Probe',
+    dir: 'structure',
+    recipe: null,
+    derived: {
+      draws: '(drawn: { id: string }) => slotDraws(slots.entity, drawn)',
+      entityNode: '(drawn: { id: string }) => slotNode(slots.entity, drawn)',
+      kindOf: '(block: RichTextDrawnBlock) => block.kind',
+    },
+    template: el('span'),
+    parts: [
+      {
+        name: 'Blocks',
+        public: false,
+        purpose: 'blocks',
+        props: { blocks: { type: 'string[]' } },
+        template: each('blocks', 'block', 'index', [member('ProbeItem', { blocks: '[block]' })]),
+      },
+      {
+        name: 'Item',
+        public: false,
+        purpose: 'an item and its blocks',
+        props: { blocks: { type: 'string[]' } },
+        template: el('li', {}, [member('ProbeBlocks', { blocks: 'blocks' })]),
+      },
+    ],
+    states: [
+      {
+        name: 'drawn',
+        props: {
+          entity: renders(
+            ['entity: { id: string }'],
+            fx('Badge', {}, { default: [js('entity.id')] }),
+            "entity.id === 'a'",
+          ),
+        },
+      },
+      {
+        name: 'two',
+        props: { entity: renders(['entity: { id: string }'], [fx('Badge', {}), fx('Badge', {})]) },
+      },
+      { name: 'selected', selects: { in: '[data-member="probe"]', text: 'the wait' } },
+    ],
+  })
+  const locations = new Map(
+    ['Probe', 'ProbeBlocks', 'ProbeItem', 'Badge'].map((name) => [
+      name,
+      { home: 'vocabulary' as const, dir: 'structure' },
+    ]),
+  )
+  const context = { locations, owners: new Map<string, string>(), source: 'probe.ts' }
+  const svelte = () => {
+    const shared = svelteContext(registry, members)
+    return {
+      ...shared,
+      locations: new Map([...shared.locations, ...locations]),
+      props: new Map([...shared.props, ['Probe', svelteInterface(component).props]]),
+      source: 'probe.ts',
+    }
+  }
+  const angular: AngularContext = {
+    ...angularContext(locations),
+    lookup: (name) => (name === 'Probe' ? component : name === 'Badge' ? badge : undefined),
+  }
+
+  it('reads a scoped slot’s content for one argument, and whether it draws anything for it', () => {
+    // A member draws its own fallback where the app's function draws nothing for an argument.
+    const vue = renderVueMember(shell, component, context)
+    expect(vue).toContain('slotNode(slots.entity, drawn)')
+    expect(vue).toContain('slotDraws(slots.entity, drawn)')
+    expect(vue).toMatch(/import \{[^}]*slotDraws, slotNode[^}]*\} from '@polymorph\/vue'/)
+    const svelteOut = renderSvelteMember(shell, component, svelte())
+    expect(svelteOut).toContain('bindSnippet(entity, drawn)')
+    expect(svelteOut).toContain('slotDraws(entity, drawn)')
+    expect(svelteOut).toMatch(
+      /import \{[^}]*bindSnippet[^}]*slotDraws[^}]*\} from '@polymorph\/svelte'/,
+    )
+    const solid = renderSolidMember(shell, component, context)
+    expect(solid).toContain('drawSlot(props.entity, drawn)')
+    expect(solid).toContain('slotDraws(props.entity, drawn)')
+    expect(solid).toMatch(/import \{[^}]*drawSlot[^}]*slotDraws[^}]*\} from '@polymorph\/solid'/)
+    const angularOut = renderAngularMember(shell, component, angular, new Set())
+    expect(angularOut).toContain('bindSlot(this.$p.entity, drawn)')
+    expect(angularOut).toContain('slotDraws(this.$p.entity, drawn)')
+    expect(angularOut).toMatch(
+      /import \{[^}]*bindSlot[^}]*slotDraws[^}]*\} from '@polymorph\/angular'/,
+    )
+  })
+
+  it('imports a foundation type that only a parameter’s type names', () => {
+    const outs = {
+      vue: renderVueMember(shell, component, context),
+      svelte: renderSvelteMember(shell, component, svelte()),
+      solid: renderSolidMember(shell, component, context),
+      angular: renderAngularMember(shell, component, angular, new Set()),
+    }
+    for (const [name, out] of Object.entries(outs)) {
+      expect(out, name).toMatch(
+        new RegExp(`import \\{[^}]*type RichTextDrawnBlock[^}]*\\} from '@polymorph/${name}'`),
+      )
+    }
+  })
+
+  it('draws a fixture function’s nodes only for the arguments its condition holds for', () => {
+    expect(renderVueStates(shell, component, context)).toContain(
+      "{ entity: (entity: { id: string }) => (entity.id === 'a') ? [h(Badge, {}, { default: () => [entity.id] })] : [] }",
+    )
+    expect(renderSvelteStates(shell, component, svelte())).toContain(
+      "{#snippet node1(entity: { id: string })}{#if entity.id === 'a'}<Badge>{entity.id}</Badge>{/if}{/snippet}",
+    )
+    expect(renderSolidStates(shell, component, context)).toContain(
+      "<Probe entity={(entity: { id: string }) => (entity.id === 'a') ? <Badge>\n{entity.id}\n</Badge> : undefined} {...overrides} />",
+    )
+    const angularStates = renderAngularStates(shell, component, angular)
+    expect(angularStates).toContain(
+      '<ng-template #t1 let-entity>@if (e2(entity)) {<pm-badge>{{ e1(entity) }}</pm-badge>}</ng-template>',
+    )
+    expect(angularStates).toContain(
+      "protected e2(entity: { id: string }): boolean {\nreturn (entity.id === 'a')\n}",
+    )
+  })
+
+  it('draws several nodes from one fixture function', () => {
+    expect(renderSvelteStates(shell, component, svelte())).toContain(
+      '{#snippet node2(entity: { id: string })}<Badge /><Badge />{/snippet}',
+    )
+    expect(renderSolidStates(shell, component, context)).toContain(
+      '<Probe entity={(entity: { id: string }) => [<Badge />, <Badge />]} {...overrides} />',
+    )
+    expect(renderAngularStates(shell, component, angular)).toContain(
+      '<ng-template #t2 let-entity><pm-badge></pm-badge><pm-badge></pm-badge></ng-template>',
+    )
+  })
+
+  it('selects an entry’s words once the member holds them', () => {
+    expect(renderSvelteStates(shell, component, svelte())).toContain(
+      `<Held initial={{  }} selects={{ in: '[data-member="probe"]', text: 'the wait', frames: 60, delay: 60 }}>`,
+    )
+    const solid = renderSolidStates(shell, component, context)
+    expect(solid).toContain("setBaseAndExtent(node, at, node, at + 'the wait'.length)")
+    expect(solid).toContain("import { onCleanup, onMount } from 'solid-js'")
+    const angularStates = renderAngularStates(shell, component, angular)
+    expect(angularStates).toContain(
+      `selectOnce(() => (this.entry() === 2 ? { in: '[data-member="probe"]', text: 'the wait' } : undefined))`,
+    )
+    expect(angularStates).toMatch(/import \{[^}]*selectOnce[^}]*\} from '@polymorph\/angular'/)
+  })
+
+  it('declares two parts that draw each other through `forwardRef` in Angular, and no others', () => {
+    // Each part's module imports the other, so the class one names is not yet declared.
+    const blocks = partShell(shell, shell.parts![0]!, component)
+    const item = partShell(shell, shell.parts![1]!, component)
+    const write = (composes: AngularContext['composes']) =>
+      renderAngularMember(
+        blocks.shell,
+        blocks.component,
+        {
+          ...angular,
+          lookup: (name) => (name === 'ProbeItem' ? item.component : undefined),
+          composes,
+        },
+        new Set(),
+        'Probe',
+      )
+    const drawnBack = write((name) => new Set(name === 'ProbeItem' ? ['ProbeBlocks'] : []))
+    expect(drawnBack).toContain('imports: [forwardRef(() => ProbeItem)]')
+    expect(drawnBack).toMatch(/import \{[^}]*forwardRef[^}]*\} from '@angular\/core'/)
+    const oneWay = write(() => new Set())
+    expect(oneWay).toContain('imports: [ProbeItem]')
+    expect(oneWay).not.toContain('forwardRef')
   })
 })
 

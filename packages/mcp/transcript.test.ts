@@ -143,7 +143,7 @@ describe('an agent uses the system', () => {
     expect(card).toContain('exception ladder')
     // The card is meant to be the *first* call, so it must be cheap. The budget
     // is set and justified in `packages/registry/src/card.test.ts`.
-    expect(card.length).toBeLessThan(38_300)
+    expect(card.length).toBeLessThan(39_214)
   })
 
   it('2. searches for the thing it needs, by the word it would use', async () => {

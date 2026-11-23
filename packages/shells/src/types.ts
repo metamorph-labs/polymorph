@@ -112,6 +112,18 @@ export const FOUNDATION_TYPES = new Set([
   'RadarAxis',
   'ScatterBubble',
   'TreemapItem',
+  // The rich-text document and its editor, from the engine's two rich-text entries.
+  'RichTextDocument',
+  'RichTextEntity',
+  'RichTextFormat',
+  'RichTextRange',
+  'RichTextEditor',
+  'RichTextEditorEvent',
+  'RichTextEditorState',
+  'RichTextSuggestionKey',
+  // What RichTextContent draws for a document (`richTextDrawing`).
+  'RichTextDrawnBlock',
+  'RichTextDrawnInline',
 ])
 
 /**
@@ -251,6 +263,45 @@ export const ENGINE_HELPERS: readonly string[] = [
   'actOnToastNotice',
   // The theme runtime's: ModeSwitch applies the reader's choice.
   'setMode',
+  // RichTextInput's: the document, the editor it mounts, a toolbar's roving tab stop and keys,
+  // the places of the selection bar and of the suggestion list, focus entering and leaving the
+  // field, a press on its label and a form's reset.
+  'createRichTextEditor',
+  'emptyRichText',
+  'isRichTextEmpty',
+  'isRichTextNewer',
+  'RICH_TEXT_FORMATS',
+  'richTextFromText',
+  'richTextHref',
+  'richTextLength',
+  'richTextPlainText',
+  'serializeRichText',
+  'toolbarStop',
+  'syncToolbarStop',
+  'toolbarKeydown',
+  'toolbarFocusIn',
+  'toolbarFocusOut',
+  'toolbarPress',
+  'enterToolbar',
+  'holdToolbarEscape',
+  'toolbarLosesFocus',
+  'placeSelectionBar',
+  'followSelectionBar',
+  'placeTokenList',
+  'idPart',
+  'focusOnLabelPress',
+  'followFieldFocus',
+  'followFormReset',
+  // RichTextContent's: the drawing of a document, a reader's selection in it, and a press or a
+  // key on a highlight.
+  'richTextDrawing',
+  'richTextPositionAttrs',
+  'richTextAnnotations',
+  'mapRichTextSelection',
+  'richTextSelectionBox',
+  'richTextPressedAnnotation',
+  'richTextKeyedAnnotation',
+  'RICH_TEXT_STOP',
   // The chart engine's, which the chart frame's builders name (`chart-frame.ts`).
   ...CHART_HELPERS,
   // The segmented field's, which the date field's builders name (`date-field.ts`).

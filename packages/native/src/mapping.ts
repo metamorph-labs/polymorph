@@ -1420,6 +1420,72 @@ export const SHAPES: Readonly<Record<string, Shape>> = {
       },
     ],
   },
+  RichTextContentMessages: {
+    fields: [
+      {
+        name: 'selectionBar',
+        type: 'string',
+        optional: true,
+        doc: 'The selection bar’s name. Default: `Selection`.',
+      },
+      {
+        name: 'selectionBarReady',
+        type: 'string',
+        optional: true,
+        doc: 'Said once, when the selection bar first appears.',
+      },
+    ],
+  },
+  RichTextContentSelection: {
+    fields: [
+      {
+        name: 'range',
+        type: 'RichTextRange',
+        doc: 'The selection in the document’s plain text, which `annotateRichText` takes.',
+      },
+      { name: 'text', type: 'string', doc: 'The selected text, an entity as its label.' },
+    ],
+  },
+  // A case of the document's inlines, whose `type` is always `'entity'`, so the
+  // shape leaves the discriminant out as Menu's entries leave out `kind`.
+  RichTextEntity: {
+    discriminant: 'type',
+    fields: [
+      {
+        name: 'kind',
+        type: 'string',
+        doc: 'The app’s name for the kind of thing: `user`, `issue`.',
+      },
+      { name: 'id', type: 'string', doc: 'The app’s identifier for the thing.' },
+      {
+        name: 'label',
+        type: 'string',
+        doc: 'The words drawn and read, with any leading character: `@Ada Lovelace`.',
+      },
+      {
+        name: 'marks',
+        type: 'RichTextMark[]',
+        optional: true,
+        doc:
+          'The annotations the entity is inside, each `{ type: "annotation", id }`, and marks ' +
+          'of a later version. Absent when it has none.',
+      },
+    ],
+  },
+  RichTextRange: {
+    fields: [
+      {
+        name: 'start',
+        type: 'number',
+        doc: 'The first code point, of the plain text with nothing between blocks.',
+      },
+      {
+        name: 'end',
+        type: 'number',
+        doc: 'The code point after the last; equal to `start` for a caret.',
+      },
+    ],
+  },
   ScatterBubble: {
     fields: [
       { name: 'key', type: 'string' },
@@ -1723,6 +1789,24 @@ export const SHAPES: Readonly<Record<string, Shape>> = {
  */
 export const FUNCTION_ALIASES: Readonly<Record<string, string>> = {
   StepperSpoken: '(step: { position: number; count: number; state: StepperSpokenState }) => string',
+}
+
+/**
+ * Named types a native contract carries as JSON, the dialect's type for the
+ * web's `unknown` (`PMJSONValue`), each with why. Such a type is the JSON an
+ * app stored, read by a tolerant reader, so a typed native tree would drop
+ * what the reader keeps. `contracts.test.ts` holds each to a type the web
+ * exports.
+ */
+export const JSON_TYPES: Readonly<Record<string, string>> = {
+  RichTextDocument:
+    'A rich-text document crosses as the JSON a server stored, as the web member takes any ' +
+    'JSON: its readers keep the nodes of a later version, which a typed tree would have no case ' +
+    'for.',
+  RichTextMark:
+    'A mark is part of the stored document, as a node is: its readers keep the marks of a later ' +
+    'version, so an entity’s marks cross as the JSON they were stored as, and an app reads an ' +
+    'annotation’s `id` from it.',
 }
 
 /** One branch of a union: its case's name, and its type as the web writes it. */
@@ -2453,6 +2537,9 @@ export class Pass {
     if (args.length > 0) throw new Unsupported(`the generic type \`${name}<…>\``)
     const equivalent = this.dialect.equivalents[name]
     if (equivalent !== undefined) return equivalent
+    if (JSON_TYPES[name] !== undefined && this.dialect.unknown !== undefined) {
+      return this.dialect.unknown
+    }
     const props = /^(.+)Props$/.exec(name)?.[1]
     if (props !== undefined && this.memberNames.has(props)) return `PM${props}Props`
     const opaque = assertIdentifier(

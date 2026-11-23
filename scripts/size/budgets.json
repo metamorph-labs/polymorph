@@ -44,7 +44,7 @@
     "css": 49
   },
   "elements-all": {
-    "js": 457,
+    "js": 600,
     "css": 49
   },
   "elements-agent": {
@@ -52,7 +52,7 @@
     "css": 49
   },
   "elements-screen": {
-    "js": 85,
+    "js": 86,
     "css": 49
   }
 }

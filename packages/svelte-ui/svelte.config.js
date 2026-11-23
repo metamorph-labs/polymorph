@@ -5,9 +5,9 @@
  * The members are generated to the React members' DOM contract, which the axe
  * law and the conformance law check in the rendered document
  * (`src/laws.test.ts`, `src/conformance.test.ts`). The compiler's
- * accessibility hints read the markup instead, and six of them report
+ * accessibility hints read the markup instead, and some of them report
  * elements whose role the markup does not show or whose contract is React's.
- * Those six are not reported, each for the reason beside it. Every other hint
+ * Those are not reported, each for the reason beside it. Every other hint
  * fails `svelte-check`.
  */
 const NOT_REPORTED = new Set([
@@ -34,8 +34,25 @@ const NOT_REPORTED = new Set([
   'a11y_click_events_have_key_events',
 ])
 
+/** The members that draw a `role="toolbar"` whose tab stop is one of its controls. */
+const TOOLBAR_MEMBERS = /(?:^|[\\/])(?:RichTextInput|RichTextContent)\.svelte$/
+
+/**
+ * A toolbar's keys are on the toolbar, and its tab stop is one of its controls
+ * and not the toolbar, as WAI-ARIA's toolbar pattern has it: RichTextInput's
+ * fixed toolbar and selection bar, and RichTextContent's selection bar. The
+ * hint that an element with an interactive role needs a tab stop
+ * (`a11y_interactive_supports_focus`) is not reported for a `toolbar` in those
+ * two files only, so any other element with an interactive role and no tab
+ * stop is still reported.
+ */
+const toolbarStopOnControl = (warning) =>
+  warning.code === 'a11y_interactive_supports_focus' &&
+  TOOLBAR_MEMBERS.test(warning.filename ?? '') &&
+  warning.message.includes("'toolbar'")
+
 export default {
   compilerOptions: {
-    warningFilter: (warning) => !NOT_REPORTED.has(warning.code),
+    warningFilter: (warning) => !NOT_REPORTED.has(warning.code) && !toolbarStopOnControl(warning),
   },
 }

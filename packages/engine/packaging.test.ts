@@ -146,6 +146,8 @@ describe('the published surface exists', () => {
       const qr = await import('./dist/qr.js')
       const charts = await import('./dist/charts.js')
       const markdown = await import('./dist/markdown.js')
+      const richText = await import('./dist/rich-text.js')
+      const richTextEditor = await import('./dist/rich-text-editor.js')
       const agent = await import('./dist/agent.js')
       const webmcp = await import('./dist/webmcp.js')
       console.log(JSON.stringify({
@@ -167,6 +169,9 @@ describe('the published surface exists', () => {
         createReading: typeof charts.createReading,
         barChartModel: typeof charts.barChartModel,
         parseMarkdown: typeof markdown.parseMarkdown,
+        parseRichText: typeof richText.parseRichText,
+        createRichTextEditor: typeof richTextEditor.createRichTextEditor,
+        editorInModel: ['createRichTextEditor'].filter((name) => name in richText),
         agentMember: typeof root.agentMember,
         createAgentBridge: typeof agent.createAgentBridge,
         agentTools: typeof agent.agentTools,
@@ -177,7 +182,7 @@ describe('the published surface exists', () => {
         bridgeInWebMCP: ['createAgentBridge', 'agentTools', 'registerWebMCP'].filter(
           (name) => name in webmcp,
         ),
-        subpathsAtRoot: ['qrSymbol', 'linePath', 'parseMarkdown', 'createAgentBridge', 'agentTools', 'registerWebMCPOnCall', 'applyAgentSetting'].filter(
+        subpathsAtRoot: ['qrSymbol', 'linePath', 'parseMarkdown', 'parseRichText', 'createRichTextEditor', 'createAgentBridge', 'agentTools', 'registerWebMCPOnCall', 'applyAgentSetting'].filter(
           (name) => name in root,
         ),
       }))
@@ -214,6 +219,12 @@ describe('the published surface exists', () => {
       createReading: 'function',
       barChartModel: 'function',
       parseMarkdown: 'function',
+      // The rich-text document and its editor are two subpaths, so a page that
+      // shows documents loads no editor. Both import in plain Node: the editor
+      // touches the page only when one is created.
+      parseRichText: 'function',
+      createRichTextEditor: 'function',
+      editorInModel: [],
       // The agent registry is in the root, which every member reaches, and the
       // bridge that reads it is a subpath.
       agentMember: 'function',
@@ -226,13 +237,13 @@ describe('the published surface exists', () => {
       applyAgentSetting: 'function',
       agentAttribute: 'data-agent',
       bridgeInWebMCP: [],
-      // The QR encoder, the chart paths, the Markdown parser and the agent
-      // bridge are subpaths, so an application that imports the root for its
-      // theme does not load them.
+      // The QR encoder, the chart paths, the Markdown parser, the rich-text
+      // document and editor, and the agent bridge are subpaths, so an
+      // application that imports the root for its theme does not load them.
       subpathsAtRoot: [],
     })
     /*
-     * Spawning node and importing ten built entries takes over a second on an
+     * Spawning node and importing twelve built entries takes over a second on an
      * idle machine and several on a busy one. Vitest's default per-test timeout
      * is five seconds. `pnpm proof` runs this suite four times while a browser
      * project and a build compete for the same cores, and the default times out
@@ -304,7 +315,9 @@ describe('the published surface exists', () => {
    * consumer install it, whatever it renders with. So the engine's imports are
    * held to a list of framework-free packages, not checked against a list of
    * frameworks a new one could be missing from. `@polymorph/theme` is bundled
-   * into the build, and `vite` is the peer the Vite plugin runs inside.
+   * into the build, and `vite` is the peer the Vite plugin runs inside. The
+   * ProseMirror packages are the rich-text editor's, and only its entry imports
+   * them (`rich-text-boundary.test.ts`).
    */
   it('imports no UI framework and no icon set: only the packages listed here', () => {
     const allowed = new Set([
@@ -313,6 +326,15 @@ describe('the published surface exists', () => {
       'd3-array',
       'd3-scale',
       'd3-shape',
+      'prosemirror-commands',
+      'prosemirror-history',
+      'prosemirror-inputrules',
+      'prosemirror-keymap',
+      'prosemirror-model',
+      'prosemirror-schema-list',
+      'prosemirror-state',
+      'prosemirror-transform',
+      'prosemirror-view',
       'zod',
       'vite',
     ])
@@ -401,6 +423,9 @@ describe('the build keeps client directives', () => {
     // resolver. Marking every module as client would lose that.
     expect(startsWithDirective('dist/motion/patterns.js')).toBe(false)
     expect(startsWithDirective('dist/index.js')).toBe(false)
+    // The rich-text document is data, read on a server as in a browser.
+    expect(startsWithDirective('dist/rich-text.js')).toBe(false)
+    expect(startsWithDirective('dist/rich-text/read.js')).toBe(false)
     // The tools' definitions are data, and the registration reaches the browser through the lookup.
     expect(startsWithDirective('dist/agent/definitions.js')).toBe(false)
     expect(startsWithDirective('dist/agent/webmcp.js')).toBe(false)

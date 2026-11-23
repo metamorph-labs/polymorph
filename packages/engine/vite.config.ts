@@ -7,14 +7,17 @@ const entry = (path: string) => fileURLToPath(new URL(path, import.meta.url))
 /**
  * The dist build for `@polymorph/engine` (`pnpm build:packages`).
  *
- * Ten entries, one per JS entry in the package's `exports` map. The root is
+ * Twelve entries, one per JS entry in the package's `exports` map. The root is
  * the theme engine, the framework-free conventions, the agent registry and the
  * icon roles, and any web framework can import it. `motion` is the motion engine, for component
- * internals, and application code must not import it. `qr`, `charts` and
- * `markdown` are the helpers only one member family needs (the QR encoder, the
- * chart engine over `d3-scale`, `d3-array` and `d3-shape`, the Markdown
- * parser), kept off the root so an application that imports it for its theme
- * does not load them. `agent` is the agent bridge, which reads the registry
+ * internals, and application code must not import it. `qr`, `charts`,
+ * `markdown`, `rich-text` and `rich-text-editor` are the helpers only one
+ * member family needs (the QR encoder, the chart engine over `d3-scale`,
+ * `d3-array` and `d3-shape`, the Markdown parser, the rich-text document, and
+ * the rich-text editor over ProseMirror), kept off the root so an application
+ * that imports it for its theme does not load them. The document and its
+ * editor are two entries, so a page that shows documents and edits none loads
+ * no ProseMirror. `agent` is the agent bridge, which reads the registry
  * the root keeps, so a page that creates no bridge does not ship it.
  * `webmcp` registers the bridge's tools before the bridge is loaded, and
  * imports none of it, so a page that registers that way loads the bridge on
@@ -25,9 +28,10 @@ const entry = (path: string) => fileURLToPath(new URL(path, import.meta.url))
  *
  * Which dependencies are external and which are bundled:
  *
- *  - `culori`, `zod`, the three d3 packages and
+ *  - `culori`, `zod`, the three d3 packages, the nine ProseMirror packages and
  *    `@internationalized/date` stay external. They are declared dependencies, so the consumer's package
- *    manager installs one copy of each.
+ *    manager installs one copy of each. One copy matters most for ProseMirror,
+ *    whose packages check each other's classes with `instanceof`.
  *  - `vite` stays external because it is the host the build plugin runs inside.
  *  - `@polymorph/theme` is **bundled**. It implements the engine and is not a
  *    separate product, so a consumer installs one package with one version.
@@ -51,6 +55,8 @@ export default defineConfig({
         qr: entry('./src/qr/index.ts'),
         charts: entry('./src/charts/index.ts'),
         markdown: entry('./src/markdown/index.ts'),
+        'rich-text': entry('./src/rich-text/index.ts'),
+        'rich-text-editor': entry('./src/rich-text-editor/index.ts'),
         agent: entry('./src/agent/index.ts'),
         webmcp: entry('./src/webmcp.ts'),
         testing: entry('./src/testing.ts'),
@@ -69,6 +75,15 @@ export default defineConfig({
         'd3-array',
         'd3-scale',
         'd3-shape',
+        'prosemirror-commands',
+        'prosemirror-history',
+        'prosemirror-inputrules',
+        'prosemirror-keymap',
+        'prosemirror-model',
+        'prosemirror-schema-list',
+        'prosemirror-state',
+        'prosemirror-transform',
+        'prosemirror-view',
         '@internationalized/date',
         /^node:/,
       ],

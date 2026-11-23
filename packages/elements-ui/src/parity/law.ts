@@ -127,6 +127,21 @@ async function settled(roots: () => Element[]): Promise<{ document: Shape[]; box
 }
 
 /**
+ * Waits until an entry that selects words (`selects`) has selected them, so
+ * both mounts are compared at the selection the entry describes. Each fixture
+ * selects the words a moment after the member is drawn, and an engine that
+ * draws frames faster than the display's rate can pass the first frames of
+ * `settled` before then.
+ */
+async function selected(text: string | undefined): Promise<void> {
+  if (text === undefined) return
+  for (let attempt = 0; attempt < 120; attempt++) {
+    if (document.getSelection()?.toString().includes(text) === true) return
+    await frame()
+  }
+}
+
+/**
  * An empty element a portal left at the end of the body: a closed overlay's
  * container, which shows nothing. A Solid fixture that passes a member inside
  * an object prop makes the member each time the prop is read (Solid reads a
@@ -172,12 +187,14 @@ export function parityLaw(first: string, last: string): void {
           const host = document.createElement('div')
           document.body.append(host)
           const dispose = render(() => solid?.render(), host)
+          await selected(entry.selects?.text)
           const expected = await settled(addedTo(beforeSolid, host))
           dispose()
           host.remove()
 
           const beforeElements = new Set(document.body.children)
           const mounted = await mount(entry)
+          await selected(entry.selects?.text)
           const actual = await settled(addedTo(beforeElements, mounted.host))
           mounted.unmount()
 

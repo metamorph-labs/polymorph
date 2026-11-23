@@ -53,9 +53,10 @@ export function slottedElements(slot: (() => VNode[]) | undefined, take?: number
   return take === undefined ? found : found.slice(0, take)
 }
 
-/** What `SlotRender` takes: the slot it runs. */
+/** What `SlotRender` takes: the slot it runs, and a scoped slot's props. */
 interface SlotRenderProps {
   slot: (props: never) => unknown
+  props?: object
 }
 
 /**
@@ -64,9 +65,9 @@ interface SlotRenderProps {
  * last one rendered: a declared Toast's content keeps its elements, its focus
  * and its state when the toast updates.
  */
-const SlotRender: FunctionalComponent<SlotRenderProps> = ({ slot }) =>
-  slot({} as never) as VNodeChild
-SlotRender.props = ['slot']
+const SlotRender: FunctionalComponent<SlotRenderProps> = ({ slot, props }) =>
+  slot((props ?? {}) as never) as VNodeChild
+SlotRender.props = ['slot', 'props']
 
 /**
  * A slot as a node another component renders: a declared Toast's `content`,
@@ -74,9 +75,34 @@ SlotRender.props = ['slot']
  * node renders, inside the component that draws it, where Vue tracks what it
  * reads; `undefined` when the caller filled no slot.
  */
-export function slotNode(slot: ((props: never) => unknown) | undefined): VNode | undefined {
+export function slotNode(
+  slot: ((props: never) => unknown) | undefined,
+  props?: object,
+): VNode | undefined {
   if (slot === undefined) return undefined
-  return h(SlotRender, { slot })
+  return h(SlotRender, props === undefined ? { slot } : { slot, props })
+}
+
+/** Whether a node holds something to draw: an element, or text that is not empty. */
+function draws(node: unknown): boolean {
+  if (Array.isArray(node)) return node.some(draws)
+  if (node === null || node === undefined || typeof node === 'boolean') return false
+  if (typeof node === 'string' || typeof node === 'number') return String(node) !== ''
+  const vnode = node as VNode
+  if (vnode.type === Comment) return false
+  if (vnode.type === Text) return typeof vnode.children === 'string' && vnode.children !== ''
+  if (vnode.type === Fragment) return draws(vnode.children)
+  return true
+}
+
+/**
+ * Whether a scoped slot draws anything for these props: a React render prop
+ * that returns `undefined` draws nothing, and a slot whose content is all
+ * comments (a `v-if` that does not hold) is read the same way, as Vue's own
+ * `<slot>` reads it before it draws its fallback.
+ */
+export function slotDraws(slot: ((props: never) => unknown) | undefined, props: object): boolean {
+  return slot !== undefined && draws(slot(props as never))
 }
 
 /**

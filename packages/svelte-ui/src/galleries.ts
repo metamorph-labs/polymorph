@@ -15,6 +15,7 @@ import { states as headingStates } from './structure/heading.states.svelte'
 import { states as textStates } from './structure/text.states.svelte'
 import { states as codeStates } from './structure/code.states.svelte'
 import { states as codeBlockStates } from './structure/code-block.states.svelte'
+import { states as richTextContentStates } from './structure/rich-text-content.states.svelte'
 import { states as jsonTreeStates } from './structure/json-tree.states.svelte'
 import { states as diffStates } from './structure/diff.states.svelte'
 import { states as highlightStates } from './structure/highlight.states.svelte'
@@ -39,6 +40,7 @@ import { states as searchInputStates } from './controls/search-input.states.svel
 import { states as passwordInputStates } from './controls/password-input.states.svelte'
 import { states as oTPInputStates } from './controls/otp-input.states.svelte'
 import { states as textareaStates } from './controls/textarea.states.svelte'
+import { states as richTextInputStates } from './controls/rich-text-input.states.svelte'
 import { states as tagInputStates } from './controls/tag-input.states.svelte'
 import { states as fileUploadStates } from './controls/file-upload.states.svelte'
 import { states as checkboxStates } from './controls/checkbox.states.svelte'
@@ -156,6 +158,7 @@ export const GALLERIES: readonly ComponentStates[] = [
   textStates,
   codeStates,
   codeBlockStates,
+  richTextContentStates,
   jsonTreeStates,
   diffStates,
   highlightStates,
@@ -180,6 +183,7 @@ export const GALLERIES: readonly ComponentStates[] = [
   passwordInputStates,
   oTPInputStates,
   textareaStates,
+  richTextInputStates,
   tagInputStates,
   fileUploadStates,
   checkboxStates,

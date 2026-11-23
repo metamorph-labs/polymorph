@@ -114,6 +114,8 @@ private val catalogueMembers: List<PMCatalogueEntry> = listOf(
     PMCatalogueEntry(name = "ReasoningDisclosure", status = PMPlatformStatus.Native),
     PMCatalogueEntry(name = "RecordButton", status = PMPlatformStatus.Native),
     PMCatalogueEntry(name = "RelativeTime", status = PMPlatformStatus.Native),
+    PMCatalogueEntry(name = "RichTextContent", status = PMPlatformStatus.Native),
+    PMCatalogueEntry(name = "RichTextInput", status = PMPlatformStatus.Absent, substitute = "Textarea"),
     PMCatalogueEntry(name = "ScatterChart", status = PMPlatformStatus.Absent, substitute = "Table"),
     PMCatalogueEntry(name = "ScrollArea", status = PMPlatformStatus.Native),
     PMCatalogueEntry(name = "SearchInput", status = PMPlatformStatus.Native),

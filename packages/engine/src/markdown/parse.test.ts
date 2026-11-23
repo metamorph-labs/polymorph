@@ -87,5 +87,8 @@ describe('the parser', () => {
     expect(safeHref('javascript:alert(1)')).toBeNull()
     expect(safeHref('JAVA\u0000SCRIPT:alert(1)')).toBeNull()
     expect(safeHref('data:text/html,hi')).toBeNull()
+    // A browser drops the space a control character hid from a trim.
+    expect(safeHref('\u0001 javascript:alert(1)')).toBeNull()
+    expect(safeHref(' \u0002\t javascript:alert(1)')).toBeNull()
   })
 })

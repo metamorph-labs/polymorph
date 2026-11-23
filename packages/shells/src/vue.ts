@@ -36,11 +36,15 @@ import {
   presenceEntries,
   presenceExpressions,
   relativeFile,
+  renderedChildren,
+  RENDERS_KEYS,
+  type FixtureRenders,
   staticString,
   templateClassNames,
   templateExpressions,
   typeParameters,
   pressStatements,
+  selectStatements,
   TYPING_FRAMES,
   usesNode,
   withAgent,
@@ -116,8 +120,10 @@ const FOUNDATION_HELPERS = new Set([
   'BrandMark',
   'PageTransition',
   'slotted',
-  // A slot as a node another component renders (a declared Toast's content).
+  // A slot as a node another component renders (a declared Toast's content), and whether a
+  // scoped slot draws anything for its props.
   'slotNode',
+  'slotDraws',
   // A function run once the pending changes are in the document.
   'afterRender',
   // The toast store's, which Toast's viewport and FormField's notice read and write.
@@ -684,6 +690,8 @@ export function renderVueMember(
   const defaultNames = Object.values(shell.defaults ?? {}).flatMap((expr) => [...freeNames(expr)])
   for (const name of [...scriptNames, ...templateNames, ...defaultNames]) {
     if (FOUNDATION_HELPERS.has(name)) foundationValues.add(name)
+    // A type an expression names (`null as RichTextEditorState | null`) is the foundation's too.
+    if (FOUNDATION_TYPES.has(name)) foundationTypes.add(name)
   }
   if (usesNode(template, (node) => node.kind === 'element' && node.tag === 'Glyph'))
     foundationValues.add('Glyph')
@@ -1165,9 +1173,11 @@ function literal(value: FixtureValue, needs: FixtureNeeds): string {
     return source
   }
   if (branded(value, 'node')) return childCode((value as { node: FixtureChild }).node, needs)
-  if (branded(value, 'renders', ['params'])) {
-    const { params, renders } = value as { params: readonly string[]; renders: FixtureChild }
-    return `(${params.join(', ')}) => ${childCode(renders, needs)}`
+  if (branded(value, 'renders', RENDERS_KEYS)) {
+    const { params, renders, when } = value as FixtureRenders
+    const children = renderedChildren(renders).map((child) => childCode(child, needs))
+    const drawn = children.length === 1 ? children[0] : `[${children.join(', ')}]`
+    return `(${params.join(', ')}) => ${when === undefined ? drawn : `(${when}) ? ${drawn} : undefined`}`
   }
   if (branded(value, 'held')) return `held.${(value as { held: string }).held}`
   if (branded(value, 'hold', ['to'])) {
@@ -1257,8 +1267,11 @@ function slotsCode(
         `${key(name)}: () => [${children.map((child) => childCode(child, needs)).join(', ')}]`,
     ),
     ...scoped.map(([name, value]) => {
-      const { params, renders } = value as { params: readonly string[]; renders: FixtureChild }
-      return `${key(name)}: (${params.join(', ')}) => [${childCode(renders, needs)}]`
+      const { params, renders, when } = value as FixtureRenders
+      const children = `[${renderedChildren(renders)
+        .map((child) => childCode(child, needs))
+        .join(', ')}]`
+      return `${key(name)}: (${params.join(', ')}) => ${when === undefined ? children : `(${when}) ? ${children} : []`}`
     }),
   ]
   return entries.length === 0 ? null : `{ ${entries.join(', ')} }`
@@ -1277,7 +1290,7 @@ function vnode(
   renderProps: ReadonlyMap<string, string> = new Map(),
 ): string {
   const scopedSlot = ([prop, value]: readonly [string, FixtureValue]): boolean =>
-    renderProps.has(prop) && branded(value, 'renders', ['params'])
+    renderProps.has(prop) && branded(value, 'renders', RENDERS_KEYS)
   const given = Object.entries(props ?? {})
   const scoped = given
     .filter(scopedSlot)
@@ -1309,6 +1322,16 @@ function statefulEntry(entry: StateEntry, rendered: string[], needs: FixtureNeed
   if (entry.presses !== undefined) {
     setup.push(pressStatements(literal(entry.presses, needs), 'onMounted', 'onBeforeUnmount'))
   }
+  if (entry.selects !== undefined) {
+    setup.push(
+      selectStatements(
+        literal(entry.selects.in, needs),
+        literal(entry.selects.text, needs),
+        'onMounted',
+        'onBeforeUnmount',
+      ),
+    )
+  }
   return `h({ setup() { ${setup.join('; ')}${setup.length > 0 ? '; ' : ''}return () => [${rendered.join(', ')}] } })`
 }
 
@@ -1332,7 +1355,8 @@ function entryCode(
     entry.holds !== undefined ||
     entry.before !== undefined ||
     entry.types !== undefined ||
-    entry.presses !== undefined
+    entry.presses !== undefined ||
+    entry.selects !== undefined
   // What comes before the member, then the member's instances, then what comes after.
   const before = (entry.before ?? []).map((child) => childCode(child, needs))
   if (entry.many !== undefined) {
@@ -1398,7 +1422,8 @@ export function renderVueStates(
     entryCode(shell, entry, needs, renderProps),
   )
   const types = shell.states.some(
-    (entry) => entry.types !== undefined || entry.presses !== undefined,
+    (entry) =>
+      entry.types !== undefined || entry.presses !== undefined || entry.selects !== undefined,
   )
   const holding = shell.states.some((entry) => entry.holds !== undefined)
   const vue = [

@@ -111,6 +111,13 @@ export const GUIDES: readonly Guide[] = [
       'Build an AI chat screen from ready-made parts: the thread, its messages, the composer and the pane beside it.',
   },
   {
+    slug: 'rich-text',
+    title: 'Rich text',
+    group: 'design',
+    description:
+      'Let people write formatted text, mention things and comment on words, and store it all as plain JSON you own.',
+  },
+  {
     slug: 'agents',
     title: 'Agents',
     group: 'agents',

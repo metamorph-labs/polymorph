@@ -91,6 +91,7 @@ import {
  * | `File` | `PMFile`, declared in the foundation |
  * | `Blob` | `ByteArray`: ImageEditor's `onConfirm` hands over the framed image's bytes |
  * | `unknown` | `PMJSONValue`, any JSON value, declared in the foundation |
+ * | a name in `JSON_TYPES` (`RichTextDocument`) | `PMJSONValue`: the JSON an app stored, which a tolerant reader reads |
  * | a function type in `FUNCTION_ALIASES` | its definition, by the same mapping |
  * | an inline object type a shape with a `native` reason names | `data class PM<Name>`, that shape's |
  * | a member's type parameter | a type parameter of its props and of its rendering's `Render`, and of a part's `Render<Part>` when the part's props carry one |
@@ -158,11 +159,13 @@ export const MIRRORED_SYMBOLS = new Set([
   'arrow_forward',
   'comment',
   'compare_arrows',
+  'format_list_bulleted',
   'help',
   'navigate_before',
   'navigate_next',
   'open_in_new',
   'receipt_long',
+  'redo',
   'send',
   'sort',
   'undo',

@@ -44,6 +44,7 @@ describe('gallery registry', () => {
       'Text',
       'Code',
       'CodeBlock',
+      'RichTextContent',
       'JsonTree',
       'Diff',
       'Highlight',
@@ -82,6 +83,7 @@ describe('gallery registry', () => {
       // one-time codes, which are not secrets, beside the field for secrets
       'OTPInput',
       'Textarea',
+      'RichTextInput',
       // the multi-value fields
       'TagInput',
       'FileUpload',
@@ -237,6 +239,7 @@ describe('gallery registry', () => {
       'text',
       'code',
       'code-block',
+      'rich-text-content',
       'json-tree',
       'diff',
       'highlight',
@@ -261,6 +264,7 @@ describe('gallery registry', () => {
       'password-input',
       'otp-input',
       'textarea',
+      'rich-text-input',
       'tag-input',
       'file-upload',
       'checkbox',

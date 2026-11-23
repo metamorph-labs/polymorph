@@ -15,6 +15,7 @@ import { states as headingStates } from './structure/heading.states'
 import { states as textStates } from './structure/text.states'
 import { states as codeStates } from './structure/code.states'
 import { states as codeBlockStates } from './structure/code-block.states'
+import { states as richTextContentStates } from './structure/rich-text-content.states'
 import { states as jsonTreeStates } from './structure/json-tree.states'
 import { states as diffStates } from './structure/diff.states'
 import { states as highlightStates } from './structure/highlight.states'
@@ -39,6 +40,7 @@ import { states as searchInputStates } from './controls/search-input.states'
 import { states as passwordInputStates } from './controls/password-input.states'
 import { states as oTPInputStates } from './controls/otp-input.states'
 import { states as textareaStates } from './controls/textarea.states'
+import { states as richTextInputStates } from './controls/rich-text-input.states'
 import { states as tagInputStates } from './controls/tag-input.states'
 import { states as fileUploadStates } from './controls/file-upload.states'
 import { states as checkboxStates } from './controls/checkbox.states'
@@ -156,6 +158,7 @@ export const GALLERIES: readonly ComponentStates[] = [
   textStates,
   codeStates,
   codeBlockStates,
+  richTextContentStates,
   jsonTreeStates,
   diffStates,
   highlightStates,
@@ -180,6 +183,7 @@ export const GALLERIES: readonly ComponentStates[] = [
   passwordInputStates,
   oTPInputStates,
   textareaStates,
+  richTextInputStates,
   tagInputStates,
   fileUploadStates,
   checkboxStates,

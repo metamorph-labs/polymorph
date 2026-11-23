@@ -20,6 +20,7 @@ enum class PMIconRole(val value: String, val symbolName: String) {
     Artifact("artifact", "view_sidebar"),
     Attach("attach", "attach_file"),
     Back("back", "arrow_back"),
+    Bold("bold", "format_bold"),
     Briefing("briefing", "wb_twilight"),
     Browser("browser", "web_asset"),
     Calendar("calendar", "calendar_today"),
@@ -28,6 +29,8 @@ enum class PMIconRole(val value: String, val symbolName: String) {
     Click("click", "ads_click"),
     Close("close", "close"),
     Cloud("cloud", "cloud"),
+    Code("code", "code"),
+    CodeBlock("code-block", "data_object"),
     Collapse("collapse", "expand_less"),
     Comment("comment", "comment"),
     Confirm("confirm", "check"),
@@ -53,6 +56,7 @@ enum class PMIconRole(val value: String, val symbolName: String) {
     Flip("flip", "flip"),
     Folder("folder", "folder"),
     Forward("forward", "arrow_forward"),
+    Heading("heading", "title"),
     Help("help", "help"),
     Helpful("helpful", "thumb_up"),
     Hidden("hidden", "visibility_off"),
@@ -60,10 +64,13 @@ enum class PMIconRole(val value: String, val symbolName: String) {
     Inbox("inbox", "inbox"),
     Indeterminate("indeterminate", "remove"),
     Info("info", "info"),
+    Italic("italic", "format_italic"),
     Kernel("kernel", "verified_user"),
     Key("key", "key"),
     Ledger("ledger", "receipt_long"),
     Link("link", "link"),
+    ListBulleted("list-bulleted", "format_list_bulleted"),
+    ListNumbered("list-numbered", "format_list_numbered"),
     Loading("loading", "autorenew"),
     Local("local", "memory"),
     Locked("locked", "lock"),
@@ -81,9 +88,11 @@ enum class PMIconRole(val value: String, val symbolName: String) {
     Pause("pause", "pause"),
     Pinned("pinned", "push_pin"),
     Previous("previous", "navigate_before"),
+    Quote("quote", "format_quote"),
     Rating("rating", "star_border"),
     Reasoning("reasoning", "psychology"),
     Record("record", "mic"),
+    Redo("redo", "redo"),
     Refresh("refresh", "refresh"),
     Remove("remove", "remove"),
     Rotate("rotate", "rotate_90_degrees_cw"),
@@ -97,6 +106,7 @@ enum class PMIconRole(val value: String, val symbolName: String) {
     SortAsc("sort-asc", "arrow_upward"),
     SortDesc("sort-desc", "arrow_downward"),
     Stop("stop", "stop"),
+    Strikethrough("strikethrough", "format_strikethrough"),
     Success("success", "check_circle"),
     Table("table", "table_chart"),
     Tag("tag", "sell"),
@@ -325,8 +335,8 @@ fun interface PMApprovalCardRendering {
 
 /** `ArtifactPane.kind`. */
 enum class PMArtifactPaneKind(val value: String) {
-    Document("document"),
     Code("code"),
+    Document("document"),
     Data("data"),
     Preview("preview"),
 }
@@ -4547,6 +4557,67 @@ fun interface PMRelativeTimeRendering {
     fun Render(props: PMRelativeTimeProps)
 }
 
+// RichTextContent
+
+/** `RichTextContent.headingLevel`: one of 2, 3, 4. */
+enum class PMRichTextContentHeadingLevel(val value: Int) {
+    HeadingLevel2(2),
+    HeadingLevel3(3),
+    HeadingLevel4(4),
+}
+
+/** `RichTextContent.size`. */
+enum class PMRichTextContentSize(val value: String) {
+    Sm("sm"),
+    Md("md"),
+}
+
+/**
+ * RichTextContent's props (`design/components/rich-text-content.md`): A stored rich-text document
+ * drawn through the vocabulary.
+ */
+data class PMRichTextContentProps(
+    /** The drawn annotation that is active, such as the thread the app shows. */
+    val activeAnnotation: String? = null,
+    /** The annotations drawn. Default: every one the document holds. */
+    val annotations: List<String>? = null,
+    /**
+     * The app's rendering of an entity: a Link to the person's page, a HoverCard with their card.
+     * `undefined` draws the entity token, so an app can draw one kind itself and leave the others
+     * as tokens.
+     */
+    val entity: (@Composable (PMRichTextEntity) -> Unit)? = null,
+    /**
+     * The page level the document's level 1 heading is drawn at. Each deeper level adds one, up to
+     * 4. Default 2, one level under the page's title.
+     */
+    val headingLevel: PMRichTextContentHeadingLevel? = null,
+    /** The selection bar's words, in the app's language. */
+    val messages: PMRichTextContentMessages? = null,
+    /** A press on a drawn annotation. Without it the highlights take no press and no focus. */
+    val onAnnotationSelect: ((String) -> Unit)? = null,
+    /** The app's router, handed to every Link the document draws (`link.md`). */
+    val onNavigate: ((String) -> Unit)? = null,
+    /** The app's controls for the reader's selected text, in a bar at the selection. */
+    val selectionActions: (@Composable (PMRichTextContentSelection) -> Unit)? = null,
+    /** The body text step (Text's `sm` or `md`), which does not change the heading scale. */
+    val size: PMRichTextContentSize? = null,
+    /**
+     * The stored document. Any JSON is read as far as it can be; what is not a document draws
+     * nothing.
+     */
+    val value: PMJSONValue,
+)
+
+/**
+ * Draws RichTextContent from its props. The member's file declares `PMRichTextContent`, an object
+ * that implements it.
+ */
+fun interface PMRichTextContentRendering {
+    @Composable
+    fun Render(props: PMRichTextContentProps)
+}
+
 // ScrollArea
 
 /** `ScrollArea.orientation`. */
@@ -6957,6 +7028,51 @@ data class PMRelativeTimeMessages(
      * Joins the moment and the distance in `mode: both`, so a locale orders and punctuates them.
      */
     val both: (String, String) -> String,
+)
+
+/**
+ * The web's `RichTextContentMessages`, field for field (`SHAPES` in
+ * `packages/native/src/mapping.ts`).
+ */
+data class PMRichTextContentMessages(
+    /** The selection bar’s name. Default: `Selection`. */
+    val selectionBar: String? = null,
+    /** Said once, when the selection bar first appears. */
+    val selectionBarReady: String? = null,
+)
+
+/**
+ * The web's `RichTextContentSelection`, field for field (`SHAPES` in
+ * `packages/native/src/mapping.ts`).
+ */
+data class PMRichTextContentSelection(
+    /** The selection in the document’s plain text, which `annotateRichText` takes. */
+    val range: PMRichTextRange,
+    /** The selected text, an entity as its label. */
+    val text: String,
+)
+
+/** The web's `RichTextEntity`, field for field (`SHAPES` in `packages/native/src/mapping.ts`). */
+data class PMRichTextEntity(
+    /** The app’s name for the kind of thing: `user`, `issue`. */
+    val kind: String,
+    /** The app’s identifier for the thing. */
+    val id: String,
+    /** The words drawn and read, with any leading character: `@Ada Lovelace`. */
+    val label: String,
+    /**
+     * The annotations the entity is inside, each `{ type: "annotation", id }`, and marks of a later
+     * version. Absent when it has none.
+     */
+    val marks: List<PMJSONValue>? = null,
+)
+
+/** The web's `RichTextRange`, field for field (`SHAPES` in `packages/native/src/mapping.ts`). */
+data class PMRichTextRange(
+    /** The first code point, of the plain text with nothing between blocks. */
+    val start: Double,
+    /** The code point after the last; equal to `start` for a caret. */
+    val end: Double,
 )
 
 /** The web's `SectionNavItem`, field for field (`SHAPES` in `packages/native/src/mapping.ts`). */

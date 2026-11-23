@@ -90,9 +90,13 @@ describe('the census', () => {
      *    code-wired by required callbacks, because without them the input sends nothing and the
      *    approval reaches no one. Citation (`source`), SourceList (`sources`) and Plan (`steps`)
      *    are code-wired by a payload a document cannot express.
+     *  - RichTextContent (`value`) is code-wired. Its value is the rich-text JSON an app stored, a
+     *    payload a document cannot express.
+     *  - RichTextInput is insertable. Every prop is optional: a field starts with no document, and
+     *    its handlers and slots are optional.
      */
-    expect(INSERTABLE.length).toBe(85)
-    expect(CODE_WIRED.length).toBe(55)
+    expect(INSERTABLE.length).toBe(86)
+    expect(CODE_WIRED.length).toBe(56)
     expect(new Set(INSERTABLE.map((entry) => entry.component.name)).size).toBe(INSERTABLE.length)
   })
 

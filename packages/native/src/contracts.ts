@@ -30,6 +30,7 @@ import { phoneCodes, phoneTrunkZero, wrapList, type PhoneCode } from './phones'
 
 export {
   FUNCTION_ALIASES,
+  JSON_TYPES,
   LITERAL_ALIASES,
   NAMED_ONLY,
   SHAPES,
@@ -85,6 +86,7 @@ export {
  * | `Record<K, V>` | `[K: V]` |
  * | `File` | `PMFile`, declared in the foundation |
  * | `unknown` | `PMJSONValue`, any JSON value, declared in the foundation |
+ * | a name in `JSON_TYPES` (`RichTextDocument`) | `PMJSONValue`: the JSON an app stored, which a tolerant reader reads |
  * | a function type in `FUNCTION_ALIASES` (`StepperSpoken`) | its definition, by the same mapping |
  * | an inline object type a shape with a `native` reason names | `PM<Name>`, that shape's struct |
  * | a member's type parameter (`DataTable`'s `Row`) | a generic parameter of its props and its rendering: `PMDataTableProps<Row>` |

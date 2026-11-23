@@ -201,7 +201,7 @@ for (const file of staged) {
 }
 
 /* 3. compile -------------------------------------------------------------- */
-const engineSubpaths = ['motion', 'qr', 'charts', 'markdown']
+const engineSubpaths = ['motion', 'qr', 'charts', 'markdown', 'rich-text', 'rich-text-editor']
 const paths = {
   '@polymorph/engine': [join(ENGINE_DIST, 'index.d.ts')],
   ...Object.fromEntries(

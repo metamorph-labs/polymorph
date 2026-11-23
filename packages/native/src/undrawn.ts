@@ -453,11 +453,42 @@ export const UNDRAWN: readonly UndrawnProps[] = [
     android: ['Accordion', 'Collapsible'],
   },
   {
+    props: [
+      'selectionActions',
+      'messages',
+      'RichTextContentMessages.selectionBar',
+      'RichTextContentMessages.selectionBarReady',
+    ],
+    reason:
+      'The selection bar: the app’s controls for the words a reader selected, given the ' +
+      'selection’s range, and the bar’s name and announcement. A SwiftUI `Text` with selection on ' +
+      'copies its whole text through the system’s menu and reports no selected range, so there is ' +
+      'no selection to hand the controls and no bar to draw them in.',
+    ios: ['RichTextContent'],
+  },
+  {
     props: ['lines'],
     reason:
       'Compose’s `Text` takes its line limit and its overflow as arguments, and no composition ' +
       'local carries either, so a member cannot set them on the text an app passes. An app that ' +
       'cuts a paragraph passes `maxLines` and `TextOverflow.Ellipsis` to its own `Text`.',
     android: ['Text'],
+  },
+  {
+    props: [
+      'selectionActions',
+      'messages',
+      'RichTextContentMessages.selectionBar',
+      'RichTextContentMessages.selectionBarReady',
+      'RichTextContentSelection.range',
+    ],
+    reason:
+      'The selection bar, and the words it is named and announced by. The Compose rendering’s ' +
+      'text is not selectable, as Markdown’s is not, and Compose’s selection gives its content ' +
+      'the selected words without their place in the text: the selection with its offsets is ' +
+      'internal to Compose. The toolbar a selection opens is the platform’s own. A bar of the ' +
+      'app’s controls at the selection would replace the platform’s selection handling, so an ' +
+      'app anchors a comment from a control of its own.',
+    android: ['RichTextContent'],
   },
 ]

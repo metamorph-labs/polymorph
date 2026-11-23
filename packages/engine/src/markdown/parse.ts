@@ -329,17 +329,31 @@ const ENTITIES: Record<string, string> = {
 
 const BARE_URL = /^https?:\/\/[^\s<>()]+(?:\([^\s<>()]*\)[^\s<>()]*)*/
 
-/** Returns the target if a link may point at it, or `null`. A rejected link renders as text. */
-export function safeHref(raw: string): string | null {
-  // Control characters are removed one at a time, because a browser still
-  // reads `javascript:` with a tab inside it as `javascript:`. A filter is used
-  // instead of a regex over the control range, because lint rejects that regex.
-  const href = Array.from(raw.trim())
+/**
+ * A link target as a browser reads its scheme: every control character
+ * removed, then the ends trimmed. The rich-text document's links are checked
+ * on the same text (`../rich-text/href.ts`).
+ *
+ * Control characters are removed one at a time, because a browser still reads
+ * `javascript:` with a tab inside it as `javascript:`. The trim comes after the
+ * removal, because a browser also drops a leading space that a control
+ * character hid from the trim: `\u0001 javascript:` is `javascript:` to it. A
+ * filter is used instead of a regex over the control range, because lint
+ * rejects that regex.
+ */
+export function cleanHref(raw: string): string {
+  return Array.from(raw)
     .filter((character) => {
       const code = character.charCodeAt(0)
       return code > 0x1f && code !== 0x7f
     })
     .join('')
+    .trim()
+}
+
+/** Returns the target if a link may point at it, or `null`. A rejected link renders as text. */
+export function safeHref(raw: string): string | null {
+  const href = cleanHref(raw)
   if (href === '') return null
   const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(href)
   if (scheme === null) return href

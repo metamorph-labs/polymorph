@@ -107,11 +107,14 @@ parts. The page measures 41.03 kB, so its ceiling is 43 kB. About a quarter of a
 is the Solid foundation's hydration conventions, which the Solid members carry and an element never
 uses, because an element renders its member in the browser. The CSS is `polymorph.css`, every recipe with the forms that reach through an element,
 which a page loads whichever members it uses, and the theme sheet. `elements-all` is the Solid
-vocabulary whole with Solid's runtime, the elements' bridge and the agent bridge; its largest third-party parts are Zod and
-Culori, from the theme engine, and Zag's date picker (`pnpm size --why elements-all`).
+vocabulary whole with Solid's runtime, the elements' bridge and the agent bridge; its largest third-party parts are the
+editing library RichTextInput's editor is built on, about ninety kilobytes of the file, Zod and
+Culori, from the theme engine, and Zag's date picker (`pnpm size --why elements-all`). A page
+that loads `polymorph.js` fetches the editor only when it uses `poly-rich-text-input`, because the
+editor is in that element's chunk.
 
-`elements-screen`'s ceilings are set as `elements-button`'s are, from its measurement, 83.0 kB,
-rounded up to the next kilobyte with a kilobyte added: 85 kB. About two fifths of its JavaScript is
+`elements-screen`'s ceilings are set as `elements-button`'s are, from its measurement, 84.7 kB,
+rounded up to the next kilobyte with a kilobyte added: 86 kB. About two fifths of its JavaScript is
 the run-time screen: the vocabulary table with the core's shared modules, which name every member's
 props, parts and lawful cells and hold the checks every document passes (addresses, the depth
 limit, and which prop or field receives a callback; about 27 kB, the largest part), the walk with the renderer and `parsePartial` (about 8 kB),

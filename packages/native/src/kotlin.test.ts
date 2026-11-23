@@ -261,6 +261,12 @@ describe('the Kotlin mapping', () => {
     field('Select', 'options: List<PMSelectOptionEntry>')
     field('Toast', 'action: PMToastAction? = null')
     field('DataTable', 'emptyState: PMEmptyStateProps')
+    // A name in `JSON_TYPES` crosses as the JSON an app stored: the document, and an entity's marks.
+    field('RichTextContent', 'value: PMJSONValue')
+    expect(set.files['Contracts.kt']).toContain(
+      'data class PMRichTextEntity(\n    /** The app’s name for the kind of thing: `user`, `issue`. */\n',
+    )
+    expect(set.files['Contracts.kt']).toContain('    val marks: List<PMJSONValue>? = null,\n')
   })
 
   it('maps a function that returns an element to a composable slot of its parameters', () => {

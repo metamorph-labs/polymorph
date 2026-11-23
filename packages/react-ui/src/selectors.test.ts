@@ -46,6 +46,7 @@ import monthInputCss from '@polymorph/recipes/controls/month-input.module.css?ra
 import treeSelectCss from '@polymorph/recipes/controls/tree-select.module.css?raw'
 import ratingCss from '@polymorph/recipes/controls/rating.module.css?raw'
 import inlineEditCss from '@polymorph/recipes/controls/inline-edit.module.css?raw'
+import richTextInputCss from '@polymorph/recipes/controls/rich-text-input.module.css?raw'
 import commandCss from '@polymorph/recipes/overlays/command.module.css?raw'
 import dialogCss from '@polymorph/recipes/overlays/dialog.module.css?raw'
 import sheetCss from '@polymorph/recipes/overlays/sheet.module.css?raw'
@@ -131,6 +132,7 @@ import commentThreadCss from '@polymorph/recipes/structure/comment-thread.module
 import meterCss from '@polymorph/recipes/structure/meter.module.css?raw'
 import countdownCss from '@polymorph/recipes/structure/countdown.module.css?raw'
 import tableOfContentsCss from '@polymorph/recipes/structure/table-of-contents.module.css?raw'
+import richTextContentCss from '@polymorph/recipes/structure/rich-text-content.module.css?raw'
 import streamingTextCss from '@polymorph/recipes/ai/streaming-text.module.css?raw'
 import markdownCss from '@polymorph/recipes/ai/markdown.module.css?raw'
 import attachmentChipCss from '@polymorph/recipes/ai/attachment-chip.module.css?raw'
@@ -310,6 +312,8 @@ const SOURCES: Record<string, string> = {
   'treemap.module.css': treemapCss,
   'master-detail-page.module.css': masterDetailPageCss,
   'search-page.module.css': searchPageCss,
+  'rich-text-content.module.css': richTextContentCss,
+  'rich-text-input.module.css': richTextInputCss,
 }
 
 /**
@@ -460,6 +464,8 @@ const STYLESHEET: Record<string, string> = {
   Treemap: 'treemap.module.css',
   MasterDetailPage: 'master-detail-page.module.css',
   SearchPage: 'search-page.module.css',
+  RichTextContent: 'rich-text-content.module.css',
+  RichTextInput: 'rich-text-input.module.css',
 }
 
 const COMPOSES = /composes:\s*[\w\s]+?\s+from\s+['"]([^'"]+)['"]/g

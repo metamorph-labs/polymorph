@@ -571,6 +571,66 @@
       "ios": "hand.thumbsdown",
       "android": "thumb_down"
     },
+    "redo": {
+      "glyph": "redo-2",
+      "group": "action",
+      "ios": "arrow.uturn.forward",
+      "android": "redo"
+    },
+    "bold": {
+      "glyph": "bold",
+      "group": "action",
+      "ios": "bold",
+      "android": "format_bold"
+    },
+    "italic": {
+      "glyph": "italic",
+      "group": "action",
+      "ios": "italic",
+      "android": "format_italic"
+    },
+    "strikethrough": {
+      "glyph": "strikethrough",
+      "group": "action",
+      "ios": "strikethrough",
+      "android": "format_strikethrough"
+    },
+    "code": {
+      "glyph": "code",
+      "group": "action",
+      "ios": "chevron.left.forwardslash.chevron.right",
+      "android": "code"
+    },
+    "heading": {
+      "glyph": "heading",
+      "group": "action",
+      "ios": "textformat.size",
+      "android": "title"
+    },
+    "list-bulleted": {
+      "glyph": "list",
+      "group": "action",
+      "ios": "list.bullet",
+      "android": "format_list_bulleted"
+    },
+    "list-numbered": {
+      "glyph": "list-ordered",
+      "group": "action",
+      "ios": "list.number",
+      "android": "format_list_numbered"
+    },
+    "quote": {
+      "glyph": "text-quote",
+      "group": "action",
+      "ios": "text.quote",
+      "android": "format_quote"
+    },
+    "code-block": {
+      "glyph": "square-code",
+      "group": "action",
+      "ios": "curlybraces.square",
+      "android": "data_object"
+    },
     "reasoning": {
       "glyph": "brain",
       "group": "object",

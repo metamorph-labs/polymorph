@@ -94,6 +94,16 @@ export const states: ComponentStates = {
           <Icon name="record" label="record" />
           <Icon name="helpful" label="helpful" />
           <Icon name="unhelpful" label="unhelpful" />
+          <Icon name="redo" label="redo" />
+          <Icon name="bold" label="bold" />
+          <Icon name="italic" label="italic" />
+          <Icon name="strikethrough" label="strikethrough" />
+          <Icon name="code" label="code" />
+          <Icon name="heading" label="heading" />
+          <Icon name="list-bulleted" label="list-bulleted" />
+          <Icon name="list-numbered" label="list-numbered" />
+          <Icon name="quote" label="quote" />
+          <Icon name="code-block" label="code-block" />
         </Inline>
       ),
     },

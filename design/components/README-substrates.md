@@ -1,4 +1,4 @@
-# Substrates — the heavy six, and the chart physics
+# Substrates — the heavy six, the chart physics and the editing substrate
 
 A *substrate* is a third-party library that a member borrows behaviour from: keyboard
 semantics, ARIA wiring, collection state or positioning. The vocabulary owns everything
@@ -9,10 +9,10 @@ twice. Recipes get written against the wrong DOM, and two libraries can both try
 focus.
 
 This file records the substrate for each of the six and the reasons (§0–§8). It also
-records a second kind of borrowed dependency: the **physics** substrate the chart engine
-uses (§9). Both are in one file because they answer one question: which dependencies the
-system accepts, and why. Every number here was measured, and §2 gives the method so a
-reader can re-measure.
+records two other kinds of borrowed dependency: the **physics** substrate the chart engine
+uses (§9), and the **editing** substrate the rich-text editor is built on (§10). They are
+in one file because they answer one question: which dependencies the system accepts, and
+why. Every number here was measured, and §2 gives the method so a reader can re-measure.
 
 ---
 
@@ -487,3 +487,123 @@ may be hand-written only inside a declared `<Bespoke>` zone.
 
 All three are dependencies of `@polymorph/engine`. Types are `@types/d3-scale`,
 `@types/d3-shape` and `@types/d3-array`, dev dependencies of `@polymorph/engine`.
+
+---
+
+## 10. The editing substrate — ProseMirror
+
+`RichTextInput` edits a rich-text document (`docs/rich-text.md`) in place: a reader types,
+selects, formats and pastes inside the field. This section covers what the editor
+borrows to do that.
+
+This is a third kind of borrowing. The six above borrow behaviour for a member's controls,
+and §9 borrows arithmetic. The editor borrows the behaviour of an editable surface: the
+mapping between the DOM selection and a document position, input methods, undo history,
+and the parsing of pasted HTML. The rule is: *the document and every element drawn are
+owned; editing behaviour is borrowed.*
+
+### 10.1 The decision
+
+**Adopt ProseMirror, confined to one directory of the engine.** The editor is
+`@polymorph/engine/rich-text-editor` (`packages/engine/src/rich-text-editor/`), a
+controller with no framework in it, and every framework's `RichTextInput` mounts it on
+the element it rendered.
+
+Against §0's criteria:
+
+1. **Borrow behaviour, own every perceivable surface.** The editor writes the schema, and
+   the schema's `toDOM` draws every node and mark. So every element, class and attribute
+   in the editable surface is chosen here, and each class comes from the member's recipe
+   (`RichTextEditorClasses`). ProseMirror holds no colour, length or duration. It does
+   write class names of its own on the element (`ProseMirror`, `ProseMirror-focused`,
+   `ProseMirror-selectednode` and a few more). No recipe reads them, and the engine ships
+   no stylesheet that does.
+2. **`data-*` attributes for CSS keying.** ProseMirror exposes focus and node selection
+   as class names, so the editor translates them. It writes `data-focused` on the element
+   while it has focus, `data-selected` on a selected entity or unknown node, and
+   `data-placeholder` on the only block of an empty document. The cost is a decoration
+   function and one attribute in the editor, and no law edit.
+3. **One focus manager.** The editor takes focus only when the member calls `focus()`,
+   and only on its own element. The suggestion list keeps focus in the surface through
+   `aria-activedescendant`, as Combobox does (§4), so no overlay manager competes with it.
+4. **Cost is proportional to use.** Only the `rich-text-editor` entry imports ProseMirror,
+   and only `RichTextInput` imports that entry. `RichTextContent`, the read-only member,
+   imports the document model (`@polymorph/engine/rich-text`), which has no dependency.
+   A page that shows documents and edits none ships no editing code.
+
+### 10.2 Measured cost
+
+The method is the same as §2: esbuild 0.28.2 `--bundle --minify --format=esm`,
+`NODE_ENV=production`, then `gzip -9`. Nothing is external, because no framework is
+involved. The ProseMirror row bundles one entry that re-exports exactly the names the
+editor's modules import.
+
+| Bundle | gzip | raw |
+| --- | --- | --- |
+| the ProseMirror call set the editor imports | **67.7 KB** | 217.2 KB |
+| the editor's own modules, with ProseMirror and the model external | 11.3 KB | 32.9 KB |
+| the whole `rich-text-editor` entry: the editor, ProseMirror and the model's functions it calls | 82.7 KB | 262.5 KB |
+| Lexical, the comparable set — the rejected alternative | 135.5 KB | |
+
+`prosemirror-view` is the largest part of the call set: it holds the DOM observer, the
+selection mapping and the input-method handling, which are the behaviour worth borrowing
+(§10.4).
+
+### 10.3 The transitive packages, named honestly
+
+| Arrives with | Package | What it does |
+| --- | --- | --- |
+| `prosemirror-model` | `orderedmap` | the schema's ordered table of node and mark specs |
+| `prosemirror-keymap` | `w3c-keyname` | the key name of a keyboard event, for key bindings |
+| `prosemirror-history` | `rope-sequence` | the undo history's list of steps |
+
+None of the three draws anything or reads a style. The nine ProseMirror packages depend
+on each other, and ProseMirror checks its own classes with `instanceof`, so an install
+must resolve each of them to one version. Two copies of `prosemirror-transform` or
+`prosemirror-view` make a transaction from one copy fail the checks of the other.
+
+### 10.4 Rejected, with the reason recorded
+
+- **Lexical**: the comparable call set is 135.5 KB, twice ProseMirror's, and its `latest`
+  tag was `0.53` when measured, with no stable release. §3.5 rejects Base UI for the same
+  reason: a pre-1.0 substrate is a risk for a member whose DOM a recipe is written against.
+- **Hand-written `contenteditable`**: rejected for the reason §9.4 rejects hand-rolled
+  scales. Input methods, the mapping between the DOM selection and a document position,
+  undo history and paste parsing across three browser engines need a reference
+  implementation. A home-grown one fails on the input a test suite does not type.
+- **Tiptap**: it is ProseMirror with an extension layer and framework bindings over it.
+  The editor writes its own schema, so the layer would add bytes and a second way to
+  describe a node without changing what is borrowed. The workbench hosts it as a
+  third-party component (`apps/workbench/src/hosted`), and no member imports it.
+
+### 10.5 Containment
+
+ProseMirror is imported only in `packages/engine/src/rich-text-editor/`. No exported type
+of the editor or the model names a ProseMirror type: `rich-text-editor/types.ts` is the
+whole contract a member is written against, so a member does not change when the library
+does. The document a member stores is the model's JSON, which names no editor.
+
+No red rule names the editing packages, so review holds this boundary.
+`polymorph/no-external-dataviz` (§9.5) is the shape such a rule takes.
+
+The engine ships no CSS, so the member's recipe gives the editable element what
+ProseMirror needs to behave: `white-space: pre-wrap` (without it a browser types a space
+at the end of a line as a no-break space and collapses runs of spaces) and
+`overflow-wrap: break-word`.
+
+### 10.6 Dependencies
+
+| Package | Version | Used by |
+| --- | --- | --- |
+| `prosemirror-model` | ^1.25.13 | `schema.ts`, `convert.ts`, `commands.ts`, `paste.ts` |
+| `prosemirror-state` | ^1.4.4 | `editor.ts`, `commands.ts`, `state.ts`, `suggestion.ts`, `marks.ts`, `paste.ts` |
+| `prosemirror-view` | ^1.43.0 | `editor.ts` |
+| `prosemirror-transform` | ^1.12.7 | `commands.ts`, `rules.ts` |
+| `prosemirror-commands` | ^1.7.2 | `commands.ts`, `keys.ts` |
+| `prosemirror-keymap` | ^1.2.3 | `keys.ts` |
+| `prosemirror-history` | ^1.5.2 | `editor.ts`, `commands.ts`, `state.ts` |
+| `prosemirror-inputrules` | ^1.7.0 | `rules.ts`, `commands.ts` |
+| `prosemirror-schema-list` | ^1.6.1 | `commands.ts` |
+
+All nine are dependencies of `@polymorph/engine`, in `packages/engine/src/rich-text-editor/`.
+Each ships its own types.

@@ -104,6 +104,7 @@ val PMRenderings.names: List<String>
         "ReasoningDisclosure",
         "RecordButton",
         "RelativeTime",
+        "RichTextContent",
         "ScrollArea",
         "SearchInput",
         "SearchPage",
@@ -2003,6 +2004,26 @@ fun PMRelativeTime(
     value: String,
 ) {
     PMRelativeTime.Render(PMRelativeTimeProps(format = format, locale = locale, messages = messages, mode = mode, numeric = numeric, value = value))
+}
+
+/**
+ * RichTextContent, drawn by `PMRichTextContent` from its props given as arguments: the properties
+ * of `PMRichTextContentProps`.
+ */
+@Composable
+fun PMRichTextContent(
+    activeAnnotation: String? = null,
+    annotations: List<String>? = null,
+    entity: (@Composable (PMRichTextEntity) -> Unit)? = null,
+    headingLevel: PMRichTextContentHeadingLevel? = null,
+    messages: PMRichTextContentMessages? = null,
+    onAnnotationSelect: ((String) -> Unit)? = null,
+    onNavigate: ((String) -> Unit)? = null,
+    selectionActions: (@Composable (PMRichTextContentSelection) -> Unit)? = null,
+    size: PMRichTextContentSize? = null,
+    value: PMJSONValue,
+) {
+    PMRichTextContent.Render(PMRichTextContentProps(activeAnnotation = activeAnnotation, annotations = annotations, entity = entity, headingLevel = headingLevel, messages = messages, onAnnotationSelect = onAnnotationSelect, onNavigate = onNavigate, selectionActions = selectionActions, size = size, value = value))
 }
 
 /**

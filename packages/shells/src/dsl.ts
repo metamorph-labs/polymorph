@@ -414,8 +414,9 @@ export interface AgentBlock {
  * formatter), which may read `zag`, the member's machine module, to construct
  * a value the machine takes (`zag.parse('2026-07-15')`, a calendar date), and
  * the foundation's values `FIXTURE_VALUES` lists (`new Time(9, 0)`); a node of another member (`{ node }`, DescriptionList's Badge detail); a
- * function that returns one (`{ params, renders }`, a DataTable column's
- * `cell`, whose props and text may read the parameters through `js`); or, in
+ * function that returns one or several (`{ params, renders }`, a DataTable
+ * column's `cell`, whose props and text may read the parameters through
+ * `js`); or, in
  * an entry that holds state, a held value (`{ held }`) or a handler that sets
  * one (`{ hold }`, to its first argument or to `to`).
  */
@@ -429,16 +430,17 @@ export type FixtureValue =
   | { readonly [key: string]: FixtureValue }
   | { js: string }
   | { node: FixtureChild }
-  | { params: readonly string[]; renders: FixtureChild }
+  | { params: readonly string[]; renders: FixtureChild | readonly FixtureChild[]; when?: string }
   | { held: string }
   | { hold: string; to?: FixtureValue }
 
 /**
  * The foundation's values a fixture's JavaScript (`js`) may name, which the
  * fixture imports from its framework's foundation: the toast store's `toast`
- * and its cap, which Toast's launchers call and name, and the date and time values the engine
+ * and its cap, which Toast's launchers call and name, the date and time values the engine
  * re-exports from `@internationalized/date`, which TimeInput's and
- * DatePicker's entries are made with (`new Time(9, 0)`).
+ * DatePicker's entries are made with (`new Time(9, 0)`), and the rich-text
+ * document's normal form, which RichTextInput's documents are read through.
  */
 export const FIXTURE_VALUES: readonly string[] = [
   'toast',
@@ -446,6 +448,7 @@ export const FIXTURE_VALUES: readonly string[] = [
   'Time',
   'CalendarDate',
   'CalendarDateTime',
+  'normalizeRichText',
 ]
 
 /** Slot content in a fixture: text, text an expression computes (`js`), a member or an element. */
@@ -536,6 +539,16 @@ export interface StateEntry extends FixtureInstance {
    * pressed.
    */
   presses?: string
+  /**
+   * Words selected once their element is in the document and holds them, as a
+   * reader selects them, for a state only a selection reaches (the selection
+   * bar RichTextInput draws at the selected words): the element's selector,
+   * searched in the document as `types` searches, and the words, the first
+   * run of them in one of its text nodes. A focusable element takes focus
+   * first, as a press on it gives it, and the words are selected a moment
+   * later, once an editor in it has written its own selection back.
+   */
+  selects?: { in: string; text: string }
 }
 
 /**
@@ -779,12 +792,26 @@ export const node = (child: FixtureChild): { node: FixtureChild } => ({ node: ch
 
 /**
  * A function a fixture passes that returns a member's node, its parameters
- * written as TypeScript (`renders(['row: { status: string }'], fx('Badge', …))`).
+ * written as TypeScript (`renders(['row: { status: string }'], fx('Badge', …))`),
+ * or several nodes, as a React fixture's function returns a fragment
+ * (RichTextInput's footer of two Buttons). With `when`, JavaScript over the
+ * parameters, it returns them only when that holds and nothing otherwise, as
+ * a React render prop returns `undefined` (RichTextContent's `entity` draws a
+ * person and leaves an issue to the token).
  */
 export const renders = (
   params: readonly string[],
-  child: FixtureChild,
-): { params: readonly string[]; renders: FixtureChild } => ({ params, renders: child })
+  child: FixtureChild | readonly FixtureChild[],
+  when?: string,
+): {
+  params: readonly string[]
+  renders: FixtureChild | readonly FixtureChild[]
+  when?: string
+} => ({
+  params,
+  renders: child,
+  ...(when === undefined ? {} : { when }),
+})
 
 /** A value the fixture entry holds (`StateEntry.holds`), read as a prop. */
 export const held = (name: string): { held: string } => ({ held: name })

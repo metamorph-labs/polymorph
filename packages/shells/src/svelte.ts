@@ -59,11 +59,15 @@ import {
   presenceExpressions,
   registryMember,
   relativeFile,
+  renderedChildren,
+  RENDERS_KEYS,
+  type FixtureRenders,
   staticString,
   templateClassNames,
   templateExpressions,
   typeOwners,
   typeParameters,
+  SELECT_DELAY_MS,
   TYPING_FRAMES,
   withAgent,
   wrapDoc,
@@ -159,6 +163,8 @@ const FOUNDATION_HELPERS = new Set([
   ...ENGINE_HELPERS,
   // A function run once the pending changes are in the document.
   'afterRender',
+  // Whether a scoped slot draws anything for its argument.
+  'slotDraws',
   // The toast store's, which Toast's viewport and FormField's notice read and write.
   'toast',
   'getToasts',
@@ -720,6 +726,16 @@ export function renderSvelteMember(
    */
   const sx = (expr: Expr): string => {
     const read = expr
+      // A scoped slot drawn with its argument is its snippet bound to it, which `Render` draws,
+      // and whether it draws anything is read from a drawing of it (the foundation's `slotDraws`).
+      .replace(
+        /\bslotNode\(\s*slots\.(\w+)\s*,/g,
+        (_, slot: string) => `bindSnippet(${snippetOf(slot)},`,
+      )
+      .replace(
+        /\bslotDraws\(\s*slots\.(\w+)\s*,/g,
+        (_, slot: string) => `slotDraws(${snippetOf(slot)},`,
+      )
       // A slot as a node is its snippet, which a component draws through `Render`.
       .replace(/\bslotNode\(\s*slots\.(\w+)\s*\)/g, (_, slot: string) => snippetOf(slot))
       .replace(/\bslotted\(\s*slots\.(\w+)\s*\)/g, (_, slot: string) => `${scopeName(slot)}.read()`)
@@ -779,6 +795,8 @@ export function renderSvelteMember(
   if (listRefs.size > 0) foundationValues.add('refList')
   for (const name of [...names, ...defaultNames]) {
     if (FOUNDATION_HELPERS.has(name)) foundationValues.add(name)
+    // A type an expression names (`null as RichTextEditorState | null`) is the foundation's too.
+    if (FOUNDATION_TYPES.has(name)) foundationTypes.add(name)
   }
   const allTemplateNodes = allNodes(template)
   if (allTemplateNodes.some((node) => node.kind === 'portal')) foundationValues.add('Portal')
@@ -801,6 +819,8 @@ export function renderSvelteMember(
         [...context.nodeCalls].some((name) => new RegExp(`\\.${name}\\(`).test(expr)),
     )
   )
+    foundationValues.add('bindSnippet')
+  if (allSources.some((expr) => /\bslotNode\(\s*slots\.\w+\s*,/.test(expr)))
     foundationValues.add('bindSnippet')
   if (allSources.some((expr) => /\bVNode\b/.test(expr))) foundationTypes.add('RenderNode')
   if (shell.machine) foundationValues.add('normalizeProps')
@@ -1733,10 +1753,10 @@ class FixtureWriter {
       for (const name of fixtureValues(source)) this.needs.foundation.add(name)
       return source
     }
-    if (branded(value, 'node')) return this.snippet([], (value as { node: FixtureChild }).node)
-    if (branded(value, 'renders', ['params'])) {
-      const { params, renders } = value as { params: readonly string[]; renders: FixtureChild }
-      return this.snippet(params, renders)
+    if (branded(value, 'node')) return this.snippet([], [(value as { node: FixtureChild }).node])
+    if (branded(value, 'renders', RENDERS_KEYS)) {
+      const { params, renders, when } = value as FixtureRenders
+      return this.snippet(params, renderedChildren(renders), when)
     }
     if (branded(value, 'held')) return `held.${(value as { held: string }).held}`
     if (branded(value, 'hold', ['to'])) {
@@ -1755,10 +1775,15 @@ class FixtureWriter {
   }
 
   /** A snippet at the top level for a node a value holds, by its name. */
-  private snippet(params: readonly string[], child: FixtureChild): string {
+  private snippet(
+    params: readonly string[],
+    children: readonly FixtureChild[],
+    when?: string,
+  ): string {
     this.count += 1
     const name = `node${this.count}`
-    const content = this.child(child)
+    const drawn = children.map((child) => this.child(child)).join('')
+    const content = when === undefined ? drawn : `{#if ${when}}${drawn}{/if}`
     this.needs.snippets.push(`{#snippet ${name}(${params.join(', ')})}${content}{/snippet}`)
     return name
   }
@@ -1856,12 +1881,15 @@ class FixtureWriter {
  * One entry's snippet: the member with the runner's overrides spread over the
  * fixture's own props, after the content the entry puts before it, inside its
  * layout member when it renders several, and inside a `Held` when it holds
- * values, types into a field or presses a control.
+ * values, types into a field, presses a control or selects words.
  */
 function entryMarkup(shell: MemberShell, entry: StateEntry, writer: FixtureWriter): string {
-  // Content before the member needs no holder; held values, typing and pressing do.
+  // Content before the member needs no holder; held values, typing, pressing and selecting do.
   const stateful =
-    entry.holds !== undefined || entry.types !== undefined || entry.presses !== undefined
+    entry.holds !== undefined ||
+    entry.types !== undefined ||
+    entry.presses !== undefined ||
+    entry.selects !== undefined
   const before = (entry.before ?? []).map((child) => writer.child(child)).join('')
   const subject = entrySubject(shell, entry)
   let body: string
@@ -1895,7 +1923,13 @@ function entryMarkup(shell: MemberShell, entry: StateEntry, writer: FixtureWrite
   if (entry.presses !== undefined) {
     props.push(`presses={{ at: ${jsString(entry.presses)}, frames: ${TYPING_FRAMES} }}`)
   }
-  // An entry that only presses or types holds no value, and an unread parameter fails the check.
+  if (entry.selects !== undefined) {
+    props.push(
+      `selects={{ in: ${jsString(entry.selects.in)}, text: ${jsString(entry.selects.text)}, frames: ${TYPING_FRAMES}, delay: ${SELECT_DELAY_MS} }}`,
+    )
+  }
+  // An entry that only presses, types or selects holds no value, and an unread parameter fails
+  // the check.
   const reads = body.includes('held.') ? 'held' : ''
   return `<Held ${props.join(' ')}>{#snippet children(${reads})}${body}{/snippet}</Held>`
 }

@@ -14,7 +14,7 @@
 // - a list is a column of items `space.2` apart, `space.6` in, its markers in
 //   `text.secondary` at the item's step (`1.`, or a bullet that changes with
 //   depth, as a browser draws them), nested as written; an item's own blocks
-//   are `space.2` apart;
+//   are `space.2` apart (`PMProseList`, which RichTextContent draws too);
 // - a pipe table is Table, a column `numeric` where its delimiter ends in `:`;
 // - `---`, `***` and `___` are Separator;
 // - an image is a block in place, the picture at the column's width at
@@ -59,9 +59,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.material3.Text
@@ -87,7 +85,6 @@ import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
@@ -175,21 +172,8 @@ object PMMarkdown : PMMarkdownRendering {
                 Modifier.fillMaxWidth().pmQuoteRule(),
                 verticalArrangement = Arrangement.spacedBy(space.s3),
             ) { Blocks(block.children, reply, caret, depth) }
-            is PMMarkdownBlock.Items -> Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(space.s2)) {
-                block.items.forEachIndexed { index, item ->
-                    Row(Modifier.fillMaxWidth()) {
-                        Text(
-                            text = if (block.ordered) "${block.start + index}." else BULLETS[depth % BULLETS.size],
-                            style = reply.step.textStyle,
-                            color = theme.colors.textSecondary.color,
-                            textAlign = TextAlign.End,
-                            modifier = Modifier.width(space.s6).padding(end = space.s2),
-                        )
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(space.s2)) {
-                            Blocks(item, reply, caret && index == block.items.lastIndex, depth + 1)
-                        }
-                    }
-                }
+            is PMMarkdownBlock.Items -> PMProseList(block.items.size, block.ordered, block.start.toLong(), depth, reply.step) { index ->
+                Blocks(block.items[index], reply, caret && index == block.items.lastIndex, depth + 1)
             }
             // A row whose cells hold marks keeps their touch areas' room in
             // every cell, so its cells stay in line with one another.
@@ -402,9 +386,6 @@ object PMMarkdown : PMMarkdownRendering {
     private fun citeId(index: Int) = "$CITE$index"
 
     private val ABSOLUTE = Regex("""^(?:[a-z][a-z0-9+.-]*:)?//""", RegexOption.IGNORE_CASE)
-
-    /** A list's bullets by depth, as a browser draws them: disc, circle, square. */
-    private val BULLETS = listOf("•", "◦", "▪")
 
     private const val EXTERNAL = "pm.external"
     private const val CITE = "pm.cite."

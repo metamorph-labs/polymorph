@@ -181,6 +181,7 @@ project its path falls under in the table above, unless its row names another ga
 | `'use client'` | `packages/rules/src/client-directive.test.ts` | a React module that needs the directive and lacks it, or has one it does not need, and a compound member that attaches its parts in a client module, where a server component reads each part as `undefined` |
 | Localization | `packages/rules/src/localization.test.ts`, `packages/react-ui/src/localization.test.tsx` | text a member renders that its host cannot replace |
 | The inventory | `packages/rules/src/inventory.test.ts` | an undeclared exception, and any change to the exceptions this repository declares |
+| The rich-text boundary | `packages/engine/rich-text-boundary.test.ts` | a file outside `packages/engine/src/rich-text-editor/` that imports a ProseMirror package, a document model that imports the editor or any package, or a type either rich-text entry exports that names a ProseMirror type |
 | No plan references | `packages/rules/src/plan-references.test.ts` | a ticket or plan identifier, a retired planning document or a phase name in any file |
 
 ### The React vocabulary
@@ -1497,6 +1498,7 @@ The mapping, from the type the registry prints:
 | `File` | `PMFile`, declared in the foundation: the file's URL, name, size in bytes and media type |
 | `Blob` | `Data`: ImageEditor's `onConfirm` hands over the framed image's bytes |
 | `unknown`, a JSON value a member shows without interpreting it (JsonTree's `data`) | `PMJSONValue`, declared in the foundation: null, a boolean, a number, a string, an array, or an object whose keys keep their order |
+| a name in `JSON_TYPES` (`mapping.ts`): part of a document an app stores and a tolerant reader reads, which keeps the nodes and marks of a later version (RichTextContent's `RichTextDocument`, and `RichTextMark`, which an entity's `marks` hold) | `PMJSONValue`, the JSON the app stored, which the member reads itself: `value: PMJSONValue`, and `PMRichTextEntity`'s `marks: [PMJSONValue]?` |
 | a function type the web names, which the registry prints by name (`StepperSpoken`), in `FUNCTION_ALIASES` | its definition, by this table: `(@MainActor (PMStepperSpokenStep) -> String)?` |
 | an object type the web writes inline, whose fields a shape in `SHAPES` with a `native` reason names (`ApprovalCard`'s `messages`) | `PM<Name>`, that shape's struct: `PMApprovalCardMessages`; BarChart's `onSelect` payload is `PMChartSeriesSelection` |
 | a union whose branches are objects the web writes inline, told apart by a literal field the shapes name as their `discriminant` (`ChartAnnotation`'s `kind`) | an enum of one case per branch, each holding its shape's struct less that field: `PMChartAnnotation.line(PMChartLineAnnotation)` |
@@ -1886,6 +1888,7 @@ The mapping is the Swift one's, from the same resolution, written in Kotlin:
 | `File` | `PMFile`, declared in the foundation: the URI, name, size and media type |
 | `Blob` | `ByteArray`: ImageEditor's `onConfirm` hands over the framed image's bytes |
 | `unknown` | `PMJSONValue`, any JSON value, declared in the foundation: JsonTree's `data`, ToolCall's `input` |
+| a name in `JSON_TYPES` (RichTextContent's `RichTextDocument`, `RichTextMark`) | `PMJSONValue`, as on iOS: `PMRichTextEntity`'s `marks` is `List<PMJSONValue>?` |
 | `T \| null` | `T?` |
 | an optional prop that also takes `null` | `PMSome<T?>?`: `null` is absent, and `PMSome(null)` is the value `null`, as Swift's `T??` is |
 

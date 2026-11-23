@@ -39,7 +39,7 @@ export interface ArtifactPaneProps {
   /**
    * The artifact's kind, which picks the mark (the tier's `artifact` glyph when absent).
    */
-  kind?: 'document' | 'code' | 'data' | 'preview'
+  kind?: 'code' | 'document' | 'data' | 'preview'
   /**
    * One preformatted line under the title, such as "TypeScript · 142 lines".
    */

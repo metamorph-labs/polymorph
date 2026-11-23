@@ -10,6 +10,7 @@ import {
   GENERATED,
   GENERATOR,
   generateContracts,
+  JSON_TYPES,
   LITERAL_ALIASES,
   nativeMembers,
   SHAPES,
@@ -380,6 +381,16 @@ describe('the mapping', () => {
     field('PromptInput', 'onAttach: (@MainActor ([PMFile]) -> Void)?')
     field('JsonTree', 'data: PMJSONValue')
     field('ToolCall', 'input: PMJSONValue?')
+    // A name in `JSON_TYPES` crosses as the JSON an app stored: the document, and an entity's marks.
+    field('RichTextContent', 'value: PMJSONValue')
+    expect(file).toContain('  public var marks: [PMJSONValue]?\n')
+    field(
+      'RichTextContent',
+      'selectionActions: (@MainActor (PMRichTextContentSelection) -> PMContent)?',
+    )
+    expect(file).toMatch(
+      /public struct PMRichTextContentSelection \{[^}]*public var range: PMRichTextRange\n/,
+    )
     // `StepperSpoken` maps as its definition, whose step is an object the web writes inline.
     field('Stepper', 'spoken: (@MainActor (PMStepperSpokenStep) -> String)?')
     field('ApprovalCard', 'messages: PMApprovalCardMessages?')
@@ -675,6 +686,17 @@ describe('the shapes (SHAPES in contracts.ts)', () => {
         web.interfaces[name],
         `${name} is an interface the web exports: use it`,
       ).toBeUndefined()
+    }
+  })
+
+  it('are each type JSON_TYPES carries as JSON a type the web exports, with why', () => {
+    for (const [name, reason] of Object.entries(JSON_TYPES)) {
+      expect(
+        web.interfaces[name] ?? web.aliases[name],
+        `${name} is not a type the web exports`,
+      ).toBeDefined()
+      expect(SHAPES[name], `${name} has a shape and is carried as JSON`).toBeUndefined()
+      expect(reason, name).toMatch(/\S/)
     }
   })
 

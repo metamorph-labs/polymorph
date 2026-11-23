@@ -9,6 +9,7 @@ import type {
   Effect,
   ElementNode,
   Expr,
+  FixtureChild,
   FixtureValue,
   Handler,
   MemberShell,
@@ -199,6 +200,22 @@ export function partShell(
 /* The states fixture                                                         */
 /* -------------------------------------------------------------------------- */
 
+/** A fixture's function that returns nodes (`renders`). */
+export interface FixtureRenders {
+  params: readonly string[]
+  renders: FixtureChild | readonly FixtureChild[]
+  /** JavaScript over the parameters: the nodes are returned only while it holds. */
+  when?: string
+}
+
+/** The keys of a `renders` value beside its brand. */
+export const RENDERS_KEYS: readonly string[] = ['params', 'when']
+
+/** The nodes a fixture's function returns (`renders`): one, or several, as a fragment holds them. */
+export const renderedChildren = (
+  renders: FixtureChild | readonly FixtureChild[],
+): readonly FixtureChild[] => (Array.isArray(renders) ? renders : [renders as FixtureChild])
+
 /** The foundation's values a fixture's JavaScript names, of those `FIXTURE_VALUES` lists. */
 export function fixtureValues(source: string): string[] {
   const names = freeNames(source)
@@ -234,6 +251,27 @@ export const TYPING_FRAMES = 60
  */
 export function pressStatements(selector: string, mounted: string, unmounted: string): string {
   return `let pressFrame = 0; let pressFrames = 0; const press = () => { const control = document.querySelector<HTMLElement>(${selector}); if (control === null || control.getClientRects().length === 0) { if (++pressFrames < ${TYPING_FRAMES}) pressFrame = requestAnimationFrame(press); return } control.click() }; ${mounted}(() => { pressFrame = requestAnimationFrame(press) }); ${unmounted}(() => cancelAnimationFrame(pressFrame))`
+}
+
+/** How long after an element takes focus an entry that selects in it selects the words (`selects`). */
+export const SELECT_DELAY_MS = 60
+
+/**
+ * The statements an entry runs to select words once their element is in the
+ * document and holds them (`selects`), for a renderer that writes them into
+ * the entry: it looks once a frame, up to `TYPING_FRAMES` frames, focuses the
+ * element, and selects the first run of the words in one of its text nodes
+ * `SELECT_DELAY_MS` later. `mounted` and `unmounted` are the framework's
+ * lifecycle calls. The names differ from the typing and pressing statements',
+ * so an entry may do all three.
+ */
+export function selectStatements(
+  selector: string,
+  text: string,
+  mounted: string,
+  unmounted: string,
+): string {
+  return `let selectFrame = 0; let selectFrames = 0; let selectTimer = 0; const select = () => { const element = document.querySelector<HTMLElement>(${selector}); if (element === null || element.getClientRects().length === 0 || !(element.textContent ?? '').includes(${text})) { if (++selectFrames < ${TYPING_FRAMES}) selectFrame = requestAnimationFrame(select); return } element.focus(); selectTimer = window.setTimeout(() => { const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT); for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) { const at = node.textContent?.indexOf(${text}) ?? -1; if (at === -1) continue; document.getSelection()?.setBaseAndExtent(node, at, node, at + ${text}.length); return } }, ${SELECT_DELAY_MS}) }; ${mounted}(() => { selectFrame = requestAnimationFrame(select) }); ${unmounted}(() => { cancelAnimationFrame(selectFrame); clearTimeout(selectTimer) })`
 }
 
 /**

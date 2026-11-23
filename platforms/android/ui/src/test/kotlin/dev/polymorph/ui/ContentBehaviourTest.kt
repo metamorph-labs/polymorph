@@ -1,11 +1,13 @@
 package dev.polymorph.ui
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
@@ -15,21 +17,26 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.v2.runComposeUiTest
+import dev.polymorph.tokens.PMThemes
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * What Plan, TableOfContents, CommentThread and Tour say and do, composed by
- * Compose for desktop's test host and read through its semantics, and the
- * logic each computes from its props.
+ * What Plan, TableOfContents, CommentThread, Tour and RichTextContent say and
+ * do, composed by Compose for desktop's test host and read through its
+ * semantics, and the logic each computes from its props.
  */
 @OptIn(ExperimentalTestApi::class)
 class ContentBehaviourTest {
@@ -297,5 +304,303 @@ class ContentBehaviourTest {
         waitForIdle()
         assertTrue(box("Bao Tran").right < box("Ada Okafor").right - 1f, "a reply is not indented from the right")
         assertEquals(box("Bao Tran").right, box("Carmen Ruiz").right, 0.5f)
+    }
+
+    /* RichTextContent ------------------------------------------------------- */
+
+    /** A press on a link run inside a text: Compose gives each its own node. */
+    private val linkRun = SemanticsMatcher("a link run") { node -> node.config.any { it.key.name == "LinkTestMarker" } }
+
+    private fun document(vararg blocks: Map<String, Any>) =
+        PMJSONValue.of(mapOf("format" to "polymorph-rich-text/1", "blocks" to blocks.toList()))
+
+    private fun linked(text: String, href: String) =
+        mapOf("type" to "text", "text" to text, "marks" to listOf(mapOf("type" to "link", "href" to href)))
+
+    /**
+     * RichTextContent's links (`rich-text-content.md`, `link.md` Routing): a
+     * press on a path calls `onNavigate` with it in place of the URI handler,
+     * and a press on a target with a scheme, or on any link without
+     * `onNavigate`, opens it through the handler. A link whose target may not
+     * be followed is its text, with no link to press.
+     */
+    @Test
+    fun aDocumentsLinkGoesToTheRouterOrOpensThroughTheHandler() = runComposeUiTest {
+        val routed = mutableListOf<String>()
+        val opened = mutableListOf<String>()
+        val handler = object : UriHandler {
+            override fun openUri(uri: String) {
+                opened += uri
+            }
+        }
+        val value = document(
+            mapOf(
+                "type" to "paragraph",
+                "content" to listOf(
+                    mapOf("type" to "text", "text" to "Read "),
+                    linked("the runbook", "/runbooks/42"),
+                    mapOf("type" to "text", "text" to " or "),
+                    linked("the guide", "https://docs.example.org/guide"),
+                    mapOf("type" to "text", "text" to ", not "),
+                    linked("this", "javascript:alert(1)"),
+                ),
+            ),
+        )
+        setContent {
+            Scene {
+                CompositionLocalProvider(LocalUriHandler provides handler) {
+                    Column {
+                        PMRichTextContent(onNavigate = { routed += it }, value = value)
+                        PMRichTextContent(value = value)
+                    }
+                }
+            }
+        }
+        val links = onAllNodes(linkRun, useUnmergedTree = true)
+        assertEquals(4, links.fetchSemanticsNodes().size, "two links in each document")
+        for (index in 0 until 4) links[index].performSemanticsAction(SemanticsActions.OnClick)
+        waitForIdle()
+        assertEquals(listOf("/runbooks/42"), routed)
+        assertEquals(listOf("https://docs.example.org/guide", "/runbooks/42", "https://docs.example.org/guide"), opened)
+    }
+
+    /**
+     * RichTextContent's entities (`rich-text-content.md`, The entity token): an
+     * entity the app draws is set in the line where the entity stands, at the
+     * line's start here, and from the right right to left; an entity the app
+     * leaves is the token, a run of its label on the accent wash. The
+     * paragraph's words keep both labels.
+     */
+    @Test
+    fun anEntityIsWhatTheAppDrawsInTheLineOrTheToken() = runComposeUiTest {
+        var rtl by mutableStateOf(false)
+        setContent {
+            Scene {
+                CompositionLocalProvider(LocalLayoutDirection provides if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr) {
+                    PMRichTextContent(
+                        entity = { entity -> if (entity.kind == "user") PMLink(children = entity.label, href = "/people/${entity.id}") },
+                        value = RichTextContentStates.entities,
+                    )
+                }
+            }
+        }
+        waitForIdle()
+        onAllNodes(member("Link")).assertCountEquals(1)
+        val paragraph = { onNode(member("Text")).fetchSemanticsNode() }
+        val link = { onNode(member("Link")).fetchSemanticsNode().boundsInRoot }
+        val words = paragraph().config[SemanticsProperties.Text].single()
+        assertTrue("@Ada Lovelace" in words.text, words.text)
+        val issue = words.text.indexOf("#10423")
+        assertTrue(issue >= 0, words.text)
+        assertTrue(
+            words.spanStyles.any { it.start <= issue && it.end >= issue + "#10423".length && it.item.background != Color.Unspecified },
+            "the issue is not drawn on a wash",
+        )
+        assertEquals(paragraph().boundsInRoot.left, link().left, 1f, "the Link is not where the person stands in the line")
+        assertTrue(link().top >= paragraph().boundsInRoot.top - 1f && link().bottom <= paragraph().boundsInRoot.bottom + 1f)
+
+        rtl = true
+        waitForIdle()
+        assertEquals(paragraph().boundsInRoot.right, link().right, 1f, "the Link does not start the line from the right")
+    }
+
+    /**
+     * RichTextContent (`rich-text-content.md`, States): the empty document, a
+     * document of whitespace, and a value that is not a document each draw the
+     * root, marked empty, and nothing in it.
+     */
+    @Test
+    fun anEmptyDocumentDrawsTheRootAndNothingInIt() = runComposeUiTest {
+        val values = listOf(
+            document(),
+            document(mapOf("type" to "paragraph", "content" to listOf(mapOf("type" to "text", "text" to "   ")))),
+            PMJSONValue.Null,
+            PMJSONValue.Text("Retries are exponential."),
+            PMJSONValue.of(mapOf("blocks" to "none")),
+            PMJSONValue.Number(42.0),
+        )
+        var value by mutableStateOf(values.first())
+        setContent { Scene { PMRichTextContent(value = value) } }
+        for (each in values) {
+            value = each
+            waitForIdle()
+            val root = onNode(member("RichTextContent")).fetchSemanticsNode()
+            assertEquals("true", root.config[PMMemberKey].attributes["empty"], "$each")
+            assertEquals(0f, root.boundsInRoot.height, "$each")
+            onAllNodes(member("Text")).assertCountEquals(0)
+        }
+    }
+
+    /**
+     * RichTextContent's headings (`rich-text-content.md`, The document): the
+     * document's level 1 is drawn at `headingLevel`, each deeper level one
+     * more, never past 4; a heading with no text, and a block of a later
+     * version with no text, draw nothing.
+     */
+    @Test
+    fun aDocumentsHeadingsAreDrawnUnderThePagesTitle() = runComposeUiTest {
+        val heading = { level: Int, text: String ->
+            mapOf("type" to "heading", "level" to level, "content" to listOf(mapOf("type" to "text", "text" to text)))
+        }
+        var top by mutableStateOf<PMRichTextContentHeadingLevel?>(null)
+        setContent {
+            Scene {
+                PMRichTextContent(
+                    headingLevel = top,
+                    value = document(
+                        heading(1, "One"),
+                        heading(2, "Two"),
+                        heading(3, "Three"),
+                        mapOf("type" to "heading", "level" to 1, "content" to emptyList<Any>()),
+                        mapOf("type" to "divider"),
+                        mapOf("type" to "paragraph", "content" to listOf(mapOf("type" to "text", "text" to "Body."))),
+                    ),
+                )
+            }
+        }
+        val levels = {
+            onAllNodes(member("Heading")).fetchSemanticsNodes().map { it.config[PMMemberKey].attributes["level"] }
+        }
+        assertEquals(listOf("2", "3", "4"), levels())
+        onAllNodes(member("Text")).assertCountEquals(1)
+        top = PMRichTextContentHeadingLevel.HeadingLevel3
+        waitForIdle()
+        assertEquals(listOf("3", "4", "4"), levels())
+    }
+
+    /** The wash under the first character of `words` in the only paragraph, or `Color.Unspecified`. */
+    private fun ComposeUiTest.washUnder(words: String): Color {
+        val text = onNode(member("Text")).fetchSemanticsNode().config[SemanticsProperties.Text].single()
+        val at = text.text.indexOf(words)
+        assertTrue(at >= 0, text.text)
+        return text.spanStyles.lastOrNull { it.start <= at && at < it.end && it.item.background != Color.Unspecified }?.item?.background
+            ?: Color.Unspecified
+    }
+
+    private val theme = PMThemes.default
+    private val wash = Color(theme.colors.warningSubtle.resolve(false).argb)
+    private val activeWash = Color(theme.colors.warningSubtleActive.resolve(false).argb)
+
+    /**
+     * RichTextContent's annotations (`rich-text-content.md`, A press on a
+     * highlight): each stretch of words whose innermost annotation is one id
+     * is a link run of the text, whose press, by touch or by TalkBack's
+     * action, calls `onAnnotationSelect` with that id. The active
+     * annotation's words take the stronger wash, and where annotations
+     * overlap, the innermost one's wash is drawn.
+     */
+    @Test
+    fun aTapOnAnAnnotationCallsTheHandlerWithTheInnermostId() = runComposeUiTest {
+        val selected = mutableListOf<String>()
+        setContent {
+            Scene {
+                PMRichTextContent(activeAnnotation = "thread-2", onAnnotationSelect = { selected += it }, value = RichTextContentStates.overlapping)
+            }
+        }
+        val presses = onAllNodes(linkRun, useUnmergedTree = true)
+        assertEquals(3, presses.fetchSemanticsNodes().size, "the outer thread before and after the inner one, and the inner one")
+        for (index in 0 until 3) presses[index].performSemanticsAction(SemanticsActions.OnClick)
+        waitForIdle()
+        assertEquals(listOf("thread-1", "thread-2", "thread-1"), selected)
+
+        presses[1].performTouchInput { click(center) }
+        waitForIdle()
+        assertEquals("thread-2", selected.last(), "a tap on the inner thread's words")
+
+        assertEquals(wash, washUnder("twice"))
+        assertEquals(activeWash, washUnder("as long"))
+        assertEquals(wash, washUnder(" as the last one"))
+        assertEquals(Color.Unspecified, washUnder("Each retry"))
+    }
+
+    /**
+     * RichTextContent's annotations: a link inside an annotation is the
+     * link's, so a press on it follows the link and selects nothing; the
+     * words around it are the annotation's. Without `onAnnotationSelect`
+     * the highlights take no press, and `annotations` draws only the ones it
+     * names.
+     */
+    @Test
+    fun aLinkInsideAnAnnotationIsTheLinksAndOnlyTheNamedAnnotationsAreDrawn() = runComposeUiTest {
+        val selected = mutableListOf<String>()
+        val routed = mutableListOf<String>()
+        var handler by mutableStateOf<((String) -> Unit)?>({ selected += it })
+        var shown by mutableStateOf<List<String>?>(null)
+        val thread = mapOf("type" to "annotation", "id" to "thread-1")
+        val value = document(
+            mapOf(
+                "type" to "paragraph",
+                "content" to listOf(
+                    mapOf("type" to "text", "text" to "Read ", "marks" to listOf(thread)),
+                    mapOf("type" to "text", "text" to "the runbook", "marks" to listOf(mapOf("type" to "link", "href" to "/runbooks/42"), thread)),
+                    mapOf("type" to "text", "text" to " first", "marks" to listOf(thread, mapOf("type" to "annotation", "id" to "thread-2"))),
+                ),
+            ),
+        )
+        setContent {
+            Scene {
+                PMRichTextContent(annotations = shown, onAnnotationSelect = handler, onNavigate = { routed += it }, value = value)
+            }
+        }
+        val presses = onAllNodes(linkRun, useUnmergedTree = true)
+        assertEquals(3, presses.fetchSemanticsNodes().size)
+        presses[1].performSemanticsAction(SemanticsActions.OnClick)
+        waitForIdle()
+        assertEquals(listOf("/runbooks/42"), routed)
+        assertEquals(emptyList<String>(), selected, "a press on the link selected an annotation")
+        assertEquals(wash, washUnder("the runbook"), "the link inside the annotation is not on its wash")
+        presses[2].performSemanticsAction(SemanticsActions.OnClick)
+        waitForIdle()
+        assertEquals(listOf("thread-2"), selected)
+
+        shown = listOf("thread-1")
+        waitForIdle()
+        onAllNodes(linkRun, useUnmergedTree = true)[2].performSemanticsAction(SemanticsActions.OnClick)
+        waitForIdle()
+        assertEquals(listOf("thread-2", "thread-1"), selected, "an annotation the app did not name was pressed")
+
+        shown = emptyList()
+        waitForIdle()
+        assertEquals(Color.Unspecified, washUnder("Read"))
+        assertEquals(1, onAllNodes(linkRun, useUnmergedTree = true).fetchSemanticsNodes().size, "only the link")
+
+        shown = null
+        handler = null
+        waitForIdle()
+        assertEquals(wash, washUnder("Read"))
+        assertEquals(1, onAllNodes(linkRun, useUnmergedTree = true).fetchSemanticsNodes().size, "a highlight took a press with no handler")
+    }
+
+    /**
+     * RichTextContent's annotations in a heading and on an entity: a heading
+     * that holds one is drawn by the member, still a heading, with the
+     * highlight's press in it; an annotated entity's token is pressed as its
+     * words are, and the app's `entity` is handed the entity's marks.
+     */
+    @Test
+    fun aHeadingAndAnEntityCarryTheirAnnotations() = runComposeUiTest {
+        val selected = mutableListOf<String>()
+        val handed = mutableListOf<PMRichTextEntity>()
+        setContent {
+            Scene {
+                Column {
+                    PMRichTextContent(onAnnotationSelect = { selected += it }, value = RichTextContentStates.annotatedHeading)
+                    PMRichTextContent(onAnnotationSelect = { selected += it }, value = RichTextContentStates.annotatedEntity)
+                    PMRichTextContent(entity = { handed += it }, value = RichTextContentStates.annotatedEntity)
+                }
+            }
+        }
+        waitForIdle()
+        onAllNodes(member("Heading")).assertCountEquals(0)
+        val heading = onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)).fetchSemanticsNode()
+        assertEquals("Webhook retries", heading.config[SemanticsProperties.Text].single().text)
+        val presses = onAllNodes(linkRun, useUnmergedTree = true)
+        assertEquals(2, presses.fetchSemanticsNodes().size, "the heading's highlight, and the token and words after it as one")
+        presses[0].performSemanticsAction(SemanticsActions.OnClick)
+        presses[1].performSemanticsAction(SemanticsActions.OnClick)
+        waitForIdle()
+        assertEquals(listOf("thread-4", "thread-3"), selected)
+        val marks = handed.last().marks.orEmpty()
+        assertEquals(listOf(PMJSONValue.of(mapOf("type" to "annotation", "id" to "thread-3"))), marks)
     }
 }

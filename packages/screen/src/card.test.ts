@@ -24,14 +24,14 @@ import { VOCABULARY } from './vocabulary'
 /**
  * The budgets, in characters. The default card lists every member a framework
  * draws, with its props' types, and the data types those props take, and costs
- * about fourteen thousand tokens; a host that draws a few dozen members pays
+ * about fifteen thousand tokens; a host that draws a few dozen members pays
  * under a quarter of that. Each ceiling is a little above the measured card,
  * so the next member or prop fails here first, and whoever adds it decides
  * whether it is worth its characters. Raise a ceiling only after the growth
  * that needs it, with the reason here.
  *
  * The ceilings include the data types section: every named type a listed
- * member's props take, with its fields (about ten thousand characters on the
+ * member's props take, with its fields (about thirteen thousand characters on the
  * default card, twelve hundred on the subset). A model not told a
  * `SelectOption`'s fields guesses them, the guess validates, because the
  * validator does not read a structured object's fields, and the Select draws
@@ -42,8 +42,14 @@ import { VOCABULARY } from './vocabulary'
  * one that asks for an element's plain props before its props that hold
  * elements, because a screen drawn as it is written draws an element once its
  * plain props are whole.
+ *
+ * It also includes RichTextContent and RichTextInput with the rich-text
+ * document's types: its blocks, inline nodes and marks. A model that writes a
+ * RichTextContent writes its document, and one not told a paragraph holds
+ * `content` and a code block `text` writes a document the reader draws as
+ * nothing.
  */
-const BUDGET_CHARS = 57_000
+const BUDGET_CHARS = 60_500
 const SUBSET_BUDGET_CHARS = 13_500
 
 /** What a host that draws forms, lists and simple pages might allow. */

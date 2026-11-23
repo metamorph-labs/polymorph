@@ -104,6 +104,9 @@ const BLOCKS: GlyphDrawing = [
   ],
   ['rect', { x: '14', y: '2', width: '8', height: '8', rx: '1' }],
 ]
+const BOLD: GlyphDrawing = [
+  ['path', { d: 'M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8' }],
+]
 const BRAIN: GlyphDrawing = [
   ['path', { d: 'M12 18V5' }],
   ['path', { d: 'M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4' }],
@@ -151,6 +154,10 @@ const CLOCK: GlyphDrawing = [
   ['path', { d: 'M12 6v6l4 2' }],
 ]
 const CLOUD: GlyphDrawing = [['path', { d: 'M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z' }]]
+const CODE: GlyphDrawing = [
+  ['path', { d: 'm16 18 6-6-6-6' }],
+  ['path', { d: 'm8 6-6 6 6 6' }],
+]
 const COPY: GlyphDrawing = [
   ['rect', { width: '14', height: '14', x: '8', y: '8', rx: '2', ry: '2' }],
   ['path', { d: 'M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2' }],
@@ -274,6 +281,11 @@ const GRIP_VERTICAL: GlyphDrawing = [
   ['circle', { cx: '15', cy: '5', r: '1' }],
   ['circle', { cx: '15', cy: '19', r: '1' }],
 ]
+const HEADING: GlyphDrawing = [
+  ['path', { d: 'M6 12h12' }],
+  ['path', { d: 'M6 20V4' }],
+  ['path', { d: 'M18 20V4' }],
+]
 const HOUSE: GlyphDrawing = [
   ['path', { d: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8' }],
   [
@@ -297,6 +309,11 @@ const INFO: GlyphDrawing = [
   ['path', { d: 'M12 16v-4' }],
   ['path', { d: 'M12 8h.01' }],
 ]
+const ITALIC: GlyphDrawing = [
+  ['line', { x1: '19', x2: '10', y1: '4', y2: '4' }],
+  ['line', { x1: '14', x2: '5', y1: '20', y2: '20' }],
+  ['line', { x1: '15', x2: '9', y1: '4', y2: '20' }],
+]
 const KEY_ROUND: GlyphDrawing = [
   [
     'path',
@@ -318,6 +335,22 @@ const LAPTOP: GlyphDrawing = [
 const LINK: GlyphDrawing = [
   ['path', { d: 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71' }],
   ['path', { d: 'M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71' }],
+]
+const LIST: GlyphDrawing = [
+  ['path', { d: 'M3 5h.01' }],
+  ['path', { d: 'M3 12h.01' }],
+  ['path', { d: 'M3 19h.01' }],
+  ['path', { d: 'M8 5h13' }],
+  ['path', { d: 'M8 12h13' }],
+  ['path', { d: 'M8 19h13' }],
+]
+const LIST_ORDERED: GlyphDrawing = [
+  ['path', { d: 'M11 5h10' }],
+  ['path', { d: 'M11 12h10' }],
+  ['path', { d: 'M11 19h10' }],
+  ['path', { d: 'M4 4h1v5' }],
+  ['path', { d: 'M4 9h2' }],
+  ['path', { d: 'M6.5 20H3.4c0-1 2.6-1.925 2.6-3.5a1.5 1.5 0 0 0-2.6-1.02' }],
 ]
 const LOADER_CIRCLE: GlyphDrawing = [['path', { d: 'M21 12a9 9 0 1 1-6.219-8.56' }]]
 const LOCK: GlyphDrawing = [
@@ -440,6 +473,10 @@ const QUOTE: GlyphDrawing = [
     },
   ],
 ]
+const REDO_2: GlyphDrawing = [
+  ['path', { d: 'm15 14 5-5-5-5' }],
+  ['path', { d: 'M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13' }],
+]
 const ROTATE_CW: GlyphDrawing = [
   ['path', { d: 'M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8' }],
   ['path', { d: 'M21 3v5h-5' }],
@@ -514,6 +551,11 @@ const SPARKLES: GlyphDrawing = [
   ['circle', { cx: '4', cy: '20', r: '2' }],
 ]
 const SQUARE: GlyphDrawing = [['rect', { width: '18', height: '18', x: '3', y: '3', rx: '2' }]]
+const SQUARE_CODE: GlyphDrawing = [
+  ['path', { d: 'm10 9-3 3 3 3' }],
+  ['path', { d: 'm14 15 3-3-3-3' }],
+  ['rect', { x: '3', y: '3', width: '18', height: '18', rx: '2' }],
+]
 const SQUARE_TERMINAL: GlyphDrawing = [
   ['path', { d: 'm7 11 2-2-2-2' }],
   ['path', { d: 'M11 13h4' }],
@@ -526,6 +568,11 @@ const STAR: GlyphDrawing = [
       d: 'M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z',
     },
   ],
+]
+const STRIKETHROUGH: GlyphDrawing = [
+  ['path', { d: 'M16 4H9a3 3 0 0 0-2.83 4' }],
+  ['path', { d: 'M14 12a4 4 0 0 1 0 8H6' }],
+  ['line', { x1: '4', x2: '20', y1: '12', y2: '12' }],
 ]
 const SUN: GlyphDrawing = [
   ['circle', { cx: '12', cy: '12', r: '4' }],
@@ -562,6 +609,12 @@ const TAG: GlyphDrawing = [
     },
   ],
   ['circle', { cx: '7.5', cy: '7.5', r: '.5', fill: 'currentColor' }],
+]
+const TEXT_QUOTE: GlyphDrawing = [
+  ['path', { d: 'M17 5H3' }],
+  ['path', { d: 'M21 12H8' }],
+  ['path', { d: 'M21 19H8' }],
+  ['path', { d: 'M3 12v7' }],
 ]
 const THUMBS_DOWN: GlyphDrawing = [
   [
@@ -723,6 +776,16 @@ export const GLYPHS: Readonly<Record<IconRole, GlyphDrawing>> = {
   record: MIC,
   helpful: THUMBS_UP,
   unhelpful: THUMBS_DOWN,
+  redo: REDO_2,
+  bold: BOLD,
+  italic: ITALIC,
+  strikethrough: STRIKETHROUGH,
+  code: CODE,
+  heading: HEADING,
+  'list-bulleted': LIST,
+  'list-numbered': LIST_ORDERED,
+  quote: TEXT_QUOTE,
+  'code-block': SQUARE_CODE,
   reasoning: BRAIN,
   cite: QUOTE,
   artifact: PANEL_RIGHT,

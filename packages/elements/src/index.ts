@@ -25,6 +25,8 @@ export * from '@polymorph/engine'
 export * from '@polymorph/engine/charts'
 export * from '@polymorph/engine/markdown'
 export * from '@polymorph/engine/qr'
+export * from '@polymorph/engine/rich-text'
+export * from '@polymorph/engine/rich-text-editor'
 
 export { getToasts, removeToast, subscribeToasts, toast } from '@polymorph/solid'
 export type {

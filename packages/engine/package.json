@@ -9,6 +9,8 @@
     "./qr": "./src/qr/index.ts",
     "./charts": "./src/charts/index.ts",
     "./markdown": "./src/markdown/index.ts",
+    "./rich-text": "./src/rich-text/index.ts",
+    "./rich-text-editor": "./src/rich-text-editor/index.ts",
     "./agent": "./src/agent/index.ts",
     "./webmcp": "./src/webmcp.ts",
     "./testing": "./src/testing.ts",
@@ -30,6 +32,15 @@
     "d3-array": "^3.2.4",
     "d3-scale": "^4.0.2",
     "d3-shape": "^3.2.0",
+    "prosemirror-commands": "^1.7.2",
+    "prosemirror-history": "^1.5.2",
+    "prosemirror-inputrules": "^1.7.0",
+    "prosemirror-keymap": "^1.2.3",
+    "prosemirror-model": "^1.25.13",
+    "prosemirror-schema-list": "^1.6.1",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-transform": "^1.12.7",
+    "prosemirror-view": "^1.43.0",
     "zod": "^4.4.3"
   },
   "peerDependencies": {
@@ -73,6 +84,14 @@
       "./markdown": {
         "types": "./dist/types/markdown/index.d.ts",
         "import": "./dist/markdown.js"
+      },
+      "./rich-text": {
+        "types": "./dist/types/rich-text/index.d.ts",
+        "import": "./dist/rich-text.js"
+      },
+      "./rich-text-editor": {
+        "types": "./dist/types/rich-text-editor/index.d.ts",
+        "import": "./dist/rich-text-editor.js"
       },
       "./agent": {
         "types": "./dist/types/agent/index.d.ts",

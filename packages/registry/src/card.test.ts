@@ -159,12 +159,23 @@ const card = renderSystemCard(registry)
  * `srcSet` and `fetchPriority`. A model not told about `keepMounted`
  * leaves an FAQ's answers out of the server's markup, and one not told about
  * `getPageHref` writes a pager a crawler cannot follow past the first page.
+ * It also includes RichTextContent, one line. A model not told about it draws
+ * a stored comment's document with Markdown, which reads a string, or walks
+ * the JSON into Text and Heading itself and drops the nodes it does not know.
+ * The line names its annotation props, `selectionActions` and its agent
+ * segment. A model not told that the reader draws comment threads and offers
+ * a control at selected words draws highlights and a floating bar itself,
+ * which application code may not position.
+ * It also includes RichTextInput's line, with its agent segment, and the ten
+ * rich-text icon roles its toolbar draws. A model not told about RichTextInput
+ * keeps a comment as Markdown in a Textarea, whose text the app cannot hold to
+ * a field's formats, count as a server counts or anchor a comment thread to.
  *
  * `packages/mcp/src/tools.test.ts` and `packages/mcp/transcript.test.ts` check
  * the same number from the tool that serves the card, so the three move
  * together.
  */
-const BUDGET_CHARS = 38_300
+const BUDGET_CHARS = 39_213
 /**
  * A platform card says, for every adapted member, how it renders there, which
  * the web card never has to; those notes are the only thing that makes the

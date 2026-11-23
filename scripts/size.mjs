@@ -86,7 +86,7 @@ const vueDir = realpathSync(dirname(fromVueVocabulary.resolve('vue/package.json'
 const alias = [
   { find: /^@polymorph\/engine$/, replacement: dist('engine/dist/index.js') },
   {
-    find: /^@polymorph\/engine\/(motion|runtime|vite|qr|charts|markdown|agent)$/,
+    find: /^@polymorph\/engine\/(motion|runtime|vite|qr|charts|markdown|rich-text|rich-text-editor|agent)$/,
     replacement: dist('engine/dist/$1.js'),
   },
   { find: /^@polymorph\/react$/, replacement: dist('react/dist/index.js') },

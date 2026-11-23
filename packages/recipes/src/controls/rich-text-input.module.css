@@ -1,0 +1,527 @@
+/* RichTextInput — `design/components/rich-text-input.md`.
+ *
+ * Input's split, as PromptInput has it. The frame draws the border, the seat
+ * and the focus ring, and the editable surface inside it is transparent, so
+ * the toolbar, the text and the footer sit inside one edge and the ring
+ * surrounds the whole field. The frame takes a control's radius, because this
+ * is a field in a form.
+ *
+ * The surface's content is drawn by the classes RichTextContent draws the same
+ * nodes with, composed and not restated, so a document looks the same while it
+ * is written and after it is saved: the block spacing, lists, quotes, the
+ * entity token and the annotation are RichTextContent's, a paragraph is Text,
+ * a code block is CodeBlock, inline code is Code and a link is Link. Two
+ * recipes key a size on an attribute the editor does not write (Text's
+ * `data-size`, Heading's `data-level`), so their base class is composed and
+ * the step is stated here,
+ * the one the reader draws by default: the body at `text.md` and the levels
+ * one under the page's title. `rich-text-input.test.tsx` compares the drawn
+ * values with RichTextContent's.
+ *
+ * The editor draws inside the surface and writes no class of its own that a
+ * rule here reads; the states it draws are `data-*` attributes. */
+
+.root {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+  inline-size: 100%;
+}
+
+.frame {
+  composes: stateFeedback from '../conventions/motion.module.css';
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+  min-inline-size: 0;
+  padding: var(--pm-space-3);
+  background: var(--pm-bg-surface);
+  border: 1px solid var(--pm-border-field);
+  border-radius: var(--pm-radius-control);
+  box-shadow: var(--pm-shadow-seat);
+}
+
+/* toolbar ------------------------------------------------------------------ */
+
+/* The controls wrap onto more rows in a narrow container, and the app's slot
+   follows them at the end; nothing is clipped or scrolled away. A hairline
+   divides the controls from the text they act on. */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-1) var(--pm-space-2);
+  align-items: center;
+  padding-block-end: var(--pm-space-2);
+  border-block-end: 1px solid var(--pm-border-subtle);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-1) var(--pm-space-2);
+  align-items: center;
+  min-inline-size: 0;
+}
+
+/* One group of related controls (the marks, the blocks, the history), kept on
+   one row and wrapped as a whole. */
+.group {
+  display: flex;
+  gap: var(--pm-space-1);
+  align-items: center;
+}
+
+.slot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-1);
+  align-items: center;
+  margin-inline-start: auto;
+}
+
+/* surface ------------------------------------------------------------------ */
+
+/* The box the text scrolls in, past `maxRows`. The surface inside it grows with
+   the document, so its blocks keep their size inside a scrolling field. */
+.viewport {
+  min-block-size: 0;
+  overflow-y: auto;
+}
+
+/* The editable element. Whitespace is kept as typed, a long word breaks, and
+   ligatures are off, so the caret moves one character at a time; the editor
+   needs all three. It is transparent and has no outline of its own, because
+   the frame draws the ring. Below the phone line it takes the text-entry floor
+   (conventions §13), because a system may set its md step under 16px. */
+.surface {
+  composes: root from '../structure/rich-text-content.module.css';
+  padding: var(--pm-space-1) var(--pm-space-2);
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-md-weight);
+  line-height: var(--pm-text-md-line-height);
+  color: var(--pm-text-primary);
+  letter-spacing: var(--pm-text-md-tracking);
+  overflow-wrap: break-word;
+
+  /* The spaces a person typed are kept, and one at a line's end takes room on the line, so it
+     wraps with its word and never hangs past the field's edge. */
+  white-space: break-spaces;
+  font-variant-ligatures: none;
+  cursor: text;
+  outline: none;
+}
+
+/* The placeholder, on the only block of an empty document. It is drawn over the
+   block and takes no pointer, so the caret sits at the block's start. */
+.surface [data-placeholder] {
+  position: relative;
+}
+
+.surface [data-placeholder]::before {
+  position: absolute;
+  inset-inline: 0;
+  color: var(--pm-text-muted);
+  pointer-events: none;
+  content: attr(data-placeholder);
+}
+
+/* The minimum height, in body lines, and the maximum the box grows to before it
+   scrolls. The values are written out because a line count is a design
+   decision, and an arbitrary number would be an unchosen height. */
+.root[data-min-rows='1'] .surface {
+  min-block-size: calc(
+    var(--pm-text-md-size) * var(--pm-text-md-line-height) + var(--pm-space-1) * 2
+  );
+}
+
+.root[data-min-rows='3'] .surface {
+  min-block-size: calc(
+    var(--pm-text-md-size) * var(--pm-text-md-line-height) * 3 + var(--pm-space-1) * 2
+  );
+}
+
+.root[data-min-rows='6'] .surface {
+  min-block-size: calc(
+    var(--pm-text-md-size) * var(--pm-text-md-line-height) * 6 + var(--pm-space-1) * 2
+  );
+}
+
+.root[data-min-rows='12'] .surface {
+  min-block-size: calc(
+    var(--pm-text-md-size) * var(--pm-text-md-line-height) * 12 + var(--pm-space-1) * 2
+  );
+}
+
+.root[data-max-rows='6'] .viewport {
+  max-block-size: calc(
+    var(--pm-text-md-size) * var(--pm-text-md-line-height) * 6 + var(--pm-space-1) * 2
+  );
+}
+
+.root[data-max-rows='12'] .viewport {
+  max-block-size: calc(
+    var(--pm-text-md-size) * var(--pm-text-md-line-height) * 12 + var(--pm-space-1) * 2
+  );
+}
+
+.root[data-max-rows='24'] .viewport {
+  max-block-size: calc(
+    var(--pm-text-md-size) * var(--pm-text-md-line-height) * 24 + var(--pm-space-1) * 2
+  );
+}
+
+/* content: RichTextContent's drawing, composed ----------------------------- */
+
+.paragraph {
+  composes: text from '../structure/text.module.css';
+}
+
+/* Heading's levels 2, 3 and 4, for the document's levels 1, 2 and 3. */
+.heading1 {
+  composes: heading from '../structure/heading.module.css';
+  font-family: var(--pm-text-xl-family);
+  font-size: var(--pm-text-xl-size);
+  font-weight: var(--pm-text-xl-weight);
+  line-height: var(--pm-text-xl-line-height);
+  letter-spacing: var(--pm-text-xl-tracking);
+}
+
+.heading2 {
+  composes: heading from '../structure/heading.module.css';
+  font-family: var(--pm-text-lg-family);
+  font-size: var(--pm-text-lg-size);
+  font-weight: var(--pm-text-lg-weight);
+  line-height: var(--pm-text-lg-line-height);
+  letter-spacing: var(--pm-text-lg-tracking);
+}
+
+.heading3 {
+  composes: heading from '../structure/heading.module.css';
+  font-family: var(--pm-text-md-family);
+  font-size: var(--pm-text-md-size);
+  font-weight: var(--pm-text-xl-weight);
+  line-height: var(--pm-text-md-line-height);
+  letter-spacing: var(--pm-text-md-tracking);
+}
+
+.list {
+  composes: list from '../structure/rich-text-content.module.css';
+}
+
+.item {
+  composes: item from '../structure/rich-text-content.module.css';
+}
+
+.quote {
+  composes: quote from '../structure/rich-text-content.module.css';
+}
+
+.codeBlock {
+  composes: block from '../structure/code-block.module.css';
+}
+
+.code {
+  composes: code from '../structure/code.module.css';
+}
+
+/* Link's inline variant: the accent and its rest underline. A press in the
+   field places the caret and does not follow the link. */
+.link {
+  composes: link from './link.module.css';
+  text-decoration-line: underline;
+  cursor: text;
+}
+
+.entity {
+  composes: entity from '../structure/rich-text-content.module.css';
+}
+
+/* A node of a later version: its readable text, kept as one unit. */
+.unknown {
+  overflow-wrap: anywhere;
+}
+
+/* An entity or an unknown node the selection holds as one unit: the selection
+   treatment for a part that holds one label (`design/components/README.md`). */
+.entity[data-selected],
+.unknown[data-selected] {
+  color: var(--pm-selection-text);
+  background: var(--pm-selection-bg);
+}
+
+/* An annotation: RichTextContent's highlight, composed, with its active state
+   and the ring of an annotated entity, so a highlight looks the same while the
+   document is written and after. The editor draws each fragment as a `mark`. */
+.annotation {
+  composes: annotation from '../structure/rich-text-content.module.css';
+}
+
+/* footer and count --------------------------------------------------------- */
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-2);
+  align-items: center;
+}
+
+/* The default footer's controls, at the inline end after the count. */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-2);
+  align-items: center;
+  margin-inline-start: auto;
+}
+
+/* The count: metadata, at the smallest step. Over the limit it is danger text,
+   and its words say how far over, so the state is not colour alone. */
+.count {
+  margin: 0;
+  font-family: var(--pm-text-xs-family);
+  font-size: var(--pm-text-xs-size);
+  font-weight: var(--pm-text-xs-weight);
+  line-height: var(--pm-text-xs-line-height);
+  color: var(--pm-text-muted);
+  letter-spacing: var(--pm-text-xs-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+.count[data-state='over'] {
+  color: var(--pm-danger-text);
+}
+
+/* Under the frame when there is no footer, inset like PromptInput's hint. */
+.root > .count {
+  padding-inline: var(--pm-space-3);
+}
+
+/* suggestions -------------------------------------------------------------- *
+ *
+ * PromptInput's list, composed: the panel, the options and the rows. The panel
+ * is placed at the token instead of across the field, and it is `fixed`, as
+ * the selection bar is, so a scrolling ancestor (a Dialog's body) does not
+ * clip it. The member measures the token and writes the panel's top-left
+ * corner (`--pm-rich-text-input-x`, `--pm-rich-text-input-y`): under the
+ * token's line, or above it when there is less room below in the part of the
+ * window a person sees (`data-placement`), `--pm-rich-text-input-gap` from the
+ * token, its start at the token's start, kept inside the field and the
+ * window. It writes the field's width (`--pm-rich-text-input-field`), which
+ * bounds the panel and is its width at phone width, and the room on the
+ * panel's side (`--pm-rich-text-input-room`), which bounds its height. The
+ * coordinates are physical, because they are the browser's. */
+
+.suggestions {
+  composes: suggestions from '../ai/prompt-input.module.css';
+
+  --pm-rich-text-input-x: 0px;
+  --pm-rich-text-input-y: 0px;
+  --pm-rich-text-input-gap: var(--pm-space-1);
+  --pm-rich-text-input-field: calc(var(--pm-space-10) * 4);
+  --pm-rich-text-input-room: 100vh;
+}
+
+/* The placement, under the root so it outweighs the composed panel's, whose
+   stylesheet a bundler may load after this one. */
+.root > .suggestions {
+  position: fixed;
+  inset: auto;
+  top: var(--pm-rich-text-input-y);
+  left: var(--pm-rich-text-input-x);
+
+  /* Above the page, as every transient surface is: the panel may cross what follows the field. */
+  z-index: var(--pm-z-overlay);
+
+  /* Popover's width: a name and a line under it, never wider than the field. */
+  inline-size: min(var(--pm-rich-text-input-field), calc(var(--pm-space-10) * 4));
+  max-block-size: min(40vh, calc(var(--pm-space-10) * 4), var(--pm-rich-text-input-room));
+}
+
+@supports (height: 1dvh) {
+  .root > .suggestions {
+    max-block-size: min(40dvh, calc(var(--pm-space-10) * 4), var(--pm-rich-text-input-room));
+  }
+}
+
+.listbox {
+  composes: listbox from '../ai/prompt-input.module.css';
+}
+
+.option {
+  composes: option from '../ai/prompt-input.module.css';
+}
+
+.glyph {
+  composes: glyph from '../ai/prompt-input.module.css';
+}
+
+/* The app's own leading drawing (an Avatar), decorative, as the glyph is. */
+.leading {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+.text {
+  composes: text from '../ai/prompt-input.module.css';
+}
+
+.label {
+  composes: label from '../ai/prompt-input.module.css';
+}
+
+.description {
+  composes: description from '../ai/prompt-input.module.css';
+}
+
+.rows {
+  composes: rows from '../ai/prompt-input.module.css';
+}
+
+.row {
+  composes: row from '../ai/prompt-input.module.css';
+}
+
+.empty {
+  composes: empty from '../ai/prompt-input.module.css';
+}
+
+/* The app could not load: the list's one row, in danger text. */
+.error {
+  composes: empty from '../ai/prompt-input.module.css';
+  color: var(--pm-danger-text);
+}
+
+/* The one live region, hidden by clipping so it stays in the accessibility tree. */
+.status {
+  composes: visuallyHidden from '../conventions/a11y.module.css';
+}
+
+/* The link form inside its Popover: the address field and its two controls. */
+.linkForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-3);
+  margin: 0;
+}
+
+.linkActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-2);
+  justify-content: flex-end;
+}
+
+/* states ------------------------------------------------------------------- */
+
+.root[data-invalid] .frame {
+  border-color: var(--pm-danger-border);
+}
+
+.root[data-readonly] .surface {
+  color: var(--pm-text-secondary);
+}
+
+.root[data-disabled] .frame {
+  cursor: not-allowed;
+  background: var(--pm-bg-subtle);
+  border-color: var(--pm-border-subtle);
+  box-shadow: none;
+}
+
+.root[data-disabled] .surface {
+  color: var(--pm-text-disabled);
+  cursor: not-allowed;
+}
+
+/* Hover moves the border one step, as in Input. The selector excludes the
+   states it must not overwrite instead of relying on their specificity. */
+.root:not([data-disabled], [data-readonly], [data-invalid]) .frame:hover {
+  border-color: var(--pm-border-strong);
+}
+
+/* The ring on the frame while the surface inside it has focus: the
+   composite-field convention (`focus.module.css`), restated because the
+   convention's selector reaches a native `<input>` child only. A focused
+   contenteditable matches `:focus-visible` from the pointer too, as a text
+   field does. The recolour yields to the invalid border, which must survive
+   focus; the ring never does. */
+.root .frame:has(.surface:focus-visible) {
+  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline-offset: var(--pm-focus-offset);
+  box-shadow: var(--pm-glow-focus);
+}
+
+.root:not([data-invalid]) .frame:has(.surface:focus-visible) {
+  border-color: var(--pm-border-focus-solid);
+}
+
+/* The field style, where the system chooses it (`overrides.focus.field: border`,
+   the flag `--pm-focus-field`): the outline moves inside the frame's edge and
+   takes the solid focus colour, and the frame keeps its seat. An invalid field
+   keeps the ring, so the danger border stays visible. */
+@container style(--pm-focus-field: border) {
+  .root:not([data-invalid]) .frame:has(.surface:focus-visible) {
+    outline-color: var(--pm-border-focus-solid);
+    outline-offset: calc(var(--pm-focus-width) * -1);
+    box-shadow: var(--pm-shadow-seat);
+  }
+}
+
+/* The focus-zoom floor (conventions §13): metrics only. The row counts are
+   restated with the floor's metrics, so `minRows` and `maxRows` still count the
+   lines the surface draws. At phone width the suggestions span the root. */
+@media (width < 30rem) {
+  .surface {
+    font-size: var(--pm-text-entry-size);
+    line-height: var(--pm-text-entry-line-height);
+  }
+
+  .root[data-min-rows='1'] .surface {
+    min-block-size: calc(
+      var(--pm-text-entry-size) * var(--pm-text-entry-line-height) + var(--pm-space-1) * 2
+    );
+  }
+
+  .root[data-min-rows='3'] .surface {
+    min-block-size: calc(
+      var(--pm-text-entry-size) * var(--pm-text-entry-line-height) * 3 + var(--pm-space-1) * 2
+    );
+  }
+
+  .root[data-min-rows='6'] .surface {
+    min-block-size: calc(
+      var(--pm-text-entry-size) * var(--pm-text-entry-line-height) * 6 + var(--pm-space-1) * 2
+    );
+  }
+
+  .root[data-min-rows='12'] .surface {
+    min-block-size: calc(
+      var(--pm-text-entry-size) * var(--pm-text-entry-line-height) * 12 + var(--pm-space-1) * 2
+    );
+  }
+
+  .root[data-max-rows='6'] .viewport {
+    max-block-size: calc(
+      var(--pm-text-entry-size) * var(--pm-text-entry-line-height) * 6 + var(--pm-space-1) * 2
+    );
+  }
+
+  .root[data-max-rows='12'] .viewport {
+    max-block-size: calc(
+      var(--pm-text-entry-size) * var(--pm-text-entry-line-height) * 12 + var(--pm-space-1) * 2
+    );
+  }
+
+  .root[data-max-rows='24'] .viewport {
+    max-block-size: calc(
+      var(--pm-text-entry-size) * var(--pm-text-entry-line-height) * 24 + var(--pm-space-1) * 2
+    );
+  }
+
+  .root > .suggestions {
+    inline-size: var(--pm-rich-text-input-field);
+  }
+}

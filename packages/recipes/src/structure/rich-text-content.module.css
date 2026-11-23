@@ -1,0 +1,119 @@
+/* RichTextContent — `design/components/rich-text-content.md`.
+ *
+ * Most styling comes from other members through composition: paragraphs are
+ * Text, headings are Heading, code blocks are CodeBlock, inline code is Code
+ * and links are Link. The spacing between blocks, a list's markers and a
+ * quote's rule are Markdown's, composed and not restated, so a list in a reply
+ * and a list in a comment are one decision. A heading or inline code the member
+ * draws itself composes Heading's or Code's class. The entity token, the
+ * annotation, the live region and the wrapper of the selection bar's controls
+ * are this sheet's own.
+ *
+ * Each part is one class, and no rule reaches through the root, because
+ * RichTextInput's editable surface composes the same classes so that a
+ * document looks the same while it is written. */
+
+.root {
+  composes: root from '../ai/markdown.module.css';
+}
+
+.list {
+  composes: list from '../ai/markdown.module.css';
+}
+
+.item {
+  composes: item from '../ai/markdown.module.css';
+}
+
+.quote {
+  composes: quote from '../ai/markdown.module.css';
+}
+
+/* A heading the member draws itself: one that holds a drawn annotation, or any
+   heading while the member maps selections. It is Heading's element with
+   Heading's class and the level Heading writes (`data-level`), so Heading's
+   rules draw it. */
+.heading {
+  composes: heading from './heading.module.css';
+}
+
+/* Inline code that holds a drawn annotation: Code's element with Code's class,
+   so the highlight sits inside the chip, as the editor draws it. */
+.code {
+  composes: code from './code.module.css';
+}
+
+/* A reference to something the app owns, such as a person or an issue, on the
+   accent wash. The label carries its trigger character (`@Ada Lovelace`), so
+   the token is never marked by colour alone. It takes the surrounding text's
+   step and weight, as Code keeps its weight. Padding is on the inline axis
+   only, as Code's is, so a line holding a token keeps the line box of a line
+   without one. A long label breaks inside the token and each line's part keeps
+   the padding and the radius, Code's long-string cell. */
+.entity {
+  padding-inline: var(--pm-space-1);
+  color: var(--pm-accent-text);
+  background: var(--pm-accent-subtle);
+  border-radius: var(--pm-radius-sm);
+  overflow-wrap: anywhere;
+  box-decoration-break: clone;
+}
+
+/* An annotation: the words an application anchored something to, such as a
+   comment thread. Each fragment is a `mark`, so the browser's own mark colours
+   are replaced: the warning wash, which is neither the selection's fill nor a
+   link's accent, and the text's own colour, so a link or code inside keeps its
+   look. The wash is opaque, so overlapping annotations read the same, nested
+   one inside the other. A rule in the warning border's colour runs under the
+   words as a second cue, because the wash alone is faint on a dark surface. It
+   is a bottom border, which moves no line and is drawn on every line of a
+   fragment that wraps, and not a text decoration, which a link inside already
+   draws. The active annotation takes the pressed wash and a frame. The outline
+   is transparent at rest, so forced colours, which repaint the wash, draw it,
+   and the active frame is thicker. The active rule has the specificity of the
+   base rule, so the focus convention's ring wins on a highlight that takes
+   focus. RichTextInput's editable surface composes this class. */
+.annotation {
+  color: inherit;
+  background: var(--pm-warning-subtle);
+  border-block-end: 1px solid var(--pm-warning-border);
+  outline: 1px solid transparent;
+  box-decoration-break: clone;
+}
+
+.annotation:where([data-active]) {
+  background: var(--pm-warning-subtle-active);
+  outline: 2px solid var(--pm-warning-border);
+}
+
+/* An entity's own wash covers the highlight it sits in, so an annotated entity
+   is ringed with the annotation's wash and carries the rule under it itself,
+   at the height the fragments beside it draw theirs. */
+.annotation .entity {
+  border-block-end: 1px solid var(--pm-warning-border);
+  box-shadow: 0 0 0 2px var(--pm-warning-subtle);
+}
+
+.annotation:where([data-active]) .entity {
+  box-shadow: 0 0 0 2px var(--pm-warning-subtle-active);
+}
+
+/* A highlight that takes a press (`onAnnotationSelect`). One fragment of each
+   annotation is its tab stop, and it draws the one focus ring. */
+.pressable {
+  composes: focusRing from '../conventions/focus.module.css';
+  cursor: pointer;
+}
+
+/* The wrapper of the application's controls in the selection bar. It draws no
+   box, so the controls are the bar's own row. The member reads the focus events
+   that pass through it, to give focus back when the bar leaves. */
+.actions {
+  display: contents;
+}
+
+/* The selection bar's one live region, hidden by clipping so it stays in the
+   accessibility tree. */
+.status {
+  composes: visuallyHidden from '../conventions/a11y.module.css';
+}

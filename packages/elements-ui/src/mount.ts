@@ -52,6 +52,47 @@ function once(selector: string, act: (element: HTMLElement) => void): () => void
   return () => cancelAnimationFrame(request)
 }
 
+/** How long after its element takes focus an entry that selects selects the words. */
+const SELECT_DELAY_MS = 60
+
+/**
+ * Selects the first run of `text` in one of an element's text nodes, once the
+ * element is in the document and holds it, as a reader selects it: the element
+ * takes focus, and the words are selected a moment later, once an editor in it
+ * has written its own selection back. Returns the function that stops it.
+ */
+function selectOnce(selector: string, text: string): () => void {
+  let frames = 0
+  let request = 0
+  let timer = 0
+  const look = () => {
+    const element = document.querySelector<HTMLElement>(selector)
+    if (
+      element === null ||
+      element.getClientRects().length === 0 ||
+      !(element.textContent ?? '').includes(text)
+    ) {
+      if (++frames < SEARCH_FRAMES) request = requestAnimationFrame(look)
+      return
+    }
+    element.focus()
+    timer = window.setTimeout(() => {
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+      for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+        const at = node.textContent?.indexOf(text) ?? -1
+        if (at === -1) continue
+        document.getSelection()?.setBaseAndExtent(node, at, node, at + text.length)
+        return
+      }
+    }, SELECT_DELAY_MS)
+  }
+  request = requestAnimationFrame(look)
+  return () => {
+    cancelAnimationFrame(request)
+    clearTimeout(timer)
+  }
+}
+
 export async function mount(
   entry: StateEntry,
   overrides: Readonly<Record<string, unknown>> = {},
@@ -87,7 +128,7 @@ export async function mount(
       }
     }
   }
-  // A state only a reader reaches: text typed into a field, a control pressed.
+  // A state only a reader reaches: text typed into a field, a control pressed, words selected.
   const stops: (() => void)[] = []
   const typed = entry.types
   if (typed !== undefined) {
@@ -99,6 +140,8 @@ export async function mount(
     )
   }
   if (entry.presses !== undefined) stops.push(once(entry.presses, (control) => control.click()))
+  const selected = entry.selects
+  if (selected !== undefined) stops.push(selectOnce(selected.in, selected.text))
   await Promise.resolve()
   await frame()
   const unmount = () => {

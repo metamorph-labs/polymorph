@@ -48,6 +48,9 @@ import {
   presenceExpressions,
   registryMember,
   relativeFile,
+  renderedChildren,
+  RENDERS_KEYS,
+  type FixtureRenders,
   statement,
   staticString,
   templateClassNames,
@@ -55,6 +58,7 @@ import {
   typeOwners,
   typeParameters,
   pressStatements,
+  selectStatements,
   TYPING_FRAMES,
   usesNode,
   walk,
@@ -382,6 +386,11 @@ interface Spelling {
   filled(slot: string): string
   /** `slotted(slots.x)`, `slotText(slots.x)` and `slotNode(slots.x)`. */
   slot(slot: string, read: 'slotted' | 'text' | 'node'): string
+  /**
+   * `slotNode(slots.x, arg)` and `slotDraws(slots.x, arg)` for a render prop: the
+   * call's head, up to its argument (`drawSlot(props.x, `).
+   */
+  scoped(slot: string, call: 'node' | 'draws'): string
   /** `listening.x`: whether the caller handles the event. */
   listening(event: string): string
   /**
@@ -492,6 +501,22 @@ function solidExpr(expr: Expr, spelling: Spelling): string {
         } else {
           edits.push({ start: node.getStart(source), end: second.getStart(source), text: replaced })
         }
+        for (const argument of node.arguments.slice(1)) visitArgument(argument, bound, true)
+        return
+      }
+      if (
+        (callee === 'slotNode' || callee === 'slotDraws') &&
+        !bound.has(callee) &&
+        second !== undefined
+      ) {
+        // A render prop drawn with its argument, or whether it draws anything for it.
+        const slot = slotOf(first, bound)
+        if (slot === null) throw new Error(`shells: ${callee}() reads "${expr}", not a slot`)
+        edits.push({
+          start: node.getStart(source),
+          end: second.getStart(source),
+          text: spelling.scoped(slot, callee === 'slotNode' ? 'node' : 'draws'),
+        })
         for (const argument of node.arguments.slice(1)) visitArgument(argument, bound, true)
         return
       }
@@ -870,6 +895,14 @@ export function renderSolidMember(
       // A slot as a node: the content the slot read, which another component draws.
       if (read === 'node') return `(${variable}.filled() ? ${variable}() : undefined)`
       return `${variable}.${read === 'slotted' ? 'slotted' : 'text'}()`
+    },
+    scoped: (slot, call) => {
+      const entry = slotProps.get(slot)
+      if (entry?.kind !== 'scoped-slot')
+        throw new Error(`shells: ${shell.member} reads slots.${slot}`)
+      const helper = call === 'node' ? 'drawSlot' : 'slotDraws'
+      foundationValues.add(helper)
+      return `${helper}(${access('props', entry.name)}, `
     },
     listening: (event) => {
       const prop = events.get(event)
@@ -1254,7 +1287,11 @@ export function renderSolidMember(
       foundationTypes.add(name)
     }
   }
-  for (const name of names) if (FOUNDATION_HELPERS.has(name)) foundationValues.add(name)
+  for (const name of names) {
+    if (FOUNDATION_HELPERS.has(name)) foundationValues.add(name)
+    // A type an expression names (`null as RichTextEditorState | null`) is the foundation's too.
+    if (FOUNDATION_TYPES.has(name)) foundationTypes.add(name)
+  }
 
   const parameters = typeParameters(shell.generic)
   const declared = new Set([...Object.keys(shell.types ?? {}), ...parameters])
@@ -1748,9 +1785,11 @@ function literal(value: FixtureValue, needs: FixtureNeeds): string {
     return source
   }
   if (branded(value, 'node')) return childCode((value as { node: FixtureChild }).node, needs)
-  if (branded(value, 'renders', ['params'])) {
-    const { params, renders } = value as { params: readonly string[]; renders: FixtureChild }
-    return `(${params.join(', ')}) => ${childCode(renders, needs)}`
+  if (branded(value, 'renders', RENDERS_KEYS)) {
+    const { params, renders, when } = value as FixtureRenders
+    const children = renderedChildren(renders).map((child) => childCode(child, needs))
+    const drawn = children.length === 1 ? children[0] : `[${children.join(', ')}]`
+    return `(${params.join(', ')}) => ${when === undefined ? drawn : `(${when}) ? ${drawn} : undefined`}`
   }
   if (branded(value, 'held')) return `held.${(value as { held: string }).held}`
   if (branded(value, 'hold', ['to'])) {
@@ -1879,7 +1918,8 @@ function entryCode(shell: MemberShell, entry: StateEntry, needs: FixtureNeeds): 
     entry.holds !== undefined ||
     entry.before !== undefined ||
     entry.types !== undefined ||
-    entry.presses !== undefined
+    entry.presses !== undefined ||
+    entry.selects !== undefined
   const before = (entry.before ?? []).map((child) => childCode(child, needs))
   let rendered: string
   if (entry.many !== undefined) {
@@ -1920,6 +1960,16 @@ function entryCode(shell: MemberShell, entry: StateEntry, needs: FixtureNeeds): 
     if (entry.presses !== undefined) {
       setup.push(pressStatements(literal(entry.presses, needs), 'onMount', 'onCleanup'))
     }
+    if (entry.selects !== undefined) {
+      setup.push(
+        selectStatements(
+          literal(entry.selects.in, needs),
+          literal(entry.selects.text, needs),
+          'onMount',
+          'onCleanup',
+        ),
+      )
+    }
     render = `${parameter} => { ${setup.join('; ')}${setup.length > 0 ? '; ' : ''}return (\n${rendered}\n) }`
   } else {
     render = `${parameter} => (\n${rendered}\n)`
@@ -1952,7 +2002,8 @@ export function renderSolidStates(
     entryCode(shell, entry, needs),
   )
   const typing = shell.states.some(
-    (entry) => entry.types !== undefined || entry.presses !== undefined,
+    (entry) =>
+      entry.types !== undefined || entry.presses !== undefined || entry.selects !== undefined,
   )
   const holding = shell.states.some((entry) => entry.holds !== undefined)
   const lines = [

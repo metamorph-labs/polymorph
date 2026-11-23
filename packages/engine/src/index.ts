@@ -22,9 +22,11 @@
  *
  * **The helpers one member family needs** are subpaths: the QR encoder
  * (`@polymorph/engine/qr`), the chart marks' paths over `d3-shape`
- * (`@polymorph/engine/charts`) and the Markdown parser
- * (`@polymorph/engine/markdown`). An application that imports the root for its
- * theme does not load them. Each foundation re-exports them, so a member
+ * (`@polymorph/engine/charts`), the Markdown parser
+ * (`@polymorph/engine/markdown`), the rich-text document
+ * (`@polymorph/engine/rich-text`) and the rich-text editor over ProseMirror
+ * (`@polymorph/engine/rich-text-editor`). An application that imports the root
+ * for its theme does not load them. Each foundation re-exports them, so a member
  * reaches them where it reaches the rest of the engine.
  *
  * **The motion engine** is a subpath (`@polymorph/engine/motion`), not a root
@@ -164,6 +166,45 @@ export { followHighlight, returnFocus, roveRadio } from './conventions/roving'
 
 export { revealInline } from './conventions/reveal'
 
+/* A toolbar's roving tab stop and keys, and the places of a bar at the selected
+   text and of a list at a token, which every framework's RichTextInput draws by. */
+export {
+  enterToolbar,
+  holdToolbarEscape,
+  syncToolbarStop,
+  toolbarFocusIn,
+  toolbarFocusOut,
+  toolbarKeydown,
+  toolbarLosesFocus,
+  toolbarPress,
+  toolbarStop,
+  watchToolbarStop,
+} from './conventions/toolbar'
+export type { ToolbarStop } from './conventions/toolbar'
+export {
+  followSelectionBar,
+  placeSelectionBar,
+  placeTokenList,
+  visibleBox,
+  visibleViewport,
+} from './conventions/selection-bar'
+export type { ViewportBox } from './conventions/selection-bar'
+/* A press on the label FormField names a group by, which focuses the group's text; focus
+   entering and leaving a field of several parts; and a form's reset reaching it. */
+export { focusOnLabelPress } from './conventions/label-press'
+export { followFieldFocus, followFormReset, inField } from './conventions/field-focus'
+export type { FieldFocusHooks } from './conventions/field-focus'
+/* A reader's selection in a RichTextContent and a press or a key on one of its highlights, which
+   every framework's RichTextContent reads by. */
+export {
+  mapRichTextSelection,
+  RICH_TEXT_STOP,
+  richTextKeyedAnnotation,
+  richTextPressedAnnotation,
+  richTextSelectionBox,
+} from './conventions/rich-text-selection'
+export type { RichTextSelectionFound } from './conventions/rich-text-selection'
+
 /* A scroll region held at its end while content arrives, which every
    framework's ChatThread and LogView follow by. */
 export { FOLLOW_SLACK_PX, followEnd, jumpToEnd } from './conventions/follow'
@@ -299,7 +340,7 @@ export type { CountdownListener } from './conventions/countdown-clock'
 export { CONTROL_SIZES } from './conventions/size'
 export type { ControlSize } from './conventions/size'
 
-export { gallerySlug } from './conventions/slug'
+export { gallerySlug, idPart } from './conventions/slug'
 
 export { spacingAttrs } from './conventions/spacing'
 export type { LayoutPatch, SpacingProps } from './conventions/spacing'
