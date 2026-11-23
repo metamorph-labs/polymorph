@@ -1,7 +1,20 @@
 {
   "name": "@polymorph/svelte-ui",
   "version": "1.0.16",
-  "description": "The polymorph vocabulary for Svelte: every member as a Svelte 5 component generated from its framework-neutral description, styled by its token-only recipe from @polymorph/recipes.",
+  "description": "The Polymorph design system's components for Svelte, the vocabulary: every member as a Svelte 5 component generated from its framework-neutral description, styled by its token-only recipe from @polymorph/recipes.",
+  "keywords": [
+    "polymorph",
+    "design-system",
+    "svelte",
+    "svelte5",
+    "ui",
+    "components",
+    "ui-components",
+    "component-library",
+    "theming",
+    "design-tokens",
+    "accessibility"
+  ],
   "private": true,
   "type": "module",
   "exports": {

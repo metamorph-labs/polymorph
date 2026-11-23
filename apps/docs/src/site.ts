@@ -3,8 +3,9 @@
  *
  * `url` is the address the site is served from. It is read from `VITE_SITE_URL`
  * at build time, because the address belongs to a deployment and not to the
- * source. Canonical links, the sitemap and link previews are built from it, and
- * a build without it leaves them out.
+ * source. Canonical links, the sitemap, link previews and the pages' structured
+ * data are built from it, and a build without it leaves them out. The files for
+ * agents write their links in full with it (`llms.ts`).
  */
 export const SITE = {
   name: 'Polymorph',

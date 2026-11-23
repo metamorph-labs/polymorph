@@ -30,7 +30,12 @@ link to the repository. `src/site.ts` holds the site's name, description and add
 `src/pages.ts` names each page as a lazy chunk that can be loaded ahead of the first render.
 `src/main.tsx` loads the chunk for the address before it renders, so a page that arrived as
 static HTML is replaced by the same page and never by an empty frame. `src/meta.ts` sets the
-title, the description and the sharing tags of each page.
+title, the description and the sharing tags of each page. The title of a guide or of a
+component's page also names the index above it (`Motion · Guides · Polymorph`), so a guide and a
+page of one name differ. When the build knows the site's address, each page a search engine may
+list also carries its schema.org facts as JSON-LD (`src/page-head.ts`): the landing page says what
+the site and the project are, every other page lists its breadcrumbs, and a guide says it is an
+article.
 
 ## Pages
 
@@ -51,8 +56,8 @@ title, the description and the sharing tags of each page.
 `src/router.ts` is the router: it reads the address, and it turns a click on a link to a page of
 the site into a navigation. A link to a file the site serves (`/llms.txt`) is left to the browser.
 
-The guides are the files in `docs/`. `src/guides.ts` puts every file there in a group and an
-order, and rewrites each file's links: a link to another guide becomes its route, a link to a
+The guides are the files in `docs/`. `src/guide-catalogue.ts` puts every file there in a group
+and an order, and `src/guide-links.ts` rewrites each file's links: a link to another guide becomes its route, a link to a
 member's spec becomes the member's page, and a link to any other file in the repository becomes
 its address on GitHub. A guide keeps the
 plain register its file is written in. The page copy around it speaks to the visitor.
@@ -85,8 +90,8 @@ script runs. It also writes `404.html`, `og.png` (the picture a shared link show
 `robots.txt`. The themes' stylesheet, which the engine computes when the app starts, is written
 once as a hashed file that every page links.
 
-The step fails when a page logs an error, when a page asks for a file the build lacks, or when a
-page links to an address of the site that has no page. A link inside a state that a component's
+The step fails when a page logs an error, when a page asks for a file the build lacks, when a
+page links to an address of the site that has no page, or when two pages have one title. A link inside a state that a component's
 page draws live is not followed: it is the fixture's sample content, and the page marks the box
 it is drawn in (`data-specimen`). The step also refuses a `dist/` it has already written, because
 the application's own document is gone from it: run it without `--no-build`.
@@ -97,7 +102,13 @@ for an address with no file. GitHub Pages, Cloudflare Pages and Netlify do all t
 come. A server that maps an address to a file only by its exact name, such as nginx or an object
 store, needs a rule for the second: in nginx, `try_files $uri $uri.html =404`.
 Set `VITE_SITE_URL` to the site's public address when building: the canonical links, the absolute
-address of the sharing picture and `sitemap.xml` are written only when it is set.
+address of the sharing picture, the structured data and `sitemap.xml` are written only when it is
+set, and the links in the files for agents are then written in full.
+
+A guide's markdown file holds the same words as the guide's page, and a search engine may list
+the file beside the page. The page names the file as its alternate, and a file cannot name its
+page. A host that sets response headers can send `X-Robots-Tag: noindex` for `/guides/*.md`,
+which keeps the files out of a search engine's results and leaves them open to any reader.
 
 ## What it reads and writes
 
@@ -107,22 +118,23 @@ It reads:
   (`src/registry.ts`).
 - `design/systems/*.json`, `design/palettes/*.json` and `design/defaults.json`: the pairing
   catalogue, discovered by glob in `src/themes.ts`.
-- `registry/system-card.md` and `docs/rules.md`: the text of the files for agents, below.
-- `docs/*.md`: the guides.
+- `registry/system-card.md`: the system card among the files for agents, below.
+- `docs/*.md`: the guides, and each guide's markdown file among the files for agents.
 
 It writes nothing to the repository. There are no save endpoints here. `design/` is edited in the
 workbench.
 
 ## Files for agents
 
-The site serves three plain-text files, in the [llms.txt](https://llmstxt.org) convention, so an
-agent finds the contract in one fetch:
+The site serves these plain-text files, in the [llms.txt](https://llmstxt.org) convention, so an
+agent finds the contract in one fetch and reads a guide without the page around it:
 
 | Path | What it is |
 | --- | --- |
-| `/llms.txt` | What the system is, links to the two files below, the MCP server and `init` commands, the rules on application code and the exception ladder |
-| `/llms-full.txt` | The system card, then `docs/rules.md` |
+| `/llms.txt` | What the system is, links to the full text and the system card, the MCP server and `init` commands, each guide's markdown file, the rules on application code and the exception ladder |
+| `/llms-full.txt` | The system card, then the rules guide as `/guides/rules.md` serves it |
 | `/system-card.md` | `registry/system-card.md` as the registry generator wrote it |
+| `/guides/<slug>.md` | `docs/<slug>.md` with its links rewritten: another guide by its markdown file, any other file of the repository on GitHub. The guide's page names it in a `<link rel="alternate" type="text/markdown">` |
 
 `src/llms.ts` builds them, and a plugin in `vite.config.ts` serves them. The dev server builds each
 one when it is requested, and the build writes them into `dist/`. They are never written to the
@@ -142,7 +154,8 @@ uses only the vocabulary. [docs/rules.md](../../docs/rules.md) has the rules.
 ## Tests
 
 `src/**/*.test.{ts,tsx}` run in the `logic` Vitest project: `pnpm exec vitest run apps/docs`.
-`src/llms.test.ts` checks the files for agents against the generated registry.
+`src/llms.test.ts` checks the files for agents against the generated registry and the guides'
+catalogue. `src/page-head.test.ts` states each kind of page's title and structured data.
 `src/guides.test.ts` checks that every file in `docs/` is a guide and that each guide's links
 resolve. `src/reference/facts.test.ts` and `src/reference/install.test.ts` check the names,
 commands and files the install page states against their sources.

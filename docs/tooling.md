@@ -1218,8 +1218,10 @@ the rest of the page inert or cover it.
 
 `pnpm site` builds the app and writes every page as static HTML into `apps/docs/dist`, with a
 `404.html`, a sharing picture and `robots.txt`. It opens each page in Chromium and fails on a page
-that logs an error or links to an address of the site that has no page. `VITE_SITE_URL` names the
-site's public address, which the canonical links and `sitemap.xml` need.
+that logs an error or links to an address of the site that has no page, and on two pages with one
+title. `VITE_SITE_URL` names the site's public address, which the canonical links, the pages'
+structured data and `sitemap.xml` need. The build also writes the files an agent reads:
+`llms.txt`, the system card, and each guide as markdown at `/guides/<slug>.md`.
 [apps/docs/README.md](../apps/docs/README.md) describes the step and what a host must serve.
 
 The workbench and the docs site both browse components, on purpose. The docs site is the

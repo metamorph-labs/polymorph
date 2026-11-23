@@ -15,7 +15,9 @@
  * It finds the pages by following links, so the list of routes is not kept
  * twice, and a page nothing links to is not published. That also makes it the
  * site's link check: a link to an address the site has no page for fails the
- * run with the page that holds it. So does a page that throws or logs an error.
+ * run with the page that holds it. So does a page that throws or logs an error,
+ * and so do two pages with one title, which a search result would list as the
+ * same line twice.
  * A link inside a state that a component's page draws live is not followed: it
  * is the fixture's sample content, and the page marks the box it is drawn in.
  *
@@ -31,7 +33,8 @@
  *
  * The site's address is `VITE_SITE_URL`, read by the build
  * (`apps/docs/src/site.ts`) and here. Without it the canonical links, the
- * preview image's URL and the sitemap are left out, and the run says so.
+ * preview image's URL, the structured data and the sitemap are left out, and
+ * the run says so.
  *
  *   pnpm site                # build apps/docs, then write the pages
  *   pnpm site --no-build     # write the pages from the dist that is there
@@ -171,12 +174,20 @@ async function draw(route) {
         links,
         css,
         noindex: document.querySelector('meta[name="robots"][content="noindex"]') !== null,
+        title: document.title,
         html: `<!doctype html>\n${document.documentElement.outerHTML}\n`,
       }
     })
     return { ...result, faults }
   } catch (error) {
-    return { links: [], css: '', noindex: false, html: '', faults: [...faults, String(error)] }
+    return {
+      links: [],
+      css: '',
+      noindex: false,
+      title: '',
+      html: '',
+      faults: [...faults, String(error)],
+    }
   } finally {
     await page.close()
   }
@@ -193,6 +204,8 @@ function routeOf(href) {
 }
 
 const pages = new Map()
+/** Each saved page's title, by route. */
+const titles = new Map()
 const linkedFrom = new Map([['/', 'the start']])
 const queue = ['/']
 const problems = []
@@ -213,6 +226,7 @@ async function worker() {
       problems.push(`${linkedFrom.get(route)} links to ${route}, and the site has no page there`)
     } else if (drawn.html !== '') {
       pages.set(route, drawn.html)
+      titles.set(route, drawn.title)
       themeCss ||= drawn.css
       for (const href of drawn.links) {
         const next = routeOf(href)
@@ -242,6 +256,14 @@ await card.close()
 
 await browser.close()
 server.close()
+
+const routesByTitle = new Map()
+for (const [route, title] of titles) {
+  routesByTitle.set(title, [...(routesByTitle.get(title) ?? []), route])
+}
+for (const [title, routes] of routesByTitle) {
+  if (routes.length > 1) problems.push(`${routes.sort().join(' and ')} share the title "${title}"`)
+}
 
 if (problems.length > 0) {
   fail(`${problems.length} fault(s):\n${problems.map((problem) => `  ${problem}`).join('\n')}`)
@@ -292,6 +314,6 @@ writeFileSync(join(DIST, 'robots.txt'), `${robots.join('\n')}\n`)
 console.log(`site: ${pages.size} pages written to apps/docs/dist`)
 if (SITE_URL === null) {
   console.log(
-    'site: VITE_SITE_URL is not set, so the pages carry no canonical link or preview image URL and there is no sitemap',
+    'site: VITE_SITE_URL is not set, so the pages carry no canonical link, preview image URL or structured data and there is no sitemap',
   )
 }

@@ -238,7 +238,8 @@ project its path falls under in the table above, unless its row names another ga
 | The round trip | `packages/spec/roundtrip.test.ts` | a Relay screen spec that does not emit code the real vocabulary typechecks |
 | Install and init | `packages/cli/scratch.test.ts`, `packages/cli/init.test.ts` | a vendored install, or a new app, that does not build and lint clean against the packages' builds |
 | The MCP server | `packages/mcp/transcript.test.ts` | a tool that fails over a real stdio session |
-| The docs site | `apps/docs/src/llms.test.ts` | an `/llms.txt` that does not point an agent at the card, the tools and every application rule |
+| The docs site | `apps/docs/src/llms.test.ts` | an `/llms.txt` that does not point an agent at the card, the tools, every guide's markdown file and every application rule; a guide's markdown file with a link the site does not serve |
+| The docs site | `apps/docs/src/page-head.test.ts` | a page title that does not name the pages above it; structured data with an address that is not written in full |
 | The eval's harness | `eval/eval.test.ts` | a harness that counts a run the model did not earn, a brief's requirement that names something the vocabulary lacks or that a screen without the part still meets, or a report that differs from what `pnpm eval:report` renders ([The agent eval](#the-agent-eval)) |
 
 ## Coverage ratchet
@@ -381,6 +382,7 @@ It fails on:
 - a link to an address of the site that has no page. A link inside a state that a component's page
   draws live is not followed, because it is the fixture's sample content: the page marks the box
   each state is drawn in;
+- two pages with one title, which a search result would list as the same line twice;
 - a crawl in which no page held the themes' stylesheet, which would leave every saved page
   unthemed;
 - a `dist` the step has already written, which no longer holds the application's own document.

@@ -185,6 +185,13 @@ describe('rewriteHref', () => {
     expect(rewriteHref('#ramps', inTheming)).toBe('#ramps')
   })
 
+  it('gives a link to a guide the address the context names', () => {
+    const markdown = { ...inTheming, guideHref: (slug: string) => `/guides/${slug}.md` }
+    expect(rewriteHref('rules.md#the-inventory', markdown)).toBe('/guides/rules.md#the-inventory')
+    expect(rewriteHref('theming.md', markdown)).toBe('/guides/theming.md')
+    expect(rewriteHref('theming.md#ramps', markdown)).toBe('#ramps')
+  })
+
   it('sends a link to a member’s spec to the member’s page', () => {
     expect(rewriteHref('../design/components/button.md', inTheming)).toBe('/components/button')
     // The spec's file name and the member's name differ here.

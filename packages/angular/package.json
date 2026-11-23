@@ -1,7 +1,17 @@
 {
   "name": "@polymorph/angular",
   "version": "1.0.16",
-  "description": "The Angular foundation a consumer installs: the engine re-exported, a Zag adapter driven by signals, the icon gateway, the presence and control-ref primitives, the slot conventions, the toast store and the page-transition convention. Angular members import this and nothing deeper.",
+  "description": "The Angular foundation of the Polymorph design system, which a consumer installs: the engine re-exported, a Zag adapter driven by signals, the icon gateway, the presence and control-ref primitives, the slot conventions, the toast store and the page-transition convention. Angular members import this and nothing deeper.",
+  "keywords": [
+    "polymorph",
+    "design-system",
+    "angular",
+    "ui",
+    "theming",
+    "design-tokens",
+    "icons",
+    "motion"
+  ],
   "private": true,
   "type": "module",
   "exports": {

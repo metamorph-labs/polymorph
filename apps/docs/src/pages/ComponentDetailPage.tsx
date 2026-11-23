@@ -60,6 +60,9 @@ const WIDE_TIERS: ReadonlySet<string> = new Set<(typeof TIERS)[number]>([
   'archetypes',
 ])
 
+/** The page above every component, for the title and the breadcrumbs (`meta.ts`). */
+const COMPONENTS_TRAIL = [{ name: 'Components', path: '/components' }]
+
 /** The ids of the page's sections, which its TableOfContents links to. */
 const SECTION = {
   usage: 'usage',
@@ -94,7 +97,11 @@ export function ComponentDetailPage({ slug }: { slug: string }) {
   // it and the site step reports the link that led to it.
   useMeta(
     component
-      ? { title: component.name, description: BLURBS[component.name] ?? component.purpose }
+      ? {
+          title: component.name,
+          description: BLURBS[component.name] ?? component.purpose,
+          trail: COMPONENTS_TRAIL,
+        }
       : { title: 'Component not found', noindex: true },
   )
   if (!component) {
