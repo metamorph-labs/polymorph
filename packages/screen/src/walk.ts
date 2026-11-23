@@ -19,16 +19,21 @@ import {
   valueAt,
   type Fill,
 } from './actions'
+import { MAX_DEPTH, TOO_DEEP } from './depth'
 import { argumentsToJson, toJson, type JsonValue } from './json'
 import {
   allowedMembers,
+  formPropOf,
+  INHERITED_NAMES,
+  inheritedNameFault,
   memberFault,
+  sharedNameFault,
   surfaceOf,
   type ChildrenKind,
   type ScreenSurface,
   type ScreenVocabulary,
 } from './members'
-import { addressFault, addressMessage, ADDRESS_KEYS } from './urls'
+import { addressFaults, ADDRESS_KEYS } from './urls'
 
 /**
  * The run-time walk: a screen document, the host's data and a vocabulary,
@@ -50,19 +55,27 @@ import { addressFault, addressMessage, ADDRESS_KEYS } from './urls'
  *    type, and the host is never told (`actions.ts`).
  *  - **Controls follow the reader.** A controlled prop (`value` with
  *    `onChange`) keeps what the reader last chose until the document or the
- *    host gives it another value. One the document gives no value stays the
- *    member's own, and the screen still knows what the reader chose.
- *  - **`values`** holds each named control's current value as JSON.
+ *    host gives it another value, or the control's component or name changes.
+ *    One the document gives no value stays the member's own, and what the
+ *    reader chose is passed back as its default (`defaultValue`), so a member
+ *    drawn again starts from it.
+ *  - **`values`** holds each named control's value as JSON: what the reader
+ *    chose, else the value the document or the host gives, else its default,
+ *    else the empty value its type has (`emptyOf`). A name two controls share
+ *    is a fault, and `values` holds the last of them. A name an object
+ *    inherits (`__proto__`) is a fault, and is left out.
  *  - **A required callback** the document does not bind is stubbed by its
  *    return type.
  *  - **Nothing the document says runs.** A component is drawn only if the
  *    vocabulary has it and the host allows it, a prop is passed only if the
- *    member has it, and an address is passed only if it is one a screen may
- *    hold (`urls.ts`).
+ *    member has it, a callback only if it is a function, and an address only
+ *    if it is one a screen may hold (`urls.ts`). An object is passed only as
+ *    the format writes one (`$object`), and a document nested deeper than
+ *    `MAX_DEPTH` (`depth.ts`) is drawn only down to it.
  *  - **A fault never blanks the screen.** A node that cannot be drawn carries
  *    its fault and is drawn as nothing, or as the fault where the host asks;
- *    every fault reaches the host with its path (`onFault`). A renderer
- *    reports a member that throws with `fail`.
+ *    every fault reaches the host with its path (`onFault`), once in each
+ *    drawing. A renderer reports a member that throws with `fail`.
  *  - **Streaming.** While `streaming`, an element is drawn once every prop it
  *    requires is written and the text (`cut`, from `parsePartial`) ends
  *    outside it, in its `children`, or in an element one of its props holds;
@@ -128,6 +141,13 @@ export type Drawn =
 export interface ScreenNode {
   /** Where the element is in the document; a renderer keys the node by it. */
   readonly path: string
+  /**
+   * What a renderer keys the node by, so a control drawn under another name
+   * is a new control: the path, and a named control's name after a `#`
+   * (`$.root.children[0]#email`). Absent on a node made elsewhere, which a
+   * renderer keys by its path.
+   */
+  readonly key?: string
   /** The component as the document names it: `Button`, `Table.Row`. */
   readonly component: string
   /**
@@ -184,7 +204,11 @@ export interface ScreenOptions {
    * that returns a value is never told.
    */
   onAction?: (action: ScreenAction) => unknown
-  /** Told each fault once, when it first appears. */
+  /**
+   * Told each fault once in a drawing, by its path and message, when it first
+   * appears. A drawing begins when the screen is made and again when a stream
+   * begins, so a fault that goes and comes back within one is not told again.
+   */
   onFault?: (fault: ScreenFault) => void
 }
 
@@ -201,7 +225,11 @@ export interface Screen {
   readonly root: ScreenNode | null
   /** Every fault the drawing has now: the walk's, then those renderers reported. */
   readonly faults: readonly ScreenFault[]
-  /** Each named control's current value, by its name. */
+  /**
+   * Each named control's value, by its name: what the reader chose, else the
+   * value the document or the host gives, else its default, else the empty
+   * value its type has.
+   */
   readonly values: Readonly<Record<string, JsonValue>>
   /** How each declared input was filled. */
   readonly fills: readonly Fill[]
@@ -218,6 +246,38 @@ export interface Screen {
 const OBJECT_AS_CHILD =
   'a structured object is data, and this is a place where things are drawn — a child, or a ' +
   'list that holds an element. Pass it to the prop that takes it'
+
+/**
+ * The validator's words for an object that is no element, binding or structured object. The walk
+ * passes none, as a renderer would hand it to a member unread.
+ */
+const PLAIN_OBJECT =
+  'a binding is `{ "$": "anInput" }`, an element is `{ "component": … }`, and a plain object, ' +
+  'such as a column or an option, is written `{ "$object": { … } }`'
+
+/** The words for a value JSON cannot say, which only a document built in code holds. */
+const NOT_JSON = 'a screen document holds only what JSON says, and this is no JSON value'
+
+/**
+ * What a named control holds when nothing gives it a value, read from its form prop's type: `null`
+ * where the type admits it (a Select's empty choice), an empty list for a list, `false` where it
+ * admits a boolean, and empty text where it admits text. `undefined` for any other type, which
+ * leaves the control out of `values`.
+ */
+function emptyOf(type: string): JsonValue | undefined {
+  const parts = unionParts(type)
+  if (parts.includes('null')) return null
+  if (
+    parts.length > 0 &&
+    parts.every((part) => /\[\]$|^(?:readonly |Readonly)?Array</.test(part))
+  ) {
+    return []
+  }
+  // The checker prints `boolean` as `false | true`.
+  if (parts.includes('boolean') || parts.includes('false')) return false
+  if (parts.includes('string')) return ''
+  return undefined
+}
 
 /** A type a member draws as a node, beside text. */
 const NODE_TYPE = /^(?:React\.)?(?:ReactNode|ReactElement)\b|^JSX\.Element\b/
@@ -320,11 +380,11 @@ function sameContent(a: unknown, b: unknown): boolean {
   )
 }
 
-/** Whether a document's literal is the same JSON in both. */
-function sameJson(a: unknown, b: unknown): boolean {
+/** Whether two elements declare the same exception: its rung and its reason, the two fields it has. */
+function sameException(a: unknown, b: unknown): boolean {
   if (Object.is(a, b)) return true
-  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
-  return JSON.stringify(a) === JSON.stringify(b)
+  if (!isRecord(a) || !isRecord(b)) return false
+  return Object.is(a['rung'], b['rung']) && Object.is(a['because'], b['because'])
 }
 
 function sameDrawn(a: Drawn | undefined, b: Drawn | undefined): boolean {
@@ -368,8 +428,9 @@ function sameFields(a: Readonly<Record<string, Drawn>>, b: Readonly<Record<strin
 function sameNode(a: ScreenNode, b: ScreenNode): boolean {
   return (
     a.component === b.component &&
+    a.key === b.key &&
     a.fault?.message === b.fault?.message &&
-    sameJson(a.element.exception, b.element.exception) &&
+    sameException(a.element.exception, b.element.exception) &&
     sameFields(a.props, b.props) &&
     a.children.length === b.children.length &&
     a.children.every((child, at) => sameDrawn(child, b.children[at]))
@@ -382,22 +443,34 @@ function sameNode(a: ScreenNode, b: ScreenNode): boolean {
 
 type Handler = (...args: unknown[]) => unknown
 
-/** What a reader chose for a controlled prop, and the value the document or the host held when they did. */
+/**
+ * What a reader chose for a controlled prop, with the value the document or the host held, the
+ * component and the control's name when they did. A change to any of the three lets it go.
+ */
 interface Choice {
   value: unknown
   basis: Drawn | undefined
   component: string
+  name: string | null
 }
 
 const faultKey = (fault: ScreenFault) => `${fault.path}\u0000${fault.message}`
 
-/** Whether a value is an element, or a list or a structured object with an element in it, at any depth. */
-function holdsElement(value: unknown): boolean {
-  if (Array.isArray(value)) return value.some(holdsElement)
+/**
+ * Whether a value is an element, or a list or a structured object with an element in it, down to
+ * `MAX_DEPTH` levels below it.
+ */
+function holdsElement(value: unknown, depth = 0): boolean {
+  if (depth > MAX_DEPTH) return false
+  if (Array.isArray(value)) return value.some((item) => holdsElement(item, depth + 1))
   if (!isRecord(value)) return false
   if (typeof value['component'] === 'string') return true
-  return isRecord(value['$object']) && Object.values(value['$object']).some(holdsElement)
+  const fields = value['$object']
+  return isRecord(fields) && Object.values(fields).some((item) => holdsElement(item, depth + 2))
 }
+
+/** The prop that holds a control's default: `defaultValue` for `value`. */
+const defaultProp = (prop: string) => `default${prop.charAt(0).toUpperCase()}${prop.slice(1)}`
 
 /** Whether a path is the other or inside it: `$.root.children[1].props` is within `$.root.children[1]`. */
 const within = (path: string, outer: string): boolean =>
@@ -441,6 +514,7 @@ export function createScreen(options: ScreenOptions): Screen {
   let walked: ScreenFault[] = []
   let reported: { fault: ScreenFault; node: ScreenNode | undefined }[] = []
   let values: Record<string, JsonValue> = {}
+  /** The faults told in this drawing, by path and message. */
   let told = new Set<string>()
   /** The elements drawn while the document streams, by `path#component`: each stays drawn. */
   let drawnBefore = new Set<string>()
@@ -512,7 +586,10 @@ export function createScreen(options: ScreenOptions): Screen {
     const nextBases = new Map<string, Drawn | undefined>()
     const nextBound = new Map<string, unknown>()
     const live = new Set<string>()
-    const named: [string, JsonValue][] = []
+    /** Each named control's value, by name: the last control the walk reaches with a name holds it. */
+    const named = new Map<string, JsonValue>()
+    /** Where the control that holds each name is. */
+    const namedAt = new Map<string, string>()
     const { streaming, open } = state
     const cut = streaming ? state.cut : null
 
@@ -552,8 +629,11 @@ export function createScreen(options: ScreenOptions): Screen {
      * an element, far enough for that element to be drawn. And the text must
      * end outside it, in its `children`, or in an element one of its props
      * holds: not in a prop's data, and not between its own fields or its props.
+     * `depth` is the element's own (`depth.ts`); one deeper than any screen is
+     * not drawn.
      */
-    const drawable = (element: SpecElement, path: string): boolean => {
+    const drawable = (element: SpecElement, path: string, depth: number): boolean => {
+      if (depth > MAX_DEPTH) return false
       if (cut === null) return true
       const key = `${path}#${element.component}`
       if (drawnBefore.has(key)) return true
@@ -570,7 +650,7 @@ export function createScreen(options: ScreenOptions): Screen {
         if (
           where === 'element' &&
           isElement(value as SpecValue) &&
-          !drawable(value as SpecElement, at)
+          !drawable(value as SpecElement, at, depth + 2)
         ) {
           return false
         }
@@ -583,13 +663,29 @@ export function createScreen(options: ScreenOptions): Screen {
       return false
     }
 
+    /** Records a fault, and gives what stands for it: the fault where something is drawn, else nothing. */
+    const faulted = (fault: ScreenFault, drawn: boolean): Drawn | undefined => {
+      found.push(fault)
+      return drawn ? { kind: 'fault', fault } : undefined
+    }
+
+    /**
+     * A value of the document, resolved. `drawn` says it is where things are
+     * drawn (a child, or a list that holds an element), `text` that a string
+     * still being written reads there as what it will say, and `depth` is how
+     * many objects and lists hold the value (`depth.ts`).
+     */
     const resolveValue = (
       written: unknown,
       path: string,
       drawn: boolean,
       text: boolean,
+      depth: number,
     ): Drawn | undefined => {
       const value = written as SpecValue
+      if (typeof value === 'object' && value !== null && depth > MAX_DEPTH) {
+        return faulted({ path, message: TOO_DEEP }, drawn)
+      }
       // Data still being written arrives when it is whole. Where things are drawn, text arrives as
       // it is written.
       if (!drawn && cutIn(value, path) === 'data') return undefined
@@ -597,7 +693,7 @@ export function createScreen(options: ScreenOptions): Screen {
         const holds = drawn || value.some((item) => !Array.isArray(item) && isElement(item))
         const items: Drawn[] = []
         value.forEach((item, at) => {
-          const resolved = resolveValue(item, `${path}[${at}]`, holds, holds)
+          const resolved = resolveValue(item, `${path}[${at}]`, holds, holds, depth + 1)
           if (resolved !== undefined) items.push(resolved)
         })
         if (holds || items.some((item) => item.kind !== 'value')) return { kind: 'list', items }
@@ -613,17 +709,16 @@ export function createScreen(options: ScreenOptions): Screen {
         return { kind: 'value', value: target, from: callback ? 'screen' : 'data' }
       }
       if (isObjectValue(value)) {
-        if (drawn) {
-          const fault = { path, message: OBJECT_AS_CHILD }
-          found.push(fault)
-          return { kind: 'fault', fault }
-        }
+        if (drawn) return faulted({ path, message: OBJECT_AS_CHILD }, true)
+        if (!isRecord(value.$object)) return faulted({ path, message: PLAIN_OBJECT }, false)
         const fields: Record<string, Drawn> = {}
-        for (const [key, item] of Object.entries(isRecord(value.$object) ? value.$object : {})) {
+        for (const [key, item] of Object.entries(value.$object)) {
+          // A structured object's fields sit at its own path, as the validator writes them.
           const at = `${path}.${key}`
-          const resolved = resolveValue(item, at, false, false)
+          let resolved = resolveValue(item, at, false, false, depth + 2)
+          if (resolved !== undefined && ADDRESS_KEYS.has(key))
+            resolved = address(resolved, item, at, key)
           if (resolved === undefined) continue
-          if (ADDRESS_KEYS.has(key) && refused(resolved, at)) continue
           own(fields, key, resolved)
         }
         const entries = Object.entries(fields)
@@ -637,43 +732,66 @@ export function createScreen(options: ScreenOptions): Screen {
         return { kind: 'value', value: plain, from: 'document' }
       }
       if (isElement(value)) {
-        return drawable(value, path) ? { kind: 'node', node: node(value, path) } : undefined
+        return drawable(value, path, depth)
+          ? { kind: 'node', node: node(value, path, depth) }
+          : undefined
+      }
+      // An object of no form the format has is passed nowhere: a member would read it unchecked.
+      if (isRecord(value)) return faulted({ path, message: PLAIN_OBJECT }, drawn)
+      if (value !== null && !['string', 'number', 'boolean'].includes(typeof value)) {
+        return value === undefined ? undefined : faulted({ path, message: NOT_JSON }, drawn)
       }
       // A string still being written is drawn only where it reads as what it will say.
       if (typeof value === 'string' && path === open && !text) return undefined
       return { kind: 'value', value, from: 'document' }
     }
 
-    /** Whether an address is refused: a string, or a list of strings, any one of which is not one a screen may hold. */
-    const refused = (drawn: Drawn, path: string): boolean => {
-      if (drawn.kind !== 'value') return false
-      const texts = Array.isArray(drawn.value) ? drawn.value : [drawn.value]
-      for (const text of texts) {
-        if (typeof text !== 'string') continue
-        const why = addressFault(text)
-        if (why === null) continue
-        found.push({ path, message: addressMessage(text, why) })
-        return true
+    /**
+     * What is passed at a key that takes an address (`ADDRESS_KEYS`), from the
+     * document or the host's data: text that is an address a screen may hold,
+     * or a flat list of such text. Anything else is a fault, and nothing is
+     * passed (`urls.ts`). No value (`undefined`, or `null` in the host's data)
+     * is passed as no value.
+     */
+    const address = (
+      resolved: Drawn,
+      written: unknown,
+      path: string,
+      key: string,
+    ): Drawn | undefined => {
+      if (resolved.kind === 'value') {
+        if (resolved.value === undefined) return resolved
+        if (resolved.value === null && resolved.from === 'data') {
+          return { kind: 'value', value: undefined, from: 'data' }
+        }
       }
-      return false
+      const faults = addressFaults(key, resolved.kind === 'value' ? resolved.value : written, path)
+      if (faults.length === 0) return resolved
+      found.push(...faults)
+      return undefined
     }
 
-    const node = (element: SpecElement, path: string): ScreenNode => {
+    const node = (element: SpecElement, path: string, depth: number): ScreenNode => {
       const { component } = element
       const surface = surfaceOf(vocabulary, component)
-      const fault = nodeFault(surface, component)
-      if (fault !== null) {
-        const faulted: ScreenFault = { path, message: fault, component }
-        found.push(faulted)
+      // An element's props, children and exception sit one level below it.
+      const holdsDeeper =
+        depth + 1 > MAX_DEPTH &&
+        (isRecord(element.props) || Array.isArray(element.children) || isRecord(element.exception))
+      const why = nodeFault(surface, component) ?? (holdsDeeper ? TOO_DEEP : null)
+      if (why !== null) {
+        const fault: ScreenFault = { path, message: why, component }
+        found.push(fault)
         return kept({
           path,
+          key: path,
           component,
           element,
           member: surface?.member ?? null,
           part: surface?.part ?? null,
           props: {},
           children: [],
-          fault: faulted,
+          fault,
           childrenKind: null,
         })
       }
@@ -681,6 +799,8 @@ export function createScreen(options: ScreenOptions): Screen {
       const types = new Map(known.props.map((prop) => [prop.name, prop]))
       const written = isRecord(element.props) ? element.props : {}
       const props: Record<string, Drawn> = {}
+      // The prop a named control's value is in: `value`, or a checkbox's `checked`.
+      const formProp = formPropOf(known)
 
       for (const [name, value] of Object.entries(written)) {
         const at = `${path}.props.${name}`
@@ -690,9 +810,30 @@ export function createScreen(options: ScreenOptions): Screen {
           continue
         }
         if (name === 'children') continue
-        const resolved = resolveValue(value, at, false, takesText(prop))
+        // A control's name still being written is another name, so it arrives whole.
+        const text = takesText(prop) && !(name === 'name' && formProp !== null)
+        let resolved = resolveValue(value, at, false, text, depth + 2)
+        if (resolved !== undefined && ADDRESS_KEYS.has(name)) {
+          resolved = address(resolved, value, at, name)
+        }
         if (resolved === undefined) continue
-        if (ADDRESS_KEYS.has(name) && refused(resolved, at)) continue
+        // A callback is a function the screen makes, or nothing: a member calls what it is given.
+        if (
+          isCallback(prop.type) &&
+          !(
+            resolved.kind === 'value' &&
+            (resolved.value === undefined ||
+              resolved.value === null ||
+              typeof resolved.value === 'function')
+          )
+        ) {
+          found.push({
+            path: at,
+            component,
+            message: `\`${name}\` takes a function: bind it to an input whose type is one`,
+          })
+          continue
+        }
         if (resolved.kind === 'value' && resolved.value === undefined) {
           // A required prop bound to a declared data input the host gave no value for. A binding to
           // an input the document does not declare is the validator's fault, and a sample is what
@@ -718,9 +859,7 @@ export function createScreen(options: ScreenOptions): Screen {
       }
 
       // A control follows the reader: the value the reader chose stands until the document or the
-      // host gives the prop another.
-      const formProp =
-        'value' in known.controlled ? 'value' : 'checked' in known.controlled ? 'checked' : null
+      // host gives the prop another, or the control is another component or has another name.
       const name = props['name']
       const formName =
         formProp !== null &&
@@ -736,13 +875,27 @@ export function createScreen(options: ScreenOptions): Screen {
         const choice = chosen.get(key)
         if (
           choice !== undefined &&
-          (choice.component !== component || !sameDrawn(choice.basis, basis))
+          (choice.component !== component ||
+            choice.name !== formName ||
+            !sameDrawn(choice.basis, basis))
         ) {
           chosen.delete(key)
         }
         const current = chosen.get(key)
         if (current !== undefined && basis !== undefined) {
           own(props, prop, { kind: 'value', value: current.value, from: 'screen' })
+        }
+        // A named control the document gives no value keeps the reader's choice as its default, so
+        // a member drawn again (a dialog's field, opened again) starts from what `values` holds.
+        const fallback = defaultProp(prop)
+        if (
+          current !== undefined &&
+          basis === undefined &&
+          prop === formProp &&
+          formName !== null &&
+          types.has(fallback)
+        ) {
+          own(props, fallback, { kind: 'value', value: current.value, from: 'screen' })
         }
         const given = props[event]
         nextBound.set(`${path}#${event}`, given?.kind === 'value' ? given.value : undefined)
@@ -765,13 +918,43 @@ export function createScreen(options: ScreenOptions): Screen {
           ),
         })
       }
+      // What the reader sees in a named control: their choice, else the value the document or the
+      // host gives, else the default, else the empty value of the prop's type.
       if (formProp !== null && formName !== null) {
         const choice = chosen.get(`${path}#${formProp}`)
-        const current =
+        const read = (prop: string) => {
+          const drawn = props[prop]
+          return drawn?.kind === 'value' ? drawn.value : undefined
+        }
+        const given = read(formProp)
+        const initial = read(defaultProp(formProp))
+        const value =
           choice !== undefined
             ? choice.value
-            : (props[formProp] as { value?: unknown } | undefined)?.value
-        if (current !== undefined) named.push([formName, toJson(current) ?? null])
+            : given !== undefined
+              ? given
+              : initial !== undefined
+                ? initial
+                : emptyOf(types.get(formProp)?.type ?? '')
+        if (INHERITED_NAMES.has(formName)) {
+          found.push({
+            path: `${path}.props.name`,
+            component,
+            message: inheritedNameFault(formName),
+          })
+        } else {
+          const before = namedAt.get(formName)
+          if (before !== undefined) {
+            found.push({
+              path: `${path}.props.name`,
+              component,
+              message: sharedNameFault(formName, before),
+            })
+          }
+          namedAt.set(formName, path)
+          if (value === undefined) named.delete(formName)
+          else named.set(formName, toJson(value) ?? null)
+        }
       }
 
       // A required callback with nothing to call is stubbed by its return type, and a required prop
@@ -814,7 +997,7 @@ export function createScreen(options: ScreenOptions): Screen {
             element.children !== undefined ? `${path}.children` : `${path}.props.children`
           childValues.forEach((child, at) => {
             const where = element.children !== undefined ? `${base}[${at}]` : base
-            const resolved = resolveValue(child, where, true, true)
+            const resolved = resolveValue(child, where, true, true, depth + 2)
             if (resolved === undefined) return
             // A list inside the children is drawn in its place.
             if (resolved.kind === 'list') children.push(...resolved.items)
@@ -825,6 +1008,7 @@ export function createScreen(options: ScreenOptions): Screen {
 
       return kept({
         path,
+        key: formName === null ? path : `${path}#${formName}`,
         component,
         element,
         member: known.member,
@@ -859,9 +1043,10 @@ export function createScreen(options: ScreenOptions): Screen {
 
     const document = state.document
     const rootElement = isRecord(document) ? document['root'] : undefined
+    // The document's own object is the first level, and its root the second.
     root =
-      isElement(rootElement as SpecValue) && drawable(rootElement as SpecElement, '$.root')
-        ? node(rootElement as SpecElement, '$.root')
+      isElement(rootElement as SpecValue) && drawable(rootElement as SpecElement, '$.root', 2)
+        ? node(rootElement as SpecElement, '$.root', 2)
         : null
     if (root === null && !streaming) {
       found.push({ path: '$.root', message: 'the document has no root element' })
@@ -888,9 +1073,12 @@ export function createScreen(options: ScreenOptions): Screen {
   const change = (path: string, prop: string, event: string, eventType: string): Handler => {
     return (...args: unknown[]) => {
       const key = `${path}#${prop}`
-      const component = previous.get(path)?.component
-      if (component !== undefined) {
-        chosen.set(key, { value: args[0], basis: bases.get(key), component })
+      const node = previous.get(path)
+      if (node !== undefined) {
+        // A named control's key is its path and its name (`ScreenNode.key`).
+        const name =
+          node.key !== undefined && node.key !== path ? node.key.slice(path.length + 1) : null
+        chosen.set(key, { value: args[0], basis: bases.get(key), component: node.component, name })
         resolve()
       }
       const target = bound.get(`${path}#${event}`)
@@ -903,15 +1091,18 @@ export function createScreen(options: ScreenOptions): Screen {
     }
   }
 
-  /** Tells the host each fault that has appeared since it was last told. */
+  /**
+   * Tells the host each fault not yet told in this drawing. A renderer reports a member that
+   * throws again for each new node object it draws, and a fault can go and come back while a
+   * document streams, so what was told is remembered by path and message until the next drawing.
+   */
   const tell = () => {
-    const now = new Set<string>()
     for (const fault of [...walked, ...reported.map(({ fault }) => fault)]) {
       const key = faultKey(fault)
-      now.add(key)
-      if (!told.has(key)) state.onFault?.(fault)
+      if (told.has(key)) continue
+      told.add(key)
+      state.onFault?.(fault)
     }
-    told = now
   }
 
   resolve()
@@ -945,8 +1136,12 @@ export function createScreen(options: ScreenOptions): Screen {
         changed = true
       }
       if ('streaming' in next) {
-        // A stream that begins again draws its elements as they are written again.
-        if (next.streaming === true && !state.streaming) drawnBefore = new Set()
+        // A stream that begins is a new drawing: its elements are drawn as they are written again,
+        // and its faults are told again.
+        if (next.streaming === true && !state.streaming) {
+          drawnBefore = new Set()
+          told = new Set()
+        }
         state.streaming = next.streaming ?? false
         changed = true
       }

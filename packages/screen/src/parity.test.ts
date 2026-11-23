@@ -257,26 +257,51 @@ describe('the addresses are every prop that takes one', () => {
     'manifest',
   ]
   const text = (type: string) => /^string( \| undefined)?$/.test(type)
-  const props = [...registry.components, ...registry.exceptions.primitives].flatMap((member) => [
-    ...member.props.map((prop) => ({ ...prop, where: `${member.name}.${prop.name}` })),
-    ...('parts' in member ? member.parts : []).flatMap((part) =>
-      part.props.map((prop) => ({ ...prop, where: `${member.name}.${part.name}.${prop.name}` })),
+  // A structured object's fields reach a member as a prop's do (a breadcrumb's `href`), so the data
+  // types' fields are read with the props.
+  const props = [
+    ...[...registry.components, ...registry.exceptions.primitives].flatMap((member) => [
+      ...member.props.map((prop) => ({ ...prop, where: `${member.name}.${prop.name}` })),
+      ...('parts' in member ? member.parts : []).flatMap((part) =>
+        part.props.map((prop) => ({ ...prop, where: `${member.name}.${part.name}.${prop.name}` })),
+      ),
+    ]),
+    ...registry.dataTypes.flatMap((type) =>
+      type.fields.map((field) => ({ ...field, where: `${type.name}.${field.name}` })),
     ),
-  ])
+  ]
+
+  it('reads the data types’ fields, where a breadcrumb’s and an image’s addresses are', () => {
+    const where = new Set(props.map((prop) => prop.where))
+    for (const field of ['BreadcrumbItem.href', 'LightboxImage.src']) {
+      expect(where.has(field), field).toBe(true)
+    }
+  })
 
   // A prop documented as "The speaker's picture" holds one, and one whose doc mentions a picture
-  // for another reason (an image's `alt`) does not.
-  it('holds each text prop named for a URL in HTML, or documented as a URL or as someone’s picture', () => {
+  // for another reason (an image's `alt`) does not. A doc that says its text is "not a URL" (a
+  // source's domain, drawn as text) is read as saying so.
+  const NOT_A_URL = /\bnot an? URL\b/
+  const documented = (doc: string | undefined) =>
+    /\bURL\b|^The \S+['’]s picture\b/.test(
+      (doc ?? '').replace(new RegExp(NOT_A_URL.source, 'g'), ''),
+    )
+
+  it('holds each text prop and field named for a URL in HTML, or documented as a URL or as someone’s picture', () => {
     const addresses = props.filter(
       (prop) =>
         text(prop.type) &&
-        (URL_ATTRIBUTES.includes(prop.name.split('.').at(-1) ?? '') ||
-          /\bURL\b|^The \S+['’]s picture\b/.test(prop.doc ?? '')),
+        (URL_ATTRIBUTES.includes(prop.name.split('.').at(-1) ?? '') || documented(prop.doc)),
     )
     expect(addresses.length).toBeGreaterThan(5)
     for (const prop of addresses) {
       expect(ADDRESS_KEYS.has(prop.name.split('.').at(-1) ?? ''), prop.where).toBe(true)
     }
+  })
+
+  it('reads a doc as saying its text is not a URL only where it says so', () => {
+    const negated = props.filter((prop) => NOT_A_URL.test(prop.doc ?? '')).map(({ where }) => where)
+    expect(negated).toEqual(['CitationSource.domain'])
   })
 
   it('names only props the vocabulary has, and text props among them', () => {
@@ -292,14 +317,24 @@ describe('the addresses are every prop that takes one', () => {
 })
 
 describe('the members that host another library’s code are off by default', () => {
-  it('finds no member that takes markup, a script’s address or an embed', () => {
+  it('finds no member that takes markup, a script’s address or an embed, in a prop, a part’s prop or a field', () => {
     const suspect =
       /^(?:html|innerHTML|dangerouslySetInnerHTML|srcDoc|srcdoc|script|scriptSrc|embed|iframe)$/i
-    for (const member of [...registry.components, ...registry.exceptions.primitives]) {
-      for (const prop of member.props) {
-        expect(suspect.test(prop.name), `${member.name}.${prop.name}`).toBe(false)
-        expect(prop.type, `${member.name}.${prop.name}`).not.toContain('__html')
-      }
+    const read = [
+      ...[...registry.components, ...registry.exceptions.primitives].flatMap((member) => [
+        ...member.props.map((prop) => ({ prop, where: `${member.name}.${prop.name}` })),
+        ...('parts' in member ? member.parts : []).flatMap((part) =>
+          part.props.map((prop) => ({ prop, where: `${member.name}.${part.name}.${prop.name}` })),
+        ),
+      ]),
+      ...registry.dataTypes.flatMap((type) =>
+        type.fields.map((prop) => ({ prop, where: `${type.name}.${prop.name}` })),
+      ),
+    ]
+    expect(read.some(({ where }) => where.split('.').length === 3)).toBe(true)
+    for (const { prop, where } of read) {
+      expect(suspect.test(prop.name), where).toBe(false)
+      expect(prop.type, where).not.toContain('__html')
     }
   })
 

@@ -43,7 +43,7 @@ export {
   type TablePrimitive,
   type TableProp,
 } from './members'
-export { parsePartial, type PartialDocument } from './partial'
+export { MAX_DEPTH, parsePartial, type PartialDocument } from './partial'
 export { addressFault, ADDRESS_KEYS, ADDRESS_SCHEMES } from './urls'
 export { VOCABULARY } from './vocabulary'
 export {

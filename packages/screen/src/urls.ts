@@ -8,9 +8,10 @@
  * fragment, or one of four schemes, and any other is a fault whose value is
  * not passed.
  *
- * `packages/screen/src/urls.test.ts` holds `ADDRESS_KEYS` to the vocabulary:
- * every prop the registry types as text that is named for an address in HTML,
- * or whose documentation says it holds a URL or a picture, is one of them.
+ * The address law in `packages/screen/src/parity.test.ts` holds `ADDRESS_KEYS`
+ * to the vocabulary: every prop and data type field the registry types as
+ * text that is named for an address in HTML, or whose documentation says it
+ * holds a URL or a picture, is one of them.
  */
 
 /** The props and object keys that take an address: a link's target, a picture or a recording. */
@@ -70,5 +71,43 @@ export function addressMessage(text: string, why: string): string {
   return (
     `${shown} is not an address a screen may hold: it ${why} — an address is relative, a ` +
     `fragment (\`#id\`), or ${schemes.slice(0, -1).join(', ')} or ${schemes.at(-1) ?? ''}`
+  )
+}
+
+/** What a value that is not text is, in a fault's words. */
+function described(value: unknown): string {
+  if (value === null) return '`null`'
+  if (Array.isArray(value)) return 'a list'
+  if (typeof value !== 'object') return `a ${typeof value}`
+  const record = value as Record<string, unknown>
+  if (typeof record['component'] === 'string') return 'an element'
+  if ('$object' in record) return 'a structured object'
+  return 'an object'
+}
+
+/**
+ * The faults of a value at a key that takes an address, with their paths:
+ * none when it is text that is an address a screen may hold, or a flat list of
+ * such text. Anything else is refused whole, as a renderer may write any value
+ * into an attribute as text: `[["javascript:…"]]` is written `javascript:…`,
+ * and an object writes whatever its `toString` answers.
+ */
+export function addressFaults(
+  key: string,
+  value: unknown,
+  path: string,
+): { path: string; message: string }[] {
+  const shape = (item: unknown, at: string) => ({
+    path: at,
+    message: `\`${key}\` takes an address as text, or a list of text, and this is ${described(item)}`,
+  })
+  const text = (item: string, at: string) => {
+    const why = addressFault(item)
+    return why === null ? [] : [{ path: at, message: addressMessage(item, why) }]
+  }
+  if (typeof value === 'string') return text(value, path)
+  if (!Array.isArray(value)) return [shape(value, path)]
+  return value.flatMap((item, index) =>
+    typeof item === 'string' ? text(item, `${path}[${index}]`) : [shape(item, `${path}[${index}]`)],
   )
 }

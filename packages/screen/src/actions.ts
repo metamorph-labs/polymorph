@@ -51,12 +51,17 @@ export function isAction(type: string): boolean {
   return /^(?:|void|undefined|Promise<\s*(?:void|undefined)\s*>)$/.test(returnTypeOf(type))
 }
 
-/** What a callback input does, in words, for its `Fill`. */
+/**
+ * What a callback input does, in words, for its `Fill`. The words read for a
+ * running screen, whose host is told each action, and for a picture of one,
+ * which has no host: an action is named as one, and a question says only what
+ * it answers.
+ */
 export function callbackFill(type: string): string {
-  if (!isAction(type)) return `answers ${stubFor(type).answers}, and is not told to the host`
+  if (!isAction(type)) return `answers ${stubFor(type).answers}`
   return /^Promise</.test(returnTypeOf(type))
-    ? 'is told to the host, and answers the host’s promise or a promise of nothing'
-    : 'is told to the host, and answers nothing'
+    ? 'an action; answers a promise'
+    : 'an action; answers nothing'
 }
 
 /**

@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { checkScreen } from './check'
 import { addressFault } from './urls'
 import { VOCABULARY } from './vocabulary'
+import { createScreen } from './walk'
 
 /**
  * `checkScreen`: the validator bound to the run-time table, and the two
@@ -95,6 +96,44 @@ describe('a member the host does not allow', () => {
   it('leaves a name the vocabulary does not have to the validator', () => {
     const { faults } = checkScreen(screen({ component: 'Modal' }), { members: ['Stack'] })
     expect(faults).toHaveLength(1)
+  })
+})
+
+describe('a name the screen’s values cannot hold', () => {
+  it('is a fault where two controls share it, and where every object has it, as the walk says', () => {
+    const document = screen({
+      component: 'Stack',
+      children: [
+        { component: 'Input', props: { name: 'q' } },
+        {
+          component: 'Card',
+          props: { title: 'More' },
+          children: [{ component: 'Input', props: { name: 'q' } }],
+        },
+        { component: 'Checkbox', props: { name: '__proto__', label: 'x' } },
+        // A name that is no control's is no value's.
+        { component: 'Avatar', props: { name: 'q' } },
+      ],
+    })
+    const faults = checkScreen(document).faults.filter(({ path }) => path.endsWith('.name'))
+    expect(faults).toEqual([
+      {
+        path: '$.root.children[1].children[0].props.name',
+        message:
+          'the control at `$.root.children[0]` is named `q` too; `values` holds the last of them, this one',
+      },
+      {
+        path: '$.root.children[2].props.name',
+        message:
+          'a control may not be named `__proto__`, a name every object has, as a host reads `values` as an object; it is left out of `values`',
+      },
+    ])
+    const walked = createScreen({ document, vocabulary: VOCABULARY }).faults
+    expect(
+      walked
+        .filter(({ path }) => path.endsWith('.name'))
+        .map(({ path, message }) => ({ path, message })),
+    ).toEqual(faults)
   })
 })
 

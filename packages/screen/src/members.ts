@@ -25,7 +25,8 @@ export type { TableMember, TablePart, TablePrimitive, TableProp }
  * naming them in `members`. `ThirdParty` is the boundary around another
  * library's component: drawn from a document, it would hold whatever the host
  * puts there for it. No other member takes markup, a script's address or an
- * embed (`vocabulary.test.ts` reads every prop to hold that).
+ * embed: a law in `packages/screen/src/parity.test.ts` reads every prop, every
+ * part's prop and every data type field to hold that.
  */
 export const CODE_HOSTS: readonly string[] = ['ThirdParty']
 
@@ -194,6 +195,34 @@ export function surfaceOf(vocabulary: ScreenVocabulary, name: string): ScreenSur
     entry: compound,
   }
 }
+
+/** The prop a named control's value is in: `value`, or a checkbox's `checked`. `null` for a member that is no control. */
+export function formPropOf(surface: Pick<ScreenSurface, 'controlled'>): 'value' | 'checked' | null {
+  if ('value' in surface.controlled) return 'value'
+  if ('checked' in surface.controlled) return 'checked'
+  return null
+}
+
+/**
+ * The names a control may not have, as the values of a screen's named controls are an object a
+ * host reads and copies: each is a name every object has already, and
+ * `Object.assign(target, { __proto__: … })` sets the target's prototype.
+ */
+export const INHERITED_NAMES: ReadonlySet<string> = new Set([
+  '__proto__',
+  'constructor',
+  'prototype',
+])
+
+/** The fault for a control named a name every object has. */
+export const inheritedNameFault = (name: string): string =>
+  `a control may not be named \`${name}\`, a name every object has, as a host reads \`values\` ` +
+  'as an object; it is left out of `values`'
+
+/** The fault for a control named as one before it is, at `before`. */
+export const sharedNameFault = (name: string, before: string): string =>
+  `the control at \`${before}\` is named \`${name}\` too; \`values\` holds the last of them, ` +
+  'this one'
 
 /**
  * The fault for a member the host does not allow, in the validator's voice.

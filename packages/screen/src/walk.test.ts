@@ -273,11 +273,12 @@ describe('callback inputs are actions', () => {
     // member waits on a promise of nothing.
     await expect(call(at(screen, '$.root.children[3]'), 'onClick')).resolves.toBeUndefined()
     expect(actions.map(({ name }) => name)).toEqual(['save'])
+    // The words read for a running screen and for a picture of one alike.
     expect(screen.fills.map(({ name, value }) => [name, value])).toEqual([
-      ['getRowId', 'answers the key of its first argument, and is not told to the host'],
-      ['isOpen', 'answers false, and is not told to the host'],
-      ['load', 'answers a promise of an empty list, and is not told to the host'],
-      ['save', 'is told to the host, and answers the host’s promise or a promise of nothing'],
+      ['getRowId', 'answers the key of its first argument'],
+      ['isOpen', 'answers false'],
+      ['load', 'answers a promise of an empty list'],
+      ['save', 'an action; answers a promise'],
     ])
   })
 
@@ -393,12 +394,119 @@ describe('controls follow the reader', () => {
       },
       data: { email: 'a@example.com' },
     })
-    expect(screen.values).toEqual({ email: 'a@example.com', agree: false })
+    // A field nothing gives a value is empty, as the reader sees it.
+    expect(screen.values).toEqual({ email: 'a@example.com', note: '', agree: false })
     call(at(screen, '$.root.children[2]'), 'onCheckedChange', true)
     call(at(screen, '$.root.children[4]'), 'onClick')
-    expect(actions.at(-1)?.values).toEqual({ email: 'a@example.com', agree: true })
+    expect(actions.at(-1)?.values).toEqual({ email: 'a@example.com', note: '', agree: true })
     // An unnamed control with no value and no binding is handed no handler.
     expect(at(screen, '$.root.children[3]').props['onChange']).toBeUndefined()
+  })
+
+  it('holds what the reader sees in a control nothing has changed: its default, else its empty value', () => {
+    const { screen, actions } = open({
+      document: doc(
+        {
+          component: 'Stack',
+          children: [
+            { component: 'Input', props: { name: 'displayName', defaultValue: 'Ada' } },
+            { component: 'Checkbox', props: { name: 'subscribe', label: 'Subscribe' } },
+            {
+              component: 'Checkbox',
+              props: { name: 'terms', label: 'Terms', defaultChecked: true },
+            },
+            {
+              component: 'Select',
+              props: { name: 'plan', options: [{ $object: { value: 'a', label: 'A' } }] },
+            },
+            {
+              component: 'MultiSelect',
+              props: {
+                name: 'tags',
+                label: 'Tags',
+                options: [{ $object: { value: 'a', label: 'A' } }],
+              },
+            },
+            { component: 'NumberInput', props: { name: 'seats', label: 'Seats' } },
+            { component: 'Button', props: { label: 'Save', onClick: { $: 'onSave' } } },
+          ],
+        },
+        [{ name: 'onSave', type: '() => void' }],
+      ),
+    })
+    call(at(screen, '$.root.children[6]'), 'onClick')
+    expect(actions[0]?.values).toEqual({
+      displayName: 'Ada',
+      subscribe: false,
+      terms: true,
+      plan: null,
+      tags: [],
+      seats: null,
+    })
+  })
+
+  it('passes the reader’s choice back as the default of a control the document gives no value', () => {
+    // A dialog's field: the member is drawn again when the dialog opens again, and starts from
+    // its default, which is what the reader typed and what `values` holds.
+    const { screen } = open({
+      document: doc({ component: 'Input', props: { name: 'reason', defaultValue: '' } }),
+    })
+    call(screen.root as ScreenNode, 'onChange', 'spam')
+    expect(screen.root?.props['value']).toBeUndefined()
+    expect(screen.root?.props['defaultValue']).toEqual({
+      kind: 'value',
+      value: 'spam',
+      from: 'screen',
+    })
+    expect(screen.values).toEqual({ reason: 'spam' })
+  })
+
+  it('lets a choice go when its control is named another name, and keys the control by its name', () => {
+    const { screen } = open({
+      document: doc({
+        component: 'Stack',
+        children: [{ component: 'Input', props: { name: 'email' } }],
+      }),
+    })
+    const email = at(screen, '$.root.children[0]')
+    expect(email.key).toBe('$.root.children[0]#email')
+    call(email, 'onChange', 'a@b.c')
+    expect(screen.values).toEqual({ email: 'a@b.c' })
+    screen.update({
+      document: doc({
+        component: 'Stack',
+        children: [
+          { component: 'Input', props: { name: 'phone' } },
+          { component: 'Input', props: { name: 'email' } },
+        ],
+      }),
+    })
+    // The phone field is a new control, which a renderer draws afresh under its new key.
+    expect(at(screen, '$.root.children[0]').key).toBe('$.root.children[0]#phone')
+    expect(at(screen, '$.root.children[0]').props['defaultValue']).toBeUndefined()
+    expect(screen.values).toEqual({ phone: '', email: '' })
+  })
+
+  it('faults a name two controls share, and holds the last; and a name every object has, which it leaves out', () => {
+    const { screen, faults } = open({
+      document: doc({
+        component: 'Stack',
+        children: [
+          { component: 'Input', props: { name: 'q', defaultValue: 'first' } },
+          { component: 'Input', props: { name: 'q', defaultValue: 'second' } },
+          { component: 'Input', props: { name: '__proto__', defaultValue: 'x' } },
+          { component: 'Input', props: { name: 'constructor', defaultValue: 'y' } },
+        ],
+      }),
+    })
+    expect(screen.values).toEqual({ q: 'second' })
+    expect(Object.getPrototypeOf(screen.values)).toBe(Object.prototype)
+    expect(Object.keys(screen.values)).toEqual(['q'])
+    expect(faults.map(({ path }) => path)).toEqual([
+      '$.root.children[1].props.name',
+      '$.root.children[2].props.name',
+      '$.root.children[3].props.name',
+    ])
   })
 
   it('tells the host of a change the document binds, after the screen holds it', () => {
@@ -530,6 +638,26 @@ describe('what a renderer reports, and what it is told', () => {
     expect(screen.faults).toEqual([fault])
     screen.update({ document: doc({ component: 'Text', children: ['b'] }) })
     expect(screen.faults).toEqual([])
+    // The renderer reports it again for the new node: it is a fault again, told once already.
+    screen.fail(fault)
+    expect(screen.faults).toEqual([fault])
+    expect(faults).toEqual([fault])
+  })
+
+  it('tells each fault once in a drawing, though it goes and comes back, and again in a new stream', () => {
+    const { screen, faults } = open({ document: doc({ component: 'Buton' }) })
+    const missing = doc({ component: 'Stack', children: [] })
+    screen.update({ document: missing })
+    screen.update({ document: doc({ component: 'Buton' }) })
+    expect(screen.faults.map(({ message }) => message)).toEqual(['no component called `Buton`'])
+    expect(faults.map(({ message }) => message)).toEqual(['no component called `Buton`'])
+    // A stream that begins is a new drawing.
+    screen.update({ streaming: true })
+    screen.update({ streaming: false })
+    expect(faults.map(({ message }) => message)).toEqual([
+      'no component called `Buton`',
+      'no component called `Buton`',
+    ])
   })
 
   it('tells subscribers of each change, and keeps the nodes the change did not reach', () => {

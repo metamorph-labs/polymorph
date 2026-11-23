@@ -7,8 +7,12 @@
  * the call as data, in another process or another language, so each argument
  * is reduced to what JSON can say. A DOM event, a node and a function say
  * nothing a host can use, so they are dropped. A date or a time says its ISO
- * text. This module has no DOM, so it knows each of them by its shape.
+ * text. This module has no DOM, so it knows each of them by its shape. A value
+ * that holds itself, or nests deeper than `MAX_DEPTH` objects and lists, is cut
+ * there.
  */
+
+import { MAX_DEPTH } from './depth'
 
 export type JsonValue =
   null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
@@ -53,7 +57,7 @@ const isTemporal = (value: Record<string, unknown>): boolean =>
   typeof value['copy'] === 'function' &&
   typeof value['toString'] === 'function'
 
-function reduce(value: unknown, seen: Set<object>): Reduced {
+function reduce(value: unknown, seen: Set<object>, depth = 1): Reduced {
   if (value === null) return null
   if (typeof value === 'string' || typeof value === 'boolean') return value
   // JSON has no `NaN` or infinity; `JSON.stringify` writes them as `null`.
@@ -69,13 +73,14 @@ function reduce(value: unknown, seen: Set<object>): Reduced {
     if (typeof value['type'] === 'string') out['type'] = value['type']
     return out
   }
-  // A value that holds itself is cut where it does, as JSON has no reference.
-  if (seen.has(value)) return DROPPED
+  // A value that holds itself is cut where it does, as JSON has no reference, and one nested
+  // deeper than a screen document may be is cut at that depth (`depth.ts`).
+  if (seen.has(value) || depth > MAX_DEPTH) return DROPPED
   seen.add(value)
   try {
     if (Array.isArray(value) || value instanceof Set) {
       return [...(value as Iterable<unknown>)].map((item) => {
-        const reduced = reduce(item, seen)
+        const reduced = reduce(item, seen, depth + 1)
         return reduced === DROPPED ? null : reduced
       })
     }
@@ -85,7 +90,7 @@ function reduce(value: unknown, seen: Set<object>): Reduced {
         : Object.entries(value)
     const out: { [key: string]: JsonValue } = {}
     for (const [key, item] of entries) {
-      const reduced = reduce(item, seen)
+      const reduced = reduce(item, seen, depth + 1)
       if (reduced !== DROPPED) own(out, key, reduced)
     }
     return out

@@ -26,7 +26,19 @@
  * The text may be a model's answer: prose, then a fenced `json` block. The
  * document is read from the first fence marked `json` (or unmarked), and from
  * the first brace that opens an object when the text has no fence.
+ *
+ * Objects and lists nested deeper than `MAX_DEPTH` are where the text stops
+ * being read: the document is cut before the bracket that goes too deep, and
+ * `error` says so. So no text makes this throw, however deep.
  */
+
+/**
+ * The most objects and lists a screen document nests inside one another, its
+ * own object included. Every pass over a document reads it by recursion, so
+ * each holds to this (`depth.ts`). It is defined here so `parsePartial` loads
+ * no other module.
+ */
+export const MAX_DEPTH = 128
 
 export interface PartialDocument {
   /** The document the text holds so far; `undefined` before the document's first brace. */
@@ -133,12 +145,15 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
 export function parsePartial(text: string): PartialDocument {
-  const start = documentStart(text)
+  // A host's text may arrive as anything; what is not text holds no document yet.
+  const start = typeof text === 'string' ? documentStart(text) : -1
   if (start === -1) {
     return { document: undefined, complete: false, open: null, cut: null, error: null }
   }
 
   let at = start
+  /** How many objects and lists the value being read is inside, the document's own included. */
+  let depth = 0
   /** Where the readable text ends: its end, or where it stops being JSON. */
   let limit = text.length
   let error: PartialDocument['error'] = null
@@ -357,8 +372,16 @@ export function parsePartial(text: string): PartialDocument {
       return { value: OMIT, whole: false, open: null }
     }
     const char = text[at] as string
-    if (char === '{') return object(context === 'document' ? 'document' : context, path)
-    if (char === '[') return array(context, reader, path)
+    if (char === '{' || char === '[') {
+      if (depth >= MAX_DEPTH) fail(`objects and lists nested no deeper than ${MAX_DEPTH}`)
+      depth += 1
+      const read =
+        char === '{'
+          ? object(context === 'document' ? 'document' : context, path)
+          : array(context, reader, path)
+      depth -= 1
+      return read
+    }
     if (char === '"') {
       const read = string()
       if (read.whole) return { value: read.text, whole: true, open: null }
@@ -393,6 +416,7 @@ export function parsePartial(text: string): PartialDocument {
   for (;;) {
     at = start
     cutAt = null
+    depth = 0
     try {
       parsed = value('document', false, '$')
       break
