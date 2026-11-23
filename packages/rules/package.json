@@ -38,7 +38,17 @@
     "vue-eslint-parser": ">=10"
   },
   "license": "MIT",
-  "description": "The red rules: the ESLint and Stylelint plugins that keep application code from making design decisions, with the exception ladder and the inventory.",
+  "description": "The Polymorph design system's lint rules, the red rules: the ESLint and Stylelint plugins that keep application code from making design decisions, with the exception ladder and the inventory.",
+  "keywords": [
+    "polymorph",
+    "design-system",
+    "eslint",
+    "eslintplugin",
+    "eslint-plugin",
+    "stylelint",
+    "stylelint-plugin",
+    "lint"
+  ],
   "files": [
     "dist",
     "scoped-token-owners.json",

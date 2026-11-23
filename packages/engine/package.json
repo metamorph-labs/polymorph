@@ -99,6 +99,18 @@
       }
     }
   },
-  "description": "The polymorph decision layer: the theme engine and its laws, the token emitters, the conventions, the motion engine and the runtime. No framework, no DOM assumptions beyond the runtime.",
+  "description": "The Polymorph design system's engine: the theme engine that turns a system and a palette into design tokens, its laws, the token emitters, the conventions, the motion engine and the runtime. No framework, no DOM assumptions beyond the runtime.",
+  "keywords": [
+    "polymorph",
+    "design-system",
+    "theming",
+    "theme-engine",
+    "design-tokens",
+    "css-variables",
+    "dark-mode",
+    "contrast",
+    "motion",
+    "charts"
+  ],
   "sideEffects": false
 }
