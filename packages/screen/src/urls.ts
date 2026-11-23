@@ -14,8 +14,24 @@
  * holds a URL or a picture, is one of them.
  */
 
-/** The props and object keys that take an address: a link's target, a picture or a recording. */
-export const ADDRESS_KEYS: ReadonlySet<string> = new Set(['avatar', 'href', 'src'])
+/**
+ * The props and object keys that take an address: a link's target, a pager's previous and next
+ * windows, a picture or a recording, and a picture's set of files.
+ */
+export const ADDRESS_KEYS: ReadonlySet<string> = new Set([
+  'avatar',
+  'href',
+  'nextHref',
+  'previousHref',
+  'src',
+  'srcSet',
+])
+
+/**
+ * The keys whose text is a list of addresses, as HTML's `srcset` is: each candidate is an
+ * address, then a space and its width or density, and a comma parts two candidates.
+ */
+const ADDRESS_LIST_KEYS: ReadonlySet<string> = new Set(['srcSet'])
 
 /** The schemes an address may name. Anything else, and anything without a scheme that is not relative, is refused. */
 export const ADDRESS_SCHEMES: readonly string[] = ['http:', 'https:', 'mailto:', 'tel:']
@@ -64,6 +80,23 @@ export function addressFault(text: string): string | null {
   return `names the scheme \`${scheme.toLowerCase()}:\``
 }
 
+/**
+ * Why a list of addresses is not one a screen may hold, or `null` when it is one.
+ *
+ * A browser reads a candidate's address from the first character after spaces and commas up to
+ * the next space, so each run of text between spaces is read as an address with its leading
+ * commas removed. A width or a density (`640w`, `2x`) names no scheme and passes as a relative
+ * address does.
+ */
+export function addressListFault(text: string): string | null {
+  if (holdsControl(text)) return 'holds a control character, which hides what the address names'
+  for (const run of text.split(' ')) {
+    const why = addressFault(run.replace(/^,+/, ''))
+    if (why !== null) return why
+  }
+  return null
+}
+
 /** The fault's message, in the validator's voice: what was written, why it is refused, and what is lawful. */
 export function addressMessage(text: string, why: string): string {
   const shown = JSON.stringify(text.length <= 60 ? text : `${text.slice(0, 57)}…`)
@@ -102,7 +135,7 @@ export function addressFaults(
     message: `\`${key}\` takes an address as text, or a list of text, and this is ${described(item)}`,
   })
   const text = (item: string, at: string) => {
-    const why = addressFault(item)
+    const why = ADDRESS_LIST_KEYS.has(key) ? addressListFault(item) : addressFault(item)
     return why === null ? [] : [{ path: at, message: addressMessage(item, why) }]
   }
   if (typeof value === 'string') return text(value, path)

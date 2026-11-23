@@ -656,12 +656,15 @@ renderer refuses.
 
 ### Addresses
 
-A string at a prop or an object key that takes an address (`avatar`, `href`, `src`) must be one
-of:
+A string at a prop or an object key that takes an address (`avatar`, `href`, `nextHref`,
+`previousHref`, `src`, `srcSet`) must be one of:
 
 - relative: `/orders/1042`, `orders/1042`, `?page=2`, `../help`;
 - a fragment: `#reason`;
 - an address with the scheme `http:`, `https:`, `mailto:` or `tel:`, in any case.
+
+A `srcSet` is a list of addresses, as HTML's `srcset` is, and each address in it is held to the
+same rule.
 
 Any other scheme (`javascript:`, `data:`, `vbscript:`, `file:`) is a fault, and the value is not
 passed; the element is still drawn without it
@@ -717,8 +720,8 @@ holds, and at one it cuts.
   ([What an action is not](#what-an-action-is-not)).
 
 A host that refuses links and remote pictures leaves out of `members` every member that takes an
-address (`Link`, `Image`, `Avatar` and the others whose props or data types take an `href`, `src`
-or `avatar`), and `Markdown`.
+address (`Link`, `Image`, `Avatar` and the others whose props or data types take one of those
+keys), and `Markdown`.
 
 ### Faults
 

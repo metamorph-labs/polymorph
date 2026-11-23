@@ -74,7 +74,8 @@ behaves the same in each of them:
 - a key a document writes (a prop's name, a structured object's field) is at most
   `MAX_KEY_LENGTH` (100) characters, as every node below a key carries it in its path; a longer
   one is a fault at its parent, and what it holds is not read;
-- an address (a prop or a field named `href`, `src` or `avatar`) is passed only as text that is
+- an address (a prop or a field named `avatar`, `href`, `nextHref`, `previousHref`, `src` or
+  `srcSet`, whose text is a list of addresses) is passed only as text that is
   relative or `http:`, `https:`, `mailto:` or `tel:`, or a flat list of such text, from the
   document or from the host's data a binding puts there. Data nested inside an object the host
   binds whole is the host's responsibility: the walk passes it as the host gave it;

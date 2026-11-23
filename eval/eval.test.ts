@@ -431,9 +431,11 @@ type Reply =
 /** Answers each request with the next reply, and keeps every request it was sent. */
 function localApi(replies: Reply[], captured: Captured[]): Server {
   return createServer((request, response) => {
-    let raw = ''
-    request.on('data', (chunk: Buffer) => (raw += chunk.toString()))
+    // Joined as bytes before decoding: a character of several bytes can arrive across two chunks.
+    const chunks: Buffer[] = []
+    request.on('data', (chunk: Buffer) => chunks.push(chunk))
     request.on('end', () => {
+      const raw = Buffer.concat(chunks).toString()
       captured.push({
         url: request.url,
         headers: request.headers,

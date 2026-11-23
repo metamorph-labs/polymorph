@@ -256,6 +256,8 @@ describe('the addresses are every prop that takes one', () => {
     'codebase',
     'manifest',
   ]
+  /** A prop named for a link's target, as a pager's `nextHref` is. */
+  const HREF = /Href$/
   const text = (type: string) => /^string( \| undefined)?$/.test(type)
   // A structured object's fields reach a member as a prop's do (a breadcrumb's `href`), so the data
   // types' fields are read with the props.
@@ -291,7 +293,9 @@ describe('the addresses are every prop that takes one', () => {
     const addresses = props.filter(
       (prop) =>
         text(prop.type) &&
-        (URL_ATTRIBUTES.includes(prop.name.split('.').at(-1) ?? '') || documented(prop.doc)),
+        (URL_ATTRIBUTES.includes(prop.name.split('.').at(-1) ?? '') ||
+          HREF.test(prop.name) ||
+          documented(prop.doc)),
     )
     expect(addresses.length).toBeGreaterThan(5)
     for (const prop of addresses) {

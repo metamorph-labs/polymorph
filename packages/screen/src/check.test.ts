@@ -5,7 +5,7 @@ import { validateSpec } from '@polymorph/spec/validate'
 import { describe, expect, it } from 'vitest'
 
 import { checkScreen } from './check'
-import { addressFault } from './urls'
+import { addressFault, addressListFault } from './urls'
 import { VOCABULARY } from './vocabulary'
 import { createScreen } from './walk'
 
@@ -290,5 +290,44 @@ describe('an address a screen may not hold', () => {
     ]) {
       expect(addressFault(refused), JSON.stringify(refused)).not.toBeNull()
     }
+  })
+
+  it('reads each candidate of a set of files as an address', () => {
+    for (const lawful of [
+      '/a-400.jpg 400w, /a-800.jpg 800w',
+      'https://example.com/a.jpg 1x, https://example.com/a@2x.jpg 2x',
+      '/a.jpg',
+      '/a,b.jpg 2x',
+    ]) {
+      expect(addressListFault(lawful), lawful).toBeNull()
+    }
+    for (const refused of [
+      'javascript:alert(1) 1x',
+      '/a.jpg 1x, data:image/svg+xml,x 2x',
+      '/a.jpg 1x,  ,data:image/svg+xml,x 2x',
+      '/a.jpg 1x,\tdata:image/svg+xml,x 2x',
+    ]) {
+      expect(addressListFault(refused), JSON.stringify(refused)).not.toBeNull()
+    }
+  })
+
+  it('checks a pager’s addresses and a picture’s set of files', () => {
+    const faults = checkScreen(
+      screen({
+        component: 'Stack',
+        children: [
+          {
+            component: 'CursorPagination',
+            props: { hasPrevious: true, hasNext: true, nextHref: 'javascript:alert(1)' },
+          },
+          {
+            component: 'Image',
+            props: { src: '/a.jpg', alt: '', srcSet: '/a.jpg 1x, data:text/html,x 2x' },
+          },
+        ],
+      }),
+    ).faults.map((fault) => fault.path)
+    expect(faults).toContain('$.root.children[0].props.nextHref')
+    expect(faults).toContain('$.root.children[1].props.srcSet')
   })
 })

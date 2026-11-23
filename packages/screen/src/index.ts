@@ -46,7 +46,7 @@ export {
   type TableProp,
 } from './members'
 export { MAX_DEPTH, parsePartial, type PartialDocument } from './partial'
-export { addressFault, ADDRESS_KEYS, ADDRESS_SCHEMES } from './urls'
+export { addressFault, addressListFault, ADDRESS_KEYS, ADDRESS_SCHEMES } from './urls'
 export { VOCABULARY } from './vocabulary'
 export {
   createScreen,
