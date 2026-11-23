@@ -299,6 +299,38 @@ describe('failed', () => {
     expect(frame.getAttribute('data-state')).toBe('loading')
     await loaded(frame)
   })
+
+  it('asks again when the set changes after a failure, with the `src` unchanged', async () => {
+    // The set's one file is what the element requests, so the `src` is never asked for.
+    const src = picture()
+    const { container, rerender } = render(
+      <Image src={src} srcSet={`${broken()} 1x`} alt="A harbour" width={320} height={200} />,
+    )
+    const frame = frameIn(container)
+    await failed(frame)
+
+    rerender(
+      <Image src={src} srcSet={`${picture()} 1x`} alt="A harbour" width={320} height={200} />,
+    )
+    expect(frame.getAttribute('data-state')).toBe('loading')
+    await loaded(frame)
+    expect(screen.getByRole('img', { name: 'A harbour' }).tagName).toBe('IMG')
+  })
+
+  it('returns to loading when a loaded picture’s set changes', async () => {
+    const src = picture()
+    const { container, rerender } = render(
+      <Image src={src} srcSet={`${picture()} 1x`} alt="A harbour" width={320} height={200} />,
+    )
+    const frame = frameIn(container)
+    await loaded(frame)
+
+    rerender(
+      <Image src={src} srcSet={`${picture()} 1x`} alt="A harbour" width={320} height={200} />,
+    )
+    expect(frame.getAttribute('data-state')).toBe('loading')
+    await loaded(frame)
+  })
 })
 
 describe('what assistive technology is told', () => {
@@ -336,6 +368,45 @@ describe('the element’s own attributes', () => {
     const element = set.container.querySelector('img')!
     expect(element.crossOrigin).toBe('anonymous')
     expect(element.referrerPolicy).toBe('no-referrer')
+  })
+
+  it('passes `srcSet`, `sizes` and `fetchPriority` through, and writes none when absent', async () => {
+    const plain = render(<Image src={picture()} alt="A harbour" />)
+    const bare = plain.container.querySelector('img')!
+    expect(bare.hasAttribute('srcset')).toBe(false)
+    expect(bare.hasAttribute('sizes')).toBe(false)
+    expect(bare.hasAttribute('fetchpriority')).toBe(false)
+
+    const wide = picture()
+    const set = render(
+      <Image
+        src={picture()}
+        srcSet={`${wide} 320w`}
+        sizes="320px"
+        alt="A harbour"
+        width={320}
+        height={200}
+        loading="eager"
+        fetchPriority="high"
+      />,
+    )
+    const element = set.container.querySelector('img')!
+    expect(element.getAttribute('srcset')).toBe(`${wide} 320w`)
+    expect(element.getAttribute('sizes')).toBe('320px')
+    expect(element.getAttribute('fetchpriority')).toBe('high')
+
+    // The browser reads the set: the file it drew is the set's, not the `src`.
+    await loaded(frameIn(set.container))
+    expect(element.currentSrc).toBe(wide)
+  })
+
+  it('writes the set before the `src`, so the first request is the one the set names', () => {
+    const { container } = render(
+      <Image src={picture()} srcSet={`${picture()} 1x`} sizes="320px" alt="A harbour" />,
+    )
+    const names = container.querySelector('img')!.getAttributeNames()
+    expect(names.indexOf('srcset')).toBeLessThan(names.indexOf('src'))
+    expect(names.indexOf('sizes')).toBeLessThan(names.indexOf('srcset'))
   })
 })
 

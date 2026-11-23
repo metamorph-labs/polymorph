@@ -18,6 +18,15 @@ const MARK = svg(
     '</svg>',
 )
 
+/** The harbour again at twice the pixels, the file a dense screen asks for. */
+const HARBOUR_DENSE = svg(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 320 200">' +
+    '<rect width="320" height="200" fill="#2f4a6b"/>' +
+    '<circle cx="236" cy="72" r="28" fill="#f2c879"/>' +
+    '<path d="M0 200V140L80 96l70 54 64-40 106 58v32z" fill="#1c2f47"/>' +
+    '</svg>',
+)
+
 const HARBOUR_ALT = 'A harbour at dusk'
 
 /** Both given and above zero: the picture's own pixel size, which gives a width and a ratio. */
@@ -37,10 +46,11 @@ const LONE_SIDE = '(width === undefined) !== (height === undefined)'
  * script hears `load`. When it fails, its element is removed, so the browser's
  * broken-image glyph is never drawn, and the fallback keeps its name.
  *
- * `loaded` and `failed` each hold the `src` they are about, so a new `src`
- * starts as loading. An empty `src` is failed without a request. A failure is
- * about one request: when the `src` moves on it is forgotten, so coming back to
- * the same URL asks for it again.
+ * `request` is what the element is asked to fetch: the `src`, and the set it may
+ * pick from instead. `loaded` and `failed` each hold the request they are about,
+ * so a new `src` or a new set starts as loading. An empty `src` is failed
+ * without a request. A failure is about one request: when the request moves on
+ * it is forgotten, so coming back to the same URL asks for it again.
  */
 export default describeMember({
   member: 'Image',
@@ -49,7 +59,9 @@ export default describeMember({
   defaults: { fit: lit('contain'), loading: lit('lazy') },
   state: { loaded: "''", failed: "''" },
   derived: {
-    status: "src === '' || failed === src ? 'failed' : loaded === src ? 'loaded' : 'loading'",
+    request: "srcSet === undefined ? src : src + ' ' + srcSet",
+    status:
+      "src === '' || failed === request ? 'failed' : loaded === request ? 'loaded' : 'loading'",
     // Written out where a width is divided, so each framework's compiler sees both are numbers.
     ratio: `aspectRatio !== undefined && aspectRatio > 0 && Number.isFinite(aspectRatio) ? aspectRatio : ${BOXED} ? width / height : undefined`,
     sized: 'ratio !== undefined',
@@ -60,10 +72,10 @@ export default describeMember({
     // them apart, so the request is made again and its event is heard this time.
     // The ref is typed as an element; the cast says which one it is.
     settle:
-      "() => { if (failed !== src) failed = ''; const element = image as HTMLImageElement | null | undefined; if (element == null || !element.complete) return; if (element.naturalWidth > 0) loaded = src; else element.src = src }",
+      "() => { if (failed !== request) failed = ''; const element = image as HTMLImageElement | null | undefined; if (element == null || !element.complete) return; if (element.naturalWidth > 0) loaded = request; else element.src = src }",
   },
   effects: [
-    { watch: 'src', run: 'settle()' },
+    { watch: 'request', run: 'settle()' },
     {
       watch: LONE_SIDE,
       run: `devWarning(${LONE_SIDE}, 'Image: \`width\` and \`height\` are given together. One alone gives no ratio and is ignored.')`,
@@ -113,20 +125,23 @@ export default describeMember({
           ),
         ],
         [
-          // `loading` and `crossorigin` come before `src`: the browser reads them when the
-          // request starts.
+          // Everything that steers the fetch comes before `src`: the browser reads it when
+          // the request starts. `sizes` comes before `srcset`, which is read with it.
           el('img', {
             part: 'image',
             class: ['image'],
             ref: 'image',
             attrs: {
               loading: 'loading',
+              fetchpriority: 'fetchPriority',
               crossorigin: 'crossOrigin',
               referrerpolicy: 'referrerPolicy',
+              sizes: 'sizes',
+              srcset: 'srcSet',
               src: 'src',
               alt: 'alt',
             },
-            on: { load: run('loaded = src'), error: run('failed = src') },
+            on: { load: run('loaded = request'), error: run('failed = request') },
           }),
         ],
       ),
@@ -141,6 +156,31 @@ export default describeMember({
     {
       name: 'a brand mark — small, named and fetched at once',
       props: { src: MARK, alt: 'Relay', width: 32, height: 32, loading: 'eager' },
+      expect: { 'data-sized': '' },
+    },
+    {
+      name: 'a set of files — the browser picks one for the screen',
+      props: {
+        src: HARBOUR,
+        srcSet: `${HARBOUR} 1x, ${HARBOUR_DENSE} 2x`,
+        alt: HARBOUR_ALT,
+        width: 320,
+        height: 200,
+      },
+      expect: { 'data-sized': '' },
+    },
+    {
+      name: 'the first view’s picture — fetched at once, ahead of the page’s others',
+      props: {
+        src: HARBOUR,
+        srcSet: `${HARBOUR} 320w, ${HARBOUR_DENSE} 640w`,
+        sizes: '320px',
+        alt: HARBOUR_ALT,
+        width: 320,
+        height: 200,
+        loading: 'eager',
+        fetchPriority: 'high',
+      },
       expect: { 'data-sized': '' },
     },
     {

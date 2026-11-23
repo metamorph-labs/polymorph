@@ -37,6 +37,11 @@ export interface ImageProps {
    */
   crossOrigin?: 'anonymous' | 'use-credentials'
   /**
+   * How the browser ranks this fetch among the page's others. `high` is for the one picture that
+   * is the first view's largest content, with `loading="eager"`. Absent, the browser decides.
+   */
+  fetchPriority?: 'auto' | 'high' | 'low'
+  /**
    * How the picture sits in a frame whose ratio is not its own: `contain` shows all of it,
    * `cover` fills the frame and crops. Defaults to `contain`, because cropping removes content.
    */
@@ -63,9 +68,21 @@ export interface ImageProps {
     | 'strict-origin-when-cross-origin'
     | 'unsafe-url'
   /**
+   * The element's `sizes`: how wide the picture is drawn, which the browser needs to pick from a
+   * `srcSet` that gives widths. It steers the fetch and sizes nothing; the frame's box still
+   * comes from the props above and its container.
+   */
+  sizes?: string
+  /**
    * The picture's URL. An empty string is the failed state: there is nothing to request.
    */
   src: string
+  /**
+   * Other files of the same picture, in the element's `srcset` form: each a URL with a width
+   * (`640w`) or a density (`2x`). The browser picks one for the screen, and one that does not
+   * read the set requests `src`.
+   */
+  srcSet?: string
   /**
    * The picture's width in CSS pixels, given together with `height`. The two reserve the box
    * before the picture loads and are its natural size; the frame is never wider than its
@@ -84,10 +101,13 @@ export default function Image(given: ImageProps): JSX.Element {
     const loaded = createCell('')
     const failed = createCell('')
     const image = elementRef<HTMLElement>()
+    const request = createDerived(() =>
+      props.srcSet === undefined ? props.src : props.src + ' ' + props.srcSet,
+    )
     const status = createDerived(() =>
-      props.src === '' || failed.value === props.src
+      props.src === '' || failed.value === request.value
         ? 'failed'
-        : loaded.value === props.src
+        : loaded.value === request.value
           ? 'loaded'
           : 'loading',
     )
@@ -104,17 +124,17 @@ export default function Image(given: ImageProps): JSX.Element {
     const sized = createDerived(() => ratio.value !== undefined)
     const decorative = createDerived(() => props.alt === '')
     const settle = createDerived(() => () => {
-      if (failed.value !== props.src) failed.value = ''
+      if (failed.value !== request.value) failed.value = ''
       const element = image.value as HTMLImageElement | null | undefined
       if (element == null || !element.complete) return
-      if (element.naturalWidth > 0) loaded.value = props.src
+      if (element.naturalWidth > 0) loaded.value = request.value
       else element.src = props.src
     })
     const effect1 = () => {
       settle.value()
     }
     watchEffect(
-      createMemo(() => props.src),
+      createMemo(() => request.value),
       effect1,
       true,
     )
@@ -162,12 +182,15 @@ export default function Image(given: ImageProps): JSX.Element {
           <img
             class={styles.image}
             loading={props.loading}
+            fetchpriority={props.fetchPriority}
             crossorigin={props.crossOrigin}
             referrerpolicy={props.referrerPolicy}
+            sizes={props.sizes}
+            srcset={props.srcSet}
             src={props.src}
             alt={props.alt}
-            onload={() => (loaded.value = props.src)}
-            onerror={() => (failed.value = props.src)}
+            onload={() => (loaded.value = request.value)}
+            onerror={() => (failed.value = request.value)}
             ref={image.attach}
           />
         )}

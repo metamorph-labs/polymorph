@@ -31,6 +31,19 @@ export interface ImageProps {
   /** The picture's URL. An empty string is the failed state: there is nothing to request. */
   src: string
   /**
+   * Other files of the same picture, in the element's `srcset` form: each a URL
+   * with a width (`640w`) or a density (`2x`). The browser picks one for the
+   * screen, and one that does not read the set requests `src`.
+   */
+  srcSet?: string
+  /**
+   * The element's `sizes`: how wide the picture is drawn, which the browser
+   * needs to pick from a `srcSet` that gives widths. It steers the fetch and
+   * sizes nothing; the frame's box still comes from the props above and its
+   * container.
+   */
+  sizes?: string
+  /**
    * The accessible name. An empty string declares the picture decorative and
    * hides it from assistive technology. Required, because only the caller knows
    * which of the two a picture is.
@@ -61,6 +74,12 @@ export interface ImageProps {
    * `eager` at once. Defaults to `lazy`.
    */
   loading?: 'lazy' | 'eager'
+  /**
+   * How the browser ranks this fetch among the page's others. `high` is for the
+   * one picture that is the first view's largest content, with `loading="eager"`.
+   * Absent, the browser decides.
+   */
+  fetchPriority?: 'high' | 'low' | 'auto'
   /** The element's CORS mode. Absent, the request is made without CORS. */
   crossOrigin?: 'anonymous' | 'use-credentials'
   /** The element's referrer policy. Absent, the page's own policy applies. */
@@ -77,32 +96,40 @@ export interface ImageProps {
 
 export function Image({
   src,
+  srcSet,
+  sizes,
   alt,
   width,
   height,
   aspectRatio,
   fit = 'contain',
   loading = 'lazy',
+  fetchPriority,
   crossOrigin,
   referrerPolicy,
 }: ImageProps) {
-  // Each holds the `src` it is about, so a new `src` starts as loading. An
+  // What the element is asked to fetch: the `src`, and the set it may pick from
+  // instead. A new set is a new request, as a new `src` is.
+  const request = srcSet === undefined ? src : `${src} ${srcSet}`
+
+  // Each holds the request it is about, so a new one starts as loading. An
   // empty `src` is failed without a request, because there is nothing to ask for.
   const [loaded, setLoaded] = useState('')
   const [failed, setFailed] = useState('')
   const image = useRef<HTMLImageElement>(null)
 
-  // A failure is about one request. When the `src` moves on, the failure is
+  // A failure is about one request. When the request moves on, the failure is
   // forgotten, so a caller that comes back to the same URL asks for it again,
   // as a bare element would. State is adjusted while rendering, not in an
   // effect, so no frame is drawn from the stale failure.
-  const [asked, setAsked] = useState(src)
-  if (asked !== src) {
-    setAsked(src)
+  const [asked, setAsked] = useState(request)
+  if (asked !== request) {
+    setAsked(request)
     setFailed('')
   }
 
-  const state = src === '' || failed === src ? 'failed' : loaded === src ? 'loaded' : 'loading'
+  const state =
+    src === '' || failed === request ? 'failed' : loaded === request ? 'loaded' : 'loading'
   const boxed = width !== undefined && height !== undefined && width > 0 && height > 0
   const ratio =
     aspectRatio !== undefined && aspectRatio > 0 && Number.isFinite(aspectRatio)
@@ -127,9 +154,9 @@ export function Image({
   useEffect(() => {
     const element = image.current
     if (element === null || !element.complete) return
-    if (element.naturalWidth > 0) setLoaded(src)
+    if (element.naturalWidth > 0) setLoaded(request)
     else element.src = src
-  }, [src])
+  }, [request, src])
 
   return (
     <span
@@ -156,18 +183,22 @@ export function Image({
           <Icon name="error" />
         </span>
       ) : (
-        // `loading` and `crossOrigin` come before `src`: the browser reads them
-        // when the request starts, and React sets attributes in this order.
+        // Everything that steers the fetch comes before `src`: the browser reads
+        // it when the request starts, and React sets attributes in this order.
+        // `sizes` comes before `srcSet`, which is read with it.
         <img
           ref={image}
           className={styles.image}
           loading={loading}
+          fetchPriority={fetchPriority}
           crossOrigin={crossOrigin}
           referrerPolicy={referrerPolicy}
+          sizes={sizes}
+          srcSet={srcSet}
           src={src}
           alt={alt}
-          onLoad={() => setLoaded(src)}
-          onError={() => setFailed(src)}
+          onLoad={() => setLoaded(request)}
+          onError={() => setFailed(request)}
         />
       )}
     </span>

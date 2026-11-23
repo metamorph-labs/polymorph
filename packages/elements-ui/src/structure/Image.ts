@@ -15,11 +15,14 @@ export const definition: ElementDefinition = {
     alt: 'string',
     aspectRatio: 'number',
     crossOrigin: 'string',
+    fetchPriority: 'string',
     fit: 'string',
     height: 'number',
     loading: 'string',
     referrerPolicy: 'string',
+    sizes: 'string',
     src: 'string',
+    srcSet: 'string',
     width: 'number',
   },
   events: {},
@@ -32,11 +35,14 @@ export type PolyImageElement = MemberElement<
   | 'alt'
   | 'aspectRatio'
   | 'crossOrigin'
+  | 'fetchPriority'
   | 'fit'
   | 'height'
   | 'loading'
   | 'referrerPolicy'
+  | 'sizes'
   | 'src'
+  | 'srcSet'
   | 'width'
 >
 

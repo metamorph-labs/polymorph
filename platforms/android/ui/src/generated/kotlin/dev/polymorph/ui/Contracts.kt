@@ -2727,6 +2727,13 @@ enum class PMImageCrossOrigin(val value: String) {
     UseCredentials("use-credentials"),
 }
 
+/** `Image.fetchPriority`. */
+enum class PMImageFetchPriority(val value: String) {
+    Auto("auto"),
+    High("high"),
+    Low("low"),
+}
+
 /** `Image.fit`. */
 enum class PMImageFit(val value: String) {
     Contain("contain"),
@@ -2767,6 +2774,11 @@ data class PMImageProps(
     /** The element's CORS mode. Absent, the request is made without CORS. */
     val crossOrigin: PMImageCrossOrigin? = null,
     /**
+     * How the browser ranks this fetch among the page's others. `high` is for the one picture that
+     * is the first view's largest content, with `loading="eager"`. Absent, the browser decides.
+     */
+    val fetchPriority: PMImageFetchPriority? = null,
+    /**
      * How the picture sits in a frame whose ratio is not its own: `contain` shows all of it,
      * `cover` fills the frame and crops. Defaults to `contain`, because cropping removes content.
      */
@@ -2780,8 +2792,20 @@ data class PMImageProps(
     val loading: PMImageLoading? = null,
     /** The element's referrer policy. Absent, the page's own policy applies. */
     val referrerPolicy: PMImageReferrerPolicy? = null,
+    /**
+     * The element's `sizes`: how wide the picture is drawn, which the browser needs to pick from a
+     * `srcSet` that gives widths. It steers the fetch and sizes nothing; the frame's box still
+     * comes from the props above and its container.
+     */
+    val sizes: String? = null,
     /** The picture's URL. An empty string is the failed state: there is nothing to request. */
     val src: String,
+    /**
+     * Other files of the same picture, in the element's `srcset` form: each a URL with a width
+     * (`640w`) or a density (`2x`). The browser picks one for the screen, and one that does not
+     * read the set requests `src`.
+     */
+    val srcSet: String? = null,
     /**
      * The picture's width in CSS pixels, given together with `height`. The two reserve the box
      * before the picture loads and are its natural size; the frame is never wider than its

@@ -33,6 +33,15 @@ const MARK = svg(
     '</svg>',
 )
 
+/** The harbour again at twice the pixels, the file a dense screen asks for. */
+const HARBOUR_DENSE = svg(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 320 200">' +
+    '<rect width="320" height="200" fill="#2f4a6b"/>' +
+    '<circle cx="236" cy="72" r="28" fill="#f2c879"/>' +
+    '<path d="M0 200V140L80 96l70 54 64-40 106 58v32z" fill="#1c2f47"/>' +
+    '</svg>',
+)
+
 const HARBOUR_ALT = 'A harbour at dusk'
 
 export const states: ComponentStates = {
@@ -47,6 +56,35 @@ export const states: ComponentStates = {
     {
       name: 'a brand mark — small, named and fetched at once',
       render: () => <Image src={MARK} alt="Relay" width={32} height={32} loading="eager" />,
+      expect: { 'data-sized': '' },
+    },
+    {
+      name: 'a set of files — the browser picks one for the screen',
+      render: () => (
+        <Image
+          src={HARBOUR}
+          srcSet={`${HARBOUR} 1x, ${HARBOUR_DENSE} 2x`}
+          alt={HARBOUR_ALT}
+          width={320}
+          height={200}
+        />
+      ),
+      expect: { 'data-sized': '' },
+    },
+    {
+      name: 'the first view’s picture — fetched at once, ahead of the page’s others',
+      render: () => (
+        <Image
+          src={HARBOUR}
+          srcSet={`${HARBOUR} 320w, ${HARBOUR_DENSE} 640w`}
+          sizes="320px"
+          alt={HARBOUR_ALT}
+          width={320}
+          height={200}
+          loading="eager"
+          fetchPriority="high"
+        />
+      ),
       expect: { 'data-sized': '' },
     },
     {

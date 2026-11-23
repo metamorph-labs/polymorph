@@ -1257,14 +1257,17 @@ fun PMImage(
     alt: String,
     aspectRatio: Double? = null,
     crossOrigin: PMImageCrossOrigin? = null,
+    fetchPriority: PMImageFetchPriority? = null,
     fit: PMImageFit? = null,
     height: Double? = null,
     loading: PMImageLoading? = null,
     referrerPolicy: PMImageReferrerPolicy? = null,
+    sizes: String? = null,
     src: String,
+    srcSet: String? = null,
     width: Double? = null,
 ) {
-    PMImage.Render(PMImageProps(alt = alt, aspectRatio = aspectRatio, crossOrigin = crossOrigin, fit = fit, height = height, loading = loading, referrerPolicy = referrerPolicy, src = src, width = width))
+    PMImage.Render(PMImageProps(alt = alt, aspectRatio = aspectRatio, crossOrigin = crossOrigin, fetchPriority = fetchPriority, fit = fit, height = height, loading = loading, referrerPolicy = referrerPolicy, sizes = sizes, src = src, srcSet = srcSet, width = width))
 }
 
 /**

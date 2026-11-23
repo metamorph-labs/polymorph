@@ -4106,6 +4106,13 @@ public enum PMImageCrossOrigin: String, CaseIterable, Sendable {
   case useCredentials = "use-credentials"
 }
 
+/// `Image.fetchPriority`.
+public enum PMImageFetchPriority: String, CaseIterable, Sendable {
+  case auto
+  case high
+  case low
+}
+
 /// `Image.fit`.
 public enum PMImageFit: String, CaseIterable, Sendable {
   case contain
@@ -4141,6 +4148,9 @@ public struct PMImageProps {
   public var aspectRatio: Double?
   /// The element's CORS mode. Absent, the request is made without CORS.
   public var crossOrigin: PMImageCrossOrigin?
+  /// How the browser ranks this fetch among the page's others. `high` is for the one picture that
+  /// is the first view's largest content, with `loading="eager"`. Absent, the browser decides.
+  public var fetchPriority: PMImageFetchPriority?
   /// How the picture sits in a frame whose ratio is not its own: `contain` shows all of it, `cover`
   /// fills the frame and crops. Defaults to `contain`, because cropping removes content.
   public var fit: PMImageFit?
@@ -4151,8 +4161,16 @@ public struct PMImageProps {
   public var loading: PMImageLoading?
   /// The element's referrer policy. Absent, the page's own policy applies.
   public var referrerPolicy: PMImageReferrerPolicy?
+  /// The element's `sizes`: how wide the picture is drawn, which the browser needs to pick from a
+  /// `srcSet` that gives widths. It steers the fetch and sizes nothing; the frame's box still comes
+  /// from the props above and its container.
+  public var sizes: String?
   /// The picture's URL. An empty string is the failed state: there is nothing to request.
   public var src: String
+  /// Other files of the same picture, in the element's `srcset` form: each a URL with a width
+  /// (`640w`) or a density (`2x`). The browser picks one for the screen, and one that does not read
+  /// the set requests `src`.
+  public var srcSet: String?
   /// The picture's width in CSS pixels, given together with `height`. The two reserve the box
   /// before the picture loads and are its natural size; the frame is never wider than its
   /// container.
@@ -4162,21 +4180,27 @@ public struct PMImageProps {
     alt: String,
     aspectRatio: Double? = nil,
     crossOrigin: PMImageCrossOrigin? = nil,
+    fetchPriority: PMImageFetchPriority? = nil,
     fit: PMImageFit? = nil,
     height: Double? = nil,
     loading: PMImageLoading? = nil,
     referrerPolicy: PMImageReferrerPolicy? = nil,
+    sizes: String? = nil,
     src: String,
+    srcSet: String? = nil,
     width: Double? = nil
   ) {
     self.alt = alt
     self.aspectRatio = aspectRatio
     self.crossOrigin = crossOrigin
+    self.fetchPriority = fetchPriority
     self.fit = fit
     self.height = height
     self.loading = loading
     self.referrerPolicy = referrerPolicy
+    self.sizes = sizes
     self.src = src
+    self.srcSet = srcSet
     self.width = width
   }
 }

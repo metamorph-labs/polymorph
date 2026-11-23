@@ -38,6 +38,11 @@ export interface ImageProps {
    */
   crossOrigin?: 'anonymous' | 'use-credentials'
   /**
+   * How the browser ranks this fetch among the page's others. `high` is for the one picture that
+   * is the first view's largest content, with `loading="eager"`. Absent, the browser decides.
+   */
+  fetchPriority?: 'auto' | 'high' | 'low'
+  /**
    * How the picture sits in a frame whose ratio is not its own: `contain` shows all of it,
    * `cover` fills the frame and crops. Defaults to `contain`, because cropping removes content.
    */
@@ -64,9 +69,21 @@ export interface ImageProps {
     | 'strict-origin-when-cross-origin'
     | 'unsafe-url'
   /**
+   * The element's `sizes`: how wide the picture is drawn, which the browser needs to pick from a
+   * `srcSet` that gives widths. It steers the fetch and sizes nothing; the frame's box still
+   * comes from the props above and its container.
+   */
+  sizes?: string
+  /**
    * The picture's URL. An empty string is the failed state: there is nothing to request.
    */
   src: string
+  /**
+   * Other files of the same picture, in the element's `srcset` form: each a URL with a width
+   * (`640w`) or a density (`2x`). The browser picks one for the screen, and one that does not
+   * read the set requests `src`.
+   */
+  srcSet?: string
   /**
    * The picture's width in CSS pixels, given together with `height`. The two reserve the box
    * before the picture loads and are its natural size; the frame is never wider than its
@@ -110,10 +127,13 @@ name="error"
 <img
 [attr.class]="e14()"
 [attr.loading]="e15()"
-[attr.crossorigin]="e16()"
-[attr.referrerpolicy]="e17()"
-[attr.src]="e18()"
-[attr.alt]="e19()"
+[attr.fetchpriority]="e16()"
+[attr.crossorigin]="e17()"
+[attr.referrerpolicy]="e18()"
+[attr.sizes]="e19()"
+[attr.srcset]="e20()"
+[attr.src]="e21()"
+[attr.alt]="e22()"
 (load)="h1()"
 (error)="h2()"
 [pmRef]="image"
@@ -135,6 +155,11 @@ export class Image {
    * The element's CORS mode. Absent, the request is made without CORS.
    */
   readonly crossOrigin = input<ImageProps['crossOrigin']>(undefined)
+  /**
+   * How the browser ranks this fetch among the page's others. `high` is for the one picture that
+   * is the first view's largest content, with `loading="eager"`. Absent, the browser decides.
+   */
+  readonly fetchPriority = input<ImageProps['fetchPriority']>(undefined)
   /**
    * How the picture sits in a frame whose ratio is not its own: `contain` shows all of it,
    * `cover` fills the frame and crops. Defaults to `contain`, because cropping removes content.
@@ -159,9 +184,21 @@ export class Image {
    */
   readonly referrerPolicy = input<ImageProps['referrerPolicy']>(undefined)
   /**
+   * The element's `sizes`: how wide the picture is drawn, which the browser needs to pick from a
+   * `srcSet` that gives widths. It steers the fetch and sizes nothing; the frame's box still
+   * comes from the props above and its container.
+   */
+  readonly sizes = input<ImageProps['sizes']>(undefined)
+  /**
    * The picture's URL. An empty string is the failed state: there is nothing to request.
    */
   readonly src = input.required<ImageProps['src']>()
+  /**
+   * Other files of the same picture, in the element's `srcset` form: each a URL with a width
+   * (`640w`) or a density (`2x`). The browser picks one for the screen, and one that does not
+   * read the set requests `src`.
+   */
+  readonly srcSet = input<ImageProps['srcSet']>(undefined)
   /**
    * The picture's width in CSS pixels, given together with `height`. The two reserve the box
    * before the picture loads and are its natural size; the frame is never wider than its
@@ -174,11 +211,14 @@ export class Image {
       alt: () => this.alt(),
       aspectRatio: () => this.aspectRatio(),
       crossOrigin: () => this.crossOrigin(),
+      fetchPriority: () => this.fetchPriority(),
       fit: () => this.fit(),
       height: () => this.height(),
       loading: () => this.loading(),
       referrerPolicy: () => this.referrerPolicy(),
+      sizes: () => this.sizes(),
       src: () => this.src(),
+      srcSet: () => this.srcSet(),
       width: () => this.width(),
     },
   })
@@ -186,10 +226,13 @@ export class Image {
   protected readonly loaded = cell(() => '')
   protected readonly failed = cell(() => '')
   protected readonly image = elementRef<HTMLElement>()
+  protected readonly request = derived(() =>
+    this.$p.srcSet === undefined ? this.$p.src : this.$p.src + ' ' + this.$p.srcSet,
+  )
   protected readonly status = derived(() =>
-    this.$p.src === '' || this.failed.value === this.$p.src
+    this.$p.src === '' || this.failed.value === this.request.value
       ? 'failed'
-      : this.loaded.value === this.$p.src
+      : this.loaded.value === this.request.value
         ? 'loaded'
         : 'loading',
   )
@@ -208,16 +251,16 @@ export class Image {
   protected readonly sized = derived(() => this.ratio.value !== undefined)
   protected readonly decorative = derived(() => this.$p.alt === '')
   protected readonly settle = derived(() => () => {
-    if (this.failed.value !== this.$p.src) this.failed.value = ''
+    if (this.failed.value !== this.request.value) this.failed.value = ''
     const element = this.image.value as HTMLImageElement | null | undefined
     if (element == null || !element.complete) return
-    if (element.naturalWidth > 0) this.loaded.value = this.$p.src
+    if (element.naturalWidth > 0) this.loaded.value = this.request.value
     else element.src = this.$p.src
   })
 
   constructor() {
     watchEffect(
-      () => this.$p.src,
+      () => this.request.value,
       () => this.effect1(),
       true,
     )
@@ -302,32 +345,47 @@ export class Image {
 
   protected e16() {
     if (this.status.value === 'failed') return undefined as never
-    return this.$p.crossOrigin
+    return this.$p.fetchPriority
   }
 
   protected e17() {
     if (this.status.value === 'failed') return undefined as never
-    return this.$p.referrerPolicy
+    return this.$p.crossOrigin
   }
 
   protected e18() {
     if (this.status.value === 'failed') return undefined as never
-    return this.$p.src
+    return this.$p.referrerPolicy
   }
 
   protected e19() {
+    if (this.status.value === 'failed') return undefined as never
+    return this.$p.sizes
+  }
+
+  protected e20() {
+    if (this.status.value === 'failed') return undefined as never
+    return this.$p.srcSet
+  }
+
+  protected e21() {
+    if (this.status.value === 'failed') return undefined as never
+    return this.$p.src
+  }
+
+  protected e22() {
     if (this.status.value === 'failed') return undefined as never
     return this.$p.alt
   }
 
   protected h1(): void {
     if (this.status.value === 'failed') return
-    this.loaded.value = this.$p.src
+    this.loaded.value = this.request.value
   }
 
   protected h2(): void {
     if (this.status.value === 'failed') return
-    this.failed.value = this.$p.src
+    this.failed.value = this.request.value
   }
 
   private effect1(): void {

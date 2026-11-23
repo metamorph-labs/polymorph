@@ -23,36 +23,46 @@ export const states: ComponentStates = {
       render: entry2,
       expect: { 'data-sized': '' },
     },
-    { name: 'decorative — an empty alt hides it from assistive technology', render: entry3 },
+    {
+      name: 'a set of files — the browser picks one for the screen',
+      render: entry3,
+      expect: { 'data-sized': '' },
+    },
+    {
+      name: 'the first view’s picture — fetched at once, ahead of the page’s others',
+      render: entry4,
+      expect: { 'data-sized': '' },
+    },
+    { name: 'decorative — an empty alt hides it from assistive technology', render: entry5 },
     {
       name: 'contained — the whole picture inside a frame of another ratio',
-      render: entry4,
+      render: entry6,
       expect: { 'data-fit': 'contain' },
     },
     {
       name: 'cover — the same frame filled, the picture cropped',
-      render: entry5,
+      render: entry7,
       expect: { 'data-fit': 'cover' },
     },
-    { name: 'frames that take their container — three in a grid', render: entry6 },
+    { name: 'frames that take their container — three in a grid', render: entry8 },
     {
       name: 'no size given — nothing is reserved, then the picture at its natural size',
-      render: entry7,
+      render: entry9,
       expect: { 'data-sized': null },
     },
     {
       name: 'failed — a meaningful image keeps its name on the fallback',
-      render: entry8,
+      render: entry10,
       expect: { 'data-state': 'failed', 'data-sized': '' },
     },
     {
       name: 'failed — a decorative image stays hidden',
-      render: entry9,
+      render: entry11,
       expect: { 'data-state': 'failed' },
     },
     {
       name: 'failed with no size given — the fallback has a size of its own',
-      render: entry10,
+      render: entry12,
       expect: { 'data-state': 'failed', 'data-sized': null },
     },
   ],
@@ -61,11 +71,13 @@ export const states: ComponentStates = {
 
 {#snippet entry1(overrides: Overrides)}<Image src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E" alt="A harbour at dusk" width={320} height={200} {...overrides} />{/snippet}
 {#snippet entry2(overrides: Overrides)}<Image src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2264%22%20height%3D%2264%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%232f4a6b%22%2F%3E%3Cpath%20d%3D%22M22%2046V18h12a9%209%200%200%201%200%2018H22m12%200%2010%2010%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%225%22%2F%3E%3C%2Fsvg%3E" alt="Relay" width={32} height={32} loading="eager" {...overrides} />{/snippet}
-{#snippet entry3(overrides: Overrides)}<Image src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E" alt="" width={320} height={200} {...overrides} />{/snippet}
-{#snippet entry4(overrides: Overrides)}<Image src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E" alt="A harbour at dusk" width={240} height={150} aspectRatio={1} {...overrides} />{/snippet}
-{#snippet entry5(overrides: Overrides)}<Image src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E" alt="A harbour at dusk" width={240} height={150} aspectRatio={1} fit="cover" {...overrides} />{/snippet}
-{#snippet entry6(overrides: Overrides)}<Grid columns={3} gap={4}><Image src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E" alt="A harbour at dusk" aspectRatio={1.5} fit="cover" {...overrides} /><Image src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E" alt="A harbour at dusk" aspectRatio={1.5} fit="cover" /><Image src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E" alt="A harbour at dusk" aspectRatio={1.5} fit="cover" /></Grid>{/snippet}
-{#snippet entry7(overrides: Overrides)}<Image src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E" alt="A harbour at dusk" {...overrides} />{/snippet}
-{#snippet entry8(overrides: Overrides)}<Image src="" alt="A harbour at dusk" width={320} height={200} {...overrides} />{/snippet}
-{#snippet entry9(overrides: Overrides)}<Image src="" alt="" width={320} height={200} {...overrides} />{/snippet}
-{#snippet entry10(overrides: Overrides)}<Image src="" alt="A harbour at dusk" {...overrides} />{/snippet}
+{#snippet entry3(overrides: Overrides)}<Image src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E" srcSet="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E 1x, data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22640%22%20height%3D%22400%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E 2x" alt="A harbour at dusk" width={320} height={200} {...overrides} />{/snippet}
+{#snippet entry4(overrides: Overrides)}<Image src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E" srcSet="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E 320w, data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22640%22%20height%3D%22400%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E 640w" sizes="320px" alt="A harbour at dusk" width={320} height={200} loading="eager" fetchPriority="high" {...overrides} />{/snippet}
+{#snippet entry5(overrides: Overrides)}<Image src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E" alt="" width={320} height={200} {...overrides} />{/snippet}
+{#snippet entry6(overrides: Overrides)}<Image src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E" alt="A harbour at dusk" width={240} height={150} aspectRatio={1} {...overrides} />{/snippet}
+{#snippet entry7(overrides: Overrides)}<Image src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E" alt="A harbour at dusk" width={240} height={150} aspectRatio={1} fit="cover" {...overrides} />{/snippet}
+{#snippet entry8(overrides: Overrides)}<Grid columns={3} gap={4}><Image src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E" alt="A harbour at dusk" aspectRatio={1.5} fit="cover" {...overrides} /><Image src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E" alt="A harbour at dusk" aspectRatio={1.5} fit="cover" /><Image src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E" alt="A harbour at dusk" aspectRatio={1.5} fit="cover" /></Grid>{/snippet}
+{#snippet entry9(overrides: Overrides)}<Image src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E" alt="A harbour at dusk" {...overrides} />{/snippet}
+{#snippet entry10(overrides: Overrides)}<Image src="" alt="A harbour at dusk" width={320} height={200} {...overrides} />{/snippet}
+{#snippet entry11(overrides: Overrides)}<Image src="" alt="" width={320} height={200} {...overrides} />{/snippet}
+{#snippet entry12(overrides: Overrides)}<Image src="" alt="A harbour at dusk" {...overrides} />{/snippet}

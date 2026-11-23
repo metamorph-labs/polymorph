@@ -290,10 +290,11 @@ export const UNDRAWN: readonly UndrawnProps[] = [
     android: ['Dialog', 'Drawer'],
   },
   {
-    props: ['crossOrigin', 'loading', 'referrerPolicy'],
+    props: ['crossOrigin', 'fetchPriority', 'loading', 'referrerPolicy', 'sizes', 'srcSet'],
     reason:
       'They steer a browser’s fetch. A request from an app has no origin to cross and carries ' +
-      'no referrer, and the view or the app’s loader decides when a picture loads.',
+      'no referrer, and the view or the app’s loader decides when a picture loads and how it ' +
+      'ranks the request. The view requests the one `src` and picks no file from a set.',
     ios: ['Image'],
     android: ['Image'],
   },

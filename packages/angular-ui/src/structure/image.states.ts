@@ -35,71 +35,90 @@ loading="eager"
 ></pm-image>}
 @case (2) {<pm-image
 src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E"
-[alt]="e5()"
-[width]="e6()"
-[height]="e7()"
+srcSet="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E 1x, data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22640%22%20height%3D%22400%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E 2x"
+alt="A harbour at dusk"
+[width]="e5()"
+[height]="e6()"
 [pmOverrides]="overrides()"
 ></pm-image>}
 @case (3) {<pm-image
 src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E"
+srcSet="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E 320w, data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22640%22%20height%3D%22400%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E 640w"
+sizes="320px"
 alt="A harbour at dusk"
-[width]="e8()"
-[height]="e9()"
-[aspectRatio]="e10()"
+[width]="e7()"
+[height]="e8()"
+loading="eager"
+fetchPriority="high"
 [pmOverrides]="overrides()"
 ></pm-image>}
 @case (4) {<pm-image
 src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E"
-alt="A harbour at dusk"
-[width]="e11()"
-[height]="e12()"
-[aspectRatio]="e13()"
-fit="cover"
+[alt]="e9()"
+[width]="e10()"
+[height]="e11()"
 [pmOverrides]="overrides()"
 ></pm-image>}
-@case (5) {<pm-grid
-[columns]="e17()"
-[gap]="e18()"
-><pm-image
+@case (5) {<pm-image
 src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E"
 alt="A harbour at dusk"
+[width]="e12()"
+[height]="e13()"
 [aspectRatio]="e14()"
-fit="cover"
 [pmOverrides]="overrides()"
-></pm-image>
-<pm-image
-src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E"
-alt="A harbour at dusk"
-[aspectRatio]="e15()"
-fit="cover"
-></pm-image>
-<pm-image
-src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E"
-alt="A harbour at dusk"
-[aspectRatio]="e16()"
-fit="cover"
-></pm-image></pm-grid>}
+></pm-image>}
 @case (6) {<pm-image
 src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E"
 alt="A harbour at dusk"
+[width]="e15()"
+[height]="e16()"
+[aspectRatio]="e17()"
+fit="cover"
 [pmOverrides]="overrides()"
 ></pm-image>}
-@case (7) {<pm-image
-[src]="e19()"
+@case (7) {<pm-grid
+[columns]="e21()"
+[gap]="e22()"
+><pm-image
+src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E"
 alt="A harbour at dusk"
-[width]="e20()"
-[height]="e21()"
+[aspectRatio]="e18()"
+fit="cover"
+[pmOverrides]="overrides()"
+></pm-image>
+<pm-image
+src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E"
+alt="A harbour at dusk"
+[aspectRatio]="e19()"
+fit="cover"
+></pm-image>
+<pm-image
+src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E"
+alt="A harbour at dusk"
+[aspectRatio]="e20()"
+fit="cover"
+></pm-image></pm-grid>}
+@case (8) {<pm-image
+src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E"
+alt="A harbour at dusk"
 [pmOverrides]="overrides()"
 ></pm-image>}
-@case (8) {<pm-image
-[src]="e22()"
-[alt]="e23()"
+@case (9) {<pm-image
+[src]="e23()"
+alt="A harbour at dusk"
 [width]="e24()"
 [height]="e25()"
 [pmOverrides]="overrides()"
 ></pm-image>}
-@case (9) {<pm-image
+@case (10) {<pm-image
 [src]="e26()"
+[alt]="e27()"
+[width]="e28()"
+[height]="e29()"
+[pmOverrides]="overrides()"
+></pm-image>}
+@case (11) {<pm-image
+[src]="e30()"
 alt="A harbour at dusk"
 [pmOverrides]="overrides()"
 ></pm-image>}
@@ -125,79 +144,79 @@ export class ImageStates {
     return 32
   }
 
-  protected e5(): ImageProps['alt'] {
-    return ''
-  }
-
-  protected e6(): ImageProps['width'] {
+  protected e5(): ImageProps['width'] {
     return 320
   }
 
-  protected e7(): ImageProps['height'] {
+  protected e6(): ImageProps['height'] {
     return 200
   }
 
-  protected e8(): ImageProps['width'] {
+  protected e7(): ImageProps['width'] {
+    return 320
+  }
+
+  protected e8(): ImageProps['height'] {
+    return 200
+  }
+
+  protected e9(): ImageProps['alt'] {
+    return ''
+  }
+
+  protected e10(): ImageProps['width'] {
+    return 320
+  }
+
+  protected e11(): ImageProps['height'] {
+    return 200
+  }
+
+  protected e12(): ImageProps['width'] {
     return 240
   }
 
-  protected e9(): ImageProps['height'] {
+  protected e13(): ImageProps['height'] {
     return 150
-  }
-
-  protected e10(): ImageProps['aspectRatio'] {
-    return 1
-  }
-
-  protected e11(): ImageProps['width'] {
-    return 240
-  }
-
-  protected e12(): ImageProps['height'] {
-    return 150
-  }
-
-  protected e13(): ImageProps['aspectRatio'] {
-    return 1
   }
 
   protected e14(): ImageProps['aspectRatio'] {
+    return 1
+  }
+
+  protected e15(): ImageProps['width'] {
+    return 240
+  }
+
+  protected e16(): ImageProps['height'] {
+    return 150
+  }
+
+  protected e17(): ImageProps['aspectRatio'] {
+    return 1
+  }
+
+  protected e18(): ImageProps['aspectRatio'] {
     return 1.5
   }
 
-  protected e15(): ImageProps['aspectRatio'] {
+  protected e19(): ImageProps['aspectRatio'] {
     return 1.5
   }
 
-  protected e16(): ImageProps['aspectRatio'] {
+  protected e20(): ImageProps['aspectRatio'] {
     return 1.5
   }
 
-  protected e17(): GridProps['columns'] {
+  protected e21(): GridProps['columns'] {
     return 3
   }
 
-  protected e18(): GridProps['gap'] {
+  protected e22(): GridProps['gap'] {
     return 4
   }
 
-  protected e19(): ImageProps['src'] {
-    return ''
-  }
-
-  protected e20(): ImageProps['width'] {
-    return 320
-  }
-
-  protected e21(): ImageProps['height'] {
-    return 200
-  }
-
-  protected e22(): ImageProps['src'] {
-    return ''
-  }
-
-  protected e23(): ImageProps['alt'] {
+  protected e23(): ImageProps['src'] {
     return ''
   }
 
@@ -212,6 +231,22 @@ export class ImageStates {
   protected e26(): ImageProps['src'] {
     return ''
   }
+
+  protected e27(): ImageProps['alt'] {
+    return ''
+  }
+
+  protected e28(): ImageProps['width'] {
+    return 320
+  }
+
+  protected e29(): ImageProps['height'] {
+    return 200
+  }
+
+  protected e30(): ImageProps['src'] {
+    return ''
+  }
 }
 
 export const states: ComponentStates = {
@@ -223,6 +258,11 @@ export const states: ComponentStates = {
       expect: { 'data-fit': 'contain', 'data-sized': '' },
     },
     { name: 'a brand mark — small, named and fetched at once', expect: { 'data-sized': '' } },
+    { name: 'a set of files — the browser picks one for the screen', expect: { 'data-sized': '' } },
+    {
+      name: 'the first view’s picture — fetched at once, ahead of the page’s others',
+      expect: { 'data-sized': '' },
+    },
     { name: 'decorative — an empty alt hides it from assistive technology' },
     {
       name: 'contained — the whole picture inside a frame of another ratio',

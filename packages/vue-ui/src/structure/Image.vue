@@ -28,6 +28,11 @@ export interface ImageProps {
    */
   crossOrigin?: 'anonymous' | 'use-credentials'
   /**
+   * How the browser ranks this fetch among the page's others. `high` is for the one picture that
+   * is the first view's largest content, with `loading="eager"`. Absent, the browser decides.
+   */
+  fetchPriority?: 'auto' | 'high' | 'low'
+  /**
    * How the picture sits in a frame whose ratio is not its own: `contain` shows all of it,
    * `cover` fills the frame and crops. Defaults to `contain`, because cropping removes content.
    */
@@ -54,9 +59,21 @@ export interface ImageProps {
     | 'strict-origin-when-cross-origin'
     | 'unsafe-url'
   /**
+   * The element's `sizes`: how wide the picture is drawn, which the browser needs to pick from a
+   * `srcSet` that gives widths. It steers the fetch and sizes nothing; the frame's box still
+   * comes from the props above and its container.
+   */
+  sizes?: string
+  /**
    * The picture's URL. An empty string is the failed state: there is nothing to request.
    */
   src: string
+  /**
+   * Other files of the same picture, in the element's `srcset` form: each a URL with a width
+   * (`640w`) or a density (`2x`). The browser picks one for the screen, and one that does not
+   * read the set requests `src`.
+   */
+  srcSet?: string
   /**
    * The picture's width in CSS pixels, given together with `height`. The two reserve the box
    * before the picture loads and are its natural size; the frame is never wider than its
@@ -71,10 +88,13 @@ const props = withDefaults(defineProps<ImageProps>(), { fit: 'contain', loading:
 const loaded = ref('')
 const failed = ref('')
 const image = useTemplateRef<HTMLElement>('image')
+const request = computed(() =>
+  props.srcSet === undefined ? props.src : props.src + ' ' + props.srcSet,
+)
 const status = computed(() =>
-  props.src === '' || failed.value === props.src
+  props.src === '' || failed.value === request.value
     ? 'failed'
-    : loaded.value === props.src
+    : loaded.value === request.value
       ? 'loaded'
       : 'loading',
 )
@@ -88,17 +108,17 @@ const ratio = computed(() =>
 const sized = computed(() => ratio.value !== undefined)
 const decorative = computed(() => props.alt === '')
 const settle = computed(() => () => {
-  if (failed.value !== props.src) failed.value = ''
+  if (failed.value !== request.value) failed.value = ''
   const element = image.value as HTMLImageElement | null | undefined
   if (element == null || !element.complete) return
-  if (element.naturalWidth > 0) loaded.value = props.src
+  if (element.naturalWidth > 0) loaded.value = request.value
   else element.src = props.src
 })
 const effect1 = () => {
   settle.value()
 }
 onMounted(effect1)
-watch(() => props.src, effect1, { flush: 'post' })
+watch(() => request.value, effect1, { flush: 'post' })
 const effect2 = () => {
   devWarning(
     (props.width === undefined) !== (props.height === undefined),
@@ -145,12 +165,15 @@ watch(() => (props.width === undefined) !== (props.height === undefined), effect
       ref="image"
       :class="styles.image"
       :loading="loading"
+      :fetchpriority="fetchPriority"
       :crossorigin="crossOrigin"
       :referrerpolicy="referrerPolicy"
+      :sizes="sizes"
+      :srcset="srcSet"
       :src="src"
       :alt="alt"
-      @load="loaded = src"
-      @error="failed = src"
+      @load="loaded = request"
+      @error="failed = request"
     />
   </span>
 </template>
