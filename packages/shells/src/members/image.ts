@@ -65,6 +65,13 @@ export default describeMember({
     // Written out where a width is divided, so each framework's compiler sees both are numbers.
     ratio: `aspectRatio !== undefined && aspectRatio > 0 && Number.isFinite(aspectRatio) ? aspectRatio : ${BOXED} ? width / height : undefined`,
     sized: 'ratio !== undefined',
+    // The element's `sizes`, for a set that gives widths: how wide the frame can be, which the
+    // browser needs to pick a file. A boxed frame is `width` pixels and never wider than its
+    // container, which is never wider than the viewport. Any other frame is at most the
+    // viewport's width, which is what the element assumes with no `sizes`. A lazy picture in a
+    // sized frame is laid out before it is requested, so `auto` asks for the frame's own width
+    // where the browser reads it, and the rest is for a browser that does not.
+    sizes: `!(srcSet !== undefined && /\\d+w\\s*(?:,|$)/.test(srcSet)) ? undefined : ${BOXED} ? (loading === 'lazy' ? 'auto, ' : '') + '(max-width: ' + width + 'px) 100vw, ' + width + 'px' : sized && loading === 'lazy' ? 'auto, 100vw' : undefined`,
     decorative: "alt === ''",
     // A picture can settle before its listeners exist: the browser kept it, or the markup came
     // from a server. `complete` with a natural width is a decoded picture. `complete` without
@@ -174,7 +181,6 @@ export default describeMember({
       props: {
         src: HARBOUR,
         srcSet: `${HARBOUR} 320w, ${HARBOUR_DENSE} 640w`,
-        sizes: '320px',
         alt: HARBOUR_ALT,
         width: 320,
         height: 200,

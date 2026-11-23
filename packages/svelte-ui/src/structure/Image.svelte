@@ -58,19 +58,14 @@ export interface ImageProps {
     | 'strict-origin-when-cross-origin'
     | 'unsafe-url'
   /**
-   * The element's `sizes`: how wide the picture is drawn, which the browser needs to pick from a
-   * `srcSet` that gives widths. It steers the fetch and sizes nothing; the frame's box still
-   * comes from the props above and its container.
-   */
-  sizes?: string
-  /**
    * The picture's URL. An empty string is the failed state: there is nothing to request.
    */
   src: string
   /**
    * Other files of the same picture, in the element's `srcset` form: each a URL with a width
    * (`640w`) or a density (`2x`). The browser picks one for the screen, and one that does not
-   * read the set requests `src`.
+   * read the set requests `src`. For a set that gives widths the member writes the element's
+   * `sizes` from the frame's box, so no caller writes a length.
    */
   srcSet?: string
   /**
@@ -92,7 +87,6 @@ let {
   height,
   loading = 'lazy',
   referrerPolicy,
-  sizes,
   src,
   srcSet,
   width,
@@ -113,6 +107,15 @@ const ratio = $derived(
       : undefined,
 )
 const sized = $derived(ratio !== undefined)
+const sizes = $derived(
+  !(srcSet !== undefined && /\d+w\s*(?:,|$)/.test(srcSet))
+    ? undefined
+    : width !== undefined && height !== undefined && width > 0 && height > 0
+      ? (loading === 'lazy' ? 'auto, ' : '') + '(max-width: ' + width + 'px) 100vw, ' + width + 'px'
+      : sized && loading === 'lazy'
+        ? 'auto, 100vw'
+        : undefined,
+)
 const decorative = $derived(alt === '')
 const settle = $derived(() => {
   if (failed !== request) failed = ''

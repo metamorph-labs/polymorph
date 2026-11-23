@@ -156,7 +156,7 @@ const card = renderSystemCard(registry)
  * It also includes the props a public page needs for a reader that runs no
  * script: Accordion's and Collapsible's `keepMounted`, Pagination's
  * `getPageHref`, CursorPagination's `previousHref` and `nextHref`, and Image's
- * `srcSet`, `sizes` and `fetchPriority`. A model not told about `keepMounted`
+ * `srcSet` and `fetchPriority`. A model not told about `keepMounted`
  * leaves an FAQ's answers out of the server's markup, and one not told about
  * `getPageHref` writes a pager a crawler cannot follow past the first page.
  *

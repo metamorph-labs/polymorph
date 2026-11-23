@@ -273,6 +273,18 @@ describe('Pagination', () => {
       )
     })
 
+    it('links no arrow to a page the list does not have', () => {
+      // A `page` past the end: the page before it does not exist either, so previous stays a
+      // button, and no address for a missing page is in the document.
+      pager({ getPageHref, page: 10 })
+      expect(screen.queryByRole('link', { name: 'Previous page' })).toBeNull()
+      expect(screen.getByRole('button', { name: 'Previous page' })).toHaveProperty(
+        'disabled',
+        false,
+      )
+      expect(document.querySelector('a[href="#page-9"]')).toBeNull()
+    })
+
     it('draws no link while the app holds the pager', () => {
       const onPageChange = pager({ getPageHref, disabled: true })
       expect(screen.queryAllByRole('link')).toHaveLength(0)

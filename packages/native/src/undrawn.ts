@@ -301,7 +301,7 @@ export const UNDRAWN: readonly UndrawnProps[] = [
     android: ['Dialog', 'Drawer'],
   },
   {
-    props: ['crossOrigin', 'fetchPriority', 'loading', 'referrerPolicy', 'sizes', 'srcSet'],
+    props: ['crossOrigin', 'fetchPriority', 'loading', 'referrerPolicy', 'srcSet'],
     reason:
       'They steer a browser’s fetch. A request from an app has no origin to cross and carries ' +
       'no referrer, and the view or the app’s loader decides when a picture loads and how it ' +
@@ -437,9 +437,9 @@ export const UNDRAWN: readonly UndrawnProps[] = [
     props: ['keepMounted'],
     reason:
       'It keeps a closed region’s content in the web document, so a page’s server markup ' +
-      'carries it and state inside it survives a close. SwiftUI’s `PMDisclosureRegion` keeps a ' +
-      'closed region’s content laid out at no height, hidden from assistive technology and from ' +
-      'touches, in every case, so the content and its state are kept whatever the prop says.',
+      'carries it and state inside it survives a close. An app screen has no server markup. ' +
+      'SwiftUI’s `PMDisclosureRegion` lays a closed region’s content out at no height, hidden ' +
+      'from assistive technology and from touches, in every case, whatever the prop says.',
     ios: ['Accordion', 'Collapsible'],
   },
   {

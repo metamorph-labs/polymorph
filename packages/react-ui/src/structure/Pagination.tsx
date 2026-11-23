@@ -89,6 +89,9 @@ export function Pagination({
   // The addresses the controls link to. A held pager links to none, because a held control
   // cannot be followed.
   const address = disabled ? undefined : getPageHref
+  // A direction is a link only to a page the list has. A `page` outside the list still draws
+  // its arrows, and an address for a page that does not exist is one a crawler would follow.
+  const exists = (to: number) => to >= 1 && to <= pageCount
 
   // A hold that disables the button with focus moves focus to the root, and
   // gives it back when the hold ends. The controls are named in the order they
@@ -134,7 +137,7 @@ export function Pagination({
       {/* Wraps, because eleven pages means eleven controls: in a narrow
           container the row continues on a second line, with the same `gap`. */}
       <Inline gap={1} align="center" wrap>
-        {address !== undefined && page > 1 ? (
+        {address !== undefined && page > 1 && exists(page - 1) ? (
           <PagerLink
             classes={LINK}
             href={address(page - 1)}
@@ -213,7 +216,7 @@ export function Pagination({
           ),
         )}
 
-        {address !== undefined && page < pageCount ? (
+        {address !== undefined && page < pageCount && exists(page + 1) ? (
           <PagerLink
             classes={LINK}
             href={address(page + 1)}

@@ -15,4 +15,5 @@ without running a script. The region is hidden once its close animation ends. Wi
 React leaves closed content out, as before. The Vue, Svelte, Solid, Angular and elements members
 already keep a closed region's content in the document, `hidden`, so they accept the prop and it
 changes nothing there. The SwiftUI and Compose contracts gain the field, and neither rendering
-draws it: SwiftUI keeps a closed region's content in every case, and Compose leaves it out.
+draws it: SwiftUI lays a closed region's content out at no height in every case, and Compose
+leaves it out.

@@ -359,66 +359,74 @@ export class Pagination {
 
   protected e7() {
     if (!(this.entries.value.length > 0)) return undefined as never
-    return this.linked.value && this.$p.page > 1
+    return this.linked.value && this.$p.page > 1 && this.$p.page - 1 <= this.$p.pageCount
   }
 
   protected e8() {
     if (!(this.entries.value.length > 0)) return undefined as never
-    if (!(this.linked.value && this.$p.page > 1)) return undefined as never
+    if (!(this.linked.value && this.$p.page > 1 && this.$p.page - 1 <= this.$p.pageCount))
+      return undefined as never
     return styles.link
   }
 
   protected e9() {
     if (!(this.entries.value.length > 0)) return undefined as never
-    if (!(this.linked.value && this.$p.page > 1)) return undefined as never
+    if (!(this.linked.value && this.$p.page > 1 && this.$p.page - 1 <= this.$p.pageCount))
+      return undefined as never
     return this.$p.getPageHref?.(this.$p.page - 1)
   }
 
   protected e10() {
     if (!(this.entries.value.length > 0)) return undefined as never
-    if (!(this.linked.value && this.$p.page > 1)) return undefined as never
+    if (!(this.linked.value && this.$p.page > 1 && this.$p.page - 1 <= this.$p.pageCount))
+      return undefined as never
     return this.$p.messages.previous
   }
 
   protected e11() {
     if (!(this.entries.value.length > 0)) return undefined as never
-    if (!(this.linked.value && this.$p.page > 1)) return undefined as never
+    if (!(this.linked.value && this.$p.page > 1 && this.$p.page - 1 <= this.$p.pageCount))
+      return undefined as never
     return ''
   }
 
   protected h3($event: MouseEvent): void {
     if (!(this.entries.value.length > 0)) return
-    if (!(this.linked.value && this.$p.page > 1)) return
+    if (!(this.linked.value && this.$p.page > 1 && this.$p.page - 1 <= this.$p.pageCount)) return
     this.follow.value($event, this.$p.page - 1)
   }
 
   protected e12() {
     if (!(this.entries.value.length > 0)) return undefined as never
-    if (!(this.linked.value && this.$p.page > 1)) return undefined as never
+    if (!(this.linked.value && this.$p.page > 1 && this.$p.page - 1 <= this.$p.pageCount))
+      return undefined as never
     return styles.linkGlyph
   }
 
   protected e13(): ButtonProps['iconOnly'] {
     if (!(this.entries.value.length > 0)) return undefined as never
-    if (this.linked.value && this.$p.page > 1) return undefined as never
+    if (this.linked.value && this.$p.page > 1 && this.$p.page - 1 <= this.$p.pageCount)
+      return undefined as never
     return true
   }
 
   protected e14(): ButtonProps['label'] {
     if (!(this.entries.value.length > 0)) return undefined as never
-    if (this.linked.value && this.$p.page > 1) return undefined as never
+    if (this.linked.value && this.$p.page > 1 && this.$p.page - 1 <= this.$p.pageCount)
+      return undefined as never
     return this.$p.messages.previous
   }
 
   protected e15(): ButtonProps['disabled'] {
     if (!(this.entries.value.length > 0)) return undefined as never
-    if (this.linked.value && this.$p.page > 1) return undefined as never
+    if (this.linked.value && this.$p.page > 1 && this.$p.page - 1 <= this.$p.pageCount)
+      return undefined as never
     return this.$p.disabled || this.$p.page <= 1
   }
 
   protected h4(): void {
     if (!(this.entries.value.length > 0)) return
-    if (this.linked.value && this.$p.page > 1) return
+    if (this.linked.value && this.$p.page > 1 && this.$p.page - 1 <= this.$p.pageCount) return
     this.$.emit(this.onPageChange, 'onPageChange', this.$p.page - 1)
   }
 
@@ -543,66 +551,74 @@ export class Pagination {
 
   protected e32() {
     if (!(this.entries.value.length > 0)) return undefined as never
-    return this.linked.value && this.$p.page < this.$p.pageCount
+    return this.linked.value && this.$p.page < this.$p.pageCount && this.$p.page + 1 >= 1
   }
 
   protected e33() {
     if (!(this.entries.value.length > 0)) return undefined as never
-    if (!(this.linked.value && this.$p.page < this.$p.pageCount)) return undefined as never
+    if (!(this.linked.value && this.$p.page < this.$p.pageCount && this.$p.page + 1 >= 1))
+      return undefined as never
     return styles.link
   }
 
   protected e34() {
     if (!(this.entries.value.length > 0)) return undefined as never
-    if (!(this.linked.value && this.$p.page < this.$p.pageCount)) return undefined as never
+    if (!(this.linked.value && this.$p.page < this.$p.pageCount && this.$p.page + 1 >= 1))
+      return undefined as never
     return this.$p.getPageHref?.(this.$p.page + 1)
   }
 
   protected e35() {
     if (!(this.entries.value.length > 0)) return undefined as never
-    if (!(this.linked.value && this.$p.page < this.$p.pageCount)) return undefined as never
+    if (!(this.linked.value && this.$p.page < this.$p.pageCount && this.$p.page + 1 >= 1))
+      return undefined as never
     return this.$p.messages.next
   }
 
   protected e36() {
     if (!(this.entries.value.length > 0)) return undefined as never
-    if (!(this.linked.value && this.$p.page < this.$p.pageCount)) return undefined as never
+    if (!(this.linked.value && this.$p.page < this.$p.pageCount && this.$p.page + 1 >= 1))
+      return undefined as never
     return ''
   }
 
   protected h7($event: MouseEvent): void {
     if (!(this.entries.value.length > 0)) return
-    if (!(this.linked.value && this.$p.page < this.$p.pageCount)) return
+    if (!(this.linked.value && this.$p.page < this.$p.pageCount && this.$p.page + 1 >= 1)) return
     this.follow.value($event, this.$p.page + 1)
   }
 
   protected e37() {
     if (!(this.entries.value.length > 0)) return undefined as never
-    if (!(this.linked.value && this.$p.page < this.$p.pageCount)) return undefined as never
+    if (!(this.linked.value && this.$p.page < this.$p.pageCount && this.$p.page + 1 >= 1))
+      return undefined as never
     return styles.linkGlyph
   }
 
   protected e38(): ButtonProps['iconOnly'] {
     if (!(this.entries.value.length > 0)) return undefined as never
-    if (this.linked.value && this.$p.page < this.$p.pageCount) return undefined as never
+    if (this.linked.value && this.$p.page < this.$p.pageCount && this.$p.page + 1 >= 1)
+      return undefined as never
     return true
   }
 
   protected e39(): ButtonProps['label'] {
     if (!(this.entries.value.length > 0)) return undefined as never
-    if (this.linked.value && this.$p.page < this.$p.pageCount) return undefined as never
+    if (this.linked.value && this.$p.page < this.$p.pageCount && this.$p.page + 1 >= 1)
+      return undefined as never
     return this.$p.messages.next
   }
 
   protected e40(): ButtonProps['disabled'] {
     if (!(this.entries.value.length > 0)) return undefined as never
-    if (this.linked.value && this.$p.page < this.$p.pageCount) return undefined as never
+    if (this.linked.value && this.$p.page < this.$p.pageCount && this.$p.page + 1 >= 1)
+      return undefined as never
     return this.$p.disabled || this.$p.page >= this.$p.pageCount
   }
 
   protected h8(): void {
     if (!(this.entries.value.length > 0)) return
-    if (this.linked.value && this.$p.page < this.$p.pageCount) return
+    if (this.linked.value && this.$p.page < this.$p.pageCount && this.$p.page + 1 >= 1) return
     this.$.emit(this.onPageChange, 'onPageChange', this.$p.page + 1)
   }
 

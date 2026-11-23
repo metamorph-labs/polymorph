@@ -77,7 +77,6 @@ export const states: ComponentStates = {
         <Image
           src={HARBOUR}
           srcSet={`${HARBOUR} 320w, ${HARBOUR_DENSE} 640w`}
-          sizes="320px"
           alt={HARBOUR_ALT}
           width={320}
           height={200}

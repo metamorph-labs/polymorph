@@ -236,7 +236,7 @@ export default function Pagination(given: PaginationProps): JSX.Element {
             ref={root.attach}
           >
             <Inline gap={1} align="center" wrap={true}>
-              {linked.value && props.page > 1 ? (
+              {linked.value && props.page > 1 && props.page - 1 <= props.pageCount ? (
                 <a
                   class={styles.link}
                   href={props.getPageHref?.(props.page - 1)}
@@ -303,7 +303,7 @@ export default function Pagination(given: PaginationProps): JSX.Element {
                   </>
                 )}
               </Each>
-              {linked.value && props.page < props.pageCount ? (
+              {linked.value && props.page < props.pageCount && props.page + 1 >= 1 ? (
                 <a
                   class={styles.link}
                   href={props.getPageHref?.(props.page + 1)}

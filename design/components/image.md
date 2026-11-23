@@ -25,7 +25,6 @@ is not an attachment preview. A member that needs one of those composes this one
 interface ImageProps {
   src: string // the picture's URL; an empty string is the failed state
   srcSet?: string // other files of the same picture, each with a width (`640w`) or a density (`2x`)
-  sizes?: string // how wide the picture is drawn, for a `srcSet` that gives widths
   alt: string // the accessible name; an empty string declares the picture decorative
   width?: number // the picture's width in CSS pixels, given together with `height`
   height?: number // the picture's height in CSS pixels
@@ -53,10 +52,10 @@ none), `data-fit="contain|cover"`, and `data-sized` while the props give the fra
 only one who knows which. A non-empty `alt` is the picture's accessible name. An empty `alt`
 declares the picture decorative and hides it from assistive technology.
 
-**No prop sizes the frame with a CSS length.** `width` and `height` are the picture's own pixel
-size, as the element's attributes of the same names are, and they are numbers. Application code
-writes no lengths, so the frame's bounds come from its container and from the picture. `sizes`
-holds lengths and sizes nothing: it is the element's own hint for choosing a file (see below).
+**No prop takes a CSS length.** `width` and `height` are the picture's own pixel size, as the
+element's attributes of the same names are, and they are numbers. Application code writes no
+lengths, so the frame's bounds come from its container and from the picture. The element's
+`sizes` holds lengths, so it is not a prop: the member writes it (see `srcSet`).
 
 **The box.** What the props say decides what the frame holds before the picture arrives:
 
@@ -78,13 +77,27 @@ that. The picture is never stretched.
 **`loading`** defaults to `lazy`: the browser fetches the picture when the reader nears it.
 `eager` is for a picture known to be in the first view, such as a brand mark.
 
-**`srcSet` and `sizes`** are the element's `srcset` and `sizes`, passed unchanged. `srcSet`
-lists other files of the same picture, each with a width (`640w`) or a density (`2x`), and the
-browser requests the one that suits the screen, so a phone does not download a desktop's file.
-A set that gives widths needs `sizes`, which says how wide the picture is drawn; without it the
-browser assumes the full width of the viewport. `sizes` changes which file is requested and
-never the frame's box. `src` stays required: it is what a reader that does not pick from the set
-requests, and an empty `src` is the failed state with or without a set.
+**`srcSet`** is the element's `srcset`, passed unchanged. It lists other files of the same
+picture, each with a width (`640w`) or a density (`2x`), and the browser requests the one that
+suits the screen, so a phone does not download a desktop's file. `src` stays required: it is what
+a reader that does not pick from the set requests, and an empty `src` is the failed state with or
+without a set.
+
+**The member writes `sizes`.** A set that gives widths needs the element's `sizes`, which says
+how wide the picture is drawn. The red rules refuse a length in application code, and the member
+already knows the frame's box, so it writes the attribute:
+
+| The frame | `sizes` |
+| --- | --- |
+| `width` and `height` given | `(max-width: <width>px) 100vw, <width>px`: the frame is `width` pixels and never wider than its container |
+| `aspectRatio` alone | none, so the element assumes the viewport's width, which the container never exceeds |
+| either of the two, with `loading="lazy"` | the same after `auto`, or `auto, 100vw` for `aspectRatio` alone: a lazy picture is laid out before it is requested, so a browser that reads `auto` asks for the frame's own width |
+| no box | none |
+
+The value is never narrower than the frame, so the browser never requests a file too small for
+it. It can be wider, where a container is narrower than the viewport and the browser does not
+read `auto`. `sizes` changes which file is requested and never the frame's box. A set that gives
+densities needs no `sizes`, and the element carries none.
 
 **`fetchPriority`** is the element's `fetchpriority`. `high` is for the one picture that is the
 largest content of the first view, together with `loading="eager"`, so the browser requests it
@@ -126,7 +139,7 @@ so the member makes the request again and hears its `load` or `error`.
 | a picture at its own size | `width` and `height` | `data-fit="contain"`, `data-sized` |
 | a brand mark | a small mark, `loading="eager"` | named by `alt` |
 | a set of files | `srcSet` by density | the element carries `srcset` |
-| the first view's picture | `srcSet` by width with `sizes`, `loading="eager"`, `fetchPriority="high"` | the element carries `sizes` and `fetchpriority="high"` |
+| the first view's picture | `srcSet` by width, `loading="eager"`, `fetchPriority="high"` | the element carries `sizes` and `fetchpriority="high"` |
 | decorative | `alt=""` | the image has no role and no name |
 | contained | `aspectRatio` over `width` and `height` | the whole picture inside a square frame |
 | cover | the same frame with `fit="cover"` | `data-fit="cover"` |
@@ -164,9 +177,9 @@ points and in dp, and a picture with no size given is drawn one point or dp to a
 placeholder is the `bg.subtle` fill without the sweep, as the platforms' own image views draw a
 still placeholder.
 
-`loading`, `fetchPriority`, `crossOrigin`, `referrerPolicy`, `srcSet` and `sizes` are not
-honoured. A picture is requested when its view is drawn, a request from an app has no origin to
-cross, and it carries no referrer. The view requests the `src` and picks no file from a set.
+`loading`, `fetchPriority`, `crossOrigin`, `referrerPolicy` and `srcSet` are not honoured. A
+picture is requested when its view is drawn, a request from an app has no origin to cross, and it
+carries no referrer. The view requests the `src` and picks no file from a set.
 
 **On Android** the image gateway fades the picture in over the control duration, as it does for
 Avatar. A Compose `Painter` reports a picture's size and nothing about a failure, so a URL that

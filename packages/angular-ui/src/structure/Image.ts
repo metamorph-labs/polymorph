@@ -69,19 +69,14 @@ export interface ImageProps {
     | 'strict-origin-when-cross-origin'
     | 'unsafe-url'
   /**
-   * The element's `sizes`: how wide the picture is drawn, which the browser needs to pick from a
-   * `srcSet` that gives widths. It steers the fetch and sizes nothing; the frame's box still
-   * comes from the props above and its container.
-   */
-  sizes?: string
-  /**
    * The picture's URL. An empty string is the failed state: there is nothing to request.
    */
   src: string
   /**
    * Other files of the same picture, in the element's `srcset` form: each a URL with a width
    * (`640w`) or a density (`2x`). The browser picks one for the screen, and one that does not
-   * read the set requests `src`.
+   * read the set requests `src`. For a set that gives widths the member writes the element's
+   * `sizes` from the frame's box, so no caller writes a length.
    */
   srcSet?: string
   /**
@@ -184,19 +179,14 @@ export class Image {
    */
   readonly referrerPolicy = input<ImageProps['referrerPolicy']>(undefined)
   /**
-   * The element's `sizes`: how wide the picture is drawn, which the browser needs to pick from a
-   * `srcSet` that gives widths. It steers the fetch and sizes nothing; the frame's box still
-   * comes from the props above and its container.
-   */
-  readonly sizes = input<ImageProps['sizes']>(undefined)
-  /**
    * The picture's URL. An empty string is the failed state: there is nothing to request.
    */
   readonly src = input.required<ImageProps['src']>()
   /**
    * Other files of the same picture, in the element's `srcset` form: each a URL with a width
    * (`640w`) or a density (`2x`). The browser picks one for the screen, and one that does not
-   * read the set requests `src`.
+   * read the set requests `src`. For a set that gives widths the member writes the element's
+   * `sizes` from the frame's box, so no caller writes a length.
    */
   readonly srcSet = input<ImageProps['srcSet']>(undefined)
   /**
@@ -216,7 +206,6 @@ export class Image {
       height: () => this.height(),
       loading: () => this.loading(),
       referrerPolicy: () => this.referrerPolicy(),
-      sizes: () => this.sizes(),
       src: () => this.src(),
       srcSet: () => this.srcSet(),
       width: () => this.width(),
@@ -249,6 +238,23 @@ export class Image {
         : undefined,
   )
   protected readonly sized = derived(() => this.ratio.value !== undefined)
+  protected readonly sizes = derived(() =>
+    !(this.$p.srcSet !== undefined && /\d+w\s*(?:,|$)/.test(this.$p.srcSet))
+      ? undefined
+      : this.$p.width !== undefined &&
+          this.$p.height !== undefined &&
+          this.$p.width > 0 &&
+          this.$p.height > 0
+        ? (this.$p.loading === 'lazy' ? 'auto, ' : '') +
+          '(max-width: ' +
+          this.$p.width +
+          'px) 100vw, ' +
+          this.$p.width +
+          'px'
+        : this.sized.value && this.$p.loading === 'lazy'
+          ? 'auto, 100vw'
+          : undefined,
+  )
   protected readonly decorative = derived(() => this.$p.alt === '')
   protected readonly settle = derived(() => () => {
     if (this.failed.value !== this.request.value) this.failed.value = ''
@@ -360,7 +366,7 @@ export class Image {
 
   protected e19() {
     if (this.status.value === 'failed') return undefined as never
-    return this.$p.sizes
+    return this.sizes.value
   }
 
   protected e20() {

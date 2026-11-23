@@ -1545,7 +1545,6 @@ export const DEFINITIONS: Readonly<Record<string, ElementDefinition>> = {
       height: 'number',
       loading: 'string',
       referrerPolicy: 'string',
-      sizes: 'string',
       src: 'string',
       srcSet: 'string',
       width: 'number',

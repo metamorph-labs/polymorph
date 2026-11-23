@@ -215,7 +215,7 @@ onDestroy(() => release3?.())
       onfocusin={(event) => { focusIn(event) }}
       onfocusout={(event) => { focusOut(event) }}
       ><Inline gap={1} align="center" wrap={true}
-        >{#if linked && page > 1
+        >{#if linked && page > 1 && page - 1 <= pageCount
           }<a
             class={styles.link}
             href={getPageHref?.(page - 1)}
@@ -264,7 +264,7 @@ onDestroy(() => release3?.())
               onClick={() => { if (entry !== page) onPageChange?.(entry) }}
           />{/if
         }{/each
-        }{#if linked && page < pageCount
+        }{#if linked && page < pageCount && page + 1 >= 1
           }<a
             class={styles.link}
             href={getPageHref?.(page + 1)}

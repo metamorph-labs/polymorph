@@ -206,7 +206,7 @@ onBeforeUnmount(() => release3?.())
     <Inline :gap="1" align="center" :wrap="true">
       <!-- link -->
       <a
-        v-if="linked && page > 1"
+        v-if="linked && page > 1 && page - 1 <= pageCount"
         :class="styles.link"
         :href="getPageHref?.(page - 1)"
         :aria-label="messages.previous"
@@ -269,7 +269,7 @@ onBeforeUnmount(() => release3?.())
       </template>
       <!-- link -->
       <a
-        v-if="linked && page < pageCount"
+        v-if="linked && page < pageCount && page + 1 >= 1"
         :class="styles.link"
         :href="getPageHref?.(page + 1)"
         :aria-label="messages.next"

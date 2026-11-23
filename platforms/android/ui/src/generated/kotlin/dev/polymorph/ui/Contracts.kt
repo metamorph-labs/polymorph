@@ -2817,18 +2817,13 @@ data class PMImageProps(
     val loading: PMImageLoading? = null,
     /** The element's referrer policy. Absent, the page's own policy applies. */
     val referrerPolicy: PMImageReferrerPolicy? = null,
-    /**
-     * The element's `sizes`: how wide the picture is drawn, which the browser needs to pick from a
-     * `srcSet` that gives widths. It steers the fetch and sizes nothing; the frame's box still
-     * comes from the props above and its container.
-     */
-    val sizes: String? = null,
     /** The picture's URL. An empty string is the failed state: there is nothing to request. */
     val src: String,
     /**
      * Other files of the same picture, in the element's `srcset` form: each a URL with a width
      * (`640w`) or a density (`2x`). The browser picks one for the screen, and one that does not
-     * read the set requests `src`.
+     * read the set requests `src`. For a set that gives widths the member writes the element's
+     * `sizes` from the frame's box, so no caller writes a length.
      */
     val srcSet: String? = null,
     /**

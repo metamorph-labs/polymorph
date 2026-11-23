@@ -370,7 +370,7 @@ describe('the element’s own attributes', () => {
     expect(element.referrerPolicy).toBe('no-referrer')
   })
 
-  it('passes `srcSet`, `sizes` and `fetchPriority` through, and writes none when absent', async () => {
+  it('passes `srcSet` and `fetchPriority` through, and writes neither when absent', async () => {
     const plain = render(<Image src={picture()} alt="A harbour" />)
     const bare = plain.container.querySelector('img')!
     expect(bare.hasAttribute('srcset')).toBe(false)
@@ -382,7 +382,6 @@ describe('the element’s own attributes', () => {
       <Image
         src={picture()}
         srcSet={`${wide} 320w`}
-        sizes="320px"
         alt="A harbour"
         width={320}
         height={200}
@@ -392,21 +391,47 @@ describe('the element’s own attributes', () => {
     )
     const element = set.container.querySelector('img')!
     expect(element.getAttribute('srcset')).toBe(`${wide} 320w`)
-    expect(element.getAttribute('sizes')).toBe('320px')
     expect(element.getAttribute('fetchpriority')).toBe('high')
 
     // The browser reads the set: the file it drew is the set's, not the `src`.
     await loaded(frameIn(set.container))
     expect(element.currentSrc).toBe(wide)
   })
+})
 
-  it('writes the set before the `src`, so the first request is the one the set names', () => {
-    const { container } = render(
-      <Image src={picture()} srcSet={`${picture()} 1x`} sizes="320px" alt="A harbour" />,
+describe('the `sizes` the member writes for a set that gives widths', () => {
+  const sizesOf = (props: Partial<ImageProps>) =>
+    render(<Image src={picture()} alt="A harbour" {...props} />)
+      .container.querySelector('img')!
+      .getAttribute('sizes')
+
+  it('is the frame’s width and never more than the viewport’s, for a boxed frame', () => {
+    const set = `${picture()} 320w, ${picture()} 640w`
+    expect(sizesOf({ srcSet: set, width: 320, height: 200, loading: 'eager' })).toBe(
+      '(max-width: 320px) 100vw, 320px',
     )
-    const names = container.querySelector('img')!.getAttributeNames()
-    expect(names.indexOf('srcset')).toBeLessThan(names.indexOf('src'))
-    expect(names.indexOf('sizes')).toBeLessThan(names.indexOf('srcset'))
+  })
+
+  it('asks for the frame’s own width first when the picture is lazy', () => {
+    const set = `${picture()} 320w, ${picture()} 640w`
+    expect(sizesOf({ srcSet: set, width: 320, height: 200 })).toBe(
+      'auto, (max-width: 320px) 100vw, 320px',
+    )
+    expect(sizesOf({ srcSet: set, aspectRatio: 1.6 })).toBe('auto, 100vw')
+  })
+
+  it('is absent where the element’s own assumption is right, or nothing is known', () => {
+    const set = `${picture()} 320w, ${picture()} 640w`
+    // A frame as wide as its container, fetched at once: at most the viewport's width.
+    expect(sizesOf({ srcSet: set, aspectRatio: 1.6, loading: 'eager' })).toBeNull()
+    // No box: the picture's own size is not known before it is requested.
+    expect(sizesOf({ srcSet: set })).toBeNull()
+  })
+
+  it('is absent for a set that gives densities, which needs none', () => {
+    expect(
+      sizesOf({ srcSet: `${picture()} 1x, ${picture()} 2x`, width: 320, height: 200 }),
+    ).toBeNull()
   })
 })
 

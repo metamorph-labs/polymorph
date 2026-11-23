@@ -4186,15 +4186,12 @@ public struct PMImageProps {
   public var loading: PMImageLoading?
   /// The element's referrer policy. Absent, the page's own policy applies.
   public var referrerPolicy: PMImageReferrerPolicy?
-  /// The element's `sizes`: how wide the picture is drawn, which the browser needs to pick from a
-  /// `srcSet` that gives widths. It steers the fetch and sizes nothing; the frame's box still comes
-  /// from the props above and its container.
-  public var sizes: String?
   /// The picture's URL. An empty string is the failed state: there is nothing to request.
   public var src: String
   /// Other files of the same picture, in the element's `srcset` form: each a URL with a width
   /// (`640w`) or a density (`2x`). The browser picks one for the screen, and one that does not read
-  /// the set requests `src`.
+  /// the set requests `src`. For a set that gives widths the member writes the element's `sizes`
+  /// from the frame's box, so no caller writes a length.
   public var srcSet: String?
   /// The picture's width in CSS pixels, given together with `height`. The two reserve the box
   /// before the picture loads and are its natural size; the frame is never wider than its
@@ -4210,7 +4207,6 @@ public struct PMImageProps {
     height: Double? = nil,
     loading: PMImageLoading? = nil,
     referrerPolicy: PMImageReferrerPolicy? = nil,
-    sizes: String? = nil,
     src: String,
     srcSet: String? = nil,
     width: Double? = nil
@@ -4223,7 +4219,6 @@ public struct PMImageProps {
     self.height = height
     self.loading = loading
     self.referrerPolicy = referrerPolicy
-    self.sizes = sizes
     self.src = src
     self.srcSet = srcSet
     self.width = width

@@ -252,8 +252,12 @@ describe('keepMounted', () => {
     await userEvent.click(screen.getByLabelText('Note'))
     await userEvent.keyboard('half-written note')
 
+    // The row is opened again only once its region is hidden. While the close keyframes run,
+    // Radix keeps the content mounted with or without `keepMounted`, so a reopen in that window
+    // would keep the draft either way.
     await userEvent.click(trigger)
-    await vi.waitFor(() => expect(trigger.getAttribute('aria-expanded')).toBe('false'))
+    const kept = document.querySelector<HTMLElement>('[data-accordion-part="region"]')!
+    await vi.waitFor(() => expect(kept.hidden).toBe(true), { timeout: 3_000 })
     await userEvent.click(trigger)
     expect((screen.getByLabelText('Note') as HTMLInputElement).value).toBe('half-written note')
   })

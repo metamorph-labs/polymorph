@@ -204,7 +204,9 @@ export default describeMember({
     controls: "['previous', ...entries.filter((shown) => shown !== PAGINATION_ELLIPSIS), 'next']",
     ...PAGER_FOCUS.derived,
     // The addresses the controls link to (`pagerLink`). A held pager links to none, because a
-    // held control cannot be followed.
+    // held control cannot be followed. A direction is a link only to a page the list has: a
+    // `page` outside the list still draws its arrows, and an address for a page that does not
+    // exist is one a crawler would follow.
     linked: '!disabled && getPageHref !== undefined',
     navigatesHere: NAVIGATES_HERE,
     // A click the browser would follow in this tab asks for the page in place of the navigation,
@@ -256,7 +258,7 @@ export default describeMember({
             slots: {
               default: [
                 cond(
-                  'linked && page > 1',
+                  'linked && page > 1 && page - 1 <= pageCount',
                   [
                     pagerLink(
                       'getPageHref?.(page - 1)',
@@ -347,7 +349,7 @@ export default describeMember({
                   'at',
                 ),
                 cond(
-                  'linked && page < pageCount',
+                  'linked && page < pageCount && page + 1 >= 1',
                   [
                     pagerLink(
                       'getPageHref?.(page + 1)',

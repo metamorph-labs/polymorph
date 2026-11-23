@@ -33,16 +33,11 @@ export interface ImageProps {
   /**
    * Other files of the same picture, in the element's `srcset` form: each a URL
    * with a width (`640w`) or a density (`2x`). The browser picks one for the
-   * screen, and one that does not read the set requests `src`.
+   * screen, and one that does not read the set requests `src`. For a set that
+   * gives widths the member writes the element's `sizes` from the frame's box,
+   * so no caller writes a length.
    */
   srcSet?: string
-  /**
-   * The element's `sizes`: how wide the picture is drawn, which the browser
-   * needs to pick from a `srcSet` that gives widths. It steers the fetch and
-   * sizes nothing; the frame's box still comes from the props above and its
-   * container.
-   */
-  sizes?: string
   /**
    * The accessible name. An empty string declares the picture decorative and
    * hides it from assistive technology. Required, because only the caller knows
@@ -97,7 +92,6 @@ export interface ImageProps {
 export function Image({
   src,
   srcSet,
-  sizes,
   alt,
   width,
   height,
@@ -139,6 +133,23 @@ export function Image({
         : undefined
   const sized = ratio !== undefined
   const decorative = alt === ''
+
+  // The element's `sizes`, for a set that gives widths: how wide the frame can
+  // be, which the browser needs to pick a file. A boxed frame is `width`
+  // pixels and never wider than its container, which is never wider than the
+  // viewport. Any other frame is at most the viewport's width, which is what
+  // the element assumes with no `sizes`. A lazy picture in a sized frame is
+  // laid out before it is requested, so `auto` asks for the frame's own width
+  // where the browser reads it, and the rest is for a browser that does not.
+  const widths = srcSet !== undefined && /\d+w\s*(?:,|$)/.test(srcSet)
+  const lazy = loading === 'lazy'
+  const sizes = !widths
+    ? undefined
+    : boxed
+      ? `${lazy ? 'auto, ' : ''}(max-width: ${width}px) 100vw, ${width}px`
+      : sized && lazy
+        ? 'auto, 100vw'
+        : undefined
 
   useDevWarning(
     (width === undefined) !== (height === undefined),
@@ -183,9 +194,9 @@ export function Image({
           <Icon name="error" />
         </span>
       ) : (
-        // Everything that steers the fetch comes before `src`: the browser reads
-        // it when the request starts, and React sets attributes in this order.
-        // `sizes` comes before `srcSet`, which is read with it.
+        // Everything that steers the fetch is on the element before `src`,
+        // because the browser reads it when the request starts. React writes an
+        // image's `srcSet` and `src` after its other attributes, in that order.
         <img
           ref={image}
           className={styles.image}

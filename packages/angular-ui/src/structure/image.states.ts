@@ -44,7 +44,6 @@ alt="A harbour at dusk"
 @case (3) {<pm-image
 src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E"
 srcSet="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22320%22%20height%3D%22200%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E 320w, data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22640%22%20height%3D%22400%22%20viewBox%3D%220%200%20320%20200%22%3E%3Crect%20width%3D%22320%22%20height%3D%22200%22%20fill%3D%22%232f4a6b%22%2F%3E%3Ccircle%20cx%3D%22236%22%20cy%3D%2272%22%20r%3D%2228%22%20fill%3D%22%23f2c879%22%2F%3E%3Cpath%20d%3D%22M0%20200V140L80%2096l70%2054%2064-40%20106%2058v32z%22%20fill%3D%22%231c2f47%22%2F%3E%3C%2Fsvg%3E 640w"
-sizes="320px"
 alt="A harbour at dusk"
 [width]="e7()"
 [height]="e8()"

@@ -20,7 +20,6 @@ export const definition: ElementDefinition = {
     height: 'number',
     loading: 'string',
     referrerPolicy: 'string',
-    sizes: 'string',
     src: 'string',
     srcSet: 'string',
     width: 'number',
@@ -40,7 +39,6 @@ export type PolyImageElement = MemberElement<
   | 'height'
   | 'loading'
   | 'referrerPolicy'
-  | 'sizes'
   | 'src'
   | 'srcSet'
   | 'width'
