@@ -83,8 +83,9 @@ describe('a server renders a screen', () => {
     const Broken = () => {
       throw new Error('The member broke')
     }
-    const view = () =>
+    const view = (fallback?: string) =>
       createElement(ScreenView, {
+        fallback,
         document: {
           spec: 'polymorph-screen/1',
           name: 'Broken',
@@ -105,6 +106,13 @@ describe('a server renders a screen', () => {
       const html = renderToString(createElement('main', null, view()))
       expect(html.startsWith('<main><!--$!-->')).toBe(true)
       expect(html.endsWith('<!--/$--></main>')).toBe(true)
+      expect(html).not.toContain('Kept')
+    })
+
+    it('writes the host’s fallback in the screen’s place when it gives one', () => {
+      const html = renderToString(createElement('main', null, view('Loading the screen')))
+      expect(html.startsWith('<main><!--$!-->')).toBe(true)
+      expect(html).toContain('Loading the screen')
       expect(html).not.toContain('Kept')
     })
 

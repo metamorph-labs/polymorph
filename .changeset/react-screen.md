@@ -38,7 +38,8 @@ import { ScreenView } from '@polymorph/react/screen'
   A callback bound where a member asks a question (a row's key, a page's label) is answered by
   that prop's type and never told, and one bound where no function is taken is a fault.
 - A screen renders on a server with no handler run. A member that throws there leaves the
-  screen's place empty for the browser to draw, and the page around it is still served.
+  screen's place for the browser to draw, empty or holding `fallback` when the host gives one, and
+  the page around it is still served.
 - The screen is drawn inside one Suspense boundary: a member that is not lazy and suspends in the
   browser (one that waits on data with `use`) shows `fallback` in place of the whole screen, nothing
   when you give none, and a Suspense boundary of your own above `ScreenView` does not see it. A lazy
