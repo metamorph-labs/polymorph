@@ -616,6 +616,23 @@ describe('what cannot be drawn is drawn as nothing, and told', () => {
     errors.mockRestore()
   })
 
+  it('draws a document that holds something other than props where props go', () => {
+    const page = doc({
+      component: 'Stack',
+      children: [
+        { component: 'Link', props: 'not props', children: ['Odd'] },
+        { component: 'Text', children: ['Still here'] },
+      ],
+    })
+    for (const streaming of [true, false]) {
+      const { container } = render(
+        <ScreenView document={page} streaming={streaming} members={members} />,
+      )
+      expect(container.textContent).toContain('Still here')
+      cleanup()
+    }
+  })
+
   it('passes no address a screen may not hold', () => {
     const told = host()
     const { container } = render(

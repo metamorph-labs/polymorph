@@ -198,8 +198,13 @@ function waits(node: ScreenNode): boolean {
       .map((prop) => prop.name)
     REQUIRED.set(node.component, required)
   }
-  const written = node.element.props ?? {}
-  return required.some((name) => !(name in node.props) && !(name in written))
+  // A document still being written may hold anything where an element's props go.
+  const written: unknown = node.element.props
+  const wrote = (name: string) =>
+    typeof written === 'object' &&
+    written !== null &&
+    Object.prototype.hasOwnProperty.call(written, name)
+  return required.some((name) => !(name in node.props) && !wrote(name))
 }
 
 /** What a member is given: each prop the walk resolved, and its children. */
