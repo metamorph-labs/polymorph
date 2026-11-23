@@ -68,6 +68,10 @@ on its server with the same functions the members use.
 | `link` | `href` |
 | `annotation` | `id` |
 
+A heading's text and text marked `code` carry no `bold`, `italic` or `strike`: a heading is
+already emphasis, and code is drawn as written. A reader drops those marks there, so the field, the
+reader and a server agree on what a document holds.
+
 The types name no editor. A stored document does not change when the library under the field does.
 
 ### Reading a document
@@ -87,7 +91,7 @@ sent refuses a document whose faults are not empty, or stores `value`.
 | Fault | What the reader did |
 | --- | --- |
 | `unreadable` | the input is not a document: the result is the empty document |
-| `newer-format` | the format is later than this reader's: it is read as far as it can be |
+| `newer-format` | the format is later than this reader's: it is read as far as it can be, for drawing only |
 | `unknown-node` | kept where it is, and drawn as the readable text found in it |
 | `unknown-mark` | kept, and it draws nothing |
 | `malformed` | a known node with a missing or mistyped field: repaired where the repair is certain, dropped otherwise |
@@ -129,7 +133,11 @@ keeps what it does not know and draws its text, and writes it back unchanged.
 When the version does change, `parseRichText` upgrades an older document one version at a time
 before it reads it, and `migrateRichText` does the same for an application that upgrades stored
 documents in bulk. A reader given a later format than its own reads what it can and reports
-`newer-format`.
+`newer-format`. What it read is for drawing and is never stored: an older reader would write its
+partial reading over the document. So `isRichTextNewer` says whether a document is of a later
+format, `serializeRichText`, `normalizeRichText`, `restrictRichText` and the annotation functions
+return such a document unchanged, the field opens it read-only, and a server refuses to change one
+it cannot read.
 
 ## Showing a document
 
@@ -194,9 +202,12 @@ A document given to the field is restricted to those formats, and so is what a p
 - Keys: Mod+B, Mod+I, Mod+Shift+X (strikethrough), Mod+E (code), Mod+K (link), Mod+Z and
   Mod+Shift+Z, Shift+Enter for a line break, Mod+Enter to submit, Alt+F10 to reach the toolbar.
   Mod is Command on a Mac and Control elsewhere.
-- Typing `# `, `- `, `1. `, `> ` or three backticks at the start of a line starts that block.
+- Typing `# `, `- `, `1. ` or `> ` at the start of a line starts that block. Three backticks, an
+  optional language name (`ts`, `c++`) and a space or Enter start a code block in that language.
 - Paste keeps the formats the field allows and drops everything else: styles, scripts, images and
-  unsafe links. Mod+Shift+V pastes plain text.
+  unsafe links. It reads bold, italic and strikethrough that another application wrote as styles,
+  a table as one paragraph for each row, and a word processor's lists as lists. Mod+Shift+V pastes
+  plain text.
 - A link is added and edited in a small form. A target that may not be followed is refused there.
 
 ### Entities
@@ -363,7 +374,8 @@ no library, so it can be added without changing a document or a caller.
 - **Permissions and notifications.** `richTextEntities` lists who and what a document names, on
   the server, from the stored value.
 - **Validation.** A server reads what a client sent with `parseRichText`, restricts it with
-  `restrictRichText`, and checks `richTextLength` against its own limit. A client can send any
+  `restrictRichText`, and checks `richTextLength` against its own limit. It refuses a document for
+  which `isRichTextNewer` is true, because it cannot check what it cannot read. A client can send any
   JSON, so the server also checks each entity: that its `id` names something the author may
   mention, and that its `label` is the name the server knows for it. The field keeps a pasted
   entity only when it was copied from a field on the same page, and a mention copied from anywhere
