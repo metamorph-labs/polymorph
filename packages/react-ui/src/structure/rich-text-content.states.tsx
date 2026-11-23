@@ -1,4 +1,7 @@
+'use client'
+
 import { type ComponentStates, RICH_TEXT_FORMAT, type RichTextDocument } from '@polymorph/react'
+import { Button } from '../controls/Button'
 import { Link } from '../controls/Link'
 import { RichTextContent } from './RichTextContent'
 
@@ -205,6 +208,93 @@ export const LATER = {
 
 export const EMPTY: RichTextDocument = { format: RICH_TEXT_FORMAT, blocks: [] }
 
+const thread = (id: string) => ({ type: 'annotation' as const, id })
+
+/** Two comment threads on one paragraph, as the field's fixture has them. */
+export const ANNOTATED: RichTextDocument = {
+  format: RICH_TEXT_FORMAT,
+  blocks: [
+    {
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'The retry policy ' },
+        { type: 'text', text: 'doubles the wait', marks: [thread('thread-1')] },
+        { type: 'text', text: ' after each failure, ' },
+        { type: 'text', text: 'up to five times', marks: [thread('thread-2')] },
+        { type: 'text', text: '.' },
+      ],
+    },
+  ],
+}
+
+/** A thread on a phrase, and a second thread on words inside it, which nests inside the first. */
+export const OVERLAPPING: RichTextDocument = {
+  format: RICH_TEXT_FORMAT,
+  blocks: [
+    {
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'Each retry waits ' },
+        { type: 'text', text: 'twice ', marks: [thread('thread-1')] },
+        {
+          type: 'text',
+          text: 'as long',
+          marks: [{ type: 'bold' }, thread('thread-1'), thread('thread-2')],
+        },
+        { type: 'text', text: ' as the last one', marks: [thread('thread-1')] },
+        { type: 'text', text: ', up to five times.' },
+      ],
+    },
+  ],
+}
+
+/** A mention inside a thread: the entity carries the annotation as the text around it does. */
+export const ANNOTATED_ENTITY: RichTextDocument = {
+  format: RICH_TEXT_FORMAT,
+  blocks: [
+    {
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'Ask ' },
+        {
+          type: 'entity',
+          kind: 'user',
+          id: 'u_ada',
+          label: '@Ada Lovelace',
+          marks: [thread('thread-3')],
+        },
+        { type: 'text', text: ' to review the fix', marks: [thread('thread-3')] },
+        { type: 'text', text: ' before Friday.' },
+      ],
+    },
+  ],
+}
+
+/**
+ * Selects `words` in the content once it is drawn, so the selection bar shows.
+ * The member is drawn inside a box whose ref this is, because the member
+ * takes no ref.
+ */
+function selectOnMount(words: string) {
+  return (element: HTMLDivElement | null) => {
+    const view = element?.ownerDocument.defaultView
+    if (element === null || view === null || view === undefined) return
+    view.setTimeout(() => {
+      const walker = element.ownerDocument.createTreeWalker(element, view.NodeFilter.SHOW_TEXT)
+      for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+        const at = node.textContent?.indexOf(words) ?? -1
+        if (at === -1) continue
+        element.ownerDocument.getSelection()?.setBaseAndExtent(node, at, node, at + words.length)
+        return
+      }
+    }, 0)
+  }
+}
+
+const SELECT_THE_WAIT = selectOnMount('doubles the wait')
+
+const noop = () => {}
+
 export const states: ComponentStates = {
   component: 'RichTextContent',
 
@@ -258,12 +348,58 @@ export const states: ComponentStates = {
       render: () => <RichTextContent value={EMPTY} />,
       expect: { 'data-empty': '' },
     },
+    {
+      name: 'annotated — two comment threads, one active',
+      render: () => (
+        <RichTextContent
+          value={ANNOTATED}
+          annotations={['thread-1', 'thread-2']}
+          activeAnnotation="thread-2"
+          onAnnotationSelect={noop}
+        />
+      ),
+    },
+    {
+      name: 'overlapping annotations — a thread inside another, nested as the editor nests them',
+      render: () => (
+        <RichTextContent
+          value={OVERLAPPING}
+          activeAnnotation="thread-2"
+          onAnnotationSelect={noop}
+        />
+      ),
+    },
+    {
+      name: 'an annotated entity — a mention inside a thread, ringed with its wash',
+      render: () => <RichTextContent value={ANNOTATED_ENTITY} />,
+    },
+    {
+      // Words are selected once the member is drawn, because the bar is drawn at a selection.
+      name: 'the selection bar — a comment at the selected words',
+      render: () => (
+        <div ref={SELECT_THE_WAIT}>
+          <RichTextContent
+            value={ANNOTATED}
+            selectionActions={() => (
+              <Button
+                variant="ghost"
+                tone="neutral"
+                size="sm"
+                icon="comment"
+                label="Comment"
+                onClick={noop}
+              />
+            )}
+          />
+        </div>
+      ),
+    },
   ],
 
   /*
-   * Every state is a prop. Hover and focus belong to Link for links and to
-   * CodeBlock and Button for the copy control, and each is tested in its own
-   * fixture.
+   * A highlight's focus ring comes from the keyboard. Every other state is a
+   * prop. Hover and focus belong to Link for links and to CodeBlock and Button
+   * for the copy control, and each is tested in its own fixture.
    */
-  requiredSelectors: [],
+  requiredSelectors: [':focus-visible'],
 }

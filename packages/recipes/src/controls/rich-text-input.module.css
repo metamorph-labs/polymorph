@@ -8,11 +8,12 @@
  *
  * The surface's content is drawn by the classes RichTextContent draws the same
  * nodes with, composed and not restated, so a document looks the same while it
- * is written and after it is saved: the block spacing, lists, quotes and the
- * entity token are RichTextContent's, a paragraph is Text, a code block is
- * CodeBlock, inline code is Code and a link is Link. Two recipes key a size
- * on an attribute the editor does not write (Text's `data-size`, Heading's
- * `data-level`), so their base class is composed and the step is stated here,
+ * is written and after it is saved: the block spacing, lists, quotes, the
+ * entity token and the annotation are RichTextContent's, a paragraph is Text,
+ * a code block is CodeBlock, inline code is Code and a link is Link. Two
+ * recipes key a size on an attribute the editor does not write (Text's
+ * `data-size`, Heading's `data-level`), so their base class is composed and
+ * the step is stated here,
  * the one the reader draws by default: the body at `text.md` and the levels
  * one under the page's title. `rich-text-input.test.tsx` compares the drawn
  * values with RichTextContent's.
@@ -247,37 +248,11 @@
   background: var(--pm-selection-bg);
 }
 
-/* An annotation: the words an application anchored something to, such as a
-   comment thread. The editor draws each fragment as a `mark`, so the browser's
-   own mark colours are replaced: the warning wash from its token, which is
-   neither the selection's fill nor a link's accent and underline, and the
-   text's own colour, so a link or code inside keeps its look. The wash is
-   opaque, so overlapping annotations read the same, nested one inside the
-   other. The active one takes the pressed wash and a frame. The outline is
-   transparent at rest, so forced colours, which repaint the wash, draw it, and
-   the active frame is thicker. A highlight that wraps keeps its frame's ends on
-   every line where the engine supports the unprefixed declaration, as Code's
-   chip does; elsewhere the wash still covers every line. */
+/* An annotation: RichTextContent's highlight, composed, with its active state
+   and the ring of an annotated entity, so a highlight looks the same while the
+   document is written and after. The editor draws each fragment as a `mark`. */
 .annotation {
-  color: inherit;
-  background: var(--pm-warning-subtle);
-  outline: 1px solid transparent;
-  box-decoration-break: clone;
-}
-
-.annotation[data-active] {
-  background: var(--pm-warning-subtle-active);
-  outline: 2px solid var(--pm-warning-border);
-}
-
-/* An entity's own wash covers the highlight it sits in, so an annotated entity
-   is ringed with the annotation's wash. */
-.annotation .entity {
-  box-shadow: 0 0 0 2px var(--pm-warning-subtle);
-}
-
-.annotation[data-active] .entity {
-  box-shadow: 0 0 0 2px var(--pm-warning-subtle-active);
+  composes: annotation from '../structure/rich-text-content.module.css';
 }
 
 /* footer and count --------------------------------------------------------- */
