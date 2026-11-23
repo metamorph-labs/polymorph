@@ -300,7 +300,9 @@ An input whose type is not a function is a data input. The renderer fills it fro
 `data`, by the input's name. An input the host gives no value for is absent (`undefined`), never a
 placeholder, so an optional prop bound to it takes its default. A required prop bound to it is not
 passed, and once the document is whole it is a fault:
-`` `Select` requires `options`, and the host's data holds nothing at `choices` ``
+`` `Select` requires `options`, and the host's data holds nothing at `choices` ``. The element is
+still drawn without that prop: a host often gives its data after the screen is first drawn, and a
+screen that keeps its shape and fills in place shows where the data goes
 (`packages/screen/src/walk.test.ts`). An input whose type is longer than `MAX_TYPE_LENGTH`
 characters (500) is a fault, and is data with no value: its type is not read
 (`packages/screen/src/hostile.test.ts`).
@@ -319,16 +321,22 @@ the receiver decides (`packages/screen/src/receivers.ts`, `packages/screen/src/w
 - **Bound where a callback that returns nothing receives it** (a Button's `onClick`, a
   Pagination's `onPageChange`), it is an action. When the member calls it, the host is told
   `{ name, args, values, changed }`.
-- **Bound where a callback that returns a value receives it** (a DataTable's `getRowId`, a
-  Pagination's `messages.page`), it is a question the member asks while it draws: a table asks
-  for each row's key on every drawing. It is answered by the receiver's return type, and the host
-  is never told, whatever the input declares: for `string`, a key for the first argument (the
-  argument's `id`, the argument itself when it is text or a number, or a serial for each object);
-  for `boolean`, `false`; for `number`, `0`; for a list type, an empty list; for `Promise<T>`, a
-  promise of `T`'s answer; for anything else, nothing.
+- **Bound where a callback that returns a value receives it**, it is a question the member asks
+  while it draws, such as a row's key, which a table asks for each row on every drawing. No
+  document can answer it at run time, and the host is never told of it, whatever the input
+  declares:
+  - where the prop or the field may be left out (a DataTable's `getRowName` and
+    `isRowExpandable`, a column's `cell`), nothing is passed, and the member answers as it does by
+    default: a column whose `cell` is bound draws the row's value;
+  - where it is required (a DataTable's `getRowId`, a Pagination's `messages.page`), a stub
+    answers by the receiver's return type: for `string`, a key for the first argument (the
+    argument's `id`, the argument itself when it is text or a number, or a serial for each
+    object); for `boolean`, `false`; for `number`, `0`; for a list type, an empty list; for
+    `Promise<T>`, a promise of `T`'s answer; for anything else, nothing.
 - **Bound where no callback receives it** (a Button's `label`, a child, a field the data type does
   not declare, a field of an object type the vocabulary does not name), it is a fault and nothing
-  is passed: a member could hand it on as text or call it while it draws.
+  is passed: a member could hand it on as text or call it while it draws. Where that prop is
+  required, the element is not drawn ([below](#an-element-a-required-prop-is-missing-from)).
   `checkScreen` reports the same fault (`packages/screen/src/check.test.ts`).
 
 A required callback prop the document leaves unbound is answered the same way, by the prop's
@@ -458,8 +466,8 @@ document holds at the same path, and the whole text gives what `JSON.parse` give
 While the document streams, an element is drawn once every prop it requires is written and the
 text has moved past its plain props. The text may still be inside its children, or inside an
 element one of its props holds. Once drawn, the element stays drawn, and a prop written later
-arrives when it is whole. So a member is never drawn without a prop it requires, nor with a
-half-written value, and a page is drawn while its content is still arriving
+arrives when it is whole. So a member is not drawn before the props it requires are written,
+nor with a half-written value, and a page is drawn while its content is still arriving
 (`packages/screen/src/streaming.test.ts`, which feeds every cut of every screen in
 `design/screens/` through one screen).
 
@@ -527,6 +535,31 @@ A document is data. The renderers read it, and run nothing it says:
   as a row of the host's own type, the walk cannot tell, and an element is drawn
   (`fieldOf` and `takesNode` in `packages/screen/src/receivers.ts`).
 
+### An element a required prop is missing from
+
+Once the document is whole, an element is drawn only when every prop it requires has a value. A
+member drawn without one is drawn empty or unnamed, such as a Button with no label. So the element
+is drawn as nothing, with a fault that names the prop, when a prop it requires:
+
+- was never written: `` `Button` is missing its required prop `label` ``;
+- was refused by another fault, such as a callback input bound where no callback receives it, a
+  function in the host's data, a plain object, or an element that is not drawn:
+  `` `Button` is not drawn, as its required prop `label` has no value ``, beside the refusal's own
+  fault at the prop.
+
+The named controls the element holds are not drawn either, so they hold no value in `values`.
+While the document streams, such an element is left out, with no fault, until the prop arrives
+(`packages/screen/src/walk.test.ts`).
+
+Three cases still draw the element (`packages/screen/src/walk.test.ts`):
+
+- a required prop bound to data the host has not given yet ([Data inputs](#data-inputs));
+- a refused address: the element still reads its words and does nothing with the address, so a
+  `Link` whose `href` is refused is not a link and cannot be focused, and an `Image` keeps its
+  `alt`;
+- a required callback the document leaves unbound, which a stub answers
+  ([Callback inputs](#callback-inputs)).
+
 ### What the host decides
 
 A host decides which members a document may use, with one list. `runtimeCard`, `checkScreen` and
@@ -561,7 +594,8 @@ of:
 - an address with the scheme `http:`, `https:`, `mailto:` or `tel:`, in any case.
 
 Any other scheme (`javascript:`, `data:`, `vbscript:`, `file:`) is a fault, and the value is not
-passed. An address that holds a control character or `DEL` anywhere is refused whole, because a
+passed; the element is still drawn without it
+([above](#an-element-a-required-prop-is-missing-from)). An address that holds a control character or `DEL` anywhere is refused whole, because a
 browser removes tabs and line breaks from inside an address (`java\tscript:` is `javascript:`).
 Spaces and control characters at either end are stripped before the scheme is read, as a browser
 strips them. A colon after a `/`, `?` or `#` names no scheme, so `/a:b` is relative. At an address
@@ -614,10 +648,12 @@ or `avatar`), and `Markdown`.
 
 ### Faults
 
-A fault never blanks the screen. A node that cannot be drawn (a component the host does not
-allow, a member that throws as it first renders) draws nothing in its place, and the rest of the
-screen draws (`packages/screen/src/walk.test.ts`, `packages/react/src/screen/screen.test.tsx`,
-`packages/elements-ui/src/bridge/kept.test.ts`). Each fault is `{ path, message, component? }`,
+A fault takes out only the element it is in. A node that cannot be drawn (a component the host
+does not allow, an element a required prop is missing from, a member that throws as it first
+renders) draws nothing in its place, and the rest of the screen draws
+(`packages/screen/src/walk.test.ts`, `packages/react/src/screen/screen.test.tsx`,
+`packages/elements-ui/src/bridge/kept.test.ts`). A fault in the root element leaves nothing to
+draw. Each fault is `{ path, message, component? }`,
 with the validator's paths (`$.root.children[2]`). It is told to the host once in a drawing, by
 its path and message, when it first appears: to `onFault` in React, and as `poly-fault` on
 `<poly-screen>`. A fault that goes and comes back within a drawing is not told again. A drawing
@@ -671,8 +707,8 @@ a tool ([verification.md](verification.md#the-agent-eval)).
 
 The renderers do not need it. They draw while the document streams, before it can be checked,
 and they apply the run-time rules as they draw: a member that is not allowed, an unknown prop, a
-refused address, a value where a function goes and a callback input where none is received are
-left out and reported. A host still checks a whole answer, because a
+refused address, a value where a function goes, a callback input where none is received and an
+element a required prop is missing from are left out and reported. A host still checks a whole answer, because a
 lawful document is the screen the model meant. A fault means part of that screen is missing from
 the drawing, and the model can supply it in one more turn. The validator also reads what the
 renderers do not, such as a variant and tone cell that does not exist and an icon role outside
