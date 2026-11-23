@@ -3,12 +3,20 @@ import { isActionType } from '@polymorph/spec/action-type'
 /**
  * What a callback answers, and what fills an input a host gave no data for.
  *
- * A screen's callbacks are inputs: an input whose type is a function is an
- * action the host is told of. A member that calls one may wait on what it
- * returns (a row's key, whether a date can be picked, a promise while the
- * host saves), so a callback answers by its declared return type when the
- * host gives no answer of its own. A required callback the document leaves
- * unbound answers the same way, by the member's prop type.
+ * A screen's callbacks are inputs whose type is a function, and there are two
+ * kinds, told apart by the declared return type.
+ *
+ *  - A callback that returns nothing (`void`, `undefined`, or a promise of
+ *    either) is an **action**: the person did something, and the host is told.
+ *    A member that waits on it (ConfirmDialog while it saves) waits on the
+ *    promise the host's handler returns.
+ *  - A callback that returns a value (`(row: Row) => string`) is a
+ *    **question** the member asks while it draws: a row's key, whether a date
+ *    can be picked. Its stub answers by the return type, and the host is never
+ *    told, as a table asks one question per row on every drawing.
+ *
+ * A required callback the document leaves unbound answers by the member's
+ * prop type, and is never told either.
  *
  * A data input the host gave no value for is absent when the screen runs. A
  * picture of the screen (the composer, the MCP tool `render_screen`) asks for
@@ -22,17 +30,34 @@ export interface Fill {
   type: string
   /**
    * `data`: the host gave a value under the input's name. `stub`: the input is
-   * a callback, which answers by its return type when the host does not.
-   * `sample`: no value, and the screen asked for one from the type. `absent`:
-   * no value, and the input is left out.
+   * a callback, which the screen makes: an action told to the host, or a
+   * question its stub answers (`value` says which). `sample`: no value, and
+   * the screen asked for one from the type. `absent`: no value, and the input
+   * is left out.
    */
   from: 'data' | 'sample' | 'stub' | 'absent'
-  /** The sampled value, or what the stub answers. Absent for data, which the caller already has. */
+  /** The sampled value, or what the callback does. Absent for data, which the caller already has. */
   value?: string
 }
 
 /** Whether an input's or a prop's printed type is a callback: a function, alone or in a union with `undefined`. */
 export const isCallback = (type: string): boolean => isActionType(type)
+
+/**
+ * Whether a callback is an action: its declared return type is nothing,
+ * `void`, `undefined` or a promise of either. Any other callback is a question.
+ */
+export function isAction(type: string): boolean {
+  return /^(?:|void|undefined|Promise<\s*(?:void|undefined)\s*>)$/.test(returnTypeOf(type))
+}
+
+/** What a callback input does, in words, for its `Fill`. */
+export function callbackFill(type: string): string {
+  if (!isAction(type)) return `answers ${stubFor(type).answers}, and is not told to the host`
+  return /^Promise</.test(returnTypeOf(type))
+    ? 'is told to the host, and answers the host’s promise or a promise of nothing'
+    : 'is told to the host, and answers nothing'
+}
 
 /**
  * The declared return type of a callback: the first type after its last arrow.
@@ -110,24 +135,18 @@ export const isThenable = (value: unknown): value is PromiseLike<unknown> =>
 
 /**
  * What a callback returns to the member that called it, given what the host's
- * handler returned.
+ * handler returned (`undefined` where the host was not told).
  *
- * A callback that returns nothing hands the member the host's promise, so a
- * member that waits on its callback (ConfirmDialog while it saves) waits on
- * the host. One that returns a promise takes the host's promise, or a promise
- * of the host's answer, or of the stub's. Any other takes the host's answer
- * when it is one, and the stub's otherwise.
+ * An action hands the member the host's promise, so a member that waits on
+ * its callback (ConfirmDialog while it saves) waits on the host; without one,
+ * an action declared to return a promise answers a promise of nothing, and
+ * any other answers nothing. A question answers by its stub, whatever the
+ * host returned, as the host is never asked one.
  */
 export function answerFor(type: string, answer: unknown, args: readonly unknown[]): unknown {
-  const returns = returnTypeOf(type)
-  if (returns === '' || returns === 'void' || returns === 'undefined') {
-    return isThenable(answer) ? answer : undefined
-  }
-  if (/^Promise<.*>$/.test(returns)) {
-    if (isThenable(answer)) return answer
-    return answer === undefined ? stubFor(type).stub(...args) : Promise.resolve(answer)
-  }
-  return answer === undefined || isThenable(answer) ? stubFor(type).stub(...args) : answer
+  if (!isAction(type)) return stubFor(type).stub(...args)
+  if (isThenable(answer)) return answer
+  return /^Promise</.test(returnTypeOf(type)) ? Promise.resolve(undefined) : undefined
 }
 
 /**

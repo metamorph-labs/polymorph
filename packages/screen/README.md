@@ -28,8 +28,11 @@ A host draws with a renderer, and every renderer draws from `createScreen`, so a
 behaves the same in each of them:
 
 - a data input is filled from the host's `data` by name, and is empty when the host has no value;
-- an input whose type is a function is an action: the host is told `{ name, args, values }` when
-  a member calls it;
+- an input whose type is a function that returns nothing is an action: the host is told
+  `{ name, args, values }` when a member calls it, and the member waits on a promise the host
+  returns;
+- an input whose type is a function that returns a value is a question a member asks while it
+  draws (a row's key): it is answered by its return type, and the host is never told;
 - a control keeps what the reader chose, and its value is in `values` under its `name`;
 - a component is drawn only if the vocabulary has it and the host allows it (`members`), a prop
   only if the member takes it, and an address only if it is relative or `http:`, `https:`,

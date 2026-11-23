@@ -14,6 +14,8 @@
 
 export {
   answerFor,
+  callbackFill,
+  isAction,
   isCallback,
   returnTypeOf,
   sampleOf,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { answerFor, returnTypeOf, sampleOf, stubFor, valueAt } from './actions'
+import { answerFor, isAction, returnTypeOf, sampleOf, stubFor, valueAt } from './actions'
 import { allowedMembers, defaultMembers, memberNames, surfaceOf } from './members'
 import { VOCABULARY } from './vocabulary'
 
@@ -34,17 +34,28 @@ describe('a callback answers by its declared return type', () => {
     expect(stubFor('() => Promise<boolean>').answers).toBe('a promise of false')
   })
 
-  it('takes the host’s answer where the type allows it', async () => {
+  it('tells an action from a question by what it returns', () => {
+    expect(isAction('() => void')).toBe(true)
+    expect(isAction('(id: string) => void | Promise<void>')).toBe(true)
+    expect(isAction('() => Promise<void>')).toBe(true)
+    expect(isAction('((value: string) => undefined) | undefined')).toBe(true)
+    expect(isAction('(row: Row) => string')).toBe(false)
+    expect(isAction('() => Promise<boolean>')).toBe(false)
+  })
+
+  it('hands the member an action’s promise from the host, and a question its stub', async () => {
     const saving = Promise.resolve()
     expect(answerFor('() => void', saving, [])).toBe(saving)
     expect(answerFor('() => void', 'ignored', [])).toBeUndefined()
-    expect(answerFor('() => Promise<string>', saving, [])).toBe(saving)
-    await expect(answerFor('() => Promise<string>', 'x', []) as Promise<string>).resolves.toBe('x')
+    expect(answerFor('() => Promise<void>', saving, [])).toBe(saving)
     await expect(
-      answerFor('() => Promise<string[]>', undefined, []) as Promise<string[]>,
+      answerFor('() => Promise<void>', undefined, []) as Promise<void>,
+    ).resolves.toBeUndefined()
+    // A question's answer is its stub's, whatever the host would say.
+    expect(answerFor('(id: string) => boolean', true, ['a'])).toBe(false)
+    await expect(
+      answerFor('() => Promise<string[]>', saving, []) as Promise<string[]>,
     ).resolves.toEqual([])
-    expect(answerFor('(id: string) => boolean', true, ['a'])).toBe(true)
-    expect(answerFor('(id: string) => boolean', saving, ['a'])).toBe(false)
   })
 })
 

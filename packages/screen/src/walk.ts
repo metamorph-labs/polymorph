@@ -8,7 +8,17 @@ import {
   type SpecValue,
 } from '@polymorph/spec/schema'
 
-import { answerFor, isCallback, sampleOf, shown, stubFor, valueAt, type Fill } from './actions'
+import {
+  answerFor,
+  callbackFill,
+  isAction,
+  isCallback,
+  sampleOf,
+  shown,
+  stubFor,
+  valueAt,
+  type Fill,
+} from './actions'
 import { argumentsToJson, toJson, type JsonValue } from './json'
 import {
   allowedMembers,
@@ -30,11 +40,13 @@ import { addressFault, addressMessage, ADDRESS_KEYS } from './urls'
  *
  *  - **Data inputs** are filled from `data` by name. An input with no value is
  *    absent; a picture of the screen asks for a sample instead (`fill`).
- *  - **Callback inputs are actions.** A member that calls one tells the host
- *    `{ name, args, values }` (`onAction`): the input's name, the call's
- *    arguments as JSON, and the values of the named controls. The callback
- *    answers what the host's handler returns where its type allows, and
- *    otherwise by its declared return type.
+ *  - **A callback input that returns nothing is an action.** A member that
+ *    calls one tells the host `{ name, args, values }` (`onAction`): the
+ *    input's name, the call's arguments as JSON, and the values of the named
+ *    controls. A promise the host's handler returns is what the member waits
+ *    on. A callback input that returns a value is a question the member asks
+ *    while it draws (a row's key): its stub answers by the declared return
+ *    type, and the host is never told (`actions.ts`).
  *  - **Controls follow the reader.** A controlled prop (`value` with
  *    `onChange`) keeps what the reader last chose until the document or the
  *    host gives it another value. One the document gives no value stays the
@@ -67,7 +79,7 @@ export interface ScreenFault {
   component?: string
 }
 
-/** What a member's callback tells the host. */
+/** What a member's call of an action, a callback input that returns nothing, tells the host. */
 export interface ScreenAction {
   /** The callback input the member called. */
   name: string
@@ -144,7 +156,11 @@ export interface ScreenOptions {
   streaming?: boolean
   /** The path of the string still being written (`parsePartial`'s `open`). */
   open?: string | null
-  /** Told each action. What it returns answers the member, where the callback's type allows (`answerFor`). */
+  /**
+   * Told each action: each call of a callback input that returns nothing. A
+   * promise it returns is what the member waits on (`answerFor`). A callback
+   * that returns a value is never told.
+   */
   onAction?: (action: ScreenAction) => unknown
   /** Told each fault once, when it first appears. */
   onFault?: (fault: ScreenFault) => void
@@ -395,6 +411,8 @@ export function createScreen(options: ScreenOptions): Screen {
     if (made === undefined) {
       made = (...args: unknown[]) => {
         const type = inputs.get(name)?.type ?? '() => void'
+        // A question a member asks while it draws is answered here and never told.
+        if (!isAction(type)) return stubFor(type).stub(...args)
         const answer = state.onAction?.({
           name,
           args: argumentsToJson(args),
@@ -415,7 +433,7 @@ export function createScreen(options: ScreenOptions): Screen {
     for (const { name, type } of declared) {
       if (isCallback(type)) {
         inputValues.set(name, action(name))
-        fills.push({ name, type, from: 'stub', value: `answers ${stubFor(type).answers}` })
+        fills.push({ name, type, from: 'stub', value: callbackFill(type) })
       } else if (Object.prototype.hasOwnProperty.call(state.data, name)) {
         inputValues.set(name, state.data[name])
         fills.push({ name, type, from: 'data' })

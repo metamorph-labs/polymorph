@@ -88,14 +88,15 @@ const doc = <Root extends object>(root: Root, inputs: { name: string; type: stri
 const open = (options: Partial<ScreenOptions> & { document: unknown }) => {
   const actions: ScreenAction[] = []
   const faults: ScreenFault[] = []
+  // The host's handler, where a test gives one, is called after the action is recorded.
   const screen = createScreen({
     vocabulary: VOCABULARY,
+    ...options,
     onAction: (action) => {
       actions.push(action)
       return options.onAction?.(action)
     },
     onFault: (fault) => faults.push(fault),
-    ...options,
   })
   return { screen, actions, faults }
 }
@@ -246,11 +247,11 @@ describe('callback inputs are actions', () => {
     await expect(result).resolves.toBe('saved')
   })
 
-  it('answers by the declared return type when the host gives no answer, and with the host’s when it does', async () => {
+  it('answers a question by its declared return type, and never tells the host of one', async () => {
     const document = doc(
       {
         component: 'Stack',
-        children: ['getRowId', 'isOpen', 'load'].map((name) => ({
+        children: ['getRowId', 'isOpen', 'load', 'save'].map((name) => ({
           component: 'Button',
           props: { label: name, onClick: { $: name } },
         })),
@@ -259,17 +260,25 @@ describe('callback inputs are actions', () => {
         { name: 'getRowId', type: '(row: Row) => string' },
         { name: 'isOpen', type: '(id: string) => boolean' },
         { name: 'load', type: '() => Promise<Row[]>' },
+        { name: 'save', type: '() => Promise<void>' },
       ],
     )
-    const quiet = open({ document }).screen
-    expect(call(at(quiet, '$.root.children[0]'), 'onClick', { id: 7 })).toBe('7')
-    expect(call(at(quiet, '$.root.children[1]'), 'onClick', 'a')).toBe(false)
-    await expect(call(at(quiet, '$.root.children[2]'), 'onClick')).resolves.toEqual([])
-    const answering = open({
-      document,
-      onAction: (action) => (action.name === 'isOpen' ? true : undefined),
-    }).screen
-    expect(call(at(answering, '$.root.children[1]'), 'onClick', 'a')).toBe(true)
+    // A host that would answer every call is asked nothing: a question is the member's.
+    const { screen, actions } = open({ document, onAction: () => true })
+    expect(call(at(screen, '$.root.children[0]'), 'onClick', { id: 7 })).toBe('7')
+    expect(call(at(screen, '$.root.children[1]'), 'onClick', 'a')).toBe(false)
+    await expect(call(at(screen, '$.root.children[2]'), 'onClick')).resolves.toEqual([])
+    expect(actions).toEqual([])
+    // An action declared to return a promise is told, and with no promise from the host the
+    // member waits on a promise of nothing.
+    await expect(call(at(screen, '$.root.children[3]'), 'onClick')).resolves.toBeUndefined()
+    expect(actions.map(({ name }) => name)).toEqual(['save'])
+    expect(screen.fills.map(({ name, value }) => [name, value])).toEqual([
+      ['getRowId', 'answers the key of its first argument, and is not told to the host'],
+      ['isOpen', 'answers false, and is not told to the host'],
+      ['load', 'answers a promise of an empty list, and is not told to the host'],
+      ['save', 'is told to the host, and answers the host’s promise or a promise of nothing'],
+    ])
   })
 
   it('stubs a required callback the document leaves unbound, and says so once it is whole', () => {
