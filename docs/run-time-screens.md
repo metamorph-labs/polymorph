@@ -745,13 +745,16 @@ it.
 | `renderFault(fault, cause)` | draws a fault in place when `faults` is `inline`. `cause` is `unknown`, `refused`, `missing`, `threw` or `value` |
 | `renderBinding(path, value)` | draws a binding where something is drawn; the value when absent |
 | `decorate(drawn, node)` | wraps the drawing of every node, as the composer wraps each in its selection |
+| `fallback` | what the screen shows in its place while a member that is not lazy suspends in the browser; nothing when absent |
 
 No handler runs while React renders, so a server render, a render React discards and the second
 render of strict mode tell the host nothing. Each node draws inside its own error boundary, which
 tries again when the node changes. A server renders no error boundary, so the screen is drawn
 inside one Suspense boundary: a member that throws on the server leaves the screen's place empty
 for the browser to draw, and the page around it is still served
-(`packages/react/screen-server.test.ts`).
+(`packages/react/screen-server.test.ts`). In the browser, a member that is not lazy and suspends
+(one that waits on data with `use`) shows `fallback` in place of the whole screen, and a Suspense
+boundary of the host's above `ScreenView` does not see it. A lazy member waits in its own place.
 
 ### `@polymorph/elements-ui/screen`
 
