@@ -187,6 +187,12 @@ const [body, setBody] = useState(emptyRichText())
 `value` with `onChange` controls the field, and `defaultValue` leaves the document to the field.
 `name` adds a hidden input holding the serialized document, for a form that posts.
 
+`onFocus` and `onBlur` report focus entering and leaving the field as a whole. A move from the
+text to the toolbar, the link form or the footer is neither. A field that keeps focus while the
+window loses it has not been left. A form's reset puts back the document the field started with.
+`readOnly` keeps a caret, so a person selects and copies with the keys, and nothing they type
+changes the document.
+
 `formats` lists what the field allows. A field for a short reply allows marks and links only:
 
 ```tsx
@@ -413,6 +419,9 @@ as each framework's own slot:
 
 An Angular output and an element's event carry one value. So `submit` gives the document there,
 and the handle reaches the application through the three slots.
+
+`RichTextContent`'s `entity` and `selectionActions` read the same way, with the entity or the
+selection as the value the slot receives.
 
 `RichTextContent` is also drawn by SwiftUI and Compose. The native members take the document as
 JSON and read it with their own tolerant reader, which follows the same rules. They draw
