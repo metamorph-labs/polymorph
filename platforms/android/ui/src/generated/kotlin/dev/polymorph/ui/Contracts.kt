@@ -2823,7 +2823,8 @@ data class PMImageProps(
      * Other files of the same picture, in the element's `srcset` form: each a URL with a width
      * (`640w`) or a density (`2x`). The browser picks one for the screen, and one that does not
      * read the set requests `src`. For a set that gives widths the member writes the element's
-     * `sizes` from the frame's box, so no caller writes a length.
+     * `sizes` from the frame's box, so no caller writes a length, and the frame needs a box:
+     * without one the set is ignored.
      */
     val srcSet: String? = null,
     /**

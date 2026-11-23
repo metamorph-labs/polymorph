@@ -76,7 +76,8 @@ export interface ImageProps {
    * Other files of the same picture, in the element's `srcset` form: each a URL with a width
    * (`640w`) or a density (`2x`). The browser picks one for the screen, and one that does not
    * read the set requests `src`. For a set that gives widths the member writes the element's
-   * `sizes` from the frame's box, so no caller writes a length.
+   * `sizes` from the frame's box, so no caller writes a length, and the frame needs a box:
+   * without one the set is ignored.
    */
   srcSet?: string
   /**
@@ -186,7 +187,8 @@ export class Image {
    * Other files of the same picture, in the element's `srcset` form: each a URL with a width
    * (`640w`) or a density (`2x`). The browser picks one for the screen, and one that does not
    * read the set requests `src`. For a set that gives widths the member writes the element's
-   * `sizes` from the frame's box, so no caller writes a length.
+   * `sizes` from the frame's box, so no caller writes a length, and the frame needs a box:
+   * without one the set is ignored.
    */
   readonly srcSet = input<ImageProps['srcSet']>(undefined)
   /**
@@ -215,16 +217,6 @@ export class Image {
   protected readonly loaded = cell(() => '')
   protected readonly failed = cell(() => '')
   protected readonly image = elementRef<HTMLElement>()
-  protected readonly request = derived(() =>
-    this.$p.srcSet === undefined ? this.$p.src : this.$p.src + ' ' + this.$p.srcSet,
-  )
-  protected readonly status = derived(() =>
-    this.$p.src === '' || this.failed.value === this.request.value
-      ? 'failed'
-      : this.loaded.value === this.request.value
-        ? 'loaded'
-        : 'loading',
-  )
   protected readonly ratio = derived(() =>
     this.$p.aspectRatio !== undefined &&
     this.$p.aspectRatio > 0 &&
@@ -238,20 +230,48 @@ export class Image {
         : undefined,
   )
   protected readonly sized = derived(() => this.ratio.value !== undefined)
+  protected readonly widths = derived(
+    () => this.$p.srcSet !== undefined && /\d+w\s*(?:,|$)/.test(this.$p.srcSet),
+  )
+  protected readonly candidates = derived(() =>
+    this.widths.value && !this.sized.value ? undefined : this.$p.srcSet,
+  )
+  protected readonly request = derived(() =>
+    this.candidates.value === undefined ? this.$p.src : this.$p.src + ' ' + this.candidates.value,
+  )
+  protected readonly status = derived(() =>
+    this.$p.src === '' || this.failed.value === this.request.value
+      ? 'failed'
+      : this.loaded.value === this.request.value
+        ? 'loaded'
+        : 'loading',
+  )
+  protected readonly spread = derived(() =>
+    this.$p.width !== undefined &&
+    this.$p.height !== undefined &&
+    this.$p.width > 0 &&
+    this.$p.height > 0 &&
+    this.ratio.value !== undefined &&
+    this.$p.fit === 'cover'
+      ? Math.max(1, Math.round((this.$p.width / this.$p.height / this.ratio.value) * 100) / 100)
+      : 1,
+  )
   protected readonly sizes = derived(() =>
-    !(this.$p.srcSet !== undefined && /\d+w\s*(?:,|$)/.test(this.$p.srcSet))
+    !this.widths.value || !this.sized.value
       ? undefined
       : this.$p.width !== undefined &&
           this.$p.height !== undefined &&
           this.$p.width > 0 &&
           this.$p.height > 0
-        ? (this.$p.loading === 'lazy' ? 'auto, ' : '') +
+        ? (this.$p.loading === 'lazy' && this.spread.value === 1 ? 'auto, ' : '') +
           '(max-width: ' +
           this.$p.width +
-          'px) 100vw, ' +
-          this.$p.width +
+          'px) ' +
+          Math.round(100 * this.spread.value) +
+          'vw, ' +
+          Math.round(this.$p.width * this.spread.value) +
           'px'
-        : this.sized.value && this.$p.loading === 'lazy'
+        : this.$p.loading === 'lazy' && this.$p.fit !== 'cover'
           ? 'auto, 100vw'
           : undefined,
   )
@@ -273,6 +293,11 @@ export class Image {
     watchEffect(
       () => (this.$p.width === undefined) !== (this.$p.height === undefined),
       () => this.effect2(),
+      true,
+    )
+    watchEffect(
+      () => this.widths.value && !this.sized.value,
+      () => this.effect3(),
       true,
     )
   }
@@ -371,7 +396,7 @@ export class Image {
 
   protected e20() {
     if (this.status.value === 'failed') return undefined as never
-    return this.$p.srcSet
+    return this.candidates.value
   }
 
   protected e21() {
@@ -402,6 +427,13 @@ export class Image {
     devWarning(
       (this.$p.width === undefined) !== (this.$p.height === undefined),
       'Image: `width` and `height` are given together. One alone gives no ratio and is ignored.',
+    )
+  }
+
+  private effect3(): void {
+    devWarning(
+      this.widths.value && !this.sized.value,
+      'Image: a `srcSet` that gives widths needs a box, from `width` and `height` or from `aspectRatio`. Without one the set is ignored.',
     )
   }
 }

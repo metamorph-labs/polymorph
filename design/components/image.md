@@ -90,13 +90,29 @@ already knows the frame's box, so it writes the attribute:
 | The frame | `sizes` |
 | --- | --- |
 | `width` and `height` given | `(max-width: <width>px) 100vw, <width>px`: the frame is `width` pixels and never wider than its container |
-| `aspectRatio` alone | none, so the element assumes the viewport's width, which the container never exceeds |
-| either of the two, with `loading="lazy"` | the same after `auto`, or `auto, 100vw` for `aspectRatio` alone: a lazy picture is laid out before it is requested, so a browser that reads `auto` asks for the frame's own width |
-| no box | none |
+| the same, with an `aspectRatio` narrower than the picture's and `fit="cover"` | both values multiplied by the picture's ratio over the frame's, because the picture is drawn that much wider than the frame it covers |
+| `aspectRatio` alone | none, so the element assumes the viewport's width, which the container does not exceed |
+| no box | the set is ignored, with a development warning |
 
-The value is never narrower than the frame, so the browser never requests a file too small for
-it. It can be wider, where a container is narrower than the viewport and the browser does not
-read `auto`. `sizes` changes which file is requested and never the frame's box. A set that gives
+For a lazy picture the value starts with `auto`, and a frame with `aspectRatio` alone carries
+`auto, 100vw`. A lazy picture is laid out before it is requested, so a browser that reads `auto`
+asks for the element's own width, and one that does not reads the rest. The element is as wide
+as the frame, so `auto` is left out for a picture that covers a frame of another ratio, which is
+drawn wider than the frame, and for one that covers a frame with `aspectRatio` alone, whose own
+ratio the member does not know.
+
+**A set that gives widths needs a box.** With such a set the element takes its `sizes`, or the
+viewport's width with none, as the picture's own width. A frame with no box is as wide as its
+picture, so the set would stretch it to its container. The member leaves the set out there and
+requests the `src`.
+
+The value is at least the width the picture is drawn at, so the browser does not request a file
+too small for it, with two exceptions. In a container that scrolls sideways and is wider than
+the viewport, a frame can be wider than `100vw`. And a picture that covers a frame with
+`aspectRatio` alone can be drawn wider than the viewport's width where the frame is nearly that
+wide; `width` and `height` give the member the picture's ratio. The value can be more than
+the drawn width, where a container is narrower than the viewport and the browser does not read
+`auto`. `sizes` changes which file is requested and never the frame's box. A set that gives
 densities needs no `sizes`, and the element carries none.
 
 **`fetchPriority`** is the element's `fetchpriority`. `high` is for the one picture that is the

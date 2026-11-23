@@ -34,6 +34,9 @@ const BOXED = 'width !== undefined && height !== undefined && width > 0 && heigh
 
 const LONE_SIDE = '(width === undefined) !== (height === undefined)'
 
+/** A set that gives widths, in a frame with no box: the set is ignored. */
+const UNBOXED_WIDTHS = 'widths && !sized'
+
 /**
  * Image (`design/components/image.md`): a read-only picture, such as a
  * photograph, a brand mark, artwork or a preview. It is not Avatar, a round
@@ -59,19 +62,31 @@ export default describeMember({
   defaults: { fit: lit('contain'), loading: lit('lazy') },
   state: { loaded: "''", failed: "''" },
   derived: {
-    request: "srcSet === undefined ? src : src + ' ' + srcSet",
-    status:
-      "src === '' || failed === request ? 'failed' : loaded === request ? 'loaded' : 'loading'",
     // Written out where a width is divided, so each framework's compiler sees both are numbers.
     ratio: `aspectRatio !== undefined && aspectRatio > 0 && Number.isFinite(aspectRatio) ? aspectRatio : ${BOXED} ? width / height : undefined`,
     sized: 'ratio !== undefined',
-    // The element's `sizes`, for a set that gives widths: how wide the frame can be, which the
-    // browser needs to pick a file. A boxed frame is `width` pixels and never wider than its
-    // container, which is never wider than the viewport. Any other frame is at most the
-    // viewport's width, which is what the element assumes with no `sizes`. A lazy picture in a
-    // sized frame is laid out before it is requested, so `auto` asks for the frame's own width
-    // where the browser reads it, and the rest is for a browser that does not.
-    sizes: `!(srcSet !== undefined && /\\d+w\\s*(?:,|$)/.test(srcSet)) ? undefined : ${BOXED} ? (loading === 'lazy' ? 'auto, ' : '') + '(max-width: ' + width + 'px) 100vw, ' + width + 'px' : sized && loading === 'lazy' ? 'auto, 100vw' : undefined`,
+    // A set that gives widths makes the element take its `sizes`, or the viewport's width with
+    // none, as the picture's own width. A frame with no box is as wide as its picture, so there
+    // the set would stretch the frame to its container, and it is left out.
+    widths: 'srcSet !== undefined && /\\d+w\\s*(?:,|$)/.test(srcSet)',
+    candidates: 'widths && !sized ? undefined : srcSet',
+    request: "candidates === undefined ? src : src + ' ' + candidates",
+    status:
+      "src === '' || failed === request ? 'failed' : loaded === request ? 'loaded' : 'loading'",
+    // How much wider than its frame the picture is drawn: more than once only where it covers
+    // a boxed frame narrower in ratio than itself. Rounded, so a ratio that divides unevenly
+    // writes no long fraction.
+    spread: `${BOXED} && ratio !== undefined && fit === 'cover' ? Math.max(1, Math.round((width / height / ratio) * 100) / 100) : 1`,
+    // The element's `sizes`, for a set that gives widths: how wide the picture is drawn, which
+    // the browser needs to pick a file. A boxed frame is `width` pixels and never wider than its
+    // container, and the picture is `spread` times as wide. A frame with `aspectRatio` alone is
+    // as wide as its container, which is the width the element assumes with no `sizes`, and the
+    // picture's own ratio is not known there, so nothing better can be said for one that
+    // covers. A lazy picture is laid out before it is requested, so `auto` asks for its own
+    // laid-out width where the browser reads it, and the rest is for a browser that does not.
+    // The element's width is the frame's, so `auto` is left out where the picture is drawn
+    // wider than the frame, or may be.
+    sizes: `!widths || !sized ? undefined : ${BOXED} ? (loading === 'lazy' && spread === 1 ? 'auto, ' : '') + '(max-width: ' + width + 'px) ' + Math.round(100 * spread) + 'vw, ' + Math.round(width * spread) + 'px' : loading === 'lazy' && fit !== 'cover' ? 'auto, 100vw' : undefined`,
     decorative: "alt === ''",
     // A picture can settle before its listeners exist: the browser kept it, or the markup came
     // from a server. `complete` with a natural width is a decoded picture. `complete` without
@@ -86,6 +101,10 @@ export default describeMember({
     {
       watch: LONE_SIDE,
       run: `devWarning(${LONE_SIDE}, 'Image: \`width\` and \`height\` are given together. One alone gives no ratio and is ignored.')`,
+    },
+    {
+      watch: UNBOXED_WIDTHS,
+      run: `devWarning(${UNBOXED_WIDTHS}, 'Image: a \`srcSet\` that gives widths needs a box, from \`width\` and \`height\` or from \`aspectRatio\`. Without one the set is ignored.')`,
     },
   ],
   template: el(
@@ -144,7 +163,7 @@ export default describeMember({
               crossorigin: 'crossOrigin',
               referrerpolicy: 'referrerPolicy',
               sizes: 'sizes',
-              srcset: 'srcSet',
+              srcset: 'candidates',
               src: 'src',
               alt: 'alt',
             },

@@ -66,7 +66,8 @@ export interface ImageProps {
    * Other files of the same picture, in the element's `srcset` form: each a URL with a width
    * (`640w`) or a density (`2x`). The browser picks one for the screen, and one that does not
    * read the set requests `src`. For a set that gives widths the member writes the element's
-   * `sizes` from the frame's box, so no caller writes a length.
+   * `sizes` from the frame's box, so no caller writes a length, and the frame needs a box:
+   * without one the set is ignored.
    */
   srcSet?: string
   /**
@@ -83,16 +84,6 @@ const props = withDefaults(defineProps<ImageProps>(), { fit: 'contain', loading:
 const loaded = ref('')
 const failed = ref('')
 const image = useTemplateRef<HTMLElement>('image')
-const request = computed(() =>
-  props.srcSet === undefined ? props.src : props.src + ' ' + props.srcSet,
-)
-const status = computed(() =>
-  props.src === '' || failed.value === request.value
-    ? 'failed'
-    : loaded.value === request.value
-      ? 'loaded'
-      : 'loading',
-)
 const ratio = computed(() =>
   props.aspectRatio !== undefined && props.aspectRatio > 0 && Number.isFinite(props.aspectRatio)
     ? props.aspectRatio
@@ -101,17 +92,41 @@ const ratio = computed(() =>
       : undefined,
 )
 const sized = computed(() => ratio.value !== undefined)
+const widths = computed(() => props.srcSet !== undefined && /\d+w\s*(?:,|$)/.test(props.srcSet))
+const candidates = computed(() => (widths.value && !sized.value ? undefined : props.srcSet))
+const request = computed(() =>
+  candidates.value === undefined ? props.src : props.src + ' ' + candidates.value,
+)
+const status = computed(() =>
+  props.src === '' || failed.value === request.value
+    ? 'failed'
+    : loaded.value === request.value
+      ? 'loaded'
+      : 'loading',
+)
+const spread = computed(() =>
+  props.width !== undefined &&
+  props.height !== undefined &&
+  props.width > 0 &&
+  props.height > 0 &&
+  ratio.value !== undefined &&
+  props.fit === 'cover'
+    ? Math.max(1, Math.round((props.width / props.height / ratio.value) * 100) / 100)
+    : 1,
+)
 const sizes = computed(() =>
-  !(props.srcSet !== undefined && /\d+w\s*(?:,|$)/.test(props.srcSet))
+  !widths.value || !sized.value
     ? undefined
     : props.width !== undefined && props.height !== undefined && props.width > 0 && props.height > 0
-      ? (props.loading === 'lazy' ? 'auto, ' : '') +
+      ? (props.loading === 'lazy' && spread.value === 1 ? 'auto, ' : '') +
         '(max-width: ' +
         props.width +
-        'px) 100vw, ' +
-        props.width +
+        'px) ' +
+        Math.round(100 * spread.value) +
+        'vw, ' +
+        Math.round(props.width * spread.value) +
         'px'
-      : sized.value && props.loading === 'lazy'
+      : props.loading === 'lazy' && props.fit !== 'cover'
         ? 'auto, 100vw'
         : undefined,
 )
@@ -138,6 +153,14 @@ onMounted(effect2)
 watch(() => (props.width === undefined) !== (props.height === undefined), effect2, {
   flush: 'post',
 })
+const effect3 = () => {
+  devWarning(
+    widths.value && !sized.value,
+    'Image: a `srcSet` that gives widths needs a box, from `width` and `height` or from `aspectRatio`. Without one the set is ignored.',
+  )
+}
+onMounted(effect3)
+watch(() => widths.value && !sized.value, effect3, { flush: 'post' })
 </script>
 
 <template>
@@ -178,7 +201,7 @@ watch(() => (props.width === undefined) !== (props.height === undefined), effect
       :crossorigin="crossOrigin"
       :referrerpolicy="referrerPolicy"
       :sizes="sizes"
-      :srcset="srcSet"
+      :srcset="candidates"
       :src="src"
       :alt="alt"
       @load="loaded = request"

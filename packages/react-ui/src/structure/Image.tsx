@@ -35,7 +35,8 @@ export interface ImageProps {
    * with a width (`640w`) or a density (`2x`). The browser picks one for the
    * screen, and one that does not read the set requests `src`. For a set that
    * gives widths the member writes the element's `sizes` from the frame's box,
-   * so no caller writes a length.
+   * so no caller writes a length, and the frame needs a box: without one the
+   * set is ignored.
    */
   srcSet?: string
   /**
@@ -102,9 +103,26 @@ export function Image({
   crossOrigin,
   referrerPolicy,
 }: ImageProps) {
+  const boxed = width !== undefined && height !== undefined && width > 0 && height > 0
+  const ratio =
+    aspectRatio !== undefined && aspectRatio > 0 && Number.isFinite(aspectRatio)
+      ? aspectRatio
+      : boxed
+        ? width / height
+        : undefined
+  const sized = ratio !== undefined
+  const decorative = alt === ''
+
+  // A set that gives widths makes the element take its `sizes`, or the
+  // viewport's width with none, as the picture's own width. A frame with no box
+  // is as wide as its picture, so there the set would stretch the frame to its
+  // container, and it is left out.
+  const widths = srcSet !== undefined && /\d+w\s*(?:,|$)/.test(srcSet)
+  const candidates = widths && !sized ? undefined : srcSet
+
   // What the element is asked to fetch: the `src`, and the set it may pick from
   // instead. A new set is a new request, as a new `src` is.
-  const request = srcSet === undefined ? src : `${src} ${srcSet}`
+  const request = candidates === undefined ? src : `${src} ${candidates}`
 
   // Each holds the request it is about, so a new one starts as loading. An
   // empty `src` is failed without a request, because there is nothing to ask for.
@@ -124,36 +142,45 @@ export function Image({
 
   const state =
     src === '' || failed === request ? 'failed' : loaded === request ? 'loaded' : 'loading'
-  const boxed = width !== undefined && height !== undefined && width > 0 && height > 0
-  const ratio =
-    aspectRatio !== undefined && aspectRatio > 0 && Number.isFinite(aspectRatio)
-      ? aspectRatio
-      : boxed
-        ? width / height
-        : undefined
-  const sized = ratio !== undefined
-  const decorative = alt === ''
 
-  // The element's `sizes`, for a set that gives widths: how wide the frame can
-  // be, which the browser needs to pick a file. A boxed frame is `width`
-  // pixels and never wider than its container, which is never wider than the
-  // viewport. Any other frame is at most the viewport's width, which is what
-  // the element assumes with no `sizes`. A lazy picture in a sized frame is
-  // laid out before it is requested, so `auto` asks for the frame's own width
-  // where the browser reads it, and the rest is for a browser that does not.
-  const widths = srcSet !== undefined && /\d+w\s*(?:,|$)/.test(srcSet)
+  // The element's `sizes`, for a set that gives widths: how wide the picture is
+  // drawn, which the browser needs to pick a file.
+  //
+  // A boxed frame is `width` pixels and never wider than its container. The
+  // picture fills it, and where it covers a frame narrower in ratio than
+  // itself it is drawn wider than the frame, by `spread`. The value is rounded
+  // to whole units, so a ratio that divides unevenly writes no long fraction.
+  //
+  // A frame with `aspectRatio` alone is as wide as its container, which is the
+  // width the element assumes with no `sizes`. The picture's own ratio is not
+  // known there, so nothing better can be said for one that covers.
+  //
+  // A lazy picture is laid out before it is requested, so `auto` asks for its
+  // own laid-out width where the browser reads it, and the rest is for a
+  // browser that does not. The element's width is the frame's, so `auto` is
+  // left out where the picture is drawn wider than the frame, or may be.
+  const cover = fit === 'cover'
   const lazy = loading === 'lazy'
-  const sizes = !widths
-    ? undefined
-    : boxed
-      ? `${lazy ? 'auto, ' : ''}(max-width: ${width}px) 100vw, ${width}px`
-      : sized && lazy
-        ? 'auto, 100vw'
-        : undefined
+  const spread =
+    boxed && ratio !== undefined && cover
+      ? Math.max(1, Math.round((width / height / ratio) * 100) / 100)
+      : 1
+  const sizes =
+    !widths || !sized
+      ? undefined
+      : boxed
+        ? `${lazy && spread === 1 ? 'auto, ' : ''}(max-width: ${width}px) ${Math.round(100 * spread)}vw, ${Math.round(width * spread)}px`
+        : lazy && !cover
+          ? 'auto, 100vw'
+          : undefined
 
   useDevWarning(
     (width === undefined) !== (height === undefined),
     'Image: `width` and `height` are given together. One alone gives no ratio and is ignored.',
+  )
+  useDevWarning(
+    widths && !sized,
+    'Image: a `srcSet` that gives widths needs a box, from `width` and `height` or from `aspectRatio`. Without one the set is ignored.',
   )
 
   // A picture can settle before its listeners exist: the browser had it cached,
@@ -205,7 +232,7 @@ export function Image({
           crossOrigin={crossOrigin}
           referrerPolicy={referrerPolicy}
           sizes={sizes}
-          srcSet={srcSet}
+          srcSet={candidates}
           src={src}
           alt={alt}
           onLoad={() => setLoaded(request)}

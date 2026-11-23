@@ -26,9 +26,12 @@ picture decides how fast it loads:
 - `srcSet` is the element's `srcset`, passed unchanged. The browser requests the file that suits
   the screen, so a phone does not download a desktop's file. `src` stays required.
 - The element's `sizes` is not a prop, because the red rules refuse a length in application
-  code. The member writes it from the frame's box for a set that gives widths: `width` pixels
-  and never more than the viewport's width for a frame with `width` and `height`, and the frame's
-  own laid-out width first (`auto`) for a lazy picture. It is never narrower than the frame.
+  code. The member writes it for a set that gives widths, from the frame's box: `width` pixels
+  and never more than the viewport's width for a frame with `width` and `height`, wider by the
+  crop for a picture that covers a frame of a narrower ratio, and the element's own laid-out
+  width first (`auto`) for a lazy picture drawn as wide as its frame. A set that gives widths
+  needs a box, from `width` and `height` or from `aspectRatio`: without one the set is ignored,
+  with a development warning, because it would stretch the frame to its container.
 - `fetchPriority` is the element's `fetchpriority`: `high` for the one picture that is the largest
   content of the first view, with `loading="eager"`.
 - A change of `srcSet` is a new request, as a change of `src` is: the frame returns to loading,

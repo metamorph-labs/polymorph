@@ -420,12 +420,55 @@ describe('the `sizes` the member writes for a set that gives widths', () => {
     expect(sizesOf({ srcSet: set, aspectRatio: 1.6 })).toBe('auto, 100vw')
   })
 
-  it('is absent where the element’s own assumption is right, or nothing is known', () => {
+  it('is absent where the element’s own assumption is right', () => {
     const set = `${picture()} 320w, ${picture()} 640w`
     // A frame as wide as its container, fetched at once: at most the viewport's width.
     expect(sizesOf({ srcSet: set, aspectRatio: 1.6, loading: 'eager' })).toBeNull()
-    // No box: the picture's own size is not known before it is requested.
-    expect(sizesOf({ srcSet: set })).toBeNull()
+  })
+
+  it('is the drawn width, not the frame’s, for a picture that covers a narrower frame', () => {
+    const set = `${picture()} 320w, ${picture()} 640w`
+    // A 3:2 picture covering a square frame 300 wide is drawn 450 wide.
+    const cover = { srcSet: set, width: 300, height: 200, aspectRatio: 1, fit: 'cover' } as const
+    expect(sizesOf({ ...cover, loading: 'eager' })).toBe('(max-width: 300px) 150vw, 450px')
+    // The element is as wide as the frame, so its own laid-out width would be too little.
+    expect(sizesOf(cover)).toBe('(max-width: 300px) 150vw, 450px')
+    // Contained, the picture is no wider than the frame.
+    expect(sizesOf({ ...cover, fit: 'contain' })).toBe('auto, (max-width: 300px) 100vw, 300px')
+    // Covering a frame wider in ratio than itself, it is as wide as the frame.
+    expect(sizesOf({ ...cover, aspectRatio: 3 })).toBe('auto, (max-width: 300px) 100vw, 300px')
+  })
+
+  it('says nothing of a lazy picture’s own width where it covers a frame of unknown ratio', () => {
+    const set = `${picture()} 320w, ${picture()} 640w`
+    expect(sizesOf({ srcSet: set, aspectRatio: 1, fit: 'cover' })).toBeNull()
+  })
+
+  it('leaves a set that gives widths out of a frame with no box, and warns', async () => {
+    const warned = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const src = picture()
+    const { container } = render(
+      <Image src={src} srcSet={`${picture()} 320w, ${picture()} 640w`} alt="A harbour" />,
+      { container: hostOf(900) },
+    )
+    const element = container.querySelector('img')!
+    expect(element.hasAttribute('srcset')).toBe(false)
+    expect(element.hasAttribute('sizes')).toBe(false)
+    expect(warned.mock.calls.flat().join(' ')).toContain('needs a box')
+    warned.mockRestore()
+
+    // The frame is the picture's own 320, not its container's 900.
+    const frame = frameIn(container)
+    await loaded(frame)
+    expect(element.currentSrc).toBe(src)
+    expect(frame.getBoundingClientRect().width).toBe(320)
+  })
+
+  it('keeps a set that gives densities in a frame with no box', () => {
+    const { container } = render(
+      <Image src={picture()} srcSet={`${picture()} 1x, ${picture()} 2x`} alt="A harbour" />,
+    )
+    expect(container.querySelector('img')!.hasAttribute('srcset')).toBe(true)
   })
 
   it('is absent for a set that gives densities, which needs none', () => {

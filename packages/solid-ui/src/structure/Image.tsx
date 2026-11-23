@@ -75,7 +75,8 @@ export interface ImageProps {
    * Other files of the same picture, in the element's `srcset` form: each a URL with a width
    * (`640w`) or a density (`2x`). The browser picks one for the screen, and one that does not
    * read the set requests `src`. For a set that gives widths the member writes the element's
-   * `sizes` from the frame's box, so no caller writes a length.
+   * `sizes` from the frame's box, so no caller writes a length, and the frame needs a box:
+   * without one the set is ignored.
    */
   srcSet?: string
   /**
@@ -96,16 +97,6 @@ export default function Image(given: ImageProps): JSX.Element {
     const loaded = createCell('')
     const failed = createCell('')
     const image = elementRef<HTMLElement>()
-    const request = createDerived(() =>
-      props.srcSet === undefined ? props.src : props.src + ' ' + props.srcSet,
-    )
-    const status = createDerived(() =>
-      props.src === '' || failed.value === request.value
-        ? 'failed'
-        : loaded.value === request.value
-          ? 'loaded'
-          : 'loading',
-    )
     const ratio = createDerived(() =>
       props.aspectRatio !== undefined && props.aspectRatio > 0 && Number.isFinite(props.aspectRatio)
         ? props.aspectRatio
@@ -117,20 +108,48 @@ export default function Image(given: ImageProps): JSX.Element {
           : undefined,
     )
     const sized = createDerived(() => ratio.value !== undefined)
+    const widths = createDerived(
+      () => props.srcSet !== undefined && /\d+w\s*(?:,|$)/.test(props.srcSet),
+    )
+    const candidates = createDerived(() =>
+      widths.value && !sized.value ? undefined : props.srcSet,
+    )
+    const request = createDerived(() =>
+      candidates.value === undefined ? props.src : props.src + ' ' + candidates.value,
+    )
+    const status = createDerived(() =>
+      props.src === '' || failed.value === request.value
+        ? 'failed'
+        : loaded.value === request.value
+          ? 'loaded'
+          : 'loading',
+    )
+    const spread = createDerived(() =>
+      props.width !== undefined &&
+      props.height !== undefined &&
+      props.width > 0 &&
+      props.height > 0 &&
+      ratio.value !== undefined &&
+      props.fit === 'cover'
+        ? Math.max(1, Math.round((props.width / props.height / ratio.value) * 100) / 100)
+        : 1,
+    )
     const sizes = createDerived(() =>
-      !(props.srcSet !== undefined && /\d+w\s*(?:,|$)/.test(props.srcSet))
+      !widths.value || !sized.value
         ? undefined
         : props.width !== undefined &&
             props.height !== undefined &&
             props.width > 0 &&
             props.height > 0
-          ? (props.loading === 'lazy' ? 'auto, ' : '') +
+          ? (props.loading === 'lazy' && spread.value === 1 ? 'auto, ' : '') +
             '(max-width: ' +
             props.width +
-            'px) 100vw, ' +
-            props.width +
+            'px) ' +
+            Math.round(100 * spread.value) +
+            'vw, ' +
+            Math.round(props.width * spread.value) +
             'px'
-          : sized.value && props.loading === 'lazy'
+          : props.loading === 'lazy' && props.fit !== 'cover'
             ? 'auto, 100vw'
             : undefined,
     )
@@ -159,6 +178,17 @@ export default function Image(given: ImageProps): JSX.Element {
     watchEffect(
       createMemo(() => (props.width === undefined) !== (props.height === undefined)),
       effect2,
+      true,
+    )
+    const effect3 = () => {
+      devWarning(
+        widths.value && !sized.value,
+        'Image: a `srcSet` that gives widths needs a box, from `width` and `height` or from `aspectRatio`. Without one the set is ignored.',
+      )
+    }
+    watchEffect(
+      createMemo(() => widths.value && !sized.value),
+      effect3,
       true,
     )
     return (
@@ -198,7 +228,7 @@ export default function Image(given: ImageProps): JSX.Element {
             crossorigin={props.crossOrigin}
             referrerpolicy={props.referrerPolicy}
             sizes={sizes.value}
-            srcset={props.srcSet}
+            srcset={candidates.value}
             src={props.src}
             alt={props.alt}
             onload={() => (loaded.value = request.value)}

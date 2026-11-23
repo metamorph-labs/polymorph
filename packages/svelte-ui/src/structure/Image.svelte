@@ -65,7 +65,8 @@ export interface ImageProps {
    * Other files of the same picture, in the element's `srcset` form: each a URL with a width
    * (`640w`) or a density (`2x`). The browser picks one for the screen, and one that does not
    * read the set requests `src`. For a set that gives widths the member writes the element's
-   * `sizes` from the frame's box, so no caller writes a length.
+   * `sizes` from the frame's box, so no caller writes a length, and the frame needs a box:
+   * without one the set is ignored.
    */
   srcSet?: string
   /**
@@ -95,10 +96,6 @@ const joined = joinSlot(undefined, () => ({}))
 let loaded = $state('')
 let failed = $state('')
 let image = $state<HTMLElement | null>(null)
-const request = $derived(srcSet === undefined ? src : src + ' ' + srcSet)
-const status = $derived(
-  src === '' || failed === request ? 'failed' : loaded === request ? 'loaded' : 'loading',
-)
 const ratio = $derived(
   aspectRatio !== undefined && aspectRatio > 0 && Number.isFinite(aspectRatio)
     ? aspectRatio
@@ -107,12 +104,35 @@ const ratio = $derived(
       : undefined,
 )
 const sized = $derived(ratio !== undefined)
+const widths = $derived(srcSet !== undefined && /\d+w\s*(?:,|$)/.test(srcSet))
+const candidates = $derived(widths && !sized ? undefined : srcSet)
+const request = $derived(candidates === undefined ? src : src + ' ' + candidates)
+const status = $derived(
+  src === '' || failed === request ? 'failed' : loaded === request ? 'loaded' : 'loading',
+)
+const spread = $derived(
+  width !== undefined &&
+    height !== undefined &&
+    width > 0 &&
+    height > 0 &&
+    ratio !== undefined &&
+    fit === 'cover'
+    ? Math.max(1, Math.round((width / height / ratio) * 100) / 100)
+    : 1,
+)
 const sizes = $derived(
-  !(srcSet !== undefined && /\d+w\s*(?:,|$)/.test(srcSet))
+  !widths || !sized
     ? undefined
     : width !== undefined && height !== undefined && width > 0 && height > 0
-      ? (loading === 'lazy' ? 'auto, ' : '') + '(max-width: ' + width + 'px) 100vw, ' + width + 'px'
-      : sized && loading === 'lazy'
+      ? (loading === 'lazy' && spread === 1 ? 'auto, ' : '') +
+        '(max-width: ' +
+        width +
+        'px) ' +
+        Math.round(100 * spread) +
+        'vw, ' +
+        Math.round(width * spread) +
+        'px'
+      : loading === 'lazy' && fit !== 'cover'
         ? 'auto, 100vw'
         : undefined,
 )
@@ -135,6 +155,13 @@ const effect2 = () => {
   )
 }
 watchEffect(effect2, { watch: () => (width === undefined) !== (height === undefined) })
+const effect3 = () => {
+  devWarning(
+    widths && !sized,
+    'Image: a `srcSet` that gives widths needs a box, from `width` and `height` or from `aspectRatio`. Without one the set is ignored.',
+  )
+}
+watchEffect(effect3, { watch: () => widths && !sized })
 </script>
 
 {@render joined.start?.()
@@ -166,7 +193,7 @@ watchEffect(effect2, { watch: () => (width === undefined) !== (height === undefi
         crossorigin={crossOrigin}
         referrerpolicy={referrerPolicy}
         {sizes}
-        srcset={srcSet}
+        srcset={candidates}
         {src}
         {alt}
         onload={() => { loaded = request }}
