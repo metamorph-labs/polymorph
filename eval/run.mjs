@@ -13,6 +13,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, dirname, relative, resolve, sep } from 'node:path'
+import { performance } from 'node:perf_hooks'
 import { createInterface } from 'node:readline'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { TextDecoder } from 'node:util'
@@ -23,7 +24,7 @@ import { scriptedTurns } from './fake/script.mjs'
 import { writeReport } from './report.mjs'
 import { loadRequirements, unmet } from './requirements.mjs'
 import { interval } from './spread.mjs'
-import { callTool, loadToolbox, messageOf, ROOT } from './toolbox.mjs'
+import { callTool, loadScreen, loadToolbox, messageOf, ROOT } from './toolbox.mjs'
 
 /**
  * `pnpm eval` gives a model a screen brief and the system's own tools, and
@@ -42,6 +43,16 @@ import { callTool, loadToolbox, messageOf, ROOT } from './toolbox.mjs'
  * the spec validator, the emitter and the red rules
  * (`packages/spec/src/lawful.ts`, `@polymorph/rules/verify`). So the eval
  * measures what an agent connected to `polymorph-mcp` meets, not a copy of it.
+ *
+ * `--mode runtime` is the run-time lane: what a host that draws a model's
+ * screen at run time gets from one request with no tools. The system prompt is
+ * the run-time card (`runtimeCard` from `@polymorph/screen`, the output
+ * contract at its end) for the framework and members the run names, and the
+ * brief is the message. The answer's document is read with `parsePartial`,
+ * judged with `checkScreen` for the same framework and members, and held to
+ * the brief's requirements as a `spec` document is. A run records the tokens
+ * the API reports, cached and uncached apart, the time to the first text of
+ * the answer and the time to its end.
  *
  * There are two runners. The `api` runner, the default, reaches the model
  * over the Messages API with `fetch`, streamed, because a long turn with
@@ -72,6 +83,7 @@ const RESULTS = resolve(EVAL, 'results')
 const FAKES = resolve(EVAL, 'fake')
 const MCP_SERVER = resolve(EVAL, 'mcp.mjs')
 const FAKE_CLI = resolve(FAKES, 'cli.mjs')
+const SUBSETS = resolve(EVAL, 'members')
 
 /**
  * `ANTHROPIC_BASE_URL` points the eval at another host, as it does the SDKs; the
@@ -86,6 +98,18 @@ const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max']
 /** How the model is reached: the Messages API, or the Claude Code CLI. */
 const RUNNERS = ['api', 'cli']
 
+/** What a run hands back: a spec or a TSX module through the tools, or a spec in one request (`runtime`). */
+const MODES = ['spec', 'tsx', 'runtime']
+
+/** The mode with no tools and one request: the run-time lane. */
+const RUNTIME = 'runtime'
+
+/** What `--thinking` sends as `thinking.type` in the `runtime` mode. */
+const THINKING = ['adaptive', 'disabled', 'between_tools']
+
+/** The flags that choose what the run-time card holds and how its request thinks. */
+const RUNTIME_FLAGS = ['--thinking', '--framework', '--members']
+
 const DEFAULTS = {
   runner: 'api',
   model: 'claude-sonnet-5-5',
@@ -94,6 +118,8 @@ const DEFAULTS = {
   runs: 1,
   maxIterations: 5,
   effort: 'default',
+  /** What the `spec` and `tsx` modes always send. */
+  thinking: 'adaptive',
   /**
    * The token ceilings, counted as a record counts them: every input token,
    * cached or not, every output token, and the tokens of attempts that broke
@@ -126,10 +152,12 @@ const RETRYABLE_EVENTS = new Set(['overloaded_error', 'api_error', 'rate_limit_e
 const MAX_RETRIES = 6
 
 const USAGE =
-  'usage: pnpm eval [--runner api|cli] [--claude <path>] [--model <id>] [--mode spec|tsx] ' +
-  '[--briefs <glob>] [--runs <n>] [--max-iterations <n>] ' +
+  'usage: pnpm eval [--runner api|cli] [--claude <path>] [--model <id>] ' +
+  '[--mode spec|tsx|runtime] [--briefs <glob>] [--runs <n>] [--max-iterations <n>] ' +
   '[--effort default|low|medium|high|xhigh|max] [--max-tokens-per-run <n>] ' +
-  '[--max-tokens-total <n>] [--fake] [--out <dir>]'
+  '[--max-tokens-total <n>] [--fake] [--out <dir>]\n' +
+  '       with --mode runtime: [--thinking adaptive|disabled|between_tools] ' +
+  '[--framework <name>] [--members default|<subset>|<Member,Member,…>]'
 
 const OPENING = 'Build the screen the brief describes.'
 
@@ -164,6 +192,7 @@ const VALUED = new Set([
   '--max-tokens-per-run',
   '--max-tokens-total',
   '--out',
+  ...RUNTIME_FLAGS,
 ])
 
 /** Strict, so a mistyped flag stops the eval instead of silently measuring something else. */
@@ -186,9 +215,14 @@ function options(argv) {
     } else if (flag === '--claude') chosen.claude = value
     else if (flag === '--model') chosen.model = value
     else if (flag === '--mode') {
-      if (value !== 'spec' && value !== 'tsx') refuse('`--mode` is `spec` or `tsx`')
+      if (!MODES.includes(value)) refuse('`--mode` is `spec`, `tsx` or `runtime`')
       chosen.mode = value
-    } else if (flag === '--briefs') chosen.briefs = value
+    } else if (flag === '--thinking') {
+      if (!THINKING.includes(value)) refuse(`\`--thinking\` is one of ${THINKING.join(', ')}`)
+      chosen.thinking = value
+    } else if (flag === '--framework') chosen.framework = value
+    else if (flag === '--members') chosen.members = value
+    else if (flag === '--briefs') chosen.briefs = value
     else if (flag === '--runs') chosen.runs = positive(flag, value)
     else if (flag === '--max-iterations') chosen.maxIterations = positive(flag, value)
     else if (flag === '--effort') {
@@ -200,13 +234,25 @@ function options(argv) {
     else if (flag === '--max-tokens-total') chosen.maxTokensTotal = positive(flag, value)
     else chosen.out = resolve(process.cwd(), value)
   }
-  for (const flag of ['--model', '--effort', '--claude']) {
+  for (const flag of ['--model', '--effort', '--claude', '--thinking']) {
     if (chosen.fake && chosen.given.has(flag)) {
       refuse(`\`--fake\` runs the scripted model, so \`${flag}\` does not apply`)
     }
   }
   if (chosen.given.has('--claude') && chosen.runner !== 'cli') {
     refuse('`--claude` names the CLI the `cli` runner runs: add `--runner cli`')
+  }
+  const runtime = chosen.mode === RUNTIME
+  for (const flag of RUNTIME_FLAGS) {
+    if (!runtime && chosen.given.has(flag)) {
+      refuse(`\`${flag}\` belongs to the run-time lane: add \`--mode runtime\``)
+    }
+  }
+  if (runtime && chosen.given.has('--max-iterations')) {
+    refuse('`--max-iterations` caps `validate` calls, and `--mode runtime` makes none')
+  }
+  if (chosen.given.has('--thinking') && chosen.runner === 'cli') {
+    refuse('`--thinking` is what the API runner sends; the CLI chooses its own thinking')
   }
   // The committed results only ever hold real runs, so a fake run may not
   // write among them, wherever `--out` puts it.
@@ -249,27 +295,42 @@ function within(path, directory) {
  * inside the same call, and the eval exists to measure the one it names.
  *
  * `meter` is the run's: the request adds its retries, the time it waited
- * before them and the tokens of attempts that broke off.
+ * before them and the tokens of attempts that broke off. `fixed` is what
+ * every request of the run carries besides the conversation
+ * (`loopRequest`, `runtimeRequest`).
  */
-function apiModel({ apiKey, model, system, tools, effort, meter }) {
-  return (messages) =>
-    request(
-      apiKey,
-      {
-        model,
-        max_tokens: MAX_TOKENS,
-        stream: true,
-        thinking: { type: 'adaptive' },
-        ...(effort === 'default' ? {} : { output_config: { effort } }),
-        // Each turn resends the conversation, so the prefix is cached.
-        cache_control: { type: 'ephemeral' },
-        system,
-        tools,
-        messages,
-      },
-      meter,
-    )
+function apiModel({ apiKey, meter, fixed }) {
+  return (messages) => request(apiKey, { ...fixed, messages }, meter)
 }
+
+/** What every request of a `spec` or `tsx` run carries besides the conversation. */
+const loopRequest = ({ model, system, tools, effort }) => ({
+  model,
+  max_tokens: MAX_TOKENS,
+  stream: true,
+  thinking: { type: 'adaptive' },
+  ...(effort === 'default' ? {} : { output_config: { effort } }),
+  // Each turn resends the conversation, so the prefix is cached.
+  cache_control: { type: 'ephemeral' },
+  system,
+  tools,
+})
+
+/**
+ * What the one request of a `runtime` run carries besides the brief: the card
+ * as the whole system prompt, marked for the cache, and no tools. Every run
+ * of an eval sends the same card, so after the first request the card is read
+ * from the cache, as it is for a host that caches its card, and the brief,
+ * which differs, comes after it.
+ */
+const runtimeRequest = ({ model, card, effort, thinking }) => ({
+  model,
+  max_tokens: MAX_TOKENS,
+  stream: true,
+  thinking: { type: thinking },
+  ...(effort === 'default' ? {} : { output_config: { effort } }),
+  system: [{ type: 'text', text: card, cache_control: { type: 'ephemeral' } }],
+})
 
 /** A failure worth sending the request again for: an overload, a dropped connection. */
 class RetryableError extends Error {}
@@ -297,6 +358,8 @@ const usageTokens = (usage) =>
 async function request(apiKey, body, meter) {
   for (let attempt = 0; ; attempt += 1) {
     let failure
+    // The time to the first token is taken from the attempt that was answered.
+    const sentAt = performance.now()
     try {
       const response = await fetch(API_URL, {
         method: 'POST',
@@ -307,7 +370,7 @@ async function request(apiKey, body, meter) {
         },
         body: JSON.stringify(body),
       })
-      if (response.ok) return await readStream(response.body)
+      if (response.ok) return { ...(await readStream(response.body)), sentAt }
       const detail = await response.text()
       if (!RETRYABLE.has(response.status)) {
         throw new ApiError(`the Messages API answered ${response.status}: ${detail}`)
@@ -351,9 +414,19 @@ async function backoff(attempt, retryAfter, reason) {
  * text. A
  * failure carries the `usage` reported so far, so the tokens of an attempt
  * that broke off are still counted.
+ *
+ * `firstTextAt` is when the first text of the answer arrived, or null when it
+ * has none. A thinking delta is not text: a host has nothing to draw until the
+ * answer's own text starts.
  */
 async function readStream(body) {
-  const message = { content: [], stop_reason: null, usage: {}, unparsed: new Map() }
+  const message = {
+    content: [],
+    stop_reason: null,
+    usage: {},
+    unparsed: new Map(),
+    firstTextAt: null,
+  }
   try {
     await readEvents(body, message)
   } catch (error) {
@@ -382,8 +455,10 @@ async function readEvents(body, message) {
       case 'content_block_delta': {
         const block = message.content[event.index]
         const delta = event.delta
-        if (delta.type === 'text_delta') block.text += delta.text
-        else if (delta.type === 'thinking_delta') block.thinking += delta.thinking
+        if (delta.type === 'text_delta') {
+          block.text += delta.text
+          if (delta.text !== '') message.firstTextAt ??= performance.now()
+        } else if (delta.type === 'thinking_delta') block.thinking += delta.thinking
         else if (delta.type === 'signature_delta') block.signature = delta.signature
         else if (delta.type === 'input_json_delta') {
           partial.set(event.index, partial.get(event.index) + delta.partial_json)
@@ -491,6 +566,13 @@ function systemPrompt(mode, brief, toolbox) {
     CLOSING,
   ].join('\n')
 }
+
+/**
+ * The message of a `runtime` run: the brief, then what to do with it. The
+ * card is the whole system prompt, so nothing about the vocabulary is said
+ * here, and the brief names no member (`eval/eval.test.ts`).
+ */
+const runtimeOpening = (brief) => `<brief>\n${brief.trim()}\n</brief>\n\n${OPENING}`
 
 /** The document a final answer hands back: its last fenced block, preferring the mode's language. */
 const FENCES = { spec: ['json'], tsx: ['tsx', 'ts', 'typescript', 'jsx', 'js'] }
@@ -644,13 +726,20 @@ function countVerdict(tally, verdict, submitted) {
 
 /**
  * One run of one brief through the Messages API. Every request is preceded by
- * the ceilings' check.
+ * the ceilings' check. A `runtime` run offers no tool, so its first answer
+ * ends it.
+ *
+ * `timing` is the first request's: when it was sent and when the first text
+ * of its answer arrived. The scripted model reports neither, so its call is
+ * timed around it.
  */
 async function runOnce({
   brief,
   run,
   mode,
   model,
+  opening,
+  card,
   toolbox,
   requirements,
   maxIterations,
@@ -658,7 +747,7 @@ async function runOnce({
   limits,
 }) {
   const started = Date.now()
-  const messages = [{ role: 'user', content: OPENING }]
+  const messages = [{ role: 'user', content: opening }]
   const tally = newTally()
   const memo = new Map()
 
@@ -666,6 +755,7 @@ async function runOnce({
   let ended = null
   let answer = null
   let harnessFault = null
+  let timing = null
 
   while (ended === null) {
     if (turns >= MAX_TURNS) {
@@ -674,7 +764,14 @@ async function runOnce({
     }
     checkCeilings(meter, limits)
 
+    const sent = performance.now()
     const reply = await model(messages)
+    const received = performance.now()
+    const wrote = reply.content.some((block) => block.type === 'text' && block.text !== '')
+    timing ??= {
+      sentAt: reply.sentAt ?? sent,
+      firstTextAt: reply.firstTextAt !== undefined ? reply.firstTextAt : wrote ? received : null,
+    }
     turns += 1
     meter.input += reply.usage.input_tokens ?? 0
     meter.cacheRead += reply.usage.cache_read_input_tokens ?? 0
@@ -720,11 +817,13 @@ async function runOnce({
     brief,
     run,
     mode,
+    card,
     toolbox,
     requirements,
     tally,
     meter,
     started,
+    timing,
     turns,
     ended,
     answer,
@@ -739,7 +838,8 @@ async function runOnce({
  * refused or cut off is not judged: it never counts as lawful or as meeting
  * its brief, and it names no requirement as failed.
  */
-async function conclude({ brief, run, mode, toolbox, tally, meter, started, turns, ...end }) {
+async function conclude({ brief, run, mode, card, toolbox, tally, meter, started, turns, ...end }) {
+  if (card !== null) return concludeRuntime({ brief, run, card, meter, started, ...end })
   let { ended, harnessFault } = end
   const document = (end.answer === null ? null : answerIn(end.answer, mode)) ?? tally.lastSubmitted
   let lawful = false
@@ -778,6 +878,82 @@ async function conclude({ brief, run, mode, toolbox, tally, meter, started, turn
     toolCalls: tally.toolCalls,
     violationsSeen: Object.fromEntries([...tally.seen].sort(([a], [b]) => a.localeCompare(b))),
     misses: tally.misses,
+  }
+  return { record, document }
+}
+
+/**
+ * A `runtime` run's record, the same for both runners. The answer's document
+ * is read as a host reads it (`parsePartial`), and judged only when it is
+ * whole: by the host's check (`checkScreen`, for the card's framework and
+ * members) and by the brief's requirements, which read a run-time document as
+ * they read a `spec` one. An answer with no whole document is not lawful and
+ * meets no requirement. A response that was refused or cut off is not judged,
+ * as in the other modes.
+ *
+ * There is one request and no `validate` call, so whether the answer is
+ * lawful is the first shot as well, and the record holds it once.
+ */
+function concludeRuntime({ brief, run, card, meter, started, timing, requirements, ...end }) {
+  let { ended, harnessFault } = end
+  const answer = end.answer ?? ''
+  let document = answer
+  let lawful = false
+  let failedRequirements = []
+  let fatal = null
+  let faults = []
+  if (ended !== 'harness' && !CUT_OFF.has(ended)) {
+    try {
+      const read = card.parse(answer)
+      if (read.document === undefined) fatal = 'the answer holds no document'
+      else if (!read.complete) {
+        fatal =
+          read.error === null
+            ? 'the document is cut short: the answer ends before it closes'
+            : `the document stops being JSON at character ${read.error.at}, where it needs ` +
+              read.error.message
+      } else {
+        document = read.document
+        const verdict = card.check(document)
+        lawful = verdict.ok
+        faults = verdict.faults.map((fault) => clip(`${fault.path}: ${fault.message}`))
+      }
+      failedRequirements = unmet(requirements, 'spec', fatal === null ? document : null)
+    } catch (error) {
+      harnessFault = `judging the answer failed: ${messageOf(error)}`
+      ended = 'harness'
+      document = answer
+      lawful = false
+      failedRequirements = []
+      fatal = null
+      faults = []
+    }
+  }
+
+  const firstTokenMs =
+    timing === null || timing.firstTextAt === null
+      ? null
+      : Math.max(0, Math.round(timing.firstTextAt - timing.sentAt))
+  const record = {
+    brief,
+    run,
+    lawful,
+    meetsBrief: failedRequirements.length === 0 && ended !== 'harness' && !CUT_OFF.has(ended),
+    failedRequirements,
+    ended,
+    harnessFault,
+    fatal,
+    faults,
+    inputTokens: meter.input + meter.cacheRead + meter.cacheWrite,
+    uncachedInputTokens: meter.input,
+    cacheWriteTokens: meter.cacheWrite,
+    cacheReadTokens: meter.cacheRead,
+    outputTokens: meter.output,
+    discardedTokens: meter.discardedTokens,
+    firstTokenMs,
+    wallMs: Math.max(0, Date.now() - started - meter.backoffMs),
+    retries: meter.retries,
+    backoffMs: meter.backoffMs,
   }
   return { record, document }
 }
@@ -834,6 +1010,13 @@ async function answerCall(toolbox, mode, block, unparsed, memo, brief, run) {
  * that ended in a refusal or at `max_tokens`. It stops it when the last tool
  * result of a turn goes back. The CLI may have sent its next request by then;
  * that request is abandoned, and is not in the record.
+ *
+ * A `runtime` run gives the CLI the card as its system prompt, the brief on
+ * stdin, no built-in tool and an MCP configuration with no server, and stops
+ * the CLI when its first response ends, so it is held to one request with no
+ * tools. A CLI that reports a tool at start-up stops the eval. The CLI does
+ * not report when it sends a request, so the run has no time to the first
+ * token, and its wall time starts at the CLI's start-up report.
  */
 
 /** How the CLI names the eval's MCP tools: the server's key in the config, then the tool. */
@@ -924,11 +1107,13 @@ function cliArguments({ settings, system, config, names }) {
     // of the working directory, the platform, the model and the date after the opening message.
     '--system-prompt',
     system,
-    // No built-in tool, so the four MCP tools are all the model is offered.
+    // No built-in tool, so the four MCP tools are all the model is offered, and in the
+    // `runtime` mode, whose configuration names no server, nothing is.
     '--tools',
     '',
-    '--allowedTools',
-    names.map((name) => `${CLI_PREFIX}${name}`).join(','),
+    ...(names.length === 0
+      ? []
+      : ['--allowedTools', names.map((name) => `${CLI_PREFIX}${name}`).join(',')]),
     '--permission-mode',
     'dontAsk',
     '--strict-mcp-config',
@@ -959,6 +1144,8 @@ async function runOnceCli({
   run,
   mode,
   system,
+  opening,
+  card,
   settings,
   toolbox,
   requirements,
@@ -968,35 +1155,30 @@ async function runOnceCli({
 }) {
   checkCeilings(meter, limits)
 
+  const runtime = card !== null
   const directory = resolve(cli.scratch, `${brief}-${run}`)
   const app = resolve(directory, 'app')
   mkdirSync(app, { recursive: true })
   const journal = resolve(directory, 'journal.jsonl')
   writeFileSync(journal, '')
   const config = resolve(directory, 'mcp.json')
-  writeFileSync(
-    config,
-    JSON.stringify({
-      mcpServers: {
-        polymorph: {
-          type: 'stdio',
-          command: process.execPath,
-          args: [
-            MCP_SERVER,
-            ...['--mode', mode, '--tools', cli.tools, '--registry', cli.registry],
-            ...['--journal', journal],
-          ],
-        },
-      },
-    }),
-  )
+  const server = {
+    type: 'stdio',
+    command: process.execPath,
+    args: [
+      MCP_SERVER,
+      ...['--mode', mode, '--tools', cli.tools, '--registry', cli.registry],
+      ...['--journal', journal],
+    ],
+  }
+  writeFileSync(config, JSON.stringify({ mcpServers: runtime ? {} : { polymorph: server } }))
 
   const child = spawn(
     cli.command,
     [
       ...cli.prefix,
       ...(settings.fake ? ['--script', cli.scriptFor(brief, run)] : []),
-      ...cliArguments({ settings, system, config, names: cli.names }),
+      ...cliArguments({ settings, system, config, names: runtime ? [] : cli.names }),
     ],
     { cwd: app, env: cliEnvironment(), stdio: ['pipe', 'pipe', 'pipe'] },
   )
@@ -1005,7 +1187,7 @@ async function runOnceCli({
     child.on('error', (error) => done({ code: null, signal: null, error }))
   })
   child.stdin.on('error', () => {})
-  child.stdin.end(OPENING)
+  child.stdin.end(opening)
   let stderr = ''
   child.stderr.on('data', (chunk) => (stderr = (stderr + chunk).slice(-8000)))
 
@@ -1093,7 +1275,7 @@ async function runOnceCli({
   const streamed = (event) => {
     switch (event.type) {
       case 'message_start':
-        if (turns === 0 && !listed) {
+        if (!runtime && turns === 0 && !listed) {
           readJournal()
           if (!listed) {
             // Every run would go the same way, so the eval stops.
@@ -1121,7 +1303,9 @@ async function runOnceCli({
         meter.output += open.usage.output_tokens ?? 0
         last = open
         open = null
-        if (last.stopReason === 'tool_use') {
+        // One request: the first response ends the run, however it ended.
+        if (runtime) halt({ ended: CUT_OFF.has(last.stopReason) ? last.stopReason : 'answered' })
+        else if (last.stopReason === 'tool_use') {
           for (const call of calls.get(last.id) ?? []) {
             countCall(tally, call.name)
             pending.add(call.id)
@@ -1142,7 +1326,19 @@ async function runOnceCli({
           // request is where the tools have to be there.
           connection =
             event.mcp_servers?.find((entry) => entry.name === 'polymorph')?.status ?? 'not listed'
-          if (connection !== 'connected' && connection !== 'pending') {
+          if (runtime) {
+            // Every run would go the same way, so the eval stops.
+            const offered = [
+              ...(event.tools ?? []),
+              ...(event.mcp_servers ?? []).map((server) => `the MCP server ${server.name}`),
+            ]
+            if (offered.length > 0) {
+              const message =
+                `the CLI started with ${offered.join(', ')}, and a runtime run offers the ` +
+                'model no tool'
+              halt({ error: new CliError('cli', message) })
+            }
+          } else if (connection !== 'connected' && connection !== 'pending') {
             const message = `the CLI did not connect to the eval’s MCP server (${connection})`
             halt({ error: new CliError('cli', message) })
           }
@@ -1241,7 +1437,7 @@ async function runOnceCli({
   if (stop?.error !== undefined) throw stop.error
   if (stop !== null) {
     ended = stop.ended
-    if (CUT_OFF.has(ended)) answer = (texts.get(last.id) ?? []).join('\n')
+    if (CUT_OFF.has(ended) || runtime) answer = (texts.get(last.id) ?? []).join('\n')
   } else if (result === null) {
     const how =
       error === undefined ? `exited with ${code ?? signal}` : `did not start: ${error.message}`
@@ -1264,17 +1460,105 @@ async function runOnceCli({
     brief,
     run,
     mode,
+    card,
     toolbox,
     requirements,
     tally,
     meter,
     started,
+    // The CLI does not report when it sends a request.
+    timing: { sentAt: null, firstTextAt: null },
     turns,
     ended,
     answer,
     harnessFault,
   })
   return { ...measured, cost: stop === null ? (result?.total_cost_usd ?? null) : null }
+}
+
+/* -------------------------------------------------------------------------- */
+/* The run-time card                                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The card a `runtime` run sends, and how its answer is read and checked,
+ * for the framework and members the run names. The card and the check take
+ * the same options, as a host passes the same `members` to both: a member
+ * the card leaves out is one the check refuses.
+ *
+ * `record` is what the results file says of the card: its framework, how
+ * its members were chosen, every member it lists and its length.
+ */
+async function cardFor({ framework: named, members: asked }) {
+  const screen = await loadScreen()
+  const framework = named ?? screen.defaultFramework
+  if (!screen.frameworks.includes(framework)) {
+    refuse(`\`--framework\` is one of ${screen.frameworks.join(', ')}`)
+  }
+  const { chosen, members } = membersOf(asked, screen)
+  const options = { framework, ...(members === undefined ? {} : { members }) }
+  const text = screen.runtimeCard(options)
+  return {
+    text,
+    record: {
+      framework,
+      chosen,
+      members: members ?? screen.defaultMembers(framework),
+      characters: text.length,
+    },
+    parse: (answer) => screen.parsePartial(answer),
+    check: (document) => screen.checkScreen(document, options),
+  }
+}
+
+/** The subsets `--members` can name: `eval/members/<name>.json`, each a list of members. */
+const subsets = () =>
+  existsSync(SUBSETS)
+    ? readdirSync(SUBSETS)
+        .filter((file) => file.endsWith('.json'))
+        .map((file) => basename(file, '.json'))
+        .sort()
+    : []
+
+/**
+ * The members `--members` names. Absent or `default`, the framework's own
+ * default, which the card and the check choose themselves. A lower-case name
+ * is a subset in `eval/members/`. Anything else is a list of members, joined
+ * by commas. A name the vocabulary does not have stops the eval before any
+ * run: the card would leave it out without a word.
+ */
+function membersOf(asked, screen) {
+  if (asked === undefined || asked === 'default') return { chosen: 'default', members: undefined }
+  let names
+  let chosen
+  if (/^[a-z][a-z0-9-]*$/.test(asked)) {
+    const file = resolve(SUBSETS, `${asked}.json`)
+    if (!existsSync(file)) {
+      refuse(
+        `no subset called \`${asked}\` in eval/members/; the subsets are ` +
+          `${subsets().join(', ') || 'none'}, and a list of members is joined by commas`,
+      )
+    }
+    names = JSON.parse(readFileSync(file, 'utf8'))
+    if (!Array.isArray(names) || names.some((entry) => typeof entry !== 'string')) {
+      refuse(`eval/members/${asked}.json is not a list of member names`)
+    }
+    chosen = asked
+  } else {
+    names = asked.split(',').map((entry) => entry.trim())
+    chosen = 'list'
+  }
+  names = [...new Set(names.filter((entry) => entry !== ''))]
+  if (names.length === 0) refuse('`--members` names no member')
+  const known = new Set(screen.names())
+  const unknown = names.filter((entry) => !known.has(entry))
+  if (unknown.length > 0) {
+    refuse(
+      `\`--members\` names ${unknown.map((entry) => `\`${entry}\``).join(', ')}, which the ` +
+        'vocabulary does not have as a member or an exception primitive',
+    )
+  }
+  return { chosen, members: names }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1341,6 +1625,70 @@ function summarise(records, endings) {
     meanInputTokens: average('inputTokens'),
     meanOutputTokens: average('outputTokens'),
     meanWallMs: average('wallMs'),
+    retries: sum(records.map((record) => record.retries)),
+    backoffMs: sum(records.map((record) => record.backoffMs)),
+    discardedTokens: sum(records.map((record) => record.discardedTokens)),
+  }
+}
+
+/**
+ * The figures over a set of `runtime` runs, kept as `summarise` keeps them:
+ * a harness fault is left out of every rate and mean, and each rate has its
+ * 95% interval. There is one request and no `validate` call, so there is no
+ * first-shot rate apart from the lawful rate and no call count. Each time has
+ * its mean and its fastest and slowest run; the time to the first token is
+ * over the runs that measured one.
+ */
+function summariseRuntime(records, endings) {
+  const measured = records.filter((record) => record.ended !== 'harness')
+  const share = (count) => (measured.length === 0 ? null : rounded(count / measured.length, 4))
+  const bounds = (count) => {
+    const found = interval(count, measured.length)
+    return found === null ? null : { low: rounded(found.low, 4), high: rounded(found.high, 4) }
+  }
+  const tally = (test) => measured.filter(test).length
+  const average = (values) => (values.length === 0 ? null : Math.round(mean(values)))
+  const meanOf = (field) => average(measured.map((record) => record[field]))
+  const timed = (field) => measured.map((record) => record[field]).filter((ms) => ms !== null)
+  const range = (field) => {
+    const values = timed(field)
+    return values.length === 0 ? null : { low: Math.min(...values), high: Math.max(...values) }
+  }
+  const failed = new Map()
+  for (const record of measured) {
+    for (const id of record.failedRequirements) {
+      const key = `${record.brief}/${id}`
+      failed.set(key, (failed.get(key) ?? 0) + 1)
+    }
+  }
+  const [lawful, meets, both] = [
+    tally((record) => record.lawful),
+    tally((record) => record.meetsBrief),
+    tally((record) => record.lawful && record.meetsBrief),
+  ]
+  return {
+    runs: records.length,
+    measured: measured.length,
+    endings: Object.fromEntries(
+      endings.map((ending) => [ending, records.filter((record) => record.ended === ending).length]),
+    ),
+    lawfulRate: share(lawful),
+    lawfulInterval: bounds(lawful),
+    meetsBriefRate: share(meets),
+    meetsBriefInterval: bounds(meets),
+    lawfulAndMeetsBriefRate: share(both),
+    lawfulAndMeetsBriefInterval: bounds(both),
+    failedRequirements: Object.fromEntries([...failed].sort(([a], [b]) => a.localeCompare(b))),
+    unreadable: tally((record) => record.ended === 'answered' && record.fatal !== null),
+    meanInputTokens: meanOf('inputTokens'),
+    meanUncachedInputTokens: meanOf('uncachedInputTokens'),
+    meanCacheWriteTokens: meanOf('cacheWriteTokens'),
+    meanCacheReadTokens: meanOf('cacheReadTokens'),
+    meanOutputTokens: meanOf('outputTokens'),
+    meanFirstTokenMs: average(timed('firstTokenMs')),
+    firstTokenRangeMs: range('firstTokenMs'),
+    meanWallMs: meanOf('wallMs'),
+    wallRangeMs: range('wallMs'),
     retries: sum(records.map((record) => record.retries)),
     backoffMs: sum(records.map((record) => record.backoffMs)),
     discardedTokens: sum(records.map((record) => record.discardedTokens)),
@@ -1453,11 +1801,17 @@ const everyBrief = readdirSync(BRIEFS)
   .map((file) => basename(file, '.md'))
   .sort((a, b) => a.localeCompare(b))
 
+/**
+ * The run-time card every `runtime` run sends, made once, so every run sends
+ * the same card: `null` in the other modes.
+ */
+const card = settings.mode === RUNTIME ? await cardFor(settings) : null
+
 const out =
   settings.out ?? (settings.fake ? mkdtempSync(resolve(tmpdir(), 'polymorph-eval-')) : RESULTS)
 const at = new Date().toISOString()
 const toolbox = await loadToolbox()
-const tools = toolbox.tools(settings.mode)
+const tools = card === null ? toolbox.tools(settings.mode) : []
 
 /**
  * What each brief requires of its screen. The eval stops before any run when
@@ -1481,7 +1835,8 @@ if (unjudged.length > 0) {
 /**
  * What every CLI run's MCP server reads, written once: the tool definitions,
  * and the registry the eval judges with, as JSON. Each run adds a directory
- * of its own beside them, and the whole is removed when the eval ends.
+ * of its own beside them, and the whole is removed when the eval ends. A
+ * `runtime` run starts no server, so it writes neither.
  */
 let cli = null
 if (launcher !== null) {
@@ -1494,8 +1849,10 @@ if (launcher !== null) {
     names: tools.map((tool) => tool.name),
     scriptFor: (brief, run) => scriptFor(resolve(BRIEFS, `${brief}.md`), run),
   }
-  writeFileSync(cli.tools, JSON.stringify(mcpTools(tools)))
-  writeFileSync(cli.registry, JSON.stringify(toolbox.registry))
+  if (card === null) {
+    writeFileSync(cli.tools, JSON.stringify(mcpTools(tools)))
+    writeFileSync(cli.registry, JSON.stringify(toolbox.registry))
+  }
 }
 const removeScratch = () => {
   if (cli !== null) rmSync(cli.scratch, { recursive: true, force: true })
@@ -1510,12 +1867,37 @@ const polymorph = { version: toolbox.registry.version, commit: commit() }
 const records = []
 const outputs = []
 
+/** The settings a results file records, by mode. */
+const recordedSettings = () =>
+  card === null
+    ? {
+        briefs: settings.briefs,
+        runs: settings.runs,
+        maxIterations: settings.maxIterations,
+        maxTurns: MAX_TURNS,
+        maxTokens: MAX_TOKENS,
+        effort: settings.effort,
+        maxTokensPerRun: settings.maxTokensPerRun,
+        maxTokensTotal: settings.maxTokensTotal,
+      }
+    : {
+        briefs: settings.briefs,
+        runs: settings.runs,
+        maxTokens: MAX_TOKENS,
+        effort: settings.effort,
+        thinking: settings.runner === 'cli' ? null : settings.thinking,
+        maxTokensPerRun: settings.maxTokensPerRun,
+        maxTokensTotal: settings.maxTokensTotal,
+      }
+
 /**
  * Writes the results and the outputs as they stand, and re-renders the page.
  * Called after every run with `partial` set, and once more at the end
  * without it, so an eval that stops keeps every run it finished.
  */
 async function save({ partial, stopped }) {
+  const [summariseRuns, endings] =
+    card === null ? [summarise, toolbox.endings] : [summariseRuntime, toolbox.runtimeEndings]
   const results = {
     schema: 'polymorph-eval/1',
     at,
@@ -1528,16 +1910,8 @@ async function save({ partial, stopped }) {
     stopped,
     polymorph,
     briefs: everyBrief,
-    settings: {
-      briefs: settings.briefs,
-      runs: settings.runs,
-      maxIterations: settings.maxIterations,
-      maxTurns: MAX_TURNS,
-      maxTokens: MAX_TOKENS,
-      effort: settings.effort,
-      maxTokensPerRun: settings.maxTokensPerRun,
-      maxTokensTotal: settings.maxTokensTotal,
-    },
+    settings: recordedSettings(),
+    ...(card === null ? {} : { card: card.record }),
     outputs: `${stem}.outputs.json`,
     requirements: briefs.map((brief) => ({
       brief: name(brief),
@@ -1545,12 +1919,12 @@ async function save({ partial, stopped }) {
       requirements: required.get(name(brief)).requirements.map(({ id, says }) => ({ id, says })),
     })),
     summary: {
-      overall: summarise(records, toolbox.endings),
+      overall: summariseRuns(records, endings),
       briefs: briefs.map((brief) => ({
         brief: name(brief),
-        ...summarise(
+        ...summariseRuns(
           records.filter((record) => record.brief === name(brief)),
-          toolbox.endings,
+          endings,
         ),
       })),
     },
@@ -1567,9 +1941,47 @@ async function save({ partial, stopped }) {
   return results
 }
 
+/** What a run did, as the line it prints when it finishes. */
+function runLine(record, cost) {
+  const ending = `(${record.ended}${CUT_OFF.has(record.ended) ? ', never counted lawful' : ''}), `
+  const brief = record.meetsBrief
+    ? 'meets its brief, '
+    : record.failedRequirements.length > 0
+      ? `does not meet its brief (${record.failedRequirements.join(', ')}), `
+      : 'never counted as meeting its brief, '
+  const lines =
+    card === null
+      ? `first shot ${record.firstShotLawful ? 'lawful' : 'not lawful'}, ` +
+        brief +
+        (record.iterations === null
+          ? `no validate call lawful (${record.toolCalls.validate} made), `
+          : `lawful at validate call ${record.iterations}, `) +
+        `${record.inputTokens} in / ${record.outputTokens} out, ${(record.wallMs / 1000).toFixed(1)}s`
+      : brief +
+        `${record.inputTokens} in (${record.cacheReadTokens} read from the cache, ` +
+        `${record.cacheWriteTokens} written to it) / ${record.outputTokens} out, ` +
+        (record.firstTokenMs === null
+          ? ''
+          : `first token at ${(record.firstTokenMs / 1000).toFixed(2)}s, `) +
+        `${(record.wallMs / 1000).toFixed(2)}s` +
+        (record.fatal === null ? '' : `; ${record.fatal}`)
+  return (
+    `eval: ${record.brief} #${record.run} — ${record.lawful ? 'lawful' : 'not lawful'} ` +
+    ending +
+    lines +
+    (record.retries > 0 ? `, ${record.retries} retried` : '') +
+    (typeof cost === 'number' ? `, $${cost.toFixed(2)} by the CLI's count` : '') +
+    (record.harnessFault === null ? '' : `\neval: harness fault: ${record.harnessFault}`)
+  )
+}
+
 for (const brief of briefs) {
   const text = readFileSync(brief, 'utf8')
-  const system = systemPrompt(settings.mode, text, toolbox)
+  // The `runtime` mode's system prompt is the card alone, and its message is the brief.
+  const [system, opening] =
+    card === null
+      ? [systemPrompt(settings.mode, text, toolbox), OPENING]
+      : [card.text, runtimeOpening(text)]
   for (let run = 1; run <= settings.runs; run += 1) {
     const meter = newMeter()
     const limits = {
@@ -1585,6 +1997,8 @@ for (const brief of briefs) {
           run,
           mode: settings.mode,
           system,
+          opening,
+          card,
           settings,
           toolbox,
           requirements: required.get(name(brief)).requirements,
@@ -1593,21 +2007,25 @@ for (const brief of briefs) {
           limits,
         })
       } else {
+        const fixed =
+          card === null
+            ? loopRequest({ model: settings.model, system, tools, effort: settings.effort })
+            : runtimeRequest({
+                model: settings.model,
+                card: system,
+                effort: settings.effort,
+                thinking: settings.thinking,
+              })
         const model = settings.fake
           ? fakeModel(scriptFor(brief, run))
-          : apiModel({
-              apiKey,
-              model: settings.model,
-              system,
-              tools,
-              effort: settings.effort,
-              meter,
-            })
+          : apiModel({ apiKey, meter, fixed })
         measured = await runOnce({
           brief: name(brief),
           run,
           mode: settings.mode,
           model,
+          opening,
+          card,
           toolbox,
           requirements: required.get(name(brief)).requirements,
           maxIterations: settings.maxIterations,
@@ -1650,23 +2068,7 @@ for (const brief of briefs) {
       run,
       document: storedDocument(document, settings.mode, record.ended),
     })
-    console.error(
-      `eval: ${record.brief} #${run} — ${record.lawful ? 'lawful' : 'not lawful'} ` +
-        `(${record.ended}${CUT_OFF.has(record.ended) ? ', never counted lawful' : ''}), ` +
-        `first shot ${record.firstShotLawful ? 'lawful' : 'not lawful'}, ` +
-        (record.meetsBrief
-          ? 'meets its brief, '
-          : record.failedRequirements.length > 0
-            ? `does not meet its brief (${record.failedRequirements.join(', ')}), `
-            : 'never counted as meeting its brief, ') +
-        (record.iterations === null
-          ? `no validate call lawful (${record.toolCalls.validate} made), `
-          : `lawful at validate call ${record.iterations}, `) +
-        `${record.inputTokens} in / ${record.outputTokens} out, ${(record.wallMs / 1000).toFixed(1)}s` +
-        (record.retries > 0 ? `, ${record.retries} retried` : '') +
-        (typeof cost === 'number' ? `, $${cost.toFixed(2)} by the CLI's count` : '') +
-        (record.harnessFault === null ? '' : `\neval: harness fault: ${record.harnessFault}`),
-    )
+    console.error(runLine(record, cost))
     await save({ partial: true, stopped: null })
   }
 }
@@ -1678,7 +2080,7 @@ const { overall } = results.summary
 const percent = (rate) => (rate === null ? '—' : `${Math.round(rate * 100)}%`)
 console.error(
   `eval: ${shown(resultsFile)} — lawful ${percent(overall.lawfulRate)}, ` +
-    `first shot ${percent(overall.firstShotRate)}, ` +
+    (card === null ? `first shot ${percent(overall.firstShotRate)}, ` : '') +
     `meets its brief ${percent(overall.meetsBriefRate)}, ` +
     `both ${percent(overall.lawfulAndMeetsBriefRate)}, ` +
     `over ${overall.measured} run${overall.measured === 1 ? '' : 's'}; ${shown(readme)} rendered`,

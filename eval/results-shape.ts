@@ -1,4 +1,14 @@
-import { arr, bool, nullable, num, obj, rec, str, type Shape } from '@polymorph/registry/shape'
+import {
+  arr,
+  bool,
+  nullable,
+  num,
+  obj,
+  rec,
+  str,
+  union,
+  type Shape,
+} from '@polymorph/registry/shape'
 
 /**
  * A results file of the agent eval (`eval/results/*.json`), described once.
@@ -13,6 +23,12 @@ import { arr, bool, nullable, num, obj, rec, str, type Shape } from '@polymorph/
  * Every field is a measurement or the setting that produced it. The documents
  * the agent handed back are not here: they live in the file `outputs` names,
  * beside this one, so a results file stays small enough to read and compare.
+ *
+ * A results file is one of two shapes. The `spec` and `tsx` modes run a loop
+ * of tool calls, and record what the loop did. The `runtime` mode sends one
+ * request with no tools, so it records no `validate` call and no first shot
+ * apart from the answer, and records the card it sent and the time to the
+ * first token instead.
  */
 
 export const RESULTS_ID = 'polymorph-eval/1'
@@ -23,6 +39,22 @@ export const RESULTS_ID = 'polymorph-eval/1'
  * every rate and mean.
  */
 export const ENDINGS = ['answered', 'cap', 'turns', 'max_tokens', 'refusal', 'harness'] as const
+
+/** The mode that sends the run-time card and a brief in one request, with no tools. */
+export const RUNTIME_MODE = 'runtime'
+
+/**
+ * How a run of the `runtime` mode ended. It makes one request and has no
+ * loop, so it cannot reach the iteration cap or the request limit.
+ */
+export const RUNTIME_ENDINGS = ['answered', 'max_tokens', 'refusal', 'harness'] as const
+
+/**
+ * What the `runtime` mode sends as `thinking.type`. `adaptive` lets the model
+ * think; `disabled` and `between_tools` stop it thinking before its answer,
+ * and which of the two a model accepts is the model's.
+ */
+export const THINKING = ['adaptive', 'disabled', 'between_tools'] as const
 
 /**
  * The effort levels `--effort` accepts. `default` sends none, so the model's
@@ -54,7 +86,7 @@ const interval = (rate: string): Shape =>
     ),
   )
 
-const SUMMARY_FIELDS: Record<string, Shape> = {
+const SUMMARY_FIELDS = {
   runs: count('How many runs this summary covers, harness faults included.'),
   measured: count(
     'How many of them the rates and means are over: every run that did not end in a harness ' +
@@ -126,7 +158,7 @@ const SUMMARY_FIELDS: Record<string, Shape> = {
   discardedTokens: count(
     'Tokens of attempts that broke off and were retried, summed over every run.',
   ),
-}
+} satisfies Record<string, Shape>
 
 /**
  * The summary fields a results file lacks when it was written before the eval
@@ -235,17 +267,122 @@ const RECORD = obj(
   { optional: ['misses', 'meetsBrief', 'failedRequirements'] },
 )
 
-export const RESULTS_SHAPE: Shape = obj(
+/* -------------------------------------------------------------------------- */
+/* The fields both shapes share                                               */
+/* -------------------------------------------------------------------------- */
+
+const SCHEMA = str({
+  enum: [RESULTS_ID],
+  description: 'Identifies the shape. Bumped only by a breaking change.',
+})
+
+const AT = str({
+  pattern: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$',
+  description: 'When the run started, as an ISO timestamp in UTC.',
+})
+
+const MODEL = str({ description: 'The model id, or `fake` for the scripted model.' })
+
+const CLI_VERSION = nullable(
+  str({
+    description:
+      'The Claude Code version the CLI runner ran, as `claude --version` prints it; ' +
+      '`scripted` for its stand-in. Null for the API runner.',
+  }),
+)
+
+const FAKE = bool({ description: 'True for the scripted model. A fake run measures the harness.' })
+
+const PARTIAL = bool({
+  description:
+    'True for a checkpoint, written after every run while the eval is under way, and for ' +
+    'an eval that stopped before every run finished. A partial file is never the number.',
+})
+
+const STOPPED = nullable(
+  obj(
+    {
+      reason: str({
+        enum: STOPS,
+        description:
+          '`api`: the Messages API refused, or kept failing. `cli`: the CLI failed, or ' +
+          'reported an error, such as one from the API. `usage-limit`: the CLI reported a ' +
+          'usage or rate limit on the account it is signed in to. `tokens-per-run`, ' +
+          '`tokens-total`: a token ceiling was reached.',
+      }),
+      brief: str({ description: 'The brief whose run was under way.' }),
+      run: count('Which run of that brief.'),
+      message: str({ description: 'What stopped it.' }),
+      tokens: count(
+        'Tokens the unfinished run had spent, discarded attempts included. It has no record.',
+      ),
+    },
+    { description: 'Why the eval stopped early; null when it did not.' },
+  ),
+)
+
+const POLYMORPH = obj({
+  version: str({ description: 'The registry’s version: the release that was measured.' }),
+  commit: nullable(str({ description: 'The commit the eval ran on, when there is one.' })),
+})
+
+const BRIEFS = arr(str(), {
+  description:
+    'Every brief in `eval/briefs/` when the eval ran, by name. Only a run over all of them ' +
+    'can be the number; one over fewer is a smoke run.',
+})
+
+const EFFORT = str({
+  enum: EFFORTS,
+  description:
+    'The effort sent as `output_config.effort`, or passed to the CLI as `--effort`; ' +
+    '`default` sends none, so the model’s own default applies, or the CLI’s.',
+})
+
+const CEILINGS = {
+  maxTokensPerRun: count(
+    'The token ceiling per run, counted as `inputTokens`, `outputTokens` and ' +
+      '`discardedTokens` together. No request starts once a run has reached it.',
+  ),
+  maxTokensTotal: count('The same ceiling over the whole eval.'),
+}
+
+const OUTPUTS = str({
+  description: 'The file beside this one that holds every run’s final document.',
+})
+
+const REQUIREMENTS = arr(
+  obj({
+    brief: str({ description: 'The brief these requirements belong to.' }),
+    digest: str({
+      description:
+        'A digest of the requirements as they were checked. Two results files whose digests ' +
+        'differ for a brief judged it by different requirements, so their `meetsBrief` ' +
+        'rates do not compare.',
+    }),
+    requirements: arr(
+      obj({
+        id: str({ description: 'The id a record’s `failedRequirements` names.' }),
+        says: str({ description: 'What the requirement asks for, in words.' }),
+      }),
+    ),
+  }),
   {
-    schema: str({
-      enum: [RESULTS_ID],
-      description: 'Identifies the shape. Bumped only by a breaking change.',
-    }),
-    at: str({
-      pattern: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$',
-      description: 'When the run started, as an ISO timestamp in UTC.',
-    }),
-    model: str({ description: 'The model id, or `fake` for the scripted model.' }),
+    description:
+      'What each chosen brief required when the eval ran, in brief order. Absent in a ' +
+      'results file written before requirements were judged.',
+  },
+)
+
+/* -------------------------------------------------------------------------- */
+/* The `spec` and `tsx` modes                                                 */
+/* -------------------------------------------------------------------------- */
+
+const LOOP_RESULTS: Shape = obj(
+  {
+    schema: SCHEMA,
+    at: AT,
+    model: MODEL,
     mode: str({
       enum: ['spec', 'tsx'],
       description: 'What the agent hands back: a `polymorph-screen/1` document or a TSX module.',
@@ -257,92 +394,23 @@ export const RESULTS_SHAPE: Shape = obj(
         'through `claude -p`, with the same tools served over MCP. Both are measured the same ' +
         'way.',
     }),
-    cliVersion: nullable(
-      str({
-        description:
-          'The Claude Code version the CLI runner ran, as `claude --version` prints it; ' +
-          '`scripted` for its stand-in. Null for the API runner.',
-      }),
-    ),
-    fake: bool({ description: 'True for the scripted model. A fake run measures the harness.' }),
-    partial: bool({
-      description:
-        'True for a checkpoint, written after every run while the eval is under way, and for ' +
-        'an eval that stopped before every run finished. A partial file is never the number.',
-    }),
-    stopped: nullable(
-      obj(
-        {
-          reason: str({
-            enum: STOPS,
-            description:
-              '`api`: the Messages API refused, or kept failing. `cli`: the CLI failed, or ' +
-              'reported an error, such as one from the API. `usage-limit`: the CLI reported a ' +
-              'usage or rate limit on the account it is signed in to. `tokens-per-run`, ' +
-              '`tokens-total`: a token ceiling was reached.',
-          }),
-          brief: str({ description: 'The brief whose run was under way.' }),
-          run: count('Which run of that brief.'),
-          message: str({ description: 'What stopped it.' }),
-          tokens: count(
-            'Tokens the unfinished run had spent, discarded attempts included. It has no record.',
-          ),
-        },
-        { description: 'Why the eval stopped early; null when it did not.' },
-      ),
-    ),
-    polymorph: obj({
-      version: str({ description: 'The registry’s version: the release that was measured.' }),
-      commit: nullable(str({ description: 'The commit the eval ran on, when there is one.' })),
-    }),
-    briefs: arr(str(), {
-      description:
-        'Every brief in `eval/briefs/` when the eval ran, by name. Only a run over all of them ' +
-        'can be the number; one over fewer is a smoke run.',
-    }),
+    cliVersion: CLI_VERSION,
+    fake: FAKE,
+    partial: PARTIAL,
+    stopped: STOPPED,
+    polymorph: POLYMORPH,
+    briefs: BRIEFS,
     settings: obj({
       briefs: str({ description: 'The glob the briefs were chosen by.' }),
       runs: count('Runs per brief.'),
       maxIterations: count('The iteration cap: `validate` calls before a run is stopped.'),
       maxTurns: count('The request limit per run.'),
       maxTokens: count('`max_tokens` on every request.'),
-      effort: str({
-        enum: EFFORTS,
-        description:
-          'The effort sent as `output_config.effort`, or passed to the CLI as `--effort`; ' +
-          '`default` sends none, so the model’s own default applies, or the CLI’s.',
-      }),
-      maxTokensPerRun: count(
-        'The token ceiling per run, counted as `inputTokens`, `outputTokens` and ' +
-          '`discardedTokens` together. No request starts once a run has reached it.',
-      ),
-      maxTokensTotal: count('The same ceiling over the whole eval.'),
+      effort: EFFORT,
+      ...CEILINGS,
     }),
-    outputs: str({
-      description: 'The file beside this one that holds every run’s final document.',
-    }),
-    requirements: arr(
-      obj({
-        brief: str({ description: 'The brief these requirements belong to.' }),
-        digest: str({
-          description:
-            'A digest of the requirements as they were checked. Two results files whose digests ' +
-            'differ for a brief judged it by different requirements, so their `meetsBrief` ' +
-            'rates do not compare.',
-        }),
-        requirements: arr(
-          obj({
-            id: str({ description: 'The id a record’s `failedRequirements` names.' }),
-            says: str({ description: 'What the requirement asks for, in words.' }),
-          }),
-        ),
-      }),
-      {
-        description:
-          'What each chosen brief required when the eval ran, in brief order. Absent in a ' +
-          'results file written before requirements were judged.',
-      },
-    ),
+    outputs: OUTPUTS,
+    requirements: REQUIREMENTS,
     summary: obj({
       overall: obj(SUMMARY_FIELDS, { optional: SUMMARY_ADDED }),
       briefs: arr(obj({ brief: str(), ...SUMMARY_FIELDS }, { optional: SUMMARY_ADDED }), {
@@ -357,3 +425,224 @@ export const RESULTS_SHAPE: Shape = obj(
       'One run of the agent eval: per-run measurements and their summary, per brief and overall.',
   },
 )
+
+/* -------------------------------------------------------------------------- */
+/* The `runtime` mode                                                         */
+/* -------------------------------------------------------------------------- */
+
+/** A time's fastest and slowest run, in milliseconds; null where no run measured it. */
+const timeRange = (field: string): Shape =>
+  nullable(
+    obj(
+      { low: count('The fastest run.'), high: count('The slowest run.') },
+      {
+        description: `The fastest and the slowest of the measured runs’ \`${field}\`, in milliseconds.`,
+      },
+    ),
+  )
+
+const RUNTIME_SUMMARY_FIELDS: Record<string, Shape> = {
+  runs: SUMMARY_FIELDS.runs,
+  measured: SUMMARY_FIELDS.measured,
+  endings: obj(
+    Object.fromEntries(
+      RUNTIME_ENDINGS.map((ending) => [ending, count(`Runs that ended \`${ending}\`.`)]),
+    ),
+    {
+      description:
+        'How the runs ended. A `harness` run is left out of every figure below except the ' +
+        'retry totals; a `refusal` or `max_tokens` run is counted, and never as lawful.',
+    },
+  ),
+  lawfulRate: nullable(
+    num({
+      description:
+        'The share of runs, from 0 to 1, whose answer holds a whole document that ' +
+        '`checkScreen` passes. With one request and no tools, this is the first shot as well. ' +
+        'Null when every run was a harness fault.',
+    }),
+  ),
+  lawfulInterval: interval('lawfulRate'),
+  meetsBriefRate: SUMMARY_FIELDS.meetsBriefRate,
+  meetsBriefInterval: interval('meetsBriefRate'),
+  lawfulAndMeetsBriefRate: SUMMARY_FIELDS.lawfulAndMeetsBriefRate,
+  lawfulAndMeetsBriefInterval: interval('lawfulAndMeetsBriefRate'),
+  failedRequirements: SUMMARY_FIELDS.failedRequirements,
+  unreadable: count(
+    'Runs that answered on their own with no whole document in the answer: none at all, or one ' +
+      'cut short. Counted as neither lawful nor meeting their brief.',
+  ),
+  meanInputTokens: nullable(count('Mean input tokens per run: uncached, cache writes and reads.')),
+  meanUncachedInputTokens: nullable(
+    count('Mean input tokens per run that the cache did not hold.'),
+  ),
+  meanCacheWriteTokens: nullable(count('Mean input tokens per run written to the prompt cache.')),
+  meanCacheReadTokens: nullable(count('Mean input tokens per run read from the prompt cache.')),
+  meanOutputTokens: nullable(count('Mean output tokens per run, thinking included.')),
+  meanFirstTokenMs: nullable(
+    count(
+      'Mean time to the first text of the answer, in milliseconds, over the measured runs that ' +
+        'have one. Null when none has: the CLI runner measures none.',
+    ),
+  ),
+  firstTokenRangeMs: timeRange('firstTokenMs'),
+  meanWallMs: SUMMARY_FIELDS.meanWallMs,
+  wallRangeMs: timeRange('wallMs'),
+  retries: SUMMARY_FIELDS.retries,
+  backoffMs: SUMMARY_FIELDS.backoffMs,
+  discardedTokens: SUMMARY_FIELDS.discardedTokens,
+}
+
+const RUNTIME_RECORD = obj({
+  brief: str({ description: 'The brief’s file name in `eval/briefs/`, without `.md`.' }),
+  run: count('Which run of this brief, from 1.'),
+  lawful: bool({
+    description:
+      'Whether the answer holds a whole document and `checkScreen` (`@polymorph/screen`) passes ' +
+      'it with the card’s framework and members. Always false for a run that ended in ' +
+      '`refusal`, `max_tokens` or `harness`.',
+  }),
+  meetsBrief: bool({
+    description:
+      'Whether the document meets every requirement of its brief ' +
+      '(`eval/requirements/<brief>.json`), read as the `spec` mode reads one. Always false for ' +
+      'a run that ended in `refusal`, `max_tokens` or `harness`.',
+  }),
+  failedRequirements: arr(str(), {
+    description:
+      'The requirements the document does not meet, by id, in the brief’s order: every one ' +
+      'when the answer holds no whole document. Empty for a run that ended in `refusal`, ' +
+      '`max_tokens` or `harness`, which is not judged.',
+  }),
+  ended: str({
+    enum: RUNTIME_ENDINGS,
+    description:
+      '`answered`: the model stopped. `max_tokens`: the response was cut off. `refusal`: the ' +
+      'model declined. `harness`: the harness itself failed, so the run measures nothing about ' +
+      'the model.',
+  }),
+  harnessFault: nullable(
+    str({ description: 'What failed when the run ended `harness`; null for every other run.' }),
+  ),
+  fatal: nullable(
+    str({
+      description:
+        'Why the answer holds no document `checkScreen` can read: there is none, or it is cut ' +
+        'short. Null when the document is whole, and for a run that was not judged.',
+    }),
+  ),
+  faults: arr(str(), {
+    description: 'Every fault `checkScreen` reported, as `path: message`, in its words.',
+  }),
+  inputTokens: count(
+    'Every input token the request read: uncached, cache writes and cache reads together.',
+  ),
+  uncachedInputTokens: count('The part of `inputTokens` the API reported as `input_tokens`.'),
+  cacheWriteTokens: count(
+    'The part of `inputTokens` written to the prompt cache (`cache_creation_input_tokens`).',
+  ),
+  cacheReadTokens: count(
+    'The part of `inputTokens` read from the prompt cache (`cache_read_input_tokens`).',
+  ),
+  outputTokens: count('Every output token of the answer, thinking included.'),
+  discardedTokens: count(
+    'Tokens of attempts that broke off mid-stream and were sent again, as far as their usage ' +
+      'was reported. Billed, but in neither `inputTokens` nor `outputTokens`.',
+  ),
+  firstTokenMs: nullable(
+    count(
+      'Milliseconds from sending the request that was answered to the first text of its ' +
+        'answer. Thinking is not text, so time spent thinking is inside it. Null when the answer ' +
+        'has no text, and for the CLI runner, which does not report when it sends a request.',
+    ),
+  ),
+  wallMs: count(
+    'Milliseconds from the first request to the end of the answer, retry waits (`backoffMs`) ' +
+      'left out; for the CLI runner, from the CLI’s start-up report.',
+  ),
+  retries: count('Requests sent again after a transient failure.'),
+  backoffMs: count('Time spent waiting before those requests, in milliseconds.'),
+})
+
+const RUNTIME_RESULTS: Shape = obj(
+  {
+    schema: SCHEMA,
+    at: AT,
+    model: MODEL,
+    mode: str({
+      enum: [RUNTIME_MODE],
+      description:
+        'The run-time lane: one request with no tools, the run-time card as the system prompt ' +
+        'and the brief as the message, answered with a `polymorph-screen/1` document.',
+    }),
+    runner: str({
+      enum: RUNNERS,
+      description:
+        '`api`: the harness sent the request to the Messages API. `cli`: each run went through ' +
+        '`claude -p` with no tool and no MCP server, stopped after its first response.',
+    }),
+    cliVersion: CLI_VERSION,
+    fake: FAKE,
+    partial: PARTIAL,
+    stopped: STOPPED,
+    polymorph: POLYMORPH,
+    briefs: BRIEFS,
+    settings: obj({
+      briefs: str({ description: 'The glob the briefs were chosen by.' }),
+      runs: count('Runs per brief.'),
+      maxTokens: count('`max_tokens` on the request.'),
+      effort: EFFORT,
+      thinking: nullable(
+        str({
+          enum: THINKING,
+          description:
+            'What the API runner sent as `thinking.type`. Null for the CLI runner, which ' +
+            'chooses its own.',
+        }),
+      ),
+      ...CEILINGS,
+    }),
+    card: obj(
+      {
+        framework: str({ description: 'The framework the card and the check were for.' }),
+        chosen: str({
+          description:
+            'How the members were chosen: `default` for every member the framework draws, a ' +
+            'subset’s name from `eval/members/`, or `list` for names given to `--members`.',
+        }),
+        members: arr(str(), {
+          description:
+            'Every member and exception primitive the card lists and the check allows, by name.',
+        }),
+        characters: count('The length of the card, the whole system prompt, in characters.'),
+      },
+      {
+        description:
+          'The run-time card the system prompt held: `runtimeCard` from `@polymorph/screen`, ' +
+          'with the output contract at its end.',
+      },
+    ),
+    outputs: OUTPUTS,
+    requirements: REQUIREMENTS,
+    summary: obj({
+      overall: obj(RUNTIME_SUMMARY_FIELDS),
+      briefs: arr(obj({ brief: str(), ...RUNTIME_SUMMARY_FIELDS }), {
+        description: 'One summary per brief chosen, in brief order, including briefs not yet run.',
+      }),
+    }),
+    records: arr(RUNTIME_RECORD, {
+      description: 'One record per finished run, by brief and then by run.',
+    }),
+  },
+  {
+    description:
+      'One run of the agent eval’s run-time lane: per-run measurements and their summary, per ' +
+      'brief and overall.',
+  },
+)
+
+export const RESULTS_SHAPE: Shape = union([LOOP_RESULTS, RUNTIME_RESULTS], {
+  description:
+    'A results file of the agent eval: a run of the `spec` or `tsx` mode, or of the run-time ' +
+    'lane (`runtime`).',
+})

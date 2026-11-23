@@ -10,6 +10,9 @@ import { createJiti } from 'jiti'
  * Messages API runner's tool calls with them, and `eval/mcp.mjs` serves the
  * same functions to the Claude Code CLI over MCP, so both runners' models
  * read the same answers and are judged by the same check.
+ *
+ * The `runtime` mode offers no tool. `loadScreen` loads what it uses instead:
+ * the run-time card it sends, and the check and the reader it judges with.
  */
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -42,7 +45,7 @@ export async function loadToolbox({ registry: built } = {}) {
   const { withClimb } = await load('packages/mcp/src/violations.ts')
   const { emitCheckedScreen, validateSpec } = await load('packages/spec/src/lawful.ts')
   const { SCREEN_SHAPE } = await load('packages/spec/src/schema.ts')
-  const { ENDINGS, RESULTS_SHAPE } = await load('eval/results-shape.ts')
+  const { ENDINGS, RESULTS_SHAPE, RUNTIME_ENDINGS } = await load('eval/results-shape.ts')
   const { KINDS_SHAPE, REQUIREMENTS_SHAPE } = await load('eval/requirements-shape.ts')
 
   const registry = built ?? (await load('packages/registry/src/build.ts')).buildRegistry(ROOT)
@@ -185,6 +188,7 @@ export async function loadToolbox({ registry: built } = {}) {
     check,
     call,
     endings: ENDINGS,
+    runtimeEndings: RUNTIME_ENDINGS,
     validateResults: (results) => validateShape(RESULTS_SHAPE, results),
     // The shape checks `loadRequirements` asks for (`eval/requirements.mjs`). The runner
     // judges with the requirements; no tool hands them to the model.
@@ -192,6 +196,36 @@ export async function loadToolbox({ registry: built } = {}) {
       requirements: (document) => validateShape(REQUIREMENTS_SHAPE, document),
       kinds: (document) => validateShape(KINDS_SHAPE, document),
     },
+  }
+}
+
+/**
+ * The run-time core the `runtime` mode sends and judges with
+ * (`packages/screen`): `runtimeCard`, the system prompt a host gives a model,
+ * which ends with the output contract; `checkScreen`, the check a host runs
+ * on a document; and `parsePartial`, the reader of a model's answer. They are
+ * loaded from source, as the tools are, so a run measures the card of the
+ * tree it runs on.
+ */
+export async function loadScreen() {
+  const jiti = createJiti(import.meta.url)
+  const load = (path) => jiti.import(resolve(ROOT, path))
+  const { runtimeCard } = await load('packages/screen/src/card.ts')
+  const { checkScreen } = await load('packages/screen/src/check.ts')
+  const { parsePartial } = await load('packages/screen/src/partial.ts')
+  const { defaultMembers, memberNames } = await load('packages/screen/src/members.ts')
+  const { VOCABULARY } = await load('packages/screen/src/vocabulary.ts')
+  const { DEFAULT_FRAMEWORK, FRAMEWORKS } = await load('packages/registry/src/frameworks.ts')
+  return {
+    runtimeCard,
+    checkScreen,
+    parsePartial,
+    frameworks: FRAMEWORKS,
+    defaultFramework: DEFAULT_FRAMEWORK,
+    /** Every member and exception primitive the vocabulary has, by name. */
+    names: () => memberNames(VOCABULARY),
+    /** The members a framework draws when a host names none. */
+    defaultMembers: (framework) => defaultMembers(VOCABULARY, framework),
   }
 }
 

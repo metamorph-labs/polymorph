@@ -1,0 +1,23 @@
+{
+  "turns": [
+    {
+      "usage": {
+        "input_tokens": 330,
+        "cache_read_input_tokens": 14200,
+        "output_tokens": 1650
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": [
+            "The list page.\n\n```json\n",
+            {
+              "$file": "list-incidents/attempt-1.json"
+            },
+            "```\n"
+          ]
+        }
+      ]
+    }
+  ]
+}

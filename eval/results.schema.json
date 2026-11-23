@@ -1,749 +1,1602 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "description": "One run of the agent eval: per-run measurements and their summary, per brief and overall.",
-  "properties": {
-    "schema": {
-      "type": "string",
-      "description": "Identifies the shape. Bumped only by a breaking change.",
-      "enum": ["polymorph-eval/1"]
-    },
-    "at": {
-      "type": "string",
-      "description": "When the run started, as an ISO timestamp in UTC.",
-      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
-    },
-    "model": { "type": "string", "description": "The model id, or `fake` for the scripted model." },
-    "mode": {
-      "type": "string",
-      "description": "What the agent hands back: a `polymorph-screen/1` document or a TSX module.",
-      "enum": ["spec", "tsx"]
-    },
-    "runner": {
-      "type": "string",
-      "description": "`api`: the harness sent each request to the Messages API. `cli`: each run went through `claude -p`, with the same tools served over MCP. Both are measured the same way.",
-      "enum": ["api", "cli"]
-    },
-    "cliVersion": {
-      "anyOf": [
-        {
-          "type": "string",
-          "description": "The Claude Code version the CLI runner ran, as `claude --version` prints it; `scripted` for its stand-in. Null for the API runner."
-        },
-        { "type": "null" }
-      ]
-    },
-    "fake": {
-      "type": "boolean",
-      "description": "True for the scripted model. A fake run measures the harness."
-    },
-    "partial": {
-      "type": "boolean",
-      "description": "True for a checkpoint, written after every run while the eval is under way, and for an eval that stopped before every run finished. A partial file is never the number."
-    },
-    "stopped": {
-      "anyOf": [
-        {
-          "type": "object",
-          "description": "Why the eval stopped early; null when it did not.",
-          "properties": {
-            "reason": {
-              "type": "string",
-              "description": "`api`: the Messages API refused, or kept failing. `cli`: the CLI failed, or reported an error, such as one from the API. `usage-limit`: the CLI reported a usage or rate limit on the account it is signed in to. `tokens-per-run`, `tokens-total`: a token ceiling was reached.",
-              "enum": ["api", "cli", "usage-limit", "tokens-per-run", "tokens-total"]
-            },
-            "brief": { "type": "string", "description": "The brief whose run was under way." },
-            "run": { "type": "integer", "description": "Which run of that brief." },
-            "message": { "type": "string", "description": "What stopped it." },
-            "tokens": {
-              "type": "integer",
-              "description": "Tokens the unfinished run had spent, discarded attempts included. It has no record."
-            }
-          },
-          "required": ["reason", "brief", "run", "message", "tokens"],
-          "additionalProperties": false
-        },
-        { "type": "null" }
-      ]
-    },
-    "polymorph": {
+  "description": "A results file of the agent eval: a run of the `spec` or `tsx` mode, or of the run-time lane (`runtime`).",
+  "anyOf": [
+    {
       "type": "object",
+      "description": "One run of the agent eval: per-run measurements and their summary, per brief and overall.",
       "properties": {
-        "version": {
+        "schema": {
           "type": "string",
-          "description": "The registry’s version: the release that was measured."
+          "description": "Identifies the shape. Bumped only by a breaking change.",
+          "enum": ["polymorph-eval/1"]
         },
-        "commit": {
+        "at": {
+          "type": "string",
+          "description": "When the run started, as an ISO timestamp in UTC.",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+        },
+        "model": {
+          "type": "string",
+          "description": "The model id, or `fake` for the scripted model."
+        },
+        "mode": {
+          "type": "string",
+          "description": "What the agent hands back: a `polymorph-screen/1` document or a TSX module.",
+          "enum": ["spec", "tsx"]
+        },
+        "runner": {
+          "type": "string",
+          "description": "`api`: the harness sent each request to the Messages API. `cli`: each run went through `claude -p`, with the same tools served over MCP. Both are measured the same way.",
+          "enum": ["api", "cli"]
+        },
+        "cliVersion": {
           "anyOf": [
-            { "type": "string", "description": "The commit the eval ran on, when there is one." },
+            {
+              "type": "string",
+              "description": "The Claude Code version the CLI runner ran, as `claude --version` prints it; `scripted` for its stand-in. Null for the API runner."
+            },
             { "type": "null" }
           ]
-        }
-      },
-      "required": ["version", "commit"],
-      "additionalProperties": false
-    },
-    "briefs": {
-      "type": "array",
-      "description": "Every brief in `eval/briefs/` when the eval ran, by name. Only a run over all of them can be the number; one over fewer is a smoke run.",
-      "items": { "type": "string" }
-    },
-    "settings": {
-      "type": "object",
-      "properties": {
-        "briefs": { "type": "string", "description": "The glob the briefs were chosen by." },
-        "runs": { "type": "integer", "description": "Runs per brief." },
-        "maxIterations": {
-          "type": "integer",
-          "description": "The iteration cap: `validate` calls before a run is stopped."
         },
-        "maxTurns": { "type": "integer", "description": "The request limit per run." },
-        "maxTokens": { "type": "integer", "description": "`max_tokens` on every request." },
-        "effort": {
-          "type": "string",
-          "description": "The effort sent as `output_config.effort`, or passed to the CLI as `--effort`; `default` sends none, so the model’s own default applies, or the CLI’s.",
-          "enum": ["default", "low", "medium", "high", "xhigh", "max"]
+        "fake": {
+          "type": "boolean",
+          "description": "True for the scripted model. A fake run measures the harness."
         },
-        "maxTokensPerRun": {
-          "type": "integer",
-          "description": "The token ceiling per run, counted as `inputTokens`, `outputTokens` and `discardedTokens` together. No request starts once a run has reached it."
+        "partial": {
+          "type": "boolean",
+          "description": "True for a checkpoint, written after every run while the eval is under way, and for an eval that stopped before every run finished. A partial file is never the number."
         },
-        "maxTokensTotal": {
-          "type": "integer",
-          "description": "The same ceiling over the whole eval."
-        }
-      },
-      "required": [
-        "briefs",
-        "runs",
-        "maxIterations",
-        "maxTurns",
-        "maxTokens",
-        "effort",
-        "maxTokensPerRun",
-        "maxTokensTotal"
-      ],
-      "additionalProperties": false
-    },
-    "outputs": {
-      "type": "string",
-      "description": "The file beside this one that holds every run’s final document."
-    },
-    "requirements": {
-      "type": "array",
-      "description": "What each chosen brief required when the eval ran, in brief order. Absent in a results file written before requirements were judged.",
-      "items": {
-        "type": "object",
-        "properties": {
-          "brief": { "type": "string", "description": "The brief these requirements belong to." },
-          "digest": {
-            "type": "string",
-            "description": "A digest of the requirements as they were checked. Two results files whose digests differ for a brief judged it by different requirements, so their `meetsBrief` rates do not compare."
-          },
-          "requirements": {
-            "type": "array",
-            "items": {
+        "stopped": {
+          "anyOf": [
+            {
               "type": "object",
+              "description": "Why the eval stopped early; null when it did not.",
               "properties": {
-                "id": {
+                "reason": {
                   "type": "string",
-                  "description": "The id a record’s `failedRequirements` names."
+                  "description": "`api`: the Messages API refused, or kept failing. `cli`: the CLI failed, or reported an error, such as one from the API. `usage-limit`: the CLI reported a usage or rate limit on the account it is signed in to. `tokens-per-run`, `tokens-total`: a token ceiling was reached.",
+                  "enum": ["api", "cli", "usage-limit", "tokens-per-run", "tokens-total"]
                 },
-                "says": {
-                  "type": "string",
-                  "description": "What the requirement asks for, in words."
+                "brief": { "type": "string", "description": "The brief whose run was under way." },
+                "run": { "type": "integer", "description": "Which run of that brief." },
+                "message": { "type": "string", "description": "What stopped it." },
+                "tokens": {
+                  "type": "integer",
+                  "description": "Tokens the unfinished run had spent, discarded attempts included. It has no record."
                 }
               },
-              "required": ["id", "says"],
+              "required": ["reason", "brief", "run", "message", "tokens"],
               "additionalProperties": false
-            }
-          }
+            },
+            { "type": "null" }
+          ]
         },
-        "required": ["brief", "digest", "requirements"],
-        "additionalProperties": false
-      }
-    },
-    "summary": {
-      "type": "object",
-      "properties": {
-        "overall": {
+        "polymorph": {
           "type": "object",
           "properties": {
-            "runs": {
-              "type": "integer",
-              "description": "How many runs this summary covers, harness faults included."
+            "version": {
+              "type": "string",
+              "description": "The registry’s version: the release that was measured."
             },
-            "measured": {
-              "type": "integer",
-              "description": "How many of them the rates and means are over: every run that did not end in a harness fault. The size of the sample each interval is computed from."
-            },
-            "endings": {
-              "type": "object",
-              "description": "How the runs ended. A `harness` run is left out of every figure below except the retry totals; a `refusal` or `max_tokens` run is counted, and never as lawful.",
-              "properties": {
-                "answered": { "type": "integer", "description": "Runs that ended `answered`." },
-                "cap": { "type": "integer", "description": "Runs that ended `cap`." },
-                "turns": { "type": "integer", "description": "Runs that ended `turns`." },
-                "max_tokens": { "type": "integer", "description": "Runs that ended `max_tokens`." },
-                "refusal": { "type": "integer", "description": "Runs that ended `refusal`." },
-                "harness": { "type": "integer", "description": "Runs that ended `harness`." }
-              },
-              "required": ["answered", "cap", "turns", "max_tokens", "refusal", "harness"],
-              "additionalProperties": false
-            },
-            "firstShotRate": {
+            "commit": {
               "anyOf": [
                 {
-                  "type": "number",
-                  "description": "The share of runs, from 0 to 1, whose first `validate` call came back lawful. Null when every run was a harness fault."
+                  "type": "string",
+                  "description": "The commit the eval ran on, when there is one."
                 },
                 { "type": "null" }
               ]
-            },
-            "firstShotInterval": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "description": "The 95% Wilson interval of `firstShotRate`, from 0 to 1: the rates the measured runs are consistent with.",
-                  "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
-                  "required": ["low", "high"],
-                  "additionalProperties": false
-                },
-                { "type": "null" }
-              ]
-            },
-            "lawfulRate": {
-              "anyOf": [
-                {
-                  "type": "number",
-                  "description": "The share of runs, from 0 to 1, whose final document is lawful. Null when every run was a harness fault."
-                },
-                { "type": "null" }
-              ]
-            },
-            "lawfulInterval": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "description": "The 95% Wilson interval of `lawfulRate`, from 0 to 1: the rates the measured runs are consistent with.",
-                  "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
-                  "required": ["low", "high"],
-                  "additionalProperties": false
-                },
-                { "type": "null" }
-              ]
-            },
-            "meetsBriefRate": {
-              "anyOf": [
-                {
-                  "type": "number",
-                  "description": "The share of runs, from 0 to 1, whose final document meets every requirement of its brief. Null when every run was a harness fault."
-                },
-                { "type": "null" }
-              ]
-            },
-            "meetsBriefInterval": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "description": "The 95% Wilson interval of `meetsBriefRate`, from 0 to 1: the rates the measured runs are consistent with.",
-                  "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
-                  "required": ["low", "high"],
-                  "additionalProperties": false
-                },
-                { "type": "null" }
-              ]
-            },
-            "lawfulAndMeetsBriefRate": {
-              "anyOf": [
-                {
-                  "type": "number",
-                  "description": "The share of runs, from 0 to 1, whose final document is lawful and meets its brief: the screens that may be written and do what was asked. Null when every run was a harness fault."
-                },
-                { "type": "null" }
-              ]
-            },
-            "lawfulAndMeetsBriefInterval": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "description": "The 95% Wilson interval of `lawfulAndMeetsBriefRate`, from 0 to 1: the rates the measured runs are consistent with.",
-                  "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
-                  "required": ["low", "high"],
-                  "additionalProperties": false
-                },
-                { "type": "null" }
-              ]
-            },
-            "failedRequirements": {
-              "type": "object",
-              "description": "Every requirement a measured run did not meet, as `<brief>/<id>`, counted over the runs.",
-              "additionalProperties": {
-                "type": "integer",
-                "description": "How many runs did not meet it."
-              }
-            },
-            "meanIterations": {
-              "anyOf": [
-                {
-                  "type": "number",
-                  "description": "Over the runs that ended lawful after a lawful `validate` call, the mean number of `validate` calls it took. Null when there is no such run."
-                },
-                { "type": "null" }
-              ]
-            },
-            "lawfulWithoutValidate": {
-              "type": "integer",
-              "description": "Runs that ended lawful although no `validate` call came back lawful: the model answered without validating what it handed back. Never part of `meanIterations`."
-            },
-            "meanInputTokens": {
-              "anyOf": [
-                {
-                  "type": "integer",
-                  "description": "Mean input tokens per run, cached and uncached together."
-                },
-                { "type": "null" }
-              ]
-            },
-            "meanOutputTokens": {
-              "anyOf": [
-                {
-                  "type": "integer",
-                  "description": "Mean output tokens per run, thinking included."
-                },
-                { "type": "null" }
-              ]
-            },
-            "meanWallMs": {
-              "anyOf": [
-                {
-                  "type": "integer",
-                  "description": "Mean wall-clock time per run, in milliseconds, retry waits left out."
-                },
-                { "type": "null" }
-              ]
-            },
-            "retries": {
-              "type": "integer",
-              "description": "Requests sent again after a transient failure, summed over every run."
-            },
-            "backoffMs": {
-              "type": "integer",
-              "description": "Time spent waiting to send a request again, summed over every run."
-            },
-            "discardedTokens": {
-              "type": "integer",
-              "description": "Tokens of attempts that broke off and were retried, summed over every run."
             }
           },
-          "required": [
-            "runs",
-            "endings",
-            "firstShotRate",
-            "lawfulRate",
-            "meanIterations",
-            "lawfulWithoutValidate",
-            "meanInputTokens",
-            "meanOutputTokens",
-            "meanWallMs",
-            "retries",
-            "backoffMs",
-            "discardedTokens"
-          ],
+          "required": ["version", "commit"],
           "additionalProperties": false
         },
         "briefs": {
           "type": "array",
-          "description": "One summary per brief chosen, in brief order, including briefs not yet run.",
+          "description": "Every brief in `eval/briefs/` when the eval ran, by name. Only a run over all of them can be the number; one over fewer is a smoke run.",
+          "items": { "type": "string" }
+        },
+        "settings": {
+          "type": "object",
+          "properties": {
+            "briefs": { "type": "string", "description": "The glob the briefs were chosen by." },
+            "runs": { "type": "integer", "description": "Runs per brief." },
+            "maxIterations": {
+              "type": "integer",
+              "description": "The iteration cap: `validate` calls before a run is stopped."
+            },
+            "maxTurns": { "type": "integer", "description": "The request limit per run." },
+            "maxTokens": { "type": "integer", "description": "`max_tokens` on every request." },
+            "effort": {
+              "type": "string",
+              "description": "The effort sent as `output_config.effort`, or passed to the CLI as `--effort`; `default` sends none, so the model’s own default applies, or the CLI’s.",
+              "enum": ["default", "low", "medium", "high", "xhigh", "max"]
+            },
+            "maxTokensPerRun": {
+              "type": "integer",
+              "description": "The token ceiling per run, counted as `inputTokens`, `outputTokens` and `discardedTokens` together. No request starts once a run has reached it."
+            },
+            "maxTokensTotal": {
+              "type": "integer",
+              "description": "The same ceiling over the whole eval."
+            }
+          },
+          "required": [
+            "briefs",
+            "runs",
+            "maxIterations",
+            "maxTurns",
+            "maxTokens",
+            "effort",
+            "maxTokensPerRun",
+            "maxTokensTotal"
+          ],
+          "additionalProperties": false
+        },
+        "outputs": {
+          "type": "string",
+          "description": "The file beside this one that holds every run’s final document."
+        },
+        "requirements": {
+          "type": "array",
+          "description": "What each chosen brief required when the eval ran, in brief order. Absent in a results file written before requirements were judged.",
           "items": {
             "type": "object",
             "properties": {
-              "brief": { "type": "string" },
-              "runs": {
-                "type": "integer",
-                "description": "How many runs this summary covers, harness faults included."
+              "brief": {
+                "type": "string",
+                "description": "The brief these requirements belong to."
               },
-              "measured": {
-                "type": "integer",
-                "description": "How many of them the rates and means are over: every run that did not end in a harness fault. The size of the sample each interval is computed from."
+              "digest": {
+                "type": "string",
+                "description": "A digest of the requirements as they were checked. Two results files whose digests differ for a brief judged it by different requirements, so their `meetsBrief` rates do not compare."
               },
-              "endings": {
-                "type": "object",
-                "description": "How the runs ended. A `harness` run is left out of every figure below except the retry totals; a `refusal` or `max_tokens` run is counted, and never as lawful.",
-                "properties": {
-                  "answered": { "type": "integer", "description": "Runs that ended `answered`." },
-                  "cap": { "type": "integer", "description": "Runs that ended `cap`." },
-                  "turns": { "type": "integer", "description": "Runs that ended `turns`." },
-                  "max_tokens": {
-                    "type": "integer",
-                    "description": "Runs that ended `max_tokens`."
+              "requirements": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "The id a record’s `failedRequirements` names."
+                    },
+                    "says": {
+                      "type": "string",
+                      "description": "What the requirement asks for, in words."
+                    }
                   },
-                  "refusal": { "type": "integer", "description": "Runs that ended `refusal`." },
-                  "harness": { "type": "integer", "description": "Runs that ended `harness`." }
-                },
-                "required": ["answered", "cap", "turns", "max_tokens", "refusal", "harness"],
-                "additionalProperties": false
-              },
-              "firstShotRate": {
-                "anyOf": [
-                  {
-                    "type": "number",
-                    "description": "The share of runs, from 0 to 1, whose first `validate` call came back lawful. Null when every run was a harness fault."
-                  },
-                  { "type": "null" }
-                ]
-              },
-              "firstShotInterval": {
-                "anyOf": [
-                  {
-                    "type": "object",
-                    "description": "The 95% Wilson interval of `firstShotRate`, from 0 to 1: the rates the measured runs are consistent with.",
-                    "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
-                    "required": ["low", "high"],
-                    "additionalProperties": false
-                  },
-                  { "type": "null" }
-                ]
-              },
-              "lawfulRate": {
-                "anyOf": [
-                  {
-                    "type": "number",
-                    "description": "The share of runs, from 0 to 1, whose final document is lawful. Null when every run was a harness fault."
-                  },
-                  { "type": "null" }
-                ]
-              },
-              "lawfulInterval": {
-                "anyOf": [
-                  {
-                    "type": "object",
-                    "description": "The 95% Wilson interval of `lawfulRate`, from 0 to 1: the rates the measured runs are consistent with.",
-                    "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
-                    "required": ["low", "high"],
-                    "additionalProperties": false
-                  },
-                  { "type": "null" }
-                ]
-              },
-              "meetsBriefRate": {
-                "anyOf": [
-                  {
-                    "type": "number",
-                    "description": "The share of runs, from 0 to 1, whose final document meets every requirement of its brief. Null when every run was a harness fault."
-                  },
-                  { "type": "null" }
-                ]
-              },
-              "meetsBriefInterval": {
-                "anyOf": [
-                  {
-                    "type": "object",
-                    "description": "The 95% Wilson interval of `meetsBriefRate`, from 0 to 1: the rates the measured runs are consistent with.",
-                    "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
-                    "required": ["low", "high"],
-                    "additionalProperties": false
-                  },
-                  { "type": "null" }
-                ]
-              },
-              "lawfulAndMeetsBriefRate": {
-                "anyOf": [
-                  {
-                    "type": "number",
-                    "description": "The share of runs, from 0 to 1, whose final document is lawful and meets its brief: the screens that may be written and do what was asked. Null when every run was a harness fault."
-                  },
-                  { "type": "null" }
-                ]
-              },
-              "lawfulAndMeetsBriefInterval": {
-                "anyOf": [
-                  {
-                    "type": "object",
-                    "description": "The 95% Wilson interval of `lawfulAndMeetsBriefRate`, from 0 to 1: the rates the measured runs are consistent with.",
-                    "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
-                    "required": ["low", "high"],
-                    "additionalProperties": false
-                  },
-                  { "type": "null" }
-                ]
-              },
-              "failedRequirements": {
-                "type": "object",
-                "description": "Every requirement a measured run did not meet, as `<brief>/<id>`, counted over the runs.",
-                "additionalProperties": {
+                  "required": ["id", "says"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": ["brief", "digest", "requirements"],
+            "additionalProperties": false
+          }
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "overall": {
+              "type": "object",
+              "properties": {
+                "runs": {
                   "type": "integer",
-                  "description": "How many runs did not meet it."
+                  "description": "How many runs this summary covers, harness faults included."
+                },
+                "measured": {
+                  "type": "integer",
+                  "description": "How many of them the rates and means are over: every run that did not end in a harness fault. The size of the sample each interval is computed from."
+                },
+                "endings": {
+                  "type": "object",
+                  "description": "How the runs ended. A `harness` run is left out of every figure below except the retry totals; a `refusal` or `max_tokens` run is counted, and never as lawful.",
+                  "properties": {
+                    "answered": { "type": "integer", "description": "Runs that ended `answered`." },
+                    "cap": { "type": "integer", "description": "Runs that ended `cap`." },
+                    "turns": { "type": "integer", "description": "Runs that ended `turns`." },
+                    "max_tokens": {
+                      "type": "integer",
+                      "description": "Runs that ended `max_tokens`."
+                    },
+                    "refusal": { "type": "integer", "description": "Runs that ended `refusal`." },
+                    "harness": { "type": "integer", "description": "Runs that ended `harness`." }
+                  },
+                  "required": ["answered", "cap", "turns", "max_tokens", "refusal", "harness"],
+                  "additionalProperties": false
+                },
+                "firstShotRate": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "description": "The share of runs, from 0 to 1, whose first `validate` call came back lawful. Null when every run was a harness fault."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "firstShotInterval": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "description": "The 95% Wilson interval of `firstShotRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                      "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                      "required": ["low", "high"],
+                      "additionalProperties": false
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "lawfulRate": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "description": "The share of runs, from 0 to 1, whose final document is lawful. Null when every run was a harness fault."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "lawfulInterval": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "description": "The 95% Wilson interval of `lawfulRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                      "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                      "required": ["low", "high"],
+                      "additionalProperties": false
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "meetsBriefRate": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "description": "The share of runs, from 0 to 1, whose final document meets every requirement of its brief. Null when every run was a harness fault."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "meetsBriefInterval": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "description": "The 95% Wilson interval of `meetsBriefRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                      "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                      "required": ["low", "high"],
+                      "additionalProperties": false
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "lawfulAndMeetsBriefRate": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "description": "The share of runs, from 0 to 1, whose final document is lawful and meets its brief: the screens that may be written and do what was asked. Null when every run was a harness fault."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "lawfulAndMeetsBriefInterval": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "description": "The 95% Wilson interval of `lawfulAndMeetsBriefRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                      "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                      "required": ["low", "high"],
+                      "additionalProperties": false
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "failedRequirements": {
+                  "type": "object",
+                  "description": "Every requirement a measured run did not meet, as `<brief>/<id>`, counted over the runs.",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "description": "How many runs did not meet it."
+                  }
+                },
+                "meanIterations": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "description": "Over the runs that ended lawful after a lawful `validate` call, the mean number of `validate` calls it took. Null when there is no such run."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "lawfulWithoutValidate": {
+                  "type": "integer",
+                  "description": "Runs that ended lawful although no `validate` call came back lawful: the model answered without validating what it handed back. Never part of `meanIterations`."
+                },
+                "meanInputTokens": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Mean input tokens per run, cached and uncached together."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "meanOutputTokens": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Mean output tokens per run, thinking included."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "meanWallMs": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Mean wall-clock time per run, in milliseconds, retry waits left out."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "retries": {
+                  "type": "integer",
+                  "description": "Requests sent again after a transient failure, summed over every run."
+                },
+                "backoffMs": {
+                  "type": "integer",
+                  "description": "Time spent waiting to send a request again, summed over every run."
+                },
+                "discardedTokens": {
+                  "type": "integer",
+                  "description": "Tokens of attempts that broke off and were retried, summed over every run."
                 }
               },
-              "meanIterations": {
-                "anyOf": [
-                  {
-                    "type": "number",
-                    "description": "Over the runs that ended lawful after a lawful `validate` call, the mean number of `validate` calls it took. Null when there is no such run."
+              "required": [
+                "runs",
+                "endings",
+                "firstShotRate",
+                "lawfulRate",
+                "meanIterations",
+                "lawfulWithoutValidate",
+                "meanInputTokens",
+                "meanOutputTokens",
+                "meanWallMs",
+                "retries",
+                "backoffMs",
+                "discardedTokens"
+              ],
+              "additionalProperties": false
+            },
+            "briefs": {
+              "type": "array",
+              "description": "One summary per brief chosen, in brief order, including briefs not yet run.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "brief": { "type": "string" },
+                  "runs": {
+                    "type": "integer",
+                    "description": "How many runs this summary covers, harness faults included."
                   },
-                  { "type": "null" }
-                ]
+                  "measured": {
+                    "type": "integer",
+                    "description": "How many of them the rates and means are over: every run that did not end in a harness fault. The size of the sample each interval is computed from."
+                  },
+                  "endings": {
+                    "type": "object",
+                    "description": "How the runs ended. A `harness` run is left out of every figure below except the retry totals; a `refusal` or `max_tokens` run is counted, and never as lawful.",
+                    "properties": {
+                      "answered": {
+                        "type": "integer",
+                        "description": "Runs that ended `answered`."
+                      },
+                      "cap": { "type": "integer", "description": "Runs that ended `cap`." },
+                      "turns": { "type": "integer", "description": "Runs that ended `turns`." },
+                      "max_tokens": {
+                        "type": "integer",
+                        "description": "Runs that ended `max_tokens`."
+                      },
+                      "refusal": { "type": "integer", "description": "Runs that ended `refusal`." },
+                      "harness": { "type": "integer", "description": "Runs that ended `harness`." }
+                    },
+                    "required": ["answered", "cap", "turns", "max_tokens", "refusal", "harness"],
+                    "additionalProperties": false
+                  },
+                  "firstShotRate": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "description": "The share of runs, from 0 to 1, whose first `validate` call came back lawful. Null when every run was a harness fault."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "firstShotInterval": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "description": "The 95% Wilson interval of `firstShotRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                        "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                        "required": ["low", "high"],
+                        "additionalProperties": false
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "lawfulRate": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "description": "The share of runs, from 0 to 1, whose final document is lawful. Null when every run was a harness fault."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "lawfulInterval": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "description": "The 95% Wilson interval of `lawfulRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                        "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                        "required": ["low", "high"],
+                        "additionalProperties": false
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "meetsBriefRate": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "description": "The share of runs, from 0 to 1, whose final document meets every requirement of its brief. Null when every run was a harness fault."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "meetsBriefInterval": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "description": "The 95% Wilson interval of `meetsBriefRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                        "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                        "required": ["low", "high"],
+                        "additionalProperties": false
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "lawfulAndMeetsBriefRate": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "description": "The share of runs, from 0 to 1, whose final document is lawful and meets its brief: the screens that may be written and do what was asked. Null when every run was a harness fault."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "lawfulAndMeetsBriefInterval": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "description": "The 95% Wilson interval of `lawfulAndMeetsBriefRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                        "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                        "required": ["low", "high"],
+                        "additionalProperties": false
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "failedRequirements": {
+                    "type": "object",
+                    "description": "Every requirement a measured run did not meet, as `<brief>/<id>`, counted over the runs.",
+                    "additionalProperties": {
+                      "type": "integer",
+                      "description": "How many runs did not meet it."
+                    }
+                  },
+                  "meanIterations": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "description": "Over the runs that ended lawful after a lawful `validate` call, the mean number of `validate` calls it took. Null when there is no such run."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "lawfulWithoutValidate": {
+                    "type": "integer",
+                    "description": "Runs that ended lawful although no `validate` call came back lawful: the model answered without validating what it handed back. Never part of `meanIterations`."
+                  },
+                  "meanInputTokens": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Mean input tokens per run, cached and uncached together."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "meanOutputTokens": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Mean output tokens per run, thinking included."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "meanWallMs": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Mean wall-clock time per run, in milliseconds, retry waits left out."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "retries": {
+                    "type": "integer",
+                    "description": "Requests sent again after a transient failure, summed over every run."
+                  },
+                  "backoffMs": {
+                    "type": "integer",
+                    "description": "Time spent waiting to send a request again, summed over every run."
+                  },
+                  "discardedTokens": {
+                    "type": "integer",
+                    "description": "Tokens of attempts that broke off and were retried, summed over every run."
+                  }
+                },
+                "required": [
+                  "brief",
+                  "runs",
+                  "endings",
+                  "firstShotRate",
+                  "lawfulRate",
+                  "meanIterations",
+                  "lawfulWithoutValidate",
+                  "meanInputTokens",
+                  "meanOutputTokens",
+                  "meanWallMs",
+                  "retries",
+                  "backoffMs",
+                  "discardedTokens"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": ["overall", "briefs"],
+          "additionalProperties": false
+        },
+        "records": {
+          "type": "array",
+          "description": "One record per finished run, by brief and then by run.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "brief": {
+                "type": "string",
+                "description": "The brief’s file name in `eval/briefs/`, without `.md`."
               },
-              "lawfulWithoutValidate": {
-                "type": "integer",
-                "description": "Runs that ended lawful although no `validate` call came back lawful: the model answered without validating what it handed back. Never part of `meanIterations`."
+              "run": { "type": "integer", "description": "Which run of this brief, from 1." },
+              "firstShotLawful": {
+                "type": "boolean",
+                "description": "Whether the first `validate` call reported no faults, no violations and nothing fatal. False when the run never called `validate`."
               },
-              "meanInputTokens": {
+              "iterations": {
                 "anyOf": [
                   {
                     "type": "integer",
-                    "description": "Mean input tokens per run, cached and uncached together."
+                    "description": "`validate` calls up to and including the first lawful one. Null when no call came back lawful, whether or not the final document is lawful."
                   },
                   { "type": "null" }
                 ]
               },
-              "meanOutputTokens": {
+              "lawful": {
+                "type": "boolean",
+                "description": "Whether the final document passes the same check `validate` runs. The harness checks it itself, so a run that answers without validating is still judged. Always false for a run that ended in `refusal`, `max_tokens` or `harness`."
+              },
+              "meetsBrief": {
+                "type": "boolean",
+                "description": "Whether the final document meets every requirement of its brief (`eval/requirements/<brief>.json`). The harness checks the document itself. Always false for a run that ended in `refusal`, `max_tokens` or `harness`. Absent in a results file written before requirements were judged."
+              },
+              "failedRequirements": {
+                "type": "array",
+                "description": "The requirements the final document does not meet, by id, in the brief’s order: every one when there is no document or it cannot be read. Empty for a run that ended `harness`, which is not judged.",
+                "items": { "type": "string" }
+              },
+              "ended": {
+                "type": "string",
+                "description": "`answered`: the model stopped. `cap`: the iteration cap was reached with the last `validate` call unlawful. `turns`: the request limit was reached. `max_tokens`: a response was cut off. `refusal`: the model declined. `harness`: the harness itself failed, so the run measures nothing about the model.",
+                "enum": ["answered", "cap", "turns", "max_tokens", "refusal", "harness"]
+              },
+              "harnessFault": {
                 "anyOf": [
                   {
-                    "type": "integer",
-                    "description": "Mean output tokens per run, thinking included."
+                    "type": "string",
+                    "description": "What failed when the run ended `harness`; null for every other run."
                   },
                   { "type": "null" }
                 ]
               },
-              "meanWallMs": {
-                "anyOf": [
-                  {
-                    "type": "integer",
-                    "description": "Mean wall-clock time per run, in milliseconds, retry waits left out."
-                  },
-                  { "type": "null" }
-                ]
-              },
-              "retries": {
+              "inputTokens": {
                 "type": "integer",
-                "description": "Requests sent again after a transient failure, summed over every run."
+                "description": "Every input token the model read across the run: uncached, cache writes and cache reads."
               },
-              "backoffMs": {
+              "cacheReadTokens": {
                 "type": "integer",
-                "description": "Time spent waiting to send a request again, summed over every run."
+                "description": "The part of `inputTokens` read from the prompt cache."
+              },
+              "cacheWriteTokens": {
+                "type": "integer",
+                "description": "The part of `inputTokens` written to the prompt cache."
+              },
+              "outputTokens": {
+                "type": "integer",
+                "description": "Every output token across the run, thinking included."
               },
               "discardedTokens": {
                 "type": "integer",
-                "description": "Tokens of attempts that broke off and were retried, summed over every run."
+                "description": "Tokens of attempts that broke off mid-stream and were sent again, as far as their usage was reported. Billed, but in neither `inputTokens` nor `outputTokens`."
+              },
+              "wallMs": {
+                "type": "integer",
+                "description": "Wall-clock time from the first request to the end of the run, tools included and retry waits (`backoffMs`) left out."
+              },
+              "retries": {
+                "type": "integer",
+                "description": "Requests sent again after a transient failure."
+              },
+              "backoffMs": {
+                "type": "integer",
+                "description": "Time spent waiting before those requests, in milliseconds."
+              },
+              "turns": {
+                "type": "integer",
+                "description": "Messages API requests the run made, retries not counted, through either runner."
+              },
+              "toolCalls": {
+                "type": "object",
+                "description": "How often the model called each tool.",
+                "properties": {
+                  "get_system_card": {
+                    "type": "integer",
+                    "description": "Calls to `get_system_card`."
+                  },
+                  "search_components": {
+                    "type": "integer",
+                    "description": "Calls to `search_components`."
+                  },
+                  "get_component": {
+                    "type": "integer",
+                    "description": "Calls to `get_component`."
+                  },
+                  "validate": { "type": "integer", "description": "Calls to `validate`." }
+                },
+                "required": ["get_system_card", "search_components", "get_component", "validate"],
+                "additionalProperties": false
+              },
+              "violationsSeen": {
+                "type": "object",
+                "description": "Everything the `validate` calls reported, counted. Red-rule violations by rule name; spec faults as `spec: <message>` with names and values elided, so the same mistake counts once per kind; `fatal` for a document that could not be read; `contract` for a module that imports nothing from the vocabulary.",
+                "additionalProperties": {
+                  "type": "integer",
+                  "description": "How many times it was reported."
+                }
+              },
+              "misses": {
+                "type": "array",
+                "description": "Each `validate` call that came back unlawful, in the words the model was shown, so a miss can be acted on where `violationsSeen` only counts it. Absent in a results file written before this field was kept.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "call": {
+                      "type": "integer",
+                      "description": "Which `validate` call this was, from 1."
+                    },
+                    "fatal": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "description": "What made the document unreadable, or null."
+                        },
+                        { "type": "null" }
+                      ]
+                    },
+                    "faults": {
+                      "type": "array",
+                      "description": "Every spec fault, in the validator’s words.",
+                      "items": { "type": "string" }
+                    },
+                    "violations": {
+                      "type": "array",
+                      "description": "Every red-rule violation, as `rule: message`.",
+                      "items": { "type": "string" }
+                    },
+                    "contract": {
+                      "type": "array",
+                      "description": "Every contract message.",
+                      "items": { "type": "string" }
+                    }
+                  },
+                  "required": ["call", "fatal", "faults", "violations", "contract"],
+                  "additionalProperties": false
+                }
               }
             },
             "required": [
               "brief",
-              "runs",
-              "endings",
-              "firstShotRate",
-              "lawfulRate",
-              "meanIterations",
-              "lawfulWithoutValidate",
-              "meanInputTokens",
-              "meanOutputTokens",
-              "meanWallMs",
+              "run",
+              "firstShotLawful",
+              "iterations",
+              "lawful",
+              "ended",
+              "harnessFault",
+              "inputTokens",
+              "cacheReadTokens",
+              "cacheWriteTokens",
+              "outputTokens",
+              "discardedTokens",
+              "wallMs",
               "retries",
               "backoffMs",
-              "discardedTokens"
+              "turns",
+              "toolCalls",
+              "violationsSeen"
             ],
             "additionalProperties": false
           }
         }
       },
-      "required": ["overall", "briefs"],
+      "required": [
+        "schema",
+        "at",
+        "model",
+        "mode",
+        "runner",
+        "cliVersion",
+        "fake",
+        "partial",
+        "stopped",
+        "polymorph",
+        "briefs",
+        "settings",
+        "outputs",
+        "summary",
+        "records"
+      ],
       "additionalProperties": false
     },
-    "records": {
-      "type": "array",
-      "description": "One record per finished run, by brief and then by run.",
-      "items": {
-        "type": "object",
-        "properties": {
-          "brief": {
-            "type": "string",
-            "description": "The brief’s file name in `eval/briefs/`, without `.md`."
-          },
-          "run": { "type": "integer", "description": "Which run of this brief, from 1." },
-          "firstShotLawful": {
-            "type": "boolean",
-            "description": "Whether the first `validate` call reported no faults, no violations and nothing fatal. False when the run never called `validate`."
-          },
-          "iterations": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "description": "`validate` calls up to and including the first lawful one. Null when no call came back lawful, whether or not the final document is lawful."
-              },
-              { "type": "null" }
-            ]
-          },
-          "lawful": {
-            "type": "boolean",
-            "description": "Whether the final document passes the same check `validate` runs. The harness checks it itself, so a run that answers without validating is still judged. Always false for a run that ended in `refusal`, `max_tokens` or `harness`."
-          },
-          "meetsBrief": {
-            "type": "boolean",
-            "description": "Whether the final document meets every requirement of its brief (`eval/requirements/<brief>.json`). The harness checks the document itself. Always false for a run that ended in `refusal`, `max_tokens` or `harness`. Absent in a results file written before requirements were judged."
-          },
-          "failedRequirements": {
-            "type": "array",
-            "description": "The requirements the final document does not meet, by id, in the brief’s order: every one when there is no document or it cannot be read. Empty for a run that ended `harness`, which is not judged.",
-            "items": { "type": "string" }
-          },
-          "ended": {
-            "type": "string",
-            "description": "`answered`: the model stopped. `cap`: the iteration cap was reached with the last `validate` call unlawful. `turns`: the request limit was reached. `max_tokens`: a response was cut off. `refusal`: the model declined. `harness`: the harness itself failed, so the run measures nothing about the model.",
-            "enum": ["answered", "cap", "turns", "max_tokens", "refusal", "harness"]
-          },
-          "harnessFault": {
-            "anyOf": [
-              {
-                "type": "string",
-                "description": "What failed when the run ended `harness`; null for every other run."
-              },
-              { "type": "null" }
-            ]
-          },
-          "inputTokens": {
-            "type": "integer",
-            "description": "Every input token the model read across the run: uncached, cache writes and cache reads."
-          },
-          "cacheReadTokens": {
-            "type": "integer",
-            "description": "The part of `inputTokens` read from the prompt cache."
-          },
-          "cacheWriteTokens": {
-            "type": "integer",
-            "description": "The part of `inputTokens` written to the prompt cache."
-          },
-          "outputTokens": {
-            "type": "integer",
-            "description": "Every output token across the run, thinking included."
-          },
-          "discardedTokens": {
-            "type": "integer",
-            "description": "Tokens of attempts that broke off mid-stream and were sent again, as far as their usage was reported. Billed, but in neither `inputTokens` nor `outputTokens`."
-          },
-          "wallMs": {
-            "type": "integer",
-            "description": "Wall-clock time from the first request to the end of the run, tools included and retry waits (`backoffMs`) left out."
-          },
-          "retries": {
-            "type": "integer",
-            "description": "Requests sent again after a transient failure."
-          },
-          "backoffMs": {
-            "type": "integer",
-            "description": "Time spent waiting before those requests, in milliseconds."
-          },
-          "turns": {
-            "type": "integer",
-            "description": "Messages API requests the run made, retries not counted, through either runner."
-          },
-          "toolCalls": {
-            "type": "object",
-            "description": "How often the model called each tool.",
-            "properties": {
-              "get_system_card": {
-                "type": "integer",
-                "description": "Calls to `get_system_card`."
-              },
-              "search_components": {
-                "type": "integer",
-                "description": "Calls to `search_components`."
-              },
-              "get_component": { "type": "integer", "description": "Calls to `get_component`." },
-              "validate": { "type": "integer", "description": "Calls to `validate`." }
+    {
+      "type": "object",
+      "description": "One run of the agent eval’s run-time lane: per-run measurements and their summary, per brief and overall.",
+      "properties": {
+        "schema": {
+          "type": "string",
+          "description": "Identifies the shape. Bumped only by a breaking change.",
+          "enum": ["polymorph-eval/1"]
+        },
+        "at": {
+          "type": "string",
+          "description": "When the run started, as an ISO timestamp in UTC.",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+        },
+        "model": {
+          "type": "string",
+          "description": "The model id, or `fake` for the scripted model."
+        },
+        "mode": {
+          "type": "string",
+          "description": "The run-time lane: one request with no tools, the run-time card as the system prompt and the brief as the message, answered with a `polymorph-screen/1` document.",
+          "enum": ["runtime"]
+        },
+        "runner": {
+          "type": "string",
+          "description": "`api`: the harness sent the request to the Messages API. `cli`: each run went through `claude -p` with no tool and no MCP server, stopped after its first response.",
+          "enum": ["api", "cli"]
+        },
+        "cliVersion": {
+          "anyOf": [
+            {
+              "type": "string",
+              "description": "The Claude Code version the CLI runner ran, as `claude --version` prints it; `scripted` for its stand-in. Null for the API runner."
             },
-            "required": ["get_system_card", "search_components", "get_component", "validate"],
-            "additionalProperties": false
-          },
-          "violationsSeen": {
-            "type": "object",
-            "description": "Everything the `validate` calls reported, counted. Red-rule violations by rule name; spec faults as `spec: <message>` with names and values elided, so the same mistake counts once per kind; `fatal` for a document that could not be read; `contract` for a module that imports nothing from the vocabulary.",
-            "additionalProperties": {
-              "type": "integer",
-              "description": "How many times it was reported."
+            { "type": "null" }
+          ]
+        },
+        "fake": {
+          "type": "boolean",
+          "description": "True for the scripted model. A fake run measures the harness."
+        },
+        "partial": {
+          "type": "boolean",
+          "description": "True for a checkpoint, written after every run while the eval is under way, and for an eval that stopped before every run finished. A partial file is never the number."
+        },
+        "stopped": {
+          "anyOf": [
+            {
+              "type": "object",
+              "description": "Why the eval stopped early; null when it did not.",
+              "properties": {
+                "reason": {
+                  "type": "string",
+                  "description": "`api`: the Messages API refused, or kept failing. `cli`: the CLI failed, or reported an error, such as one from the API. `usage-limit`: the CLI reported a usage or rate limit on the account it is signed in to. `tokens-per-run`, `tokens-total`: a token ceiling was reached.",
+                  "enum": ["api", "cli", "usage-limit", "tokens-per-run", "tokens-total"]
+                },
+                "brief": { "type": "string", "description": "The brief whose run was under way." },
+                "run": { "type": "integer", "description": "Which run of that brief." },
+                "message": { "type": "string", "description": "What stopped it." },
+                "tokens": {
+                  "type": "integer",
+                  "description": "Tokens the unfinished run had spent, discarded attempts included. It has no record."
+                }
+              },
+              "required": ["reason", "brief", "run", "message", "tokens"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "polymorph": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "string",
+              "description": "The registry’s version: the release that was measured."
+            },
+            "commit": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "description": "The commit the eval ran on, when there is one."
+                },
+                { "type": "null" }
+              ]
             }
           },
-          "misses": {
-            "type": "array",
-            "description": "Each `validate` call that came back unlawful, in the words the model was shown, so a miss can be acted on where `violationsSeen` only counts it. Absent in a results file written before this field was kept.",
-            "items": {
+          "required": ["version", "commit"],
+          "additionalProperties": false
+        },
+        "briefs": {
+          "type": "array",
+          "description": "Every brief in `eval/briefs/` when the eval ran, by name. Only a run over all of them can be the number; one over fewer is a smoke run.",
+          "items": { "type": "string" }
+        },
+        "settings": {
+          "type": "object",
+          "properties": {
+            "briefs": { "type": "string", "description": "The glob the briefs were chosen by." },
+            "runs": { "type": "integer", "description": "Runs per brief." },
+            "maxTokens": { "type": "integer", "description": "`max_tokens` on the request." },
+            "effort": {
+              "type": "string",
+              "description": "The effort sent as `output_config.effort`, or passed to the CLI as `--effort`; `default` sends none, so the model’s own default applies, or the CLI’s.",
+              "enum": ["default", "low", "medium", "high", "xhigh", "max"]
+            },
+            "thinking": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "description": "What the API runner sent as `thinking.type`. Null for the CLI runner, which chooses its own.",
+                  "enum": ["adaptive", "disabled", "between_tools"]
+                },
+                { "type": "null" }
+              ]
+            },
+            "maxTokensPerRun": {
+              "type": "integer",
+              "description": "The token ceiling per run, counted as `inputTokens`, `outputTokens` and `discardedTokens` together. No request starts once a run has reached it."
+            },
+            "maxTokensTotal": {
+              "type": "integer",
+              "description": "The same ceiling over the whole eval."
+            }
+          },
+          "required": [
+            "briefs",
+            "runs",
+            "maxTokens",
+            "effort",
+            "thinking",
+            "maxTokensPerRun",
+            "maxTokensTotal"
+          ],
+          "additionalProperties": false
+        },
+        "card": {
+          "type": "object",
+          "description": "The run-time card the system prompt held: `runtimeCard` from `@polymorph/screen`, with the output contract at its end.",
+          "properties": {
+            "framework": {
+              "type": "string",
+              "description": "The framework the card and the check were for."
+            },
+            "chosen": {
+              "type": "string",
+              "description": "How the members were chosen: `default` for every member the framework draws, a subset’s name from `eval/members/`, or `list` for names given to `--members`."
+            },
+            "members": {
+              "type": "array",
+              "description": "Every member and exception primitive the card lists and the check allows, by name.",
+              "items": { "type": "string" }
+            },
+            "characters": {
+              "type": "integer",
+              "description": "The length of the card, the whole system prompt, in characters."
+            }
+          },
+          "required": ["framework", "chosen", "members", "characters"],
+          "additionalProperties": false
+        },
+        "outputs": {
+          "type": "string",
+          "description": "The file beside this one that holds every run’s final document."
+        },
+        "requirements": {
+          "type": "array",
+          "description": "What each chosen brief required when the eval ran, in brief order. Absent in a results file written before requirements were judged.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "brief": {
+                "type": "string",
+                "description": "The brief these requirements belong to."
+              },
+              "digest": {
+                "type": "string",
+                "description": "A digest of the requirements as they were checked. Two results files whose digests differ for a brief judged it by different requirements, so their `meetsBrief` rates do not compare."
+              },
+              "requirements": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "The id a record’s `failedRequirements` names."
+                    },
+                    "says": {
+                      "type": "string",
+                      "description": "What the requirement asks for, in words."
+                    }
+                  },
+                  "required": ["id", "says"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": ["brief", "digest", "requirements"],
+            "additionalProperties": false
+          }
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "overall": {
               "type": "object",
               "properties": {
-                "call": {
+                "runs": {
                   "type": "integer",
-                  "description": "Which `validate` call this was, from 1."
+                  "description": "How many runs this summary covers, harness faults included."
                 },
-                "fatal": {
+                "measured": {
+                  "type": "integer",
+                  "description": "How many of them the rates and means are over: every run that did not end in a harness fault. The size of the sample each interval is computed from."
+                },
+                "endings": {
+                  "type": "object",
+                  "description": "How the runs ended. A `harness` run is left out of every figure below except the retry totals; a `refusal` or `max_tokens` run is counted, and never as lawful.",
+                  "properties": {
+                    "answered": { "type": "integer", "description": "Runs that ended `answered`." },
+                    "max_tokens": {
+                      "type": "integer",
+                      "description": "Runs that ended `max_tokens`."
+                    },
+                    "refusal": { "type": "integer", "description": "Runs that ended `refusal`." },
+                    "harness": { "type": "integer", "description": "Runs that ended `harness`." }
+                  },
+                  "required": ["answered", "max_tokens", "refusal", "harness"],
+                  "additionalProperties": false
+                },
+                "lawfulRate": {
                   "anyOf": [
                     {
-                      "type": "string",
-                      "description": "What made the document unreadable, or null."
+                      "type": "number",
+                      "description": "The share of runs, from 0 to 1, whose answer holds a whole document that `checkScreen` passes. With one request and no tools, this is the first shot as well. Null when every run was a harness fault."
                     },
                     { "type": "null" }
                   ]
                 },
-                "faults": {
-                  "type": "array",
-                  "description": "Every spec fault, in the validator’s words.",
-                  "items": { "type": "string" }
+                "lawfulInterval": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "description": "The 95% Wilson interval of `lawfulRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                      "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                      "required": ["low", "high"],
+                      "additionalProperties": false
+                    },
+                    { "type": "null" }
+                  ]
                 },
-                "violations": {
-                  "type": "array",
-                  "description": "Every red-rule violation, as `rule: message`.",
-                  "items": { "type": "string" }
+                "meetsBriefRate": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "description": "The share of runs, from 0 to 1, whose final document meets every requirement of its brief. Null when every run was a harness fault."
+                    },
+                    { "type": "null" }
+                  ]
                 },
-                "contract": {
-                  "type": "array",
-                  "description": "Every contract message.",
-                  "items": { "type": "string" }
+                "meetsBriefInterval": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "description": "The 95% Wilson interval of `meetsBriefRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                      "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                      "required": ["low", "high"],
+                      "additionalProperties": false
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "lawfulAndMeetsBriefRate": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "description": "The share of runs, from 0 to 1, whose final document is lawful and meets its brief: the screens that may be written and do what was asked. Null when every run was a harness fault."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "lawfulAndMeetsBriefInterval": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "description": "The 95% Wilson interval of `lawfulAndMeetsBriefRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                      "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                      "required": ["low", "high"],
+                      "additionalProperties": false
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "failedRequirements": {
+                  "type": "object",
+                  "description": "Every requirement a measured run did not meet, as `<brief>/<id>`, counted over the runs.",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "description": "How many runs did not meet it."
+                  }
+                },
+                "unreadable": {
+                  "type": "integer",
+                  "description": "Runs that answered on their own with no whole document in the answer: none at all, or one cut short. Counted as neither lawful nor meeting their brief."
+                },
+                "meanInputTokens": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Mean input tokens per run: uncached, cache writes and reads."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "meanUncachedInputTokens": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Mean input tokens per run that the cache did not hold."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "meanCacheWriteTokens": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Mean input tokens per run written to the prompt cache."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "meanCacheReadTokens": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Mean input tokens per run read from the prompt cache."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "meanOutputTokens": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Mean output tokens per run, thinking included."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "meanFirstTokenMs": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Mean time to the first text of the answer, in milliseconds, over the measured runs that have one. Null when none has: the CLI runner measures none."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "firstTokenRangeMs": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "description": "The fastest and the slowest of the measured runs’ `firstTokenMs`, in milliseconds.",
+                      "properties": {
+                        "low": { "type": "integer", "description": "The fastest run." },
+                        "high": { "type": "integer", "description": "The slowest run." }
+                      },
+                      "required": ["low", "high"],
+                      "additionalProperties": false
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "meanWallMs": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Mean wall-clock time per run, in milliseconds, retry waits left out."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "wallRangeMs": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "description": "The fastest and the slowest of the measured runs’ `wallMs`, in milliseconds.",
+                      "properties": {
+                        "low": { "type": "integer", "description": "The fastest run." },
+                        "high": { "type": "integer", "description": "The slowest run." }
+                      },
+                      "required": ["low", "high"],
+                      "additionalProperties": false
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "retries": {
+                  "type": "integer",
+                  "description": "Requests sent again after a transient failure, summed over every run."
+                },
+                "backoffMs": {
+                  "type": "integer",
+                  "description": "Time spent waiting to send a request again, summed over every run."
+                },
+                "discardedTokens": {
+                  "type": "integer",
+                  "description": "Tokens of attempts that broke off and were retried, summed over every run."
                 }
               },
-              "required": ["call", "fatal", "faults", "violations", "contract"],
+              "required": [
+                "runs",
+                "measured",
+                "endings",
+                "lawfulRate",
+                "lawfulInterval",
+                "meetsBriefRate",
+                "meetsBriefInterval",
+                "lawfulAndMeetsBriefRate",
+                "lawfulAndMeetsBriefInterval",
+                "failedRequirements",
+                "unreadable",
+                "meanInputTokens",
+                "meanUncachedInputTokens",
+                "meanCacheWriteTokens",
+                "meanCacheReadTokens",
+                "meanOutputTokens",
+                "meanFirstTokenMs",
+                "firstTokenRangeMs",
+                "meanWallMs",
+                "wallRangeMs",
+                "retries",
+                "backoffMs",
+                "discardedTokens"
+              ],
               "additionalProperties": false
+            },
+            "briefs": {
+              "type": "array",
+              "description": "One summary per brief chosen, in brief order, including briefs not yet run.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "brief": { "type": "string" },
+                  "runs": {
+                    "type": "integer",
+                    "description": "How many runs this summary covers, harness faults included."
+                  },
+                  "measured": {
+                    "type": "integer",
+                    "description": "How many of them the rates and means are over: every run that did not end in a harness fault. The size of the sample each interval is computed from."
+                  },
+                  "endings": {
+                    "type": "object",
+                    "description": "How the runs ended. A `harness` run is left out of every figure below except the retry totals; a `refusal` or `max_tokens` run is counted, and never as lawful.",
+                    "properties": {
+                      "answered": {
+                        "type": "integer",
+                        "description": "Runs that ended `answered`."
+                      },
+                      "max_tokens": {
+                        "type": "integer",
+                        "description": "Runs that ended `max_tokens`."
+                      },
+                      "refusal": { "type": "integer", "description": "Runs that ended `refusal`." },
+                      "harness": { "type": "integer", "description": "Runs that ended `harness`." }
+                    },
+                    "required": ["answered", "max_tokens", "refusal", "harness"],
+                    "additionalProperties": false
+                  },
+                  "lawfulRate": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "description": "The share of runs, from 0 to 1, whose answer holds a whole document that `checkScreen` passes. With one request and no tools, this is the first shot as well. Null when every run was a harness fault."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "lawfulInterval": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "description": "The 95% Wilson interval of `lawfulRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                        "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                        "required": ["low", "high"],
+                        "additionalProperties": false
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "meetsBriefRate": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "description": "The share of runs, from 0 to 1, whose final document meets every requirement of its brief. Null when every run was a harness fault."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "meetsBriefInterval": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "description": "The 95% Wilson interval of `meetsBriefRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                        "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                        "required": ["low", "high"],
+                        "additionalProperties": false
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "lawfulAndMeetsBriefRate": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "description": "The share of runs, from 0 to 1, whose final document is lawful and meets its brief: the screens that may be written and do what was asked. Null when every run was a harness fault."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "lawfulAndMeetsBriefInterval": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "description": "The 95% Wilson interval of `lawfulAndMeetsBriefRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                        "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                        "required": ["low", "high"],
+                        "additionalProperties": false
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "failedRequirements": {
+                    "type": "object",
+                    "description": "Every requirement a measured run did not meet, as `<brief>/<id>`, counted over the runs.",
+                    "additionalProperties": {
+                      "type": "integer",
+                      "description": "How many runs did not meet it."
+                    }
+                  },
+                  "unreadable": {
+                    "type": "integer",
+                    "description": "Runs that answered on their own with no whole document in the answer: none at all, or one cut short. Counted as neither lawful nor meeting their brief."
+                  },
+                  "meanInputTokens": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Mean input tokens per run: uncached, cache writes and reads."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "meanUncachedInputTokens": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Mean input tokens per run that the cache did not hold."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "meanCacheWriteTokens": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Mean input tokens per run written to the prompt cache."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "meanCacheReadTokens": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Mean input tokens per run read from the prompt cache."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "meanOutputTokens": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Mean output tokens per run, thinking included."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "meanFirstTokenMs": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Mean time to the first text of the answer, in milliseconds, over the measured runs that have one. Null when none has: the CLI runner measures none."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "firstTokenRangeMs": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "description": "The fastest and the slowest of the measured runs’ `firstTokenMs`, in milliseconds.",
+                        "properties": {
+                          "low": { "type": "integer", "description": "The fastest run." },
+                          "high": { "type": "integer", "description": "The slowest run." }
+                        },
+                        "required": ["low", "high"],
+                        "additionalProperties": false
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "meanWallMs": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Mean wall-clock time per run, in milliseconds, retry waits left out."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "wallRangeMs": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "description": "The fastest and the slowest of the measured runs’ `wallMs`, in milliseconds.",
+                        "properties": {
+                          "low": { "type": "integer", "description": "The fastest run." },
+                          "high": { "type": "integer", "description": "The slowest run." }
+                        },
+                        "required": ["low", "high"],
+                        "additionalProperties": false
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "retries": {
+                    "type": "integer",
+                    "description": "Requests sent again after a transient failure, summed over every run."
+                  },
+                  "backoffMs": {
+                    "type": "integer",
+                    "description": "Time spent waiting to send a request again, summed over every run."
+                  },
+                  "discardedTokens": {
+                    "type": "integer",
+                    "description": "Tokens of attempts that broke off and were retried, summed over every run."
+                  }
+                },
+                "required": [
+                  "brief",
+                  "runs",
+                  "measured",
+                  "endings",
+                  "lawfulRate",
+                  "lawfulInterval",
+                  "meetsBriefRate",
+                  "meetsBriefInterval",
+                  "lawfulAndMeetsBriefRate",
+                  "lawfulAndMeetsBriefInterval",
+                  "failedRequirements",
+                  "unreadable",
+                  "meanInputTokens",
+                  "meanUncachedInputTokens",
+                  "meanCacheWriteTokens",
+                  "meanCacheReadTokens",
+                  "meanOutputTokens",
+                  "meanFirstTokenMs",
+                  "firstTokenRangeMs",
+                  "meanWallMs",
+                  "wallRangeMs",
+                  "retries",
+                  "backoffMs",
+                  "discardedTokens"
+                ],
+                "additionalProperties": false
+              }
             }
-          }
+          },
+          "required": ["overall", "briefs"],
+          "additionalProperties": false
         },
-        "required": [
-          "brief",
-          "run",
-          "firstShotLawful",
-          "iterations",
-          "lawful",
-          "ended",
-          "harnessFault",
-          "inputTokens",
-          "cacheReadTokens",
-          "cacheWriteTokens",
-          "outputTokens",
-          "discardedTokens",
-          "wallMs",
-          "retries",
-          "backoffMs",
-          "turns",
-          "toolCalls",
-          "violationsSeen"
-        ],
-        "additionalProperties": false
-      }
+        "records": {
+          "type": "array",
+          "description": "One record per finished run, by brief and then by run.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "brief": {
+                "type": "string",
+                "description": "The brief’s file name in `eval/briefs/`, without `.md`."
+              },
+              "run": { "type": "integer", "description": "Which run of this brief, from 1." },
+              "lawful": {
+                "type": "boolean",
+                "description": "Whether the answer holds a whole document and `checkScreen` (`@polymorph/screen`) passes it with the card’s framework and members. Always false for a run that ended in `refusal`, `max_tokens` or `harness`."
+              },
+              "meetsBrief": {
+                "type": "boolean",
+                "description": "Whether the document meets every requirement of its brief (`eval/requirements/<brief>.json`), read as the `spec` mode reads one. Always false for a run that ended in `refusal`, `max_tokens` or `harness`."
+              },
+              "failedRequirements": {
+                "type": "array",
+                "description": "The requirements the document does not meet, by id, in the brief’s order: every one when the answer holds no whole document. Empty for a run that ended in `refusal`, `max_tokens` or `harness`, which is not judged.",
+                "items": { "type": "string" }
+              },
+              "ended": {
+                "type": "string",
+                "description": "`answered`: the model stopped. `max_tokens`: the response was cut off. `refusal`: the model declined. `harness`: the harness itself failed, so the run measures nothing about the model.",
+                "enum": ["answered", "max_tokens", "refusal", "harness"]
+              },
+              "harnessFault": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "What failed when the run ended `harness`; null for every other run."
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "fatal": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "Why the answer holds no document `checkScreen` can read: there is none, or it is cut short. Null when the document is whole, and for a run that was not judged."
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "faults": {
+                "type": "array",
+                "description": "Every fault `checkScreen` reported, as `path: message`, in its words.",
+                "items": { "type": "string" }
+              },
+              "inputTokens": {
+                "type": "integer",
+                "description": "Every input token the request read: uncached, cache writes and cache reads together."
+              },
+              "uncachedInputTokens": {
+                "type": "integer",
+                "description": "The part of `inputTokens` the API reported as `input_tokens`."
+              },
+              "cacheWriteTokens": {
+                "type": "integer",
+                "description": "The part of `inputTokens` written to the prompt cache (`cache_creation_input_tokens`)."
+              },
+              "cacheReadTokens": {
+                "type": "integer",
+                "description": "The part of `inputTokens` read from the prompt cache (`cache_read_input_tokens`)."
+              },
+              "outputTokens": {
+                "type": "integer",
+                "description": "Every output token of the answer, thinking included."
+              },
+              "discardedTokens": {
+                "type": "integer",
+                "description": "Tokens of attempts that broke off mid-stream and were sent again, as far as their usage was reported. Billed, but in neither `inputTokens` nor `outputTokens`."
+              },
+              "firstTokenMs": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Milliseconds from sending the request that was answered to the first text of its answer. Thinking is not text, so time spent thinking is inside it. Null when the answer has no text, and for the CLI runner, which does not report when it sends a request."
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "wallMs": {
+                "type": "integer",
+                "description": "Milliseconds from the first request to the end of the answer, retry waits (`backoffMs`) left out; for the CLI runner, from the CLI’s start-up report."
+              },
+              "retries": {
+                "type": "integer",
+                "description": "Requests sent again after a transient failure."
+              },
+              "backoffMs": {
+                "type": "integer",
+                "description": "Time spent waiting before those requests, in milliseconds."
+              }
+            },
+            "required": [
+              "brief",
+              "run",
+              "lawful",
+              "meetsBrief",
+              "failedRequirements",
+              "ended",
+              "harnessFault",
+              "fatal",
+              "faults",
+              "inputTokens",
+              "uncachedInputTokens",
+              "cacheWriteTokens",
+              "cacheReadTokens",
+              "outputTokens",
+              "discardedTokens",
+              "firstTokenMs",
+              "wallMs",
+              "retries",
+              "backoffMs"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "schema",
+        "at",
+        "model",
+        "mode",
+        "runner",
+        "cliVersion",
+        "fake",
+        "partial",
+        "stopped",
+        "polymorph",
+        "briefs",
+        "settings",
+        "card",
+        "outputs",
+        "requirements",
+        "summary",
+        "records"
+      ],
+      "additionalProperties": false
     }
-  },
-  "required": [
-    "schema",
-    "at",
-    "model",
-    "mode",
-    "runner",
-    "cliVersion",
-    "fake",
-    "partial",
-    "stopped",
-    "polymorph",
-    "briefs",
-    "settings",
-    "outputs",
-    "summary",
-    "records"
-  ],
-  "additionalProperties": false
+  ]
 }

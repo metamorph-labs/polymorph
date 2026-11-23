@@ -24,6 +24,7 @@ import { elementsOf, loadRequirements, resolveRequirements, unmet } from './requ
 import { KINDS_SHAPE, REQUIREMENTS_SHAPE } from './requirements-shape'
 import { RESULTS_SHAPE, TOOL_NAMES } from './results-shape'
 import { apart, interval, resolution, smallestGap } from './spread.mjs'
+import { loadScreen } from './toolbox.mjs'
 
 /**
  * The agent eval's harness, tested without a model (`docs/verification.md`,
@@ -287,7 +288,15 @@ const frame = (events: object[]) =>
     )
     .join('')
 
-const start = (input: number) => ({
+/** What a response reports it read and wrote; `read` and `write` are its cache reads and writes. */
+interface Usage {
+  input: number
+  output: number
+  read?: number
+  write?: number
+}
+
+const start = (input: number, { read = 0, write = 0 }: { read?: number; write?: number } = {}) => ({
   type: 'message_start',
   message: {
     id: 'msg_local',
@@ -296,27 +305,48 @@ const start = (input: number) => ({
     content: [],
     usage: {
       input_tokens: input,
-      cache_creation_input_tokens: 0,
-      cache_read_input_tokens: 0,
+      cache_creation_input_tokens: write,
+      cache_read_input_tokens: read,
       output_tokens: 1,
     },
   },
 })
 
+/** The events that end a response. */
+const ending = (stopReason: string, usage: Usage) => [
+  { type: 'ping' },
+  {
+    type: 'message_delta',
+    delta: { stop_reason: stopReason },
+    usage: { output_tokens: usage.output },
+  },
+  { type: 'message_stop' },
+]
+
 /** The server-sent events of one response. */
-function stream(blocks: Block[], stopReason: string, usage: { input: number; output: number }) {
-  const events: object[] = [start(usage.input)]
-  blocks.forEach((block, index) => events.push(...block(index)))
-  events.push(
-    { type: 'ping' },
-    {
-      type: 'message_delta',
-      delta: { stop_reason: stopReason },
-      usage: { output_tokens: usage.output },
-    },
-    { type: 'message_stop' },
-  )
-  return frame(events)
+function stream(blocks: Block[], stopReason: string, usage: Usage) {
+  return frame([
+    start(usage.input, usage),
+    ...blocks.flatMap((block, index) => block(index)),
+    ...ending(stopReason, usage),
+  ])
+}
+
+/**
+ * One response sent in two parts with a pause between them: its start and
+ * the blocks `before`, then the blocks `after` and its end. The pause is the
+ * time a model takes before its next block.
+ */
+function paused(
+  before: Block[],
+  after: Block[],
+  stopReason: string,
+  usage: Usage,
+  pauseMs: number,
+): Reply {
+  const first = [start(usage.input, usage), ...before.flatMap((block, index) => block(index))]
+  const rest = after.flatMap((block, index) => block(before.length + index))
+  return { parts: [frame(first), frame([...rest, ...ending(stopReason, usage)])], pauseMs }
 }
 
 /** A response that breaks off with an error event after it has started, as an overload or a rate limit can. */
@@ -378,8 +408,25 @@ const text =
     { type: 'content_block_stop', index },
   ]
 
-/** A refusal as an HTTP status, or a streamed body. */
-type Reply = string | { status: number; error: string; retryAfter: string }
+/** A thinking block whose reasoning arrives as text, as it does when it is displayed. */
+const thoughtAloud =
+  (thought: string, signature: string): Block =>
+  (index) => [
+    {
+      type: 'content_block_start',
+      index,
+      content_block: { type: 'thinking', thinking: '', signature: '' },
+    },
+    { type: 'content_block_delta', index, delta: { type: 'thinking_delta', thinking: thought } },
+    { type: 'content_block_delta', index, delta: { type: 'signature_delta', signature } },
+    { type: 'content_block_stop', index },
+  ]
+
+/** A refusal as an HTTP status, a streamed body, or a body streamed in parts with a pause between them. */
+type Reply =
+  | string
+  | { status: number; error: string; retryAfter: string }
+  | { parts: string[]; pauseMs: number }
 
 /** Answers each request with the next reply, and keeps every request it was sent. */
 function localApi(replies: Reply[], captured: Captured[]): Server {
@@ -417,6 +464,13 @@ function localApi(replies: Reply[], captured: Captured[]): Server {
         return
       }
       const reply = replies[captured.length - 1] ?? ''
+      if (typeof reply === 'object' && 'parts' in reply) {
+        response.writeHead(200, { 'content-type': 'text/event-stream' })
+        const [first, ...rest] = reply.parts
+        response.write(first ?? '')
+        setTimeout(() => response.end(rest.join('')), reply.pauseMs)
+        return
+      }
       if (typeof reply !== 'string') {
         response.writeHead(reply.status, {
           'content-type': 'application/json',
@@ -666,6 +720,126 @@ const AHEAD_DENIED_RUNS = [
 ]
 
 /* -------------------------------------------------------------------------- */
+/* The run-time lane                                                          */
+/* -------------------------------------------------------------------------- */
+
+/** The card written to the cache by the first request, and read from it by the rest. */
+const WRITES = { input: 300, write: 14_000, output: 1_500 }
+const READS = { input: 300, read: 14_000, output: 1_500 }
+
+/** How long the model of the first run thinks before its answer starts. */
+const THINKING_MS = 120
+
+/**
+ * Eight runs of one brief in the run-time lane, one request each: a lawful
+ * answer in prose and a fence, after a refusal as overloaded and a pause
+ * spent thinking; an unlawful one; a bare document after a stream that broke
+ * off; one cut off at `max_tokens`; a refusal; a document that ends before it
+ * closes; one that stops being JSON; and an answer with no document.
+ */
+const RUNTIME_REPLIES: Reply[] = [
+  { status: 529, error: 'overloaded_error', retryAfter: '0.01' },
+  paused(
+    [thoughtAloud('The settings page has a danger zone.', 'sig-runtime')],
+    [text(ANSWER)],
+    'end_turn',
+    WRITES,
+    THINKING_MS,
+  ),
+  stream(
+    [
+      text(
+        `Here.\n\n\`\`\`json\n${JSON.stringify({ ...JSON.parse(LAWFUL), root: { component: 'Modal' } })}\n\`\`\`\n`,
+      ),
+    ],
+    'end_turn',
+    READS,
+  ),
+  brokenOff('overloaded_error', 3000),
+  stream([text(LAWFUL)], 'end_turn', READS),
+  stream([text(CUT_SHORT)], 'max_tokens', READS),
+  stream([text(ANSWER)], 'refusal', READS),
+  stream([text(`\`\`\`json\n${LAWFUL.slice(0, LAWFUL.indexOf('"root"'))}`)], 'end_turn', READS),
+  stream([text('```json\n{"spec": "polymorph-screen/1", "name": }\n```\n')], 'end_turn', READS),
+  stream([text('That screen cannot be written.')], 'end_turn', READS),
+]
+
+/** The same lane through a stand-in for the CLI: a lawful answer, one cut off, and a refusal. */
+const RUNTIME_STAND_IN = resolve(SCRATCH, 'stand-in-runtime')
+const RUNTIME_STAND_IN_RUNS = [
+  {
+    turns: [
+      {
+        content: [{ type: 'text', text: ANSWER }],
+        stop_reason: 'end_turn',
+        usage: { input_tokens: 300, cache_read_input_tokens: 14_000, output_tokens: 1_500 },
+      },
+    ],
+  },
+  { turns: [scriptedText('max_tokens')] },
+  { turns: [scriptedText('refusal')] },
+]
+
+/**
+ * A CLI that starts with a built-in tool, which a run-time run may not offer
+ * the model. It reports its start-up and waits, as a CLI waits for a model.
+ */
+function toolfulCli(directory: string) {
+  mkdirSync(directory, { recursive: true })
+  const file = resolve(directory, 'claude')
+  const lines = [
+    '#!/bin/sh',
+    `if [ "$1" = "--version" ]; then echo '9.9.9 (Claude Code)'; exit 0; fi`,
+    `echo '{"type":"system","subtype":"init","tools":["Read"],"mcp_servers":[]}'`,
+    'exec sleep 30',
+  ]
+  writeFileSync(file, `${lines.join('\n')}\n`, { mode: 0o755 })
+  return file
+}
+
+/** A run-time record, as the run-time lane writes one. */
+interface RuntimeRecord {
+  brief: string
+  run: number
+  lawful: boolean
+  meetsBrief: boolean
+  failedRequirements: string[]
+  ended: string
+  harnessFault: string | null
+  fatal: string | null
+  faults: string[]
+  inputTokens: number
+  uncachedInputTokens: number
+  cacheWriteTokens: number
+  cacheReadTokens: number
+  outputTokens: number
+  discardedTokens: number
+  firstTokenMs: number | null
+  wallMs: number
+  retries: number
+  backoffMs: number
+}
+
+/** The card a run-time results file records. */
+interface RuntimeCard {
+  framework: string
+  chosen: string
+  members: string[]
+  characters: number
+}
+
+const runtimeRecords = (evaluation: Evaluation) =>
+  evaluation.results.records as unknown as RuntimeRecord[]
+
+const runtimeRecord = (evaluation: Evaluation, brief: string, run = 1) =>
+  runtimeRecords(evaluation).find(
+    (entry) => entry.brief === brief && entry.run === run,
+  ) as RuntimeRecord
+
+const cardOf = (evaluation: Evaluation) =>
+  (evaluation.results as unknown as { card: RuntimeCard }).card
+
+/* -------------------------------------------------------------------------- */
 /* The runs                                                                   */
 /* -------------------------------------------------------------------------- */
 
@@ -675,6 +849,10 @@ const faultsCaptured: Captured[] = []
 const faultsServer = localApi(FAULT_REPLIES, faultsCaptured)
 const unparsedCaptured: Captured[] = []
 const unparsedServer = localApi(UNPARSED_REPLIES, unparsedCaptured)
+const runtimeCaptured: Captured[] = []
+const runtimeServer = localApi(RUNTIME_REPLIES, runtimeCaptured)
+/** The run-time core, loaded as the harness loads it, so a test can make the card a run sent. */
+let screen: Awaited<ReturnType<typeof loadScreen>>
 const runs: Record<string, Evaluation> = {}
 const attempts: Record<string, Awaited<ReturnType<typeof attempt>>> = {}
 let resultsBefore: string[] = []
@@ -688,12 +866,15 @@ const listen = async (target: Server) => {
 
 beforeAll(async () => {
   resultsBefore = listing()
-  const [base, faultsBase, unparsedBase] = await Promise.all([
+  const [base, faultsBase, unparsedBase, runtimeBase] = await Promise.all([
     listen(server),
     listen(faultsServer),
     listen(unparsedServer),
+    listen(runtimeServer),
   ])
+  screen = await loadScreen()
   const local = { ANTHROPIC_API_KEY: 'local-key' }
+  const settingsBrief = ['--briefs', 'eval/briefs/settings-workspace.md']
 
   /** One run of the settings brief through a stand-in. */
   const throughStandIn = (
@@ -712,6 +893,45 @@ beforeAll(async () => {
     throughStandIn('cli-unreadable', UNREADABLE_RUNS, UNREADABLE),
     throughStandIn('cli-ahead', AHEAD_RUNS, AHEAD, ['--max-iterations', '1']),
     throughStandIn('cli-ahead-denied', AHEAD_DENIED_RUNS, AHEAD_DENIED, ['--max-iterations', '1']),
+  ])
+
+  // The run-time lane: every brief twice through both runners, a subset and a list of members,
+  // the local API with eight runs of one brief, and the stand-in for the CLI.
+  const runtime = ['--mode', 'runtime']
+  const runtimeEvaluated = Promise.all([
+    evaluate('runtime-every', ['--fake', ...runtime, '--runs', '2']),
+    evaluate('runtime-cli', ['--fake', '--runner', 'cli', ...runtime, '--runs', '2']),
+    evaluate('runtime-small', ['--fake', ...runtime, '--members', 'small', ...settingsBrief]),
+    evaluate('runtime-list', [
+      '--fake',
+      ...runtime,
+      '--members',
+      'Stack, Heading,Text,Stack',
+      ...settingsBrief,
+    ]),
+    evaluate(
+      'runtime-api',
+      [
+        ...runtime,
+        ...['--model', 'local-model', '--thinking', 'disabled', '--effort', 'low'],
+        ...['--runs', '8', ...settingsBrief],
+      ],
+      { ...local, ANTHROPIC_BASE_URL: runtimeBase },
+    ),
+    evaluate(
+      'runtime-stand-in',
+      [
+        ...['--runner', 'cli', '--claude', standIn(RUNTIME_STAND_IN_RUNS, RUNTIME_STAND_IN)],
+        ...runtime,
+        ...['--model', 'local-model', '--effort', 'high', '--runs', '3', ...settingsBrief],
+      ],
+      { ANTHROPIC_API_KEY: '' },
+    ),
+    attempt('runtime-toolful', [
+      ...['--runner', 'cli', '--claude', toolfulCli(resolve(SCRATCH, 'toolful'))],
+      ...runtime,
+      ...settingsBrief,
+    ]),
   ])
 
   const [
@@ -833,6 +1053,24 @@ beforeAll(async () => {
   ])
   const [halfLine, unreadable, ahead, aheadDenied] = await attempted
   Object.assign(attempts, { halfLine, unreadable, ahead, aheadDenied })
+  const [
+    runtimeEvery,
+    runtimeCli,
+    runtimeSmall,
+    runtimeList,
+    runtimeApi,
+    runtimeStandIn,
+    runtimeToolful,
+  ] = await runtimeEvaluated
+  Object.assign(runs, {
+    runtimeEvery,
+    runtimeCli,
+    runtimeSmall,
+    runtimeList,
+    runtimeApi,
+    runtimeStandIn,
+  })
+  Object.assign(attempts, { runtimeToolful })
   Object.assign(runs, {
     two,
     cap,
@@ -854,6 +1092,7 @@ afterAll(() => {
   server.close()
   faultsServer.close()
   unparsedServer.close()
+  runtimeServer.close()
   // A stand-in the runner failed to stop would otherwise outlive the suite.
   for (const directory of [HALF_LINE, UNREADABLE]) {
     const file = resolve(directory, 'pid-1')
@@ -1482,6 +1721,465 @@ describe('refusing to start', () => {
     expect((await refusal(['--fake', '--effort', 'high']))?.stderr).toContain(
       '`--effort` does not apply',
     )
+  })
+
+  it('a flag of the run-time lane in another mode, or one the lane does not take', async () => {
+    const runtime = ['--fake', '--mode', 'runtime', '--briefs', 'eval/briefs/list*.md']
+    expect((await refusal(['--mode', 'card']))?.stderr).toContain(
+      '`--mode` is `spec`, `tsx` or `runtime`',
+    )
+    for (const flag of [
+      ['--thinking', 'disabled'],
+      ['--members', 'small'],
+      ['--framework', 'vue'],
+    ]) {
+      expect((await refusal(flag))?.stderr, flag[0]).toContain(
+        `\`${flag[0]}\` belongs to the run-time lane: add \`--mode runtime\``,
+      )
+    }
+    expect((await refusal([...runtime, '--max-iterations', '2']))?.stderr).toContain(
+      '`--mode runtime` makes none',
+    )
+    expect((await refusal(['--mode', 'runtime', '--thinking', 'maybe']))?.stderr).toContain(
+      '`--thinking` is one of adaptive, disabled, between_tools',
+    )
+    expect(
+      (await refusal(['--mode', 'runtime', '--runner', 'cli', '--thinking', 'disabled']))?.stderr,
+    ).toContain('the CLI chooses its own thinking')
+    expect((await refusal([...runtime, '--thinking', 'disabled']))?.stderr).toContain(
+      '`--thinking` does not apply',
+    )
+  })
+
+  it('a card of members the vocabulary does not have, or of a framework it does not draw', async () => {
+    const runtime = ['--fake', '--mode', 'runtime', '--briefs', 'eval/briefs/list*.md']
+    expect((await refusal([...runtime, '--members', 'Stack,Modal,Popup']))?.stderr).toContain(
+      '`--members` names `Modal`, `Popup`, which the vocabulary does not have',
+    )
+    expect((await refusal([...runtime, '--members', 'tiny']))?.stderr).toContain(
+      'no subset called `tiny` in eval/members/; the subsets are small',
+    )
+    expect((await refusal([...runtime, '--members', ' , ']))?.stderr).toContain(
+      '`--members` names no member',
+    )
+    expect((await refusal([...runtime, '--framework', 'qt']))?.stderr).toContain(
+      '`--framework` is one of react, vue, svelte, solid, angular, elements',
+    )
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* The run-time lane                                                          */
+/* -------------------------------------------------------------------------- */
+
+describe('the run-time lane, with the scripted model', () => {
+  const every = () => runs.runtimeEvery as Evaluation
+
+  it('writes a lawful screen that meets every brief, from the card alone', () => {
+    // The requirements read a run-time document as they read a spec, so each brief can be met
+    // in one request, lawfully, by the members the card lists.
+    for (const brief of ALL_BRIEFS) {
+      expect(runtimeRecord(every(), brief), brief).toMatchObject({
+        lawful: true,
+        meetsBrief: true,
+        failedRequirements: [],
+        ended: 'answered',
+        harnessFault: null,
+        fatal: null,
+        faults: [],
+      })
+    }
+  })
+
+  it('records an unlawful answer with what the check reported, in its words', () => {
+    expect(runtimeRecord(every(), 'list-incidents', 2)).toMatchObject({
+      lawful: false,
+      meetsBrief: false,
+      failedRequirements: ['delete-asks-first', 'confirmation-names-the-incident'],
+      fatal: null,
+      faults: expect.arrayContaining([
+        '$.root.props.className: `ListPage` has no prop `className`',
+      ]) as unknown,
+    })
+  })
+
+  it('records no `validate` call, no first shot apart from the answer and no loop', () => {
+    for (const record of runtimeRecords(every())) {
+      for (const field of [
+        'firstShotLawful',
+        'iterations',
+        'toolCalls',
+        'turns',
+        'misses',
+        'violationsSeen',
+      ]) {
+        expect(record).not.toHaveProperty(field)
+      }
+    }
+    const { overall } = every().results.summary
+    for (const field of ['firstShotRate', 'meanIterations', 'lawfulWithoutValidate']) {
+      expect(overall).not.toHaveProperty(field)
+    }
+    // One request cannot reach the iteration cap or the request limit.
+    expect(overall.endings).toEqual({ answered: 16, max_tokens: 0, refusal: 0, harness: 0 })
+    expect(every().results.settings).not.toHaveProperty('maxIterations')
+    expect(every().results.settings).not.toHaveProperty('maxTurns')
+  })
+
+  it('records the tokens as the scripted usage gives them, cached and uncached apart', () => {
+    // The first brief's run writes the card to the cache; every other reads it.
+    expect(runtimeRecord(every(), 'auth-sign-in-up')).toMatchObject({
+      inputTokens: 14_480,
+      uncachedInputTokens: 280,
+      cacheWriteTokens: 14_200,
+      cacheReadTokens: 0,
+      outputTokens: 1_400,
+    })
+    expect(runtimeRecord(every(), 'settings-workspace')).toMatchObject({
+      inputTokens: 14_550,
+      uncachedInputTokens: 350,
+      cacheWriteTokens: 0,
+      cacheReadTokens: 14_200,
+      outputTokens: 1_750,
+    })
+    expect(every().results.summary.overall).toMatchObject({
+      runs: 16,
+      measured: 16,
+      lawfulRate: 0.9375,
+      lawfulInterval: bounds(15, 16),
+      meetsBriefRate: 0.9375,
+      lawfulAndMeetsBriefRate: 0.9375,
+      lawfulAndMeetsBriefInterval: bounds(15, 16),
+      unreadable: 0,
+      failedRequirements: {
+        'list-incidents/confirmation-names-the-incident': 1,
+        'list-incidents/delete-asks-first': 1,
+      },
+      meanInputTokens: 14_515,
+      meanUncachedInputTokens: 315,
+      meanCacheWriteTokens: 1_775,
+      meanCacheReadTokens: 12_425,
+      meanOutputTokens: 1_575,
+    })
+  })
+
+  it('records a time to the first token and a wall time for every run', () => {
+    for (const record of runtimeRecords(every())) {
+      expect(record.firstTokenMs).toEqual(expect.any(Number))
+      expect(record.wallMs).toEqual(expect.any(Number))
+    }
+    const { overall } = every().results.summary as unknown as Record<string, unknown>
+    expect(overall).toMatchObject({
+      meanFirstTokenMs: expect.any(Number) as unknown,
+      firstTokenRangeMs: {
+        low: expect.any(Number) as unknown,
+        high: expect.any(Number) as unknown,
+      },
+      meanWallMs: expect.any(Number) as unknown,
+      wallRangeMs: { low: expect.any(Number) as unknown, high: expect.any(Number) as unknown },
+    })
+  })
+
+  it('records the card it sent: its framework, its members and its length', () => {
+    expect(cardOf(every())).toEqual({
+      framework: 'react',
+      chosen: 'default',
+      members: screen.defaultMembers('react'),
+      characters: screen.runtimeCard({ framework: 'react' }).length,
+    })
+    expect(every().results).toMatchObject({ mode: 'runtime', runner: 'api', fake: true })
+    expect(every().results.settings).toMatchObject({ thinking: 'adaptive', effort: 'default' })
+  })
+
+  it('keeps each document beside the results, as the object it is', () => {
+    const { outputs } = every()
+    expect(outputs.outputs.find(({ brief }) => brief === 'settings-workspace')?.document).toEqual(
+      JSON.parse(LAWFUL),
+    )
+  })
+
+  it('measures the scripted model through the CLI runner exactly as through the API runner', () => {
+    // The CLI does not report when it sends a request, so it has no time to the first token.
+    const timeless = (evaluation: Evaluation) =>
+      runtimeRecords(evaluation).map(
+        ({ wallMs: _wallMs, firstTokenMs: _firstTokenMs, ...rest }) => rest,
+      )
+    const cli = runs.runtimeCli as Evaluation
+    expect(timeless(cli)).toEqual(timeless(every()))
+    expect(cli.outputs).toEqual(every().outputs)
+    expect(runtimeRecords(cli).map(({ firstTokenMs }) => firstTokenMs)).toEqual(
+      runtimeRecords(cli).map(() => null),
+    )
+    expect(cli.results).toMatchObject({ runner: 'cli', cliVersion: 'scripted' })
+    expect(cli.results.settings).toMatchObject({ thinking: null })
+    expect(cli.results.summary.overall).toMatchObject({
+      meanFirstTokenMs: null,
+      firstTokenRangeMs: null,
+    })
+    expect(cardOf(cli)).toEqual(cardOf(every()))
+  })
+
+  it('sends a named subset’s card, and refuses the members the subset leaves out', () => {
+    const small = JSON.parse(readFileSync(resolve(ROOT, 'eval/members/small.json'), 'utf8'))
+    const evaluation = runs.runtimeSmall as Evaluation
+    expect(cardOf(evaluation)).toEqual({
+      framework: 'react',
+      chosen: 'small',
+      members: small,
+      characters: screen.runtimeCard({ framework: 'react', members: small }).length,
+    })
+    expect(cardOf(evaluation).characters).toBeLessThan(cardOf(every()).characters)
+    // The screen is the same one, so it meets its brief, and it is not one this host may draw.
+    expect(runtimeRecord(evaluation, 'settings-workspace')).toMatchObject({
+      lawful: false,
+      meetsBrief: true,
+      faults: expect.arrayContaining([
+        expect.stringContaining('`SettingsPage` is not one of the members this host draws'),
+      ]) as unknown,
+    })
+    expect(evaluation.results.summary.overall).toMatchObject({
+      lawfulRate: 0,
+      meetsBriefRate: 1,
+      lawfulAndMeetsBriefRate: 0,
+    })
+  })
+
+  it('sends a card of the members a list names, once each', () => {
+    expect(cardOf(runs.runtimeList as Evaluation)).toEqual({
+      framework: 'react',
+      chosen: 'list',
+      members: ['Stack', 'Heading', 'Text'],
+      characters: screen.runtimeCard({ framework: 'react', members: ['Stack', 'Heading', 'Text'] })
+        .length,
+    })
+  })
+
+  it('names the subsets only by members the vocabulary has', () => {
+    const names = new Set(screen.names())
+    const directory = resolve(ROOT, 'eval/members')
+    for (const file of readdirSync(directory)) {
+      const members = JSON.parse(readFileSync(resolve(directory, file), 'utf8')) as unknown
+      expect(Array.isArray(members), file).toBe(true)
+      for (const member of members as string[])
+        expect(names.has(member), `${file}: ${member}`).toBe(true)
+    }
+  })
+})
+
+describe('the run-time lane, through the Messages API', () => {
+  const api = () => runs.runtimeApi as Evaluation
+  const bodies = () => runtimeCaptured.map(({ body }) => body as unknown as Record<string, unknown>)
+
+  it('sends the card as the whole system prompt, marked for the cache, and the brief last', () => {
+    // Ten requests for eight runs: two of them were sent again.
+    expect(runtimeCaptured).toHaveLength(10)
+    const card = screen.runtimeCard({ framework: 'react' })
+    for (const body of bodies()) {
+      expect(body).toMatchObject({
+        model: 'local-model',
+        stream: true,
+        thinking: { type: 'disabled' },
+        output_config: { effort: 'low' },
+      })
+      expect(body.system).toEqual([
+        { type: 'text', text: card, cache_control: { type: 'ephemeral' } },
+      ])
+      // One request with no tools: nothing to call, and no breakpoint after the brief.
+      expect(body).not.toHaveProperty('tools')
+      expect(body).not.toHaveProperty('cache_control')
+      expect(body.messages).toEqual([
+        {
+          role: 'user',
+          content: expect.stringMatching(
+            /^<brief>\n# Screen brief — Workspace settings\n[\s\S]+\n<\/brief>\n\nBuild the screen the brief describes\.$/,
+          ) as unknown,
+        },
+      ])
+    }
+  })
+
+  it('names no member outside the card, and never the requirements', () => {
+    const members = [...REGISTRY.components.map((entry) => entry.name), ...screen.names()]
+    const requirements = requirementsOf('settings-workspace')
+    for (const body of bodies()) {
+      const message = JSON.stringify(body.messages)
+      for (const member of members) expect(message, member).not.toContain(member)
+      const sent = JSON.stringify(body)
+      for (const { id, says } of requirements) {
+        expect(sent).not.toContain(says)
+        expect(sent).not.toContain(`"${id}"`)
+      }
+    }
+  })
+
+  it('records the thinking and the effort it sent', () => {
+    expect(api().results.settings).toMatchObject({
+      thinking: 'disabled',
+      effort: 'low',
+      maxTokens: 64_000,
+      runs: 8,
+    })
+  })
+
+  it('reads the document from prose and a fence, or bare, and judges it with the check', () => {
+    expect(runtimeRecord(api(), 'settings-workspace', 1)).toMatchObject({
+      ended: 'answered',
+      lawful: true,
+      meetsBrief: true,
+      fatal: null,
+      faults: [],
+    })
+    expect(runtimeRecord(api(), 'settings-workspace', 3)).toMatchObject({
+      ended: 'answered',
+      lawful: true,
+      meetsBrief: true,
+    })
+    expect(runtimeRecord(api(), 'settings-workspace', 2)).toMatchObject({
+      ended: 'answered',
+      lawful: false,
+      meetsBrief: false,
+      fatal: null,
+      faults: [expect.stringContaining('$.root: no component called `Modal`')],
+    })
+  })
+
+  it('records the cache write, the cache read and the uncached input apart, retries beside them', () => {
+    // The first run's request was refused as overloaded and sent again after its `retry-after`.
+    expect(runtimeRecord(api(), 'settings-workspace', 1)).toMatchObject({
+      inputTokens: 14_300,
+      uncachedInputTokens: 300,
+      cacheWriteTokens: 14_000,
+      cacheReadTokens: 0,
+      outputTokens: 1_500,
+      discardedTokens: 0,
+      retries: 1,
+      backoffMs: 10,
+    })
+    expect(runtimeRecord(api(), 'settings-workspace', 2)).toMatchObject({
+      inputTokens: 14_300,
+      uncachedInputTokens: 300,
+      cacheWriteTokens: 0,
+      cacheReadTokens: 14_000,
+    })
+    // The third run's stream broke off, and its reported usage of 3,000 in and 1 out was billed.
+    expect(runtimeRecord(api(), 'settings-workspace', 3)).toMatchObject({
+      retries: 1,
+      backoffMs: 2_000,
+      discardedTokens: 3_001,
+    })
+  })
+
+  it('times the first token from the request that was answered, thinking left out', () => {
+    // The thinking arrives before the pause and the answer's text after it.
+    const first = runtimeRecord(api(), 'settings-workspace', 1)
+    expect(first.firstTokenMs).toBeGreaterThanOrEqual(THINKING_MS)
+    expect(first.wallMs).toBeGreaterThanOrEqual(THINKING_MS)
+    for (const record of runtimeRecords(api())) {
+      expect(record.firstTokenMs, `#${record.run}`).toEqual(expect.any(Number))
+      expect(record.firstTokenMs as number, `#${record.run}`).toBeLessThanOrEqual(record.wallMs + 1)
+    }
+    const overall = api().results.summary.overall as unknown as {
+      firstTokenRangeMs: { high: number }
+    }
+    expect(overall.firstTokenRangeMs.high).toBeGreaterThanOrEqual(THINKING_MS)
+  })
+
+  it('never judges a refused or cut-off answer', () => {
+    for (const run of [4, 5]) {
+      expect(runtimeRecord(api(), 'settings-workspace', run)).toMatchObject({
+        ended: run === 4 ? 'max_tokens' : 'refusal',
+        lawful: false,
+        meetsBrief: false,
+        failedRequirements: [],
+        fatal: null,
+        faults: [],
+      })
+    }
+  })
+
+  it('counts an answer with no whole document as not lawful, and meeting nothing', () => {
+    const every = requirementsOf('settings-workspace').map(({ id }) => id)
+    expect(runtimeRecord(api(), 'settings-workspace', 6)).toMatchObject({
+      ended: 'answered',
+      lawful: false,
+      meetsBrief: false,
+      failedRequirements: every,
+      fatal: 'the document is cut short: the answer ends before it closes',
+    })
+    expect(runtimeRecord(api(), 'settings-workspace', 7)).toMatchObject({
+      lawful: false,
+      failedRequirements: every,
+      fatal: expect.stringMatching(
+        /^the document stops being JSON at character \d+, where it needs a value$/,
+      ) as unknown,
+    })
+    expect(runtimeRecord(api(), 'settings-workspace', 8)).toMatchObject({
+      lawful: false,
+      failedRequirements: every,
+      fatal: 'the answer holds no document',
+    })
+    expect(api().results.summary.overall).toMatchObject({
+      runs: 8,
+      measured: 8,
+      endings: { answered: 6, max_tokens: 1, refusal: 1, harness: 0 },
+      lawfulRate: 0.25,
+      meetsBriefRate: 0.25,
+      unreadable: 3,
+    })
+    // What the answer said is kept where there is no document to keep.
+    const kept = api().outputs.outputs.map(({ document }) => document)
+    expect(kept[0]).toEqual(JSON.parse(LAWFUL))
+    expect(kept[7]).toBe('That screen cannot be written.')
+  })
+})
+
+describe('the run-time lane, through the CLI', () => {
+  const standInRun = () => runs.runtimeStandIn as Evaluation
+
+  it('passes the card as the system prompt, the brief on stdin, and no tool or MCP server', () => {
+    const args = standInRecord('args', 1, RUNTIME_STAND_IN).split('\0')
+    const after = (flag: string) => args[args.indexOf(flag) + 1]
+    expect(after('--system-prompt')).toBe(screen.runtimeCard({ framework: 'react' }))
+    expect(after('--tools')).toBe('')
+    expect(args).not.toContain('--allowedTools')
+    expect(args).toContain('--strict-mcp-config')
+    expect(after('--model')).toBe('local-model')
+    expect(after('--effort')).toBe('high')
+  })
+
+  it('is held to one request, and records no time to the first token', () => {
+    const [answered, cutOff, refused] = runtimeRecords(standInRun())
+    expect(answered).toMatchObject({
+      ended: 'answered',
+      lawful: true,
+      meetsBrief: true,
+      firstTokenMs: null,
+      inputTokens: 14_300,
+      uncachedInputTokens: 300,
+      cacheReadTokens: 14_000,
+      outputTokens: 1_500,
+    })
+    expect(answered?.wallMs).toEqual(expect.any(Number))
+    expect(cutOff).toMatchObject({ ended: 'max_tokens', lawful: false, failedRequirements: [] })
+    expect(refused).toMatchObject({ ended: 'refusal', lawful: false, failedRequirements: [] })
+    expect(standInRun().results).toMatchObject({
+      runner: 'cli',
+      partial: false,
+      settings: { thinking: null, effort: 'high' },
+    })
+  })
+
+  it('stops the eval when the CLI starts with a tool to offer', () => {
+    const { code, stderr, results } = attempts.runtimeToolful as Awaited<ReturnType<typeof attempt>>
+    expect(code).toBe(1)
+    expect(stderr).toContain(
+      'the CLI started with Read, and a runtime run offers the model no tool',
+    )
+    expect(results).toMatchObject({
+      partial: true,
+      stopped: { reason: 'cli', brief: 'settings-workspace', run: 1 },
+      records: [],
+    })
   })
 })
 
@@ -2520,6 +3218,17 @@ describe('the results schema', () => {
     }
   })
 
+  it('rejects a run-time record that carries a field of the other modes', () => {
+    const results = structuredClone((runs.runtimeEvery as Evaluation).results)
+    Object.assign(results.records[0] as object, { firstShotLawful: true })
+    expect(validate(RESULTS_SHAPE, results)).toEqual([
+      expect.stringContaining(
+        '$.records[0].firstShotLawful: `firstShotLawful` is not in the schema — the fields here ' +
+          'are `brief`, `run`, `lawful`, ',
+      ),
+    ])
+  })
+
   it('rejects a record with a field it does not describe', () => {
     const results = structuredClone((runs.two as Evaluation).results)
     Object.assign(results.records[0] as object, { mood: 'confident' })
@@ -2753,6 +3462,163 @@ describe('the report', () => {
     // The intervals come from the counts, so a file that recorded none still shows them.
     expect(page).toContain('| 2 × 1 | 50% (9–91%) | 100% (34–100%) | — | — |')
     expect(page).toContain('| list-incidents | 1 | 0 of 1 (0–79%) | 1 of 1 (21–100%) | — | — | — |')
+  })
+
+  /** Run-time results files, written from the scripted run-time run's, into a fresh directory. */
+  function runtimeDirectoryOf(name: string, files: Record<string, object>) {
+    const directory = resolve(SCRATCH, name)
+    mkdirSync(directory)
+    const base = (runs.runtimeEvery as Evaluation).results
+    for (const [file, changes] of Object.entries(files)) {
+      writeFileSync(
+        resolve(directory, file),
+        JSON.stringify({ ...base, fake: false, model: 'claude-haiku-5-5', ...changes }),
+      )
+    }
+    return renderReport(readResults(directory), resolve(directory, 'README.md'))
+  }
+
+  /** A run-time results file's changes: when it ran, and times a real model could take. */
+  function timed(at: string, more: object = {}) {
+    const base = (runs.runtimeEvery as Evaluation).results
+    return {
+      at,
+      summary: {
+        ...base.summary,
+        overall: {
+          ...base.summary.overall,
+          meanFirstTokenMs: 820,
+          firstTokenRangeMs: { low: 450, high: 1200 },
+          meanWallMs: 6100,
+          wallRangeMs: { low: 4200, high: 9900 },
+        },
+      },
+      ...more,
+    }
+  }
+
+  it('gives the run-time lane a section of its own, with its own number', () => {
+    const page = runtimeDirectoryOf('runtime-number', {
+      '2026-01-01-claude-haiku-5-5-runtime.json': timed('2026-01-01T09:00:00.000Z'),
+    })
+    const card = cardOf(runs.runtimeEvery as Evaluation)
+    const size = `${card.members.length} members, ${card.characters.toLocaleString('en-US')} characters`
+    expect(page).toContain('No number is recorded')
+    expect(page).toContain('\n## The run-time lane\n')
+    expect(page).toMatch(
+      /\*\*The run-time number:\*\* `claude-haiku-5-5`, adaptive thinking, default effort, through the Messages API, \S+ \(\w{7}\), /,
+    )
+    expect(page).toContain(
+      `, the react card of every member it draws (${size}) — 94% lawful (72% to 99%), 94% ` +
+        'meeting their brief (72% to 99%), 94% lawful and meeting their brief (72% to 99%), ' +
+        '14,515 input tokens a run (12,425 read from the cache, 1,775 written to it and 315 ' +
+        'uncached) and 1,575 output tokens, 0.82 s (0.45 s to 1.20 s) to the first token and ' +
+        '6.10 s (4.20 s to 9.90 s) to the end of the answer ' +
+        '([2026-01-01-claude-haiku-5-5-runtime.json](2026-01-01-claude-haiku-5-5-runtime.json)). ' +
+        'Each rate’s range is the 95% interval its 16 runs support, and each time’s runs from ' +
+        'the fastest run to the slowest.\n',
+    )
+    expect(page).toContain(
+      `| API | adaptive | default | react, default (${size}) | 8 × 2 | 94% (72–99%) | ` +
+        '94% (72–99%) | 94% (72–99%) | 14,515 | 12,425 | 1,775 | 315 | 1,575 | ' +
+        '0.82 s (0.45–1.20 s) | 6.10 s (4.20–9.90 s) | 0 | 16 answered |',
+    )
+    // One request is its own first shot, and makes no `validate` call.
+    const section = page.slice(page.indexOf('\n## The run-time lane\n'))
+    expect(section).not.toContain('First shot')
+    expect(section).not.toContain('validate')
+    expect(section).toContain(
+      '| Brief | Runs | Lawful | Meets brief | Lawful and meets brief | Requirements not met |',
+    )
+    expect(section).toContain('- lawful: anything from 69% to 100% (94% here)')
+    expect(section).toContain(
+      'Answers that were not lawful in 2026-01-01-claude-haiku-5-5-runtime.json, in the check’s words:',
+    )
+    expect(section).toMatch(
+      /- `list-incidents` #2: \$\.root\.props\.className: `ListPage` has no prop `className`; .* \(and \d+ more\)/,
+    )
+  })
+
+  it('says what the CLI runner does not measure, and that the CLI chose its own thinking', () => {
+    const base = (runs.runtimeEvery as Evaluation).results
+    const page = runtimeDirectoryOf('runtime-cli-number', {
+      '2026-01-01-claude-haiku-5-5-runtime-cli.json': timed('2026-01-01T09:00:00.000Z', {
+        runner: 'cli',
+        cliVersion: '2.1.299',
+        settings: { ...base.settings, thinking: null },
+      }),
+    })
+    expect(page).toMatch(
+      /\*\*The run-time number:\*\* `claude-haiku-5-5`, the CLI’s own thinking, the CLI’s default effort, through Claude Code 2\.1\.299, /,
+    )
+    const cli = runtimeDirectoryOf('runtime-cli-timeless', {
+      '2026-01-01-claude-haiku-5-5-runtime-cli.json': {
+        at: '2026-01-01T09:00:00.000Z',
+        runner: 'cli',
+        cliVersion: '2.1.299',
+        settings: { ...base.settings, thinking: null },
+        summary: {
+          ...base.summary,
+          overall: {
+            ...base.summary.overall,
+            meanFirstTokenMs: null,
+            firstTokenRangeMs: null,
+            meanWallMs: 6100,
+            wallRangeMs: { low: 4200, high: 9900 },
+          },
+        },
+      },
+    })
+    expect(cli).toContain(
+      '6.10 s (4.20 s to 9.90 s) to the end of the answer, with no time to the first token (',
+    )
+    expect(cli).toContain('| CLI 2.1.299 | the CLI’s | default |')
+    expect(cli).toContain('| — | 6.10 s (4.20–9.90 s) | 0 | 16 answered |')
+  })
+
+  it('compares a run-time run only with one of the same thinking, effort and card', () => {
+    const page = runtimeDirectoryOf('runtime-compared', {
+      '2026-01-01-claude-haiku-5-5-runtime.json': timed('2026-01-01T09:00:00.000Z'),
+      // Another thinking is another condition: it has a number of its own, and is not compared.
+      '2026-02-01-claude-haiku-5-5-runtime.json': timed('2026-02-01T09:00:00.000Z', {
+        settings: { ...(runs.runtimeEvery as Evaluation).results.settings, thinking: 'disabled' },
+      }),
+      '2026-03-01-claude-haiku-5-5-runtime.json': timed('2026-03-01T09:00:00.000Z'),
+    })
+    expect(page.match(/\*\*The run-time number:\*\*/g)).toHaveLength(2)
+    expect(page).toContain('`claude-haiku-5-5`, thinking disabled, default effort')
+    expect(page.match(/Against the run before it/g)).toHaveLength(1)
+    expect(page).toContain(
+      'Against the run before it ([2026-01-01-claude-haiku-5-5-runtime.json](2026-01-01-claude-haiku-5-5-runtime.json)), with 16 runs and 16 runs:',
+    )
+    expect(page).toContain('- lawful: 94% against 94%, not told apart')
+  })
+
+  it('leaves the other modes’ sections as they were when a run-time file sits beside them', () => {
+    const loop = (runs.two as Evaluation).results
+    const write = (name: string, withRuntime: boolean) => {
+      const directory = resolve(SCRATCH, name)
+      mkdirSync(directory)
+      writeFileSync(
+        resolve(directory, '2026-01-01-claude-sonnet-5-5-spec.json'),
+        JSON.stringify({ ...loop, fake: false, model: 'claude-sonnet-5-5' }),
+      )
+      if (withRuntime) {
+        writeFileSync(
+          resolve(directory, '2026-02-01-claude-haiku-5-5-runtime.json'),
+          JSON.stringify({
+            ...(runs.runtimeEvery as Evaluation).results,
+            ...timed('2026-02-01T09:00:00.000Z'),
+          }),
+        )
+      }
+      return renderReport(readResults(directory), resolve(directory, 'README.md'))
+    }
+    const [alone, beside] = [write('loop-alone', false), write('loop-beside', true)]
+    const before = (page: string) => page.slice(0, page.indexOf('\n## The run-time lane\n'))
+    expect(before(beside)).toBe(before(alone))
+    expect(alone).toContain('No run-time number is recorded')
+    expect(beside).toContain('\n### fake (scripted model: measures the harness, not a model)\n')
   })
 
   it('is the committed eval/README.md, rendered from eval/results', () => {

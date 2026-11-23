@@ -20,6 +20,10 @@ import { scriptedTurns } from './script.mjs'
  * that dropped one fails here rather than passing against a stand-in that did
  * not look.
  *
+ * A configuration that names no server is the `runtime` mode's: the stand-in
+ * then starts none, offers no tool and needs no `--allowedTools`, as the CLI
+ * does with `--tools ""` and an empty configuration.
+ *
  * A turn written `{ "cli": { "error": …, "result": … } }` plays the CLI
  * failing instead of the model answering: a `rate_limit` error is reported
  * the way the CLI reports a usage limit, and any other the way it reports an
@@ -95,7 +99,7 @@ function options(argv) {
   for (const [flag, value] of Object.entries(REQUIRED)) {
     if (chosen.get(flag) !== value) refuse(`the CLI runner must pass \`${flag}\` ${value}`)
   }
-  for (const flag of ['--script', '--allowedTools', '--mcp-config', '--system-prompt']) {
+  for (const flag of ['--script', '--mcp-config', '--system-prompt']) {
     if (!chosen.has(flag)) refuse(`the CLI runner must pass \`${flag}\``)
   }
   return chosen
@@ -121,25 +125,36 @@ const prompt = await readStdin()
 if (prompt.trim() === '') refuse('no prompt arrived on stdin')
 
 const config = JSON.parse(readFileSync(chosen.get('--mcp-config'), 'utf8'))
+const servers = Object.keys(config.mcpServers ?? {})
 const entry = config.mcpServers?.polymorph
-if (entry === undefined) refuse('the MCP config names no `polymorph` server')
+if (servers.length > 0 && entry === undefined) {
+  refuse('the MCP config names servers, and no `polymorph` server')
+}
+if (entry !== undefined && !chosen.has('--allowedTools')) {
+  refuse('the CLI runner must pass `--allowedTools` for the tools it serves')
+}
 /** The journal the server writes, which a turn's `journal` appends to. */
-const serverArgs = entry.args ?? []
+const serverArgs = entry?.args ?? []
 const journal = serverArgs.includes('--journal')
   ? serverArgs[serverArgs.indexOf('--journal') + 1]
   : undefined
 
-const client = new Client({ name: 'fake-claude', version: '1.0.0' })
-await client.connect(
-  new StdioClientTransport({
-    command: entry.command,
-    args: serverArgs,
-    env: { ...process.env, ...entry.env },
-    stderr: 'inherit',
-  }),
-)
-const { tools } = await client.listTools()
-const allowed = new Set(chosen.get('--allowedTools').split(','))
+/** The eval's MCP server, or none for a configuration that names none. */
+let client = null
+let tools = []
+if (entry !== undefined) {
+  client = new Client({ name: 'fake-claude', version: '1.0.0' })
+  await client.connect(
+    new StdioClientTransport({
+      command: entry.command,
+      args: serverArgs,
+      env: { ...process.env, ...entry.env },
+      stderr: 'inherit',
+    }),
+  )
+  tools = (await client.listTools()).tools
+}
+const allowed = new Set((chosen.get('--allowedTools') ?? '').split(','))
 const model = chosen.get('--model') ?? 'fake'
 
 emit({
@@ -147,7 +162,7 @@ emit({
   subtype: 'init',
   cwd: process.cwd(),
   tools: tools.map((tool) => `${PREFIX}${tool.name}`),
-  mcp_servers: [{ name: 'polymorph', status: 'connected' }],
+  mcp_servers: client === null ? [] : [{ name: 'polymorph', status: 'connected' }],
   model,
   permissionMode: chosen.get('--permission-mode'),
   claude_code_version: 'scripted',
@@ -165,7 +180,7 @@ const total = {
 async function answered(calls) {
   const results = []
   for (const call of calls) {
-    if (!allowed.has(`${PREFIX}${call.name}`)) {
+    if (client === null || !allowed.has(`${PREFIX}${call.name}`)) {
       results.push({
         type: 'tool_result',
         tool_use_id: call.id,
@@ -291,4 +306,4 @@ for (let turn = 1; ; turn += 1) {
   emit({ type: 'user', message: { role: 'user', content: results } })
 }
 
-await client.close()
+await client?.close()

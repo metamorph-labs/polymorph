@@ -1,0 +1,23 @@
+{
+  "turns": [
+    {
+      "usage": {
+        "input_tokens": 300,
+        "output_tokens": 1500,
+        "cache_read_input_tokens": 14200
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": [
+            "Here is the screen.\n\n```json\n",
+            {
+              "$file": "dashboard-usage/answer.json"
+            },
+            "```\n"
+          ]
+        }
+      ]
+    }
+  ]
+}
