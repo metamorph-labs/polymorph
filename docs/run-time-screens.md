@@ -376,8 +376,10 @@ another process or another language reads it as data (`packages/screen/src/walk.
   that shares one object at many levels. Arguments cut there are a fault at `$`, told once, and
   the host is told the first of them.
 
-`values` holds every control in the drawing that has a `name` and a controlled value (`value`, or
-a checkbox's `checked`), by that name, as JSON. A control's value is what the person sees in it
+`values` holds every control the screen holds that has a `name` and a controlled value (`value`,
+or a checkbox's `checked`), by that name, as JSON, whether or not it is on screen: a closed
+dialog's field, a tab panel that is not selected, a collapsed accordion, a tooltip's, hover card's
+or popover's content, a carousel slide that is not current. A control's value is what it holds
 (`packages/screen/src/walk.test.ts`):
 
 1. what the person chose, until the document or the host gives the control another value, or the
@@ -388,8 +390,8 @@ a checkbox's `checked`), by that name, as JSON. A control's value is what the pe
    chosen, an empty NumberInput or DatePicker), `[]` for a list (MultiSelect, CheckboxGroup),
    `false` for a checkbox or a switch, and `""` for text.
 
-So an action reports every named field, those the person left as they were included, and
-`changed` names the ones whose value the person chose. A control's value that holds more than
+So an action reports every named field, those the person left as they were and those not on
+screen included, and `changed` names the ones whose value the person chose. A control's value that holds more than
 `MAX_JSON_VALUES` values is a fault at the control, and `values` holds the first of them.
 
 Two controls with one name are a fault, and `values` holds the last of them in document order. In
@@ -417,6 +419,12 @@ An action is not proof that a person acted, either. A member calls some callback
 - A field drawn with `autoFocus` (`Input`, `Textarea`) takes focus as it is drawn, so it calls
   `onFocus` (`packages/react-ui/src/controls/Input.tsx:258` and `:275`,
   `packages/solid-ui/src/controls/Input.tsx:159` and `:254`).
+- A `Dialog` or `Drawer` drawn already open (`defaultOpen`, or `open`) moves focus to the first
+  element in its body that takes focus, unless its `initialFocus` names its dismiss control, so a
+  field there calls `onFocus` as it is drawn
+  (`packages/react-ui/src/overlays/modal-focus.ts:50-57`,
+  `packages/solid-ui/src/overlays/Dialog.tsx:123`, `packages/solid-ui/src/overlays/Drawer.tsx:92`,
+  through `modalFocusTarget` in `packages/engine/src/conventions/modal-focus.ts`).
 - `TableOfContents` calls `onCurrentChange` with the current section as it is drawn, and again as
   the page scrolls (`packages/react-ui/src/structure/TableOfContents.tsx:94`, through
   `watchSections` in `packages/engine/src/conventions/sections.ts`).
@@ -589,8 +597,8 @@ The named controls the element holds are not drawn either, so they hold no value
 While the document streams, such an element is left out, with no fault, until the prop arrives
 (`packages/screen/src/walk.test.ts`).
 
-A required prop that takes a node is a slot (a FormPage's `actions`, a Dashboard's `primary`, a
-SettingsRow's `control`), and an empty slot does not take out its element. A page is drawn around
+A required prop that takes any node is a slot (a FormPage's `actions`, a Dashboard's `primary`),
+and an empty slot does not take out its element. A page is drawn around
 a slot whose element is a fault, with the slot empty and the slot's fault told, and around a slot
 the document never wrote, with `` `FormPage` is missing its required prop `actions` ``. So a
 misspelt member in a slot, or one the host's `members` leave out, does not blank the page. While
@@ -599,11 +607,19 @@ drawn yet. Once that element is whole, the page is drawn around it: the element 
 it can be drawn, and the slot empty, with its fault, when it cannot
 (`packages/screen/src/walk.test.ts`).
 
-A member that requires exactly one element as its child and reads it, as a `FormField` reads its
-control to give it an id, is drawn only once that child is drawn. While the document streams it
-waits for it, and once the document is whole, one with no child it can draw (none, one that is not
-drawn, or more than one) is a fault and is drawn as nothing. The element that holds the FormField
-is still drawn (`packages/screen/src/walk.test.ts`, `packages/screen/src/streaming.test.ts`).
+A member that reads one element it requires, as its child (a FormField's control, which it gives
+an id) or in a prop that takes exactly one element (a SettingsRow's `control`), is not drawn
+without it, and the element that holds it is drawn. While the document streams, the member waits
+for that element; once the document is whole, one with no element there it can draw (none, one
+that is not drawn, or more than one child) is a fault and is drawn as nothing. An optional prop
+that takes one element (a Dialog's `trigger`, a page's `titleEdit`) is left out when its element
+is a fault or it holds no element, and the member draws without it. A prop takes exactly one
+element where its type in the vocabulary is a `ReactElement` rather than any `ReactNode`, as
+`registry.json` prints it (`packages/screen/src/walk.test.ts`,
+`packages/screen/src/streaming.test.ts`).
+
+"Drawn" in this section is the walk's: a member that throws as it renders is caught at its own
+node and reported, and the rest of the screen is drawn ([Faults](#faults)).
 
 Three cases still draw the element (`packages/screen/src/walk.test.ts`):
 
@@ -709,7 +725,8 @@ or `avatar`), and `Markdown`.
 A fault takes out only the element it is in, and an element whose required text or data a reader
 needs is missing or refused ([above](#an-element-a-required-prop-is-missing-from)). A page is drawn
 around a slot whose element is a fault, with the slot empty, and around a slot the document never
-wrote. A FormField is not drawn without its one control, and the element that holds it is. A node
+wrote. A member that reads one element it requires (a FormField's control, a SettingsRow's
+`control`) is not drawn without it, and the element that holds it is. A node
 that cannot be drawn (a component the host does not allow, an element missing its required text
 or data, a member that throws as it first renders) draws nothing in its place, and the rest of the
 screen draws (`packages/screen/src/walk.test.ts`, `packages/react/src/screen/screen.test.tsx`,
