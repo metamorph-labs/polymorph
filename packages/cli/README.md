@@ -14,8 +14,18 @@ the packages, which `init` sets up. [docs/consuming.md](../../docs/consuming.md)
 
 ## Running it
 
-The bin is `polymorph` (`bin/polymorph.js`). It reads the vocabulary from the checkout that holds
-it and installs into the **current directory**, so run it from the other repository's root:
+The CLI is published with the MCP server as `@metamorph-labs/polymorph` (`packages/tools`), which
+carries the registry of its release and every file an install copies, so it runs in any
+repository with no checkout of this one:
+
+```sh
+npx -y @metamorph-labs/polymorph@latest init my-app
+npx -y @metamorph-labs/polymorph@latest add button dialog theme:pastel
+```
+
+From a checkout, the bin is `polymorph` (`bin/polymorph.js`). It reads the vocabulary from the
+checkout that holds it and installs into the **current directory**, so run it from the other
+repository's root:
 
 ```sh
 node ../polymorph/packages/cli/bin/polymorph.js add button dialog theme:pastel
@@ -33,7 +43,7 @@ node ../polymorph/packages/cli/bin/polymorph.js init my-app
 
 | Command | What it does |
 | --- | --- |
-| `polymorph init <dir>` | Writes a new Vite app into a new or empty directory, in React or in the framework `--framework` names: that framework's packages as npm aliases (`@polymorph/rules` as a dev dependency), an `.npmrc` that names the token, a catalogue theme compiled by the Vite plugin, the lint configs, an `.mcp.json` for this checkout's MCP server, the system card, `AGENTS.md`, and a first screen emitted from its spec. Then runs `pnpm install` with `NODE_AUTH_TOKEN` or `gh auth token` |
+| `polymorph init <dir>` | Writes a new Vite app into a new or empty directory, in React or in the framework `--framework` names: that framework's packages as npm aliases (`@polymorph/rules` as a dev dependency), a catalogue theme compiled by the Vite plugin, the lint configs, an `.mcp.json` for the MCP server, the system card, `AGENTS.md`, and a first screen emitted from its spec. Then installs it with the package manager that ran the command. From the published package the app installs from npmjs.com, its `.mcp.json` runs `npx -y @metamorph-labs/polymorph@^<version> mcp`, and it lists that package as a dev dependency. From a checkout it installs from GitHub Packages through an `.npmrc` that names the token (`NODE_AUTH_TOKEN` or `gh auth token`), and its `.mcp.json` runs the checkout's server by its path. `--registry npmjs\|github` chooses the registry either way |
 | `polymorph add <item…>` | Vendors members (`button`) in the install's framework, the exception ladder's primitives (`bespoke`, `third-party`, `density-scope`, `tone-scope`), a theme (`theme:pastel`: a system, its default palette and its fonts) or a palette (`palette:orchid`) |
 | `polymorph diff` | Lists what you have changed since the install, and what has changed upstream |
 | `polymorph update` | Re-vendors the files you have not edited, keeps and reports the files you have edited, and recompiles the installed themes |
@@ -46,8 +56,9 @@ the plan, write nothing), `--force` (overwrite files you have edited), `--out <p
 default `plain`), `--framework <name>` (`react`, the default, `vue`, `svelte`, `solid` or
 `angular`: the app `init` writes and the members `add` vendors; once an install has
 `polymorph.json`, `add` uses the framework it records and refuses another; `check` reads every file
-in it instead of inferring each file's), `--no-install` (`init` writes the app and skips
-`pnpm install`), `--json` (`check` prints its report as JSON).
+in it instead of inferring each file's), `--registry <name>` (`npmjs` or `github`: where `init`'s
+app installs the packages from), `--no-install` (`init` writes the app and skips the install),
+`--json` (`check` prints its report as JSON).
 
 `add` writes `polymorph.json` first. It lists every path the install will write and the hash of
 its contents, so `diff` and `update` can tell your edit from an upstream change. `add` then copies
@@ -64,7 +75,8 @@ to recompile.
 ## Entry point
 
 `@polymorph/cli` exports its parts as pure functions and plain modules: `planInit` (the new app's
-files, as data) with `writeInit` and `installApp`, `planInstall` (takes a registry and a list of
+files, as data) with `writeInit` and `installApp`, which an entry point gives the programs the app
+is wired to as commands (`InitPrograms`) and its `origin` (`checkout` or `published`), `planInstall` (takes a registry and a list of
 names, returns a description of the install, and never touches the filesystem), `applyPlan`, `diffInstall`, `updateInstall`, the manifest reader and writer, the
 generated-file emitters and the config patches. The MCP server's `get_install_plan` tool calls
 `planInstall`, and its `install` tool calls `applyPlan` on that plan. An agent and the CLI
@@ -106,7 +118,8 @@ pnpm exec vitest run packages/cli
   outside the workspace, builds `@polymorph/engine`, `@polymorph/react`, `@polymorph/rules` and
   `@polymorph/react-ui`, installs them from their builds, and checks that the new app
   typechecks, builds with its theme and fonts, and lints clean under the red rules.
-  `consumer-app.ts` assembles both apps' `node_modules`.
+  `consumer-app.ts` assembles both apps' `node_modules`. `packages/tools/packaging.test.ts` runs
+  the published package's `init` where no checkout is, and compares its app with this bin's.
 
 ## Read more
 
