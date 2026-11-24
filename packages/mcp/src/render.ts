@@ -1,4 +1,6 @@
 import { fork } from 'node:child_process'
+import { readdirSync, readFileSync } from 'node:fs'
+import { relative, resolve } from 'node:path'
 
 import { validateSpec, type ScreenSpec, type SpecFault } from '@polymorph/spec'
 import type { Browser, BrowserContext, Page } from 'playwright'
@@ -26,8 +28,9 @@ import { submittedDocument, type SubmittedSpec } from './submitted'
  * called, builds the page in memory with the workbench's own Vite configuration, and sends the
  * files back over the process channel. The files stay in this process for its lifetime, as the
  * registry does, and the browser is given them by request interception. No port is opened and
- * no file is written. A published package would ship the built page beside its registry and
- * skip the build.
+ * no file is written. The published tools ship the page built, beside their registry, and their
+ * entry point names its directory (`screenPage`), so their server reads the files and builds
+ * nothing.
  *
  * **The browser is optional.** Playwright is an optional dependency, loaded when the tool is
  * called and not before. When the package or its Chromium is missing, the tool answers with the
@@ -238,6 +241,38 @@ function build(builder: string): Promise<PageFiles> {
 /** The built page of each builder, kept for the life of the process. */
 const built = new Map<string, Promise<PageFiles>>()
 
+/**
+ * A page built ahead of time: every file under `dir`, by its path there. A directory that is
+ * missing or holds no `screen.html` is not a page.
+ */
+function shippedPage(dir: string): PageFiles {
+  const files = new Map<string, PageFile>()
+  const walk = (at: string): void => {
+    for (const entry of readdirSync(at, { withFileTypes: true })) {
+      const path = resolve(at, entry.name)
+      if (entry.isDirectory()) walk(path)
+      else if (entry.isFile()) {
+        const name = relative(dir, path).split('\\').join('/')
+        files.set(name, { body: readFileSync(path), contentType: contentTypeOf(name) })
+      }
+    }
+  }
+  try {
+    walk(dir)
+  } catch (error) {
+    throw new ScreenUnavailableError(
+      `render_screen could not read the page it draws in (${dir}): ` +
+        (error instanceof Error ? error.message : String(error)),
+    )
+  }
+  if (!files.has('screen.html')) {
+    throw new ScreenUnavailableError(
+      `render_screen could not read the page it draws in: ${dir} holds no screen.html`,
+    )
+  }
+  return files
+}
+
 function pageOf(builder: string): Promise<PageFiles> {
   const known = built.get(builder)
   if (known !== undefined) return known
@@ -253,13 +288,38 @@ function pageOf(builder: string): Promise<PageFiles> {
 /* -------------------------------------------------------------------------- */
 
 /**
+ * What a person does to give `render_screen` its browser: one instruction for each part that can
+ * be missing, each a whole sentence. The entry point names them, because a checkout and an
+ * installed package install the browser differently.
+ */
+export interface BrowserSetup {
+  /** How Playwright is installed, and then its Chromium, when the package itself is missing. */
+  playwright: string
+  /** How Playwright's Chromium is downloaded, when the package is there and the browser is not. */
+  chromium: string
+}
+
+/**
+ * A checkout's instructions: the workspace's install, which brings the optional dependency, and
+ * Playwright's own command, both run in the checkout at `root`.
+ */
+export function checkoutBrowserSetup(root: string): BrowserSetup {
+  return {
+    playwright:
+      `In ${root}, run \`pnpm install\` without \`--no-optional\`, then ` +
+      '`pnpm exec playwright install chromium`.',
+    chromium: `In ${root}, run \`pnpm exec playwright install chromium\`.`,
+  }
+}
+
+/**
  * Why a browser could not be started, as an instruction, or `null` when the failure is not one
  * of the two expected ones.
  *
  * The package is missing after an install that skipped optional dependencies. The browser is
  * missing until Playwright has downloaded one, which an install does not do.
  */
-export function browserAdvice(error: unknown, root: string): string | null {
+export function browserAdvice(error: unknown, setup: BrowserSetup): string | null {
   const message = error instanceof Error ? error.message : String(error)
   const code = (error as { code?: unknown } | null)?.code
 
@@ -269,28 +329,27 @@ export function browserAdvice(error: unknown, root: string): string | null {
     /Cannot find (?:module|package) ['"]playwright/.test(message)
   ) {
     return (
-      'render_screen needs Playwright, an optional dependency that is not installed. In ' +
-      `${root}, run \`pnpm install\` without \`--no-optional\`, then ` +
-      '`pnpm exec playwright install chromium`. Every other tool works without it.'
+      'render_screen needs Playwright, an optional dependency that is not installed. ' +
+      `${setup.playwright} Every other tool works without it.`
     )
   }
 
   if (/Executable doesn't exist|playwright install/.test(message)) {
     return (
-      'render_screen needs a Chromium that Playwright has not downloaded. In ' +
-      `${root}, run \`pnpm exec playwright install chromium\`. Every other tool works without it.`
+      'render_screen needs a Chromium that Playwright has not downloaded. ' +
+      `${setup.chromium} Every other tool works without it.`
     )
   }
 
   return null
 }
 
-async function launch(root: string): Promise<Browser> {
+async function launch(setup: BrowserSetup): Promise<Browser> {
   try {
     const { chromium } = await import('playwright')
     return await chromium.launch()
   } catch (error) {
-    const advice = browserAdvice(error, root)
+    const advice = browserAdvice(error, setup)
     if (advice !== null) throw new ScreenUnavailableError(advice)
     throw error
   }
@@ -525,10 +584,10 @@ export async function renderScreen(
     )
   }
 
-  if (context.screenBuilder === undefined) {
+  if (context.screenPage === undefined && context.screenBuilder === undefined) {
     throw new ScreenUnavailableError(
-      'render_screen draws in a page this server was not given a builder for. Start the server ' +
-        'from its entry point (`bin/polymorph-mcp.js`), which names it.',
+      'render_screen draws in a page this server was given neither built nor a builder for. ' +
+        'Start the server from its entry point (`bin/polymorph-mcp.js`), which names it.',
     )
   }
 
@@ -547,8 +606,11 @@ export async function renderScreen(
     parts,
   }))
 
-  const files = await pageOf(context.screenBuilder)
-  const browser = await launch(context.root)
+  const files =
+    context.screenPage === undefined
+      ? await pageOf(context.screenBuilder as string)
+      : shippedPage(context.screenPage)
+  const browser = await launch(context.browserSetup ?? checkoutBrowserSetup(context.root))
   const blocked = new Set<string>()
   const errors = new Set<string>()
 

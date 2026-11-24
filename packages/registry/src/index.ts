@@ -74,6 +74,7 @@ export {
   PREPAINT,
   PUBLISHED_NAMES,
   PUBLISHED_REGISTRY,
+  TOOLS_PACKAGE,
 } from './install'
 export type { FontRequirement } from './install'
 

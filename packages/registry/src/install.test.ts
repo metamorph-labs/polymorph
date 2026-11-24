@@ -20,6 +20,7 @@ import {
   RUNTIME_PACKAGES,
   SOLID_PACKAGES,
   SVELTE_PACKAGES,
+  TOOLS_PACKAGE,
   VUE_PACKAGES,
 } from './install'
 
@@ -120,6 +121,17 @@ describe('the published packages', () => {
       expect(INSTALLED_PACKAGES).not.toContain(name)
       expect(registry.packages[name], name).toBeUndefined()
     }
+  })
+
+  it('publishes the tools under the scope’s own name, and keeps them out of what an app imports', () => {
+    // A person or an agent runs the tools with `npx`, and an app lists them as a dev
+    // dependency under the published name. No code imports them, so no alias names them.
+    expect(workspace.get(TOOLS_PACKAGE), `${TOOLS_PACKAGE} is a workspace package`).toBeDefined()
+    expect(PUBLISHED_NAMES[TOOLS_PACKAGE]).toBe(
+      (Object.values(PUBLISHED_NAMES)[0] ?? '').split('/')[0] + '/polymorph',
+    )
+    expect(INSTALLED_PACKAGES).not.toContain(TOOLS_PACKAGE)
+    expect(registry.packages[TOOLS_PACKAGE]).toBeUndefined()
   })
 
   it('includes the vocabulary, because an app may install it instead of vendoring it', () => {

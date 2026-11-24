@@ -34,8 +34,13 @@
  */
 
 export { createServer, READ_TOOL_NAMES, TOOL_NAMES, WRITE_TOOL_NAMES } from './server'
+export { SERVER_FLAGS, serverFlags, ServerFlagsError } from './flags'
+export type { ServerFlags } from './flags'
+export { serveStdio } from './stdio'
 
 export {
+  browserAdvice,
+  checkoutBrowserSetup,
   DEFAULT_THEME_DIR,
   emitScreen,
   EscapingDirError,
@@ -62,6 +67,7 @@ export {
 } from './tools'
 
 export type {
+  BrowserSetup,
   ComponentAnswer,
   ComponentArgs,
   EmitScreenAnswer,

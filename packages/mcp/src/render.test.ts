@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 
@@ -7,6 +7,7 @@ import { afterAll, describe, expect, it } from 'vitest'
 
 import {
   browserAdvice,
+  checkoutBrowserSetup,
   renderScreen,
   ScreenUnavailableError,
   type RenderScreenAnswer,
@@ -241,13 +242,59 @@ describe('a server that cannot draw', () => {
     SLOW,
   )
 
+  it('reads a page built ahead of time, and builds nothing', async () => {
+    // The published tools ship the page and name its directory. One with no `screen.html` is
+    // refused before a browser starts.
+    const empty = resolve(SCRATCH, 'no-page')
+    mkdirSync(empty, { recursive: true })
+    const missing = render(WIDE, {}, { registry, root: ROOT, screenPage: empty })
+    await expect(missing).rejects.toBeInstanceOf(ScreenUnavailableError)
+    await expect(missing).rejects.toThrow('holds no screen.html')
+
+    const absent = render(WIDE, {}, { registry, root: ROOT, screenPage: resolve(SCRATCH, 'none') })
+    await expect(absent).rejects.toBeInstanceOf(ScreenUnavailableError)
+  })
+
+  it(
+    'serves the files of a page built ahead of time to the browser',
+    async () => {
+      const shipped = resolve(SCRATCH, 'shipped')
+      mkdirSync(shipped, { recursive: true })
+      writeFileSync(
+        resolve(shipped, 'screen.html'),
+        '<!doctype html><script>throw new Error("the shipped page loaded")</script>',
+      )
+      const drawing = render(WIDE, {}, { registry, root: ROOT, screenPage: shipped })
+
+      await expect(drawing).rejects.toThrow('the shipped page loaded')
+    },
+    SLOW,
+  )
+
+  it('gives the advice its entry point names', () => {
+    const setup = { playwright: 'Install the tools again.', chromium: 'Run the download.' }
+    const browser = new Error("browserType.launch: Executable doesn't exist at /cache/chromium")
+    const module = Object.assign(new Error("Cannot find package 'playwright'"), {
+      code: 'ERR_MODULE_NOT_FOUND',
+    })
+
+    expect(browserAdvice(browser, setup)).toBe(
+      'render_screen needs a Chromium that Playwright has not downloaded. Run the download. ' +
+        'Every other tool works without it.',
+    )
+    expect(browserAdvice(module, setup)).toBe(
+      'render_screen needs Playwright, an optional dependency that is not installed. Install ' +
+        'the tools again. Every other tool works without it.',
+    )
+  })
+
   it('turns a missing browser into the command that installs it', () => {
     const missing = new Error(
       "browserType.launch: Executable doesn't exist at /cache/chromium/headless_shell\n" +
         'Please run the following command to download new browsers: npx playwright install',
     )
 
-    const advice = browserAdvice(missing, '/checkout')
+    const advice = browserAdvice(missing, checkoutBrowserSetup('/checkout'))
     expect(advice).toContain('pnpm exec playwright install chromium')
     expect(advice).toContain('/checkout')
     expect(advice).toContain('Every other tool works without it')
@@ -258,15 +305,15 @@ describe('a server that cannot draw', () => {
       code: 'ERR_MODULE_NOT_FOUND',
     })
 
-    const advice = browserAdvice(missing, '/checkout')
+    const advice = browserAdvice(missing, checkoutBrowserSetup('/checkout'))
     expect(advice).toContain('optional dependency')
     expect(advice).toContain('`pnpm install`')
     expect(advice).toContain('pnpm exec playwright install chromium')
   })
 
   it('leaves any other failure to be reported as it is', () => {
-    expect(browserAdvice(new Error('Target page crashed'), '/checkout')).toBeNull()
-    expect(browserAdvice('a string', '/checkout')).toBeNull()
+    expect(browserAdvice(new Error('Target page crashed'), checkoutBrowserSetup('/checkout'))).toBeNull()
+    expect(browserAdvice('a string', checkoutBrowserSetup('/checkout'))).toBeNull()
   })
 })
 
