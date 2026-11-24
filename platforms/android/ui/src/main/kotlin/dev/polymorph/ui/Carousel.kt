@@ -222,7 +222,7 @@ object PMCarousel : PMCarouselRendering {
                     if (current) selected = true
                 }
                 .pmHitTarget()
-                .pmFocusRing(focused, theme.radius.pill.dp)
+                .pmFocusRing(focused, theme.radius.pill.dp, around = true)
                 .width(width)
                 .height(space.s2)
                 .background(fill, pill),

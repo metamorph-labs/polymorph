@@ -9,6 +9,11 @@ import {
 } from '@polymorph/conformance/master-detail'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { assertGoverned } from '@polymorph/react'
+import { Button } from '../controls/Button'
+import { FormField } from '../controls/FormField'
+import { Input } from '../controls/Input'
+import { reachCuts, shadowCuts, shadowReach, tokenLength } from '../controls/token-probe'
+import { Stack } from '../layout/Stack'
 import { MasterDetailPage, type MasterDetailPageProps } from './MasterDetailPage'
 
 /**
@@ -150,4 +155,97 @@ describe('the geometry', () => {
     expect(document.scrollingElement?.scrollTop ?? 0).toBe(0)
     host.remove()
   })
+})
+
+/**
+ * Room in the panes. The list and the detail's scroll clip what they hold at their padding edge:
+ * a field's or a Button's seat shadow, and a control's focus mark, a 2px line drawn a `space-1`
+ * gap outside it. Each takes that room where the page owns the space past it: every side with one
+ * pane, and in the split the list's side at the seam and the detail's start side, in its gutter.
+ */
+describe('room in the panes', () => {
+  const form = (name: string) => (
+    <Stack gap={3}>
+      <Input aria-label={`${name} name`} defaultValue="Orbit" />
+      <FormField label={`${name} owner`}>
+        <Input defaultValue="Platform" />
+      </FormField>
+      <Button variant="solid" tone="accent" label={`Save ${name}`} />
+    </Stack>
+  )
+
+  /** Each control in `region`, with its cuts on `sides`: of the seat and of a focus mark. */
+  function cuts(region: HTMLElement, sides: readonly string[]): string[] {
+    const mark = Number.parseFloat(tokenLength('--pm-space-1')) + 2
+    const controls = [
+      ...region.querySelectorAll<HTMLElement>('[data-member="input"], [data-member="button"]'),
+    ]
+    expect(controls).toHaveLength(3)
+    return controls.flatMap((control) => {
+      expect(shadowReach(control).bottom, 'the control draws no seat').toBeGreaterThan(0)
+      return [...shadowCuts(control), ...reachCuts(control, mark)]
+        .filter((cut) => sides.some((side) => cut.startsWith(`${side},`)))
+        .map((cut) => `${control.textContent || control.querySelector('input')?.value}: ${cut}`)
+    })
+  }
+
+  const props = {
+    title: 'Support',
+    listLabel: 'Tickets',
+    emptyState: { title: 'No ticket selected' },
+    backLabel: 'All tickets',
+    onBack: () => {},
+  }
+
+  it('cuts nothing at the seam or in the detail’s gutter, in the split, and moves nothing', async () => {
+    const host = box(1000)
+    render(<MasterDetailPage {...props} list={form('List')} detail={form('Detail')} />, {
+      container: host,
+    })
+    await vi.waitFor(() => expect(page().dataset['layout']).toBe('split'))
+    const list = screen.getByRole('region', { name: 'Tickets' })
+    const detail = page().querySelector('[data-master-detail-page-part="detail"]') as HTMLElement
+    expect(cuts(list, ['right']), 'the list, at the seam').toEqual([])
+    expect(cuts(detail, ['left']), 'the detail, in its gutter').toEqual([])
+
+    const seam = screen.getByRole('separator', { name: 'Tickets' }).getBoundingClientRect()
+    const first = (region: HTMLElement) =>
+      (region.querySelector('[data-member="input"]') as HTMLElement).getBoundingClientRect()
+    expect(first(list).right).toBeCloseTo(seam.left, 1)
+    expect(first(detail).left).toBeCloseTo(
+      seam.right +
+        Number.parseFloat(getComputedStyle(page()).getPropertyValue('--pm-content-gutter')),
+      1,
+    )
+    host.remove()
+  })
+
+  for (const shown of ['list', 'detail'] as const) {
+    it(`cuts nothing at any side of the ${shown}, with one pane, and moves nothing`, async () => {
+      const host = box(400)
+      render(
+        <MasterDetailPage
+          {...props}
+          list={form('List')}
+          detail={shown === 'detail' ? form('Detail') : undefined}
+        />,
+        { container: host },
+      )
+      await vi.waitFor(() => expect(page().dataset['layout']).toBe('single'))
+      const region =
+        shown === 'list'
+          ? screen.getByRole('region', { name: 'Tickets' })
+          : // The detail's scroll, after the way back.
+            (page().querySelector('[data-master-detail-page-part="detail"]')
+              ?.lastElementChild as HTMLElement)
+      expect(cuts(region, ['left', 'right', 'top', 'bottom'])).toEqual([])
+
+      const style = getComputedStyle(page())
+      const inset = page().getBoundingClientRect().left + Number.parseFloat(style.paddingLeft)
+      const control = region.querySelector('[data-member="input"]') as HTMLElement
+      expect(control.getBoundingClientRect().left).toBeCloseTo(inset, 1)
+      expect(document.scrollingElement?.scrollWidth).toBe(document.scrollingElement?.clientWidth)
+      host.remove()
+    })
+  }
 })

@@ -140,7 +140,7 @@ object PMCheckbox : PMCheckboxRendering {
                 Box(
                     Modifier
                         .size(box)
-                        .pmFocusRing(focused && !disabled, theme.radius.detail.dp)
+                        .pmFocusRing(focused && !disabled, theme.radius.detail.dp, around = true)
                         .clip(shape)
                         .background(fill)
                         .border(PMGeometry.hairline, border, shape),

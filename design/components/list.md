@@ -83,7 +83,7 @@ per item, and a trailing control is a second, separate stop.
 | leading, trailing | never shrink |
 | interactive item, hover | bg `--pm-bg-subtle` · `cursor: pointer` |
 | current item | bg `--pm-selection-surface` · with hover, `--pm-selection-surface-hover`, which is the same colour in an achromatic system · the text keeps its colours, because the contrast law holds every text role on the selected surface, and a trailing control is drawn on it too. Selection takes precedence over hover, as in Table (`README.md` §11) |
-| focus | the shared ring's tokens on the item, drawn inside its edge (`outline-offset: calc(var(--pm-focus-width) * -1)`), because rows share their edges and an outer ring would be cut by the surface around the list |
+| focus | the shared ring's tokens on the item, drawn inside its edge at every system's offset (`outline-offset: calc(var(--pm-focus-width) * -1)`), because rows share their edges and a ring outside would be cut by the surface around the list |
 
 **On Android**: an item that navigates or is picked is at least the 48dp hit target tall, where
 the recipe's least height is `--pm-control-height-lg`. iOS holds it to its 44-point hit target the

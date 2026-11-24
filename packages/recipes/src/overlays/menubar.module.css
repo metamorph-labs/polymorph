@@ -7,10 +7,12 @@
  * design, with no copy to drift. Menu's recipe also plays the panel's motion,
  * its row cascade and their reduced-motion projection. */
 
-/* How far a focused title draws outside its box: the ring's offset and width,
-   or `--pm-space-1` where that is more. The bar scrolls, and a scroll container
-   clips at its padding edge, so the bar is larger than its titles by this
-   much. */
+/* How far a focused title's mark reaches outside its box: the offset plus the
+   width, which is 0 where the mark lies inside the edge and more where a system
+   moves it outside. The room is at least `--pm-space-1`, which keeps the bar's
+   padding the same whether the mark lies inside the edge or reaches a little
+   outside it. The bar scrolls, and a scroll container clips at its padding
+   edge, so the bar is larger than its titles by this much. */
 .bar {
   --pm-menubar-reach: max(calc(var(--pm-focus-offset) + var(--pm-focus-width)), var(--pm-space-1));
 

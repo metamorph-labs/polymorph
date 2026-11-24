@@ -284,7 +284,7 @@ describe('system schema', () => {
   })
 
   // Three more overrides, each a single narrow setting.
-  it('accepts the shadow throw, focus ring and type ratio overrides', () => {
+  it('accepts the shadow throw, focus mark and type ratio overrides', () => {
     expect(
       systemSchema.safeParse({
         ...exampleQuietSystem,
@@ -309,7 +309,7 @@ describe('system schema', () => {
     ).toBe(false)
   })
 
-  it('holds the focus ring to the 2px floor of the softest temperament', () => {
+  it('holds the focus mark to the 2px floor of the softest temperament', () => {
     const thin = systemSchema.safeParse({
       ...exampleQuietSystem,
       overrides: { focus: { width: 1 } },
@@ -320,6 +320,33 @@ describe('system schema', () => {
       systemSchema.safeParse({ ...exampleQuietSystem, overrides: { focus: { offset: 5 } } })
         .success,
     ).toBe(false)
+  })
+
+  it('places the focus mark inside the edge at minus its width, or outside it at 0–4px', () => {
+    const lawful = (focus: Record<string, number>, contrastTemperament = 'standard') =>
+      systemSchema.safeParse({
+        ...exampleQuietSystem,
+        axes: { ...exampleQuietSystem.axes, contrastTemperament },
+        overrides: { focus },
+      }).success
+    // The derived default stated in the file, at the temperament's width or the file's own.
+    expect(lawful({ offset: -2 })).toBe(true)
+    expect(lawful({ offset: -3 }, 'stark')).toBe(true)
+    expect(lawful({ width: 4, offset: -4 })).toBe(true)
+    // The mark moved back outside the control.
+    for (const offset of [0, 1, 4]) expect(lawful({ offset }), String(offset)).toBe(true)
+    expect(lawful({ width: 6, offset: 0 })).toBe(true)
+    // Further in than the width: the mark floats inside the control with a gap.
+    expect(lawful({ offset: -3 })).toBe(false)
+    expect(lawful({ width: 3, offset: -4 })).toBe(false)
+    // Between minus the width and 0: the mark lies across the edge, over the border a state
+    // draws. The width judged is the merged one, so stark's -2px is refused where standard's
+    // is the default.
+    expect(lawful({ offset: -1 })).toBe(false)
+    expect(lawful({ offset: -2 }, 'stark')).toBe(false)
+    expect(lawful({ width: 4, offset: -2 })).toBe(false)
+    // An offset alone is judged; a width alone always derives its own offset.
+    expect(lawful({ width: 5 })).toBe(true)
   })
 
   /*
@@ -335,18 +362,29 @@ describe('system schema', () => {
     return result.success ? '' : (result.error.issues[0]?.message ?? '')
   }
 
-  it('explains the focus ring width ceiling in plain words', () => {
+  it('explains the focus mark width ceiling in plain words', () => {
     expect(messageOf({ focus: { width: 7 } })).toBe(
-      'the focus ring stops at 6px — past that the ring outweighs the control it marks',
+      'the focus mark stops at 6px — past that the mark outweighs the control it marks',
     )
   })
 
   it('explains the focus offset range in plain words', () => {
-    expect(messageOf({ focus: { offset: -1 } })).toBe(
-      'focus air stays within 0–4px — a ring pulled inside the control is the control’s own edge',
-    )
     expect(messageOf({ focus: { offset: 5 } })).toBe(
-      'focus air stays within 0–4px — further out and the ring stops reading as this control’s',
+      'the focus mark stays within 4px outside the control — further out it stops reading as this control’s',
+    )
+    expect(messageOf({ focus: { offset: -7 } })).toBe(
+      'the focus mark goes no further inside than its own width — 6px at the widest',
+    )
+  })
+
+  it('explains an offset that does not fit the mark’s width, with the width it was judged at', () => {
+    expect(messageOf({ focus: { offset: -1 } })).toBe(
+      'focus offset -1px lays the 2px mark across the control’s edge — the mark sits inside ' +
+        'the edge at -2px, minus its width, or outside it at 0–4px',
+    )
+    expect(messageOf({ focus: { width: 3, offset: -5 } })).toBe(
+      'focus offset -5px floats the 3px mark inside the control, with a gap to its edge — the ' +
+        'mark sits inside the edge at -3px, minus its width, or outside it at 0–4px',
     )
   })
 

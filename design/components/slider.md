@@ -49,7 +49,7 @@ slider looks like a progress bar with a handle.
 | thumb | size `--pm-space-5` square · bg `--pm-bg-surface` · border `1px solid --pm-border-strong` · radius `--pm-radius-pill` · shadow `var(--pm-shadow-control), var(--pm-shadow-inset-top)` (the lit-object shadow; flat themes derive both as `none`) |
 | thumb hover | border `--pm-accent-bg` |
 | thumb dragging | scale 1.12 (see Motion) · border `--pm-accent-bg` · shadow `var(--pm-glow-hover)` (the glow marks the drag as live. Themes with ornament `none` derive no glow and keep the lit shadow list, and flat sets that list to `none` too, so terminal's dragging thumb shows only scale and border. This is intended) |
-| thumb focus | ring per conventions §4 (ring sits on the thumb, not the track) |
+| thumb focus | ring around the thumb with a `--pm-space-1` gap, in `--pm-border-focus-solid` (conventions §4, the around placement); it marks the thumb, not the track |
 | disabled | track bg `--pm-bg-subtle` · fill `--pm-border-default` (neutral, not tinted) · thumb border `--pm-border-subtle`, no shadow · cursor not-allowed |
 | invalid | thumb border `--pm-danger-border` · fill unchanged (the *thumb* shows the error; a red fill would read as a danger level) |
 

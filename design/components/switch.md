@@ -60,7 +60,7 @@ Motion).
 | disabled off | track bg `--pm-bg-subtle` · border `--pm-border-subtle` · thumb bg `--pm-bg-subtle` · thumb border `--pm-border-subtle` |
 | disabled on | track bg `--pm-border-subtle` · thumb bg `--pm-bg-surface` |
 | disabled label | `--pm-text-disabled` |
-| focus | ring on the **track** per conventions §4 |
+| focus | ring **around the track** with a `--pm-space-1` gap, in `--pm-border-focus-solid`, on or off (conventions §4, the around placement) |
 
 ## States
 

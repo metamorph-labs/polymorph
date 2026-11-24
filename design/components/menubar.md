@@ -75,7 +75,7 @@ rest state is a row of enabled titles with no menu open.
 
 | Part | Tokens |
 | --- | --- |
-| bar | flex row · gap `--pm-space-1` · `min-inline-size: 0` · scrolls inline inside its own box when it is longer than the box · padding the focus ring's reach, taken back by negative margins (not at the inline end) · thin scrollbar, thumb `--pm-border-strong` |
+| bar | flex row · gap `--pm-space-1` · `min-inline-size: 0` · scrolls inline inside its own box when it is longer than the box · padding the focus ring's reach outside a title (none under the derived offset, which draws the ring inside the edge), at least `--pm-space-1`, taken back by negative margins (not at the inline end) · thin scrollbar, thumb `--pm-border-strong` |
 | title | height `--pm-control-height-sm` · padding-x `--pm-space-3` · radius `--pm-radius-sm` · `text.sm` · text `--pm-text-primary` · no wrap · the focus convention's ring |
 | title hover | bg `--pm-bg-subtle`, the ghost Button's wash, and none where the system gives quiet controls no hover wash |
 | title open | bg `--pm-accent-subtle` · text `--pm-accent-text`: Menu's highlighted row |

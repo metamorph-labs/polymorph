@@ -124,6 +124,14 @@
   background: var(--pm-selection-bg-hover);
 }
 
+/* A selected day is a solid fill, so the focus mark lies inside the fill with a gap, in its text
+   colour, the one the contrast law holds on the selection fill (`conventions/focus.module.css`).
+   The selection border stays visible outside it. */
+.day[data-selected]:focus-visible {
+  --pm-focus-mark: currentcolor;
+  --pm-focus-inset: var(--pm-focus-width);
+}
+
 /* month change -------------------------------------------------------------- */
 
 /* The `calendar.month` binding: `slide-fade` `sm` at the surface class, entering from the

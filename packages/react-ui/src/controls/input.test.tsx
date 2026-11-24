@@ -13,7 +13,7 @@ import {
   resolveTheme,
 } from '@polymorph/engine'
 import { createAgentBridge } from '@polymorph/engine/agent'
-import { installTestTheme } from '@polymorph/engine/testing'
+import { fixedWidthHost, installTestTheme } from '@polymorph/engine/testing'
 import { Input, type InputProps } from './Input'
 import { tokenColor, tokenLength } from './token-probe'
 
@@ -75,15 +75,16 @@ describe('the container is what the user sees', () => {
     expect(getComputedStyle(input).outlineStyle).toBe('none')
   })
 
-  it('draws focus inside its edge where the system chooses the field border style', () => {
+  it('draws focus inside its edge where a system that moves the mark outside chooses the field border style', () => {
     // The system's choice reaches the member through its recipe alone: a nested pairing whose
-    // system sets `overrides.focus.field`, read by the focus convention's style query.
+    // system moves every mark outside (an offset of 0) and sets `overrides.focus.field`, read by
+    // the focus convention's style query.
     const theme = resolveTheme(
       composeTheme(
         {
           ...exampleQuietSystem,
           name: 'example-input-border',
-          overrides: { focus: { field: 'border' } },
+          overrides: { focus: { offset: 0, field: 'border' } },
         },
         exampleVioletPalette,
       ),
@@ -211,6 +212,40 @@ describe('the affixes', () => {
     expect(getComputedStyle(affixesOf(field)[0] as HTMLElement).color).toBe(
       tokenColor('--pm-text-disabled'),
     )
+  })
+
+  it('keeps its width and the padding after it in a narrow field, where the value gives way', () => {
+    const suffix = '.preview.enduring.run'
+    const wide = mount(<Input suffix={suffix} defaultValue="orbit" aria-label="Hostname" />)
+    const natural = (affixesOf(wide.field)[0] as HTMLElement).getBoundingClientRect().width
+
+    const host = fixedWidthHost(220)
+    const { container } = render(
+      <Input
+        suffix={suffix}
+        defaultValue="orbit-notes-for-the-quarterly-launch"
+        aria-label="Hostname"
+      />,
+      { container: host },
+    )
+    const field = container.firstElementChild as HTMLElement
+    const input = container.querySelector('input') as HTMLInputElement
+    const frame = field.getBoundingClientRect()
+    const box = (affixesOf(field)[0] as HTMLElement).getBoundingClientRect()
+    const style = getComputedStyle(field)
+    const end =
+      frame.right -
+      Number.parseFloat(style.borderRightWidth) -
+      Number.parseFloat(style.paddingRight)
+
+    expect(frame.width, 'the field fits its container').toBeLessThanOrEqual(220.5)
+    expect(box.width, 'the affix keeps the width of its text').toBeCloseTo(natural, 0)
+    expect(box.right, 'the field keeps its padding after the affix').toBeLessThanOrEqual(end + 0.5)
+    expect(input.scrollWidth, 'the value does not fit').toBeGreaterThan(input.clientWidth)
+    // The browser draws the ellipsis while the field is not focused, and scrolls the value to
+    // the caret while it is.
+    expect(getComputedStyle(input).textOverflow, 'the value ends in an ellipsis').toBe('ellipsis')
+    host.remove()
   })
 })
 

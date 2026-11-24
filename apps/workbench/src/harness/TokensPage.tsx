@@ -16,6 +16,7 @@ import {
   gradientPairingId,
   ICON_SIZES,
   pairingId,
+  pairingMeasure,
   pairingsInvolving,
   type ChartAudit,
   type ChartRole,
@@ -425,7 +426,7 @@ function Swatch({
               {check.pairing.foreground === role
                 ? `on ${check.pairing.background}`
                 : `${check.pairing.foreground} on this`}
-              {` — Lc ${check.lc.toFixed(1)} / ${check.pairing.minLc}`}
+              {` — ${pairingMeasure(check.pairing, check)}`}
             </li>
           ))}
         </ul>

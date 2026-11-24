@@ -53,7 +53,7 @@ another control's frame copies it:
 | rest | icon `--pm-text-muted` (adornment strength, like the leading icon, so it does not compete with the value) · bg transparent |
 | hover | icon `--pm-text-primary` · bg `--pm-bg-subtle` · radius `--pm-radius-sm` (the radius of its own hover fill; the outer control keeps `md`) |
 | active | hover colors + press-feedback |
-| focus | ring per conventions §4 (the ring may overflow the input's frame. This is intended, because it marks the inner target) |
+| focus | ring per conventions §4, inside the clear button's own edge, so it marks the inner target and not the field |
 | hidden | never rendered while the input is empty, `disabled`, or `readOnly` (a value that cannot be edited cannot be cleared) |
 
 The clear button does not use `--pm-danger-*` in an invalid field, because it is an action, not
@@ -69,10 +69,11 @@ Border `1px solid`.
 | --- | --- |
 | rest | bg `--pm-bg-surface` · border `--pm-border-default` · seat `var(--pm-shadow-control)` *(a field the same colour as its surface, outlined by one hairline only, looks like a wireframe. The seat is the same token Button's fill uses. Flat systems resolve it to `none`, and the border alone separates the field)* · text `--pm-text-primary` · placeholder `--pm-text-muted` · leading icon `--pm-text-muted` |
 | hover | border `--pm-border-strong` |
-| focus | ring per conventions §4 · border **unchanged** (ring is the only focus signal) |
+| focus | ring per conventions §4, inside the field's edge over the border, so the border reads as taking the focus colour and thickening inward |
 | affix (`prefix`/`suffix`) | the size's own text step (§2) · `--pm-text-muted`, adornment strength like the leading icon, so it does not compete with the value · gap to the value same as the leading icon's (`--pm-space-3`, `--pm-space-2` at `sm`) · disabled: `--pm-text-disabled`, like the icon |
+| narrow | the value gives way: the inner `<input>` shrinks (`min-inline-size: 0`) while the leading icon, the affixes, the clear button and the trailing slot keep their width and the field keeps its padding · a value cut short ends in an ellipsis (`text-overflow: ellipsis`) while the field is not focused, and the browser scrolls it to the caret while it is |
 | invalid | border `--pm-danger-border` · leading icon `--pm-danger-text` |
-| invalid + focus | invalid border + standard ring (ring color never changes) |
+| invalid + focus | invalid border + the ring inside it, 1px further in, so both show (ring colour never changes) |
 | disabled | bg `--pm-bg-subtle` · border `--pm-border-subtle` · shadow `none` *(the seat signals a usable control, which a disabled one is not)* · text `--pm-text-disabled` · icon `--pm-text-disabled` |
 | readOnly | rest bg/border · text `--pm-text-secondary` · no hover response |
 

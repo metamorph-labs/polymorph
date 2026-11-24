@@ -101,10 +101,21 @@
 
 /* The only scrolling region, so the title and the actions stay in place while a
    long body scrolls. `min-block-size: 0` lets it shrink inside the flex column
-   instead of pushing the panel past its max height. */
+   instead of pushing the panel past its max height.
+
+   A scroll container cuts what it holds at its padding edge, on both axes, so a
+   field against the body's edge would have its seat shadow cut there, which
+   squares off its rounded corners. So the body is larger than its content by the
+   reach on every side, inside the panel's padding, and its margins take the
+   reach back, so the content stays where it is. The reach is `space-2`, which
+   the seat shadow of every shipped system stays within. */
 .body {
+  --pm-dialog-reach: var(--pm-space-2);
+
   min-block-size: 0;
-  margin-block-start: var(--pm-space-5);
+  margin-block: calc(var(--pm-space-5) - var(--pm-dialog-reach)) calc(var(--pm-dialog-reach) * -1);
+  margin-inline: calc(var(--pm-dialog-reach) * -1);
+  padding: var(--pm-dialog-reach);
   overflow-y: auto;
 }
 

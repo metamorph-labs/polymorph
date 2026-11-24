@@ -549,8 +549,11 @@ describe('the check detects faults', () => {
 
   it('reaches through composes rather than requiring a restatement', () => {
     // `:focus-visible` is defined in the focus convention's module, which is
-    // the purpose of the convention.
-    expect(buttonCss).not.toContain(':focus-visible')
-    expect(sourceClosure('button.module.css')).toContain(':focus-visible')
+    // the purpose of the convention. Input's sheet is the example because it
+    // composes the convention and names no focused state of its own. Button's
+    // sheet does name one: a solid fill sets the focus ring's colour hook on
+    // its focused state (`conventions/focus.module.css`).
+    expect(inputCss).not.toContain(':focus-visible')
+    expect(sourceClosure('input.module.css')).toContain(':focus-visible')
   })
 })

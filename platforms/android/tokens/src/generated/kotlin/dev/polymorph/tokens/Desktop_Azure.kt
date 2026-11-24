@@ -301,7 +301,7 @@ internal object Desktop_Azure {
                 dark = PMRgba(22, 23, 25, 1f),
             ),
         ),
-        focus = PMFocus(width = 3f, offset = 0f),
+        focus = PMFocus(width = 2f, offset = -2f),
         icon = PMIcons(
             sm = PMIconScale(size = 14f, stroke = 2f),
             md = PMIconScale(size = 16f, stroke = 1.75f),

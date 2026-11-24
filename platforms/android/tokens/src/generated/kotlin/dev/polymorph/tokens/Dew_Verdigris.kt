@@ -285,7 +285,7 @@ internal object Dew_Verdigris {
                 dark = PMRgba(24, 23, 21, 0.91f),
             ),
         ),
-        focus = PMFocus(width = 3f, offset = 0f),
+        focus = PMFocus(width = 2f, offset = -2f),
         icon = PMIcons(
             sm = PMIconScale(size = 14f, stroke = 2f),
             md = PMIconScale(size = 16f, stroke = 1.75f),
@@ -577,8 +577,8 @@ internal object Dew_Verdigris {
                 dark = PMRgba(0, 156, 134, 0.5f),
             ),
             borderFocusSolid = PMDynamicColor(
-                light = PMRgba(0, 156, 134, 1f),
-                dark = PMRgba(0, 156, 134, 1f),
+                light = PMRgba(0, 145, 125, 1f),
+                dark = PMRgba(0, 145, 125, 1f),
             ),
             dangerSolid = PMDynamicColor(
                 light = PMRgba(209, 92, 86, 1f),

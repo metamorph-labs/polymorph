@@ -40,9 +40,20 @@
 }
 
 /* `min-inline-size: 0` lets the name truncate instead of pushing the remove
-   button off the chip, as in FileUpload. */
+   button off the chip, as in FileUpload.
+
+   A box that clips cuts what is drawn outside its content at its padding edge.
+   A name with an address is a Link, whose focus mark goes around its text
+   (`conventions/focus.module.css`), `space-1` out and a focus width wide. So
+   the name is larger than its text by `space-2` on every side, and its margins
+   take that back, so the text stays where it is. The ellipsis is placed at the
+   content edge, so a long name still ends where it did. */
 .name {
+  --pm-attachment-chip-reach: var(--pm-space-2);
+
   min-inline-size: 0;
+  padding: var(--pm-attachment-chip-reach);
+  margin: calc(var(--pm-attachment-chip-reach) * -1);
   overflow: hidden;
   font-family: var(--pm-text-sm-family);
   font-size: var(--pm-text-sm-size);

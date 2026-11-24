@@ -126,7 +126,7 @@ object PMSwitch : PMSwitchRendering {
                 Modifier
                     .padding(top = trackInset)
                     .size(width, height)
-                    .pmFocusRing(focused && !disabled, theme.radius.pill.dp)
+                    .pmFocusRing(focused && !disabled, theme.radius.pill.dp, around = true)
                     .background(trackFill, pill)
                     .border(PMGeometry.hairline, trackBorder, pill),
                 contentAlignment = Alignment.CenterStart,

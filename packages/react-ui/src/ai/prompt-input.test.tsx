@@ -206,15 +206,16 @@ describe('the field', () => {
     expect(getComputedStyle(field()).outlineStyle).toBe('none')
   })
 
-  it('draws focus inside the frame’s edge where the system chooses the field border style', () => {
-    // A nested pairing whose system sets `overrides.focus.field`, read by the recipe's style
-    // query, as Input's frame reads it through the focus convention.
+  it('draws focus inside the frame’s edge where a system that moves the mark outside chooses the field border style', () => {
+    // A nested pairing whose system moves every mark outside (an offset of 0) and sets
+    // `overrides.focus.field`, read by the recipe's style query, as Input's frame reads it
+    // through the focus convention.
     const theme = resolveTheme(
       composeTheme(
         {
           ...exampleQuietSystem,
           name: 'example-prompt-border',
-          overrides: { focus: { field: 'border' } },
+          overrides: { focus: { offset: 0, field: 'border' } },
         },
         exampleVioletPalette,
       ),

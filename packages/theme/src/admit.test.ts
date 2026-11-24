@@ -246,16 +246,18 @@ describe('a pin is held to the floor its derived value would be', () => {
     )
   })
 
-  it('refuses a pinned focus colour that does not stand out, in the ΔL its floor is stated in', () => {
+  it('refuses a pinned focus colour under 3:1, in the ratio its floor is stated in', () => {
+    // The ring is a 2px line, so its colour is held to the WCAG ratio, and a pin is held like a
+    // derived value. `#a1a1a1`, the reference's ring grey, measures 2.56:1 on white.
     const admission = admitTheme({
       system: GUEST_SYSTEM,
-      palette: pinnedPalette({ light: { 'border.focusSolid': '#fafafa' } }),
+      palette: pinnedPalette({ light: { 'border.focusSolid': '#a1a1a1' } }),
     })
     expect(admission.lawful).toBe(false)
     const fault = admission.faults.find((entry) =>
       entry.message.includes('border.focusSolid on bg.surface'),
     )
-    expect(fault?.message).toMatch(/reached ΔL 0\.\d{3}, floor is 0\.08\./)
+    expect(fault?.message).toMatch(/reached 2\.\d{2}:1, floor is 3:1\./)
     expect(fault?.message).toContain('The palette pins border.focusSolid in light mode.')
   })
 })

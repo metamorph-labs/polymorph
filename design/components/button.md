@@ -132,11 +132,14 @@ change should animate with the colour change it accompanies. Borders, where pres
 | disabled | bg `--pm-bg-subtle` · text `--pm-text-disabled` · shadow none *(a seat signals "pressable", and a disabled button must not)* | same |
 | loading | rest colors · spinner + `aria-busy` | same |
 
-Focus: the ring from conventions §4 on every cell. On `solid` the ring appears without
-the halo. The rest cells set `box-shadow`, so the shared focus rule's glow loses the
-cascade there, and the recipe does not restate it: the solid fill already marks the
-control, and the selectors law only requires the composed ring. Every variant without a
-rest shadow gets both the ring and the halo from the composed rule.
+Focus: the ring from conventions §4 on every cell, inside the button's edge. On `solid`
+the ring lies inside the fill with a gap: in the label colour (`--pm-accent-contrast`,
+`--pm-danger-contrast`), which the contrast law holds on the fill at rest, hovered, pressed
+and on, one width in from the edge, so the fill shows on both sides of the line. The
+recipe sets `--pm-focus-mark: currentcolor` and `--pm-focus-inset: var(--pm-focus-width)`
+on the solid cells' `:focus-visible` state. At the fill's edge the label colour would sit
+against the page, which it is not held to. Every other variant takes the focus colour
+inside the edge. No cell draws a glow on focus.
 
 ### variant="soft"
 

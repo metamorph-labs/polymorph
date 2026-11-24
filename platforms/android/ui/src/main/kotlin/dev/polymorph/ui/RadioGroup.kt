@@ -167,7 +167,7 @@ object PMRadioGroup : PMRadioGroupRendering {
                 Box(
                     Modifier
                         .size(circle)
-                        .pmFocusRing(focused && !disabled, theme.radius.pill.dp)
+                        .pmFocusRing(focused && !disabled, theme.radius.pill.dp, around = true)
                         .clip(pill)
                         .background(fill)
                         .border(PMGeometry.hairline, border, pill),

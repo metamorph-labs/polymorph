@@ -41,13 +41,22 @@ export type RoleSource =
   /** Picks the candidate most legible on `against`. A derived decision. */
   | { kind: 'bestOn'; against: ColorRole; candidates: readonly StepRef[] }
   /**
-   * The focus ring's colour, the only role allowed off the ladder.
+   * The first lawful colour from two lists of candidates, a derived decision
+   * as `bestOn` is. `both` are pinned to one ladder, so each is one colour in
+   * either mode: the first that passes every pairing the role is held to in
+   * both modes is taken, and the role is one colour, as the solid fills are.
+   * Where none does, the first of `either` that passes in this mode. When
+   * nothing passes, the last of `either`, which the contrast law then nudges
+   * or refuses.
+   */
+  | { kind: 'firstLawful'; both: readonly StepRef[]; either: readonly StepRef[] }
+  /**
+   * The focus ring's colour in an ink system, the only role allowed off the
+   * ladder.
    *
-   * The reference's ring (`--ring`: L 0.708 light / 0.556 dark, achromatic) is
-   * in the APCA dead zone the ladder skips: the light ladder jumps from step 8
-   * to step 9 because no label is legible at L 0.68–0.76. Nothing is read on a
-   * ring, so that constraint does not apply, and either neighbouring step looks
-   * wrong. It resolves at `RING_LIGHTNESS`, tinted like the palette's neutrals.
+   * The ladder has no grey between the APCA dead zone it skips and the steps
+   * text uses, and nothing is read on a ring, so the ink ring resolves at
+   * `RING_LIGHTNESS`, tinted like the palette's neutrals.
    */
   | { kind: 'ring'; alpha?: number }
 
@@ -177,18 +186,24 @@ const TEMPERAMENT_TUNING: Record<ContrastTemperament, TemperamentTuning> = {
 const DEPTH_BORDER_SHIFT: Record<Depth, number> = { flat: 1, borders: 0, elevated: 0, glass: 0 }
 
 /**
- * The focus ring's opacity, exported because the law suite reads it.
+ * The opacity of `border.focus`, the half-alpha focus role, exported because
+ * the law suite reads it.
  */
 export const FOCUS_RING_ALPHA = 0.5
 
 /**
- * The ring's tuned lightness per mode: the reference's `--ring` (oklch 0.708
- * light / 0.556 dark). Hue and chroma come from the neutral seed, so zinc's
- * ring is slightly cool and a true-grey palette matches the reference exactly.
+ * The ink ring's lightness per mode: the reference's two ring greys (oklch
+ * 0.556 and 0.708), swapped. The reference draws its ring at half alpha, 0.708
+ * on a light page and 0.556 on a dark one, where neither reaches the focus
+ * floor as a solid 2px line (2.56:1 on white). Swapped, each is the darker
+ * grey on a light page and the lighter on a dark one, and each meets 3:1 on
+ * every background and wash of the shipped ink pairings, with room to spare:
+ * the light mode passes up to L 0.61 and the dark mode from L 0.67. Hue and
+ * chroma come from the neutral seed, so zinc's ring is slightly cool.
  */
 export const RING_LIGHTNESS: Record<'light' | 'dark', number> = {
-  light: 0.708,
-  dark: 0.556,
+  light: 0.556,
+  dark: 0.708,
 }
 
 /**
@@ -573,33 +588,49 @@ export function buildRoleMap(axes: Axes, mode: Mode, chromaBudget: ChromaBudget)
      */
     'border.field': mode === 'dark' ? border('strong') : border('default'),
     /**
-     * The focus ring, at half alpha.
+     * The focus colour at half alpha: the reference's half-alpha ring.
      *
-     * The reference draws focus as a 3px halo at half the ring colour's opacity,
-     * on the border, so it reads as light around the control, not a second
-     * border. Width and offset come from the axes (`TEMPERAMENT_FOCUS_WIDTH`,
-     * `GEOMETRY_FOCUS_OFFSET`). The alpha is on the colour, so
-     * `focus.module.css` still writes one `outline` with one role. An ink
-     * system's accent step 9 falls between the reference's two ring greys, so
-     * the ink ring uses the off-ladder `ring` kind (`RING_LIGHTNESS`) and
-     * matches the reference exactly.
-     *
-     * Half alpha matters: a full-strength 3px ring is too heavy, and a quarter
-     * no longer reads as a ring. The width is 3px, not 2px, to keep the visual
-     * weight of a solid 2px ring.
+     * Nothing in the vocabulary draws in it: the focus ring is a solid line in
+     * `border.focusSolid`. The role stays a token and a pin, held to its own
+     * floor (`FOCUS_MIN_DELTA_L`), for a palette that pins the pair and for a
+     * part an application draws in a translucent focus colour. An ink system's
+     * role uses the off-ladder `ring` kind (`RING_LIGHTNESS`), as the solid one
+     * does.
      */
     'border.focus': isInk
       ? { kind: 'ring', alpha: FOCUS_RING_ALPHA }
       : { kind: 'step', ramp: 'accent', step: 9, ladder: SOLID_LADDER, alpha: FOCUS_RING_ALPHA },
     /**
-     * The halo's colour at full strength, which the focused control's border
-     * changes to. The reference draws focus as the border becoming the ring
-     * plus the half-alpha halo; a halo alone looks lighter. Hued systems use the
-     * pinned accent, so the edge and the halo match.
+     * The focus ring's colour, at full strength. The shared convention draws
+     * the ring in it at `focus.width` (`design/components/README.md`, the focus
+     * ring), so the colour carries the line, and the contrast law holds it to
+     * 3:1 by the WCAG ratio on every background and wash it is drawn on
+     * (`FOCUS_MIN_RATIO`). A hued system starts at the accent's solid, step 9
+     * on the solid ladder, and moves along that ladder, steps 10 to 12, to the
+     * first step that passes in both modes, so the ring is one colour in
+     * either mode, as the fills beside it are. A stark system's dark washes
+     * can leave no such step, and then each mode moves from step 9 along its
+     * own ladder, which darkens in light mode and lightens in dark mode, away
+     * from the backgrounds. An ink system uses the `ring` grey, whose
+     * lightness is chosen to pass. A filled part draws the ring in its own
+     * label colour instead, which the label laws hold on its fill.
      */
     'border.focusSolid': isInk
       ? { kind: 'ring' }
-      : { kind: 'step', ramp: 'accent', step: 9, ladder: SOLID_LADDER },
+      : {
+          kind: 'firstLawful',
+          both: ([9, 10, 11, 12] as const).map((step) => ({
+            ramp: 'accent' as const,
+            step,
+            ladder: SOLID_LADDER,
+          })),
+          either: [
+            { ramp: 'accent', step: 9, ladder: SOLID_LADDER },
+            { ramp: 'accent', step: 10 },
+            { ramp: 'accent', step: 11 },
+            { ramp: 'accent', step: 12 },
+          ],
+        },
 
     // Each status family has the accent family's shape at its own hue: pinned
     // solid fills at steps 9 -> 10 -> 11, washes 3 -> 4, step-11 text, a border

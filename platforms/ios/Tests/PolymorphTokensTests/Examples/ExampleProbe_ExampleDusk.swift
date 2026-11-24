@@ -303,7 +303,7 @@ extension PMTheme {
       saturate: 1.5,
       surface: PMDynamicColor(light: PMRGBA(255, 255, 255, 0.96), dark: PMRGBA(21, 23, 26, 0.91))
     ),
-    focus: PMFocus(width: 3, offset: 0),
+    focus: PMFocus(width: 2, offset: -2),
     icon: PMIconScale(
       size: PMSizeSteps(sm: 14, md: 16, lg: 20),
       stroke: PMSizeSteps(sm: 1.71, md: 1.5, lg: 1.2)

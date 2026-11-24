@@ -420,10 +420,12 @@ A system's two drawing choices, `overrides.focus.field` and `overrides.hover.unf
 ([theming.md](theming.md)), reach the web only. The token document carries both as `invariant`
 entries, and neither `PMTheme` nor the Compose theme has a field for them (`emit-swift.test.ts` and
 `native-model.test.ts` list them as unread), so no member can branch on them. A SwiftUI or Compose
-field (`Input.swift`, `Input.kt`) draws its focus ring, and an outline or ghost Button washes under
-a pointer (`.onHover` in `Button.swift`, `PMButtonPhase.Hover` in `Button.kt`), whatever the system
-chooses. A field shows the difference whenever it has focus; a Button shows it only under a
-pointer: an iPad with a trackpad, or an Android device with a mouse.
+field (`Input.swift`, `Input.kt`) draws its focus ring at the system's offset, and an outline or
+ghost Button washes under a pointer (`.onHover` in `Button.swift`, `PMButtonPhase.Hover` in
+`Button.kt`), whatever the system chooses. A field shows the difference only in a system that moves
+the ring outside the edge, while it has focus; a Button shows it only under a pointer: an iPad with
+a trackpad, or an Android device with a mouse. The flag `focus.place` is unread too: the focus
+modifier reads where the ring sits from `focus.offset`.
 
 ### How the loader is tested
 
@@ -485,7 +487,14 @@ The foundation (`PolymorphUI.kt`) is the Compose counterpart of the SwiftUI one:
   (`pmShadow`, drawn with Compose's `dropShadow` and `innerShadow` from each layer's offset, blur,
   spread and colour), and its shape the pairing's radii, not Material's defaults.
 - **Focus and actions.** Keyboard focus draws the focus ring (`pmFocusRing`, `focus.width` in
-  `border.focus` at `focus.offset`) on every part that takes it. A control's click or toggle sits
+  `border.focusSolid` at `focus.offset`, inside the part's edge by default) on every part that
+  takes it. Compose places it as the web does, by the part's shape: inside the edge by default,
+  past a border that carries state; inside a solid fill with a gap, in the colour the label laws
+  hold on the fill (Button's solid cells, a selected day, a current SectionNav or
+  TableOfContents item); and around a part that cannot hold the line, `spacing.s1` out: a
+  control too small for it (Checkbox, Radio, Switch, Slider's thumb, Carousel's dots) and a part
+  whose box is its text (a link, a tab, a disclosure's trigger, a step, a sort header). SwiftUI draws the
+  ring only on fields, frames and panes, all inside the edge. A control's click or toggle sits
   before the modifier that clears its semantics, because a clearing modifier drops what the
   modifiers after it add. The harness checks every node in every member and window: a node whose
   role is Button, Checkbox, RadioButton, Switch, Tab or DropdownList has its click action, a

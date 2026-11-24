@@ -22,7 +22,8 @@ const PAIRINGS: readonly {
   foreground: string
   background: string
   minLc: number
-  kind: 'text' | 'delineation'
+  minRatio?: number
+  kind: 'text' | 'delineation' | 'focus'
   reason: string
 }[] = [
   ...LAWFUL_PAIRINGS,
@@ -73,9 +74,13 @@ export function purposeOf(role: string): string | undefined {
   }
   const pairing = PAIRINGS.find((candidate) => candidate.foreground === role)
   if (pairing === undefined) return undefined
-  return pairing.kind === 'text'
-    ? `${capitalise(pairing.reason)}. Contrast at least Lc ${pairing.minLc}.`
-    : `${capitalise(pairing.reason)}.`
+  if (pairing.kind === 'text') {
+    return `${capitalise(pairing.reason)}. Contrast at least Lc ${pairing.minLc}.`
+  }
+  if (pairing.kind === 'focus') {
+    return `${capitalise(pairing.reason)}. Contrast at least ${pairing.minRatio}:1.`
+  }
+  return `${capitalise(pairing.reason)}.`
 }
 
 /** The components whose recipes read a role's custom property. */

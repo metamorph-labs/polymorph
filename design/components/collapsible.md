@@ -47,7 +47,8 @@ and stretching this one would make it look like an Accordion.
 | chevron | Icon `down` · `sm` · `--pm-text-muted` · trailing |
 | trigger hover | label `--pm-accent-text` · chevron `--pm-text-secondary`. Colour only, no wash. This is Accordion's exact hover, because one disclosure grammar should look the same in both members, and a flush trigger has no box to wash |
 | trigger open | chevron rotated 180° |
-| focus | the shared focus ring (conventions §4) on the trigger |
+| focus | the shared focus ring around the trigger with a `--pm-space-1` gap (conventions §4, around), because the trigger has no padding around its label |
+| content | `overflow: hidden`, which the animated height needs · padding-inline `--pm-space-2` that negative inline margins take back, so a field or Button at the region's side draws its whole seat shadow, and a control's focus mark (a 2px line a `--pm-space-1` gap outside it) fits, while the content stays flush with the trigger. No block padding, because it would change the height Radix measures; the top has the inner's padding, and a control at the bottom edge has its seat cut there |
 | content inner | padding-top `--pm-space-3` (inside the animated region, so the gap collapses with the content) · bare strings `text.sm` · `--pm-text-secondary` |
 
 ## States

@@ -343,6 +343,10 @@ describe('emitSwift', () => {
         /^invariant\/(focus\.field|hover\.unfilled)$/,
         'choices only the web recipes read: the SwiftUI fields draw the ring and the SwiftUI Button washes on hover, whatever they say',
       ],
+      [
+        /^invariant\/focus\.place$/,
+        'a flag the web recipes branch on; PMFocusRing reads where the mark sits from focus.offset',
+      ],
     ]
     for (const theme of themes) {
       const doc = emitTokenDocument(theme, { platform: 'ios' })

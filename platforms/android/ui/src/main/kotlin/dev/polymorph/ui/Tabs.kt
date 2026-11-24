@@ -359,7 +359,9 @@ object PMTabs : PMTabsRendering {
                 // One element: the label and the count, read together.
                 .semantics(mergeDescendants = true) {}
                 .pmHitTarget()
-                .pmFocusRing(focused && !disabled, theme.radius.sm.dp)
+                // Around the label: the trigger has no inline padding, so a line
+                // inside it would cross the label.
+                .pmFocusRing(focused && !disabled, theme.radius.sm.dp, around = !vertical)
                 .then(if (vertical) Modifier.fillMaxWidth().padding(vertical = space.s2, horizontal = space.s4) else Modifier.padding(vertical = space.s3)),
             horizontalArrangement = Arrangement.spacedBy(space.s2),
             verticalAlignment = Alignment.CenterVertically,

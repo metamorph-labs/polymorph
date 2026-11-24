@@ -43,7 +43,7 @@
    the step's width, so a label of several words takes a second line inside its
    step before the step takes a line of its own. */
 .control {
-  composes: focusRing from '../conventions/focus.module.css';
+  composes: focusAround from '../conventions/focus.module.css';
   composes: stateFeedback from '../conventions/motion.module.css';
   display: flex;
   flex: 0 1 auto;

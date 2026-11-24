@@ -89,12 +89,12 @@
   box-shadow: var(--pm-shadow-transient), var(--pm-shadow-inset-top);
 }
 
-/* The focus ring on the card via `:has()`, with the composed rule's tokens.
-   Restated because the focusable element is the covering link, and the
-   delegating selector in `focus.module.css` covers only composite fields. Last
-   state rule, so keyboard focus wins over hover. */
+/* The focus mark on the card via `:has()`, with the shared convention's
+   tokens: the outline in the focus colour at the system's offset, inside the
+   card's edge by default. Restated because the focusable element is the
+   covering link, and the delegating selector in `focus.module.css` covers only
+   composite fields. Last state rule, so keyboard focus wins over hover. */
 .card[data-interactive]:has(:focus-visible) {
-  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline: var(--pm-focus-width) solid var(--pm-border-focus-solid);
   outline-offset: var(--pm-focus-offset);
-  box-shadow: var(--pm-glow-focus);
 }

@@ -151,8 +151,9 @@ object PMSectionNav : PMSectionNavRendering {
                 }
                 .pmHitTarget()
                 .pmPressFeedback(pressed)
-                // Outside the clip, so the ring draws beyond the pill's edge.
-                .pmFocusRing(focused, theme.radius.md.dp)
+                // Outside the clip, so a mark a system draws outside the edge is
+                // not cut. The current item's fill gives the mark its text colour.
+                .pmFocusRing(focused, theme.radius.md.dp, onFill = if (current) text else null)
                 .clip(shape)
                 .background(fill)
                 .heightIn(min = density.controlHeight.sm.dp),

@@ -4,6 +4,7 @@ import { axesSchema } from './axes'
 import {
   CONTROL_HEIGHT_PX,
   DENSITY_MULTIPLIER,
+  focusPx,
   GEOMETRY_RADII,
   LINE_HEIGHTS,
   roundEven,
@@ -159,10 +160,14 @@ export const assignOverrideSchema = z.strictObject({
  * - **`shadow.throw`** scales the distances of every axis-derived layer (y,
  *   blur, spread), never the darkness. `none` has no layers, so flat stays
  *   shadowless under any throw.
- * - **`focus`** overrides the ring from temperament and geometry. The 2px floor
- *   is the softest shipped temperament's width; thinner rings stop showing
- *   focus clearly. `field` chooses where a focused field draws it, at the same
- *   width either way.
+ * - **`focus`** overrides the mark's width from temperament and its offset.
+ *   The 2px floor is the softest shipped temperament's width; a thinner mark
+ *   stops showing focus clearly. The derived offset is minus the width, the
+ *   mark inside the edge. A system may state that or move the mark outside at
+ *   0 to 4px, and nothing between: further in, the mark floats inside the
+ *   control with a gap, and across the edge it covers the border a state draws
+ *   (`systemSchema` holds the offset to the merged width). `field` chooses
+ *   where a focused field draws it, at the same width either way.
  * - **`type.ratio`** overrides the density axis's modular ratio. The md anchor
  *   stays, because a ratio spreads the ladder, not the page. The display floor
  *   still applies. Per-step sizes are not allowed: they would be the
@@ -179,25 +184,42 @@ export const shadowOverrideSchema = z.strictObject({
     .optional(),
 })
 
+/** The widths a system file may give the focus mark, in px. */
+const FOCUS_WIDTH_RANGE_PX = { min: 2, max: 6 } as const
+
+/** The furthest outside the control a system file may move the focus mark, in px. */
+const FOCUS_OFFSET_OUTSIDE_PX = 4
+
 export const focusOverrideSchema = z.strictObject({
   /** How a focused field shows focus. See `FIELD_FOCUS_STYLES`. */
   field: z.enum(FIELD_FOCUS_STYLES).optional(),
   width: z
     .number()
     .int()
-    .min(2, 'the focus ring keeps its 2px floor — the softest shipped temperament’s own width')
-    .max(6, 'the focus ring stops at 6px — past that the ring outweighs the control it marks')
+    .min(
+      FOCUS_WIDTH_RANGE_PX.min,
+      'the focus mark keeps its 2px floor — the softest shipped temperament’s own width',
+    )
+    .max(
+      FOCUS_WIDTH_RANGE_PX.max,
+      'the focus mark stops at 6px — past that the mark outweighs the control it marks',
+    )
     .optional(),
+  /**
+   * Minus the width puts the mark inside the edge, the derived default; 0 to
+   * 4px puts it outside. The range here is the widest the width allows, and
+   * `systemSchema` holds the offset to the merged width.
+   */
   offset: z
     .number()
     .int()
     .min(
-      0,
-      'focus air stays within 0–4px — a ring pulled inside the control is the control’s own edge',
+      -FOCUS_WIDTH_RANGE_PX.max,
+      'the focus mark goes no further inside than its own width — 6px at the widest',
     )
     .max(
-      4,
-      'focus air stays within 0–4px — further out and the ring stops reading as this control’s',
+      FOCUS_OFFSET_OUTSIDE_PX,
+      'the focus mark stays within 4px outside the control — further out it stops reading as this control’s',
     )
     .optional(),
 })
@@ -491,6 +513,28 @@ export const systemSchema = systemDocumentSchema.superRefine((system, ctx) => {
             `density (${height}px) — lower type.${step} or raise controlHeight.${size}`,
         )
       }
+    }
+  }
+
+  // The focus mark is inside the edge or outside it, never between. The offset
+  // is judged against the merged width, the override or the temperament's.
+  // Further in than minus the width, the mark floats inside the control with
+  // a gap. Between that and 0 it crosses the edge, so it covers the border an
+  // invalid or selected part draws, and the convention cannot move it clear
+  // of that border without moving it wholly inside or outside.
+  const focus = system.overrides?.focus
+  if (focus?.offset !== undefined) {
+    const { width, offset } = focusPx(system.axes.contrastTemperament, focus)
+    if (offset < 0 && offset !== -width) {
+      issue(
+        ['overrides', 'focus', 'offset'],
+        `focus offset ${offset}px ${
+          offset < -width
+            ? `floats the ${width}px mark inside the control, with a gap to its edge`
+            : `lays the ${width}px mark across the control’s edge`
+        } — the mark sits inside the edge at ${-width}px, minus its width, or outside it at ` +
+          `0–${FOCUS_OFFSET_OUTSIDE_PX}px`,
+      )
     }
   }
 

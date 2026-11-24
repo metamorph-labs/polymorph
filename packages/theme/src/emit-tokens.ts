@@ -36,6 +36,7 @@ import {
   DURATION_ROLES,
   EASING_ROLES,
   FIELD_FOCUS_STYLES,
+  FOCUS_PLACES,
   GLOW_STEPS,
   ICON_SIZES,
   INSET_ASSIGNMENT_CLASSES,
@@ -54,6 +55,7 @@ import {
   type DurationRole,
   type EasingRole,
   type FieldFocusStyle,
+  type FocusPlace,
   type GlowStep,
   type IconSize,
   type InsetAssignmentClass,
@@ -246,6 +248,7 @@ export type InvariantTokens = { 'font.numeric': TokenNumeric } & Record<
   Record<`shadow.${ShadowStep}` | 'shadow.insetTop', TokenShadow> &
   Record<'material.blur' | 'focus.width' | 'focus.offset' | `icon.size.${IconSize}`, TokenPx> &
   Record<'material.saturate' | `icon.stroke.${IconSize}` | `z.${ZStep}`, number> &
+  Record<'focus.place', FocusPlace> &
   Record<'focus.field', FieldFocusStyle> &
   Record<'hover.unfilled', UnfilledHover>
 
@@ -557,6 +560,7 @@ export function emitTokenDocument(
     ['focus.width', px(tokens.focus.width)],
     ['focus.offset', px(tokens.focus.offset)],
     // Choices, like a display step's style: the name a recipe branches on.
+    ['focus.place', tokens.focus.place],
     ['focus.field', tokens.focus.field],
     ['hover.unfilled', tokens.hover.unfilled],
     ...ICON_SIZES.map((size) => [`icon.size.${size}`, px(tokens.icon.size[size])]),
@@ -873,6 +877,7 @@ function buildSchema() {
     ['material.saturate', z.number()],
     ['focus.width', pxValue],
     ['focus.offset', pxValue],
+    ['focus.place', z.enum(FOCUS_PLACES)],
     ['focus.field', z.enum(FIELD_FOCUS_STYLES)],
     ['hover.unfilled', z.enum(UNFILLED_HOVERS)],
     ...ICON_SIZES.map((size) => [`icon.size.${size}`, pxValue] as const),

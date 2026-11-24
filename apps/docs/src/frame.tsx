@@ -267,7 +267,8 @@ function FrameHost() {
 
   // The same immediate wrapper the live page gives an entry (a plain div inside
   // a Stack), plus the padding step the Card provides on the page. Without it, a
-  // focus ring at the frame's edge is clipped by the document boundary.
+  // focus ring that a system draws outside a part's edge is clipped by the
+  // document boundary.
   return (
     <Stack p={3}>
       <div>{entry.render()}</div>

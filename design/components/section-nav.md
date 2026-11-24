@@ -59,7 +59,7 @@ report nothing. So `/identity/users/`, `/identity/users?page=2` and
 | list | gap `--pm-space-1` · wraps onto further lines, so every item is on screen at any width |
 | item | block-size `--pm-control-height-sm` · padding-inline `--pm-space-3` · `text.sm` quartet · `--pm-text-secondary` · radius `--pm-radius-md` · no underline · the shared focus ring (conventions §4) |
 | item, hover | `--pm-text-primary` on `--pm-bg-subtle`, not on the current item |
-| item, current | `--pm-selection-text` on `--pm-selection-bg`: the selection treatment the AppShell rail gives its current item (`README.md` §11), so a current location looks the same at both levels |
+| item, current | `--pm-selection-text` on `--pm-selection-bg`: the selection treatment the AppShell rail gives its current item (`README.md` §11), so a current location looks the same at both levels · focused, the ring lies inside the fill with a gap, in `--pm-selection-text` (§4, inside a fill) |
 | label | one line, clipped with an ellipsis when it is wider than the row |
 
 **On Android**: each item reserves the 48dp hit target in the layout and its pill stays

@@ -41,7 +41,9 @@ circle, centered.
 | checked hover | border + dot `--pm-accent-bg-hover` |
 | checked disabled | border `--pm-border-subtle` · dot `--pm-border-subtle` |
 
-Focus ring on the circle (conventions §4). The checked style is a ring with a dot, not a filled
+Focus ring around the circle with a `--pm-space-1` gap, in `--pm-border-focus-solid`, checked or
+not (conventions §4, the around placement), so it leaves an invalid group's danger border
+uncovered. The checked style is a ring with a dot, not a filled
 disc. At a glance a filled circle looks like a Checkbox; the dot shows that this is one choice of
 several.
 

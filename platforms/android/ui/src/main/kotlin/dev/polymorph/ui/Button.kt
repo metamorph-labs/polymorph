@@ -11,7 +11,8 @@
 // as Android's and its colour is the recipe's `:active`; a pointer over the
 // button (a mouse, a stylus, a tablet's trackpad) is `:hover`; the toggle's on
 // state holds the active cell, as `data-state="on"` does. Keyboard focus draws
-// the focus ring around the button (`pmFocusRing`), the web's `:focus-visible`.
+// the focus mark inside the button's edge (`pmFocusRing`), the web's
+// `:focus-visible`, in the label colour on a solid fill.
 // Inside a container that makes its buttons tertiary (`LocalPMTertiary`, which
 // Toast sets), every cell draws the tone's text colour alone: no fill, border,
 // shadow or press wash, in any phase.

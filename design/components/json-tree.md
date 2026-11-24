@@ -58,7 +58,7 @@ warning, and status colour on every boolean would teach readers to ignore status
 | number value | `--pm-accent-text` |
 | boolean / null value | `--pm-text-muted`, italic |
 | children | indented `--pm-space-5` · guide `1px` inline-start rule `--pm-border-subtle`, `--pm-space-2` clear of the toggle column |
-| focus | the shared focus ring (conventions §4) on the toggle |
+| focus | the shared focus ring around the toggle with a `--pm-space-1` gap (conventions §4, around), because its text reaches its edge |
 
 ## States
 

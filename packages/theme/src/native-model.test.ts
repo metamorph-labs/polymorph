@@ -204,6 +204,10 @@ describe('nativeTheme', () => {
         /^invariant\/(focus\.field|hover\.unfilled)$/,
         'choices only the web recipes read: the Compose fields draw the ring and the Compose Button washes on hover, whatever they say',
       ],
+      [
+        /^invariant\/focus\.place$/,
+        'a flag the web recipes branch on; pmFocusRing reads where the mark sits from focus.offset',
+      ],
     ]
     for (const theme of themes) {
       const doc = emitTokenDocument(theme, { platform: 'android' })

@@ -40,7 +40,7 @@ click on a crumb, and in place of the navigation when the crumb is chosen from t
 | --- | --- |
 | row | `text.sm` quartet · gap `--pm-space-2` · single line, no wrap (the trail shortens by collapsing, never by wrapping, because a trail on two lines reads as two locations) |
 | row, short of room | a row wider than its container narrows its crumbs, each to an ellipsis: it stays one line and does not cross the container, which on a phone would pan the page. Collapsing counts crumbs and knows nothing of width, so four crumbs that fit a desktop header can be wider than a phone. The crumbs between the first and the current page narrow first, as it is the middle the overflow takes, each down to `--pm-space-6`. The first crumb and the current page narrow only when every crumb between them is at that floor. The separators and the overflow trigger keep their width |
-| crumb | Link's recipe verbatim (`link.md`): `--pm-text-secondary`, hover `--pm-text-primary` + underline, the shared focus ring (conventions §4) |
+| crumb | Link's recipe verbatim (`link.md`): `--pm-text-secondary`, hover `--pm-text-primary` + underline, the shared focus ring (conventions §4) around the text box with a `--pm-space-1` gap, as Link draws it |
 | crumb label | max-width `calc(var(--pm-space-10) * 2)` · ellipsis (a 40-char document title is for the current page to show in full, not the trail) |
 | separator | Icon `next` `sm` · `--pm-text-muted` · decorative |
 | overflow trigger | Button `ghost/neutral/sm iconOnly icon="overflow" label="Show path"`; opens Menu of the hidden crumbs in order |

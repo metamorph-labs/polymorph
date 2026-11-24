@@ -168,9 +168,10 @@ object PMLink : PMLinkRendering {
                 }
                 .pmHitTarget()
                 .hoverable(interaction)
-                // The link run takes focus; its parent hears it, and draws the ring.
+                // The link run takes focus; its parent hears it, and draws the
+                // mark around the text box with a gap.
                 .onFocusChanged { focused = it.hasFocus }
-                .pmFocusRing(focused, theme.radius.sm.dp),
+                .pmFocusRing(focused, theme.radius.sm.dp, around = true),
             contentAlignment = Alignment.CenterStart,
         ) {
             Text(

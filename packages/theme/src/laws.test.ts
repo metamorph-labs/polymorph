@@ -32,6 +32,7 @@ import { emitTokenDocument, type TokenDocument } from './emit-tokens'
 import { exampleInkTheme, exampleQuietTheme } from './examples'
 import {
   DELINEATION_MIN_DELTA_L,
+  FOCUS_MIN_RATIO,
   gradientPairingId,
   isExemptFromContrast,
   LAWFUL_GRADIENT_PAIRINGS,
@@ -107,6 +108,60 @@ const PAIRINGS: Pairing[] = SYSTEMS.flatMap(({ value: system }) =>
 
 /** The blocks the eager sheet contains: one per system, with its default palette. */
 const DEFAULT_PAIRINGS = PAIRINGS.filter((pair) => pair.palette.name === pair.system.defaultPalette)
+
+/**
+ * The focus ring's colour. The ring is a 2px line, so the colour carries it,
+ * and every shipped pairing derives one that meets 3:1 by the WCAG ratio
+ * (`FOCUS_MIN_RATIO`) on every background and wash it is drawn on, with no
+ * pins. A hued system takes the accent's solid where it passes and moves along
+ * the ramp only as far as the floor needs.
+ */
+describe('the focus ring’s colour', () => {
+  const toOklch = converter('oklch')
+  const parse = (value: string) => {
+    const oklch = toOklch(value)
+    if (!oklch) throw new Error(`cannot parse ${value}`)
+    return { l: oklch.l, c: oklch.c, h: oklch.h ?? 0 }
+  }
+  const FOCUS_BACKGROUNDS = LAWFUL_PAIRINGS.filter(
+    (pairing) => pairing.foreground === 'border.focusSolid',
+  ).map((pairing) => pairing.background)
+  const worstRatio = (color: string, colors: Record<string, string>) =>
+    Math.min(...FOCUS_BACKGROUNDS.map((role) => wcagRatio(parse(color), parse(colors[role]!))))
+
+  for (const pair of PAIRINGS) {
+    it(`${pair.id} meets 3:1 on every background and wash, in both modes`, () => {
+      for (const mode of MODES) {
+        const colors = pair.resolved.color[mode]
+        const ratio = worstRatio(colors['border.focusSolid'], colors)
+        expect(ratio, `${pair.id} (${mode}) at ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(
+          FOCUS_MIN_RATIO,
+        )
+      }
+    })
+  }
+
+  it('takes the first step of the accent’s solid ladder that passes in both modes', () => {
+    // One colour in either mode where a step allows it, as the solid fills beside it are, and
+    // no further along the ramp than the floor needs: every earlier step fails in some mode.
+    for (const pair of PAIRINGS) {
+      if (pair.palette.chromaBudget === 'none') continue
+      const { light, dark } = pair.resolved.color
+      const solid = generateAllRamps(pair.theme.seeds).light.accent
+      const steps = ([9, 10, 11, 12] as const).map((step) => toCssColor(solid[step], 1))
+      const passes = (color: string) =>
+        worstRatio(color, light) >= FOCUS_MIN_RATIO && worstRatio(color, dark) >= FOCUS_MIN_RATIO
+      const first = steps.findIndex(passes)
+      if (first === -1) {
+        // A stark system's dark washes can leave no shared step, and each mode walks its own.
+        expect(light['border.focusSolid'], pair.id).not.toBe(dark['border.focusSolid'])
+        continue
+      }
+      expect(light['border.focusSolid'], pair.id).toBe(steps[first])
+      expect(dark['border.focusSolid'], pair.id).toBe(steps[first])
+    }
+  })
+})
 
 const designedSystems = () => SYSTEMS.filter((entry) => entry.value.kind === 'designed')
 
@@ -1079,32 +1134,38 @@ describe('a glow never stands in for a focus ring', () => {
     const bare = deriveNonColorTokens({ ...exampleQuietTheme.axes, ornament: 'none' })
     expect(bare.glow.focus).toBe('none')
     expect(bare.glow.hover).toBe('none')
-    // The ring is unchanged: width, offset, and the role it uses.
+    // The ring is unchanged: width, offset, and the role it uses. The offset is
+    // negative, because the mark is drawn inside the part's edge.
     expect(bare.focus.width).toMatch(/^\d+px$/)
-    expect(bare.focus.offset).toMatch(/^\d+px$/)
-    // The ring is a half-alpha halo, so it emits `rgb(… / a)`, not hex. A ring
-    // that had been turned off would be `none` or transparent.
-    const ring = resolveTheme(exampleQuietTheme).color.light['border.focus']
+    expect(bare.focus.offset).toMatch(/^-?\d+px$/)
+    // The mark is drawn in the solid focus colour, an opaque hex. A mark that
+    // had been turned off would be `none` or transparent.
+    const theme = resolveTheme(exampleQuietTheme)
+    expect(theme.color.light['border.focusSolid']).toMatch(/^#[0-9a-f]{6}$/)
+    // The half-alpha role stays a token and a pin, and emits `rgb(… / a)`.
+    const ring = theme.color.light['border.focus']
     expect(ring).toMatch(/^rgb\(/)
     expect(ring).toContain(`/ ${FOCUS_RING_ALPHA}`)
   })
 
-  it('matches the reference ring and field border exactly on the flagship', () => {
+  it('draws the flagship’s ring in the reference’s two greys, swapped, and matches its field border', () => {
     /**
-     * The reference's `--ring` is oklch 0.708 light / 0.556 dark, and its
-     * `--input` is white at 15% in dark mode where `--border` is 10%. Pinned on
-     * the flagship, which must match the reference exactly. Other pairings use
-     * the same derivation with their own values.
+     * The reference's `--ring` is oklch 0.708 light / 0.556 dark, drawn at half
+     * alpha. The ring here is a solid 2px line held to 3:1 by the WCAG ratio,
+     * where 0.708 on white reaches 2.56:1, so the flagship takes the same two
+     * greys the other way round: the darker on a light page, the lighter on a
+     * dark one. The reference's `--input` is white at 15% in dark mode where
+     * `--border` is 10%, and the flagship matches that exactly.
      */
     const plain = SYSTEMS.find((entry) => entry.name === 'plain')!.value
     const neutral = PALETTES.find((entry) => entry.name === 'neutral')!.value
     const flagship = resolveTheme(composeTheme(plain, neutral))
 
-    // oklch(0.708 0 0) and oklch(0.556 0 0), through the engine's own gamut.
-    expect(flagship.color.light['border.focusSolid']).toBe('#a1a1a1')
-    expect(flagship.color.dark['border.focusSolid']).toBe('#737373')
-    expect(flagship.color.light['border.focus']).toBe(`rgb(161 161 161 / ${FOCUS_RING_ALPHA})`)
-    expect(flagship.color.dark['border.focus']).toBe(`rgb(115 115 115 / ${FOCUS_RING_ALPHA})`)
+    // oklch(0.556 0 0) and oklch(0.708 0 0), through the engine's own gamut.
+    expect(flagship.color.light['border.focusSolid']).toBe('#737373')
+    expect(flagship.color.dark['border.focusSolid']).toBe('#a1a1a1')
+    expect(flagship.color.light['border.focus']).toBe(`rgb(115 115 115 / ${FOCUS_RING_ALPHA})`)
+    expect(flagship.color.dark['border.focus']).toBe(`rgb(161 161 161 / ${FOCUS_RING_ALPHA})`)
 
     // `--input` vs `--border`: equal in light mode, different in dark mode.
     expect(flagship.color.light['border.field']).toBe(flagship.color.light['border.default'])

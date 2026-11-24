@@ -562,7 +562,9 @@ public struct PMMaterial: Sendable, Hashable {
   }
 }
 
-/// The focus ring, in points. Its colour is `colors.borderFocus`.
+/// The focus mark, in points. Its colour is `colors.borderFocusSolid`. A
+/// negative offset lies inside the part's edge, the derived default at minus
+/// the width; 0 or more lies outside it.
 public struct PMFocus: Sendable, Hashable {
   public let width: CGFloat
   public let offset: CGFloat
