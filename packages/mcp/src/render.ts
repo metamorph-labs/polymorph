@@ -586,8 +586,8 @@ export async function renderScreen(
 
   if (context.screenPage === undefined && context.screenBuilder === undefined) {
     throw new ScreenUnavailableError(
-      'render_screen draws in a page this server was given neither built nor a builder for. ' +
-        'Start the server from its entry point (`bin/polymorph-mcp.js`), which names it.',
+      'render_screen draws in a page this server was not given a builder for, or the page ' +
+        'built. Start the server from its entry point (`bin/polymorph-mcp.js`), which names it.',
     )
   }
 
