@@ -6,7 +6,7 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { computed, onMounted, useId, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, useId, useTemplateRef, watch } from 'vue'
 
 import * as zag from '@zag-js/tooltip'
 import { normalizeProps, useMachine } from '@zag-js/vue'
@@ -15,6 +15,7 @@ import {
   TOOLTIP_DELAY_MS,
   TOOLTIP_SKIP_DELAY_MS,
   anchorProps,
+  closeTooltipOnScroll,
   syncTriggerAnchor,
   useDirection,
 } from '@polymorph/vue'
@@ -55,6 +56,7 @@ const service = useMachine(
     defaultOpen: props.defaultOpen,
     openDelay: TOOLTIP_DELAY_MS,
     closeDelay: TOOLTIP_SKIP_DELAY_MS,
+    closeOnScroll: false,
     positioning: {
       placement: props.align === 'center' ? props.side : `${props.side}-${props.align}`,
       gutter: 0,
@@ -75,6 +77,19 @@ const effect1 = () => {
 }
 onMounted(effect1)
 watch(() => api.value.open, effect1, { flush: 'post' })
+let release2: (() => void) | undefined
+const effect2 = () => {
+  release2?.()
+  const ran = closeTooltipOnScroll(api.value.open ? anchor.value : null, () =>
+    api.value.setOpen(false),
+  )
+  release2 = () => {
+    ran()
+  }
+}
+onMounted(effect2)
+watch(() => api.value.open, effect2, { flush: 'post' })
+onBeforeUnmount(() => release2?.())
 </script>
 
 <template>

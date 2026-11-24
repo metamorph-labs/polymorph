@@ -6,6 +6,7 @@ import { installTestTheme } from '@polymorph/engine/testing'
 import { TOOLTIP_DELAY_MS, TOOLTIP_SKIP_DELAY_MS } from '@polymorph/vue'
 
 import Button from '../controls/Button.vue'
+import Input from '../controls/Input.vue'
 import Inline from '../layout/Inline.vue'
 import { mount } from '../mount'
 import Tooltip from './Tooltip.vue'
@@ -148,4 +149,63 @@ describe('Tooltip in a narrow window', () => {
       expect(surface.scrollWidth).toBe(surface.clientWidth)
     })
   }
+})
+
+/**
+ * A tooltip the keyboard opened stays while its control holds keyboard focus
+ * (`design/components/tooltip.md`, A11y): a Tab to a control below the fold
+ * scrolls the page a frame after the focus that opened it. The controls are
+ * text fields, which Tab reaches in every engine.
+ */
+describe('Tooltip while the keyboard holds its control', () => {
+  afterEach(() => {
+    document.scrollingElement?.scrollTo(0, 0)
+  })
+
+  async function tabBelow() {
+    await mount(() =>
+      h('div', [
+        h(Input, { 'aria-label': 'Above' }),
+        h('div', { style: { blockSize: '200vh' } }),
+        h(Tooltip, { content: 'Archive this ticket' }, () => [h(Input, { 'aria-label': 'Below' })]),
+        h(Input, { 'aria-label': 'After' }),
+      ]),
+    )
+    const field = (name: string) =>
+      document.querySelector<HTMLInputElement>(`input[aria-label="${name}"]`) as HTMLInputElement
+    field('Above').focus()
+    await userEvent.tab()
+    await vi.waitFor(() => expect(document.activeElement).toBe(field('Below')))
+    await vi.waitFor(() => expect(bubble('Archive this ticket')).toBeDefined())
+    await vi.waitFor(() => expect(document.scrollingElement?.scrollTop).toBeGreaterThan(0))
+    // The scroll event comes in the frame after the scroll.
+    await new Promise((settle) => setTimeout(settle, 200))
+    return { below: field('Below'), after: field('After') }
+  }
+
+  it('stays open when the Tab that opened it scrolls the page', async () => {
+    const { below } = await tabBelow()
+    expect(bubble('Archive this ticket')).toBeDefined()
+    const described = below.getAttribute('aria-describedby') ?? ''
+    expect(document.getElementById(described)?.textContent).toBe('Archive this ticket')
+  })
+
+  it('still closes on Escape', async () => {
+    await tabBelow()
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(bubble('Archive this ticket')).toBeUndefined())
+  })
+
+  it('still closes when focus moves on', async () => {
+    const { after } = await tabBelow()
+    await userEvent.tab()
+    await vi.waitFor(() => expect(document.activeElement).toBe(after))
+    await vi.waitFor(() => expect(bubble('Archive this ticket')).toBeUndefined())
+  })
+
+  it('still closes on a press on its control', async () => {
+    const { below } = await tabBelow()
+    await userEvent.click(below)
+    await vi.waitFor(() => expect(bubble('Archive this ticket')).toBeUndefined())
+  })
 })

@@ -10,6 +10,13 @@ const SIDES = ['top', 'right', 'bottom', 'left'] as const
  * neighbour's bubble at once while another is still showing, so the closing
  * bubble stays for `TOOLTIP_SKIP_DELAY_MS`, the window in which a reader moving
  * along a toolbar does not wait again.
+ *
+ * A tooltip that keyboard focus opened stays open while its control holds that
+ * focus. Zag closes a tooltip when an element around its trigger scrolls, and
+ * a Tab to a control below the fold scrolls the page a frame after the focus
+ * that opened it. So the machine's own close on scroll is off, and the
+ * engine's `closeTooltipOnScroll` closes the bubble on a scroll only while the
+ * keyboard does not hold the control.
  */
 export default describeMember({
   member: 'Tooltip',
@@ -26,6 +33,7 @@ export default describeMember({
       defaultOpen: 'defaultOpen',
       openDelay: 'TOOLTIP_DELAY_MS',
       closeDelay: 'TOOLTIP_SKIP_DELAY_MS',
+      closeOnScroll: 'false',
       // No gutter: the recipe sets the gap from the trigger as a margin on the bubble, inside
       // the positioner, so it is the token's length in every renderer. Zag's own gutter is a
       // number of pixels, which a density cannot change.
@@ -46,6 +54,12 @@ export default describeMember({
   // The bubble describes the control the reader focuses, not the anchor around it.
   effects: [
     { watch: 'api.open', run: 'syncTriggerAnchor(anchor, api.getTriggerProps(), api.open, false)' },
+    // A scroll closes an open bubble, except while the keyboard holds its control.
+    {
+      watch: 'api.open',
+      run: 'closeTooltipOnScroll(api.open ? anchor : null, () => api.setOpen(false))',
+      release: 'ran()',
+    },
   ],
   template: [
     el(

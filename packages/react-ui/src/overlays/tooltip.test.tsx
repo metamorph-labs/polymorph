@@ -81,6 +81,91 @@ describe('opening', () => {
   })
 })
 
+/**
+ * A control below the fold, reached with Tab: the browser scrolls it into view, and the scroll
+ * comes a frame after the focus that opened the tooltip. The controls are text fields, which Tab
+ * reaches in every engine.
+ */
+describe('while the keyboard holds its control', () => {
+  afterEach(() => {
+    document.scrollingElement?.scrollTo(0, 0)
+  })
+
+  function belowTheFold() {
+    mount(
+      <div>
+        <Input aria-label="Above" />
+        <div style={{ blockSize: '200vh' }} />
+        <Tooltip content="Archive this ticket">
+          <Input aria-label="Below" />
+        </Tooltip>
+        <Input aria-label="After" />
+      </div>,
+    )
+    return {
+      above: screen.getByRole('textbox', { name: 'Above' }),
+      below: screen.getByRole('textbox', { name: 'Below' }),
+      after: screen.getByRole('textbox', { name: 'After' }),
+    }
+  }
+
+  /** Tabs from the field above to the one below, and waits for the page to scroll to it. */
+  async function tabBelow() {
+    const fields = belowTheFold()
+    fields.above.focus()
+    await userEvent.tab()
+    await vi.waitFor(() => expect(document.activeElement).toBe(fields.below))
+    await vi.waitFor(() => expect(bubble()).not.toBeNull())
+    await vi.waitFor(() => expect(document.scrollingElement?.scrollTop).toBeGreaterThan(0))
+    // The scroll event comes in the frame after the scroll.
+    await new Promise((settle) => setTimeout(settle, 200))
+    return fields
+  }
+
+  it('stays open when the Tab that opened it scrolls the page', async () => {
+    const { below } = await tabBelow()
+    expect(bubble()).not.toBeNull()
+    expect(screen.getByRole('textbox', { name: 'Below', description: 'Archive this ticket' })).toBe(
+      below,
+    )
+  })
+
+  it('still closes on Escape', async () => {
+    const { below } = await tabBelow()
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(bubbles()).toHaveLength(0))
+    expect(document.activeElement).toBe(below)
+  })
+
+  it('still closes when focus moves on', async () => {
+    const { after } = await tabBelow()
+    await userEvent.tab()
+    await vi.waitFor(() => expect(document.activeElement).toBe(after))
+    await vi.waitFor(() => expect(bubbles()).toHaveLength(0))
+  })
+
+  it('still closes on a press on its control', async () => {
+    const { below } = await tabBelow()
+    await userEvent.click(below)
+    await vi.waitFor(() => expect(bubbles()).toHaveLength(0))
+  })
+
+  it('still closes when another tooltip opens', async () => {
+    const { below } = await tabBelow()
+    expect(document.activeElement).toBe(below)
+    mount(
+      <Tooltip content="Duplicate this ticket">
+        <Button label="Duplicate" />
+      </Tooltip>,
+    )
+    await userEvent.hover(screen.getByRole('button', { name: 'Duplicate' }))
+    await vi.waitFor(
+      () => expect(bubbles().map((each) => each.textContent)).toEqual(['Duplicate this ticket']),
+      { timeout: TOOLTIP_DELAY_MS + 1000 },
+    )
+  })
+})
+
 describe('what a screen reader gets', () => {
   it('describes the control, not the wrapper Radix needed', async () => {
     mount(

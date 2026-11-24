@@ -5,7 +5,7 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { Component, ViewEncapsulation, input } from '@angular/core'
+import { Component, DestroyRef, ViewEncapsulation, inject, input } from '@angular/core'
 
 import * as zag from '@zag-js/tooltip'
 
@@ -19,6 +19,7 @@ import {
   TOOLTIP_DELAY_MS,
   TOOLTIP_SKIP_DELAY_MS,
   anchorProps,
+  closeTooltipOnScroll,
   derived,
   elementRef,
   mergeParts,
@@ -108,6 +109,7 @@ export class Tooltip {
           defaultOpen: this.$p.defaultOpen,
           openDelay: TOOLTIP_DELAY_MS,
           closeDelay: TOOLTIP_SKIP_DELAY_MS,
+          closeOnScroll: false,
           positioning: {
             placement:
               this.$p.align === 'center' ? this.$p.side : `${this.$p.side}-${this.$p.align}`,
@@ -127,11 +129,18 @@ export class Tooltip {
       () => ({ side: this.$p.side, align: this.$p.align }),
     ),
   )
+  private release2: (() => void) | undefined
 
   constructor() {
     watchEffect(
       () => this.api.value.open,
       () => this.effect1(),
+      true,
+    )
+    inject(DestroyRef).onDestroy(() => this.release2?.())
+    watchEffect(
+      () => this.api.value.open,
+      () => this.effect2(),
       true,
     )
   }
@@ -172,5 +181,15 @@ export class Tooltip {
       this.api.value.open,
       false,
     )
+  }
+
+  private effect2(): void {
+    this.release2?.()
+    const ran = closeTooltipOnScroll(this.api.value.open ? this.anchor.value : null, () =>
+      this.api.value.setOpen(false),
+    )
+    this.release2 = () => {
+      ran()
+    }
   }
 }
