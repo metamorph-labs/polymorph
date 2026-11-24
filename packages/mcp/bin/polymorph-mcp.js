@@ -2,7 +2,6 @@
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { createJiti } from 'jiti'
 
 /**
@@ -36,6 +35,9 @@ import { createJiti } from 'jiti'
  * `render_screen` draws in a page the workbench owns. This file names the
  * program that builds it, as it names the two roots, and the tool runs that
  * program the first time it is called (`src/render.ts`).
+ *
+ * `polymorph mcp` starts the same server through the same function
+ * (`src/stdio.ts`), with the same two flags.
  *
  * A published package would read the `registry.json` shipped beside it instead
  * of building one, and the tools would behave the same.
@@ -79,16 +81,15 @@ const PROJECT = readOnly ? undefined : resolve(process.cwd(), project ?? '.')
 
 const jiti = createJiti(import.meta.url)
 const { buildRegistry } = await jiti.import(resolve(SOURCE, 'packages/registry/src/build.ts'))
-const { createServer } = await jiti.import(resolve(SOURCE, 'packages/mcp/src/server.ts'))
+const { serveStdio } = await jiti.import(resolve(SOURCE, 'packages/mcp/src/stdio.ts'))
 
 try {
-  const server = createServer({
+  await serveStdio({
     registry: buildRegistry(SOURCE),
     root: SOURCE,
     project: PROJECT,
     screenBuilder: resolve(SOURCE, 'apps/workbench/screen.build.mjs'),
   })
-  await server.connect(new StdioServerTransport())
 } catch (error) {
   console.error(`polymorph-mcp: ${error instanceof Error ? error.message : String(error)}`)
   process.exit(1)

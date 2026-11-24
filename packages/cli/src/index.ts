@@ -1,5 +1,6 @@
 /**
- * `@polymorph/cli`: `polymorph init`, `add`, `diff`, `update`, `theme` and `check`.
+ * `@polymorph/cli`: `polymorph init`, `add`, `diff`, `update`, `theme`, `check`, and the
+ * verbs that ask the MCP tools (`card`, `validate`, `fix`, `render` and the rest).
  *
  * One of the registry's three thin fronts. It copies a chosen part of the
  * system into another repository and keeps the red rules running there. This
@@ -33,6 +34,23 @@ export type { InitPlan, InitPrograms, InitStep, InstallOutcome } from './init'
 
 export { main, run } from './cli'
 export type { Cli, Outcome } from './cli'
+
+/**
+ * The verbs as data (`VERBS`): name, group, summary, usage, flags and the MCP
+ * tools each one's job is. The help, the docs and the agent skills read it.
+ * `ToolCaller` and `ServerStarter` are the two functions an entry point
+ * supplies as `cli.tools` and `cli.serve`.
+ */
+export { synopsis, VERB_GROUPS, verbNamed, VERBS } from './verbs'
+export type {
+  ServerStarter,
+  ToolAnswer,
+  ToolCaller,
+  ToolImage,
+  Verb,
+  VerbFlag,
+  VerbGroup,
+} from './verbs'
 
 export { check, CheckError, checkLines } from './check'
 
