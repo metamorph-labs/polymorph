@@ -10,8 +10,8 @@ import type { Registry } from '@polymorph/registry'
  * What the published tools ship, and where each entry point finds it.
  *
  * The package's `dist/` is a slice of the repository at the repository's own
- * paths: the modules the bins run, built from `packages/*`/src, and the files
- * an install copies, as they are. So `dist/` is the source root the CLI and the
+ * paths: the modules the bins run, each built from its package's `src/`, and
+ * the files an install copies, as they are. So `dist/` is the source root the CLI and the
  * server read, as a checkout is in a checkout, and a module that reads a file
  * beside it finds it where it does in a checkout. This module is
  * `dist/packages/tools/src/shipped.js`, three directories below that root.

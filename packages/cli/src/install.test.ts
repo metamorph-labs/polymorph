@@ -583,6 +583,20 @@ describe('add and update refuse a checkout of polymorph', () => {
     expect(tree(nested)).toEqual(['package.json'])
   })
 
+  it('points the person at the published tools when they ran from the published tools', () => {
+    const clone = temporary('clone')
+    write(clone, 'package.json', '{}\n')
+    write(clone, registry.vendor.base, 'html {}\n')
+    lines.length = 0
+    const published = run(
+      { root: clone, source, registry, out: (line) => lines.push(line), origin: 'published' },
+      ['add', 'button'],
+    )
+    expect(published.code).toBe(1)
+    expect(lines.join('\n')).toContain('with the published tools: npx -y @metamorph-labs/polymorph')
+    expect(lines.join('\n')).not.toContain('packages/cli/bin')
+  })
+
   it('still prints a dry run in the checkout, which writes nothing', () => {
     expect(polymorph(ROOT, ROOT, ['add', 'button', '--dry-run']).code).toBe(0)
     expect(lines.join('\n')).toContain('src/polymorph/controls/Button.tsx')
