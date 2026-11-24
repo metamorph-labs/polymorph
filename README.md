@@ -95,7 +95,7 @@ pnpm dev:docs                             # the docs site
 pnpm site                                 # the docs site as static HTML, in apps/docs/dist
 ```
 
-There is no hosted CI, so the gates run where a change is made. Each platform has its own, and
+There is no hosted CI that checks a change, so the gates run where a change is made. Each platform has its own, and
 the web has a second for Firefox and WebKit:
 
 ```sh

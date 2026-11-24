@@ -75,7 +75,8 @@ which builds an App Router application from the published React builds. A change
 the iOS contracts are generated from also needs `pnpm gate:ios`, and one to `platforms/android`
 or the Kotlin contracts `pnpm gate:android`. A change to a member, a recipe, a foundation or a
 browser test also needs `pnpm gate:engines`, which repeats the browser projects, and the
-static-page check, on Firefox and WebKit. There is no hosted CI, so these are the check. Browser tests need
+static-page check, on Firefox and WebKit. There is no hosted CI that checks a change, so these are the check; the one workflow
+uploads a tagged release to npmjs.com. Browser tests need
 `pnpm exec playwright install chromium` once, and the engines gate
 `pnpm exec playwright install firefox webkit`.
 

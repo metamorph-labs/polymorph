@@ -267,15 +267,13 @@ pnpm version-packages                     # apply pending changesets: the versio
 git commit -am "Release <version>"        # the version bump is a commit like any other
 pnpm gate:ios && pnpm gate:android        # the gates for the native packages, which ship at the tag
 pnpm gate:engines                         # the browser tests on Firefox and WebKit, which pnpm gate runs on Chromium only
-pnpm publish:packages                     # pnpm gate, then build, pack, rewrite, check, upload
-git tag -a v<version> -m "Release <version>"   # the publish script prints this line with the version
-git push origin main v<version>           # the tag by name: --follow-tags skips a lightweight tag
-node scripts/publish-packages.mjs --to npmjs   # the same release to npmjs.com, as public packages
+pnpm publish:packages                     # pnpm gate, then build, pack, rewrite, check, upload, tag
+git push origin main v<version>           # the tag by name; the publish workflow uploads it to npmjs.com
 ```
 
 Each gate runs before what it covers ships. `pnpm publish:packages` runs `pnpm gate`, the gate for
 everything it uploads, first, and stops if it is red, so an upload cannot skip the laws; there is
-no hosted CI to run them otherwise. The native packages ship at the tag rather than through the
+no hosted CI that checks a change. The native packages ship at the tag rather than through the
 script, so `pnpm gate:ios` and `pnpm gate:android` run before it. `pnpm gate:engines` runs before
 it too: the script's gate runs the browser tests on Chromium, and this one repeats them on Firefox
 and WebKit. On a machine without an iOS
@@ -288,7 +286,8 @@ packs them, renames them for the registry (each `@polymorph/*` dependency betwee
 `rules`, becomes an `npm:` alias of its registry name), checks that each manifest names nothing
 unpublished and every export target ships, refuses a version that is already published, and
 uploads. Before any of that it reads the release's version from the packages. It stops if they
-disagree, or if the tag for that version already exists. The registry names come from `PUBLISHED_NAMES` in `packages/registry/src/install.ts`,
+disagree, or if the tag for that version already exists. After the upload it makes the
+annotated tag `v<version>`, whose message records the commit the gate passed on. The registry names come from `PUBLISHED_NAMES` in `packages/registry/src/install.ts`,
 and the script fails when that table and its own list disagree.
 `node scripts/publish-packages.mjs --dry-run` does everything but the upload, the gate included,
 and `--out <dir>` keeps the final tarballs. It authenticates with `NODE_AUTH_TOKEN`, or the GitHub
@@ -297,7 +296,20 @@ version cannot be replaced: a mistake is fixed by the next patch release.
 
 `--to npmjs` publishes the same packages to npmjs.com under the same names, as public packages.
 Once the release is tagged, it publishes only from a commit that differs from the tag in the
-publish script alone, so both registries hold what the tag holds. It authenticates with
-npmjs.com's trusted publishing when it runs in a GitHub Actions job with `id-token: write`, else
-with `NPM_TOKEN`, else with the login in your own `~/.npmrc`. A token has to bypass two-factor
-authentication, or each upload stops for a one-time code.
+publish script alone, so both registries hold what the tag holds.
+
+Pushing the tag starts the publish workflow (`.github/workflows/publish.yml`), the repository's
+only workflow. It checks out the tag, installs, and runs
+`node scripts/publish-packages.mjs --to npmjs --tagged`, which builds, packs and uploads the
+tag's commit without running the gate again. It reads the gate's result from the tag instead, and
+refuses a tag that does not record a gate that passed on its commit. The workflow exists because
+npmjs.com's trusted publishing accepts an upload only from a GitHub-hosted runner, and it needs no
+token: npm trades the job's identity token for a short-lived one. Each package names the
+workflow as its trusted publisher once, with `node scripts/trust-npmjs.mjs`, run logged in to
+npmjs.com as an owner. A package must exist before it can trust a publisher, so a new package's
+first release goes up from your machine with `--to npmjs`, which authenticates with `NPM_TOKEN`,
+else with the login in your own `~/.npmrc`. A version that is already on npmjs.com is skipped from
+the tag, so a run that stopped part-way is finished by running it again. Run by hand from the
+Actions tab, the workflow is a dry run of the branch or tag it is given: it builds and packs, and
+uploads nothing. It refuses a commit whose publish script has no `--tagged`, which every tag before
+the workflow is.
