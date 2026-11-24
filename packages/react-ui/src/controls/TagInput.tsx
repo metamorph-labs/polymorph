@@ -248,7 +248,10 @@ export function TagInput({
     }
     // The chips come before the field in reading order, so the key toward the line's start
     // moves into them: ← left to right, → right to left.
-    if (event.key === lineStartKey(event.currentTarget) && event.currentTarget.selectionStart === 0) {
+    if (
+      event.key === lineStartKey(event.currentTarget) &&
+      event.currentTarget.selectionStart === 0
+    ) {
       const last = values[values.length - 1]
       if (last !== undefined) removeRefs.current.get(last)?.focus()
     }

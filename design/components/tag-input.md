@@ -32,7 +32,13 @@ It has no substrate: an Input-style container that holds a list of chips and a r
 
 Commit keys: Enter and comma; paste splits on commas/newlines and validates each;
 Backspace in an empty input removes the last chip; a chip's remove button and its
-Backspace/Delete while focused both remove. Escape clears uncommitted text.
+Backspace/Delete while focused both remove. Escape clears uncommitted text; inside a Dialog
+that Escape is the field's and the Dialog stays open, and with no text left Escape closes the
+Dialog. A key an input method is handling is the input method's: the Enter that confirms a
+Japanese or Chinese candidate, Safari's included, commits no tag, and Backspace in a
+composition removes no chip. The arrow toward the line's start (← left to right, → right to
+left) at the start of the input moves into the chips, and between chips it moves to the
+previous chip and the other arrow to the next; past the last chip, focus returns to the input.
 
 Attributes: container `data-size`, `data-invalid?`, `data-disabled?`,
 `data-state="at-max"?`; chips `data-removing?` during exit.
@@ -44,7 +50,7 @@ Attributes: container `data-size`, `data-invalid?`, `data-disabled?`,
 | container | Input's recipe (`input.md`) in every state, plus: `flex-wrap` · row gap `--pm-space-1` · column gap `--pm-space-1` · padding `--pm-space-1` `--pm-space-2` · min-height `--pm-control-height-{size}` · height grows with wrapping (the only Input-style field that grows) · seat `--pm-shadow-control` (`none` disabled), as in Input's seat row |
 | chip | height `calc(var(--pm-control-height-sm) - var(--pm-space-2))` · padding-inline `--pm-space-2` · gap `--pm-space-1` · radius `--pm-radius-pill` (the tag shape: a pill in every geometry, including terminal's "rare tag that must read as a tag") · bg `--pm-bg-subtle` · border `1px solid --pm-border-subtle` · label `text.sm` `--pm-text-primary`, ellipsis past `calc(var(--pm-space-10) * 2)` |
 | chip remove | Icon `close` `sm` `--pm-text-muted` · hover `--pm-danger-text` · its own focus ring per conventions §4 (a chip is a composite: label + one labelled button) |
-| chip focused | border `--pm-border-focus` (keyboard walk: ←/→ from the input traverse chips) |
+| chip focused | border `--pm-border-focus` (keyboard walk: the arrows from the input traverse chips, mirrored right to left) |
 | inner input | bare `<input>`: inherits container font (`text.{size map}` per conventions §2) · `--pm-text-primary` · placeholder `--pm-text-muted` · min-width `calc(var(--pm-space-10) / 2)` · flex-grow · below `30rem` it steps up to the text-entry floor's size/line-height (conventions §13's focus-zoom floor, metrics only); chips do not step, because they are not text entry |
 | duplicate flash | existing chip border `--pm-accent-bg` for one `--pm-motion-duration-control` (see Motion) |
 | at max | input present and read-only: `cursor: default` on the container, because there is nothing to type into, and the field still takes focus when the container passes it on |

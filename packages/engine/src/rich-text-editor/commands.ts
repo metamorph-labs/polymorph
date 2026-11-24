@@ -608,7 +608,10 @@ export function liftCommand(schema: Schema): Command {
 /** Whether the selection's list items are nested in another list item, as `liftListItem` finds them. */
 function nestedItem(state: EditorState, item: NodeType): boolean {
   const { $from, $to } = state.selection
-  const range = $from.blockRange($to, (node) => node.childCount > 0 && node.firstChild?.type === item)
+  const range = $from.blockRange(
+    $to,
+    (node) => node.childCount > 0 && node.firstChild?.type === item,
+  )
   return range !== null && range.depth > 0 && $from.node(range.depth - 1).type === item
 }
 

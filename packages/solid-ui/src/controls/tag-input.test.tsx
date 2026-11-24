@@ -355,7 +355,9 @@ function inputMethodKey(
 describe('keys', () => {
   it('keeps every key an input method is handling, so no half-typed text becomes a tag', async () => {
     const onChange = vi.fn()
-    await mount(() => <TagInput defaultValue={['billing']} onChange={onChange} aria-label="Labels" />)
+    await mount(() => (
+      <TagInput defaultValue={['billing']} onChange={onChange} aria-label="Labels" />
+    ))
     const input = field() as HTMLInputElement
     await userEvent.click(input)
     await userEvent.keyboard('にほ')

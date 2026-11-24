@@ -101,7 +101,8 @@ Attributes: root `data-state="streaming|dragover"` (absent at rest), `data-disab
 ## Behaviour
 
 - **Enter sends; Shift+Enter is a new line.** During IME composition, Enter belongs to the IME
-  and sending would post half a word, so `isComposing` is respected.
+  and sending would post half a word, so a key marked `isComposing` sends nothing, and neither
+  does the key code 229 Safari gives the Enter that confirms a composition after it has ended.
 - **Empty cannot be sent.** Whitespace is empty; a chip is content.
 - **A sent prompt is cleared from the field** when the composer is uncontrolled. A controlled
   `value` belongs to the app, which decides whether to clear or keep the text after taking it.
@@ -112,6 +113,10 @@ Attributes: root `data-state="streaming|dragover"` (absent at rest), `data-disab
   same two handlers. A text paste keeps its default behaviour; only a paste of files is taken.
 - **The field grows** from one line with the prompt, up to `maxRows` lines, then scrolls. This is
   Textarea's autosize, always on.
+- **Focus after a chip's removal.** The app removes an attachment in its own time. Once the
+  attachment of a chip whose remove control was pressed has left `attachments`, focus moves to
+  the remove control of the chip in its place, else of the chip before it, else to the field,
+  and never falls to the page. Focus the reader has moved since the press stays where it is.
 
 **Mentions and commands.** A trigger is a character that opens a list of the app's suggestions:
 `@` for people, `/` for commands. The prompt stays plain text. There are no chips in it and no

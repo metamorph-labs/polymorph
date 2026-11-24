@@ -87,9 +87,7 @@ describe('keys', () => {
     await userEvent.keyboard('gr')
     await opened()
     for (const how of ['composing', 'processed'] as const) {
-      expect(inputMethodKey(field() as HTMLElement, 'Enter', how).defaultPrevented, how).toBe(
-        false,
-      )
+      expect(inputMethodKey(field() as HTMLElement, 'Enter', how).defaultPrevented, how).toBe(false)
     }
     // Escape while the list is open is the machine's layer's, which leaves a composing one alone.
     inputMethodKey(field() as HTMLElement, 'Escape', 'composing')

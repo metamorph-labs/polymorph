@@ -77,7 +77,9 @@ function inputMethodKey(
 describe('PhoneInput and an input method', () => {
   it('commits nothing on an Enter an input method is handling', async () => {
     const onChange = vi.fn()
-    render(<PhoneInput aria-label="Mobile" defaultCountry="GB" locale="en-GB" onChange={onChange} />)
+    render(
+      <PhoneInput aria-label="Mobile" defaultCountry="GB" locale="en-GB" onChange={onChange} />,
+    )
     const number = screen.getByRole('textbox', { name: 'Mobile' })
     await userEvent.click(number)
     await userEvent.keyboard('7700900123')

@@ -202,7 +202,11 @@ export default describeMember({
   listPresence: { chips: { of: 'values', key: '(tag: string) => tag' } },
   effects: [
     { run: 'settled = true' },
-    { watch: 'clearable', run: 'clearable && field ? holdFieldEscape(field) : () => {}', release: 'ran()' },
+    {
+      watch: 'clearable',
+      run: 'clearable && field ? holdFieldEscape(field) : () => {}',
+      release: 'ran()',
+    },
   ],
   template: el(
     'div',

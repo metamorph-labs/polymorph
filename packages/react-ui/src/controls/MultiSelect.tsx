@@ -513,7 +513,10 @@ export function MultiSelect({
       return
     }
     // The key toward the line's start moves into the chips, as in TagInput.
-    if (event.key === lineStartKey(event.currentTarget) && event.currentTarget.selectionStart === 0) {
+    if (
+      event.key === lineStartKey(event.currentTarget) &&
+      event.currentTarget.selectionStart === 0
+    ) {
       const last = ordered(selected)[values.length - 1]
       if (last !== undefined) removeRefs.current.get(last)?.focus()
     }

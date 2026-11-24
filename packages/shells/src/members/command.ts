@@ -322,7 +322,10 @@ export default describeMember({
             // The dialog held itself open for a query; Escape clears it here, unless an input
             // method is handling the key (`composingKey`).
             on: {
-              keydown: run("api.setInputValue('')", "$event.key === 'Escape' && !composingKey($event)"),
+              keydown: run(
+                "api.setInputValue('')",
+                "$event.key === 'Escape' && !composingKey($event)",
+              ),
             },
           }),
           member('Kbd', {}, { slots: { default: [text('escapeHint')] } }),
