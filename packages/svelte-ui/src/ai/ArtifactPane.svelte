@@ -8,7 +8,14 @@
  */
 import { onDestroy, type Snippet } from 'svelte'
 
-import { Icon, Render, agentMember, joinSlot, watchEffect } from '@polymorph/svelte'
+import {
+  Icon,
+  Render,
+  agentMember,
+  focusAfterRemoval,
+  joinSlot,
+  watchEffect,
+} from '@polymorph/svelte'
 import styles from '@polymorph/recipes/ai/artifact-pane.module.css'
 import Button from '../controls/Button.svelte'
 import SegmentedControl from '../controls/SegmentedControl.svelte'
@@ -128,21 +135,31 @@ const choices = $derived((views ?? []).map((entry) => ({ value: entry.id, label:
 let release1: (() => void) | undefined
 const effect1 = () => {
   release1?.()
+  const ran = focusAfterRemoval(pane)
+  release1 = () => {
+    ran()
+  }
+}
+watchEffect(effect1, { watch: () => pane })
+onDestroy(() => release1?.())
+let release2: (() => void) | undefined
+const effect2 = () => {
+  release2?.()
   const run = () => {
     overflowing = body !== null && body.scrollHeight > body.clientHeight
   }
   const resize = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(run)
   for (const element of [body, body?.firstElementChild]) if (element) resize?.observe(element)
-  release1 = () => {
+  release2 = () => {
     resize?.disconnect()
   }
   run()
 }
-watchEffect(effect1, { watch: () => shown?.id })
-onDestroy(() => release1?.())
-let release2: (() => void) | undefined
-const effect2 = () => {
-  release2?.()
+watchEffect(effect2, { watch: () => shown?.id })
+onDestroy(() => release2?.())
+let release3: (() => void) | undefined
+const effect3 = () => {
+  release3?.()
   const ran = agentMember({
     member: 'ArtifactPane',
     element: () => pane,
@@ -164,12 +181,12 @@ const effect2 = () => {
     },
     withholds: () => [switcher, closer],
   })
-  release2 = () => {
+  release3 = () => {
     ran()
   }
 }
-watchEffect(effect2)
-onDestroy(() => release2?.())
+watchEffect(effect3)
+onDestroy(() => release3?.())
 </script>
 
 {@render joined.start?.()

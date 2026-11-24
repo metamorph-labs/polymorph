@@ -5,7 +5,7 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { mergeProps, onCleanup, onMount, type JSX } from 'solid-js'
+import { createMemo, mergeProps, onCleanup, onMount, type JSX } from 'solid-js'
 
 import {
   Icon,
@@ -14,9 +14,11 @@ import {
   claimSlot,
   createCell,
   elementRef,
+  focusAfterRemoval,
   resolveSlot,
   scope,
   useDeparture,
+  watchEffect,
   type Defaults,
 } from '@polymorph/solid'
 import styles from '@polymorph/recipes/structure/alert.module.css'
@@ -82,6 +84,20 @@ export default function Alert(given: AlertProps): JSX.Element {
     let release2: (() => void) | undefined
     const effect2 = () => {
       release2?.()
+      const ran = focusAfterRemoval(root.value)
+      release2 = () => {
+        ran()
+      }
+    }
+    watchEffect(
+      createMemo(() => root.value),
+      effect2,
+      true,
+    )
+    onCleanup(() => release2?.())
+    let release3: (() => void) | undefined
+    const effect3 = () => {
+      release3?.()
       const ran = agentMember({
         member: 'Alert',
         element: () => root.value,
@@ -109,12 +125,12 @@ export default function Alert(given: AlertProps): JSX.Element {
         },
         withholds: () => closeRegion.value,
       })
-      release2 = () => {
+      release3 = () => {
         ran()
       }
     }
-    onMount(effect2)
-    onCleanup(() => release2?.())
+    onMount(effect3)
+    onCleanup(() => release3?.())
     return (
       <>
         {(props.title !== undefined && props.title !== '') || childrenSlot.filled() ? (

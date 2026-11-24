@@ -15,6 +15,7 @@ import {
   type ContractFault,
 } from '@polymorph/registry/behaviour'
 
+import { focusAfterRemovalLaw } from './focus-after-removal'
 import {
   AGENT_KEYWORDS,
   AGENT_STATEMENT_KINDS,
@@ -332,6 +333,7 @@ export function conformanceLaw({ shell, adapter, galleries, ledger, specs }: She
   })
 
   agentConformanceLaw({ shell, adapter, galleries, ledger, specs })
+  focusAfterRemovalLaw(shell, adapter)
 }
 
 /** The statements of `FALSE_STATEMENTS` a contract fence writes. */

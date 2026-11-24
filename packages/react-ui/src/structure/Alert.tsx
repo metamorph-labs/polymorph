@@ -1,9 +1,15 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
 import { Button } from '../controls/Button'
-import { Icon, type IconRole, memberAttr, useAgentMember } from '@polymorph/react'
+import {
+  focusAfterRemoval,
+  Icon,
+  type IconRole,
+  memberAttr,
+  useAgentMember,
+} from '@polymorph/react'
 import { readMotionEnvironment, resolveBinding } from '@polymorph/react/motion'
 import styles from '@polymorph/recipes/structure/alert.module.css'
 
@@ -94,6 +100,12 @@ export function Alert({
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   // Ends an agent's dismiss: once `onDismiss` has run, or once the Alert has unmounted first.
   const settle = useRef<(() => void) | undefined>(undefined)
+
+  // Focus in the Alert as it leaves the page, the ✕'s after a dismissal, moves to
+  // the focusable element nearest where it was, not to the body. A layout
+  // effect's cleanup runs while the root is still in the document. It follows
+  // the root, which an Alert with nothing to say does not draw.
+  useLayoutEffect(() => focusAfterRemoval(root.current), [empty])
 
   // If the application removes the Alert before the row has closed, for example on
   // a filter or route change, `onDismiss` must not fire afterwards.

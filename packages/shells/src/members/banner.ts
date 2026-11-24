@@ -15,6 +15,11 @@ export default describeMember({
     BannerTone: "NonNullable<BannerProps['tone']>",
   },
   defaults: { tone: lit('neutral'), dismissLabel: lit('Dismiss') },
+  effects: [
+    // Focus in the Banner as the application removes it, the ✕'s after a dismissal, moves to
+    // the focusable element nearest where it was (`focusAfterRemoval`), not to the body.
+    { watch: 'root', run: 'focusAfterRemoval(root)', release: 'ran()' },
+  ],
   // The spec's `agent` fence. The ✕ is the Banner's own part, so it is withheld and `dismiss`
   // stands in its place. The application's action is its own and stays an agent's.
   agent: {
