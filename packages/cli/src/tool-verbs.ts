@@ -212,7 +212,7 @@ function readNamed(verb: Verb, cli: Cli, path: string, directory?: string): stri
   const full = resolve(cli.root, path)
   if (!existsSync(full)) throw new UsageError(verb, `there is no file ${path}`)
   if (statSync(full).isDirectory()) {
-    throw new UsageError(verb, directory ?? `${path} is a directory, and it reads a file`)
+    throw new UsageError(verb, directory ?? `${path} is a directory; name a file`)
   }
   return readFileSync(full, 'utf8')
 }
