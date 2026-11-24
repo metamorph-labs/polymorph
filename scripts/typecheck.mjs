@@ -98,6 +98,7 @@ const projects = [
   'packages/registry/tsconfig.json',
   'packages/cli/tsconfig.json',
   'packages/mcp/tsconfig.json',
+  'packages/tools/tsconfig.json',
   'packages/spec/tsconfig.json',
   'packages/screen/tsconfig.json',
   'packages/screen/tsconfig.node.json',

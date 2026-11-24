@@ -66,6 +66,8 @@ export type { CardOptions } from './card'
 
 export { firstDifference } from './diff'
 
+export { namedFiles } from './files'
+
 export {
   fileClosure,
   fontPackage,
