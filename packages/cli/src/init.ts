@@ -958,11 +958,15 @@ function installFailure(printed: string): InstallOutcome {
 }
 
 /** The published packages a new app installs, as the registry names them, at the app's ranges. */
-function publishedReleases(registry: Registry, framework: Framework): string[] {
+function publishedReleases(registry: Registry, framework: Framework, origin: Origin): string[] {
   const runtime = appOf(framework)?.runtime ?? RUNTIME_PACKAGES
-  return [...runtime, RULES_PACKAGE].map((pkg) =>
-    alias(registry, pkg, framework).replace(/^npm:/, ''),
-  )
+  return [
+    ...[...runtime, RULES_PACKAGE].map((pkg) =>
+      alias(registry, pkg, framework).replace(/^npm:/, ''),
+    ),
+    // The published tools' app lists them too.
+    ...(origin === 'published' ? [`${TOOLS_NAME}@${toolsRange(registry)}`] : []),
+  ]
 }
 
 /** How a new app is installed: from where, with what, and run from which origin. */
@@ -1008,7 +1012,7 @@ function installAdvice(
     case 'unpublished':
       return [
         'The app is written, and the registry has no release of its packages at the ranges it asks for:',
-        ...publishedReleases(registry, framework).map((release) => `  ${release}`),
+        ...publishedReleases(registry, framework, plan.origin).map((release) => `  ${release}`),
         ...(plan.origin === 'checkout'
           ? [
               'They are not published at those versions yet. The release steps in this checkout’s ' +
