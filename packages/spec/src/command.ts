@@ -170,7 +170,9 @@ export async function emitCommand(command: EmitCommand): Promise<number> {
     complain(`${input} emits a screen ${judge}, so nothing was written:\n`)
     if (fatal !== null) complain(`  ${fatal}`)
     for (const violation of violations) {
-      complain(`  ${violation.line}:${violation.column}  ${violation.rule}\n    ${violation.message}`)
+      complain(
+        `  ${violation.line}:${violation.column}  ${violation.rule}\n    ${violation.message}`,
+      )
     }
     return 1
   }

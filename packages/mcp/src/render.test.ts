@@ -312,7 +312,9 @@ describe('a server that cannot draw', () => {
   })
 
   it('leaves any other failure to be reported as it is', () => {
-    expect(browserAdvice(new Error('Target page crashed'), checkoutBrowserSetup('/checkout'))).toBeNull()
+    expect(
+      browserAdvice(new Error('Target page crashed'), checkoutBrowserSetup('/checkout')),
+    ).toBeNull()
     expect(browserAdvice('a string', checkoutBrowserSetup('/checkout'))).toBeNull()
   })
 })
