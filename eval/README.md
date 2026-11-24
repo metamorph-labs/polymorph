@@ -251,7 +251,45 @@ framework and members a run names, and the screen is judged with `checkScreen` f
 ones. One request is its own first shot, so the lawful rate is printed once. Each time is
 printed with the fastest and the slowest run beside its mean.
 
+**The run-time number:** `claude-sonnet-5-5`, the CLI’s own thinking, the CLI’s default effort, through Claude Code 2.1.330, 1.0.16 (2dca2fe), the react card of every member it draws (144 members, 60,721 characters) — 95% lawful (83% to 99%), 95% meeting their brief (83% to 99%), 93% lawful and meeting their brief (80% to 97%), 25,278 input tokens a run (24,169 read from the cache, 1,107 written to it and 2 uncached) and 2,987 output tokens, 19.50 s (11.90 s to 29.45 s) to the end of the answer, with no time to the first token ([2026-11-23-claude-sonnet-5-5-runtime-cli.json](results/2026-11-23-claude-sonnet-5-5-runtime-cli.json)). Each rate’s range is the 95% interval its 40 runs support, and each time’s runs from the fastest run to the slowest.
+
 **The run-time number:** `claude-haiku-5-5`, the CLI’s own thinking, the CLI’s default effort, through Claude Code 2.1.330, 1.0.16 (14d4d55), the react card of every member it draws (144 members, 60,721 characters) — 93% lawful (80% to 97%), 88% meeting their brief (74% to 95%), 83% lawful and meeting their brief (68% to 91%), 25,299 input tokens a run (24,169 read from the cache, 1,128 written to it and 2 uncached) and 8,075 output tokens, 61.61 s (15.90 s to 745.94 s) to the end of the answer, with no time to the first token ([2026-11-23-claude-haiku-5-5-runtime-cli-2.json](results/2026-11-23-claude-haiku-5-5-runtime-cli-2.json)). Each rate’s range is the 95% interval its 40 runs support, and each time’s runs from the fastest run to the slowest. Of 40 runs, 1 answered with no whole document.
+
+### claude-sonnet-5-5
+
+| Results | Version | Runner | Thinking | Effort | Card | Briefs × runs | Lawful | Meets brief | Lawful and meets brief | Input tokens | Cache read | Cache written | Uncached | Output tokens | First token | Wall time | Retries | Endings |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| [2026-11-23-claude-sonnet-5-5-runtime-cli.json](results/2026-11-23-claude-sonnet-5-5-runtime-cli.json) | 1.0.16 (2dca2fe) | CLI 2.1.330 | the CLI’s | default | react, default (144 members, 60,721 characters) | 8 × 5 | 95% (83–99%) | 95% (83–99%) | 93% (80–97%) | 25,278 | 24,169 | 1,107 | 2 | 2,987 | — | 19.50 s (11.90–29.45 s) | 0 | 40 answered |
+
+#### 2026-11-23-claude-sonnet-5-5-runtime-cli.json
+
+40 runs cannot tell this eval from a second one of the same size that measures:
+
+- lawful: anything from 83% to 100% (95% here)
+- meets brief: anything from 83% to 100% (95% here)
+- lawful and meets brief: anything from 78% to 100% (93% here)
+
+| Brief | Runs | Lawful | Meets brief | Lawful and meets brief | Requirements not met |
+| --- | --- | --- | --- | --- | --- |
+| auth-sign-in-up | 5 | 4 of 5 (38–96%) | 3 of 5 (23–88%) | 3 of 5 (23–88%) | `error-message` 2 |
+| chat-assistant | 5 | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | — |
+| dashboard-usage | 5 | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | — |
+| detail-order | 5 | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | — |
+| form-booking | 5 | 4 of 5 (38–96%) | 5 of 5 (57–100%) | 4 of 5 (38–96%) | — |
+| list-incidents | 5 | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | — |
+| onboarding-steps | 5 | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | — |
+| settings-workspace | 5 | 5 of 5 (57–100%) | 5 of 5 (57–100%) | 5 of 5 (57–100%) | — |
+
+With 5 runs a brief, two briefs are told apart only when their counts differ by 3 runs or more.
+
+Requirements a screen did not meet, most often missed first:
+
+- `auth-sign-in-up/error-message`, 2 of 5 runs: A wrong email address or password is reported in one message for the whole form.
+
+Answers that were not lawful in 2026-11-23-claude-sonnet-5-5-runtime-cli.json, in the check’s words:
+
+- `auth-sign-in-up` #4: $.root.children[0].children[2].children[0].children[0].props.pt: `Stack` has no prop `pt`
+- `form-booking` #2: $.root.children[0].children[4].children[0].props.removeLabel: `removeInviteeLabel` binds to "removeInviteeLabel", which the screen does not declare as an input
 
 ### claude-haiku-5-5
 
