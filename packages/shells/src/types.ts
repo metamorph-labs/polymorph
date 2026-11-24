@@ -166,6 +166,9 @@ export const ENGINE_HELPERS: readonly string[] = [
   'chooseMenuEntry',
   'menubarChoices',
   'chooseMenubarEntry',
+  // Where focus goes when an anchored overlay closes, and a new page's arrival (AppShell).
+  'anchorFocusReturns',
+  'arriveAtPage',
   // What an agent goes to in AppShell's rail, read from the rail in the document, and how.
   'railDestinations',
   'currentRailDestination',

@@ -24,6 +24,10 @@
     class?: ClassValue
     /** The element's id, which a frame's skip link targets (AppShell's `#content`). */
     id?: string
+    /** `-1` where focus moves into the element from script (AppShell's region). */
+    tabindex?: number | string
+    /** Out of reach while something over it holds the reader (AppShell's open drawer). */
+    inert?: boolean
     children?: Snippet
   }
 
@@ -34,6 +38,8 @@
     ribbon,
     class: className,
     id: elementId,
+    tabindex,
+    inert,
     children,
   }: Props = $props()
 
@@ -95,6 +101,8 @@
   this={as}
   bind:this={element}
   id={elementId}
+  tabindex={tabindex === undefined ? undefined : Number(tabindex)}
+  {inert}
   class={className}
   data-page-transition={transitionKey === undefined ? undefined : sequence % 2 ? 'b' : 'a'}
   data-page-transition-state={transitionKey === undefined

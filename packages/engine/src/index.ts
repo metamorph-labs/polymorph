@@ -347,12 +347,8 @@ export { gallerySlug, idPart } from './conventions/slug'
 export { spacingAttrs } from './conventions/spacing'
 export type { LayoutPatch, SpacingProps } from './conventions/spacing'
 
-export {
-  closeTooltipOnScroll,
-  keyboardHolds,
-  TOOLTIP_DELAY_MS,
-  TOOLTIP_SKIP_DELAY_MS,
-} from './conventions/tooltip'
+export { TOOLTIP_DELAY_MS, TOOLTIP_SKIP_DELAY_MS } from './conventions/tooltip'
+export { closeTooltipOnScroll, keyboardHolds } from './conventions/tooltip-hold'
 
 export {
   revealTourTarget,
