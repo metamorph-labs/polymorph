@@ -113,18 +113,23 @@ export function violationLines(name: string, violations: readonly Reported[]): s
     const lines = [
       `${name}:${violation.line}:${violation.column}  ${violation.rule}  ${violation.message}`,
     ]
-    if (violation.fix) {
-      lines.push(
-        violation.fix.text === ''
-          ? '    fix    remove the reported text'
-          : `    fix    rewrite as ${JSON.stringify(violation.fix.text)}`,
-      )
-    }
+    if (violation.fix) lines.push(`    fix    ${rewrite(violation.fix.text)}`)
     const alternatives = (violation.alternatives ?? []).map(alternative)
     if (alternatives.length > 0) lines.push(`    use    ${alternatives.join(' · ')}`)
     if (violation.climb !== undefined) lines.push(`    climb  ${climbLine(violation.climb)}`)
     return lines
   })
+}
+
+/**
+ * The rule's own rewrite, shown when it fits on a line. A longer one, such as
+ * a `<button>` rewritten with the import it needs, is named for `polymorph fix`
+ * to apply, and `--json` holds its text.
+ */
+function rewrite(text: string): string {
+  if (text === '') return 'remove the reported text'
+  if (!text.includes('\n') && text.length <= 72) return `rewrite as ${JSON.stringify(text)}`
+  return 'one lawful rewrite, which `polymorph fix` applies'
 }
 
 /** An alternative as the message names it: `<Inline gap>`, `--pm-space-4`, with its rung. */
