@@ -6,6 +6,7 @@ import { installTestTheme } from '@polymorph/engine/testing'
 import sheet from '@polymorph/recipes/overlays/sheet.module.css'
 
 import { mount } from '../mount'
+import Dialog from '../overlays/Dialog'
 import MultiSelect from './MultiSelect'
 
 /**
@@ -414,5 +415,96 @@ describe('the sheet, below `30rem`', () => {
     // Below the field, which sits above the scrim at the top of the page.
     await userEvent.click(scrim, { position: { x: 10, y: 200 } })
     await vi.waitFor(() => expect(sheetPanel()).toBeNull(), { timeout: 3_000 })
+  })
+})
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * A key an input method is handling, dispatched on `target`: marked `isComposing`, or reported
+ * with key code 229 after the composition has ended, as Safari sends the Enter that confirms it.
+ */
+function inputMethodKey(
+  target: HTMLElement,
+  key: string,
+  how: 'composing' | 'processed',
+): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    bubbles: true,
+    cancelable: true,
+    isComposing: how === 'composing',
+  })
+  if (how === 'processed') Object.defineProperty(event, 'keyCode', { value: 229 })
+  target.dispatchEvent(event)
+  return event
+}
+
+describe('keys', () => {
+  it('leaves every key an input method is handling to it', async () => {
+    const onChange = vi.fn()
+    await mount(() => <MultiSelect options={PEOPLE} onChange={onChange} aria-label="Assignees" />)
+    await userEvent.click(field() as HTMLElement)
+    await userEvent.keyboard('gr')
+    await opened()
+    for (const how of ['composing', 'processed'] as const) {
+      expect(inputMethodKey(field() as HTMLElement, 'Enter', how).defaultPrevented, how).toBe(
+        false,
+      )
+    }
+    // Escape while the list is open is the machine's layer's, which leaves a composing one alone.
+    inputMethodKey(field() as HTMLElement, 'Escape', 'composing')
+    await sleep(30)
+    expect(onChange).not.toHaveBeenCalled()
+    expect(root()?.getAttribute('data-state')).toBe('open')
+    expect(field()?.value).toBe('gr')
+    await userEvent.keyboard('{Enter}')
+    expect(onChange).toHaveBeenLastCalledWith(['grace'])
+  })
+
+  it('inside a Dialog, closes the list, then clears the text with the Dialog open, then closes it', async () => {
+    const onOpenChange = vi.fn()
+    const [open, setOpen] = createSignal(true)
+    await mount(() => (
+      <Dialog
+        title="Assign"
+        open={open()}
+        onOpenChange={(next) => {
+          onOpenChange(next)
+          setOpen(next)
+        }}
+      >
+        <MultiSelect options={PEOPLE} aria-label="Assignees" />
+      </Dialog>
+    ))
+    await vi.waitFor(() => expect(field()).not.toBeNull())
+    await userEvent.click(field() as HTMLElement)
+    await userEvent.keyboard('gr')
+    await opened()
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(root()?.getAttribute('data-state')).toBe('closed'))
+    expect(field()?.value).toBe('gr')
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(field()?.value).toBe(''))
+    await sleep(60)
+    expect(onOpenChange).not.toHaveBeenCalled()
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+  })
+
+  it('follows a right-to-left line: → moves back into the chips and ← forward to the field', async () => {
+    const { host } = await mount(() => (
+      <MultiSelect options={PEOPLE} defaultValue={['ada', 'grace']} aria-label="Assignees" />
+    ))
+    host.dir = 'rtl'
+    await userEvent.click(field() as HTMLElement)
+    await userEvent.keyboard('{ArrowLeft}')
+    expect(document.activeElement).toBe(field())
+    await userEvent.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(removeButton('Grace Hopper'))
+    await userEvent.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(removeButton('Ada Lovelace'))
+    await userEvent.keyboard('{ArrowLeft}{ArrowLeft}')
+    expect(document.activeElement).toBe(field())
   })
 })
