@@ -515,9 +515,12 @@ export function createServer(context: ToolContext): McpServer {
         'JSON lists the layout faults measured in the page: `sideways-scroll` (the page or a ' +
         'region scrolls sideways), `clipped-text` (text cut by its box with no ellipsis, or ' +
         'drawn outside it), `small-target` (a control under the 24px touch-target floor with ' +
-        'another control beside it) and `cut-off` (text or a control hidden where nothing ' +
-        'scrolls to it). Each names the element and the numbers. A spec holds no data, so pass ' +
-        '`data` to see the screen populated and `empty` to see it with nothing in it; with ' +
+        'another control beside it), `cut-off` (text or a control hidden where nothing ' +
+        'scrolls to it), `no-gap` (a member touching another member with no space between ' +
+        'them, or its border against the inside of a box’s border) and `unseen-focus` (a ' +
+        'control whose keyboard focus mark is missing, under 2px, under 3:1 against what it ' +
+        'is drawn on, or cut). Each names the element and the numbers. A spec holds no data, ' +
+        'so pass `data` to see the screen populated and `empty` to see it with nothing in it; with ' +
         'neither, each input is sampled from its type (a string is its own name, a list is ' +
         'empty) and the answer says how every input was filled. Callbacks are always stubs. ' +
         'The spec is checked as `validate` checks one, and an unlawful spec is not drawn. ' +

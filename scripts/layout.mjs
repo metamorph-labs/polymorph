@@ -7,8 +7,11 @@
  * measure on it: the one `render_screen` answers with
  * (`apps/workbench/src/screen/measure.ts`). A fault on any page fails the run:
  * a page that scrolls sideways, text its box cuts, a control a box hides, a
- * control under the touch-target floor beside another. So does a page that
- * throws, and a gallery that does not draw.
+ * control under the touch-target floor beside another, a member that touches
+ * another with nothing between them, a control whose keyboard focus mark
+ * cannot be seen. So does a page that throws, and a gallery that does not
+ * draw. The measure gives each control keyboard focus itself, so this script
+ * presses no key.
  *
  * The galleries draw every state a member's fixture declares, so this is the
  * check that a member holds its layout in a narrow window and in a wide one,
