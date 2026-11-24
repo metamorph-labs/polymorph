@@ -1,6 +1,14 @@
 import { FRAMEWORK_FOUNDATION, FRAMEWORK_VOCABULARY } from '@polymorph/registry'
 
-import { indexHtml, STATUS, viteConfig, type FrameworkApp } from './init-app'
+import {
+  browserNote,
+  indexHtml,
+  serverNote,
+  STATUS,
+  viteConfig,
+  type FrameworkApp,
+  type Origin,
+} from './init-app'
 import { ESLINT_FRAGMENT, STYLELINT_FRAGMENT } from './patch'
 
 /**
@@ -95,7 +103,7 @@ export function App() {
 }
 `
 
-export const SOLID_AGENTS = `# Working in this app
+export const SOLID_AGENTS = (origin: Origin): string => `# Working in this app
 
 This app is built with polymorph, a closed component vocabulary with lint rules that enforce it,
 in Solid.
@@ -108,16 +116,14 @@ in Solid.
 - The MCP server in \`.mcp.json\` is the tool for both: \`get_system_card\` with \`framework: "solid"\`
   returns the card, and \`validate\` with \`framework: "solid"\` checks code against the red rules and
   names the lawful fix for each violation.
-- \`.mcp.json\` starts the server from the polymorph checkout that created this app, by its absolute
-  path on that machine. The path is machine-specific. On another machine, change it to that
-  machine's checkout. A team can instead add \`.mcp.json\` to \`.gitignore\` and keep one per person.
+${serverNote(origin)}
 - Screens are written as specs under \`src/screens/*.json\` and emitted to TSX (\`emit_screen\` with
   \`framework: "solid"\`). An emitted screen holds no state and no logic. A hand-written container,
   such as \`src/App.tsx\`, renders it and owns both. To change an emitted screen, change its spec and
   emit it again.
 - To see a screen, call \`render_screen\` with its spec. It draws the screen in a browser at a
-  phone and a desktop width, and returns the pictures with the layout faults it measured. It needs
-  a browser, downloaded once in the polymorph checkout: \`pnpm exec playwright install chromium\`.
+  phone and a desktop width, and returns the pictures with the layout faults it measured.
+  ${browserNote(origin)}
 - Application code may not write styles or raw controls: no CSS files, no \`class\`, \`classList\` or
   \`style\`, no raw \`<button>\` or \`<input>\`. The red rules in \`${ESLINT_FRAGMENT}\` and
   \`${STYLELINT_FRAGMENT}\` say the rest, and \`pnpm lint\` runs them.

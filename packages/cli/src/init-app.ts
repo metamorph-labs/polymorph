@@ -1,3 +1,5 @@
+import { PUBLISHED_NAMES, TOOLS_PACKAGE } from '@polymorph/registry'
+
 /**
  * What `polymorph init --framework <name>` writes for an app in Vue, Svelte,
  * Solid or Angular, where it differs from the React app: the framework and its
@@ -33,7 +35,63 @@ export interface FrameworkApp {
   welcome: string
   /** The container that owns the state and renders the welcome screen. */
   app: { path: string; contents: string }
-  agents: string
+  /** `AGENTS.md`, which says where the MCP server runs from, and so depends on the origin. */
+  agents: (origin: Origin) => string
+}
+
+/**
+ * Where the CLI that writes the app runs from: a checkout of this repository,
+ * or the published tools (`@metamorph-labs/polymorph`). What `init` writes for
+ * an agent depends on it. From a checkout, `.mcp.json` runs that checkout's
+ * server by a path that belongs to one machine. From the published tools, it
+ * runs the server with `npx`, which works on any machine.
+ */
+export type Origin = 'checkout' | 'published'
+
+/** A program a new app runs: a command, and the arguments that come before its own. */
+export interface Program {
+  command: string
+  args: readonly string[]
+}
+
+/** `.mcp.json`: the MCP server, run against the app it is in. */
+export function mcpConfig(mcp: Program): string {
+  const config = {
+    mcpServers: { polymorph: { command: mcp.command, args: [...mcp.args, '--project', '.'] } },
+  }
+  return `${JSON.stringify(config, null, 2)}\n`
+}
+
+/** The published tools, by the name `npx` runs them with. */
+export const TOOLS_NAME = PUBLISHED_NAMES[TOOLS_PACKAGE] as string
+
+/**
+ * The bullet of `AGENTS.md` that says where the MCP server in `.mcp.json`
+ * runs from. An app with a manifest lists the published tools as a dev
+ * dependency, so `npx` runs that copy; a page with no build has no manifest,
+ * and `npx` fetches the release that wrote the page.
+ */
+export function serverNote(origin: Origin, manifest = true): string {
+  if (origin === 'checkout') {
+    return `- \`.mcp.json\` starts the server from the polymorph checkout that created this app, by its absolute
+  path on that machine. The path is machine-specific. On another machine, change it to that
+  machine's checkout. A team can instead add \`.mcp.json\` to \`.gitignore\` and keep one per person.`
+  }
+  return manifest
+    ? `- \`.mcp.json\` starts the server with \`npx\` from \`${TOOLS_NAME}\`, which \`package.json\` lists
+  as a dev dependency at the release that created this app. It names no path, so it works on any
+  machine that installs the app.`
+    : `- \`.mcp.json\` starts the server with \`npx\` from \`${TOOLS_NAME}\`, at the release that created
+  this page. It names no path, so it works on any machine with Node.`
+}
+
+/** The sentence of `AGENTS.md` that says what `render_screen` needs. */
+export function browserNote(origin: Origin): string {
+  return origin === 'checkout'
+    ? `It needs a browser, downloaded once in the polymorph checkout:
+  \`pnpm exec playwright install chromium\`.`
+    : `It needs a browser, downloaded once. When the browser is missing,
+  \`render_screen\` answers with the command that downloads it.`
 }
 
 /**

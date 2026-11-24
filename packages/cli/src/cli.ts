@@ -3,7 +3,15 @@ import type { Registry } from '@polymorph/registry'
 import { applyPlan } from './apply'
 import { check, CheckError, checkLines, type Verify } from './check'
 import { addElements, NoBuildFilesError, updateElements, type ElementsResult } from './elements'
-import { checkoutHolding, DEFAULT_SYSTEM, initCommand, InitError, type InitPrograms } from './init'
+import {
+  checkoutHolding,
+  DEFAULT_SYSTEM,
+  initCommand,
+  InitError,
+  TOOLS_NAME,
+  type InitPrograms,
+  type Origin,
+} from './init'
 import { readManifest } from './manifest'
 import { planInstall, EscapingDirError, UnknownItemError, DEFAULT_DIR, ELEMENTS_DIR } from './plan'
 import { PatchError } from './patch'
@@ -37,11 +45,17 @@ export interface Cli {
   registry: Registry
   out: (line: string) => void
   /**
-   * The checkout's MCP server and screen emitter, which `init` wires a new app
-   * to. The entry point resolves them, as it resolves `source`. Only `init`
-   * reads them.
+   * The MCP server and the screen emitter `init` wires a new app to, as
+   * commands. The entry point names them, as it resolves `source`: a checkout's
+   * by their paths, the published tools' by `npx`. Only `init` reads them.
    */
   programs?: InitPrograms
+  /**
+   * Where this CLI runs from: a checkout (the default) or the published tools.
+   * What `init` writes for an agent, and where it installs from by default,
+   * depend on it.
+   */
+  origin?: Origin
 }
 
 export interface Outcome {
@@ -73,9 +87,11 @@ directory, and prints each violation with the rungs that answer it. It exits 1
 on any violation and writes nothing.
 
 \`polymorph init\` writes a new app into an empty directory: the packages as
-npm aliases, an \`.npmrc\`, the Vite theme plugin with a catalogue system,
-the red rules, an MCP config, a system card and a first screen. Then it runs
-\`pnpm install\` with a token from NODE_AUTH_TOKEN or \`gh auth token\`.
+npm aliases, the Vite theme plugin with a catalogue system, the red rules, an
+MCP config, a system card and a first screen. Then it installs them with the
+package manager that ran it. From npmjs.com that needs nothing more; from
+GitHub Packages (\`--registry github\`) it writes an \`.npmrc\` and installs
+with a token from NODE_AUTH_TOKEN or \`gh auth token\`.
 With \`--framework elements\` it writes a page with no build instead: the
 files the page loads the elements from, copied into its static directory, a
 theme sheet, an example page, an MCP config and a system card. \`add\`
@@ -88,13 +104,16 @@ the files again.
                      (default ${ELEMENTS_DIR.split('/')[0]}), the files going in its polymorph/
   --out <path>       where \`theme emit\`/\`theme schema\` write
   --system <name>    the system \`init\` themes the app with (default ${DEFAULT_SYSTEM})
+  --registry <name>  where \`init\`'s app installs the packages from: \`npmjs\` or
+                     \`github\` (default \`npmjs\` from the published tools,
+                     \`github\` from a checkout)
   --framework <name> \`react\` (default), \`vue\`, \`svelte\`, \`solid\`, \`angular\` or
                      \`elements\`: the app \`init\` writes, the members \`add\` vendors
                      (that framework's components); \`add\` reads it from polymorph.json
                      once an install has one; \`check\` reads every file in it instead
                      of inferring
   --json             \`check\` prints its report as JSON
-  --no-install       \`init\` writes the app and does not run \`pnpm install\`
+  --no-install       \`init\` writes the app and does not install it
   --force            overwrite files you have edited
   --dry-run          print the plan, write nothing
 `
@@ -179,6 +198,7 @@ interface Flags {
   out?: string
   system?: string
   framework?: string
+  registry?: string
   install: boolean
   force: boolean
   dryRun: boolean
@@ -204,6 +224,9 @@ function parse(argv: string[]): { flags: Flags; rest: string[] } {
     } else if (argument === '--system') {
       index += 1
       flags.system = argv[index]
+    } else if (argument === '--registry') {
+      index += 1
+      flags.registry = argv[index]
     } else if (argument === '--dir') {
       index += 1
       flags.dir = argv[index]
@@ -232,11 +255,14 @@ function parse(argv: string[]): { flags: Flags; rest: string[] } {
 function refuseCheckout(cli: Cli, command: 'add' | 'update'): string | null {
   const checkout = checkoutHolding(cli.root, cli.source, cli.registry)
   if (checkout === null) return null
+  const elsewhere =
+    (cli.origin ?? 'checkout') === 'checkout'
+      ? `pointing at this checkout: node ../polymorph/packages/cli/bin/polymorph.js ${command} …`
+      : `with the published tools: npx -y ${TOOLS_NAME} ${command} …`
   return (
     `polymorph ${command}: ${cli.root} is in a checkout of polymorph (${checkout}), and ` +
     `${command} would vendor the vocabulary into its own source — run it in the repository ` +
-    'that consumes polymorph, pointing at this checkout: ' +
-    `node ../polymorph/packages/cli/bin/polymorph.js ${command} …`
+    `that consumes polymorph, ${elsewhere}`
   )
 }
 

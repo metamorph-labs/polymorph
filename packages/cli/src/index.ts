@@ -24,12 +24,29 @@ export {
   DEFAULT_SYSTEM,
   InitError,
   installApp,
+  installCommand,
+  mcpConfig,
+  PACKAGE_MANAGERS,
+  PACKAGE_REGISTRIES,
+  packageManagerOf,
   planInit,
   REACT_RANGE,
   refuseDirectory,
+  TOOLS_NAME,
+  toolsRange,
   writeInit,
 } from './init'
-export type { InitPlan, InitPrograms, InitStep, InstallOutcome } from './init'
+export type {
+  InitPlan,
+  InitPrograms,
+  InitStep,
+  InstallOptions,
+  InstallOutcome,
+  Origin,
+  PackageManager,
+  PackageRegistry,
+  Program,
+} from './init'
 
 export { main, run } from './cli'
 export type { Cli, Outcome } from './cli'

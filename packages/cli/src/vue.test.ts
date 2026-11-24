@@ -39,9 +39,10 @@ import { FrameworkMismatchError, installFramework, UnshippedMemberError } from '
 
 const ROOT = resolve(import.meta.dirname, '../../..')
 const registry: Registry = buildRegistry(ROOT)
+/** The checkout's programs, as its bin names them. */
 const programs = {
-  mcp: resolve(ROOT, 'packages/mcp/bin/polymorph-mcp.js'),
-  emit: resolve(ROOT, 'packages/spec/bin/emit.js'),
+  mcp: { command: 'node', args: [resolve(ROOT, 'packages/mcp/bin/polymorph-mcp.js')] },
+  emit: { command: process.execPath, args: [resolve(ROOT, 'packages/spec/bin/emit.js')] },
 }
 
 /** The registry with one member marked absent in Vue, with a reason. */
