@@ -482,3 +482,26 @@ export function verbNamed(command: string | undefined, next: string | undefined)
 
 /** The usage up to its first flag: `polymorph check [dir]`. */
 export const synopsis = (verb: Verb): string => verb.usage.split(/ \[?--/)[0] as string
+
+/** A verb's own help: its usage, what it does, its flags, and the tools of the same job. */
+export function verbHelp(verb: Verb): string {
+  const flags = verb.flags.map((flag) => ({
+    written: `--${flag.name}${flag.value === undefined ? '' : ` <${flag.value}>`}`,
+    summary: flag.summary,
+  }))
+  const width = Math.max(0, ...flags.map((flag) => flag.written.length))
+  const lines = [`usage: ${verb.usage}`, '', verb.summary]
+  if (flags.length > 0) {
+    lines.push('', ...flags.map((flag) => `  ${flag.written.padEnd(width)}  ${flag.summary}`))
+  }
+  if (verb.tools.length > 0) {
+    const tools = verb.tools.map((tool) => `\`${tool}\``)
+    lines.push(
+      '',
+      tools.length === 1
+        ? `The MCP tool ${tools[0]} does the same job and gives the same answer.`
+        : `The MCP tools ${tools.join(' and ')} do the same job and give the same answers.`,
+    )
+  }
+  return lines.join('\n')
+}

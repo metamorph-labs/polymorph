@@ -37,11 +37,12 @@ export type { Cli, Outcome } from './cli'
 
 /**
  * The verbs as data (`VERBS`): name, group, summary, usage, flags and the MCP
- * tools each one's job is. The help, the docs and the agent skills read it.
+ * tools each one's job is. The help, the docs and the agent skills read it, and
+ * `verbHelp(verb)` is one verb's `--help`.
  * `ToolCaller` and `ServerStarter` are the two functions an entry point
  * supplies as `cli.tools` and `cli.serve`.
  */
-export { synopsis, VERB_GROUPS, verbNamed, VERBS } from './verbs'
+export { synopsis, VERB_GROUPS, verbHelp, verbNamed, VERBS } from './verbs'
 export type {
   ServerStarter,
   ToolAnswer,

@@ -16,10 +16,11 @@ import {
 import { planHeadLines, planLines, row, writesNothing } from './readings'
 import { diffInstall, updateInstall, type FileState } from './status'
 import { themeCommand } from './theme'
-import { runToolVerb, verbHelp } from './tool-verbs'
+import { runToolVerb } from './tool-verbs'
 import {
   synopsis,
   VERB_GROUPS,
+  verbHelp,
   verbNamed,
   VERBS,
   type ServerStarter,
