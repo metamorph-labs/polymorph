@@ -5,6 +5,7 @@ import { useLocale } from 'react-aria'
 
 import {
   commitPhone,
+  composingKey,
   type ControlSize,
   dataAttrs,
   dataFlag,
@@ -174,7 +175,8 @@ export function PhoneInput({
   }
 
   function onNumberKeyDown(event: KeyboardEvent<HTMLSpanElement>) {
-    if (event.key === 'Enter') commitDraft()
+    // The Enter that confirms an input method's candidate is the input method's (`composingKey`).
+    if (event.key === 'Enter' && !composingKey(event.nativeEvent)) commitDraft()
   }
 
   /**

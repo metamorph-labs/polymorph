@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { useState } from 'react'
-import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { userEvent } from 'vitest/browser'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { phoneInputLaw, type PhoneInputLawProps } from '@polymorph/conformance/phone-input'
 import { createAgentBridge } from '@polymorph/engine/agent'
@@ -51,6 +52,42 @@ phoneInputLaw({
     render(<Held props={props} onChange={onChange} expose={(setter) => (set = setter)} />)
     return { set: (value) => set(value) }
   },
+})
+
+/**
+ * A key an input method is handling, dispatched on `target`: marked `isComposing`, or reported
+ * with key code 229 after the composition has ended, as Safari sends the Enter that confirms it.
+ */
+function inputMethodKey(
+  target: HTMLElement,
+  key: string,
+  how: 'composing' | 'processed',
+): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    bubbles: true,
+    cancelable: true,
+    isComposing: how === 'composing',
+  })
+  if (how === 'processed') Object.defineProperty(event, 'keyCode', { value: 229 })
+  target.dispatchEvent(event)
+  return event
+}
+
+describe('PhoneInput and an input method', () => {
+  it('commits nothing on an Enter an input method is handling', async () => {
+    const onChange = vi.fn()
+    render(<PhoneInput aria-label="Mobile" defaultCountry="GB" locale="en-GB" onChange={onChange} />)
+    const number = screen.getByRole('textbox', { name: 'Mobile' })
+    await userEvent.click(number)
+    await userEvent.keyboard('7700900123')
+    inputMethodKey(number, 'Enter', 'composing')
+    inputMethodKey(number, 'Enter', 'processed')
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    expect(onChange).not.toHaveBeenCalled()
+    await userEvent.keyboard('{Enter}')
+    expect(onChange).toHaveBeenLastCalledWith('+447700900123')
+  })
 })
 
 describe('PhoneInput in a FormField', () => {

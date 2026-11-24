@@ -101,6 +101,12 @@ export type { StateAttributeInput, StateAttributes, StateName } from './conventi
 
 export { fitTextarea } from './conventions/autosize'
 
+export { composingKey } from './conventions/composition'
+export { holdFieldEscape } from './conventions/field-escape'
+export { lineStartKey } from './conventions/line-keys'
+export { focusAfterRemoval } from './conventions/removal-focus'
+export type { PressedRemoval } from './conventions/removal-focus'
+
 export { formatBytes, gateFiles } from './conventions/files'
 export type { FileGate, FileRejection, FileRejectionReason } from './conventions/files'
 

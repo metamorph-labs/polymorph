@@ -4,6 +4,7 @@ import type { Schema } from 'prosemirror-model'
 import { type Command, Plugin } from 'prosemirror-state'
 import type { EditorView } from 'prosemirror-view'
 
+import { composingKey } from '../conventions/composition'
 import type { RichTextFormat } from '../rich-text/types'
 import {
   backspaceCommand,
@@ -73,17 +74,14 @@ const SUGGESTION_KEYS: readonly RichTextSuggestionKey[] = [
 /** The base keymap's keys that move the caret or select: a read-only field keeps them. */
 const SELECTING = new Set(['Mod-a', 'Ctrl-a', 'Ctrl-e'])
 
-/** The key code a browser reports for a key an input method processed. */
-const PROCESSED = 229
-
 function isRtl(view: { dom: HTMLElement } | undefined): boolean {
   if (!view) return false
   return view.dom.ownerDocument.defaultView?.getComputedStyle(view.dom).direction === 'rtl'
 }
 
-/** Whether a key belongs to an input method: composing, or processed by one. */
-function composingKey(view: EditorView, event: KeyboardEvent): boolean {
-  return view.composing || event.isComposing || event.keyCode === PROCESSED
+/** Whether a key belongs to an input method: one ProseMirror knows is composing, or `composingKey`. */
+function inputMethodKey(view: EditorView, event: KeyboardEvent): boolean {
+  return view.composing || composingKey(event)
 }
 
 /** A keymap that takes no key an input method is handling. */
@@ -91,7 +89,7 @@ function keys(bindings: Record<string, Command>): Plugin {
   const handle = keydownHandler(bindings)
   return new Plugin({
     props: {
-      handleKeyDown: (view, event) => !composingKey(view, event) && handle(view, event),
+      handleKeyDown: (view, event) => !inputMethodKey(view, event) && handle(view, event),
     },
   })
 }

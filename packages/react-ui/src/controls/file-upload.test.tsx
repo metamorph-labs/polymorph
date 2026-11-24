@@ -1,4 +1,5 @@
 import { act, render, screen } from '@testing-library/react'
+import { useState } from 'react'
 import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
@@ -452,6 +453,37 @@ describe('the list', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Remove quarterly-report.pdf' }))
     expect(onRemove).toHaveBeenCalledWith('a')
+  })
+
+  it('moves focus to the next row’s remove control once the app removes a file, else the previous one, else the zone', async () => {
+    // The app removes each file a moment after the request, as one that asks a server first.
+    function Held() {
+      const [files, setFiles] = useState<FileUploadItem[]>([
+        { id: 'a', name: 'a.txt', status: 'done' },
+        { id: 'b', name: 'b.txt', status: 'done' },
+        { id: 'c', name: 'c.txt', status: 'done' },
+      ])
+      return (
+        <FileUpload
+          aria-label="Attachments"
+          files={files}
+          onFilesAdd={noop}
+          onReject={noop}
+          onRemove={(id) =>
+            setTimeout(() => setFiles((was) => was.filter((one) => one.id !== id)), 40)
+          }
+        />
+      )
+    }
+    render(<Held />)
+    const remove = (name: string) => screen.getByRole('button', { name: `Remove ${name}` })
+    remove('b.txt').focus()
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(document.activeElement).toBe(remove('c.txt')))
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(document.activeElement).toBe(remove('a.txt')))
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(document.activeElement).toBe(zone()))
   })
 
   it('renders no list at all when there are no files', () => {

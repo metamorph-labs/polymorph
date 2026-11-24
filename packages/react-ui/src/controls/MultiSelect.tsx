@@ -17,10 +17,13 @@ import { ListKeyboardDelegate, useFilter, useListBox, useOption } from 'react-ar
 import { Item, useListState, type ListState, type Node } from 'react-stately'
 
 import {
+  composingKey,
   type ControlSize,
   dataAttrs,
   dataFlag,
+  holdFieldEscape,
   Icon,
+  lineStartKey,
   memberAttr,
   useAgentMember,
 } from '@polymorph/react'
@@ -369,6 +372,18 @@ export function MultiSelect({
     onInputChange?.(next)
   }
 
+  /*
+   * With the list closed, Escape clears the filter text, and that Escape is the field's: a
+   * Dialog around the field stays open (`holdFieldEscape`). With the list open, the list's
+   * own layer takes the first Escape; with no text left, Escape is the Dialog's again.
+   */
+  const clearable = !open && text !== ''
+  useEffect(() => {
+    const element = inputRef.current
+    if (!clearable || element === null) return
+    return holdFieldEscape(element)
+  }, [clearable])
+
   /** Keyboard navigation over the visible rows, skipping disabled keys. */
   const delegate = new ListKeyboardDelegate({
     collection: state.collection,
@@ -429,6 +444,9 @@ export function MultiSelect({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
+    // Every key an input method is handling is its own: the Enter that confirms a candidate
+    // toggles no row, and Escape abandons the composition, not the filter text.
+    if (composingKey(event.nativeEvent)) return
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault()
       const edge = event.key === 'ArrowDown' ? 'first' : 'last'
@@ -494,13 +512,17 @@ export function MultiSelect({
       if (last !== undefined) remove(last)
       return
     }
-    if (event.key === 'ArrowLeft' && inputRef.current?.selectionStart === 0) {
+    // The key toward the line's start moves into the chips, as in TagInput.
+    if (event.key === lineStartKey(event.currentTarget) && event.currentTarget.selectionStart === 0) {
       const last = ordered(selected)[values.length - 1]
       if (last !== undefined) removeRefs.current.get(last)?.focus()
     }
   }
 
-  /** Chip navigation, as in TagInput: ←/→ between chips, and → past the last returns to the input. */
+  /**
+   * Chip navigation, as in TagInput: the key toward the line's start moves to the previous
+   * chip, the other to the next, and past the last one returns to the input.
+   */
   function handleChipKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number): void {
     const current = ordered(selected)
     const entry = current[index]
@@ -513,7 +535,7 @@ export function MultiSelect({
     }
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault()
-      const step = event.key === 'ArrowLeft' ? -1 : 1
+      const step = event.key === lineStartKey(event.currentTarget) ? -1 : 1
       const neighbour = current[index + step]
       if (neighbour === undefined) {
         if (step === 1) inputRef.current?.focus()

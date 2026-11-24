@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import axeCore, { type RunOptions } from 'axe-core'
 import { useState } from 'react'
 import { page, userEvent } from 'vitest/browser'
@@ -8,6 +8,7 @@ import { createAgentBridge } from '@polymorph/engine/agent'
 
 import { assertGoverned } from '@polymorph/react'
 import { installTestTheme } from '@polymorph/engine/testing'
+import { Dialog } from '../overlays/Dialog'
 import { Combobox } from './Combobox'
 import { MultiSelect, type MultiSelectOption, type MultiSelectProps } from './MultiSelect'
 import { TagInput } from './TagInput'
@@ -42,6 +43,28 @@ const listbox = () => document.querySelector('[role="listbox"]') as HTMLElement 
 const options = () => [...document.querySelectorAll('[role="option"]')] as HTMLElement[]
 const optionNamed = (label: string) =>
   options().find((option) => option.textContent?.includes(label)) as HTMLElement
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * A key an input method is handling, dispatched on `target`: marked `isComposing`, or reported
+ * with key code 229 after the composition has ended, as Safari sends the Enter that confirms it.
+ */
+function inputMethodKey(
+  target: HTMLElement,
+  key: string,
+  how: 'composing' | 'processed',
+): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    bubbles: true,
+    cancelable: true,
+    isComposing: how === 'composing',
+  })
+  if (how === 'processed') Object.defineProperty(event, 'keyCode', { value: 229 })
+  target.dispatchEvent(event)
+  return event
+}
 
 async function open(field: HTMLElement): Promise<void> {
   await userEvent.click(chevron(field))
@@ -288,6 +311,79 @@ describe('Backspace and chip navigation (as in TagInput)', () => {
 
     await userEvent.keyboard('{ArrowRight}{ArrowRight}')
     expect(document.activeElement).toBe(input(field))
+  })
+
+  it('follows a right-to-left line: → moves back into the chips and ← forward to the input', async () => {
+    const field = mount(
+      <div dir="rtl">
+        <MultiSelect options={ASSIGNEES} defaultValue={['ada', 'grace']} aria-label="Assignees" />
+      </div>,
+    )
+    const focusedLabel = () => (document.activeElement as HTMLElement).getAttribute('aria-label')
+    await userEvent.click(input(field))
+    await userEvent.keyboard('{ArrowLeft}')
+    expect(document.activeElement).toBe(input(field))
+
+    await userEvent.keyboard('{ArrowRight}')
+    expect(focusedLabel()).toBe('Remove Grace Hopper')
+    await userEvent.keyboard('{ArrowRight}')
+    expect(focusedLabel()).toBe('Remove Ada Lovelace')
+    await userEvent.keyboard('{ArrowLeft}{ArrowLeft}')
+    expect(document.activeElement).toBe(input(field))
+  })
+
+  it('leaves every key an input method is handling to it', async () => {
+    const onChange = vi.fn()
+    const field = mount(
+      <MultiSelect options={ASSIGNEES} onChange={onChange} aria-label="Assignees" />,
+    )
+    await userEvent.click(input(field))
+    await userEvent.keyboard('gra')
+    await vi.waitFor(() => expect(listbox()).not.toBeNull())
+    // The list's layer prevents every Escape's default, so only Enter's is read here; the open
+    // list and the kept text show that Escape was left alone.
+    for (const how of ['composing', 'processed'] as const) {
+      expect(inputMethodKey(input(field), 'Enter', how).defaultPrevented, how).toBe(false)
+      inputMethodKey(input(field), 'Escape', how)
+    }
+    await sleep(30)
+    expect(onChange).not.toHaveBeenCalled()
+    expect(listbox()).not.toBeNull()
+    expect(input(field).value).toBe('gra')
+
+    // The Enter after the composition is the list's.
+    await userEvent.keyboard('{Enter}')
+    expect(onChange).toHaveBeenLastCalledWith(['grace'])
+  })
+})
+
+describe('inside a Dialog', () => {
+  it('closes the list, then clears the text with the Dialog still open, then closes the Dialog', async () => {
+    const onOpenChange = vi.fn()
+    render(
+      <Dialog title="Assign" defaultOpen onOpenChange={onOpenChange}>
+        <MultiSelect options={ASSIGNEES} aria-label="Assignees" />
+      </Dialog>,
+    )
+    const field = screen.getByRole('dialog')
+    await userEvent.click(input(field))
+    await userEvent.keyboard('gra')
+    await vi.waitFor(() => expect(listbox()).not.toBeNull())
+
+    await userEvent.keyboard('{Escape}')
+    // The list's layer is gone once its exit has played.
+    await vi.waitFor(() =>
+      expect(document.querySelector('[data-radix-popper-content-wrapper]')).toBeNull(),
+    )
+    expect(input(field).value).toBe('gra')
+
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(input(field).value).toBe(''))
+    await sleep(60)
+    expect(onOpenChange).not.toHaveBeenCalled()
+
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
   })
 })
 
