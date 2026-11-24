@@ -39,7 +39,13 @@ import type { RichTextSuggestionKey } from './types'
  * 5. ProseMirror's base keymap for the rest.
  *
  * Tab is taken only when it sinks a list item and Shift-Tab only when it lifts
- * one; anywhere else the browser moves focus, so the field never traps Tab.
+ * a nested one out of its list; anywhere else the browser moves focus, so the
+ * field never traps Tab. Shift-Tab on an item of a top-level list leaves it
+ * where it is, so a person who Shift-Tabs out of the field from a list changes
+ * nothing. Escape releases Tab: the next Tab or Shift-Tab is the browser's
+ * wherever the caret is, so focus leaves the field from any list item and the
+ * text does not change (WCAG 2.1.2). Any other key, a press in the text or
+ * focus leaving the field takes Tab back.
  *
  * No key an input method is handling is taken: ProseMirror offers none while
  * it knows a composition is open, and a key marked `isComposing`, or one the
@@ -74,6 +80,9 @@ const SUGGESTION_KEYS: readonly RichTextSuggestionKey[] = [
 /** The base keymap's keys that move the caret or select: a read-only field keeps them. */
 const SELECTING = new Set(['Mod-a', 'Ctrl-a', 'Ctrl-e'])
 
+/** Keys that only modify another: Shift before Tab keeps Tab released. */
+const MODIFIERS = new Set(['Shift', 'Control', 'Alt', 'Meta'])
+
 function isRtl(view: { dom: HTMLElement } | undefined): boolean {
   if (!view) return false
   return view.dom.ownerDocument.defaultView?.getComputedStyle(view.dom).direction === 'rtl'
@@ -100,6 +109,35 @@ export function keyPlugins(
   hooks: KeyHooks,
 ): Plugin[] {
   const allowed = new Set(formats)
+
+  /** Whether Escape has released Tab: the next Tab or Shift-Tab is the browser's. */
+  let released = false
+  const release = new Plugin({
+    props: {
+      handleKeyDown: (view, event) => {
+        if (inputMethodKey(view, event)) return false
+        if (event.key === 'Escape') released = true
+        else if (event.key !== 'Tab' && !MODIFIERS.has(event.key)) released = false
+        return false
+      },
+      handleDOMEvents: {
+        mousedown: () => {
+          released = false
+          return false
+        },
+        blur: () => {
+          released = false
+          return false
+        },
+      },
+    },
+  })
+  /** A Tab command that is the browser's while Escape has released Tab. */
+  const unlessReleased =
+    (command: Command): Command =>
+    (state, dispatch, view) =>
+      !released && command(state, dispatch, view)
+
   /** A command that edits: a read-only field leaves its key to the browser. */
   const writing =
     (command: Command): Command =>
@@ -156,8 +194,8 @@ export function keyPlugins(
     'Shift-Enter': hardBreakCommand(schema),
     Backspace: backspaceCommand(schema),
     Delete: deleteCommand,
-    Tab: sinkCommand(schema),
-    'Shift-Tab': liftCommand(schema),
+    Tab: unlessReleased(sinkCommand(schema)),
+    'Shift-Tab': unlessReleased(liftCommand(schema)),
   }
   const moving: Record<string, Command> = {
     ArrowLeft: (state, dispatch, view) => stepOverUnit(isRtl(view) ? 1 : -1)(state, dispatch),
@@ -172,6 +210,7 @@ export function keyPlugins(
   const each = (bindings: Record<string, Command>) =>
     Object.fromEntries(Object.entries(bindings).map(([key, command]) => [key, writing(command)]))
   return [
+    release,
     keys(suggestion),
     keys(submit),
     keys(each(formatKeys)),

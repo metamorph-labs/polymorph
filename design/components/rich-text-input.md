@@ -185,11 +185,12 @@ elsewhere.
 | Mod+Z; Mod+Shift+Z, Mod+Y | undo; redo |
 | Enter | splits the block or the list item; in an empty item, lifts it out of the list; on an empty last line of a code block, leaves the block |
 | Shift+Enter | a line break; a new line in a code block |
-| Tab, Shift+Tab | sink or lift a list item; anywhere else focus moves, so the field never traps Tab |
+| Tab | nests a list item under the one before it; anywhere else focus moves on |
+| Shift+Tab | lifts a nested list item out of its list; on an item of a top-level list, and anywhere else, focus moves back and the text does not change |
 | Backspace at a block's start | lifts or joins the block |
 | Mod+Enter | submits, when the app gave `onSubmit` |
 | Alt+F10 | focus to the selection bar while it is drawn, else to the toolbar |
-| Escape | closes the suggestion list; else hides the selection bar for that selection |
+| Escape | closes the suggestion list; else hides the selection bar for that selection; else releases Tab: the next Tab or Shift+Tab moves focus out of the text wherever the caret is, and changes nothing, so the field never traps focus |
 
 **Typed shortcuts**, each only for an allowed format: `# `, `## `, `### `, `- ` or `* `, `1. `,
 `> ` and ```` ``` ```` at a block's start; `**bold**`, `*italic*` or `_italic_`, `~~strike~~` and
