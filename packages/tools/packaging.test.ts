@@ -489,6 +489,29 @@ describe('the installed CLI', () => {
       expect(stdout).toContain('src/app/Seeded.tsx')
     })
 
+    it('reads every framework’s components with the parsers the package depends on', () => {
+      const seeded = '<div style="padding: 12px">x</div>'
+      mkdirSync(resolve(PROJECT, 'src/frameworks'), { recursive: true })
+      writeFileSync(
+        resolve(PROJECT, 'src/frameworks/Seeded.svelte'),
+        `<script lang="ts">\n  let x = 1\n</script>\n\n${seeded}{x}\n`,
+      )
+      writeFileSync(
+        resolve(PROJECT, 'src/frameworks/Seeded.vue'),
+        `<template>\n  ${seeded}\n</template>\n`,
+      )
+      const both = bin('polymorph', ['check', 'src/frameworks'])
+      expect(both.stdout).not.toContain('not read')
+      expect(both.stdout).toContain('src/frameworks/Seeded.svelte')
+      expect(both.stdout).toContain('src/frameworks/Seeded.vue')
+
+      mkdirSync(resolve(PROJECT, 'src/angular'), { recursive: true })
+      writeFileSync(resolve(PROJECT, 'src/angular/seeded.html'), `${seeded}\n`)
+      const angular = bin('polymorph', ['check', 'src/angular', '--framework', 'angular'])
+      expect(angular.stdout).not.toContain('not read')
+      expect(angular.stdout).toContain('polymorph/no-raw-styles')
+    })
+
     it('validates a system and palette given by path', () => {
       const system = registry.theme.systems.find((entry) => entry.name === 'pastel')
       const palette = registry.theme.palettes.find((entry) => entry.name === system?.defaultPalette)

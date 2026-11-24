@@ -22,9 +22,12 @@ const BINS = new Set(['polymorph', 'polymorph-mcp'])
  * bundling the rules too means the package installs with no other polymorph
  * package and answers for exactly the release it was built from. A third-party
  * package stays an import and is a dependency of the package: ESLint and the
- * parsers the rules read each framework with, Stylelint, Prettier, TypeScript
- * (the rules and the emitter parse with it), the MCP SDK, zod and culori, and
- * Playwright as an optional one.
+ * parsers the rules read each framework with (and Svelte, whose compiler the
+ * Svelte parser loads), Stylelint, Prettier, TypeScript (the rules and the
+ * emitter parse with it), the MCP SDK, zod and culori, and Playwright as an
+ * optional one. A parser is a dependency here, where the rules list it as an
+ * optional peer, because `check` and `validate` read any framework's files
+ * with no app around them.
  *
  * **`@polymorph/engine` is the theme engine.** The rules import the theme's
  * exports through the engine, which re-exports `@polymorph/theme` whole. The

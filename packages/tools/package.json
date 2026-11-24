@@ -50,6 +50,7 @@
     "postcss-value-parser": "^4.2.0",
     "prettier": "^3.9.6",
     "stylelint": "^17.14.1",
+    "svelte": "^5.57.2",
     "svelte-eslint-parser": "^1.9.0",
     "typescript": "^5.9.3",
     "vue-eslint-parser": "^10.4.1",

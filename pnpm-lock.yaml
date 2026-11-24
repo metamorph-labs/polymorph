@@ -1335,6 +1335,9 @@ importers:
       stylelint:
         specifier: ^17.14.1
         version: 17.14.1(typescript@5.9.3)
+      svelte:
+        specifier: ^5.57.2
+        version: 5.57.2(@typescript-eslint/types@8.65.0)
       svelte-eslint-parser:
         specifier: ^1.9.0
         version: 1.9.0(svelte@5.57.2(@typescript-eslint/types@8.65.0))
