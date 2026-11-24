@@ -20,6 +20,8 @@ import {
   cell,
   derived,
   elementRef,
+  focusPlace,
+  focusReturnTarget,
   mergeParts,
   modalFocusTarget,
   mountEffect,
@@ -221,7 +223,8 @@ export class Lightbox {
   })
   protected readonly $p = this.$.props
   protected readonly uid = uniqueId()
-  protected readonly opener = cell(() => null as HTMLElement | null)
+  protected readonly pressed = cell(() => null as HTMLElement | null)
+  protected readonly returnTo = cell(() => null as ReturnType<typeof focusPlace>)
   protected readonly mirror = cell(() => this.$p.defaultIndex)
   protected readonly panel = elementRef<HTMLElement>()
   protected readonly scrim = elementRef<HTMLElement>()
@@ -279,7 +282,7 @@ export class Lightbox {
               ? undefined
               : this.$p.defaultOpen && this.$p.images.length > 0,
           initialFocusEl: () => modalFocusTarget(this.panel.value, 'primary'),
-          finalFocusEl: () => this.opener.value,
+          finalFocusEl: () => focusReturnTarget(this.returnTo.value, [this.panel.value]),
           onOpenChange: (details) => {
             this.$.emit(this.onOpenChange, 'onOpenChange', details.open)
           },
@@ -291,7 +294,7 @@ export class Lightbox {
   )
   protected readonly openFrom = derived(() => (event?: Event) => {
     if (this.$p.images.length === 0) return
-    if (event?.currentTarget instanceof HTMLElement) this.opener.value = event.currentTarget
+    if (event?.currentTarget instanceof HTMLElement) this.pressed.value = event.currentTarget
     this.api.value.setOpen(true)
   })
   protected readonly scrimPresent = setup(() =>
@@ -308,7 +311,7 @@ export class Lightbox {
       'dialog.panel',
     ),
   )
-  private release2: (() => void) | undefined
+  private release3: (() => void) | undefined
 
   constructor() {
     this.$.pass('trigger', () => ({ onClick: this.openFrom.value }))
@@ -317,8 +320,13 @@ export class Lightbox {
       () => this.effect1(),
       false,
     )
-    inject(DestroyRef).onDestroy(() => this.release2?.())
-    mountEffect(() => this.effect2())
+    watchEffect(
+      () => this.api.value.open,
+      () => this.effect2(),
+      true,
+    )
+    inject(DestroyRef).onDestroy(() => this.release3?.())
+    mountEffect(() => this.effect3())
   }
 
   protected e1() {
@@ -493,7 +501,15 @@ export class Lightbox {
   }
 
   private effect2(): void {
-    this.release2?.()
+    void (
+      this.api.value.open &&
+      ((this.returnTo.value = focusPlace(this.pressed.value ?? document.activeElement)),
+      (this.pressed.value = null))
+    )
+  }
+
+  private effect3(): void {
+    this.release3?.()
     const ran = agentMember({
       member: 'Lightbox',
       element: () => this.panel.value,
@@ -520,7 +536,7 @@ export class Lightbox {
       },
       withholds: () => this.panel.value,
     })
-    this.release2 = () => {
+    this.release3 = () => {
       ran()
     }
   }

@@ -5,7 +5,7 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { createUniqueId, mergeProps, onCleanup, onMount, type JSX } from 'solid-js'
+import { createMemo, createUniqueId, mergeProps, onCleanup, onMount, type JSX } from 'solid-js'
 import { Portal } from 'solid-js/web'
 
 import * as zag from '@zag-js/dialog'
@@ -18,10 +18,13 @@ import {
   createCell,
   createDerived,
   elementRef,
+  focusPlace,
+  focusReturnTarget,
   mergeParts,
   scope,
   useDirection,
   useMachine,
+  watchEffect,
   type Defaults,
   type IconRole,
 } from '@polymorph/solid'
@@ -97,6 +100,7 @@ export default function Command(given: CommandProps): JSX.Element {
     const panel = elementRef<HTMLElement>()
     const scrim = elementRef<HTMLElement>()
     const query = createCell('')
+    const returnTo = createCell(null as ReturnType<typeof focusPlace>)
     const documentDirection = useDirection()
     const service = useMachine(
       zag.machine,
@@ -105,6 +109,7 @@ export default function Command(given: CommandProps): JSX.Element {
           id: uid,
           dir: documentDirection(),
           open: props.open,
+          finalFocusEl: () => focusReturnTarget(returnTo.value, [panel.value]),
           'aria-label': props.label,
           onEscapeKeyDown: (event) => query.value !== '' && event.preventDefault(),
           onOpenChange: (details) => {
@@ -124,9 +129,17 @@ export default function Command(given: CommandProps): JSX.Element {
       'command.panel',
       { side: 'bottom', align: 'center' },
     )
-    let release1: (() => void) | undefined
     const effect1 = () => {
-      release1?.()
+      void (api.value.open && (returnTo.value = focusPlace(document.activeElement)))
+    }
+    watchEffect(
+      createMemo(() => api.value.open),
+      effect1,
+      true,
+    )
+    let release2: (() => void) | undefined
+    const effect2 = () => {
+      release2?.()
       const ran = agentMember({
         member: 'Command',
         element: () => panel.value,
@@ -150,12 +163,12 @@ export default function Command(given: CommandProps): JSX.Element {
           close: () => api.value.open && api.value.setOpen(false),
         },
       })
-      release1 = () => {
+      release2 = () => {
         ran()
       }
     }
-    onMount(effect1)
-    onCleanup(() => release1?.())
+    onMount(effect2)
+    onCleanup(() => release2?.())
     return (
       <Portal>
         {afresh(() => (

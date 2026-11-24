@@ -19,6 +19,8 @@ import {
   createCell,
   createDerived,
   elementRef,
+  focusPlace,
+  focusReturnTarget,
   mergeParts,
   modalFocusTarget,
   resolveSlot,
@@ -102,7 +104,8 @@ export default function Lightbox(given: LightboxProps): JSX.Element {
       () => props.trigger,
       () => ({ onClick: openFrom.value }),
     )
-    const opener = createCell(null as HTMLElement | null)
+    const pressed = createCell(null as HTMLElement | null)
+    const returnTo = createCell(null as ReturnType<typeof focusPlace>)
     const mirror = createCell(props.defaultIndex)
     const within = createDerived(
       () => (at: number) => Math.min(Math.max(at, 0), Math.max(props.images.length - 1, 0)),
@@ -154,7 +157,7 @@ export default function Lightbox(given: LightboxProps): JSX.Element {
               ? undefined
               : props.defaultOpen && props.images.length > 0,
           initialFocusEl: () => modalFocusTarget(panel.value, 'primary'),
-          finalFocusEl: () => opener.value,
+          finalFocusEl: () => focusReturnTarget(returnTo.value, [panel.value]),
           onOpenChange: (details) => {
             props.onOpenChange?.(details.open)
           },
@@ -163,7 +166,7 @@ export default function Lightbox(given: LightboxProps): JSX.Element {
     const api = createDerived(() => zag.connect(service, normalizeProps))
     const openFrom = createDerived(() => (event?: Event) => {
       if (props.images.length === 0) return
-      if (event?.currentTarget instanceof HTMLElement) opener.value = event.currentTarget
+      if (event?.currentTarget instanceof HTMLElement) pressed.value = event.currentTarget
       api.value.setOpen(true)
     })
     const scrimPresent = usePresence(
@@ -184,9 +187,21 @@ export default function Lightbox(given: LightboxProps): JSX.Element {
       effect1,
       false,
     )
-    let release2: (() => void) | undefined
     const effect2 = () => {
-      release2?.()
+      void (
+        api.value.open &&
+        ((returnTo.value = focusPlace(pressed.value ?? document.activeElement)),
+        (pressed.value = null))
+      )
+    }
+    watchEffect(
+      createMemo(() => api.value.open),
+      effect2,
+      true,
+    )
+    let release3: (() => void) | undefined
+    const effect3 = () => {
+      release3?.()
       const ran = agentMember({
         member: 'Lightbox',
         element: () => panel.value,
@@ -213,12 +228,12 @@ export default function Lightbox(given: LightboxProps): JSX.Element {
         },
         withholds: () => panel.value,
       })
-      release2 = () => {
+      release3 = () => {
         ran()
       }
     }
-    onMount(effect2)
-    onCleanup(() => release2?.())
+    onMount(effect3)
+    onCleanup(() => release3?.())
     return (
       <>
         {triggerSlot()}

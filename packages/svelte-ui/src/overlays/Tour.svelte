@@ -15,6 +15,8 @@ import {
   Portal,
   agentMember,
   attributes,
+  focusPlace,
+  focusReturnTarget,
   joinSlot,
   normalizeProps,
   revealTourTarget,
@@ -96,6 +98,7 @@ const joined = joinSlot(undefined, () => ({}))
 // svelte-ignore state_referenced_locally
 let uncontrolledStep = $state(defaultStep ?? 0)
 let ending = $state(null as 'finished' | 'dismissed' | null)
+let returnTo = $state(null as ReturnType<typeof focusPlace>)
 let geometry = $state(
   null as {
     x: number
@@ -159,6 +162,7 @@ const service = useMachine(
       preventScroll: false,
       closeOnInteractOutside: false,
       initialFocusEl: () => panel,
+      finalFocusEl: () => focusReturnTarget(returnTo, [panel]),
       onOpenChange: (details) => {
         closed(details.open)
       },
@@ -192,41 +196,45 @@ const panelPresent = usePresence(
   },
 )
 const effect1 = () => {
+  api.open && (returnTo = focusPlace(document.activeElement))
+}
+watchEffect(effect1, { watch: () => api.open })
+const effect2 = () => {
   show()
 }
-watchEffect(effect1, { watch: () => [api.open, index] })
-let release2: (() => void) | undefined
-const effect2 = () => {
-  release2?.()
+watchEffect(effect2, { watch: () => [api.open, index] })
+let release3: (() => void) | undefined
+const effect3 = () => {
+  release3?.()
   const run = () => {
     place()
   }
   const resize = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(run)
   for (const element of [positioner]) if (element) resize?.observe(element)
-  release2 = () => {
+  release3 = () => {
     resize?.disconnect()
   }
   run()
 }
-watchEffect(effect2, { watch: () => api.open })
-onDestroy(() => release2?.())
-let release3: (() => void) | undefined
-const effect3 = () => {
-  release3?.()
+watchEffect(effect3, { watch: () => api.open })
+onDestroy(() => release3?.())
+let release4: (() => void) | undefined
+const effect4 = () => {
+  release4?.()
   const ran = follow()
-  release3 = () => {
+  release4 = () => {
     ran()
   }
 }
-watchEffect(effect3, { watch: () => api.open })
-onDestroy(() => release3?.())
-const effect4 = () => {
+watchEffect(effect4, { watch: () => api.open })
+onDestroy(() => release4?.())
+const effect5 = () => {
   api.open && panel?.focus()
 }
-watchEffect(effect4, { watch: () => index, mount: false })
-let release5: (() => void) | undefined
-const effect5 = () => {
-  release5?.()
+watchEffect(effect5, { watch: () => index, mount: false })
+let release6: (() => void) | undefined
+const effect6 = () => {
+  release6?.()
   const ran = agentMember({
     member: 'Tour',
     element: () => panel,
@@ -252,12 +260,12 @@ const effect5 = () => {
     },
     withholds: () => panel,
   })
-  release5 = () => {
+  release6 = () => {
     ran()
   }
 }
-watchEffect(effect5)
-onDestroy(() => release5?.())
+watchEffect(effect6)
+onDestroy(() => release6?.())
 </script>
 
 {@render joined.start?.()

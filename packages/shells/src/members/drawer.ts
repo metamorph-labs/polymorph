@@ -93,6 +93,12 @@ export default describeMember({
     initialFocus: lit('primary'),
     closeLabel: lit('Close'),
   },
+  // Where focus was as the drawer opened, which it returns to as it closes.
+  state: { returnTo: 'null as ReturnType<typeof focusPlace>' },
+  effects: [
+    // Recorded as the drawer opens, before the trap moves focus into it.
+    { watch: 'api.open', run: 'api.open && (returnTo = focusPlace(document.activeElement))' },
+  ],
   machine: {
     of: 'dialog',
     context: {
@@ -103,6 +109,8 @@ export default describeMember({
       closeOnInteractOutside: 'dismissible',
       // Dialog's focus order: the body's first tabbable, else the primary action, else ✕.
       initialFocusEl: '() => modalFocusTarget(panel, initialFocus)',
+      // Dialog's return: where focus was as the drawer opened, else the element nearest it.
+      finalFocusEl: '() => focusReturnTarget(returnTo, [panel])',
     },
     events: { onOpenChange: { emit: 'openChange', payload: 'details.open' } },
   },

@@ -82,8 +82,9 @@ export default describeMember({
       "() => ({ close: 'Close', previous: 'Previous picture', next: 'Next picture', position: (position, count) => `${position} of ${count}` })",
   },
   state: {
-    // The control whose press opened the panel, as in Dialog: focus returns to it.
-    opener: 'null as HTMLElement | null',
+    // The control whose press opened the panel, and where focus returns, as in Dialog.
+    pressed: 'null as HTMLElement | null',
+    returnTo: 'null as ReturnType<typeof focusPlace>',
     // The picture shown while the app does not control the position.
     mirror: 'defaultIndex',
   },
@@ -95,7 +96,7 @@ export default describeMember({
       defaultOpen: 'defaultOpen === undefined ? undefined : defaultOpen && images.length > 0',
       // Dialog's focus order. The panel has no body control and no footer, so it is close.
       initialFocusEl: "() => modalFocusTarget(panel, 'primary')",
-      finalFocusEl: '() => opener',
+      finalFocusEl: '() => focusReturnTarget(returnTo, [panel])',
     },
     events: { onOpenChange: { emit: 'openChange', payload: 'details.open' } },
   },
@@ -109,7 +110,7 @@ export default describeMember({
     current: 'images.slice(shown, shown + 1)',
     openFrom: `(event?: Event) => {
       if (images.length === 0) return
-      if (event?.currentTarget instanceof HTMLElement) opener = event.currentTarget
+      if (event?.currentTarget instanceof HTMLElement) pressed = event.currentTarget
       api.setOpen(true)
     }`,
     // A move the reader asks for: the mirror follows it, and the app hears it.
@@ -123,7 +124,11 @@ export default describeMember({
     // Button, which the move has enabled.
     focusAfterMove: `() => { if (panel === null) return; const previous = ${TRAVEL('previous')}; const next = ${TRAVEL('next')}; const active = document.activeElement; const lost = active === null || active === document.body || ((active === previous || active === next) && (active as HTMLButtonElement).disabled); if (!lost) return; const other = [previous, next].find((button) => button !== null && !button.disabled); other?.focus() }`,
   },
-  effects: [{ watch: 'shown', mount: false, run: 'focusAfterMove()' }],
+  effects: [
+    { watch: 'shown', mount: false, run: 'focusAfterMove()' },
+    // Where focus returns is recorded as the panel opens, as in Dialog.
+    { watch: 'api.open', run: 'api.open && ((returnTo = focusPlace(pressed ?? document.activeElement)), (pressed = null))' },
+  ],
   // The spec's `agent` fence. A move goes through `travel` and a close through the machine, so
   // the member reports `indexChange` and `openChange` as it does for a person's controls. A move
   // is refused where its control is disabled or absent. The panel names the lightbox, and it is

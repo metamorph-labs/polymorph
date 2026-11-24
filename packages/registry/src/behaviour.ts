@@ -52,7 +52,9 @@ export type StatementKind = (typeof STATEMENT_KINDS)[number]
 /**
  * What a key does. `increments` and `decrements` are the value controls'
  * effects (a slider, a number field, a date segment, a splitter), which move a
- * value rather than focus or a selection.
+ * value rather than focus or a selection. `focuses` is a key pressed from the
+ * page, outside the member, that puts focus in one of its parts (Toast's F8),
+ * and it names that part.
  */
 export const KEY_EFFECTS = [
   'opens',
@@ -67,6 +69,7 @@ export const KEY_EFFECTS = [
   'commits',
   'increments',
   'decrements',
+  'focuses',
   'nothing',
 ] as const
 export type KeyEffect = (typeof KEY_EFFECTS)[number]
@@ -104,8 +107,12 @@ export const MODIFIERS = ['Shift', 'Control', 'Alt', 'Meta'] as const
 
 export const FOCUS_MOMENTS = ['on-open', 'on-close'] as const
 
-/** Where focus goes when an overlay closes: its trigger, or wherever it was before. */
-export const FOCUS_RETURNS = ['trigger', 'previous'] as const
+/**
+ * Where focus goes when an overlay closes: its trigger, or wherever it was
+ * before, or, when the trigger has left the page while the overlay was open,
+ * the focusable element nearest where the trigger was.
+ */
+export const FOCUS_RETURNS = ['trigger', 'previous', 'nearest'] as const
 export type FocusReturn = (typeof FOCUS_RETURNS)[number]
 
 /** Which gestures close an overlay: a press outside it, Escape, both, or neither. */
@@ -230,12 +237,18 @@ export interface NameContract extends Statement {
   from: string
 }
 
-/** `key <Key> <effect> [on <part>]`: pressing the key, with focus on the part, has the effect. */
+/**
+ * `key <Key> <effect> [on <part>]`: pressing the key, with focus on the part, has the effect.
+ * `key <Key> focuses <part>`: pressing the key, with focus on the page outside the member, puts
+ * focus in the part.
+ */
 export interface KeyContract extends Statement {
   kind: 'key'
   key: string
   effect: KeyEffect
   on?: string
+  /** The part a `focuses` key puts focus in. */
+  into?: string
 }
 
 /** `click <effect> on <part>`: a pointer click on the part has the effect. */
@@ -252,7 +265,7 @@ export interface FocusOpenContract extends Statement {
   part: string
 }
 
-/** `focus on-close <trigger|previous>`: closing it puts focus back there. */
+/** `focus on-close <trigger|previous|nearest>`: closing it puts focus back there. */
 export interface FocusCloseContract extends Statement {
   kind: 'focus'
   moment: 'on-close'
@@ -402,7 +415,7 @@ export function parseStatement(line: string): Contract {
       return { kind, part: part(tokens[1]), from, text, ...when }
     }
     case 'key': {
-      arity(tokens, [3, 5], 'key <Key> <effect> [on <part>]')
+      arity(tokens, [3, 4, 5], 'key <Key> <effect> [on <part>]` or `key <Key> focuses <part>')
       const key = tokens[1] as string
       if (!isKey(key)) {
         throw new ContractSyntaxError(
@@ -411,6 +424,12 @@ export function parseStatement(line: string): Contract {
         )
       }
       const effect = oneOf(tokens[2], KEY_EFFECTS, 'a key effect')
+      // A `focuses` key is pressed from the page, so it names the part it focuses and no `on`.
+      if (effect === 'focuses') {
+        arity(tokens, [4], 'key <Key> focuses <part>')
+        return { kind, key, effect, into: part(tokens[3]), text, ...when }
+      }
+      arity(tokens, [3, 5], 'key <Key> <effect> [on <part>]')
       if (tokens.length === 5 && tokens[3] !== 'on') {
         throw new ContractSyntaxError('expected `key <Key> <effect> on <part>`')
       }
@@ -424,7 +443,7 @@ export function parseStatement(line: string): Contract {
       return { kind, effect, on: part(tokens[3]), text, ...when }
     }
     case 'focus': {
-      arity(tokens, [3], 'focus on-open <part>` or `focus on-close <trigger|previous>')
+      arity(tokens, [3], 'focus on-open <part>` or `focus on-close <trigger|previous|nearest>')
       const moment = oneOf(tokens[1], FOCUS_MOMENTS, 'a focus moment')
       if (moment === 'on-open') return { kind, moment, part: part(tokens[2]), text, ...when }
       return {
@@ -756,10 +775,11 @@ export const CONTRACT_SHAPE: Shape = union(
         key: str(),
         effect: str({ enum: KEY_EFFECTS }),
         on: PART_FIELD,
+        into: PART_FIELD,
         text: TEXT,
         state: STATE,
       },
-      { optional: ['on', 'state'] },
+      { optional: ['on', 'into', 'state'] },
     ),
     obj(
       {

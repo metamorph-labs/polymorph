@@ -23,6 +23,8 @@ import { normalizeProps, useMachine } from '@zag-js/vue'
 import {
   agentMember,
   definedProps,
+  focusPlace,
+  focusReturnTarget,
   modalFocusTarget,
   slottedElements,
   useDirection,
@@ -85,7 +87,8 @@ const props = withDefaults(defineProps<LightboxProps>(), {
 const emit = defineEmits<{ indexChange: [index: number]; openChange: [open: boolean] }>()
 defineSlots<{ trigger?: (props: Record<string, never>) => unknown }>()
 const uid = useId()
-const opener = ref(null as HTMLElement | null)
+const pressed = ref(null as HTMLElement | null)
+const returnTo = ref(null as ReturnType<typeof focusPlace>)
 const mirror = ref(props.defaultIndex)
 const panel = useTemplateRef<HTMLElement>('panel')
 const scrim = useTemplateRef<HTMLElement>('scrim')
@@ -134,7 +137,7 @@ const service = useMachine(
     defaultOpen:
       props.defaultOpen === undefined ? undefined : props.defaultOpen && props.images.length > 0,
     initialFocusEl: () => modalFocusTarget(panel.value, 'primary'),
-    finalFocusEl: () => opener.value,
+    finalFocusEl: () => focusReturnTarget(returnTo.value, [panel.value]),
     onOpenChange: (details) => {
       emit('openChange', details.open)
     },
@@ -143,7 +146,7 @@ const service = useMachine(
 const api = computed(() => zag.connect(service, normalizeProps))
 const openFrom = computed(() => (event?: Event) => {
   if (props.images.length === 0) return
-  if (event?.currentTarget instanceof HTMLElement) opener.value = event.currentTarget
+  if (event?.currentTarget instanceof HTMLElement) pressed.value = event.currentTarget
   api.value.setOpen(true)
 })
 const scrimPresent = usePresence(() => api.value.open, scrim, 'dialog.scrim')
@@ -152,9 +155,15 @@ const effect1 = () => {
   focusAfterMove.value()
 }
 watch(() => shown.value, effect1, { flush: 'post' })
-let release2: (() => void) | undefined
 const effect2 = () => {
-  release2?.()
+  api.value.open &&
+    ((returnTo.value = focusPlace(pressed.value ?? document.activeElement)), (pressed.value = null))
+}
+onMounted(effect2)
+watch(() => api.value.open, effect2, { flush: 'post' })
+let release3: (() => void) | undefined
+const effect3 = () => {
+  release3?.()
   const ran = agentMember({
     member: 'Lightbox',
     element: () => panel.value,
@@ -180,12 +189,12 @@ const effect2 = () => {
     },
     withholds: () => panel.value,
   })
-  release2 = () => {
+  release3 = () => {
     ran()
   }
 }
-onMounted(effect2)
-onBeforeUnmount(() => release2?.())
+onMounted(effect3)
+onBeforeUnmount(() => release3?.())
 </script>
 
 <template>

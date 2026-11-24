@@ -91,7 +91,9 @@ fixtures.
 `dismissible` renders as usual until pending). A11y — Dialog's, plus the
 initial-focus-on-cancel rule above, and the typed confirmation's focus on its field. The
 description is required so the alertdialog states the consequence (`role="alertdialog"` when
-`tone="danger"`). The field is named by its label, and its error is FormField's.
+`tone="danger"`). The field is named by its label, and its error is FormField's. When the
+confirmed action removes the trigger, as a delete removes its row, focus returns by Dialog's
+rule to the focusable element nearest where the trigger was.
 
 ```contract
 role panel alertdialog when open, guarding a destruction
@@ -107,6 +109,7 @@ attr confirm data-disabled when open, the phrase mistyped
 attr field aria-invalid=true when open, the phrase mistyped
 attr field autocorrect=off when open, awaiting the phrase
 focus on-close trigger
+focus on-close nearest
 dismiss both when closed — just the trigger
 ```
 
