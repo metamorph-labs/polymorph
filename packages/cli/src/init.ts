@@ -870,7 +870,7 @@ export function installApp(
 
   let token = env['NODE_AUTH_TOKEN'] ?? ''
   if (token === '') {
-    // Absent or logged out, the GitHub CLI has no token to give pnpm.
+    // Absent or logged out, the GitHub CLI has no token to give the package manager.
     const gh = runProgram('gh', ['auth', 'token'], { env })
     token = gh.status === 0 ? (gh.stdout ?? '').trim() : ''
     if (token !== '') {
