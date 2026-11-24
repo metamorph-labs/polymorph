@@ -175,13 +175,13 @@ const journal = serverArgs.includes('--journal')
   ? serverArgs[serverArgs.indexOf('--journal') + 1]
   : undefined
 
-/** The configuration's MCP servers, started as the CLI starts them, by name. */
+/** The configuration's MCP servers once started, by name. */
 const clients = new Map()
-let tools = []
-for (const name of servers) {
+
+async function start(name) {
   const server = config.mcpServers[name]
-  const client = new Client({ name: 'fake-claude', version: '1.0.0' })
-  await client.connect(
+  const started = new Client({ name: 'fake-claude', version: '1.0.0' })
+  await started.connect(
     new StdioClientTransport({
       command: server.command,
       args: server.args ?? [],
@@ -189,12 +189,18 @@ for (const name of servers) {
       stderr: 'inherit',
     }),
   )
-  clients.set(name, client)
-  tools = [
-    ...tools,
-    ...(await client.listTools()).tools.map((tool) => `mcp__${name}__${tool.name}`),
-  ]
+  clients.set(name, started)
+  return (await started.listTools()).tools.map((tool) => `mcp__${name}__${tool.name}`)
 }
+
+/**
+ * The eval's server is started as the CLI starts it, before the first
+ * request. A project's servers are started when a turn first calls one: the
+ * runner reads nothing of when they start, and a run that never calls one
+ * does not wait for it.
+ */
+let tools = []
+if (!project) for (const name of servers) tools = [...tools, ...(await start(name))]
 const client = clients.get('polymorph') ?? null
 const model = chosen.get('--model') ?? 'fake'
 
@@ -203,7 +209,7 @@ emit({
   subtype: 'init',
   cwd: process.cwd(),
   tools: project ? ['Bash', 'Read', 'Write', 'Edit', 'Skill', ...tools] : tools,
-  mcp_servers: servers.map((name) => ({ name, status: 'connected' })),
+  mcp_servers: servers.map((name) => ({ name, status: project ? 'pending' : 'connected' })),
   model,
   permissionMode: chosen.get('--permission-mode'),
   claude_code_version: 'scripted',
@@ -272,8 +278,9 @@ async function act(call) {
       : result(`Unknown skill: ${call.input.skill}`, true)
   }
   const [, server, ...rest] = call.name.split('__')
+  if (!servers.includes(server)) return result(`No such tool available: ${call.name}`, true)
+  if (!clients.has(server)) await start(server)
   const named = clients.get(server)
-  if (named === undefined) return result(`No such tool available: ${call.name}`, true)
   const answer = await named.callTool({ name: rest.join('__'), arguments: call.input })
   return { ...result(answer.content, answer.isError === true) }
 }

@@ -502,7 +502,6 @@ const bump = (record, key) => {
 function countShell(calls, command) {
   calls.shell += 1
   for (const verb of verbsIn(command)) bump(calls.verbs, verb)
-  for (const skill of skillsIn(command)) calls.skills.add(skill)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -715,6 +714,8 @@ const claudeReader = ({ maxTurns, meter, ceilings }) => ({
     turns: 0,
     open: null,
     pending: new Set(),
+    /** The skill each call that loads one names, by the call's id, until its result comes back. */
+    skillCalls: new Map(),
     limited: false,
     result: null,
     retries: 0,
@@ -759,10 +760,10 @@ const claudeReader = ({ maxTurns, meter, ceilings }) => ({
             countShell(state.calls, input.command)
           } else if (block.name === 'Skill') {
             const name = input.skill ?? input.command ?? input.name
-            if (typeof name === 'string') state.calls.skills.add(name)
+            if (typeof name === 'string') state.skillCalls.set(block.id, name)
           } else if (block.name === 'Read' && typeof input.file_path === 'string') {
             const skill = skillOfPath(input.file_path)
-            if (skill !== null) state.calls.skills.add(skill)
+            if (skill !== null) state.skillCalls.set(block.id, skill)
           } else if (block.name.startsWith('mcp__')) {
             bump(state.calls.mcp, block.name.split('__').slice(2).join('__'))
           }
@@ -773,7 +774,12 @@ const claudeReader = ({ maxTurns, meter, ceilings }) => ({
         const content = Array.isArray(event.message?.content) ? event.message.content : []
         const answered = content.filter((block) => block.type === 'tool_result')
         if (answered.length === 0) break
-        for (const block of answered) state.pending.delete(block.tool_use_id)
+        for (const block of answered) {
+          state.pending.delete(block.tool_use_id)
+          // A skill is loaded when the call that loads it succeeds.
+          const skill = state.skillCalls.get(block.tool_use_id)
+          if (skill !== undefined && block.is_error !== true) state.calls.skills.add(skill)
+        }
         if (state.pending.size > 0) break
         // Every call of the turn is answered: where the next request would go out.
         if (state.turns >= maxTurns) state.halt({ ended: 'turns' })
@@ -890,6 +896,10 @@ const codexReader = ({ maxTurns, meter }) => ({
         } else if (item.type === 'command_execution' && typeof item.command === 'string') {
           countShell(state.calls, item.command)
           if (item.status === 'declined') state.calls.denied += 1
+          // Codex loads a skill by reading its `SKILL.md`, and it is loaded when the read succeeds.
+          if (item.exit_code === 0) {
+            for (const skill of skillsIn(item.command)) state.calls.skills.add(skill)
+          }
         } else if (item.type === 'mcp_tool_call' && typeof item.tool === 'string') {
           bump(state.calls.mcp, item.tool)
           if (/approval/i.test(item.error?.message ?? '')) state.calls.denied += 1

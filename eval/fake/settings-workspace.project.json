@@ -11,6 +11,10 @@
           "type": "shell",
           "command": "cat AGENTS.md",
           "output": "# Working in this app\n"
+        },
+        {
+          "type": "skill",
+          "name": "polymorph"
         }
       ]
     },
