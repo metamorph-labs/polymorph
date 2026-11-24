@@ -8,7 +8,15 @@
  */
 import { onDestroy } from 'svelte'
 
-import { Icon, afterRender, agentMember, joinSlot, watchEffect } from '@polymorph/svelte'
+import {
+  Icon,
+  afterRender,
+  agentMember,
+  composingKey,
+  holdFieldEscape,
+  joinSlot,
+  watchEffect,
+} from '@polymorph/svelte'
 import styles from '@polymorph/recipes/controls/inline-edit.module.css'
 import Button from './Button.svelte'
 import Input from './Input.svelte'
@@ -168,16 +176,18 @@ const commit = $derived(() => {
   if (editing === undefined) setOpen(false)
 })
 const onKey = $derived((event: KeyboardEvent) => {
+  if (composingKey(event)) return
   if (event.key === 'Escape') {
     event.preventDefault()
     cancel()
     return
   }
-  if (event.key === 'Enter' && event.target instanceof HTMLInputElement && !event.isComposing) {
+  if (event.key === 'Enter' && event.target instanceof HTMLInputElement) {
     event.preventDefault()
     commit()
   }
 })
+const cancellable = $derived(current && !pending)
 const leave = $derived((event: FocusEvent) => {
   const next = event.relatedTarget
   if (next instanceof Node && !(root?.contains(next) ?? false)) within = false
@@ -194,7 +204,17 @@ const saveText = $derived((text: string) => {
   onCommit?.(text)
   if (editing === undefined) setOpen(false)
 })
+let release1: (() => void) | undefined
 const effect1 = () => {
+  release1?.()
+  const ran = cancellable && root ? holdFieldEscape(root) : () => {}
+  release1 = () => {
+    ran()
+  }
+}
+watchEffect(effect1, { watch: () => cancellable })
+onDestroy(() => release1?.())
+const effect2 = () => {
   current
     ? ((draft = value),
       afterRender(() => {
@@ -204,14 +224,14 @@ const effect1 = () => {
       }))
     : within && afterRender(() => root?.querySelector('button')?.focus())
 }
-watchEffect(effect1, { watch: () => current, mount: false })
-const effect2 = () => {
+watchEffect(effect2, { watch: () => current, mount: false })
+const effect3 = () => {
   !pending && current && within && root?.querySelector('input')?.focus()
 }
-watchEffect(effect2, { watch: () => pending, mount: false })
-let release3: (() => void) | undefined
-const effect3 = () => {
-  release3?.()
+watchEffect(effect3, { watch: () => pending, mount: false })
+let release4: (() => void) | undefined
+const effect4 = () => {
+  release4?.()
   const ran = agentMember({
     member: 'InlineEdit',
     element: () => root?.querySelector('input') ?? root?.querySelector('button'),
@@ -236,12 +256,12 @@ const effect3 = () => {
     },
     withholds: () => root,
   })
-  release3 = () => {
+  release4 = () => {
     ran()
   }
 }
-watchEffect(effect3)
-onDestroy(() => release3?.())
+watchEffect(effect4)
+onDestroy(() => release4?.())
 </script>
 
 {@render joined.start?.()

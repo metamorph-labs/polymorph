@@ -11,7 +11,7 @@ import { computed, onMounted, ref, useId, watch } from 'vue'
 import * as zag from '@zag-js/combobox'
 import { normalizeProps, useMachine } from '@zag-js/vue'
 
-import { Icon, useDirection } from '@polymorph/vue'
+import { Icon, composingKey, useDirection } from '@polymorph/vue'
 import styles from '@polymorph/recipes/overlays/command.module.css'
 import Kbd from '../structure/Kbd.vue'
 import Skeleton from '../structure/Skeleton.vue'
@@ -122,7 +122,7 @@ watch(() => api.value.highlightedValue ?? firstEnabled.value, effect2, { flush: 
       v-bind="api.getInputProps()"
       :class="styles.input"
       :aria-label="placeholder"
-      @keydown="$event.key === 'Escape' && api.setInputValue('')"
+      @keydown="$event.key === 'Escape' && !composingKey($event) && api.setInputValue('')"
     />
     <Kbd>
       {{ escapeHint }}

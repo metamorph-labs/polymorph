@@ -13,6 +13,7 @@ import { useMachine } from '@zag-js/svelte'
 import {
   Icon,
   attributes,
+  composingKey,
   joinSlot,
   mergeParts,
   normalizeProps,
@@ -126,7 +127,7 @@ watchEffect(effect2, { watch: () => api.highlightedValue ?? firstEnabled })
   }<div class={styles.search}
     ><Icon name="search" size="md"
     /><input
-      {...attributes(mergeParts(api.getInputProps(), { onKeydown: (event: KeyboardEvent) => { if (event.key === 'Escape') api.setInputValue('') } }))}
+      {...attributes(mergeParts(api.getInputProps(), { onKeydown: (event: KeyboardEvent) => { if (event.key === 'Escape' && !composingKey(event)) api.setInputValue('') } }))}
       class={styles.input}
       aria-label={placeholder}
     /><Kbd>{escapeHint}</Kbd

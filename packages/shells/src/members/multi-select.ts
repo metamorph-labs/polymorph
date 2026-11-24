@@ -154,9 +154,11 @@ const popup = (): Node[] => [
  * arrows walk the enabled rows without wrapping and open the list at its first
  * or last row, Enter toggles the highlighted row and keeps the list open, a
  * commit against a hidden mint row is refused with a flash and a sentence,
- * Backspace in an empty field removes the last chip, and ← at the field's start
- * moves into the chips. Escape's first press is the machine's, which closes;
- * the second clears the text.
+ * Backspace in an empty field removes the last chip, and the key toward the
+ * line's start (← left to right, → right to left) at the field's start moves
+ * into the chips. Escape's first press is the machine's, which closes; the
+ * second clears the text, inside a Dialog too; and no key an input method is
+ * handling is the member's.
  *
  * The chips are TagInput's: a list presence whose removed chip plays
  * `taginput.chip`'s exit in its own part, with focus moved to the chip that
@@ -322,7 +324,14 @@ export default describeMember({
         })
       })
     }`,
+    // With the list closed, Escape clears the filter text, and that Escape is the field's: a
+    // Dialog around the field stays open (`holdFieldEscape`). With the list open, the list's
+    // layer takes the first Escape; with no text left, Escape is the Dialog's again.
+    clearable: "!api.open && text !== ''",
+    // Every key an input method is handling is its own (`composingKey`): the Enter that
+    // confirms a candidate toggles no row, and Escape abandons the composition, not the text.
     fieldKeyDown: `(event: KeyboardEvent) => {
+      if (composingKey(event)) return
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault()
         const down = event.key === 'ArrowDown'
@@ -363,7 +372,10 @@ export default describeMember({
         if (last !== undefined) remove(last)
         return
       }
-      if (event.key === 'ArrowLeft' && (event.target as HTMLInputElement).selectionStart === 0) {
+      // The key toward the line's start moves into the chips, as in TagInput. The direction is
+      // the field's: the machine writes the document's on the input.
+      const input = event.target as HTMLInputElement
+      if (event.key === lineStartKey(frame ?? input) && input.selectionStart === 0) {
         removeButton(orderedValues.length - 1)?.focus()
       }
     }`,
@@ -377,7 +389,7 @@ export default describeMember({
       }
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         event.preventDefault()
-        const step = event.key === 'ArrowLeft' ? -1 : 1
+        const step = event.key === lineStartKey(frame ?? (event.target as Element)) ? -1 : 1
         if (at + step === orderedValues.length) api.focus()
         else if (at + step >= 0) removeButton(at + step)?.focus()
       }
@@ -490,6 +502,11 @@ export default describeMember({
   listPresence: { chips: { of: 'orderedValues', key: '(entry: string) => entry' } },
   effects: [
     { run: 'settled = true' },
+    {
+      watch: 'clearable',
+      run: 'clearable && textField ? holdFieldEscape(textField) : () => {}',
+      release: 'ran()',
+    },
     // An open list highlights its first enabled row: on mount, and whenever the text changes.
     { watch: 'text', run: 'api.open && aimFirst()' },
     // A list opened without a highlight (the chevron, typing) starts on its first row; an arrow

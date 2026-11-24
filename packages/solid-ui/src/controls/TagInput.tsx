@@ -21,10 +21,14 @@ import {
   Each,
   agentMember,
   claimSlot,
+  composingKey,
   createCell,
   createDerived,
   elementRef,
+  holdFieldEscape,
+  lineStartKey,
   scope,
+  watchEffect,
   type Defaults,
 } from '@polymorph/solid'
 import styles from '@polymorph/recipes/controls/tag-input.module.css'
@@ -145,7 +149,9 @@ export default function TagInput(given: TagInputProps): JSX.Element {
     const receive = createDerived(() => (event: Event) => {
       draft.value = (event.target as HTMLInputElement).value
     })
+    const clearable = createDerived(() => draft.value !== '')
     const fieldKeyDown = createDerived(() => (event: KeyboardEvent) => {
+      if (composingKey(event)) return
       if (event.key === 'Enter' || event.key === ',') {
         event.preventDefault()
         add.value([draft.value])
@@ -162,7 +168,8 @@ export default function TagInput(given: TagInputProps): JSX.Element {
         if (last !== undefined) remove.value(last)
         return
       }
-      if (event.key === 'ArrowLeft' && (event.target as HTMLInputElement).selectionStart === 0) {
+      const input = event.target as HTMLInputElement
+      if (event.key === lineStartKey(chipList.value ?? input) && input.selectionStart === 0) {
         removeButton.value(values.value.length - 1)?.focus()
       }
     })
@@ -176,7 +183,8 @@ export default function TagInput(given: TagInputProps): JSX.Element {
       }
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         event.preventDefault()
-        const step = event.key === 'ArrowLeft' ? -1 : 1
+        const step =
+          event.key === lineStartKey(chipList.value ?? (event.target as Element)) ? -1 : 1
         if (at + step === values.value.length) field.value?.focus()
         else if (at + step >= 0) removeButton.value(at + step)?.focus()
       }
@@ -238,6 +246,20 @@ export default function TagInput(given: TagInputProps): JSX.Element {
     let release2: (() => void) | undefined
     const effect2 = () => {
       release2?.()
+      const ran = clearable.value && field.value ? holdFieldEscape(field.value) : () => {}
+      release2 = () => {
+        ran()
+      }
+    }
+    watchEffect(
+      createMemo(() => clearable.value),
+      effect2,
+      true,
+    )
+    onCleanup(() => release2?.())
+    let release3: (() => void) | undefined
+    const effect3 = () => {
+      release3?.()
       const ran = agentMember({
         member: 'TagInput',
         element: () => field.value,
@@ -264,12 +286,12 @@ export default function TagInput(given: TagInputProps): JSX.Element {
             })(),
         },
       })
-      release2 = () => {
+      release3 = () => {
         ran()
       }
     }
-    onMount(effect2)
-    onCleanup(() => release2?.())
+    onMount(effect3)
+    onCleanup(() => release3?.())
     return (
       <div
         class={styles.container}

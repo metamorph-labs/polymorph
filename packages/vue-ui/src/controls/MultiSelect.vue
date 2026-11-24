@@ -20,7 +20,16 @@ import {
 import * as zag from '@zag-js/combobox'
 import { normalizeProps, useMachine } from '@zag-js/vue'
 
-import { Icon, afterRender, agentMember, useDirection, useMediaQuery } from '@polymorph/vue'
+import {
+  Icon,
+  afterRender,
+  agentMember,
+  composingKey,
+  holdFieldEscape,
+  lineStartKey,
+  useDirection,
+  useMediaQuery,
+} from '@polymorph/vue'
 import { usePresence } from '@polymorph/vue/motion'
 import styles from '@polymorph/recipes/controls/multi-select.module.css'
 import sheet from '@polymorph/recipes/overlays/sheet.module.css'
@@ -369,7 +378,9 @@ const typed = computed(() => (event: Event) => {
     })
   })
 })
+const clearable = computed(() => !api.value.open && text.value !== '')
 const fieldKeyDown = computed(() => (event: KeyboardEvent) => {
+  if (composingKey(event)) return
   if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
     event.preventDefault()
     const down = event.key === 'ArrowDown'
@@ -421,7 +432,10 @@ const fieldKeyDown = computed(() => (event: KeyboardEvent) => {
     if (last !== undefined) remove.value(last)
     return
   }
-  if (event.key === 'ArrowLeft' && (event.target as HTMLInputElement).selectionStart === 0) {
+  // The key toward the line's start moves into the chips, as in TagInput. The direction is
+  // the field's: the machine writes the document's on the input.
+  const input = event.target as HTMLInputElement
+  if (event.key === lineStartKey(frame.value ?? input) && input.selectionStart === 0) {
     removeButton.value(orderedValues.value.length - 1)?.focus()
   }
 })
@@ -435,7 +449,7 @@ const chipKeyDown = computed(() => (event: KeyboardEvent, entry: string) => {
   }
   if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
     event.preventDefault()
-    const step = event.key === 'ArrowLeft' ? -1 : 1
+    const step = event.key === lineStartKey(frame.value ?? (event.target as Element)) ? -1 : 1
     if (at + step === orderedValues.value.length) api.value.focus()
     else if (at + step >= 0) removeButton.value(at + step)?.focus()
   }
@@ -507,26 +521,37 @@ const effect1 = () => {
   settled.value = true
 }
 onMounted(effect1)
+let release2: (() => void) | undefined
 const effect2 = () => {
-  api.value.open && aimFirst.value()
+  release2?.()
+  const ran = clearable.value && textField.value ? holdFieldEscape(textField.value) : () => {}
+  release2 = () => {
+    ran()
+  }
 }
 onMounted(effect2)
-watch(() => text.value, effect2, { flush: 'post' })
+watch(() => clearable.value, effect2, { flush: 'post' })
+onBeforeUnmount(() => release2?.())
 const effect3 = () => {
+  api.value.open && aimFirst.value()
+}
+onMounted(effect3)
+watch(() => text.value, effect3, { flush: 'post' })
+const effect4 = () => {
   api.value.open && api.value.highlightedValue === null && aimFirst.value()
 }
-watch(() => api.value.open, effect3, { flush: 'post' })
-const effect4 = () => {
+watch(() => api.value.open, effect4, { flush: 'post' })
+const effect5 = () => {
   api.value.open &&
     api.value.highlightedValue !== null &&
     api.value.highlightedValue === lastReal.value &&
     requestMore.value()
 }
-onMounted(effect4)
-watch(() => api.value.highlightedValue, effect4, { flush: 'post' })
-let release5: (() => void) | undefined
-const effect5 = () => {
-  release5?.()
+onMounted(effect5)
+watch(() => api.value.highlightedValue, effect5, { flush: 'post' })
+let release6: (() => void) | undefined
+const effect6 = () => {
+  release6?.()
   const ran = agentMember({
     member: 'MultiSelect',
     element: () => textField.value,
@@ -577,12 +602,12 @@ const effect5 = () => {
       close: () => api.value.setOpen(false),
     },
   })
-  release5 = () => {
+  release6 = () => {
     ran()
   }
 }
-onMounted(effect5)
-onBeforeUnmount(() => release5?.())
+onMounted(effect6)
+onBeforeUnmount(() => release6?.())
 </script>
 
 <template>

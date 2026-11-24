@@ -14,6 +14,7 @@ import {
   MEMBER_PROVIDERS,
   Spread,
   cell,
+  composingKey,
   derived,
   mergeParts,
   mountEffect,
@@ -244,7 +245,7 @@ export class CommandPanel {
   }
 
   protected h1($event: KeyboardEvent): void {
-    if ($event.key === 'Escape') {
+    if ($event.key === 'Escape' && !composingKey($event)) {
       this.api.value.setInputValue('')
     }
   }

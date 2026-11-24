@@ -24,10 +24,12 @@ import {
   createCell,
   createDerived,
   elementRef,
+  focusAfterRemoval,
   formatBytes,
   gateFiles,
   itemOf,
   scope,
+  watchEffect,
   type Defaults,
   type FileRejection,
 } from '@polymorph/solid'
@@ -143,9 +145,21 @@ export default function FileUpload(given: FileUploadProps): JSX.Element {
   return scope(() => {
     const picker = elementRef<HTMLElement>()
     const root = elementRef<HTMLElement>()
+    const rowList = elementRef<HTMLElement>()
     const zone = elementRef<HTMLElement>()
     const dragover = createCell(false)
+    const pressed = createCell(null as { id: string; at: number } | null)
     const zoneState = createDerived(() => (dragover.value ? 'dragover' : 'idle'))
+    const rowOf = createDerived(
+      () => (id: string | undefined) =>
+        id === undefined
+          ? null
+          : (rowList.value?.children[rows().findIndex((row) => row.key === id)] ?? null),
+    )
+    const removeControl = createDerived(
+      () => (row: Element | null) =>
+        row === null ? null : ([...row.querySelectorAll<HTMLElement>('button')].pop() ?? null),
+    )
     const add = createDerived(
       () => (list: FileList | null | undefined) =>
         !props.disabled &&
@@ -196,9 +210,23 @@ export default function FileUpload(given: FileUploadProps): JSX.Element {
         })
       return entries
     })
-    let release1: (() => void) | undefined
     const effect1 = () => {
-      release1?.()
+      pressed.value = focusAfterRemoval(
+        pressed.value,
+        props.files.map((file) => file.id),
+        (at) => removeControl.value(rowOf.value(props.files[at]?.id)),
+        zone.value,
+        pressed.value === null ? null : rowOf.value(pressed.value.id),
+      )
+    }
+    watchEffect(
+      createMemo(() => props.files),
+      effect1,
+      false,
+    )
+    let release2: (() => void) | undefined
+    const effect2 = () => {
+      release2?.()
       const ran = agentMember({
         member: 'FileUpload',
         element: () => zone.value,
@@ -224,12 +252,12 @@ export default function FileUpload(given: FileUploadProps): JSX.Element {
         },
         withholds: () => root.value,
       })
-      release1 = () => {
+      release2 = () => {
         ran()
       }
     }
-    onMount(effect1)
-    onCleanup(() => release1?.())
+    onMount(effect2)
+    onCleanup(() => release2?.())
     return (
       <div
         class={styles.root}
@@ -289,7 +317,7 @@ export default function FileUpload(given: FileUploadProps): JSX.Element {
           ref={picker.attach}
         />
         {props.files.length > 0 ? (
-          <ul class={styles.list}>
+          <ul class={styles.list} ref={rowList.attach}>
             <Each of={rows()} by={(row) => row.key} renew>
               {(row) => (
                 <FileUploadRow
@@ -305,7 +333,13 @@ export default function FileUpload(given: FileUploadProps): JSX.Element {
                   removeLabel={props.messages.remove(row.item.name)}
                   progressLabel={props.messages.progress(row.item.name)}
                   onRetry={() => props.onRetry?.(row.item.id)}
-                  onRemove={() => props.onRemove?.(row.item.id)}
+                  onRemove={() => (
+                    (pressed.value = {
+                      id: row.item.id,
+                      at: props.files.findIndex((file) => file.id === row.item.id),
+                    }),
+                    props.onRemove?.(row.item.id)
+                  )}
                   onDone={() => row.done()}
                 />
               )}

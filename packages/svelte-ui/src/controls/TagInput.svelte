@@ -8,7 +8,14 @@
  */
 import { onDestroy } from 'svelte'
 
-import { agentMember, joinSlot, watchEffect } from '@polymorph/svelte'
+import {
+  agentMember,
+  composingKey,
+  holdFieldEscape,
+  joinSlot,
+  lineStartKey,
+  watchEffect,
+} from '@polymorph/svelte'
 import { useListPresence } from '@polymorph/svelte/motion'
 import styles from '@polymorph/recipes/controls/tag-input.module.css'
 import TagInputChip from './TagInputChip.svelte'
@@ -161,7 +168,9 @@ const remove = $derived((tag: string) => {
 const receive = $derived((event: Event) => {
   draft = (event.target as HTMLInputElement).value
 })
+const clearable = $derived(draft !== '')
 const fieldKeyDown = $derived((event: KeyboardEvent) => {
+  if (composingKey(event)) return
   if (event.key === 'Enter' || event.key === ',') {
     event.preventDefault()
     add([draft])
@@ -178,7 +187,8 @@ const fieldKeyDown = $derived((event: KeyboardEvent) => {
     if (last !== undefined) remove(last)
     return
   }
-  if (event.key === 'ArrowLeft' && (event.target as HTMLInputElement).selectionStart === 0) {
+  const input = event.target as HTMLInputElement
+  if (event.key === lineStartKey(chipList ?? input) && input.selectionStart === 0) {
     removeButton(values.length - 1)?.focus()
   }
 })
@@ -192,7 +202,7 @@ const chipKeyDown = $derived((event: KeyboardEvent, tag: string) => {
   }
   if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
     event.preventDefault()
-    const step = event.key === 'ArrowLeft' ? -1 : 1
+    const step = event.key === lineStartKey(chipList ?? (event.target as Element)) ? -1 : 1
     if (at + step === values.length) field?.focus()
     else if (at + step >= 0) removeButton(at + step)?.focus()
   }
@@ -224,6 +234,16 @@ watchEffect(effect1)
 let release2: (() => void) | undefined
 const effect2 = () => {
   release2?.()
+  const ran = clearable && field ? holdFieldEscape(field) : () => {}
+  release2 = () => {
+    ran()
+  }
+}
+watchEffect(effect2, { watch: () => clearable })
+onDestroy(() => release2?.())
+let release3: (() => void) | undefined
+const effect3 = () => {
+  release3?.()
   const ran = agentMember({
     member: 'TagInput',
     element: () => field,
@@ -249,12 +269,12 @@ const effect2 = () => {
         })(),
     },
   })
-  release2 = () => {
+  release3 = () => {
     ran()
   }
 }
-watchEffect(effect2)
-onDestroy(() => release2?.())
+watchEffect(effect3)
+onDestroy(() => release3?.())
 </script>
 
 {@render joined.start?.()

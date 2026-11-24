@@ -13,8 +13,10 @@ import {
   Ref,
   agentMember,
   cell,
+  composingKey,
   derived,
   elementRef,
+  holdFieldEscape,
   mountEffect,
   presence,
   uniqueId,
@@ -360,16 +362,18 @@ export class InlineEdit {
     if (this.$p.editing === undefined) this.setOpen.value(false)
   })
   protected readonly onKey = derived(() => (event: KeyboardEvent) => {
+    if (composingKey(event)) return
     if (event.key === 'Escape') {
       event.preventDefault()
       this.cancel.value()
       return
     }
-    if (event.key === 'Enter' && event.target instanceof HTMLInputElement && !event.isComposing) {
+    if (event.key === 'Enter' && event.target instanceof HTMLInputElement) {
       event.preventDefault()
       this.commit.value()
     }
   })
+  protected readonly cancellable = derived(() => this.current.value && !this.$p.pending)
   protected readonly leave = derived(() => (event: FocusEvent) => {
     const next = event.relatedTarget
     if (next instanceof Node && !(this.root.value?.contains(next) ?? false))
@@ -387,21 +391,28 @@ export class InlineEdit {
     this.$.emit(this.onCommit, 'onCommit', text)
     if (this.$p.editing === undefined) this.setOpen.value(false)
   })
-  private release3: (() => void) | undefined
+  private release1: (() => void) | undefined
+  private release4: (() => void) | undefined
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => this.release1?.())
+    watchEffect(
+      () => this.cancellable.value,
+      () => this.effect1(),
+      true,
+    )
     watchEffect(
       () => this.current.value,
-      () => this.effect1(),
+      () => this.effect2(),
       false,
     )
     watchEffect(
       () => this.$p.pending,
-      () => this.effect2(),
+      () => this.effect3(),
       false,
     )
-    inject(DestroyRef).onDestroy(() => this.release3?.())
-    mountEffect(() => this.effect3())
+    inject(DestroyRef).onDestroy(() => this.release4?.())
+    mountEffect(() => this.effect4())
   }
 
   protected e1() {
@@ -642,6 +653,15 @@ export class InlineEdit {
   }
 
   private effect1(): void {
+    this.release1?.()
+    const ran =
+      this.cancellable.value && this.root.value ? holdFieldEscape(this.root.value) : () => {}
+    this.release1 = () => {
+      ran()
+    }
+  }
+
+  private effect2(): void {
     void (this.current.value
       ? ((this.draft.value = this.$p.value),
         this.$.afterRender(() => {
@@ -653,7 +673,7 @@ export class InlineEdit {
         this.$.afterRender(() => this.root.value?.querySelector('button')?.focus()))
   }
 
-  private effect2(): void {
+  private effect3(): void {
     void (
       !this.$p.pending &&
       this.current.value &&
@@ -662,8 +682,8 @@ export class InlineEdit {
     )
   }
 
-  private effect3(): void {
-    this.release3?.()
+  private effect4(): void {
+    this.release4?.()
     const ran = agentMember({
       member: 'InlineEdit',
       element: () =>
@@ -689,7 +709,7 @@ export class InlineEdit {
       },
       withholds: () => this.root.value,
     })
-    this.release3 = () => {
+    this.release4 = () => {
       ran()
     }
   }
