@@ -1,0 +1,101 @@
+{
+  "project": true,
+  "turns": [
+    {
+      "usage": {
+        "input_tokens": 4000,
+        "output_tokens": 60
+      },
+      "content": [
+        {
+          "type": "shell",
+          "command": "cat AGENTS.md",
+          "output": "# Working in this app\n"
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 40,
+        "cache_creation_input_tokens": 900,
+        "cache_read_input_tokens": 4000,
+        "output_tokens": 50
+      },
+      "content": [
+        {
+          "type": "mcp",
+          "server": "polymorph",
+          "tool": "get_system_card",
+          "input": {}
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 40,
+        "cache_creation_input_tokens": 7000,
+        "cache_read_input_tokens": 4900,
+        "output_tokens": 2400
+      },
+      "content": [
+        {
+          "type": "write",
+          "path": "src/screens/dashboard-usage.json",
+          "content": {
+            "$file": "dashboard-usage/answer.json"
+          }
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 40,
+        "cache_creation_input_tokens": 2500,
+        "cache_read_input_tokens": 11900,
+        "output_tokens": 120
+      },
+      "content": [
+        {
+          "type": "mcp",
+          "server": "polymorph",
+          "tool": "emit_screen",
+          "input": {
+            "spec": {
+              "$file": "dashboard-usage/answer.json"
+            },
+            "path": "src/screens/DashboardUsage.tsx"
+          }
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 40,
+        "cache_creation_input_tokens": 600,
+        "cache_read_input_tokens": 14400,
+        "output_tokens": 40
+      },
+      "content": [
+        {
+          "type": "shell",
+          "command": "npx -y @metamorph-labs/polymorph@^1 check --json",
+          "output": "{ \"ok\": true }\n"
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 40,
+        "cache_creation_input_tokens": 300,
+        "cache_read_input_tokens": 15000,
+        "output_tokens": 90
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "The screen is written as src/screens/dashboard-usage.json and emitted to src/screens/DashboardUsage.tsx."
+        }
+      ]
+    }
+  ]
+}

@@ -21,6 +21,24 @@ import { TextDecoder } from 'node:util'
 import * as prettier from 'prettier'
 
 import { scriptedTurns } from './fake/script.mjs'
+import {
+  claudeEnvironment,
+  codexEnvironment,
+  codexHome,
+  HarnessError as CliError,
+  LIMIT_WORDS,
+  override,
+  tail,
+  versionOf,
+} from './harnesses.mjs'
+import {
+  makeTemplate,
+  meterCodexUsage,
+  resolveTools,
+  runOnceProject,
+  SetupError,
+  summariseProject,
+} from './project.mjs'
 import { writeReport } from './report.mjs'
 import { loadRequirements, unmet } from './requirements.mjs'
 import { interval } from './spread.mjs'
@@ -54,19 +72,28 @@ import { callTool, loadScreen, loadToolbox, messageOf, ROOT } from './toolbox.mj
  * the API reports, cached and uncached apart, the time to the first text of
  * the answer and the time to its end.
  *
- * There are two runners. The `api` runner, the default, reaches the model
+ * There are three runners. The `api` runner, the default, reaches the model
  * over the Messages API with `fetch`, streamed, because a long turn with
  * thinking can outlast the time Node's `fetch` waits for response headers. It
  * needs `ANTHROPIC_API_KEY`. The `cli` runner runs each brief through
  * `claude -p`, the owner's own Claude Code, with the same tools served over
  * MCP (`eval/mcp.mjs`), and needs no key (see "The Claude Code CLI" below).
- * Both feed the same measurements, so their numbers compare.
+ * The `codex` runner runs each brief through `codex exec`, the owner's own
+ * Codex, with the same MCP server (see "The Codex CLI" below). All three feed
+ * the same measurements, so their numbers compare, apart from what Codex does
+ * not report.
+ *
+ * `--mode project` is the project lane (`eval/project.mjs`): the `cli` or
+ * `codex` runner's harness started in an app the tools set up, given the
+ * brief as an ordinary request and nothing else from the eval, and judged on
+ * the project it leaves.
  *
  * `--fake` swaps the model for a scripted one (`eval/fake/`) that replays
  * turns, so the harness itself is testable without a key: in place of the
- * Messages API for the `api` runner, and in place of the CLI
- * (`eval/fake/cli.mjs`) for the `cli` runner. Everything downstream of the
- * model, the tools included, runs for real either way.
+ * Messages API for the `api` runner, and in place of the CLI for the `cli`
+ * runner (`eval/fake/cli.mjs`) and the `codex` runner (`eval/fake/codex.mjs`).
+ * Everything downstream of the model, the tools included, runs for real
+ * either way.
  *
  * A run writes `eval/results/<date>-<model>-<mode>.json`, the documents the
  * agent handed back beside it, and re-renders `eval/README.md`
@@ -83,6 +110,7 @@ const RESULTS = resolve(EVAL, 'results')
 const FAKES = resolve(EVAL, 'fake')
 const MCP_SERVER = resolve(EVAL, 'mcp.mjs')
 const FAKE_CLI = resolve(FAKES, 'cli.mjs')
+const FAKE_CODEX = resolve(FAKES, 'codex.mjs')
 const SUBSETS = resolve(EVAL, 'members')
 
 /**
@@ -95,20 +123,32 @@ const API_VERSION = '2023-06-01'
 /** `--effort` values besides `default`, which sends none and leaves the model's own default. */
 const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max']
 
-/** How the model is reached: the Messages API, or the Claude Code CLI. */
-const RUNNERS = ['api', 'cli']
+/** How the model is reached: the Messages API, the Claude Code CLI, or the Codex CLI. */
+const RUNNERS = ['api', 'cli', 'codex']
 
-/** What a run hands back: a spec or a TSX module through the tools, or a spec in one request (`runtime`). */
-const MODES = ['spec', 'tsx', 'runtime']
+/**
+ * What a run hands back: a spec or a TSX module through the tools, a spec in
+ * one request (`runtime`), or the project a harness leaves (`project`).
+ */
+const MODES = ['spec', 'tsx', 'runtime', 'project']
 
 /** The mode with no tools and one request: the run-time lane. */
 const RUNTIME = 'runtime'
+
+/** The mode that starts a harness in an app and judges the project: the project lane. */
+const PROJECT = 'project'
 
 /** What `--thinking` sends as `thinking.type` in the `runtime` mode. */
 const THINKING = ['adaptive', 'disabled', 'between_tools']
 
 /** The flags that choose what the run-time card holds and how its request thinks. */
-const RUNTIME_FLAGS = ['--thinking', '--framework', '--members']
+const RUNTIME_FLAGS = ['--thinking', '--members']
+
+/** The flags that set the project lane's app up and bound its runs. */
+const PROJECT_FLAGS = ['--tools', '--max-turns', '--max-minutes']
+
+/** The project lane's budget per run, when no flag sets it. */
+const PROJECT_DEFAULTS = { maxTurns: 80, maxMinutes: 20 }
 
 const DEFAULTS = {
   runner: 'api',
@@ -152,12 +192,14 @@ const RETRYABLE_EVENTS = new Set(['overloaded_error', 'api_error', 'rate_limit_e
 const MAX_RETRIES = 6
 
 const USAGE =
-  'usage: pnpm eval [--runner api|cli] [--claude <path>] [--model <id>] ' +
-  '[--mode spec|tsx|runtime] [--briefs <glob>] [--runs <n>] [--max-iterations <n>] ' +
+  'usage: pnpm eval [--runner api|cli|codex] [--claude <path>] [--codex <path>] [--model <id>] ' +
+  '[--mode spec|tsx|runtime|project] [--briefs <glob>] [--runs <n>] [--max-iterations <n>] ' +
   '[--effort default|low|medium|high|xhigh|max] [--max-tokens-per-run <n>] ' +
   '[--max-tokens-total <n>] [--fake] [--out <dir>]\n' +
   '       with --mode runtime: [--thinking adaptive|disabled|between_tools] ' +
-  '[--framework <name>] [--members default|<subset>|<Member,Member,…>]'
+  '[--framework <name>] [--members default|<subset>|<Member,Member,…>]\n' +
+  '       with --mode project and --runner cli|codex: [--tools <tarball|directory>] ' +
+  '[--framework <name>] [--max-turns <n>] [--max-minutes <n>] [--no-install]'
 
 const OPENING = 'Build the screen the brief describes.'
 
@@ -183,6 +225,7 @@ const positive = (flag, value) => {
 const VALUED = new Set([
   '--runner',
   '--claude',
+  '--codex',
   '--model',
   '--mode',
   '--briefs',
@@ -192,16 +235,39 @@ const VALUED = new Set([
   '--max-tokens-per-run',
   '--max-tokens-total',
   '--out',
+  '--framework',
   ...RUNTIME_FLAGS,
+  ...PROJECT_FLAGS,
 ])
+
+/** A number above 0, whole or not: the project lane's time budget is in minutes. */
+const above = (flag, value) => {
+  const number = Number(value)
+  if (!Number.isFinite(number) || number <= 0) refuse(`\`${flag}\` needs a number above 0`)
+  return number
+}
 
 /** Strict, so a mistyped flag stops the eval instead of silently measuring something else. */
 function options(argv) {
-  const chosen = { ...DEFAULTS, fake: false, claude: 'claude', out: undefined, given: new Set() }
+  const chosen = {
+    ...DEFAULTS,
+    ...PROJECT_DEFAULTS,
+    fake: false,
+    install: true,
+    claude: 'claude',
+    codex: 'codex',
+    out: undefined,
+    given: new Set(),
+  }
   for (let index = 0; index < argv.length; index += 1) {
     const flag = argv[index]
     if (flag === '--fake') {
       chosen.fake = true
+      continue
+    }
+    if (flag === '--no-install') {
+      chosen.install = false
+      chosen.given.add(flag)
       continue
     }
     if (!VALUED.has(flag)) refuse(`unknown argument "${flag}"`)
@@ -210,12 +276,16 @@ function options(argv) {
     index += 1
     chosen.given.add(flag)
     if (flag === '--runner') {
-      if (!RUNNERS.includes(value)) refuse('`--runner` is `api` or `cli`')
+      if (!RUNNERS.includes(value)) refuse('`--runner` is `api`, `cli` or `codex`')
       chosen.runner = value
     } else if (flag === '--claude') chosen.claude = value
+    else if (flag === '--codex') chosen.codex = value
     else if (flag === '--model') chosen.model = value
+    else if (flag === '--tools') chosen.tools = value
+    else if (flag === '--max-turns') chosen.maxTurns = positive(flag, value)
+    else if (flag === '--max-minutes') chosen.maxMinutes = above(flag, value)
     else if (flag === '--mode') {
-      if (!MODES.includes(value)) refuse('`--mode` is `spec`, `tsx` or `runtime`')
+      if (!MODES.includes(value)) refuse('`--mode` is `spec`, `tsx`, `runtime` or `project`')
       chosen.mode = value
     } else if (flag === '--thinking') {
       if (!THINKING.includes(value)) refuse(`\`--thinking\` is one of ${THINKING.join(', ')}`)
@@ -234,7 +304,7 @@ function options(argv) {
     else if (flag === '--max-tokens-total') chosen.maxTokensTotal = positive(flag, value)
     else chosen.out = resolve(process.cwd(), value)
   }
-  for (const flag of ['--model', '--effort', '--claude', '--thinking']) {
+  for (const flag of ['--model', '--effort', '--claude', '--codex', '--thinking']) {
     if (chosen.fake && chosen.given.has(flag)) {
       refuse(`\`--fake\` runs the scripted model, so \`${flag}\` does not apply`)
     }
@@ -242,17 +312,56 @@ function options(argv) {
   if (chosen.given.has('--claude') && chosen.runner !== 'cli') {
     refuse('`--claude` names the CLI the `cli` runner runs: add `--runner cli`')
   }
+  if (chosen.given.has('--codex') && chosen.runner !== 'codex') {
+    refuse('`--codex` names the CLI the `codex` runner runs: add `--runner codex`')
+  }
+  // Codex names no model in what it reports, and the default model is a Claude model.
+  if (chosen.runner === 'codex' && !chosen.fake && !chosen.given.has('--model')) {
+    refuse(
+      '`--runner codex` needs `--model`: Codex reports no model in its events, and the results ' +
+        'must name the model they measured',
+    )
+  }
   const runtime = chosen.mode === RUNTIME
+  const project = chosen.mode === PROJECT
   for (const flag of RUNTIME_FLAGS) {
     if (!runtime && chosen.given.has(flag)) {
       refuse(`\`${flag}\` belongs to the run-time lane: add \`--mode runtime\``)
     }
   }
+  if (!runtime && !project && chosen.given.has('--framework')) {
+    refuse(
+      '`--framework` belongs to the run-time and project lanes: add `--mode runtime` or ' +
+        '`--mode project`',
+    )
+  }
+  for (const flag of [...PROJECT_FLAGS, '--no-install']) {
+    if (!project && chosen.given.has(flag)) {
+      refuse(`\`${flag}\` belongs to the project lane: add \`--mode project\``)
+    }
+  }
+  if (project && chosen.runner === 'api') {
+    refuse(
+      '`--mode project` starts a harness in an app, and the `api` runner is no harness: it ' +
+        'sends the requests itself. Add `--runner cli` or `--runner codex`',
+    )
+  }
+  if (project && chosen.given.has('--max-iterations')) {
+    refuse(
+      '`--max-iterations` caps the eval’s `validate` calls, and `--mode project` offers the ' +
+        'harness no eval tool: `--max-turns` and `--max-minutes` bound its runs',
+    )
+  }
+  // A scripted harness writes the same files whatever the app holds, so it is set up uninstalled.
+  if (chosen.fake) chosen.install = false
   if (runtime && chosen.given.has('--max-iterations')) {
     refuse('`--max-iterations` caps `validate` calls, and `--mode runtime` makes none')
   }
   if (chosen.given.has('--thinking') && chosen.runner === 'cli') {
     refuse('`--thinking` is what the API runner sends; the CLI chooses its own thinking')
+  }
+  if (chosen.given.has('--thinking') && chosen.runner === 'codex') {
+    refuse('`--thinking` is what the API runner sends; Codex chooses its own reasoning')
   }
   // The committed results only ever hold real runs, so a fake run may not
   // write among them, wherever `--out` puts it.
@@ -639,7 +748,13 @@ function missOf(verdict, call) {
   }
 }
 
-/** What one run has spent and waited for, kept outside it so a stopped run's spend is still known. */
+/**
+ * What one run has spent and waited for, kept outside it so a stopped run's
+ * spend is still known. `input` is the uncached input. `reported` says
+ * whether a harness that reports its tokens late (Codex, and Claude Code in a
+ * project) has reported any; the `api` and `cli` runners read every
+ * response's usage and do not set it.
+ */
 function newMeter() {
   return {
     input: 0,
@@ -649,6 +764,7 @@ function newMeter() {
     discardedTokens: 0,
     retries: 0,
     backoffMs: 0,
+    reported: false,
   }
 }
 
@@ -1025,63 +1141,16 @@ const CLI_PREFIX = 'mcp__polymorph__'
 /** Generous, so the CLI hands every tool answer back whole, as the API runner does. */
 const MCP_OUTPUT_TOKENS = 200_000
 
-/** How the CLI words a usage or rate limit on the account it is signed in to. */
-const LIMIT_WORDS = /hit your (?:\w+ )?limit|usage limit|rate limit/i
-
-/** The CLI failed, or reported an error of its own. The eval stops, with the runs it finished written. */
-class CliError extends Error {
-  constructor(reason, message) {
-    super(message)
-    this.reason = reason
-  }
-}
-
 /**
- * The `CLAUDE*` variables kept for the CLI: the ones that choose how it signs
- * in and where it keeps its configuration.
+ * The environment the CLI runs in (`claudeEnvironment`, `eval/harnesses.mjs`),
+ * with its output capped at the API runner's `max_tokens` and its MCP output
+ * at a size that hands every tool answer back whole.
  */
-const SIGN_IN = new Set([
-  'CLAUDE_CODE_OAUTH_TOKEN',
-  'CLAUDE_CODE_USE_BEDROCK',
-  'CLAUDE_CODE_USE_VERTEX',
-  'CLAUDE_CODE_USE_FOUNDRY',
-  'CLAUDE_CONFIG_DIR',
-])
-
-/**
- * The environment the CLI runs in: the eval's own, without the other `CLAUDE*`
- * variables. A Claude Code session sets those for the processes it starts,
- * among them the session's effort and a switch that drops the `mcp__` prefix
- * from tool names, and an eval started from inside one would otherwise run the
- * CLI as part of that session. Output is capped at the API runner's
- * `max_tokens`.
- */
-function cliEnvironment() {
-  const kept = Object.entries(process.env).filter(
-    ([name]) => !name.startsWith('CLAUDE') || SIGN_IN.has(name),
-  )
-  return {
-    ...Object.fromEntries(kept),
+const cliEnvironment = () =>
+  claudeEnvironment({
     CLAUDE_CODE_MAX_OUTPUT_TOKENS: String(MAX_TOKENS),
     MAX_MCP_OUTPUT_TOKENS: String(MCP_OUTPUT_TOKENS),
-  }
-}
-
-/** The CLI's version, as `--version` prints it. A CLI that does not run stops the eval before it starts. */
-function versionOf(launcher) {
-  try {
-    const printed = execFileSync(launcher.command, [...launcher.prefix, '--version'], {
-      encoding: 'utf8',
-      env: cliEnvironment(),
-      timeout: 60_000,
-    })
-    return printed.trim().split(/\s+/)[0] ?? 'unknown'
-  } catch (error) {
-    refuse(
-      `the Claude Code CLI did not run (\`${launcher.command} --version\`): ${messageOf(error)}`,
-    )
-  }
-}
+  })
 
 /**
  * The tool definitions as an MCP server lists them. None is marked
@@ -1131,8 +1200,72 @@ function cliArguments({ settings, system, config, names }) {
   ]
 }
 
-/** The end of what the CLI wrote to stderr, for a failure's message. */
-const tail = (text) => (text.trim() === '' ? '' : `: ${text.trim().slice(-2000)}`)
+/**
+ * The journal of a run's MCP server (`eval/mcp.mjs`), read as the harness
+ * reports each call's result. `read` counts the verdicts the server wrote
+ * since the last read, in the order it answered. Only a line that ends in a
+ * newline is read. The server may still be appending one while the harness
+ * reports another call's result, and that line is read whole at a later
+ * read.
+ *
+ * A call's line is read once the harness has reported that call's result
+ * (`answered`), and not before. The server writes the line when it answers,
+ * and the harness may be a turn ahead of the line of its output the runner
+ * is reading. A verdict read that early would count against the turn before
+ * it, and the iteration cap would end the run without the turn that made the
+ * call. Lines and results are matched by tool, so a result the server never
+ * wrote a line for (a tool the harness denied or does not have) lets no other
+ * tool's line through early.
+ *
+ * `listed` says whether the server has listed every tool in `names`. A line
+ * that reports a fault is handed to `onFault`, and reading stops there.
+ */
+function journalReader({ file, names, brief, run, tally, onFault }) {
+  /** How much of the journal has been read: every line up to the last one read whole. */
+  let read = 0
+  /** Per tool: the results the harness has reported and the journal lines read. */
+  const answeredCalls = new Map()
+  const readCalls = new Map()
+  let listed = false
+  return {
+    get listed() {
+      return listed
+    },
+    answered(tool) {
+      answeredCalls.set(tool, (answeredCalls.get(tool) ?? 0) + 1)
+    },
+    read() {
+      const text = readFileSync(file, 'utf8')
+      const end = text.lastIndexOf('\n') + 1
+      while (read < end) {
+        const next = text.indexOf('\n', read) + 1
+        const line = text.slice(read, next - 1)
+        if (line === '') {
+          read = next
+          continue
+        }
+        const entry = JSON.parse(line)
+        if (entry.listed !== undefined) {
+          listed = names.every((name) => entry.listed.includes(name))
+          read = next
+          continue
+        }
+        const lines = readCalls.get(entry.tool) ?? 0
+        if (lines >= (answeredCalls.get(entry.tool) ?? 0)) return
+        readCalls.set(entry.tool, lines + 1)
+        read = next
+        if (entry.failed !== undefined) {
+          console.error(`eval: ${brief} #${run}: \`${entry.tool}\` failed: ${entry.failed}`)
+        }
+        if (entry.fault !== undefined) {
+          onFault(entry)
+          return
+        }
+        if (entry.verdict !== undefined) countVerdict(tally, entry.verdict, entry.submitted)
+      }
+    },
+  }
+}
 
 /**
  * One run of one brief through the CLI. `cli` is the eval's: the command that
@@ -1201,14 +1334,9 @@ async function runOnceCli({
   const calls = new Map()
   let last = null
   const pending = new Set()
-  /** How much of the journal has been read: every line up to the last one read whole. */
-  let read = 0
-  /** Each call's tool by its id, then per tool: the results the CLI has reported and the journal lines read. */
+  /** Each call's tool by its id. */
   const toolOf = new Map()
-  const answeredCalls = new Map()
-  const readCalls = new Map()
-  /** Whether the server had listed its tools, and what the CLI said of it at the start. */
-  let listed = false
+  /** What the CLI said of the server at the start. */
   let connection = 'not listed'
   let limited = false
   let result = null
@@ -1223,61 +1351,27 @@ async function runOnceCli({
     setTimeout(() => child.kill('SIGKILL'), 5000).unref()
   }
 
-  /**
-   * The verdicts the server wrote since the last read, in the order it
-   * answered. Only a line that ends in a newline is read. The server may still
-   * be appending one while the CLI reports another call's result, and that
-   * line is read whole at a later read.
-   *
-   * A call's line is read once the CLI has reported that call's result, and
-   * not before. The server writes the line when it answers, and the CLI may
-   * be a turn ahead of the line of its output the runner is reading. A
-   * verdict read that early would count against the turn before it, and the
-   * iteration cap would end the run without the turn that made the call.
-   * Lines and results are matched by tool, so a result the server never
-   * wrote a line for (a tool the CLI denied or does not have) lets no other
-   * tool's line through early.
-   */
-  const readJournal = () => {
-    const text = readFileSync(journal, 'utf8')
-    const end = text.lastIndexOf('\n') + 1
-    while (read < end) {
-      const next = text.indexOf('\n', read) + 1
-      const line = text.slice(read, next - 1)
-      if (line === '') {
-        read = next
-        continue
-      }
-      const entry = JSON.parse(line)
-      if (entry.listed !== undefined) {
-        listed = cli.names.every((name) => entry.listed.includes(name))
-        read = next
-        continue
-      }
-      const lines = readCalls.get(entry.tool) ?? 0
-      if (lines >= (answeredCalls.get(entry.tool) ?? 0)) return
-      readCalls.set(entry.tool, lines + 1)
-      read = next
-      if (entry.failed !== undefined) {
-        console.error(`eval: ${brief} #${run}: \`${entry.tool}\` failed: ${entry.failed}`)
-      }
-      if (entry.fault !== undefined) {
-        // The harness failed, so the run measures nothing more about the model.
-        harnessFault = entry.fault
-        tally.lastSubmitted = entry.submitted ?? tally.lastSubmitted
-        halt({ ended: 'harness' })
-        return
-      }
-      if (entry.verdict !== undefined) countVerdict(tally, entry.verdict, entry.submitted)
-    }
-  }
+  const journalLines = journalReader({
+    file: journal,
+    names: cli.names,
+    brief,
+    run,
+    tally,
+    onFault: (entry) => {
+      // The harness failed, so the run measures nothing more about the model.
+      harnessFault = entry.fault
+      tally.lastSubmitted = entry.submitted ?? tally.lastSubmitted
+      halt({ ended: 'harness' })
+    },
+  })
+  const readJournal = () => journalLines.read()
 
   const streamed = (event) => {
     switch (event.type) {
       case 'message_start':
-        if (!runtime && turns === 0 && !listed) {
+        if (!runtime && turns === 0 && !journalLines.listed) {
           readJournal()
-          if (!listed) {
+          if (!journalLines.listed) {
             // Every run would go the same way, so the eval stops.
             const message =
               'the CLI sent its first request before the eval’s MCP server had listed its ' +
@@ -1384,7 +1478,7 @@ async function runOnceCli({
         for (const block of answered) {
           pending.delete(block.tool_use_id)
           const tool = toolOf.get(block.tool_use_id)
-          if (tool !== undefined) answeredCalls.set(tool, (answeredCalls.get(tool) ?? 0) + 1)
+          if (tool !== undefined) journalLines.answered(tool)
         }
         readJournal()
         if (stop !== null || pending.size > 0) break
@@ -1474,6 +1568,354 @@ async function runOnceCli({
     harnessFault,
   })
   return { ...measured, cost: stop === null ? (result?.total_cost_usd ?? null) : null }
+}
+
+/* -------------------------------------------------------------------------- */
+/* The Codex CLI                                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * `--runner codex` runs each brief through `codex exec`, the owner's own
+ * Codex, as the `cli` runner runs it through `claude -p`: the same system
+ * prompt, opening message, four tools served by `eval/mcp.mjs`, iteration
+ * cap, ceilings, judging and record. It has not been run against a real
+ * Codex; `docs/verification.md` lists what only a real run can confirm.
+ *
+ * Codex gets a home of the run's own (`codexHome`, `eval/harnesses.mjs`), so
+ * none of the owner's configuration, instructions, plugins or MCP servers
+ * reach it, and an empty directory outside the repository to work in, so it
+ * reads no `AGENTS.md`. Its own tools are turned off, the eval's MCP server
+ * is the only one it is given, and the eval's system prompt replaces its own
+ * instructions (`codexArguments`).
+ *
+ * Codex reports items as it goes and its tokens once, when its turn ends
+ * (`turn.completed`); it reports no request. So the runner counts the
+ * iteration cap as the CLI runner does, when the last call in flight has
+ * been answered, and counts the request limit in tool calls. A run the
+ * runner stops before Codex ends its turn has no token count, and records
+ * null. A run with no request count records `turns` as null. Codex reports no
+ * stop reason, so no run of it ends `refusal` or `max_tokens`, and no cost.
+ *
+ * Codex is expected to use the eval's tools and nothing else. A command, a
+ * file change, a web search or another agent in its stream means a tool of
+ * its own was still on, and every run would go the same way, so the eval
+ * stops and says so.
+ */
+
+/** Items that mean Codex used a tool of its own. */
+const CODEX_OWN_TOOLS = new Set([
+  'command_execution',
+  'file_change',
+  'web_search',
+  'collab_tool_call',
+])
+
+/**
+ * Every argument `codex exec` is given. Each is load-bearing, and
+ * `eval/fake/codex.mjs` checks them. The URL each rests on is beside it.
+ *
+ * - `exec --json`, `-` for the prompt on stdin, `--skip-git-repo-check`,
+ *   `--ephemeral`: a run with no person, its events as JSON lines, in a
+ *   directory that is no repository, with no session saved
+ *   (https://learn.chatgpt.com/docs/non-interactive-mode,
+ *   https://learn.chatgpt.com/docs/developer-commands).
+ * - `--sandbox read-only` and `approval_policy = "never"`: nothing waits for
+ *   a person and nothing is written.
+ * - `model_instructions_file`: the eval's system prompt in place of Codex's
+ *   built-in instructions
+ *   (https://learn.chatgpt.com/docs/config-file/config-reference).
+ * - `mcp_servers`: the eval's server and no other, `required` so a server
+ *   that does not start fails the run, every tool approved, because
+ *   `approval_policy = "never"` denies an MCP call that needs approval and
+ *   the server marks no tool read-only (https://learn.chatgpt.com/docs/extend/mcp,
+ *   `requires_mcp_tool_approval` in `codex-rs/core/src/mcp_tool_call.rs` of
+ *   https://github.com/openai/codex), and each tool's output limit raised so
+ *   every answer comes back whole.
+ * - `features.*`, `web_search`, `skills.*`: Codex's own tools, its skills and
+ *   their catalogue turned off, so the four tools are all the model is offered
+ *   (https://learn.chatgpt.com/docs/config-file/config-reference).
+ * - `history.persistence`, `check_for_update_on_startup`: nothing saved,
+ *   nothing fetched.
+ */
+function codexArguments({ settings, instructions, server }) {
+  return [
+    'exec',
+    '--json',
+    '--skip-git-repo-check',
+    '--ephemeral',
+    '--color',
+    'never',
+    '--sandbox',
+    'read-only',
+    ...(settings.fake ? [] : ['--model', settings.model]),
+    ...override('approval_policy', 'never'),
+    ...(settings.effort === 'default' ? [] : override('model_reasoning_effort', settings.effort)),
+    ...override('model_instructions_file', instructions),
+    ...override('mcp_servers', server === null ? {} : { polymorph: server }),
+    ...override('features.shell_tool', false),
+    ...override('features.unified_exec', false),
+    ...override('features.view_image', false),
+    ...override('features.multi_agent', false),
+    ...override('features.apps', false),
+    ...override('web_search', 'disabled'),
+    ...override('skills.include_instructions', false),
+    ...override('skills.bundled.enabled', false),
+    ...override('history.persistence', 'none'),
+    ...override('check_for_update_on_startup', false),
+    '-',
+  ]
+}
+
+/**
+ * One run of one brief through Codex. `codex` is the eval's: the command that
+ * starts Codex, and the files every run's MCP server reads. It returns what
+ * `runOnce` returns, with no cost.
+ */
+async function runOnceCodex({
+  brief,
+  run,
+  mode,
+  system,
+  opening,
+  card,
+  settings,
+  toolbox,
+  requirements,
+  codex,
+  meter,
+  limits,
+}) {
+  checkCeilings(meter, limits)
+
+  const runtime = card !== null
+  const directory = resolve(codex.scratch, `${brief}-${run}`)
+  const app = resolve(directory, 'app')
+  mkdirSync(app, { recursive: true })
+  const journal = resolve(directory, 'journal.jsonl')
+  writeFileSync(journal, '')
+  const instructions = resolve(directory, 'instructions.md')
+  writeFileSync(instructions, system)
+  const server = runtime
+    ? null
+    : {
+        command: process.execPath,
+        args: [
+          MCP_SERVER,
+          ...['--mode', mode, '--tools', codex.tools, '--registry', codex.registry],
+          ...['--journal', journal],
+        ],
+        required: true,
+        startup_timeout_sec: 60,
+        tool_timeout_sec: 600,
+        default_tools_approval_mode: 'approve',
+        tools: Object.fromEntries(
+          codex.names.map((name) => [name, { output_token_limit: MCP_OUTPUT_TOKENS }]),
+        ),
+      }
+  const home = codexHome(resolve(directory, 'codex-home'))
+
+  const child = spawn(
+    codex.command,
+    [
+      ...codex.prefix,
+      ...(settings.fake ? ['--script', codex.scriptFor(brief, run)] : []),
+      ...codexArguments({ settings, instructions, server }),
+    ],
+    { cwd: app, env: codexEnvironment(home), stdio: ['pipe', 'pipe', 'pipe'] },
+  )
+  const exited = new Promise((done) => {
+    child.on('close', (code, signal) => done({ code, signal }))
+    child.on('error', (error) => done({ code: null, signal: null, error }))
+  })
+  child.stdin.on('error', () => {})
+  child.stdin.end(opening)
+  let stderr = ''
+  child.stderr.on('data', (chunk) => (stderr = (stderr + chunk).slice(-8000)))
+
+  const tally = newTally()
+  let started = Date.now()
+  /** The MCP calls Codex has started and not yet reported, by item id, and every call it made. */
+  const pending = new Map()
+  const made = new Set()
+  const texts = []
+  let completed = false
+  let failed = null
+  let lastError = null
+  let harnessFault = null
+  let stop = null
+
+  const halt = (decision) => {
+    if (stop !== null) return
+    stop = decision
+    child.kill('SIGTERM')
+    setTimeout(() => child.kill('SIGKILL'), 5000).unref()
+  }
+
+  const journalLines = journalReader({
+    file: journal,
+    names: codex.names,
+    brief,
+    run,
+    tally,
+    onFault: (entry) => {
+      harnessFault = entry.fault
+      tally.lastSubmitted = entry.submitted ?? tally.lastSubmitted
+      halt({ ended: 'harness' })
+    },
+  })
+
+  /** A call Codex made, counted once, whether it was reported started or only completed. */
+  const madeCall = (item) => {
+    if (made.has(item.id)) return
+    made.add(item.id)
+    countCall(tally, item.tool)
+    pending.set(item.id, item.tool)
+  }
+
+  const ownTool = (item) => {
+    const what =
+      item.type === 'mcp_tool_call'
+        ? `a tool of the MCP server \`${item.server}\``
+        : `an item of type \`${item.type}\``
+    const message =
+      `Codex used ${what}, and the eval offers the model ` +
+      (runtime ? 'no tool in a runtime run' : 'only its four tools') +
+      ': this version of Codex keeps a tool of its own on that `codexArguments` turns off'
+    halt({ error: new CliError('cli', message) })
+  }
+
+  const onEvent = (event) => {
+    switch (event.type) {
+      case 'thread.started':
+        started = Date.now()
+        break
+      case 'item.started':
+      case 'item.completed': {
+        const item = event.item ?? {}
+        if (CODEX_OWN_TOOLS.has(item.type)) {
+          ownTool(item)
+          break
+        }
+        if (item.type === 'mcp_tool_call') {
+          if (runtime || item.server !== 'polymorph') {
+            ownTool(item)
+            break
+          }
+          madeCall(item)
+        }
+        if (event.type !== 'item.completed') break
+        if (item.type === 'agent_message' && typeof item.text === 'string') texts.push(item.text)
+        if (item.type !== 'mcp_tool_call') break
+        pending.delete(item.id)
+        journalLines.answered(item.tool)
+        journalLines.read()
+        if (stop !== null || pending.size > 0) break
+        // Every call in flight is answered: where the API runner decides whether to send the next request.
+        if (tally.validations >= settings.maxIterations && !tally.lastOk) halt({ ended: 'cap' })
+        else if (made.size >= MAX_TURNS) halt({ ended: 'turns' })
+        break
+      }
+      case 'error':
+        lastError = event.message ?? lastError
+        // Codex reports a stream it reconnects as an error and goes on.
+        if (/reconnect|retry/i.test(event.message ?? '')) meter.retries += 1
+        break
+      case 'turn.completed':
+        meterCodexUsage(meter, event.usage)
+        completed = true
+        break
+      case 'turn.failed':
+        failed = event.error?.message ?? lastError ?? 'turn failed'
+        break
+    }
+  }
+
+  try {
+    for await (const line of createInterface({ input: child.stdout })) {
+      if (stop !== null) continue
+      let event
+      try {
+        event = JSON.parse(line)
+      } catch {
+        continue
+      }
+      onEvent(event)
+    }
+  } catch (error) {
+    halt({ error })
+    stop = { error }
+    child.stdout.resume()
+  }
+  const { code, signal, error } = await exited
+  if (!runtime && stop === null) journalLines.read()
+  rmSync(directory, { recursive: true, force: true })
+
+  let ended
+  let answer = null
+  if (stop?.error !== undefined) throw stop.error
+  if (stop !== null) ended = stop.ended
+  else if (failed !== null) {
+    throw new CliError(
+      LIMIT_WORDS.test(failed) ? 'usage-limit' : 'cli',
+      `Codex reported: ${failed}`,
+    )
+  } else if (!completed) {
+    const how =
+      error === undefined ? `exited with ${code ?? signal}` : `did not start: ${error.message}`
+    const said = lastError === null ? '' : `; it last reported: ${lastError}`
+    throw new CliError('cli', `Codex ${how} before its turn ended${said}${tail(stderr)}`)
+  } else if (!runtime && !journalLines.listed) {
+    // Every run would go the same way, so the eval stops.
+    throw new CliError(
+      'cli',
+      'Codex finished without listing the eval’s MCP server’s tools: this version of Codex ' +
+        'did not start the server `codexArguments` names',
+    )
+  } else {
+    ended = 'answered'
+    answer = texts.at(-1) ?? ''
+  }
+
+  const measured = await conclude({
+    brief,
+    run,
+    mode,
+    card,
+    toolbox,
+    requirements,
+    tally,
+    meter,
+    started,
+    // Codex does not report when it sends a request.
+    timing: { sentAt: null, firstTextAt: null },
+    turns: null,
+    ended,
+    answer,
+    harnessFault,
+  })
+  return { ...measured, record: unreported(measured.record, meter), cost: null }
+}
+
+/**
+ * A record with the token counts its harness did not report set to null:
+ * every one when it reported none, and the cache writes when Codex reports
+ * no such part.
+ */
+function unreported(record, meter) {
+  if (meter.reported === false) {
+    const none = {}
+    for (const field of [
+      'inputTokens',
+      'uncachedInputTokens',
+      'cacheReadTokens',
+      'cacheWriteTokens',
+      'outputTokens',
+    ]) {
+      if (Object.hasOwn(record, field)) none[field] = null
+    }
+    return { ...record, ...none }
+  }
+  return meter.cacheWriteReported === false ? { ...record, cacheWriteTokens: null } : record
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1588,8 +2030,11 @@ function summarise(records, endings) {
     return found === null ? null : { low: rounded(found.low, 4), high: rounded(found.high, 4) }
   }
   const tally = (test) => measured.filter(test).length
-  const average = (field) =>
-    measured.length === 0 ? null : Math.round(mean(measured.map((record) => record[field])))
+  // A count a harness did not report is null, and is left out of its mean.
+  const average = (field) => {
+    const values = measured.map((record) => record[field]).filter((value) => value !== null)
+    return values.length === 0 ? null : Math.round(mean(values))
+  }
   const failed = new Map()
   for (const record of measured) {
     for (const id of record.failedRequirements) {
@@ -1648,7 +2093,9 @@ function summariseRuntime(records, endings) {
   }
   const tally = (test) => measured.filter(test).length
   const average = (values) => (values.length === 0 ? null : Math.round(mean(values)))
-  const meanOf = (field) => average(measured.map((record) => record[field]))
+  // A count a harness did not report is null, and is left out of its mean.
+  const meanOf = (field) =>
+    average(measured.map((record) => record[field]).filter((value) => value !== null))
   const timed = (field) => measured.map((record) => record[field]).filter((ms) => ms !== null)
   const range = (field) => {
     const values = timed(field)
@@ -1695,8 +2142,9 @@ function summariseRuntime(records, endings) {
   }
 }
 
-/** What a finished run spent, as the ceilings count it. */
-const recordTokens = (record) => record.inputTokens + record.outputTokens + record.discardedTokens
+/** What a finished run spent, as the ceilings count it. A count its harness did not report adds nothing. */
+const recordTokens = (record) =>
+  (record.inputTokens ?? 0) + (record.outputTokens ?? 0) + (record.discardedTokens ?? 0)
 
 function commit() {
   try {
@@ -1706,11 +2154,14 @@ function commit() {
   }
 }
 
-/** `<date>-<model>-<mode>`, `-cli` after it for the CLI runner, and a counter when that name is taken. */
+/**
+ * `<date>-<model>-<mode>`, `-cli` or `-codex` after it for the runners that
+ * start a harness, and a counter when that name is taken.
+ */
 function freeStem(out, at, model, mode, runner) {
   const base =
     `${at.slice(0, 10)}-${model.replace(/[^A-Za-z0-9.-]/g, '-')}-${mode}` +
-    (runner === 'cli' ? '-cli' : '')
+    (runner === 'api' ? '' : `-${runner}`)
   let stem = base
   for (let next = 2; existsSync(resolve(out, `${stem}.json`)); next += 1) stem = `${base}-${next}`
   return stem
@@ -1751,19 +2202,27 @@ const apiKey = process.env.ANTHROPIC_API_KEY
 if (settings.runner === 'api' && !settings.fake && !apiKey) {
   refuse(
     'ANTHROPIC_API_KEY is not set. The eval calls the Messages API and needs a key; ' +
-      '`--runner cli` runs Claude Code as you are signed in to it, and `--fake` runs the ' +
-      'scripted model instead.',
+      '`--runner cli` runs Claude Code as you are signed in to it, `--runner codex` runs ' +
+      'Codex the same way, and `--fake` runs the scripted model instead.',
   )
 }
 
-/** The CLI the `cli` runner starts for each run: the owner's, or the scripted stand-in for it. */
+/**
+ * The harness the `cli` or `codex` runner starts for each run: the owner's,
+ * or the scripted stand-in for it. Null for the `api` runner.
+ */
 const launcher =
-  settings.runner !== 'cli'
+  settings.runner === 'api'
     ? null
     : settings.fake
-      ? { command: process.execPath, prefix: [FAKE_CLI] }
-      : { command: settings.claude, prefix: [] }
-const cliVersion = launcher === null ? null : versionOf(launcher)
+      ? { command: process.execPath, prefix: [settings.runner === 'cli' ? FAKE_CLI : FAKE_CODEX] }
+      : { command: settings.runner === 'cli' ? settings.claude : settings.codex, prefix: [] }
+const cliVersion =
+  launcher === null
+    ? null
+    : settings.runner === 'cli'
+      ? versionOf(launcher, claudeEnvironment(), 'Claude Code CLI', refuse)
+      : versionOf(launcher, process.env, 'Codex CLI', refuse)
 
 const briefs = globSync(settings.briefs, { cwd: ROOT })
   .map((path) => resolve(ROOT, path))
@@ -1811,7 +2270,8 @@ const out =
   settings.out ?? (settings.fake ? mkdtempSync(resolve(tmpdir(), 'polymorph-eval-')) : RESULTS)
 const at = new Date().toISOString()
 const toolbox = await loadToolbox()
-const tools = card === null ? toolbox.tools(settings.mode) : []
+const project = settings.mode === PROJECT
+const tools = card === null && !project ? toolbox.tools(settings.mode) : []
 
 /**
  * What each brief requires of its screen. The eval stops before any run when
@@ -1833,14 +2293,15 @@ if (unjudged.length > 0) {
 }
 
 /**
- * What every CLI run's MCP server reads, written once: the tool definitions,
- * and the registry the eval judges with, as JSON. Each run adds a directory
- * of its own beside them, and the whole is removed when the eval ends. A
- * `runtime` run starts no server, so it writes neither.
+ * What every `cli` or `codex` run's MCP server reads, written once: the tool
+ * definitions, and the registry the eval judges with, as JSON. Each run adds
+ * a directory of its own beside them, and the whole is removed when the eval
+ * ends. A `runtime` run starts no server, so it writes neither. The project
+ * lane sets its app up instead (`lane`).
  */
 let cli = null
-if (launcher !== null) {
-  const scratch = mkdtempSync(resolve(tmpdir(), 'polymorph-eval-cli-'))
+if (launcher !== null && !project) {
+  const scratch = mkdtempSync(resolve(tmpdir(), `polymorph-eval-${settings.runner}-`))
   cli = {
     ...launcher,
     scratch,
@@ -1854,8 +2315,47 @@ if (launcher !== null) {
     writeFileSync(cli.registry, JSON.stringify(toolbox.registry))
   }
 }
+
+/**
+ * The project lane's setup, made once: the tools, the template every run
+ * copies (`makeTemplate`, `eval/project.mjs`) and the harness that runs in
+ * each copy. The tools failing to set the app up stops the eval before its
+ * first run. Null in the other modes.
+ */
+let lane = null
+if (project) {
+  const scratch = mkdtempSync(resolve(tmpdir(), 'polymorph-eval-project-'))
+  try {
+    const projectTools = resolveTools(settings.tools, { scratch })
+    console.error(
+      `eval: setting a ${settings.framework ?? 'react'} app up with ${projectTools.path}` +
+        (settings.install ? ', installed once for every run' : ', not installed'),
+    )
+    const template = makeTemplate({
+      tools: projectTools,
+      framework: settings.framework ?? 'react',
+      harness: settings.runner,
+      scratch,
+      install: settings.install,
+    })
+    lane = {
+      scratch,
+      tools: projectTools,
+      template,
+      harness: settings.runner,
+      launcher,
+      scriptFor: (brief, run) => scriptFor(resolve(BRIEFS, `${brief}.md`), run),
+    }
+  } catch (error) {
+    rmSync(scratch, { recursive: true, force: true })
+    if (error instanceof SetupError) refuse(error.message)
+    throw error
+  }
+}
+
 const removeScratch = () => {
   if (cli !== null) rmSync(cli.scratch, { recursive: true, force: true })
+  if (lane !== null) rmSync(lane.scratch, { recursive: true, force: true })
 }
 
 mkdirSync(out, { recursive: true })
@@ -1869,26 +2369,37 @@ const outputs = []
 
 /** The settings a results file records, by mode. */
 const recordedSettings = () =>
-  card === null
+  project
     ? {
         briefs: settings.briefs,
         runs: settings.runs,
-        maxIterations: settings.maxIterations,
-        maxTurns: MAX_TURNS,
-        maxTokens: MAX_TOKENS,
+        framework: settings.framework ?? 'react',
+        maxTurns: settings.maxTurns,
+        maxMinutes: settings.maxMinutes,
         effort: settings.effort,
         maxTokensPerRun: settings.maxTokensPerRun,
         maxTokensTotal: settings.maxTokensTotal,
       }
-    : {
-        briefs: settings.briefs,
-        runs: settings.runs,
-        maxTokens: MAX_TOKENS,
-        effort: settings.effort,
-        thinking: settings.runner === 'cli' ? null : settings.thinking,
-        maxTokensPerRun: settings.maxTokensPerRun,
-        maxTokensTotal: settings.maxTokensTotal,
-      }
+    : card === null
+      ? {
+          briefs: settings.briefs,
+          runs: settings.runs,
+          maxIterations: settings.maxIterations,
+          maxTurns: MAX_TURNS,
+          maxTokens: MAX_TOKENS,
+          effort: settings.effort,
+          maxTokensPerRun: settings.maxTokensPerRun,
+          maxTokensTotal: settings.maxTokensTotal,
+        }
+      : {
+          briefs: settings.briefs,
+          runs: settings.runs,
+          maxTokens: MAX_TOKENS,
+          effort: settings.effort,
+          thinking: settings.runner === 'api' ? settings.thinking : null,
+          maxTokensPerRun: settings.maxTokensPerRun,
+          maxTokensTotal: settings.maxTokensTotal,
+        }
 
 /**
  * Writes the results and the outputs as they stand, and re-renders the page.
@@ -1896,8 +2407,11 @@ const recordedSettings = () =>
  * without it, so an eval that stops keeps every run it finished.
  */
 async function save({ partial, stopped }) {
-  const [summariseRuns, endings] =
-    card === null ? [summarise, toolbox.endings] : [summariseRuntime, toolbox.runtimeEndings]
+  const [summariseRuns, endings] = project
+    ? [summariseProject, toolbox.projectEndings]
+    : card === null
+      ? [summarise, toolbox.endings]
+      : [summariseRuntime, toolbox.runtimeEndings]
   const results = {
     schema: 'polymorph-eval/1',
     at,
@@ -1912,6 +2426,20 @@ async function save({ partial, stopped }) {
     briefs: everyBrief,
     settings: recordedSettings(),
     ...(card === null ? {} : { card: card.record }),
+    ...(lane === null
+      ? {}
+      : {
+          project: {
+            tools: {
+              from: lane.tools.from,
+              path: lane.tools.path,
+              version: lane.tools.version,
+            },
+            installed: lane.template.installed,
+            agents: lane.template.agents,
+            mcpServers: lane.template.mcpServers,
+          },
+        }),
     outputs: `${stem}.outputs.json`,
     requirements: briefs.map((brief) => ({
       brief: name(brief),
@@ -1941,8 +2469,35 @@ async function save({ partial, stopped }) {
   return results
 }
 
+/** A token count as a run's line prints it: a number, or what was not reported. */
+const counted = (value) => (value === null ? 'unreported' : `${value}`)
+
+/** What a project run did, as the line it prints when it finishes. */
+function projectLine(record) {
+  const builds = record.builds === null ? 'not built' : record.builds ? 'builds' : 'does not build'
+  const brief =
+    record.meetsBrief === null
+      ? 'its screen not judged'
+      : record.meetsBrief
+        ? 'meets its brief'
+        : `does not meet its brief (${record.failedRequirements.join(', ')})`
+  const verbs = Object.keys(record.verbs)
+  const tools = Object.keys(record.mcpCalls)
+  return (
+    `eval: ${record.brief} #${record.run} — ${record.lawful ? 'lawful' : 'not lawful'} ` +
+    `(${record.ended}), ${builds}, ${brief}, ` +
+    `${record.written.length} file${record.written.length === 1 ? '' : 's'} written, ` +
+    `MCP tools ${tools.length === 0 ? 'none' : tools.join(', ')}, ` +
+    `verbs ${verbs.length === 0 ? 'none' : verbs.join(', ')}, ` +
+    `${counted(record.inputTokens)} in / ${counted(record.outputTokens)} out, ` +
+    `${(record.wallMs / 1000).toFixed(1)}s` +
+    (record.harnessFault === null ? '' : `\neval: harness fault: ${record.harnessFault}`)
+  )
+}
+
 /** What a run did, as the line it prints when it finishes. */
 function runLine(record, cost) {
+  if (project) return projectLine(record)
   const ending = `(${record.ended}${CUT_OFF.has(record.ended) ? ', never counted lawful' : ''}), `
   const brief = record.meetsBrief
     ? 'meets its brief, '
@@ -1956,10 +2511,12 @@ function runLine(record, cost) {
         (record.iterations === null
           ? `no validate call lawful (${record.toolCalls.validate} made), `
           : `lawful at validate call ${record.iterations}, `) +
-        `${record.inputTokens} in / ${record.outputTokens} out, ${(record.wallMs / 1000).toFixed(1)}s`
+        `${counted(record.inputTokens)} in / ${counted(record.outputTokens)} out, ` +
+        `${(record.wallMs / 1000).toFixed(1)}s`
       : brief +
-        `${record.inputTokens} in (${record.cacheReadTokens} read from the cache, ` +
-        `${record.cacheWriteTokens} written to it) / ${record.outputTokens} out, ` +
+        `${counted(record.inputTokens)} in (${counted(record.cacheReadTokens)} read from the ` +
+        `cache, ${counted(record.cacheWriteTokens)} written to it) / ` +
+        `${counted(record.outputTokens)} out, ` +
         (record.firstTokenMs === null
           ? ''
           : `first token at ${(record.firstTokenMs / 1000).toFixed(2)}s, `) +
@@ -1978,8 +2535,10 @@ function runLine(record, cost) {
 for (const brief of briefs) {
   const text = readFileSync(brief, 'utf8')
   // The `runtime` mode's system prompt is the card alone, and its message is the brief.
-  const [system, opening] =
-    card === null
+  // The `project` mode sends neither: the harness has its own prompt, and the brief is its request.
+  const [system, opening] = project
+    ? [null, null]
+    : card === null
       ? [systemPrompt(settings.mode, text, toolbox), OPENING]
       : [card.text, runtimeOpening(text)]
   for (let run = 1; run <= settings.runs; run += 1) {
@@ -1991,7 +2550,36 @@ for (const brief of briefs) {
     }
     let measured
     try {
-      if (cli !== null) {
+      if (lane !== null) {
+        checkCeilings(meter, limits)
+        measured = await runOnceProject({
+          brief: name(brief),
+          run,
+          text,
+          lane,
+          settings,
+          toolbox,
+          requirements: required.get(name(brief)).requirements,
+          meter,
+          ceilings: () => checkCeilings(meter, limits),
+        })
+        rmSync(measured.directory, { recursive: true, force: true })
+      } else if (cli !== null && settings.runner === 'codex') {
+        measured = await runOnceCodex({
+          brief: name(brief),
+          run,
+          mode: settings.mode,
+          system,
+          opening,
+          card,
+          settings,
+          toolbox,
+          requirements: required.get(name(brief)).requirements,
+          codex: cli,
+          meter,
+          limits,
+        })
+      } else if (cli !== null) {
         measured = await runOnceCli({
           brief: name(brief),
           run,
@@ -2034,7 +2622,7 @@ for (const brief of briefs) {
         })
       }
     } catch (error) {
-      // The API or the CLI failing, or a ceiling, stops the eval. The runs that
+      // The API or a harness failing, or a ceiling, stops the eval. The runs that
       // finished are kept, marked partial, so the report lists them and never
       // takes its number from them; the unfinished run is named, with what it
       // spent.
@@ -2080,8 +2668,12 @@ const { overall } = results.summary
 const percent = (rate) => (rate === null ? '—' : `${Math.round(rate * 100)}%`)
 console.error(
   `eval: ${shown(resultsFile)} — lawful ${percent(overall.lawfulRate)}, ` +
-    (card === null ? `first shot ${percent(overall.firstShotRate)}, ` : '') +
-    `meets its brief ${percent(overall.meetsBriefRate)}, ` +
-    `both ${percent(overall.lawfulAndMeetsBriefRate)}, ` +
+    (project
+      ? `builds ${percent(overall.buildsRate)}, ` +
+        `meets its brief ${percent(overall.meetsBriefRate)}, ` +
+        `all three ${percent(overall.allThreeRate)}, `
+      : (card === null ? `first shot ${percent(overall.firstShotRate)}, ` : '') +
+        `meets its brief ${percent(overall.meetsBriefRate)}, ` +
+        `both ${percent(overall.lawfulAndMeetsBriefRate)}, `) +
     `over ${overall.measured} run${overall.measured === 1 ? '' : 's'}; ${shown(readme)} rendered`,
 )

@@ -8,11 +8,12 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { callTool, loadToolbox, messageOf } from './toolbox.mjs'
 
 /**
- * The MCP server the agent eval's CLI runner gives `claude -p`
- * (`eval/run.mjs`, `docs/verification.md`, "The agent eval"). It serves the
- * four tools the Messages API runner offers, under the same names, with the
- * same descriptions and schemas, answered by the same functions
- * (`eval/toolbox.mjs`), over stdio as `polymorph-mcp` serves its own.
+ * The MCP server the agent eval's `cli` and `codex` runners give `claude -p`
+ * and `codex exec` (`eval/run.mjs`, `docs/verification.md`, "The agent
+ * eval"). It serves the four tools the Messages API runner offers, under the
+ * same names, with the same descriptions and schemas, answered by the same
+ * functions (`eval/toolbox.mjs`), over stdio as `polymorph-mcp` serves its
+ * own.
  *
  * It serves the eval's tools instead of running `polymorph-mcp`, because the
  * two differ where the eval measures. The eval's `validate` also emits a spec
