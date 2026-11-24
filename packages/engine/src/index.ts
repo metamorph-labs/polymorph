@@ -155,6 +155,16 @@ export type { ControlComponent, ControlKind } from './conventions/kind'
 
 export { modalFocusTarget } from './conventions/modal-focus'
 export type { InitialFocus, ModalPart } from './conventions/modal-focus'
+/* Where focus goes when the control an overlay returns to, or the region that holds focus,
+   has left the page. */
+export {
+  focusAfterRemoval,
+  focusPlace,
+  focusReturnTarget,
+  nearestFocusable,
+  returnFocusTo,
+} from './conventions/focus-after-removal'
+export type { FocusPlace } from './conventions/focus-after-removal'
 
 /* The focus and key handling a Zag machine leaves to its renderer, the trigger
    anchor of an overlay whose trigger is a governed control, and the development
@@ -384,3 +394,5 @@ export type {
 } from './toast/store'
 export { actOnToastNotice, dismissToastNotice, toastDetails, toastNotices } from './toast/agent'
 export type { ToastNoticeChoice, ToastNoticeDetail } from './toast/agent'
+/* Where focus goes when a toast that holds it leaves. */
+export { focusAfterToast, noteToastEntry } from './toast/focus'

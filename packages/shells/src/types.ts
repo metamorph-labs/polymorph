@@ -199,6 +199,13 @@ export const ENGINE_HELPERS: readonly string[] = [
   'spacingAttrs',
   'fitTextarea',
   'modalFocusTarget',
+  // Where focus goes when the control an overlay returns to, or a region that holds focus, has
+  // left the page, and when a toast that holds focus leaves.
+  'focusPlace',
+  'focusReturnTarget',
+  'focusAfterRemoval',
+  'focusAfterToast',
+  'noteToastEntry',
   'avatarTone',
   'initialsOf',
   'paginationWindow',

@@ -16,6 +16,7 @@ import {
   classes,
   derived,
   elementRef,
+  focusAfterToast,
   hostRef,
   isTemplate,
   removeToast,
@@ -189,19 +190,24 @@ export class ToastCard {
     ),
   )
   protected readonly template = isTemplate
-  private release2: (() => void) | undefined
+  private release3: (() => void) | undefined
 
   constructor() {
     hostRef(this.card)
     watchEffect(
-      () => this.present.value(),
+      () => this.$p.record.closing,
       () => this.effect1(),
       false,
     )
-    inject(DestroyRef).onDestroy(() => this.release2?.())
+    watchEffect(
+      () => this.present.value(),
+      () => this.effect2(),
+      false,
+    )
+    inject(DestroyRef).onDestroy(() => this.release3?.())
     watchEffect(
       () => [this.$p.record.revision, this.$p.paused, this.$p.record.closing],
-      () => this.effect2(),
+      () => this.effect3(),
       true,
     )
   }
@@ -365,11 +371,15 @@ export class ToastCard {
   }
 
   private effect1(): void {
-    void (this.present.value() || removeToast(this.$p.record.id))
+    void (this.$p.record.closing === true && focusAfterToast(this.card.value))
   }
 
   private effect2(): void {
-    this.release2?.()
+    void (this.present.value() || removeToast(this.$p.record.id))
+  }
+
+  private effect3(): void {
+    this.release3?.()
     const timer = setTimeout(
       () => {
         void (
@@ -382,6 +392,6 @@ export class ToastCard {
       },
       Number.isFinite(this.$p.record.durationMs) ? this.$p.record.durationMs : 0,
     )
-    this.release2 = () => clearTimeout(timer)
+    this.release3 = () => clearTimeout(timer)
   }
 }

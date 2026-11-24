@@ -17,6 +17,7 @@ import {
   dismissToastNotice,
   elementRef,
   getToasts,
+  noteToastEntry,
   scope,
   subscribeToasts,
   toast,
@@ -121,7 +122,10 @@ export default function ToastViewport(given: ToastViewportProps): JSX.Element {
           data-toast-part="list"
           onpointerenter={() => (paused.value = true)}
           onpointerleave={() => (paused.value = false)}
-          onfocusin={() => (paused.value = true)}
+          onfocusin={($event: FocusEvent) => (
+            (paused.value = true),
+            noteToastEntry(list.value, $event.relatedTarget)
+          )}
           onfocusout={() => (paused.value = false)}
           ref={list.attach}
         >

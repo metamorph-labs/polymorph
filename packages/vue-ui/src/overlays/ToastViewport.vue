@@ -13,6 +13,7 @@ import {
   agentMember,
   dismissToastNotice,
   getToasts,
+  noteToastEntry,
   subscribeToasts,
   toast,
   toastDetails,
@@ -113,7 +114,7 @@ onBeforeUnmount(() => release3?.())
       data-toast-part="list"
       @pointerenter="paused = true"
       @pointerleave="paused = false"
-      @focusin="paused = true"
+      @focusin="((paused = true), noteToastEntry(list, $event.relatedTarget))"
       @focusout="paused = false"
     >
       <template v-for="record in records" :key="record.id">

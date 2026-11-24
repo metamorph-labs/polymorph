@@ -11,6 +11,7 @@
     "./tabs-overflow": "./src/tabs-overflow.ts",
     "./pager-hold": "./src/pager-hold.ts",
     "./toast-swipe": "./src/toast-swipe.ts",
+    "./toast-focus": "./src/toast-focus.ts",
     "./diff": "./src/diff.ts",
     "./highlight": "./src/highlight.ts",
     "./search-page": "./src/search-page.ts",

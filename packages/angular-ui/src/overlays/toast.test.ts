@@ -2,6 +2,7 @@ import { Component, signal } from '@angular/core'
 import { userEvent } from 'vitest/browser'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
+import { toastFocusLaw } from '@polymorph/conformance/toast-focus'
 import { toastSwipeLaw } from '@polymorph/conformance/toast-swipe'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { getToasts, removeToast, toast, TOAST_DEFAULT_DURATION_MS } from '@polymorph/angular'
@@ -74,6 +75,13 @@ class Drawn {}
   template: `<pm-toast title="Orphaned" />`,
 })
 class Orphaned {}
+
+toastFocusLaw({
+  shell: 'Angular',
+  mount: () => mountComponent(ToastViewport),
+  raise: (options) => void toast({ ...options, durationMs: Number.POSITIVE_INFINITY }),
+  clear: () => getToasts().forEach((record) => removeToast(record.id)),
+})
 
 toastSwipeLaw({
   shell: 'Angular',

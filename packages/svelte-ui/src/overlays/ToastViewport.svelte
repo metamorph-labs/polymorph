@@ -14,6 +14,7 @@ import {
   dismissToastNotice,
   getToasts,
   joinSlot,
+  noteToastEntry,
   subscribeToasts,
   toast,
   toastDetails,
@@ -111,7 +112,7 @@ onDestroy(() => release3?.())
       data-toast-part="list"
       onpointerenter={() => { paused = true }}
       onpointerleave={() => { paused = false }}
-      onfocusin={() => { paused = true }}
+      onfocusin={(event) => { (paused = true, noteToastEntry(list, event.relatedTarget)) }}
       onfocusout={() => { paused = false }}
       >{#each records as record (record.id)
         }<ToastCard {record} dismissLabel={say.dismiss} {paused}

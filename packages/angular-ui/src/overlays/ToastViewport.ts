@@ -18,6 +18,7 @@ import {
   elementRef,
   getToasts,
   mountEffect,
+  noteToastEntry,
   subscribeToasts,
   toast,
   toastDetails,
@@ -59,7 +60,7 @@ tabindex="-1"
 data-toast-part="list"
 (pointerenter)="h1()"
 (pointerleave)="h2()"
-(focusin)="h3()"
+(focusin)="h3($event)"
 (focusout)="h4()"
 [pmRef]="list"
 >@for (record of e3(); track e4(record)) {<li
@@ -143,8 +144,8 @@ export class ToastViewport {
     this.paused.value = false
   }
 
-  protected h3(): void {
-    this.paused.value = true
+  protected h3($event: FocusEvent): void {
+    void ((this.paused.value = true), noteToastEntry(this.list.value, $event.relatedTarget))
   }
 
   protected h4(): void {
