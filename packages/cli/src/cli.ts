@@ -81,14 +81,21 @@ export interface Outcome {
   code: number
 }
 
-/** The verbs, each group under its name, with the usage up to the first flag. */
+/**
+ * The verbs, each group under its name, with the usage up to the first flag.
+ * A usage wider than the column puts its summary on the next line.
+ */
 function verbList(): string {
-  const width = Math.max(...VERBS.map((verb) => synopsis(verb).length))
+  const column = 34
+  const line = (usage: string, summary: string) =>
+    usage.length > column
+      ? `  ${usage}\n  ${''.padEnd(column)}  ${summary}`
+      : `  ${usage.padEnd(column)}  ${summary}`
   return VERB_GROUPS.map((group) =>
     [
       `${group.charAt(0).toUpperCase()}${group.slice(1)}`,
-      ...VERBS.filter((verb) => verb.group === group).map(
-        (verb) => `  ${synopsis(verb).padEnd(width)}  ${verb.summary}`,
+      ...VERBS.filter((verb) => verb.group === group).map((verb) =>
+        line(synopsis(verb), verb.summary),
       ),
     ].join('\n'),
   ).join('\n\n')

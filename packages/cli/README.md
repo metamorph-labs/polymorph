@@ -1,6 +1,9 @@
 # @polymorph/cli
 
-The installer: `polymorph init`, `add`, `diff`, `update`, `theme` and `check`. `init` creates a new app
+The installer, and the MCP tools as commands: `polymorph init`, `add`, `diff`, `update`, `theme`
+and `check`, and a verb for each MCP tool (`card`, `search`, `component`, `axes`, `plan`,
+`validate`, `fix`, `emit`, `render`, `theme propose`) with `mcp`, which starts the server.
+`init` creates a new app
 that installs the packages, with a theme, the red rules, an MCP config and a first screen. `add`
 copies chosen members of the **vocabulary** (the closed set of polymorph components) and themes
 from this repository into another one. Both work in one web framework: React by default, or Vue,
@@ -21,9 +24,9 @@ it and installs into the **current directory**, so run it from the other reposit
 node ../polymorph/packages/cli/bin/polymorph.js add button dialog theme:pastel
 ```
 
-In this repository, `pnpm polymorph <command>` runs from this repository's root. Use it only for
-`help`, `add --dry-run` and `theme`: `add` and `update` refuse to write into a checkout of polymorph,
-as `init` does.
+In this repository, `pnpm polymorph <command>` runs from this repository's root. Use it for
+`help`, the verbs that look up and check, `add --dry-run` and `theme`: `add` and `update` refuse to
+write into a checkout of polymorph, as `init` does.
 
 To start a new app instead, name a directory outside the checkout:
 
@@ -39,6 +42,13 @@ node ../polymorph/packages/cli/bin/polymorph.js init my-app
 | `polymorph update` | Re-vendors the files you have not edited, keeps and reports the files you have edited, and recompiles the installed themes |
 | `polymorph theme validate \| emit \| schema` | Checks, emits or describes a system and palette that you wrote, given by path, with the same laws |
 | `polymorph check [dir]` | Runs the red rules over every `.ts`, `.tsx`, `.vue`, `.svelte`, `.html` and `.css` file below a directory as application code, with no lint config, outside the vendored directory. Prints each violation by file and rule with the rungs that answer it, and exits 1 on any |
+| `polymorph card`, `search`, `component`, `axes`, `plan` | Look up the system card, a search, one member, the theme axes, an install plan: the answers of `get_system_card`, `search_components`, `get_component`, `get_theme_axes` and `get_install_plan` |
+| `polymorph validate <file...\|->` | Checks code against the red rules, or a `.json` screen spec against the vocabulary: `validate`. One line for each violation, `file:line:column  rule  message`, with the lawful answer and the rungs under it |
+| `polymorph render <spec.json> --system <name>` | Draws a spec in a browser (`render_screen`), writes each picture into `<spec>.render/` or `--out`, and prints the layout faults with each picture's path |
+| `polymorph fix <file\|->` | Rewrites what has exactly one lawful rewrite in a file (`fix_file`); `--dry-run`, or `-` for stdin, prints the fixed code and writes nothing (`fix`) |
+| `polymorph emit <spec.json> <out>` | Compiles a screen spec to a file in the project (`emit_screen`) |
+| `polymorph theme propose "<intent>"` | A checked system and palette from plain words (`propose_theme`); `--save` writes them (`save_theme`) |
+| `polymorph mcp [--project <path>] [--read-only]` | Starts the MCP server over stdio, as `polymorph-mcp` does |
 
 Flags: `--dir <path>` (where vendored source lands, default `src/polymorph`), `--dry-run` (print
 the plan, write nothing), `--force` (overwrite files you have edited), `--out <path>` (where
@@ -47,7 +57,11 @@ default `plain`), `--framework <name>` (`react`, the default, `vue`, `svelte`, `
 `angular`: the app `init` writes and the members `add` vendors; once an install has
 `polymorph.json`, `add` uses the framework it records and refuses another; `check` reads every file
 in it instead of inferring each file's), `--no-install` (`init` writes the app and skips
-`pnpm install`), `--json` (`check` prints its report as JSON).
+`pnpm install`), `--json` (`check` prints its report as JSON, and a verb that asks a tool prints
+exactly the tool's answer). `polymorph <verb> --help` prints every flag of one verb.
+
+A verb that asks a tool exits 0 when the answer is clean, 1 when it reports violations, faults or
+a refusal, and 2 when the command line cannot be read. It refuses a flag it does not take.
 
 `add` writes `polymorph.json` first. It lists every path the install will write and the hash of
 its contents, so `diff` and `update` can tell your edit from an upstream change. `add` then copies
@@ -63,7 +77,20 @@ to recompile.
 
 ## Entry point
 
-`@polymorph/cli` exports its parts as pure functions and plain modules: `planInit` (the new app's
+`main(cli, argv)` takes everything from its entry point: the two roots, the registry, where to
+print, and two functions this package cannot build because `@polymorph/mcp` depends on it.
+`cli.tools` calls one MCP tool by name in this process (`toolCaller` from `@polymorph/mcp`), and
+`cli.serve` starts the server for `mcp` (`serveStdio`). A verb whose function is absent refuses
+with one line. `bin/polymorph.js` builds both from `packages/mcp/src`, each the first time a verb
+calls it, with this checkout as the root the vocabulary is read from and the working directory as
+the project. `cli.err` takes what a verb writes beside its answer when the answer is the whole of
+stdout, and `cli.input` reads stdin for `-`.
+
+`VERBS` lists every verb as data (name, group, summary, usage, flags, and the MCP tools of the
+same job). The help is built from it, and a law in `@polymorph/mcp` holds it to the server's table
+of tools.
+
+`@polymorph/cli` also exports its parts as pure functions and plain modules: `planInit` (the new app's
 files, as data) with `writeInit` and `installApp`, `planInstall` (takes a registry and a list of
 names, returns a description of the install, and never touches the filesystem), `applyPlan`, `diffInstall`, `updateInstall`, the manifest reader and writer, the
 generated-file emitters and the config patches. The MCP server's `get_install_plan` tool calls
@@ -93,6 +120,10 @@ pnpm exec vitest run packages/cli
   that framework's compiler and the red rules, and `add` plans and writes that framework's members.
 - `src/check.test.ts` — `check` over temporary apps: what it reads and leaves out, the framework
   each file is read in, what it refuses, its output and its exit code.
+- `src/verbs.test.ts` — the verb list's shape, the help, each verb's `--help`, the command lines
+  a verb refuses with exit code 2, the refusal when the entry point supplied no tools or no
+  server, and the project `mcp` starts the server for. `packages/mcp/src/verbs.test.ts` runs every
+  verb with the real tools.
 - `src/thin-front.test.ts` — the package never reaches into the vocabulary, `design/` or the
   TypeScript compiler.
 - `scratch.test.ts` — the end-to-end check. It builds `@polymorph/engine`, `@polymorph/react` and
@@ -111,6 +142,6 @@ pnpm exec vitest run packages/cli
 ## Read more
 
 - [docs/tooling.md](../../docs/tooling.md) — every item form, each step of `add`,
-  `polymorph.json`, `diff`, `update` and `theme`
+  `polymorph.json`, `diff`, `update` and `theme`, and the verbs that ask the MCP tools
 - [docs/consuming.md](../../docs/consuming.md) — vendoring versus linking, end to end
 - [docs/rules.md](../../docs/rules.md) — the rules an install carries

@@ -85,7 +85,12 @@ pnpm mcp
 project. Register it with a client as a stdio server whose command is
 `node /absolute/path/to/polymorph/packages/mcp/bin/polymorph-mcp.js`;
 [docs/tooling.md](../../docs/tooling.md) shows the usual `mcpServers` shape. stdout carries only
-protocol messages. Diagnostics go to stderr.
+protocol messages. Diagnostics go to stderr. `polymorph mcp` starts the same server, with the same
+flags, through the same function (`serveStdio`).
+
+Every tool is also a verb of the CLI (`polymorph card`, `validate`, `render`, …), which calls it
+in its own process and prints the same answer
+([docs/tooling.md](../../docs/tooling.md#the-verbs-that-ask-the-mcp-tools)).
 
 ## Entry point
 
@@ -94,8 +99,21 @@ attached. It also exports `READ_TOOL_NAMES`, `WRITE_TOOL_NAMES` and `TOOL_NAMES`
 a plain function that takes a `{ registry, root, project?, screenBuilder? }` context:
 `searchComponents`, `getComponent`, `getInstallPlan`, `getSystemCard`, `getThemeAxes`, `validate`,
 `fix`, `proposeTheme`, `renderScreen`, `emitScreen`, `install`, `saveTheme`, `fixFile`.
-`src/server.ts` only binds those functions to the protocol, so a different transport would bind
-the same functions.
+`src/server.ts` holds one table of the tools (`TOOLS`): each name, argument schema, annotations
+and the function it calls. `createServer` registers the table and only binds it to the protocol,
+so a different transport would bind the same functions.
+
+Two functions use the same table outside a client's session, for an entry point to build:
+
+- `toolCaller(context)` returns `(name, args) => Promise<ToolAnswer>`, which calls one tool by
+  name in this process. It checks `args` with the tool's own schema through the SDK's functions,
+  and answers as the server does: `{ value, images, isError }`, the JSON value (or the text of the
+  system card, or a refusal's sentence), each picture as bytes with its media type, and whether it
+  is an error. A context with no project has no write tool, as a `--read-only` server has none.
+  The CLI's verbs run on it (`cli.tools`).
+- `serveStdio(context)` runs the server over stdio and resolves when the client has closed stdin
+  and every request has its answer. `bin/polymorph-mcp.js` and `polymorph mcp` (`cli.serve`) both
+  start the server with it.
 
 The server is a **thin front** over `@polymorph/registry`. Every answer is a field of the
 registry, a projection of one, or a file the registry names. It never reads the vocabulary's
@@ -126,6 +144,12 @@ pnpm exec vitest run packages/mcp
   tool that takes `framework`, asked about that framework.
 - `src/server.test.ts` — the protocol wiring over an in-memory transport: each name bound to its
   function and argument schema, and how a refusal reads.
+- `src/verbs.test.ts` — the law that every tool is a CLI verb and every verb names a tool that
+  exists; that `toolCaller` answers as the server does, refusals included; and every verb run
+  through the CLI's `main` with the real caller in a scratch project: `--json` is the tool's
+  answer, `validate` prints one line for each violation, `emit` writes the bytes `emit_screen`
+  writes, `render` writes its pictures, and `polymorph mcp` answers a session spoken by hand and
+  exits when stdin closes.
 - `src/violations.test.ts` — every violation `validate` returns carries its fix, its
   alternatives and its message.
 - `src/thin-front.test.ts` — the package names no vocabulary or `design/` path, links no

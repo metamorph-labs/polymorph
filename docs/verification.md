@@ -253,6 +253,7 @@ project its path falls under in the table above, unless its row names another ga
 | The round trip | `packages/spec/roundtrip.test.ts` | a Relay screen spec that does not emit code the real vocabulary typechecks |
 | Install and init | `packages/cli/scratch.test.ts`, `packages/cli/init.test.ts` | a vendored install, or a new app, that does not build and lint clean against the packages' builds |
 | The MCP server | `packages/mcp/transcript.test.ts` | a tool that fails over a real stdio session |
+| The CLI's verbs | `packages/mcp/src/verbs.test.ts`, `packages/cli/src/verbs.test.ts` | a tool with no CLI verb, or a verb that names a tool the server does not register; a one-shot call that answers differently from the server; a verb whose `--json` is not the tool's answer, whose exit code does not say whether the answer was clean, or that reads a command line it should refuse; `polymorph mcp` that drops an answer or does not exit when its client closes stdin |
 | The docs site | `apps/docs/src/llms.test.ts` | an `/llms.txt` that does not point an agent at the card, the tools, every guide's markdown file and every application rule; a guide's markdown file with a link the site does not serve |
 | The docs site | `apps/docs/src/page-head.test.ts` | a page title that does not name the pages above it; structured data with an address that is not written in full |
 | The eval's harness | `eval/eval.test.ts` | a harness that counts a run the model did not earn, a brief's requirement that names something the vocabulary lacks or that a screen without the part still meets, a run-time request that is not the card, the brief and no tool, or a run-time answer judged before its document is whole, or a report that differs from what `pnpm eval:report` renders ([The agent eval](#the-agent-eval)) |
@@ -805,6 +806,14 @@ either on the first attempt or after correcting itself using the system's own fe
   outside the workspace. A `--read-only` server offers none of the write tools. `render_screen`
   returns its pictures over the transport, and a server started where Playwright has downloaded no
   browser answers that tool with the install command and every other tool as before.
+- `packages/mcp/src/verbs.test.ts`: every CLI verb that asks a tool, run through `main` with the
+  real one-shot caller in a scratch project outside the workspace. `--json` prints exactly what the
+  tool answers for the same call; `validate` prints one line for each violation; `emit` writes the
+  bytes `emit_screen` writes; `render` writes its pictures beside the spec, and is skipped, saying
+  why, on a machine where Playwright has no Chromium. The caller's answers are compared with the
+  server's over an in-memory transport, refusals and schema errors included. `polymorph mcp` is
+  spoken to by hand over stdio and exits 0 once it has answered everything sent before stdin
+  closed.
 - `packages/mcp/src/render.test.ts`: `render_screen` as a function, in a real Chromium over the
   page the workbench's builder builds in memory. A lawful spec comes back as one PNG for each width,
   of the window's size. A row told not to wrap is reported at the phone's width and not the
