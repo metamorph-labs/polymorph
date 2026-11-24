@@ -32,7 +32,8 @@ not change it adds a heading with no notes under it.
 | Packages | Versioned | Shipped |
 | --- | --- | --- |
 | The published web packages: `@polymorph/engine`, `@polymorph/rules`, `@polymorph/recipes`, `@polymorph/screen`, and each web framework's foundation and vocabulary (`@polymorph/react` and `@polymorph/react-ui`, and the same pair for `vue`, `svelte`, `solid`, `elements` and `angular`) | by changesets, at the release's version in each `package.json`, with a `CHANGELOG.md` | to GitHub Packages by `pnpm publish:packages` |
-| The internal packages: `@polymorph/theme`, `@polymorph/registry`, `@polymorph/cli`, `@polymorph/mcp`, `@polymorph/spec`, `@polymorph/shells`, `@polymorph/conformance`, `@polymorph/native` | by changesets, the same way, for the tools' release notes | nowhere: they run from a checkout |
+| The published tools: `@polymorph/tools` (`@metamorph-labs/polymorph`), which bundles the CLI, the MCP server and the internal packages they run | the same way | the same way |
+| The internal packages: `@polymorph/theme`, `@polymorph/registry`, `@polymorph/cli`, `@polymorph/mcp`, `@polymorph/spec`, `@polymorph/shells`, `@polymorph/conformance`, `@polymorph/native` | by changesets, the same way, for the tools' release notes | nowhere on their own: they run from a checkout, and the published tools carry the ones the CLI and the server run |
 | The native packages: `platforms/ios`, `platforms/android`, `platforms/dart` | by the repository's release tag | with the tag |
 
 Every package stays `"private": true` in the workspace, and the publish script writes the

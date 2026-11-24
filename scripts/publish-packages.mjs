@@ -5,15 +5,17 @@
  * `@polymorph/recipes`, `@polymorph/react-ui`, `@polymorph/vue`,
  * `@polymorph/vue-ui`, `@polymorph/svelte`, `@polymorph/svelte-ui`,
  * `@polymorph/solid`, `@polymorph/solid-ui`, `@polymorph/elements`,
- * `@polymorph/elements-ui`, `@polymorph/angular`, `@polymorph/angular-ui` and
- * `@polymorph/screen`, as `@metamorph-labs/polymorph-engine`, `@metamorph-labs/polymorph-rules`,
+ * `@polymorph/elements-ui`, `@polymorph/angular`, `@polymorph/angular-ui`,
+ * `@polymorph/screen` and `@polymorph/tools`, as `@metamorph-labs/polymorph-engine`, `@metamorph-labs/polymorph-rules`,
  * `@metamorph-labs/polymorph-react`, `@metamorph-labs/polymorph-recipes`,
  * `@metamorph-labs/polymorph-react-ui`, `@metamorph-labs/polymorph-vue`,
  * `@metamorph-labs/polymorph-vue-ui`, `@metamorph-labs/polymorph-svelte`,
  * `@metamorph-labs/polymorph-svelte-ui`, `@metamorph-labs/polymorph-solid`,
  * `@metamorph-labs/polymorph-solid-ui`, `@metamorph-labs/polymorph-elements`,
  * `@metamorph-labs/polymorph-elements-ui`, `@metamorph-labs/polymorph-angular`,
- * `@metamorph-labs/polymorph-angular-ui` and `@metamorph-labs/polymorph-screen`.
+ * `@metamorph-labs/polymorph-angular-ui`, `@metamorph-labs/polymorph-screen` and
+ * `@metamorph-labs/polymorph`, the tools, which a person runs with `npx` and no
+ * app imports.
  *
  * Inside this repository the packages keep their `@polymorph/*` names, which
  * every import, test and doc uses. GitHub Packages requires a package's scope to
@@ -136,6 +138,11 @@ const PACKAGES = [
   // compilation, which the consumer's Angular linker finishes (`packages/angular/scripts/package.mjs`).
   { dir: 'packages/angular', bundled: [] },
   { dir: 'packages/angular-ui', bundled: [] },
+  // The tools: the CLI and the MCP server, last, because their build copies the elements'
+  // no-build files the vocabulary's build wrote. It bundles every polymorph package it runs,
+  // which are its dev dependencies, so the rewrite drops them with the rest
+  // (`packages/tools/vite.build.config.ts`).
+  { dir: 'packages/tools', bundled: [] },
 ].map((entry) => {
   const workspaceName = readJson(resolve(ROOT, entry.dir, 'package.json')).name
   const name = PUBLISHED[workspaceName]
