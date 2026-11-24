@@ -1,5 +1,58 @@
 # @polymorph/native
 
+## 1.0.17
+
+### Patch Changes
+
+- 740bebf: Accordion and Collapsible take `keepMounted`, an optional prop with the name Tabs uses. In React a
+  closed region's content then stays in the document, `hidden`, so a page's server markup carries it
+  and state inside the region survives a close: an FAQ's answers are in the HTML a crawler reads
+  without running a script. The region is hidden once its close animation ends. Without the prop
+  React leaves closed content out, as before. The Vue, Svelte, Solid, Angular and elements members
+  already keep a closed region's content in the document, `hidden`, so they accept the prop and it
+  changes nothing there. The SwiftUI and Compose contracts gain the field, and neither rendering
+  draws it: SwiftUI lays a closed region's content out at no height in every case, and Compose
+  leaves it out.
+- e761a13: Image takes two optional props that steer the browser's fetch, for a public page whose first
+  picture decides how fast it loads:
+
+  ```tsx
+  <Image
+    src="/harbour-800.jpg"
+    srcSet="/harbour-400.jpg 400w, /harbour-800.jpg 800w, /harbour-1600.jpg 1600w"
+    alt="A harbour at dusk"
+    width={800}
+    height={500}
+    loading="eager"
+    fetchPriority="high"
+  />
+  ```
+
+  - `srcSet` is the element's `srcset`, passed unchanged. The browser requests the file that suits
+    the screen, so a phone does not download a desktop's file. `src` stays required.
+  - The element's `sizes` is not a prop, because the red rules refuse a length in application
+    code. The member writes it for a set that gives widths, from the frame's box: `width` pixels
+    and never more than the viewport's width for a frame with `width` and `height`, wider by the
+    crop for a picture that covers a frame of a narrower ratio, and the element's own laid-out
+    width first (`auto`) for a lazy picture drawn as wide as its frame. A set that gives widths
+    needs a box, from `width` and `height` or from `aspectRatio`: without one the set is ignored,
+    with a development warning, because it would stretch the frame to its container.
+  - `fetchPriority` is the element's `fetchpriority`: `high` for the one picture that is the largest
+    content of the first view, with `loading="eager"`.
+  - A change of `srcSet` is a new request, as a change of `src` is: the frame returns to loading,
+    and a failure is forgotten.
+
+  An element takes them as `src-set` and `fetch-priority`. Without the props the markup is what it
+  was. On iOS and Android neither is honoured: the view requests the `src`.
+
+- 529dfa9: The SwiftUI and Compose contracts of Pagination and CursorPagination carry the web's new optional
+  addresses, `getPageHref`, `previousHref` and `nextHref`, each defaulting to `nil` or `null`, so a
+  screen that builds the props as before still compiles. No native rendering draws them: a native
+  pager's controls are the platform's buttons, and each calls its handler.
+- Updated dependencies [a749193]
+  - @polymorph/registry@1.0.17
+  - @polymorph/theme@1.0.17
+
 ## 1.0.16
 
 ### Patch Changes

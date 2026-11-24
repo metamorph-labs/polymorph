@@ -1,5 +1,29 @@
 # @polymorph/mcp
 
+## 1.0.17
+
+### Patch Changes
+
+- 33749e6: **`render_screen` draws a spec as a product draws a model's screen at run time.** The screen page
+  draws with `@polymorph/react/screen` and the run-time core (`@polymorph/screen`), so the picture is
+  the one a product that draws the same spec shows. A FormField's control now gets the field's id and
+  label in the picture, as it does in JSX, so a Switch inside a FormField is named by the field's
+  label.
+
+  How each callback input was filled is reported in the core's words. One that returns nothing is
+  `an action; answers nothing` (`an action; answers a promise` when its type returns one). One that
+  returns a value says what its type answers: `answers the key of its first argument`.
+
+- Updated dependencies [b33e18c]
+- Updated dependencies [a749193]
+- Updated dependencies [430b1b0]
+- Updated dependencies [a749193]
+  - @polymorph/rules@1.0.17
+  - @polymorph/registry@1.0.17
+  - @polymorph/spec@1.0.17
+  - @polymorph/cli@1.0.17
+  - @polymorph/theme@1.0.17
+
 ## 1.0.16
 
 ### Patch Changes

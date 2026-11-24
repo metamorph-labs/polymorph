@@ -1,5 +1,52 @@
 # @polymorph/solid
 
+## 1.0.17
+
+### Patch Changes
+
+- b33e18c: Each package's registry listing has `keywords`, which it had none of, and a description that
+  names the Polymorph design system. A vocabulary's description says it holds the system's
+  components for its framework. A search of the registry for a design system or for components in
+  a framework matches the packages by those words. No file a consumer imports changes.
+- f525c25: `RichTextContent` in Vue, Svelte, Solid and Angular, and as `<poly-rich-text-content>`, generated
+  from one description and held to the React member's contract.
+
+  - Its `entity` function is each framework's slot that takes an argument: a scoped slot in Vue, a
+    snippet in Svelte, a function in Solid, an `ng-template` in Angular and a function property on
+    the element. Where it draws nothing for an entity, the member draws the entity's token.
+  - `@polymorph/engine/rich-text` exports `richTextDrawing`, which reads a document into the blocks
+    and inlines each framework's member draws, with the highlights nested and the positions of
+    the plain text. It reads no DOM, so it runs on a server. `@polymorph/engine` exports the
+    reading of a selection and of a press or key on a highlight (`mapRichTextSelection`,
+    `richTextSelectionBox`, `richTextPressedAnnotation`, `richTextKeyedAnnotation`). The React
+    member draws from the same functions, and its markup is unchanged.
+  - Each foundation exports `slotDraws`, which says whether a slot that takes an argument draws
+    anything for one.
+
+- f673c3c: A Solid application that renders on a server hydrates every member. Before, a development build
+  threw on entries of these members (Avatar.Group, DescriptionList, CommentThread, DataTable,
+  ArtifactPane, AppShell, ListPage, Dashboard, MasterDetailPage, SearchPage and ConversationPage).
+  A slot's content and a prop's value that holds nodes now take their place in the hydration where
+  the member declares them, a prop that holds nodes is read once, a member the server did not draw
+  is created as new elements, and a portal's content is created outside the hydration. The
+  foundation exports what the members use for it: `createKept` and `afresh`.
+
+  A hydrated Solid `Textarea` and `PromptInput` hold their value. The server wrote it as an
+  attribute, which a browser does not read, and now writes it as the textarea's content too.
+
+  `MasterDetailPage` draws the detail on a server when one is given, in Vue, Svelte, Solid and
+  Angular. Its `selected` state started `false` and an effect set it, so a server drew the pane for
+  nothing selected.
+
+  The Solid server-render law now compares each hydrated document with a mount of the same entry
+  ([docs/consuming.md](../docs/consuming.md#a-solid-app)).
+
+- Updated dependencies [b33e18c]
+- Updated dependencies [f525c25]
+- Updated dependencies [0619f1f]
+- Updated dependencies [5dc8255]
+  - @polymorph/engine@1.0.17
+
 ## 1.0.16
 
 ### Patch Changes

@@ -1,5 +1,124 @@
 # @polymorph/angular-ui
 
+## 1.0.17
+
+### Patch Changes
+
+- 740bebf: Accordion and Collapsible take `keepMounted`, an optional prop with the name Tabs uses. In React a
+  closed region's content then stays in the document, `hidden`, so a page's server markup carries it
+  and state inside the region survives a close: an FAQ's answers are in the HTML a crawler reads
+  without running a script. The region is hidden once its close animation ends. Without the prop
+  React leaves closed content out, as before. The Vue, Svelte, Solid, Angular and elements members
+  already keep a closed region's content in the document, `hidden`, so they accept the prop and it
+  changes nothing there. The SwiftUI and Compose contracts gain the field, and neither rendering
+  draws it: SwiftUI lays a closed region's content out at no height in every case, and Compose
+  leaves it out.
+- e761a13: Image takes two optional props that steer the browser's fetch, for a public page whose first
+  picture decides how fast it loads:
+
+  ```tsx
+  <Image
+    src="/harbour-800.jpg"
+    srcSet="/harbour-400.jpg 400w, /harbour-800.jpg 800w, /harbour-1600.jpg 1600w"
+    alt="A harbour at dusk"
+    width={800}
+    height={500}
+    loading="eager"
+    fetchPriority="high"
+  />
+  ```
+
+  - `srcSet` is the element's `srcset`, passed unchanged. The browser requests the file that suits
+    the screen, so a phone does not download a desktop's file. `src` stays required.
+  - The element's `sizes` is not a prop, because the red rules refuse a length in application
+    code. The member writes it for a set that gives widths, from the frame's box: `width` pixels
+    and never more than the viewport's width for a frame with `width` and `height`, wider by the
+    crop for a picture that covers a frame of a narrower ratio, and the element's own laid-out
+    width first (`auto`) for a lazy picture drawn as wide as its frame. A set that gives widths
+    needs a box, from `width` and `height` or from `aspectRatio`: without one the set is ignored,
+    with a development warning, because it would stretch the frame to its container.
+  - `fetchPriority` is the element's `fetchpriority`: `high` for the one picture that is the largest
+    content of the first view, with `loading="eager"`.
+  - A change of `srcSet` is a new request, as a change of `src` is: the frame returns to loading,
+    and a failure is forgotten.
+
+  An element takes them as `src-set` and `fetch-priority`. Without the props the markup is what it
+  was. On iOS and Android neither is honoured: the view requests the `src`.
+
+- 529dfa9: Pagination takes `getPageHref(page)`, and CursorPagination takes `previousHref` and `nextHref`.
+  Both are optional. With them, each control that goes to another page is a real `<a href>` with the
+  look of the Button it replaces, so a crawler reaches a public list's later pages and a reader can
+  open one in a new tab. In the append form, `nextHref` is the "Load more" action's address. A click
+  that would navigate the current tab calls the existing handler (`onPageChange`, `onPrevious`,
+  `onNext`) with the browser's navigation stopped, so the app changes the page as it does today; a
+  click with a modifier key opens the address. The current page, a control with nowhere to go, a
+  held pager and a window in flight stay Buttons. A link follows from Enter and not from Space, as
+  a link does. Without the props, the markup is unchanged. On a page written in HTML,
+  `previous-href` and `next-href` are attributes, and `getPageHref` is a property set from script.
+  The pagers' recipes gain the link's classes, which compose Button's.
+- b33e18c: Each package's registry listing has `keywords`, which it had none of, and a description that
+  names the Polymorph design system. A vocabulary's description says it holds the system's
+  components for its framework. A search of the registry for a design system or for components in
+  a framework matches the packages by those words. No file a consumer imports changes.
+- f525c25: `RichTextContent` in Vue, Svelte, Solid and Angular, and as `<poly-rich-text-content>`, generated
+  from one description and held to the React member's contract.
+
+  - Its `entity` function is each framework's slot that takes an argument: a scoped slot in Vue, a
+    snippet in Svelte, a function in Solid, an `ng-template` in Angular and a function property on
+    the element. Where it draws nothing for an entity, the member draws the entity's token.
+  - `@polymorph/engine/rich-text` exports `richTextDrawing`, which reads a document into the blocks
+    and inlines each framework's member draws, with the highlights nested and the positions of
+    the plain text. It reads no DOM, so it runs on a server. `@polymorph/engine` exports the
+    reading of a selection and of a press or key on a highlight (`mapRichTextSelection`,
+    `richTextSelectionBox`, `richTextPressedAnnotation`, `richTextKeyedAnnotation`). The React
+    member draws from the same functions, and its markup is unchanged.
+  - Each foundation exports `slotDraws`, which says whether a slot that takes an argument draws
+    anything for one.
+
+- 0619f1f: `RichTextInput` in Vue, Svelte, Solid and Angular, and as `<poly-rich-text-input>`, generated from
+  one description and held to the React member's contract.
+
+  - Its `toolbar`, `selectionActions` and `footer` functions are each framework's slot that takes
+    an argument: a scoped slot in Vue, a snippet in Svelte, a function in Solid, an `ng-template` in
+    Angular and a function property on the element. The argument is the field's handle.
+  - An Angular output and an element's event carry one value, so `submit` there carries the
+    document and not the handle; the slots receive the handle.
+  - `@polymorph/engine` exports the keyboard of a toolbar with one tab stop (`toolbarKeydown`,
+    `syncToolbarStop` and the functions beside them) and the places of a bar at the selected text
+    and of a list at a token (`placeSelectionBar`, `followSelectionBar`, `placeTokenList`), which
+    every framework's member calls. The React member calls the same functions.
+  - `@polymorph/engine` also exports what makes a field of several parts behave as one control:
+    `followFieldFocus` (focus entering and leaving the field as a whole), `followFormReset` and
+    `focusOnLabelPress`.
+  - A states fixture entry can select words once they are drawn: the Svelte foundation's `Held`
+    takes `selects`, and the Angular foundation exports `selectOnce`.
+
+- f673c3c: A Solid application that renders on a server hydrates every member. Before, a development build
+  threw on entries of these members (Avatar.Group, DescriptionList, CommentThread, DataTable,
+  ArtifactPane, AppShell, ListPage, Dashboard, MasterDetailPage, SearchPage and ConversationPage).
+  A slot's content and a prop's value that holds nodes now take their place in the hydration where
+  the member declares them, a prop that holds nodes is read once, a member the server did not draw
+  is created as new elements, and a portal's content is created outside the hydration. The
+  foundation exports what the members use for it: `createKept` and `afresh`.
+
+  A hydrated Solid `Textarea` and `PromptInput` hold their value. The server wrote it as an
+  attribute, which a browser does not read, and now writes it as the textarea's content too.
+
+  `MasterDetailPage` draws the detail on a server when one is given, in Vue, Svelte, Solid and
+  Angular. Its `selected` state started `false` and an effect set it, so a server drew the pane for
+  nothing selected.
+
+  The Solid server-render law now compares each hydrated document with a mount of the same entry
+  ([docs/consuming.md](../docs/consuming.md#a-solid-app)).
+
+- Updated dependencies [b33e18c]
+- Updated dependencies [f525c25]
+- Updated dependencies [0619f1f]
+- Updated dependencies [5dc8255]
+- Updated dependencies [2138e8f]
+  - @polymorph/engine@1.0.17
+  - @polymorph/angular@1.0.17
+
 ## 1.0.16
 
 ### Patch Changes

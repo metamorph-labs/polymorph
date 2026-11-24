@@ -1,6 +1,6 @@
 {
   "name": "@polymorph/vue",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "description": "The Vue foundation of the Polymorph design system, which a consumer installs: the engine re-exported, the icon gateway, the motion presence composable, the control-ref composable, the toast store and the page-transition convention. Vue members import this and nothing deeper.",
   "keywords": [
     "polymorph",

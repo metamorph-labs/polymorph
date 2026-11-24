@@ -1,5 +1,57 @@
 # @polymorph/recipes
 
+## 1.0.17
+
+### Patch Changes
+
+- 1f81f23: AppShell's content region is positioned, so it is the containing block of what it scrolls. Text a
+  member hides from the eye, such as a Table's hidden caption, is positioned absolutely, and in a
+  browser where a size container is no longer a containing block it was laid out against the
+  document: a long page then made the document itself scroll, under the frame.
+- 62e1f8b: CodeBlock's copy control paints the block's surface from the button to the block's corner. A long
+  line that reaches the corner before it is scrolled is cut off at the control's edge, where it
+  showed through the copy glyph. The block reserves `--pm-space-2` more at its inline end for the
+  gap beside the button, and states its line height, `--pm-text-sm-line-height`, where it inherited
+  one. The copyable block's wrapper is a one-cell grid, so a
+  row that stretches the wrapper stretches the block with it, as it stretches a block with no
+  control.
+- 529dfa9: Pagination takes `getPageHref(page)`, and CursorPagination takes `previousHref` and `nextHref`.
+  Both are optional. With them, each control that goes to another page is a real `<a href>` with the
+  look of the Button it replaces, so a crawler reaches a public list's later pages and a reader can
+  open one in a new tab. In the append form, `nextHref` is the "Load more" action's address. A click
+  that would navigate the current tab calls the existing handler (`onPageChange`, `onPrevious`,
+  `onNext`) with the browser's navigation stopped, so the app changes the page as it does today; a
+  click with a modifier key opens the address. The current page, a control with nowhere to go, a
+  held pager and a window in flight stay Buttons. A link follows from Enter and not from Space, as
+  a link does. Without the props, the markup is unchanged. On a page written in HTML,
+  `previous-href` and `next-href` are attributes, and `getPageHref` is a property set from script.
+  The pagers' recipes gain the link's classes, which compose Button's.
+- b33e18c: Each package's registry listing has `keywords`, which it had none of, and a description that
+  names the Polymorph design system. A vocabulary's description says it holds the system's
+  components for its framework. A search of the registry for a design system or for components in
+  a framework matches the packages by those words. No file a consumer imports changes.
+- 5dc8255: Rich text. Two members and a document format, described in `docs/rich-text.md`.
+
+  - `@polymorph/engine/rich-text` is the document: plain JSON with the format
+    `polymorph-rich-text/1`, a reader that accepts any value and never throws, a normal form, plain
+    text, a length in code points, the entities a document names, and annotations. It has no
+    dependency and no DOM, so a server reads and checks a document with the code the members use.
+  - `RichTextInput` (`controls`) is the field: a toolbar or a bar at the selection, keys, links,
+    lists, quotes and code blocks, entities a person inserts by a trigger such as `@` from options
+    the application supplies, a soft character limit, and slots for the application's controls and
+    footer. It uploads, fetches and stores nothing.
+  - `RichTextContent` (`structure`) draws a document read-only through the vocabulary's members. It
+    writes no HTML from the document.
+  - An `annotation` mark anchors something the application keeps about a stretch of text, such as a
+    comment thread. Both members draw the highlight and report a press on it, and both offer the
+    application's controls at the selected text.
+  - `@polymorph/engine/rich-text-editor` is the editor `RichTextInput` is built on. The engine now
+    depends on ProseMirror's packages, which only that entry imports: a page with no field loads
+    none of it.
+
+  Markdown's link check removes control characters before it trims, so a target that hid
+  `javascript:` behind a leading control character and a space is no longer followed.
+
 ## 1.0.16
 
 ## 1.0.15

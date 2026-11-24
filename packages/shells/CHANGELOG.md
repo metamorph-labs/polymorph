@@ -1,5 +1,19 @@
 # @polymorph/shells
 
+## 1.0.17
+
+### Patch Changes
+
+- Updated dependencies [a0081dc]
+- Updated dependencies [b33e18c]
+- Updated dependencies [a749193]
+- Updated dependencies [f525c25]
+- Updated dependencies [0619f1f]
+- Updated dependencies [5dc8255]
+  - @polymorph/elements@1.0.17
+  - @polymorph/engine@1.0.17
+  - @polymorph/registry@1.0.17
+
 ## 1.0.16
 
 ### Patch Changes

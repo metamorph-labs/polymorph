@@ -1,6 +1,6 @@
 {
   "name": "@polymorph/recipes",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "description": "The Polymorph design system's styles, the recipes: every component's styling as a token-only CSS Module, with no framework in it, and the base layer.",
   "keywords": [
     "polymorph",

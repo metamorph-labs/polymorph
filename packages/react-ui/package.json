@@ -1,6 +1,6 @@
 {
   "name": "@polymorph/react-ui",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "description": "The Polymorph design system's components for React, the vocabulary: every member as TypeScript source, styled by its token-only recipe from @polymorph/recipes.",
   "keywords": [
     "polymorph",

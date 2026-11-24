@@ -1,5 +1,90 @@
 # @polymorph/react
 
+## 1.0.17
+
+### Patch Changes
+
+- ea60956: `@polymorph/react/screen` is a new subpath: the React renderer of a screen a model writes, drawn at
+  run time with no build. Nothing changes for an application that does not import it; the root entry
+  loads none of it. `@polymorph/react` now depends on `@polymorph/screen`, the run-time core every
+  renderer shares.
+
+  ```tsx
+  import * as members from '@polymorph/react-ui'
+  import { ScreenView } from '@polymorph/react/screen'
+
+  ;<ScreenView
+    text={answer} // or document={spec}
+    streaming={!done}
+    members={members}
+    data={{ tickets }}
+    onAction={({ name, args, values, changed }) => agent.send({ name, args, values, changed })}
+  />
+  ```
+
+  - `ScreenView` draws a `polymorph-screen/1` document, or a model's answer as text while it
+    streams, with the members you pass (the vocabulary, a vendored copy, or a map with lazy
+    components). While it streams, an element is drawn once the props it requires are written, and
+    then kept: a longer document, new `data` or the reader's input redraws only what changed, so a
+    field keeps its text and its focus. If you read the stream yourself with `parsePartial`, pass
+    `document` with its `cut` and `open`. `allow` narrows the
+    members a document may use, as `runtimeCard({ members })` and `checkScreen(document, { members })`
+    do. Without it, a document may use every member React draws except `ThirdParty`, which hosts
+    another library's code, and `Toast`, which React raises with `toast()`. A node that cannot be
+    drawn, or whose member throws, draws nothing and reaches `onFault`; `faults="inline"` shows it
+    in place.
+  - `onAction` is told `{ name, args, values, changed }` when a member calls a callback the document
+    bound where the member takes a function that returns nothing, and a promise it returns is what
+    the member waits on: a ConfirmDialog stays busy until it settles. `changed` names the controls
+    the person changed; `values` also holds the defaults and empty values of the ones they did not.
+    A callback bound where a member asks a question (a row's key, a page's label) is answered by
+    that prop's type and never told, and one bound where no function is taken is a fault.
+  - A screen renders on a server with no handler run. A member that throws there leaves the
+    screen's place for the browser to draw, empty or holding `fallback` when the host gives one, and
+    the page around it is still served.
+  - The screen is drawn inside one Suspense boundary: a member that is not lazy and suspends in the
+    browser (one that waits on data with `use`) shows `fallback` in place of the whole screen, nothing
+    when you give none, and a Suspense boundary of your own above `ScreenView` does not see it. A lazy
+    member waits in its own place.
+  - `useScreen` and `ScreenDrawing` are its two halves, for reading the screen's `values` or drawing
+    it somewhere of your own. `componentFor(members, name)` is the rule a name resolves by.
+
+- b33e18c: Each package's registry listing has `keywords`, which it had none of, and a description that
+  names the Polymorph design system. A vocabulary's description says it holds the system's
+  components for its framework. A search of the registry for a design system or for components in
+  a framework matches the packages by those words. No file a consumer imports changes.
+- 5dc8255: Rich text. Two members and a document format, described in `docs/rich-text.md`.
+
+  - `@polymorph/engine/rich-text` is the document: plain JSON with the format
+    `polymorph-rich-text/1`, a reader that accepts any value and never throws, a normal form, plain
+    text, a length in code points, the entities a document names, and annotations. It has no
+    dependency and no DOM, so a server reads and checks a document with the code the members use.
+  - `RichTextInput` (`controls`) is the field: a toolbar or a bar at the selection, keys, links,
+    lists, quotes and code blocks, entities a person inserts by a trigger such as `@` from options
+    the application supplies, a soft character limit, and slots for the application's controls and
+    footer. It uploads, fetches and stores nothing.
+  - `RichTextContent` (`structure`) draws a document read-only through the vocabulary's members. It
+    writes no HTML from the document.
+  - An `annotation` mark anchors something the application keeps about a stretch of text, such as a
+    comment thread. Both members draw the highlight and report a press on it, and both offer the
+    application's controls at the selected text.
+  - `@polymorph/engine/rich-text-editor` is the editor `RichTextInput` is built on. The engine now
+    depends on ProseMirror's packages, which only that entry imports: a page with no field loads
+    none of it.
+
+  Markdown's link check removes control characters before it trims, so a target that hid
+  `javascript:` behind a leading control character and a space is no longer followed.
+
+- Updated dependencies [b33e18c]
+- Updated dependencies [f525c25]
+- Updated dependencies [0619f1f]
+- Updated dependencies [5dc8255]
+- Updated dependencies [14d4d55]
+- Updated dependencies [628200f]
+- Updated dependencies [e7f8f9c]
+  - @polymorph/engine@1.0.17
+  - @polymorph/screen@1.0.17
+
 ## 1.0.16
 
 ### Patch Changes

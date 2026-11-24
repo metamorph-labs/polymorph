@@ -1,5 +1,20 @@
 # @polymorph/conformance
 
+## 1.0.17
+
+### Patch Changes
+
+- 529dfa9: The pager hold law (`@polymorph/conformance/pager-hold`) runs a second time on a pager with
+  addresses, whose controls are links while they can be followed. A shell's `mount` takes
+  `addressed` and, when it holds, gives the pager the addresses `PAGER_ADDRESSES` exports.
+- Updated dependencies [b33e18c]
+- Updated dependencies [a749193]
+- Updated dependencies [f525c25]
+- Updated dependencies [0619f1f]
+- Updated dependencies [5dc8255]
+  - @polymorph/engine@1.0.17
+  - @polymorph/registry@1.0.17
+
 ## 1.0.16
 
 ### Patch Changes

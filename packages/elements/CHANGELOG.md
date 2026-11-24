@@ -1,5 +1,80 @@
 # @polymorph/elements
 
+## 1.0.17
+
+### Patch Changes
+
+- a0081dc: A change to what an element's slot holds no longer renders the elements already in it again.
+  Before, adding a node to a rendered element (a page's `append`, an htmx `beforeend` swap) disposed
+  every `poly-*` element in the element's slots and rendered each again, so a field among them lost
+  its text and its focus. Now the member reads the slot again and each element still in it keeps its
+  rendering: only the nodes that arrived render, and only the ones that left are disposed.
+  `PolyElement.observe` reports exactly those. An element that leaves a slot is disposed at once
+  after a change the element makes itself (`removeChild`, `fillSlot`, a swap of its children), and a
+  microtask later when its member stops reading the slot by itself (an overlay that closes).
+
+  A slot that holds one element is now read by the member as a list of one, so a node added beside
+  it goes after it, where Solid before took the element out of the document and put it back. A slot
+  that holds one text is still read as the string. No member reads a slot's shape, so nothing it
+  draws changes.
+
+  `fillSlot(element, slot, nodes)` is new: it sets the nodes one slot holds, in order (`''` for the
+  children, `'footer'`, `'empty-state.action'`), before the member renders or while it renders, on
+  any element, a table's or a list's part included, in place of what the page wrote in that slot.
+  `restore` puts back only what the page wrote.
+
+  A member that throws no longer stops the elements around it. Before, an error a member threw as
+  it rendered left the element's rendering and stopped the render queue, so the elements after it
+  did not render. Now:
+
+  - A member that throws as it first renders renders nothing, and the members around it render.
+  - A member that throws as it updates (an effect that runs again when a prop changes) keeps what it
+    had rendered, and the effect that threw stops updating.
+  - Either way the element dispatches `poly-error` (`ERROR_EVENT`, which does not bubble) with the
+    error as `detail`. Unless a listener cancels it, the error is reported as an uncaught error is,
+    with `reportError`: `window`'s `error` event, which error monitors read, and the console.
+  - An error a member's event handler throws (a click it handles) is unchanged: Solid calls the
+    handler outside the member's rendering, so it is the browser's uncaught error, with no
+    `poly-error`.
+
+  A `poly-*` event now carries `args`, every argument the member called its callback with, beside
+  `detail`, its first. A listener can tell a callback called with `null` (a Select cleared) from one
+  called with nothing: `detail` is `null` for both, and `args` is `[null]` or `[]`.
+
+- b33e18c: Each package's registry listing has `keywords`, which it had none of, and a description that
+  names the Polymorph design system. A vocabulary's description says it holds the system's
+  components for its framework. A search of the registry for a design system or for components in
+  a framework matches the packages by those words. No file a consumer imports changes.
+- 0619f1f: `RichTextInput` in Vue, Svelte, Solid and Angular, and as `<poly-rich-text-input>`, generated from
+  one description and held to the React member's contract.
+
+  - Its `toolbar`, `selectionActions` and `footer` functions are each framework's slot that takes
+    an argument: a scoped slot in Vue, a snippet in Svelte, a function in Solid, an `ng-template` in
+    Angular and a function property on the element. The argument is the field's handle.
+  - An Angular output and an element's event carry one value, so `submit` there carries the
+    document and not the handle; the slots receive the handle.
+  - `@polymorph/engine` exports the keyboard of a toolbar with one tab stop (`toolbarKeydown`,
+    `syncToolbarStop` and the functions beside them) and the places of a bar at the selected text
+    and of a list at a token (`placeSelectionBar`, `followSelectionBar`, `placeTokenList`), which
+    every framework's member calls. The React member calls the same functions.
+  - `@polymorph/engine` also exports what makes a field of several parts behave as one control:
+    `followFieldFocus` (focus entering and leaving the field as a whole), `followFormReset` and
+    `focusOnLabelPress`.
+  - A states fixture entry can select words once they are drawn: the Svelte foundation's `Held`
+    takes `selects`, and the Angular foundation exports `selectOnce`.
+
+- Updated dependencies [1f81f23]
+- Updated dependencies [62e1f8b]
+- Updated dependencies [529dfa9]
+- Updated dependencies [b33e18c]
+- Updated dependencies [f525c25]
+- Updated dependencies [0619f1f]
+- Updated dependencies [5dc8255]
+- Updated dependencies [f673c3c]
+  - @polymorph/recipes@1.0.17
+  - @polymorph/engine@1.0.17
+  - @polymorph/solid@1.0.17
+
 ## 1.0.16
 
 ### Patch Changes

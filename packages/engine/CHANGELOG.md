@@ -1,5 +1,69 @@
 # @polymorph/engine
 
+## 1.0.17
+
+### Patch Changes
+
+- b33e18c: Each package's registry listing has `keywords`, which it had none of, and a description that
+  names the Polymorph design system. A vocabulary's description says it holds the system's
+  components for its framework. A search of the registry for a design system or for components in
+  a framework matches the packages by those words. No file a consumer imports changes.
+- f525c25: `RichTextContent` in Vue, Svelte, Solid and Angular, and as `<poly-rich-text-content>`, generated
+  from one description and held to the React member's contract.
+
+  - Its `entity` function is each framework's slot that takes an argument: a scoped slot in Vue, a
+    snippet in Svelte, a function in Solid, an `ng-template` in Angular and a function property on
+    the element. Where it draws nothing for an entity, the member draws the entity's token.
+  - `@polymorph/engine/rich-text` exports `richTextDrawing`, which reads a document into the blocks
+    and inlines each framework's member draws, with the highlights nested and the positions of
+    the plain text. It reads no DOM, so it runs on a server. `@polymorph/engine` exports the
+    reading of a selection and of a press or key on a highlight (`mapRichTextSelection`,
+    `richTextSelectionBox`, `richTextPressedAnnotation`, `richTextKeyedAnnotation`). The React
+    member draws from the same functions, and its markup is unchanged.
+  - Each foundation exports `slotDraws`, which says whether a slot that takes an argument draws
+    anything for one.
+
+- 0619f1f: `RichTextInput` in Vue, Svelte, Solid and Angular, and as `<poly-rich-text-input>`, generated from
+  one description and held to the React member's contract.
+
+  - Its `toolbar`, `selectionActions` and `footer` functions are each framework's slot that takes
+    an argument: a scoped slot in Vue, a snippet in Svelte, a function in Solid, an `ng-template` in
+    Angular and a function property on the element. The argument is the field's handle.
+  - An Angular output and an element's event carry one value, so `submit` there carries the
+    document and not the handle; the slots receive the handle.
+  - `@polymorph/engine` exports the keyboard of a toolbar with one tab stop (`toolbarKeydown`,
+    `syncToolbarStop` and the functions beside them) and the places of a bar at the selected text
+    and of a list at a token (`placeSelectionBar`, `followSelectionBar`, `placeTokenList`), which
+    every framework's member calls. The React member calls the same functions.
+  - `@polymorph/engine` also exports what makes a field of several parts behave as one control:
+    `followFieldFocus` (focus entering and leaving the field as a whole), `followFormReset` and
+    `focusOnLabelPress`.
+  - A states fixture entry can select words once they are drawn: the Svelte foundation's `Held`
+    takes `selects`, and the Angular foundation exports `selectOnce`.
+
+- 5dc8255: Rich text. Two members and a document format, described in `docs/rich-text.md`.
+
+  - `@polymorph/engine/rich-text` is the document: plain JSON with the format
+    `polymorph-rich-text/1`, a reader that accepts any value and never throws, a normal form, plain
+    text, a length in code points, the entities a document names, and annotations. It has no
+    dependency and no DOM, so a server reads and checks a document with the code the members use.
+  - `RichTextInput` (`controls`) is the field: a toolbar or a bar at the selection, keys, links,
+    lists, quotes and code blocks, entities a person inserts by a trigger such as `@` from options
+    the application supplies, a soft character limit, and slots for the application's controls and
+    footer. It uploads, fetches and stores nothing.
+  - `RichTextContent` (`structure`) draws a document read-only through the vocabulary's members. It
+    writes no HTML from the document.
+  - An `annotation` mark anchors something the application keeps about a stretch of text, such as a
+    comment thread. Both members draw the highlight and report a press on it, and both offer the
+    application's controls at the selected text.
+  - `@polymorph/engine/rich-text-editor` is the editor `RichTextInput` is built on. The engine now
+    depends on ProseMirror's packages, which only that entry imports: a page with no field loads
+    none of it.
+
+  Markdown's link check removes control characters before it trims, so a target that hid
+  `javascript:` behind a leading control character and a space is no longer followed.
+  - @polymorph/theme@1.0.17
+
 ## 1.0.16
 
 ### Patch Changes

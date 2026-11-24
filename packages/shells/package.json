@@ -1,6 +1,6 @@
 {
   "name": "@polymorph/shells",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "description": "The framework-neutral member descriptions and the generators that render them into each framework's shell.",
   "private": true,
   "type": "module",

@@ -1,5 +1,19 @@
 # @polymorph/rules
 
+## 1.0.17
+
+### Patch Changes
+
+- b33e18c: Each package's registry listing has `keywords`, which it had none of, and a description that
+  names the Polymorph design system. A vocabulary's description says it holds the system's
+  components for its framework. A search of the registry for a design system or for components in
+  a framework matches the packages by those words. No file a consumer imports changes.
+- Updated dependencies [b33e18c]
+- Updated dependencies [f525c25]
+- Updated dependencies [0619f1f]
+- Updated dependencies [5dc8255]
+  - @polymorph/engine@1.0.17
+
 ## 1.0.16
 
 ### Patch Changes

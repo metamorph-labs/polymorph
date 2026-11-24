@@ -1,5 +1,34 @@
 # @polymorph/vue
 
+## 1.0.17
+
+### Patch Changes
+
+- b33e18c: Each package's registry listing has `keywords`, which it had none of, and a description that
+  names the Polymorph design system. A vocabulary's description says it holds the system's
+  components for its framework. A search of the registry for a design system or for components in
+  a framework matches the packages by those words. No file a consumer imports changes.
+- f525c25: `RichTextContent` in Vue, Svelte, Solid and Angular, and as `<poly-rich-text-content>`, generated
+  from one description and held to the React member's contract.
+
+  - Its `entity` function is each framework's slot that takes an argument: a scoped slot in Vue, a
+    snippet in Svelte, a function in Solid, an `ng-template` in Angular and a function property on
+    the element. Where it draws nothing for an entity, the member draws the entity's token.
+  - `@polymorph/engine/rich-text` exports `richTextDrawing`, which reads a document into the blocks
+    and inlines each framework's member draws, with the highlights nested and the positions of
+    the plain text. It reads no DOM, so it runs on a server. `@polymorph/engine` exports the
+    reading of a selection and of a press or key on a highlight (`mapRichTextSelection`,
+    `richTextSelectionBox`, `richTextPressedAnnotation`, `richTextKeyedAnnotation`). The React
+    member draws from the same functions, and its markup is unchanged.
+  - Each foundation exports `slotDraws`, which says whether a slot that takes an argument draws
+    anything for one.
+
+- Updated dependencies [b33e18c]
+- Updated dependencies [f525c25]
+- Updated dependencies [0619f1f]
+- Updated dependencies [5dc8255]
+  - @polymorph/engine@1.0.17
+
 ## 1.0.16
 
 ### Patch Changes

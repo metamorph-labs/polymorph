@@ -1,6 +1,6 @@
 {
   "name": "@polymorph/screen",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "description": "The Polymorph design system's screens drawn at run time: a document a model writes, checked, read while it streams and resolved for any renderer, and the card a host puts in the model's prompt. No framework, no DOM, no runtime dependencies.",
   "keywords": [
     "polymorph",
