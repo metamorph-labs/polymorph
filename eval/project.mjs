@@ -13,6 +13,7 @@ import {
 import { homedir } from 'node:os'
 import { basename, dirname, extname, relative, resolve, sep } from 'node:path'
 import { createInterface } from 'node:readline'
+import { clearTimeout, setTimeout } from 'node:timers'
 
 import {
   claudeEnvironment,

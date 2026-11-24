@@ -365,7 +365,9 @@ for (let turn = 1; ; turn += 1) {
   })
   // The CLI reports each content block as an assistant message of its own.
   for (const block of message.content) {
-    const { block: _action, ...shown } = block
+    // A shell call carries its scripted output along, which the CLI never shows.
+    const shown = { ...block }
+    delete shown.block
     const named =
       block.type === 'tool_use' && !project ? { ...shown, name: `${PREFIX}${block.name}` } : shown
     emit({
