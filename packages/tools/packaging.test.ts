@@ -229,6 +229,8 @@ describe('the tarball', () => {
     }
     expect(manifest.name).toBe('@metamorph-labs/polymorph')
     expect(manifest.version).toBe(registry.version)
+    // The MCP Registry admits the package's `server.json` only when the package declares its name.
+    expect((manifest as { mcpName?: string }).mcpName).toBe('io.github.metamorph-labs/polymorph')
     expect(Object.keys(manifest.bin).sort()).toEqual(['polymorph', 'polymorph-mcp'])
     // The six polymorph packages are bundled, so the tools install with no other.
     expect(Object.keys(manifest.dependencies).filter((name) => name.includes('polymorph'))).toEqual(
