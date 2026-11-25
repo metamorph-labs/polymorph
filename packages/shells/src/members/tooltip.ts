@@ -73,6 +73,8 @@ export default describeMember({
         part: 'trigger',
         class: ['anchor'],
         spread: ['anchorProps(api.getTriggerProps())'],
+        // An icon-only Button inside finds it, and shows this bubble instead of its name tip.
+        attrs: { 'data-tooltip-part': lit('trigger') },
         ref: 'anchor',
       },
       [slot()],

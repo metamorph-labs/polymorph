@@ -39,6 +39,13 @@
   composes: glyph from '../controls/button.module.css';
 }
 
+/* The name tip (`nameTip` in `@polymorph/engine`) of a direction drawn as a link: its label,
+   shown on hover and keyboard focus because the link draws only its arrow, as on the icon-only
+   Button it replaces. It is Button's tip, composed. */
+.linkTip {
+  composes: tip from '../controls/button.module.css';
+}
+
 /* Stands for pages that are not offered. Sized like a number button so the row
    spacing stays even. */
 .ellipsis {

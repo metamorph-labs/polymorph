@@ -14,6 +14,7 @@ import {
   agentPress,
   chainHandlers,
   joinSlot,
+  nameTip,
   watchEffect,
 } from '@polymorph/svelte'
 import styles from '@polymorph/recipes/controls/avatar-button.module.css'
@@ -88,18 +89,28 @@ const dataState = $derived(
 let release1: (() => void) | undefined
 const effect1 = () => {
   release1?.()
+  const ran = nameTip(control, disabled ? undefined : label, styles.tip)
+  release1 = () => {
+    ran()
+  }
+}
+watchEffect(effect1, { watch: () => [disabled, label] })
+onDestroy(() => release1?.())
+let release2: (() => void) | undefined
+const effect2 = () => {
+  release2?.()
   const ran = agentMember({
     member: 'AvatarButton',
     element: () => control,
     state: () => ({ disabled: disabled, loading: loading }),
     actions: { press: () => agentPress(control) },
   })
-  release1 = () => {
+  release2 = () => {
     ran()
   }
 }
-watchEffect(effect1)
-onDestroy(() => release1?.())
+watchEffect(effect2)
+onDestroy(() => release2?.())
 </script>
 
 {@render joined.start?.()

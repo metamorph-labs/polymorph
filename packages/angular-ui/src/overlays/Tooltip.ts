@@ -151,7 +151,10 @@ export class Tooltip {
   }
 
   protected e1() {
-    return mergeParts(anchorProps(this.api.value.getTriggerProps()), { class: styles.anchor })
+    return mergeParts(anchorProps(this.api.value.getTriggerProps()), {
+      class: styles.anchor,
+      'data-tooltip-part': 'trigger',
+    })
   }
 
   protected e2() {

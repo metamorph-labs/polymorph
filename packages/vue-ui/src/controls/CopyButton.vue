@@ -6,9 +6,9 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
-import { Icon, devWarning } from '@polymorph/vue'
+import { Icon, devWarning, nameTip } from '@polymorph/vue'
 import styles from '@polymorph/recipes/controls/copy-button.module.css'
 
 export interface CopyButtonProps {
@@ -40,6 +40,7 @@ defineOptions({ name: 'CopyButton', inheritAttrs: false })
 const props = withDefaults(defineProps<CopyButtonProps>(), { disabled: false, size: 'md' })
 const copied = ref(false)
 const copies = ref(0)
+const control = useTemplateRef<HTMLElement>('control')
 const copy = computed(
   () => () =>
     void navigator.clipboard.writeText(props.value).then(
@@ -61,10 +62,26 @@ const effect1 = () => {
 }
 watch(() => copies.value, effect1, { flush: 'post' })
 onBeforeUnmount(() => release1?.())
+let release2: (() => void) | undefined
+const effect2 = () => {
+  release2?.()
+  const ran = nameTip(
+    control.value,
+    props.disabled || copied.value ? undefined : props.label,
+    styles.tip,
+  )
+  release2 = () => {
+    ran()
+  }
+}
+onMounted(effect2)
+watch(() => [props.disabled, copied.value, props.label], effect2, { flush: 'post' })
+onBeforeUnmount(() => release2?.())
 </script>
 
 <template>
   <button
+    ref="control"
     :class="styles.button"
     type="button"
     :disabled="disabled"

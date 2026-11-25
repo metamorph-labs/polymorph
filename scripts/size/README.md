@@ -55,6 +55,19 @@ the bridge.
 fixtures (`pnpm size vue-button dialog`) measures only those. A ceiling is raised only with the
 reason in the same commit.
 
+`button`'s JavaScript ceiling is 67 kB, and the fixture measures 66.4 kB. React's runtime is most of
+it. About 0.87 kB is the name tip, with which every icon-only Button shows its label on hover and
+keyboard focus (`nameTip` in `@polymorph/engine`, `design/components/button.md`): the behaviour,
+the Button's call to it and the class its bubble is drawn with. Without the tip the fixture is
+65.5 kB, 0.48 kB under 66 kB, which is less than the tip, so the ceiling is the next kilobyte.
+
+`elements-button`'s JavaScript ceiling is 44 kB, and the fixture measures 43.02 kB, for the same
+tip. Five elements call it (Button, SplitButton, CopyButton, AvatarButton and Pagination), so the
+build writes it as a chunk of its own, which compresses about 0.1 kB larger than the same code
+inside Button's chunk. Without the tip the fixture is 41.75 kB. Keeping the tip in Button's chunk
+would fit 43 kB, and would make a page with only a CopyButton fetch Button's chunk. The Vue, Svelte,
+Solid and Angular Button fixtures carry the same behaviour under their ceilings.
+
 The ceilings of `vue-button`, `svelte-button`, `solid-button` and `angular-button` are each set
 to a measurement of the fixture, rounded up to the next kilobyte, with ten percent added.
 

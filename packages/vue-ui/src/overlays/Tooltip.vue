@@ -104,7 +104,12 @@ onBeforeUnmount(() => release3?.())
 </script>
 
 <template>
-  <span ref="anchor" v-bind="anchorProps(api.getTriggerProps())" :class="styles.anchor">
+  <span
+    ref="anchor"
+    v-bind="anchorProps(api.getTriggerProps())"
+    :class="styles.anchor"
+    data-tooltip-part="trigger"
+  >
     <slot />
   </span>
   <Teleport to="body">

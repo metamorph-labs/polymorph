@@ -32,6 +32,7 @@
     "./comment-thread": "./src/comment-thread.ts",
     "./meter": "./src/meter.ts",
     "./progress-ring": "./src/progress-ring.ts",
+    "./name-tip": "./src/name-tip.ts",
     "./countdown": "./src/countdown.ts",
     "./month-input": "./src/month-input.ts",
     "./lightbox": "./src/lightbox.ts",

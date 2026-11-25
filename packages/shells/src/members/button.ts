@@ -28,6 +28,15 @@ export default describeMember({
     // `value > 0` is false for `NaN` as well, which Badge would not draw either.
     counted: 'count !== undefined && count.value > 0',
   },
+  effects: [
+    // An icon-only button shows its label on hover and keyboard focus, in the Tooltip's bubble
+    // (`nameTip`). A disabled one takes neither, so it shows nothing.
+    {
+      watch: '[iconOnly, disabled, label]',
+      run: 'nameTip(control, iconOnly && !disabled ? label : undefined, styles.tip)',
+      release: 'ran()',
+    },
+  ],
   // The spec's `agent` fence. A press is the button's own click (`agentPress`), so a submit
   // button submits its form and a disabled or loading one does nothing, as for a person.
   // `pressed` and `expanded` are `null` on a button without the prop.

@@ -10,6 +10,12 @@
   composes: button from './button.module.css';
 }
 
+/* The name tip (`nameTip` in `@polymorph/engine`): the label shown on hover and keyboard focus,
+   because the control draws none. It is Button's tip, composed. */
+.tip {
+  composes: tip from './button.module.css';
+}
+
 /* Both glyphs share one grid cell so the confirmation can fade out. An unmounting node cannot
    animate its exit (the `input.clear` binding's reasoning), so neither glyph unmounts and the
    state chooses which one shows. The stack is `aria-hidden`, because it adds no meaning beyond the

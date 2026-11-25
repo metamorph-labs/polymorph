@@ -183,7 +183,8 @@ Motion runs in two halves, both inside the vocabulary.
 **CSS** handles the cheap, constant half: state feedback, press feedback, ambient loops and simple
 enters keyed off `data-state`. Shared rules live in
 `packages/recipes/src/conventions/motion.module.css` (`.stateFeedback`, `.pressable`, `.spin`,
-`.shimmer`, `.fadeIn`) and the rest in each member's recipe. Every value is a `--pm-motion-*` token,
+`.shimmer`, `.fadeIn`, which an icon-only Button's name tip arrives with) and the rest in each
+member's recipe. Every value is a `--pm-motion-*` token,
 so `[data-motion]` rescales them and `none` stops them, with no rule naming a temperament.
 
 **The motion engine** handles what CSS cannot do: exit choreography, keeping a leaving element

@@ -16,8 +16,10 @@ import {
   derived,
   elementRef,
   mountEffect,
+  nameTip,
   presence,
   useMember,
+  watchEffect,
   type IconProps,
 } from '@polymorph/angular'
 import styles from '@polymorph/recipes/controls/avatar-button.module.css'
@@ -183,10 +185,17 @@ export class AvatarButton {
           : 'off',
   )
   private release1: (() => void) | undefined
+  private release2: (() => void) | undefined
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.release1?.())
-    mountEffect(() => this.effect1())
+    watchEffect(
+      () => [this.$p.disabled, this.$p.label],
+      () => this.effect1(),
+      true,
+    )
+    inject(DestroyRef).onDestroy(() => this.release2?.())
+    mountEffect(() => this.effect2())
   }
 
   protected e1() {
@@ -263,13 +272,25 @@ export class AvatarButton {
 
   private effect1(): void {
     this.release1?.()
+    const ran = nameTip(
+      this.control.value,
+      this.$p.disabled ? undefined : this.$p.label,
+      styles.tip,
+    )
+    this.release1 = () => {
+      ran()
+    }
+  }
+
+  private effect2(): void {
+    this.release2?.()
     const ran = agentMember({
       member: 'AvatarButton',
       element: () => this.control.value,
       state: () => ({ disabled: this.$p.disabled, loading: this.$p.loading }),
       actions: { press: () => agentPress(this.control.value) },
     })
-    this.release1 = () => {
+    this.release2 = () => {
       ran()
     }
   }

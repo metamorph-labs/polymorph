@@ -263,7 +263,8 @@ Compose. Specs add: visible focus per §4, target sizes per §2, `prefers-reduce
 honoured through pattern projections (`design/motion/motion.md`, "Reduced-motion
 projections"), and text content only through props and slots. The vocabulary invents no
 `aria-label` when visible text exists. Tooltips are never the only carrier of essential
-information.
+information. An icon-only control shows its name as a name tip on hover and keyboard focus
+(`button.md`, Name tip), so its name is never only heard.
 
 ## 10. Fixture derivation
 

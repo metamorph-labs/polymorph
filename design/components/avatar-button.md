@@ -133,6 +133,10 @@ uses the native attribute. As the `trigger` of a Menu or a Popover it carries th
 `aria-haspopup`, `aria-expanded` and `aria-controls`, and focus returns to it when the overlay
 closes, as with a Button.
 
+The face draws no text, so `label` shows as a name tip on hover and keyboard focus, as on an
+icon-only Button (`button.md`, Name tip), and the tip is `aria-hidden`. A disabled AvatarButton
+shows none.
+
 ```contract
 role root button
 name root from label

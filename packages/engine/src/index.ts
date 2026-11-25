@@ -370,6 +370,7 @@ export {
   keyboardHolds,
   trackFocusOrigin,
 } from './conventions/tooltip-hold'
+export { nameTip } from './conventions/name-tip'
 
 export {
   revealTourTarget,

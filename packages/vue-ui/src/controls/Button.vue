@@ -6,9 +6,16 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { computed, onBeforeUnmount, onMounted, useTemplateRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
 
-import { Icon, agentMember, agentPress, type IconRole, type LawfulVariants } from '@polymorph/vue'
+import {
+  Icon,
+  agentMember,
+  agentPress,
+  nameTip,
+  type IconRole,
+  type LawfulVariants,
+} from '@polymorph/vue'
 import styles from '@polymorph/recipes/controls/button.module.css'
 import Badge from '../structure/Badge.vue'
 
@@ -121,6 +128,21 @@ const counted = computed(() => props.count !== undefined && props.count.value > 
 let release1: (() => void) | undefined
 const effect1 = () => {
   release1?.()
+  const ran = nameTip(
+    control.value,
+    props.iconOnly && !props.disabled ? props.label : undefined,
+    styles.tip,
+  )
+  release1 = () => {
+    ran()
+  }
+}
+onMounted(effect1)
+watch(() => [props.iconOnly, props.disabled, props.label], effect1, { flush: 'post' })
+onBeforeUnmount(() => release1?.())
+let release2: (() => void) | undefined
+const effect2 = () => {
+  release2?.()
   const ran = agentMember({
     member: 'Button',
     element: () => control.value,
@@ -133,12 +155,12 @@ const effect1 = () => {
     actions: { press: () => agentPress(control.value) },
     destructive: () => Boolean(props.tone === 'danger'),
   })
-  release1 = () => {
+  release2 = () => {
     ran()
   }
 }
-onMounted(effect1)
-onBeforeUnmount(() => release1?.())
+onMounted(effect2)
+onBeforeUnmount(() => release2?.())
 </script>
 
 <template>

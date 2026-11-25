@@ -8,7 +8,7 @@
  */
 import { onDestroy } from 'svelte'
 
-import { Icon, devWarning, joinSlot, watchEffect } from '@polymorph/svelte'
+import { Icon, devWarning, joinSlot, nameTip, watchEffect } from '@polymorph/svelte'
 import styles from '@polymorph/recipes/controls/copy-button.module.css'
 
 export interface CopyButtonProps {
@@ -50,6 +50,7 @@ const label = $derived(
 )
 let copied = $state(false)
 let copies = $state(0)
+let control = $state<HTMLElement | null>(null)
 const copy = $derived(
   () =>
     void navigator.clipboard.writeText(value).then(
@@ -71,11 +72,22 @@ const effect1 = () => {
 }
 watchEffect(effect1, { watch: () => copies, mount: false })
 onDestroy(() => release1?.())
+let release2: (() => void) | undefined
+const effect2 = () => {
+  release2?.()
+  const ran = nameTip(control, disabled || copied ? undefined : label, styles.tip)
+  release2 = () => {
+    ran()
+  }
+}
+watchEffect(effect2, { watch: () => [disabled, copied, label] })
+onDestroy(() => release2?.())
 </script>
 
 {@render joined.start?.()
 }{#if joined.shown
   }<button
+    bind:this={control}
     class={styles.button}
     type="button"
     {disabled}

@@ -14,6 +14,7 @@ import {
   agentPress,
   chainHandlers,
   joinSlot,
+  nameTip,
   watchEffect,
   type IconRole,
   type LawfulVariants,
@@ -148,6 +149,16 @@ const counted = $derived(count !== undefined && count.value > 0)
 let release1: (() => void) | undefined
 const effect1 = () => {
   release1?.()
+  const ran = nameTip(control, iconOnly && !disabled ? label : undefined, styles.tip)
+  release1 = () => {
+    ran()
+  }
+}
+watchEffect(effect1, { watch: () => [iconOnly, disabled, label] })
+onDestroy(() => release1?.())
+let release2: (() => void) | undefined
+const effect2 = () => {
+  release2?.()
   const ran = agentMember({
     member: 'Button',
     element: () => control,
@@ -160,12 +171,12 @@ const effect1 = () => {
     actions: { press: () => agentPress(control) },
     destructive: () => Boolean(tone === 'danger'),
   })
-  release1 = () => {
+  release2 = () => {
     ran()
   }
 }
-watchEffect(effect1)
-onDestroy(() => release1?.())
+watchEffect(effect2)
+onDestroy(() => release2?.())
 </script>
 
 {@render joined.start?.()

@@ -5,7 +5,7 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { mergeProps, onCleanup, onMount, type JSX } from 'solid-js'
+import { createMemo, mergeProps, onCleanup, onMount, type JSX } from 'solid-js'
 
 import {
   Icon,
@@ -14,7 +14,9 @@ import {
   claimSlot,
   createDerived,
   elementRef,
+  nameTip,
   scope,
+  watchEffect,
   type Defaults,
   type IconRole,
   type LawfulVariants,
@@ -136,6 +138,24 @@ export default function Button(given: ButtonProps): JSX.Element {
     let release1: (() => void) | undefined
     const effect1 = () => {
       release1?.()
+      const ran = nameTip(
+        control.value,
+        props.iconOnly && !props.disabled ? props.label : undefined,
+        styles.tip,
+      )
+      release1 = () => {
+        ran()
+      }
+    }
+    watchEffect(
+      createMemo(() => [props.iconOnly, props.disabled, props.label]),
+      effect1,
+      true,
+    )
+    onCleanup(() => release1?.())
+    let release2: (() => void) | undefined
+    const effect2 = () => {
+      release2?.()
       const ran = agentMember({
         member: 'Button',
         element: () => control.value,
@@ -148,12 +168,12 @@ export default function Button(given: ButtonProps): JSX.Element {
         actions: { press: () => agentPress(control.value) },
         destructive: () => Boolean(props.tone === 'danger'),
       })
-      release1 = () => {
+      release2 = () => {
         ran()
       }
     }
-    onMount(effect1)
-    onCleanup(() => release1?.())
+    onMount(effect2)
+    onCleanup(() => release2?.())
     return (
       <button
         class={styles.button}

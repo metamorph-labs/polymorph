@@ -13,6 +13,7 @@ import {
   PAGINATION_ELLIPSIS,
   agentMember,
   joinSlot,
+  nameTip,
   paginationWindow,
   watchEffect,
 } from '@polymorph/svelte'
@@ -79,6 +80,8 @@ const label = $derived(
 let focused = $state(null as HTMLElement | null)
 let focusedControl = $state(null as string | number | null)
 let taken = $state(null as string | number | null)
+let nextLink = $state<HTMLElement | null>(null)
+let previousLink = $state<HTMLElement | null>(null)
 let root = $state<HTMLElement | null>(null)
 const entries = $derived(paginationWindow(page, pageCount, siblingCount))
 const controls = $derived([
@@ -176,6 +179,26 @@ watchEffect(effect2, { watch: () => disabled, mount: false })
 let release3: (() => void) | undefined
 const effect3 = () => {
   release3?.()
+  const ran = nameTip(previousLink, messages.previous, styles.linkTip)
+  release3 = () => {
+    ran()
+  }
+}
+watchEffect(effect3, { watch: () => [linked, page, pageCount, messages.previous] })
+onDestroy(() => release3?.())
+let release4: (() => void) | undefined
+const effect4 = () => {
+  release4?.()
+  const ran = nameTip(nextLink, messages.next, styles.linkTip)
+  release4 = () => {
+    ran()
+  }
+}
+watchEffect(effect4, { watch: () => [linked, page, pageCount, messages.next] })
+onDestroy(() => release4?.())
+let release5: (() => void) | undefined
+const effect5 = () => {
+  release5?.()
   const ran = agentMember({
     member: 'Pagination',
     element: () => root,
@@ -194,12 +217,12 @@ const effect3 = () => {
     },
     withholds: () => root,
   })
-  release3 = () => {
+  release5 = () => {
     ran()
   }
 }
-watchEffect(effect3)
-onDestroy(() => release3?.())
+watchEffect(effect5)
+onDestroy(() => release5?.())
 </script>
 
 {@render joined.start?.()
@@ -217,6 +240,7 @@ onDestroy(() => release3?.())
       ><Inline gap={1} align="center" wrap={true}
         >{#if linked && page > 1 && page - 1 <= pageCount
           }<a
+            bind:this={previousLink}
             class={styles.link}
             href={getPageHref?.(page - 1)}
             aria-label={messages.previous}
@@ -266,6 +290,7 @@ onDestroy(() => release3?.())
         }{/each
         }{#if linked && page < pageCount && page + 1 >= 1
           }<a
+            bind:this={nextLink}
             class={styles.link}
             href={getPageHref?.(page + 1)}
             aria-label={messages.next}

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-import { dataAttrs, dataFlag, Icon, memberAttr } from '@polymorph/react'
+import { dataAttrs, dataFlag, Icon, memberAttr, nameTip } from '@polymorph/react'
 import styles from '@polymorph/recipes/controls/copy-button.module.css'
 
 /**
@@ -56,10 +56,20 @@ export function CopyButton({
 }: CopyButtonProps) {
   const [copied, setCopied] = useState(false)
   const revert = useRef<number>(undefined)
+  const control = useRef<HTMLButtonElement>(null)
 
   // The timer must not outlive the component, because a timer firing into an unmounted tree is a
   // race that causes a React warning (CodeBlock's rule).
   useEffect(() => () => window.clearTimeout(revert.current), [])
+
+  // The glyph is the only thing drawn, so the label shows as a name tip on hover and keyboard
+  // focus, as on an icon-only Button (`nameTip`). Not while the confirmation shows: the press
+  // closed the tip, and a tip that named the copy beside the confirming glyph would say two
+  // things at once. It is back when the confirmation reverts.
+  useEffect(
+    () => nameTip(control.current, disabled || copied ? undefined : label, styles.tip),
+    [disabled, copied, label],
+  )
 
   function handleCopy() {
     void navigator.clipboard.writeText(value).then(
@@ -83,6 +93,7 @@ export function CopyButton({
   return (
     <>
       <button
+        ref={control}
         type="button"
         className={styles.button}
         disabled={disabled}

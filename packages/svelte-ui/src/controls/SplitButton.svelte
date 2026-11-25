@@ -23,6 +23,7 @@ import {
   joinSlot,
   menuChoices,
   mergeParts,
+  nameTip,
   normalizeProps,
   useDirection,
   useMediaQuery,
@@ -117,6 +118,7 @@ const label = $derived(
   joined.passed['label'] === undefined ? labelOwn : (joined.passed['label'] as typeof labelOwn),
 )
 const onClick = $derived(chainHandlers(onClickOwn, joined.passed['onClick']))
+let chevron = $state<HTMLElement | null>(null)
 let panel = $state<HTMLElement | null>(null)
 let primary = $state<HTMLElement | null>(null)
 let scrim = $state<HTMLElement | null>(null)
@@ -178,6 +180,16 @@ watchEffect(effect1, { watch: () => api.highlightedValue })
 let release2: (() => void) | undefined
 const effect2 = () => {
   release2?.()
+  const ran = nameTip(chevron, disabled || loading ? undefined : menuLabel, styles.tip)
+  release2 = () => {
+    ran()
+  }
+}
+watchEffect(effect2, { watch: () => [disabled, loading, menuLabel] })
+onDestroy(() => release2?.())
+let release3: (() => void) | undefined
+const effect3 = () => {
+  release3?.()
   const ran = agentMember({
     member: 'SplitButton',
     element: () => primary,
@@ -205,12 +217,12 @@ const effect2 = () => {
       close: () => api.setOpen(false),
     },
   })
-  release2 = () => {
+  release3 = () => {
     ran()
   }
 }
-watchEffect(effect2)
-onDestroy(() => release2?.())
+watchEffect(effect3)
+onDestroy(() => release3?.())
 </script>
 
 {@render joined.start?.()
@@ -243,6 +255,7 @@ onDestroy(() => release2?.())
     ></button
     ><span class={styles.seam} aria-hidden="true"></span
     ><button
+      bind:this={chevron}
       {...attributes(api.getTriggerProps())}
       class={styles.chevron}
       disabled={disabled || loading}

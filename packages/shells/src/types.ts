@@ -234,6 +234,8 @@ export const ENGINE_HELPERS: readonly string[] = [
   // control.
   'closeTooltipOnScroll',
   'holdTooltipFromPointer',
+  // An icon-only Button's label, shown on hover and keyboard focus.
+  'nameTip',
   'formatBytes',
   'gateFiles',
   'promptToken',

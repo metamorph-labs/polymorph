@@ -14,7 +14,8 @@ Link's element, and Button lends it the whole recipe.
 ```
 
 The root is a native `<button type="button">`. The label is required. Icon-only buttons
-exist only through `iconOnly` (below) and stay square.
+exist only through `iconOnly` (below) and stay square. An icon-only button shows its label as a
+name tip on hover and keyboard focus, in a bubble outside the button (below).
 
 ## API
 
@@ -26,7 +27,7 @@ exist only through `iconOnly` (below) and stay square.
 | `icon` | `IconRole` | — | leading |
 | `trailingIcon` | `IconRole` | — | a direction or a disclosure only: a role `design/icons.json` marks `trailing` (`collapse`, `down`, `expand`, `forward`, `next`, `open-external`). Any other role leads, in `icon` (`polymorph/trailing-icon`) |
 | `iconOnly` | `boolean` | `false` | square (width = control height); requires `label` |
-| `label` | `string` | — | **required.** Visible text, or the accessible name when `iconOnly` |
+| `label` | `string` | — | **required.** Visible text, or the accessible name and the name tip when `iconOnly` |
 | `loading` | `boolean` | `false` | conventions §5 |
 | `disabled` | `boolean` | `false` | |
 | `type` | `'button' \| 'submit'` | `'button'` | |
@@ -91,6 +92,62 @@ only matters when a container stretches a Button, and a stretched Button is alwa
 own anatomy (start alignment, current state, end slots). See `archetypes/app-shell.md` →
 `AppShell.NavItem` for the nav case. Adding `align` here would make every call site
 re-decide layout.
+
+## Name tip
+
+An icon-only Button shows its `label` in a bubble while the pointer rests on it or keyboard focus
+is on it, so a sighted reader sees the name a screen reader hears. The tip is the web renderers':
+each one's Button calls the engine's `nameTip` on its `<button>`. The SwiftUI and Compose members
+follow their platforms' own controls and show none.
+
+- **What it shows.** `label`, always: not `aria-label`, and not `count.label`. A Button with a
+  visible label shows none, and so does a disabled one.
+- **When it opens.** A mouse rests on the button for `TOOLTIP_DELAY_MS`, or enters it while
+  another tip shows or within `TOOLTIP_SKIP_DELAY_MS` of one closing, when it opens at once. These
+  are Tooltip's delays. Touch and pen contact do not open it. Focus opens it when the reader
+  moved focus to the button with the keyboard: the last key pressed was Tab, an arrow key, Home
+  or End, with no press since, and the button matches `:focus-visible`. So a Tab and the roving
+  focus a member gives on an arrow key open it. Focus a script gives after Enter, Space or a
+  pointer press does not: a Dialog opened with Enter that puts focus on its icon-only close
+  button shows no tip there, and the first Escape closes the Dialog.
+- **When it closes.** The pointer leaves the button, the bubble and the gap between them; the
+  button loses focus; Escape; a press anywhere; a scroll of anything that holds the button; or
+  the button leaves the document, is disabled or loses `iconOnly`.
+- **Escape.** While a tip shows, Escape closes the tip and nothing else, however the tip opened.
+  The key reaches no other listener, so a Dialog or Menu around the button stays open and focus
+  stays where it is, as when Escape closes the React Tooltip's bubble. The next Escape is the
+  Dialog's.
+- **WCAG 1.4.13.** Escape dismisses it without moving the pointer, the pointer may cross the gap
+  onto the bubble without closing it, and it stays until one of the above closes it.
+- **Inside a Tooltip.** A Button inside a Tooltip's trigger (`data-tooltip-part="trigger"`) shows
+  the Tooltip and no tip. This is decided from the document when a tip would open, so it holds in
+  every renderer and for the elements.
+- **Heard once.** The bubble is `aria-hidden`, has no role and adds no `aria-describedby`. The
+  name stays the button's own, and an `aria-describedby` the app passes is untouched.
+- **How it looks.** It is the Tooltip's bubble: the recipe's `.tip` composes `bubble` from
+  `overlays/tooltip.module.css`, so the inverse pair, the type, the radius, the padding, the
+  shadow, the maximum width and the `--pm-space-2` gap are the Tooltip's own. It sits centred above
+  the button, and below it when it would cross the window's top edge and the window has more room
+  below. It stays inside the window's width, in either direction.
+- **Where it is drawn.** It is a manual popover, in the top layer, so it is drawn over a Dialog,
+  Drawer, Popover or Menu the button sits in, and over their scrims. It is a child of the
+  document's body, where every renderer mounts its portals, so it wears the page's pairing, mode
+  and density, as a Tooltip's bubble does.
+- **Never in the way.** It takes no pointer events, so a press reaches what is under it. Whether
+  the pointer rests on it is read from where the pointer is. Nothing is added inside or around the
+  button. No element exists until a tip first opens, and the page's one bubble leaves the
+  document when its tip closes.
+
+The members that draw Button's icon-only box without the Button member show their names the same
+way: SplitButton's chevron, CopyButton, AvatarButton and Pagination's arrows drawn as links.
+
+A contract statement cannot say any of this: a hover is not a statement, and the tip adds no
+attribute a statement could read. `nameTipLaw` (`packages/conformance/src/name-tip.ts`) holds it
+instead, and every web renderer's tests run it with that renderer's mount adapter
+(`controls/name-tip.test` in each vocabulary). It holds WCAG 1.4.13's four statements in each:
+the tip is not announced twice, Escape dismisses it and leaves a Dialog around the button open,
+the pointer may cross onto it, and it stays until it is dismissed or the pointer and focus
+leave.
 
 ## Lawful variant × tone grid
 
@@ -215,7 +272,7 @@ Entries: every renderable cell of the grid at `md`, plus:
 | sizes | `sm`/`md`/`lg` solid/accent | `data-size` |
 | leading icon | `icon="add"` | — |
 | trailing icon | `trailingIcon="next"` | — |
-| icon-only | `iconOnly icon="edit" label="Edit"` | `data-icon-only`, `aria-label="Edit"` |
+| icon-only | `iconOnly icon="edit" label="Edit"` | `data-icon-only`, `aria-label="Edit"`; on hover after the delay and on keyboard focus, the name tip shows "Edit" |
 | loading | `loading` | `data-state="loading"`, `aria-busy="true"` |
 | disabled | `disabled` | `data-disabled`, `disabled` |
 | loading+disabled | both | both |
@@ -238,6 +295,10 @@ Entries: every renderable cell of the grid at `md`, plus:
   states carry the feedback alone.
 - Colour transitions per the Recipes header.
 - Spinner: `spin` (ambient) on the `loading` icon glyph.
+- Name tip: it arrives with the motion conventions' `fadeIn`, opacity over
+  `--pm-motion-duration-control` × `--pm-motion-easing-enter`, which is instant at `none` and
+  off under reduced motion. It leaves at once. The Tooltip's `tooltip.bubble` binding is not
+  played, because the motion engine and its values would reach every bundle that draws a Button.
 
 ## Icons
 
@@ -249,7 +310,8 @@ the action.
 
 Native button semantics; `aria-busy` when loading. Loading keeps the accessible name
 (the spinner is decorative). A count is heard once, in `count.label`; its Badge is hidden. `iconOnly` renders visually hidden text or `aria-label`
-from `label`. Disabled uses the native attribute, not `aria-disabled`, because an
+from `label`. Its name tip is for the eye: the bubble is `aria-hidden` and describes nothing, so
+the name is heard once (Name tip, above). Disabled uses the native attribute, not `aria-disabled`, because an
 unavailable command is not a focus stop. The hit area meets the conventions §2 minimum
 at every size.
 

@@ -1,6 +1,15 @@
 'use client'
 
-import { type ControlSize, dataAttrs, dataFlag, Icon, type IconRole } from '@polymorph/react'
+import { useEffect, useRef } from 'react'
+
+import {
+  type ControlSize,
+  dataAttrs,
+  dataFlag,
+  Icon,
+  type IconRole,
+  nameTip,
+} from '@polymorph/react'
 import { routeClick } from '../controls/navigate'
 
 /**
@@ -21,6 +30,9 @@ import { routeClick } from '../controls/navigate'
  * Only a control that can be followed is drawn this way. A control with
  * nowhere to go, a held pager's controls and a busy control stay Buttons,
  * because an `<a>` that cannot be followed is not drawn as a link.
+ *
+ * An icon-only link shows its label as a name tip on hover and keyboard focus
+ * (`nameTip`), as the icon-only Button it replaces does.
  */
 
 /** The link's classes, from the pager's own recipe: the control, its label and its glyph. */
@@ -28,6 +40,8 @@ export interface PagerLinkClasses {
   link: string | undefined
   label: string | undefined
   glyph: string | undefined
+  /** The name tip's class, for a pager whose links can be icon-only. */
+  tip?: string | undefined
 }
 
 export interface PagerLinkProps {
@@ -61,8 +75,15 @@ export function PagerLink({
   label,
   'aria-label': ariaLabel,
 }: PagerLinkProps) {
+  const link = useRef<HTMLAnchorElement>(null)
+  useEffect(
+    () => nameTip(link.current, iconOnly ? label : undefined, classes.tip),
+    [iconOnly, label, classes.tip],
+  )
+
   return (
     <a
+      ref={link}
       className={classes.link}
       href={href}
       aria-label={ariaLabel ?? (iconOnly ? label : undefined)}

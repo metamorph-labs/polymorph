@@ -67,6 +67,7 @@ row that fits never wraps)*.
 | prev / next | Button `ghost/neutral/sm iconOnly` `icon="previous"/"next"` `label="Previous page"/"Next page"`; disabled at the ends |
 | number | Button `ghost/neutral/sm` min-width `--pm-control-height-sm` (roughly square digit buttons), `label="Page N"` with visible digit |
 | link | with `getPageHref`, a prev, next or number that goes to another page: an `<a href>` with the Button's look. Its class composes Button's `button`, `label` and `glyph` classes and it sets the Button's `data-variant`, `data-tone`, `data-size` and `data-icon-only`, as Link's `variant="button"` does, so Button's recipe styles it. The class removes the browser's underline and keeps the min-width |
+| link's name tip | an icon-only link's tip: `linkTip`, which composes Button's `tip` |
 | current | Button `soft/accent/sm` + `aria-current="page"` (soft, not solid, because the page's one solid button is reserved for the page's primary action) |
 | ellipsis | `text.sm` · `--pm-text-muted` · width `--pm-control-height-sm` centered · not interactive |
 | disabled | every Button `disabled`, the current page too, so no control looks pressable; the current page stays `soft` and keeps `aria-current` |
@@ -107,6 +108,10 @@ page is `aria-current="page"`.
 A link has the name of the Button it replaces (`Page 4`, `Next page`), and the role `link`,
 because it goes to an address. Enter follows it and Space does not, which is the platform's
 behaviour for a link. The current page is still the one Button marked current.
+
+Previous and next are icon-only, so their labels show as name tips on hover and keyboard focus:
+as Buttons through Button's own (`button.md`, Name tip), and as links through the same behaviour
+on the `<a>`, with the class the pager's recipe composes from Button's `tip`.
 
 **A hold keeps the reader's place.** A hold disables the pager's buttons, and a browser takes
 focus from a button as it is disabled: the page has it, and no control does. So when a hold

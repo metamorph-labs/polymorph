@@ -13,6 +13,11 @@
  * mounted, and reads `:focus-visible` only for a focus that came before it
  * was noting. A press on the control that holds focus counts as the pointer's
  * from then on.
+ *
+ * An icon-only Button's name tip (`name-tip.ts`) asks a narrower question,
+ * whether the person moved focus to the button, and keeps its own flag for it:
+ * a key that does not move focus, such as the Enter that opens a Dialog, is
+ * keyboard focus here and opens no tip there.
  */
 
 type Origin = 'keyboard' | 'pointer'

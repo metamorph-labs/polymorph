@@ -22,12 +22,23 @@ export default describeMember({
   derived: {
     copy: '() => void navigator.clipboard.writeText(value).then(() => { copied = true; copies += 1 }, (refusal: unknown) => devWarning(true, `CopyButton could not write to the clipboard: ${String(refusal)}`))',
   },
-  effects: [{ watch: 'copies', mount: false, delay: '2000', run: 'copied = false' }],
+  effects: [
+    { watch: 'copies', mount: false, delay: '2000', run: 'copied = false' },
+    // The glyph is the only thing drawn, so the label shows as a name tip on hover and keyboard
+    // focus, as on an icon-only Button (`nameTip`). Not while the confirmation shows: a tip that
+    // named the copy beside the confirming glyph would say two things at once.
+    {
+      watch: '[disabled, copied, label]',
+      run: 'nameTip(control, disabled || copied ? undefined : label, styles.tip)',
+      release: 'ran()',
+    },
+  ],
   template: [
     el(
       'button',
       {
         class: ['button'],
+        ref: 'control',
         attrs: {
           type: lit('button'),
           disabled: 'disabled',

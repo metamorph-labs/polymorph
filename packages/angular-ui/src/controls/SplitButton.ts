@@ -26,6 +26,7 @@ import {
   menuChoices,
   mergeParts,
   mountEffect,
+  nameTip,
   normalizeProps,
   presence,
   provideOwner,
@@ -159,6 +160,7 @@ aria-hidden="true"
 <!-- trigger -->
 <button
 [pmSpread]="e20()"
+[pmRef]="chevron"
 ><pm-icon
 name="expand"
 [size]="e21()"
@@ -337,6 +339,7 @@ export class SplitButton {
   })
   protected readonly $p = this.$.props
   protected readonly uid = uniqueId()
+  protected readonly chevron = elementRef<HTMLElement>()
   protected readonly panel = elementRef<HTMLElement>()
   protected readonly primary = elementRef<HTMLElement>()
   protected readonly scrim = elementRef<HTMLElement>()
@@ -394,6 +397,7 @@ export class SplitButton {
     ),
   )
   private release2: (() => void) | undefined
+  private release3: (() => void) | undefined
 
   constructor() {
     this.$.owner = getters<SplitButtonOwner>({
@@ -406,7 +410,13 @@ export class SplitButton {
       true,
     )
     inject(DestroyRef).onDestroy(() => this.release2?.())
-    mountEffect(() => this.effect2())
+    watchEffect(
+      () => [this.$p.disabled, this.$p.loading, this.$p.menuLabel],
+      () => this.effect2(),
+      true,
+    )
+    inject(DestroyRef).onDestroy(() => this.release3?.())
+    mountEffect(() => this.effect3())
   }
 
   protected e1() {
@@ -1028,6 +1038,18 @@ export class SplitButton {
 
   private effect2(): void {
     this.release2?.()
+    const ran = nameTip(
+      this.chevron.value,
+      this.$p.disabled || this.$p.loading ? undefined : this.$p.menuLabel,
+      styles.tip,
+    )
+    this.release2 = () => {
+      ran()
+    }
+  }
+
+  private effect3(): void {
+    this.release3?.()
     const ran = agentMember({
       member: 'SplitButton',
       element: () => this.primary.value,
@@ -1058,7 +1080,7 @@ export class SplitButton {
         close: () => this.api.value.setOpen(false),
       },
     })
-    this.release2 = () => {
+    this.release3 = () => {
       ran()
     }
   }

@@ -154,6 +154,10 @@ are Radix's (typeahead, arrows, Escape, focus return to the chevron). Loading:
 chevron is really `disabled`, not a silent no-op. Destructive entries go through
 ConfirmDialog (Menu's law comes with its entry grammar).
 
+The chevron draws no text, so `menuLabel` shows as a name tip on hover and keyboard focus, as on
+an icon-only Button (`button.md`, Name tip), and the tip is `aria-hidden`. A disabled or loading
+chevron shows none.
+
 ```contract
 role primary button
 name primary from label
