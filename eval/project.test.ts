@@ -288,15 +288,14 @@ describe('the project lane, with the scripted harnesses', () => {
         })
         // Codex looks for a skill by reading its file in the shell; Claude Code calls `Skill`.
         expect(lawful.shellCommands).toBe(harness === 'cli' ? 2 : 3)
-        // The app has no skill: the tools that set it up have no `agents` verb.
+        // The scripted harness loads no skill, though `agents` wrote them.
         expect(lawful.skills).toEqual([])
         expect(lawful.turns).toBe(harness === 'cli' ? 6 : null)
-        // Claude Code has the project's MCP server and emits the screen; Codex has none.
-        expect(lawful.written).toEqual(
-          harness === 'cli'
-            ? ['src/screens/WorkspaceSettings.tsx', 'src/screens/settings-workspace.json']
-            : ['src/screens/settings-workspace.json'],
-        )
+        // Each harness has the project's MCP server, which `agents` configured, and emits the screen.
+        expect(lawful.written).toEqual([
+          'src/screens/WorkspaceSettings.tsx',
+          'src/screens/settings-workspace.json',
+        ])
       })
 
       it('judges an unlawful module, in the words of the check', () => {
@@ -374,9 +373,10 @@ describe('the project lane, with the scripted harnesses', () => {
                 .version,
             },
             installed: false,
-            agents: { ran: false },
-            // `init` writes `.mcp.json`, which Claude Code reads and Codex does not.
-            mcpServers: harness === 'cli' ? ['polymorph'] : [],
+            // The checkout's tools have the verb, so `agents --harness <name>` ran.
+            agents: { ran: true },
+            // `.mcp.json` for Claude Code, and `.codex/config.toml` for Codex, which runs trusted.
+            mcpServers: ['polymorph'],
           },
         })
         expect(validate(RESULTS_SHAPE, results)).toEqual([])
@@ -700,7 +700,7 @@ describe('the report', () => {
     expect(readme).toContain('No project number is recorded')
     expect(readme).toContain('### fake (scripted model')
     expect(readme).toMatch(
-      /\| CLI scripted \| default \| react, not installed \| .* \| none \| 1 of 8 × 4 \| 75% /,
+      /\| CLI scripted \| default \| react, not installed \| .* \| ran \| 1 of 8 × 4 \| 75% /,
     )
     expect(readme).toContain(
       'MCP tools emit_screen 1, get_system_card 1; `polymorph` verbs check 1',
