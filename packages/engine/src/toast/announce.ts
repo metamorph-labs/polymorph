@@ -7,8 +7,10 @@ import type { ToastStoreRecord } from './store'
  * A region says a toast when it is raised, also when it is raised again under the same id, and
  * when an update in place changes its title, description, tone or action, and at no other time:
  * a toast that leaves, or an update that changes none of those (a notice whose owner renders
- * again), says nothing. Danger and warning
- * toasts are said in the assertive region and the other tones in the polite one. The words are
+ * again), says nothing. Danger toasts are said in the assertive region, which interrupts what a
+ * screen reader is saying, and the other tones in the polite one, which waits for it to finish.
+ * A warning waits too: it stays until it is dismissed, so waiting loses nothing, and an
+ * interruption can cut off the outcome of what the reader just did. The words are
  * the catalog's notification word, the title, the description, the text of the content (a
  * notice's retry Button says its label), and the action's label, so a reader who hears the toast
  * learns that it holds something to do.
@@ -49,9 +51,8 @@ export const TOAST_QUIET: ToastAnnouncements = Object.freeze({
 
 const CARD = '[data-member="toast"]'
 
-/** Danger and warning interrupt; the other tones wait. */
-const urgent = (record: ToastStoreRecord<unknown>): boolean =>
-  record.tone === 'danger' || record.tone === 'warning'
+/** Danger interrupts; the other tones, warning included, wait. */
+const urgent = (record: ToastStoreRecord<unknown>): boolean => record.tone === 'danger'
 
 /**
  * What makes a toast's announcement new: a new raise, or new words. The content is not part of

@@ -97,7 +97,8 @@ const raise = (...buttons: FixtureChild[]) => ({
  * pinned toast or one the reader cannot dismiss; Escape, the close button and
  * a swipe to the right dismiss a dismissible card; and a polite and an
  * assertive live region, which say a toast as it is raised or updated
- * (`announceToasts`): danger and warning interrupt, and the other tones wait.
+ * (`announceToasts`): danger interrupts, and the other tones, warning included,
+ * wait.
  * Escape reaches a card only while focus is in it, and an Escape a control in
  * the content has handled, or an input method is handling, is not the card's.
  * Focus in a card whose toast leaves, by any route, moves to the next toast,

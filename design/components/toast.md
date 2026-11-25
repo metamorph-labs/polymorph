@@ -227,8 +227,11 @@ visually.
 
 ## A11y
 
-The viewport holds two live regions: a polite one (`role="status"`) for neutral, success and info
-toasts, and an assertive one (`role="alert"`) for danger and warning toasts. A region says a toast
+The viewport holds two live regions: a polite one (`role="status"`) for neutral, success, info and
+warning toasts, and an assertive one (`role="alert"`) for danger toasts. The assertive region
+interrupts what a screen reader is saying, and some screen readers drop what was queued when it
+does, so it is kept for a failure. A warning waits its turn: it stays until it is dismissed, so
+waiting loses nothing, as SwiftUI's and Compose's announcements and Banner already do. A region says a toast
 when it is raised, also when it is raised again under the same id, and when an update in place
 changes its title, description, tone or action. It says nothing when a toast leaves, or when an
 update changes none of those, such as a notice whose screen renders again. The words are the

@@ -28,7 +28,9 @@ Keyboard and focus fixes for overlays and for members that leave the page.
     no longer takes Escape from the dialog. An Escape that closed a Select, Menu or Tooltip in
     a toast's content, or that an input method was handling, leaves the toast open.
   - The live regions say a toast when it is raised, and again when an update in place changes
-    its words, and say nothing when one leaves. They read the content's text and the action's
+    its words, and say nothing when one leaves. Only a danger toast interrupts a screen reader
+    (the assertive region); a warning toast now waits its turn in the polite region, as the
+    SwiftUI and Compose Toast and Banner already did. They read the content's text and the action's
     label too, and two toasts with the same words in a row are each said.
   - The timers wait while the window is in the background (its page is hidden, or another
     window or application has focus), as well as while the reader is on the notifications.

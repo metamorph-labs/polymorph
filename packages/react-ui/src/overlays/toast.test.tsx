@@ -348,22 +348,24 @@ describe('what it says, and how loudly', () => {
     expect(glyphs.map((glyph) => glyph.getAttribute('data-icon'))).toEqual(['close'])
   })
 
-  it('interrupts for danger and warning, and is polite for the rest', async () => {
+  it('interrupts for danger only, and is polite for the rest, warning included', async () => {
+    const polite = () => document.querySelector('[aria-live="polite"]')?.textContent ?? ''
+    const assertive = () => document.querySelector('[aria-live="assertive"]')?.textContent ?? ''
     render(<Toaster />)
     toast({ title: 'Went wrong', tone: 'danger' })
     await settled(1)
-    await vi.waitFor(() =>
-      expect(document.querySelector('[aria-live="assertive"]')?.textContent).toContain(
-        'Went wrong',
-      ),
-    )
+    await vi.waitFor(() => expect(assertive()).toContain('Went wrong'))
 
     toast.dismiss()
     await settled(0)
     toast({ title: 'Saved', tone: 'success' })
-    await vi.waitFor(() =>
-      expect(document.querySelector('[aria-live="polite"]')?.textContent).toContain('Saved'),
-    )
+    await vi.waitFor(() => expect(polite()).toContain('Saved'))
+
+    toast.dismiss()
+    await settled(0)
+    toast({ title: 'Storage almost full', tone: 'warning' })
+    await vi.waitFor(() => expect(polite()).toContain('Storage almost full'))
+    expect(assertive()).not.toContain('Storage almost full')
   })
 })
 
