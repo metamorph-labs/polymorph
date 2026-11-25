@@ -14,12 +14,14 @@
 '@polymorph/elements-ui': patch
 ---
 
-Text fields leave every key an input method is handling to it. In TagInput, MultiSelect,
+Text fields leave the keys an input method is handling to it. In TagInput, MultiSelect,
 InlineEdit, PromptInput, PhoneInput and ColorInput, the Enter that confirms a Japanese or Chinese
 candidate, including the one Safari sends after the composition has ended, no longer commits,
 toggles, saves or sends half-typed text. An Escape that abandons a composition no longer clears
 TagInput's or MultiSelect's text, cancels InlineEdit, or clears the query of the Vue, Svelte,
-Solid, Angular and elements Command. The engine exports the check as `composingKey`.
+Solid, Angular and elements Command. Inside a Dialog, that Escape still closes the Dialog, as it
+did before: the dialog's layer does not ask whether a composition is in progress. The engine
+exports the check as `composingKey`.
 
 Escape that clears TagInput's uncommitted text, clears a closed MultiSelect's text or cancels an
 open InlineEdit no longer closes a Dialog around the field as well; the next Escape closes it.
