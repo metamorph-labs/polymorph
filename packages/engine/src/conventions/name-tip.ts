@@ -143,7 +143,8 @@ function open(
     bubble.popover = 'manual'
     bubble.ariaHidden = 'true'
   }
-  bubble.className = className ?? ''
+  // Each member passes its recipe's class.
+  bubble.className = className as string
   bubble.textContent = label
   if (!owner) {
     document.body.append(bubble)
@@ -213,12 +214,12 @@ export function nameTip(
       click: dismiss,
       blur: dismiss,
       focus() {
-        // Read now: the key that moved focus here. The tip opens a frame later, once the browser
+        // Only focus the reader moved with a key. The tip opens a frame later, once the browser
         // has scrolled the button into view, so it is placed where the button is and that scroll
         // does not close it.
-        const keyed = moving
+        if (!moving) return
         requestAnimationFrame(() => {
-          if (!keyed || own.signal.aborted || !control.matches(':focus-visible')) return
+          if (own.signal.aborted || !control.matches(':focus-visible')) return
           if (mine()) held = false
           else show(false)
         })
