@@ -52,6 +52,23 @@ describe('createToastStore', () => {
     })
   })
 
+  it('pins a toast with an action until it is dismissed, and lets newer toasts evict it', () => {
+    const store = createToastStore()
+    const undo = { label: 'Undo', onClick: () => undefined }
+    store.toast.success('Archived', { action: undo })
+    store.toast.danger('Could not delete', { action: { label: 'Retry', onClick: () => undefined } })
+    store.toast({ title: 'Brief', action: undo, durationMs: 3000 })
+    expect(store.get().map((record) => [record.title, record.retained, record.durationMs])).toEqual(
+      [
+        ['Archived', false, Infinity],
+        ['Could not delete', true, Infinity],
+        ['Brief', undefined, 3000],
+      ],
+    )
+    for (let index = 1; index <= TOAST_MAX_VISIBLE; index += 1) store.toast.success(`${index}`)
+    expect(store.get().map((record) => record.title)).not.toContain('Archived')
+  })
+
   it('keeps what a call says about its lifetime, whatever its tone', () => {
     const store = createToastStore()
     store.toast.danger('Brief', { durationMs: 8000 })

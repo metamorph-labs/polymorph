@@ -77,7 +77,7 @@ toast(options: {
   title: string
   description?: string
   tone?: 'neutral' | 'success' | 'danger' | 'warning' | 'info'   // default 'neutral'
-  action?: { label: string; onClick: () => void }                 // at most one
+  action?: { label: string; onClick: () => void }                 // at most one; pins the toast (Lifetime)
   durationMs?: number                                             // default by tone (Lifetime); Infinity pins
   content?: ReactNode                                             // host-supplied body — recovery controls included (see Notices a screen owns)
   dismissible?: boolean                                           // default true; false ⇒ no timeout, close, Escape or swipe can remove it
@@ -98,10 +98,15 @@ A toast's tone sets how long it stays when the call sets neither `retained` nor
 is dismissed or its owner removes it, and no newer toast evicts it, because it reports
 an outcome the reader may have to act on. A `success`, `info` or `neutral` toast leaves
 after `TOAST_DEFAULT_DURATION_MS` (5000) and may be evicted, because the reader has
-nothing to do about it once it is read. A call that sets either one takes what it sets,
+nothing to do about it once it is read. A toast with an `action` gives the reader something
+to do, so it is pinned until it is dismissed, whatever its tone. A reader who works by
+keyboard or with a screen reader hears the toast, then reaches its action with F8 and Tab, and
+a timer that ends first takes the action away (WCAG 2.2.1, timing adjustable). Its tone still
+decides whether newer toasts may evict it. A call that sets either one takes what it sets,
 with 5000 and no retention for the one it leaves out. The rule is the store's, so a
 raised toast, React's `ToastNotice` and a declared `Toast` in every other web framework
-follow it. The SwiftUI and Compose Toast apply the same rule to their props.
+follow it. The SwiftUI and Compose Toast apply the tone rule to their props, and do not pin a
+toast for its action.
 
 **`toast.promise(promise, { loading, success, error })`** raises the `loading` face
 immediately: a neutral surface, the `loading` glyph (`spin` ambient) in the tone-icon

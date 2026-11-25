@@ -494,7 +494,8 @@ not when it unmounts. Its `content` slot reaches the viewport through `slotNode`
 
 The two keep one lifetime rule, because it is the store's: a toast whose call sets neither
 `retained` nor `durationMs` takes its tone's, so a danger or warning toast stays until it is
-dismissed or removed and any other tone leaves after the default duration. Both warn in
+dismissed or removed and any other tone leaves after the default duration, unless it has an
+action, which pins it until it is dismissed. Both warn in
 development when nothing draws their toast. `ToastNotice` warns when no `ToastHost` is mounted;
 `Toast` warns when no viewport list (`data-toast-part="list"`) is in the document a turn after it
 mounts, which it reads from the document, so no foundation counts its viewports. They differ in
