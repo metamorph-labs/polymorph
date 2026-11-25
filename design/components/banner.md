@@ -79,10 +79,12 @@ with the politeness of its role. An application that loads a whole document for 
 announces a danger Banner on each of them. That is accepted: danger is for the notice a reader
 must not miss, such as an outage, and an application whose notice can wait uses `warning`.
 
-Dismiss is a real labelled button. Focus does not move when a Banner appears or leaves. When
-the reader dismisses a Banner, the button they pressed leaves with it, and the member moves
-focus nowhere, as Alert does not: the Banner is the first thing in the frame, and the next
-Tab goes on from where it was. The document order is the reading and focus order: the message,
+Dismiss is a real labelled button. Focus does not move when a Banner appears, or when it leaves
+while focus is elsewhere. When the reader dismisses a Banner, the button they pressed leaves
+with it, so focus moves to the first focusable element after where the Banner was, else the
+last one before it, else the page's `main`, by Alert's rule (`focusAfterRemoval`). Focus left
+on a removed button falls to the body, where a screen reader starts again from the top of the
+page. The document order is the reading and focus order: the message,
 the action, then dismiss.
 
 ```contract
