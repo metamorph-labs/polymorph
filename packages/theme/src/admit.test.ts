@@ -403,6 +403,16 @@ describe('a pinned gradient stop', () => {
     }
   })
 
+  it('is in the JSON Schema a guest author’s editor reads, beside the fill pins', () => {
+    const properties = paletteJsonSchema()['properties'] as Record<string, unknown>
+    const pins = properties['pins'] as { properties: Record<string, { properties: object }> }
+    for (const mode of MODES) {
+      const keys = Object.keys(pins.properties[mode]?.properties ?? {})
+      expect(keys).toContain('accent.bg')
+      expect(keys).toContain('accent.gradientTo')
+    }
+  })
+
   it('makes the accent gradient real without a partner hue, and leaves the page wash solid', () => {
     // The palette states both colours, so the gradient needs no partner hue. Under `none` too:
     // the pinned fill and stop replace the ink fill and the absent stop.

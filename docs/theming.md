@@ -360,8 +360,8 @@ Two **gradient roles**, `accent.gradient` and `bg.wash`, resolve to a `linear-gr
 palette seeds `gradientHue` and to their base colour (`accent.bg`, `bg.app`) otherwise.
 `accent.gradient` is also a `linear-gradient` when the palette pins its second stop
 ([The gradient's second stop](#the-gradients-second-stop)). A recipe therefore never needs to
-check whether gradients exist. The **chart roles** (`chart.1`…`chart.8`,
-sequential, diverging) are a separate family, documented in [charts.md](charts.md).
+check whether gradients exist. The **chart roles** (`chart.1`…`chart.8`, sequential, diverging)
+are a separate family, documented in [charts.md](charts.md).
 
 ### Neutrals, status hues and the ink budget
 

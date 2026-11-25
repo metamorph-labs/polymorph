@@ -229,7 +229,7 @@ export function neutralHueOf(seeds: Seeds): number {
  * Whether the palette derives a second stop for its gradient roles from a
  * partner hue. Without one, a gradient role is one colour, unless the palette
  * pins its last stop (`gradientStopPin`). The derivation and the laws share
- * it, so "no partner hue means solid" is defined once.
+ * it, so "no partner hue means no derived stop" is defined once.
  *
  * Under `none` the answer is no even with a partner hue: both stops would be
  * the same grey, a `linear-gradient` that costs bytes and draws a solid. So an
