@@ -1,15 +1,17 @@
 import { render, screen } from '@testing-library/react'
 import axeCore, { type RunOptions } from 'axe-core'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { page, userEvent } from 'vitest/browser'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { Button } from '../controls/Button'
 import { Input } from '../controls/Input'
+import { Select } from '../controls/Select'
 import { SplitButton } from '../controls/SplitButton'
 import { tokenLength } from '../controls/token-probe'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { ContextMenu } from './ContextMenu'
+import { Dialog } from './Dialog'
 import { Menu, type MenuEntry } from './Menu'
 import { Popover } from './Popover'
 import menuCss from '@polymorph/recipes/overlays/menu.module.css?raw'
@@ -136,7 +138,8 @@ describe('Menu — the sheet, below 30rem', () => {
 
   it('wires the trigger as the popper lane does, and answers arrows, typeahead and Escape', async () => {
     await openSheet()
-    const control = screen.getByRole('button', { name: 'Actions' })
+    // The trigger is outside the open sheet, which hides the page from assistive software.
+    const control = screen.getByRole('button', { name: 'Actions', hidden: true })
     expect(control.getAttribute('aria-haspopup')).toBe('menu')
     expect(control.getAttribute('aria-expanded')).toBe('true')
 
@@ -484,5 +487,110 @@ describe('the sheet lane carries the member’s own name', () => {
     await vi.waitFor(() => expect(sheetPanel()).not.toBeNull())
 
     expect(sheetPanel()?.hasAttribute('data-member')).toBe(false)
+  })
+})
+
+/**
+ * A sheet opened from inside a Dialog is portalled out of it, to the end of
+ * the body. It is a layer and a focus scope of its own, so the Dialog's trap
+ * does not pull focus out of it, Escape closes the sheet and not the Dialog,
+ * and a press on its scrim is not a press outside the Dialog.
+ */
+describe('a sheet inside a Dialog', () => {
+  const dialogPanel = () => document.querySelector<HTMLElement>('[data-member="dialog"]')
+  const selectSheet = () => document.querySelector<HTMLElement>('[role="listbox"]')
+  // The Dialog draws a scrim too; the sheet's is portalled after it.
+  const sheetScrim = () =>
+    [...document.querySelectorAll<HTMLElement>('[data-motion-pattern="fade"]')].at(-1) ?? null
+
+  const OPTIONS = [
+    { value: 'billing', label: 'Billing' },
+    { value: 'onboarding', label: 'Onboarding' },
+  ]
+
+  async function openInDialog(content: ReactNode, trigger: () => HTMLElement) {
+    await page.viewport(NARROW, 800)
+    render(
+      <Dialog defaultOpen title="Edit ticket">
+        {content}
+      </Dialog>,
+    )
+    await vi.waitFor(() => expect(dialogPanel()).not.toBeNull())
+    const control = trigger()
+    control.focus()
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(sheetPanel()).not.toBeNull())
+    return control
+  }
+
+  it('keeps focus in a Menu’s sheet, and Escape closes only the sheet', async () => {
+    const trigger = await openInDialog(
+      <Menu
+        trigger={<Button label="More" />}
+        items={[
+          { id: 'archive', label: 'Archive', onSelect: () => undefined },
+          { id: 'delete', label: 'Delete', onSelect: () => undefined },
+        ]}
+      />,
+      () => screen.getByRole('button', { name: 'More' }),
+    )
+    await vi.waitFor(() => expect(sheetPanel()?.contains(document.activeElement)).toBe(true))
+    await userEvent.keyboard('{ArrowDown}')
+    expect(document.activeElement?.textContent).toContain('Delete')
+
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(menuList()).toBeNull())
+    expect(dialogPanel(), 'Escape closed the Dialog beneath the sheet').not.toBeNull()
+    await vi.waitFor(() => expect(document.activeElement).toBe(trigger))
+  })
+
+  it('keeps focus in a Select’s sheet, and Escape closes only the sheet', async () => {
+    const trigger = await openInDialog(<Select aria-label="Queue" options={OPTIONS} />, () =>
+      screen.getByRole('combobox', { name: 'Queue' }),
+    )
+    await vi.waitFor(() => expect(selectSheet()?.contains(document.activeElement)).toBe(true))
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(selectSheet()).toBeNull())
+    expect(dialogPanel(), 'Escape closed the Dialog beneath the sheet').not.toBeNull()
+    await vi.waitFor(() => expect(document.activeElement).toBe(trigger))
+  })
+
+  it('closes the sheet and not the Dialog on a press on its scrim', async () => {
+    await openInDialog(<Select aria-label="Queue" options={OPTIONS} />, () =>
+      screen.getByRole('combobox', { name: 'Queue' }),
+    )
+    const cover = await vi.waitFor(() => {
+      const element = sheetScrim()
+      expect(element?.dataset['state']).toBe('open')
+      return element as HTMLElement
+    })
+    // The scrim's top edge, which the panel at the bottom does not cover.
+    const box = cover.getBoundingClientRect()
+    await userEvent.click(cover, { position: { x: box.width / 2, y: 8 } })
+    await vi.waitFor(() => expect(selectSheet()).toBeNull())
+    expect(dialogPanel(), 'the press on the scrim closed the Dialog').not.toBeNull()
+  })
+
+  it('hides the rest of the page from assistive software while it is open', async () => {
+    await openInDialog(<Select aria-label="Queue" options={OPTIONS} />, () =>
+      screen.getByRole('combobox', { name: 'Queue' }),
+    )
+    const outside = () =>
+      [...document.body.children].filter(
+        (element) =>
+          !element.contains(sheetPanel()) &&
+          !element.contains(sheetScrim()) &&
+          !element.matches('script, style, template, link'),
+      )
+    await vi.waitFor(() => {
+      expect(outside().length).toBeGreaterThan(0)
+      for (const element of outside()) expect(element.getAttribute('aria-hidden')).toBe('true')
+    })
+    const dialogHost = [...document.body.children].find((element) =>
+      element.contains(dialogPanel()),
+    )
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(selectSheet()).toBeNull())
+    await vi.waitFor(() => expect(dialogHost?.getAttribute('aria-hidden')).toBeNull())
   })
 })
