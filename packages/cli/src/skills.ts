@@ -40,6 +40,11 @@ function commands(run: string, ...lines: string[]): string {
   return ['```sh', ...lines.map((line) => `${run} ${line}`), '```'].join('\n')
 }
 
+/** Words in a sentence as alternatives: `a`, `a or b`, `a, b or c`. */
+function either(words: readonly string[]): string {
+  return words.length <= 1 ? words.join('') : `${words.slice(0, -1).join(', ')} or ${words.at(-1)}`
+}
+
 /** Front matter and body, as one `SKILL.md`. */
 function skill(name: SkillName, description: string, body: string): string {
   return `---\nname: ${name}\ndescription: ${description}\n---\n\n${body.trim()}\n`
@@ -386,7 +391,7 @@ ${ladder}
 
 ## 4. Which rungs answer which rule
 
-| Rule | What it keeps out | Rungs |
+| Rule | What it holds | Rungs |
 | --- | --- | --- |
 ${rules.join('\n')}
 
@@ -532,16 +537,16 @@ recurring exception with its reasons, and keep each instance declared until then
 /* -------------------------------------------------------------------------- */
 
 function setupSkill(registry: Registry, run: string): SkillFile[] {
-  const frameworks = FRAMEWORKS.map((framework) => `\`${framework}\``).join(', ')
+  const frameworks = either(FRAMEWORKS.map((framework) => `\`${framework}\``))
   const systems = registry.theme.systems.map((system) => `\`${system.name}\``).join(', ')
   const body = `
 # Set up polymorph
 
-Polymorph is a design system: a closed vocabulary of interface components for ${frameworks} (custom
-elements for an HTML page with no build), a theme engine, and lint rules (the red rules) that keep
-design decisions out of application code. Its tools are one npm package, \`@metamorph-labs/polymorph\`,
-which every command here runs. Always run that scoped name: the unscoped \`polymorph\` package on npm
-is someone else's.
+Polymorph is a design system: a closed vocabulary of interface components for React, Vue, Svelte,
+Solid and Angular, and as custom elements for an HTML page with no build, with a theme engine and
+lint rules (the red rules) that keep design decisions out of application code. Its tools are one
+npm package, \`@metamorph-labs/polymorph\`, which every command here runs. Always run that scoped
+name: the unscoped \`polymorph\` package on npm is someone else's.
 
 ## Which route the repository is on
 
@@ -560,8 +565,8 @@ ${commands(run, 'init my-app', 'init my-app --framework vue', `init my-app --sys
 \`init\` writes a new Vite app into an empty directory: the packages, a theme from a catalogue system
 (${systems}), the red rules wired into ESLint and Stylelint, a first screen written as a spec and
 emitted, the agent files (\`AGENTS.md\`, the skills, the MCP entries) and the system card. Then it
-installs the packages with the package manager that ran it. \`--framework\` takes ${frameworks}.
-\`--framework elements\` writes a page with no build that loads the elements from copied files, and
+installs the packages with the package manager that ran it. \`--framework\` takes
+${frameworks}. \`--framework elements\` writes a page with no build that loads the elements from copied files, and
 installs nothing.
 
 ## An existing app: vendoring

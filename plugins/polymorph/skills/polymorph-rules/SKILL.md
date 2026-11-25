@@ -50,7 +50,7 @@ Take the first rung that works. Each rung is more governed than the next.
 
 ## 4. Which rungs answer which rule
 
-| Rule | What it keeps out | Rungs |
+| Rule | What it holds | Rungs |
 | --- | --- | --- |
 | `polymorph/no-app-css` | Application code may not contain or import stylesheets. | 1, 4 |
 | `polymorph/no-app-member-selectors` | Application CSS never restyles a member through `data-member`. | 1, 5 |

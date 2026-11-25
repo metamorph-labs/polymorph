@@ -5,11 +5,11 @@ description: Add the polymorph design system to a project, or set up the files a
 
 # Set up polymorph
 
-Polymorph is a design system: a closed vocabulary of interface components for `react`, `vue`, `svelte`, `solid`, `angular`, `elements` (custom
-elements for an HTML page with no build), a theme engine, and lint rules (the red rules) that keep
-design decisions out of application code. Its tools are one npm package, `@metamorph-labs/polymorph`,
-which every command here runs. Always run that scoped name: the unscoped `polymorph` package on npm
-is someone else's.
+Polymorph is a design system: a closed vocabulary of interface components for React, Vue, Svelte,
+Solid and Angular, and as custom elements for an HTML page with no build, with a theme engine and
+lint rules (the red rules) that keep design decisions out of application code. Its tools are one
+npm package, `@metamorph-labs/polymorph`, which every command here runs. Always run that scoped
+name: the unscoped `polymorph` package on npm is someone else's.
 
 ## Which route the repository is on
 
@@ -33,8 +33,8 @@ npx -y @metamorph-labs/polymorph@1.0.17 init my-site --framework elements
 `init` writes a new Vite app into an empty directory: the packages, a theme from a catalogue system
 (`desktop`, `dew`, `flint`, `glassmorphic`, `harbor`, `journal`, `pastel`, `pebble`, `plain`, `pop`, `press`, `terminal`), the red rules wired into ESLint and Stylelint, a first screen written as a spec and
 emitted, the agent files (`AGENTS.md`, the skills, the MCP entries) and the system card. Then it
-installs the packages with the package manager that ran it. `--framework` takes `react`, `vue`, `svelte`, `solid`, `angular`, `elements`.
-`--framework elements` writes a page with no build that loads the elements from copied files, and
+installs the packages with the package manager that ran it. `--framework` takes
+`react`, `vue`, `svelte`, `solid`, `angular` or `elements`. `--framework elements` writes a page with no build that loads the elements from copied files, and
 installs nothing.
 
 ## An existing app: vendoring
