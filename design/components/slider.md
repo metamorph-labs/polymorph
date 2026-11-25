@@ -45,7 +45,7 @@ slider looks like a progress bar with a handle.
 | Part | Tokens |
 | --- | --- |
 | track | height `--pm-space-2` · bg `--pm-bg-subtle` · radius `--pm-radius-pill` · full width |
-| range fill | bg `--pm-accent-gradient` (themes without a partner hue render the pinned solid, gradient systems run between their two hues; the same as Progress's fill) · radius pill · under `range` it spans from thumb to thumb (Radix draws this; the recipe does not change, because the fill does not depend on where it starts) |
+| range fill | bg `--pm-accent-gradient` (themes without a partner hue or a pinned second stop render the solid `accent.bg`, gradient systems run between their two hues; the same as Progress's fill) · radius pill · under `range` it spans from thumb to thumb (Radix draws this; the recipe does not change, because the fill does not depend on where it starts) |
 | thumb | size `--pm-space-5` square · bg `--pm-bg-surface` · border `1px solid --pm-border-strong` · radius `--pm-radius-pill` · shadow `var(--pm-shadow-control), var(--pm-shadow-inset-top)` (the lit-object shadow; flat themes derive both as `none`) |
 | thumb hover | border `--pm-accent-bg` |
 | thumb dragging | scale 1.12 (see Motion) · border `--pm-accent-bg` · shadow `var(--pm-glow-hover)` (the glow marks the drag as live. Themes with ornament `none` derive no glow and keep the lit shadow list, and flat sets that list to `none` too, so terminal's dragging thumb shows only scale and border. This is intended) |

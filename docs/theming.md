@@ -220,11 +220,11 @@ where the ring sits from `focus.offset` itself ([native.md](native.md)).
 | Field | Meaning |
 | --- | --- |
 | `accentHue` | OKLCH hue angle, 0–360 |
-| `gradientHue` | optional partner hue for the two gradient roles; absent, every gradient is a solid colour |
+| `gradientHue` | optional partner hue for the two gradient roles; absent, every gradient is a solid colour unless `pins` states where `accent.gradient` runs to |
 | `neutralHue` | optional hue of the neutral ramp; absent, the neutrals take `accentHue` |
 | `neutralTint` | OKLCH chroma mixed into the neutrals, 0–0.03 |
 | `chromaBudget` | `none` · `ink` · `low` · `medium` · `high` — the peak chroma of the accent |
-| `pins` | optional exact colours for the accent fills, their label and the focus pair, per mode. See [Pins](#pins) |
+| `pins` | optional exact colours for the accent fills, their label, the focus pair and the colour the accent gradient runs to, per mode. See [Pins](#pins) |
 | `moreContrast` | optional: the palette a reader who asks for more contrast gets instead. See [More contrast](#more-contrast) |
 | `chartCaps` | the measured chart-series cap per mode. It is a record, not an input. See [charts.md](charts.md) |
 
@@ -244,10 +244,11 @@ CSS. `pins` replaces a derived value with an exact one, per mode:
 | --- | --- |
 | `accent.bg`, `accent.bgHover`, `accent.bgActive`, `accent.contrast`, `border.focusSolid` | an opaque `#rrggbb` |
 | `border.focus` | an opaque `#rrggbb`, or `rgb(r g b / a)` with an alpha to two decimals, as the derived ring is |
+| `accent.gradientTo` | an opaque `#rrggbb`. See [The gradient's second stop](#the-gradients-second-stop) |
 
-A fill and a label are opaque because the contrast law measures a background as drawn. A mode the
-palette does not name keeps every derived value, and so does every role it does not pin. The
-stylesheet carries a pin exactly as stated (hex in lower case).
+A fill, a gradient stop and a label are opaque because the contrast law measures a background as
+drawn. A mode the palette does not name keeps every derived value, and so does every role it does
+not pin. The stylesheet carries a pin exactly as stated (hex in lower case).
 
 The pin is applied after the ramps are read and before the derived choices are made
 (`packages/theme/src/color/resolve.ts`). An unpinned `accent.contrast` is therefore chosen against
@@ -263,6 +264,49 @@ pressed fills.
 Pins are for the roles a brand states by value. The rest of the accent family (the washes, the
 link colour, the glow, the selection) stays derived from `accentHue`, so seed the hue near the
 pinned fill.
+
+#### The gradient's second stop
+
+`accent.gradient` runs from `accent.bg` to a second stop. Without a pin, the second stop is step 10
+of the partner ramp at `gradientHue`, one step from the derived fill, so the gradient crosses two
+hues at nearly one lightness. A pinned fill far from that lightness or hue can leave the label
+legible at the first stop and illegible at the second: a cream `accent.bg` with a dark label on a
+violet palette runs to a saturated blue, where the label falls far under the Lc 60 floor.
+`accent.gradientTo` pins the second stop:
+
+```json
+"pins": {
+  "light": {
+    "accent.bg": "#f3e7cf", "accent.bgHover": "#ecdcbd", "accent.bgActive": "#e4d0aa",
+    "accent.contrast": "#3b2a12", "accent.gradientTo": "#e2c79a"
+  }
+}
+```
+
+Pin it when the palette pins the accent fill and admission refuses
+`accent.contrast on accent.gradient` at its `'to'` stop, or when the brand states both colours of
+its gradient. The other lawful answer, dropping `gradientHue`, makes the button flat.
+
+- The stop is not a colour role, so nothing is derived from it. It becomes the gradient's `to` and
+  last stop: the stylesheet writes it in `--pm-accent-gradient` and as `--pm-accent-gradient-to`,
+  and the token document and the SwiftUI, Compose and Flutter themes carry it in the gradient's
+  stops.
+- The contrast law measures it as it measures a derived stop: `accent.contrast` reaches Lc 60 at
+  both stops, or the palette is refused. The fault names the stop and the pin, for example
+  `accent.contrast on accent.gradient reached Lc 31.9 at its 'to' stop, floor is 60. The 'to' stop
+  is accent.gradientTo, which the palette pins in light mode.`
+- The pin gives `accent.gradient` two stops even in a palette with no `gradientHue`, or with
+  `chromaBudget: none`, because the palette states both colours. `bg.wash` does not change: it has
+  two stops only when the palette seeds `gradientHue` under a budget other than `none`.
+- A gradient has one shape in both modes, two stops or one colour, because the SwiftUI theme draws
+  one geometry with a colour per mode. A palette that derives a stop (`gradientHue` under a budget
+  other than `none`) keeps it in a mode that pins none. A palette that derives none pins
+  `accent.gradientTo` in both modes or in neither: the schema refuses it in one mode only.
+- The solid accent Button draws the gradient over its fill, and keeps it under the pointer and on
+  press, with the glow and the press transform as feedback
+  ([button.md](../design/components/button.md)). The hover and pressed fills lie under the
+  gradient in the stylesheet, so a palette with no `gradientHue` that pins the stop gives up their
+  colour change for the glow.
 
 ## The colour engine
 
@@ -313,8 +357,10 @@ emitted as `--pm-<role>` with dots and camelCase turned into dashes (`accent.bgH
 | Selection | `selection.bg`, `.bgHover`, `.text`, `.border`, `.surface`, `.surfaceHover` |
 
 Two **gradient roles**, `accent.gradient` and `bg.wash`, resolve to a `linear-gradient` when the
-palette seeds `gradientHue` and to their base colour (`accent.bg`, `bg.app`) otherwise. A recipe
-therefore never needs to check whether gradients exist. The **chart roles** (`chart.1`…`chart.8`,
+palette seeds `gradientHue` and to their base colour (`accent.bg`, `bg.app`) otherwise.
+`accent.gradient` is also a `linear-gradient` when the palette pins its second stop
+([The gradient's second stop](#the-gradients-second-stop)). A recipe therefore never needs to
+check whether gradients exist. The **chart roles** (`chart.1`…`chart.8`,
 sequential, diverging) are a separate family, documented in [charts.md](charts.md).
 
 ### Neutrals, status hues and the ink budget
@@ -330,7 +376,8 @@ sequential, diverging) are a separate family, documented in [charts.md](charts.m
   accent family.
 - **`chromaBudget: none`** has no accent hue. The accent family is taken from the neutral ramp, so
   the primary colour is ink. Its fills invert with the mode: ink in light, near-white in dark.
-  Gradients resolve to solid colours, and status colours keep their chroma.
+  Gradients resolve to solid colours, except an accent gradient whose second stop the palette
+  pins, and status colours keep their chroma.
 
 ### The contrast law
 
@@ -398,7 +445,7 @@ not throw: admission reports each failing pairing with its measured value instea
 The law makes three further measurements:
 
 - **Gradients** — text on `accent.gradient` or `bg.wash` must clear its floor at the worse of the two
-  stops.
+  stops, a pinned stop included.
 - **Glass** — under `depth: glass` the pane is `bg.surface` mixed at 96% (light) / 91% (dark), and
   every text pairing must hold with the pane composited over pure black *and* pure white.
 - **WCAG 2.1** is measured alongside APCA in `laws.test.ts`. `text.primary` and `text.inverse` clear
@@ -731,8 +778,8 @@ they are, and a platform emitter renames them. Values are structured:
 - Colours are `{ hex, alpha, r, g, b }` in sRGB, exactly the value the stylesheet ships.
 - Shadows, glows and the top highlight are lists of layers, `{ x, y, blur, spread, color, inset }`
   in px. An empty list is `none`.
-- Gradients carry `angle` in degrees and their `stops`. Without a partner hue a gradient is
-  `solid`, with two equal stops.
+- Gradients carry `angle` in degrees and their `stops`. Without a partner hue or a pinned stop a
+  gradient is `solid`, with two equal stops. `solid` is the same in both modes.
 - The page texture is its parameters: `{ kind: 'grain', alpha, tile, baseFrequency, octaves }` or
   `{ kind: 'grid', alpha, tile, stroke, strokeWidth }`, or `{ kind: 'none' }`.
 - Numbers are exact, as the engine computes them, a spring's damping ratio included; a platform
@@ -1036,11 +1083,11 @@ pairing that is in no shipped file, without reading anything in `design/`.
 
 | Law | Checks |
 | --- | --- |
-| `schema` | both documents, including merged-ladder monotony, the 24px target floor and one exception per decision |
+| `schema` | both documents, including merged-ladder monotony, the 24px target floor, one exception per decision, and a gradient stop pinned in both modes or neither when the palette derives no stop |
 | `resolution` | the contrast repair succeeded (otherwise the engine's error) |
 | `coherence` | the derived tokens agree with the axes |
 | `contrast` | every lawful pairing, both modes, the focus floor and any pins included |
-| `gradient` | both stops of each gradient role |
+| `gradient` | both stops of each gradient role, a pinned stop included |
 | `glass` | the pane over black and white, when depth is `glass` |
 
 When the admission is given a more-contrast partner, `contrast`, `gradient` and `glass` also run on

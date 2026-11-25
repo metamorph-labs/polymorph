@@ -962,7 +962,8 @@ public struct PMChart: Sendable, Hashable {
 
 /// A linear gradient.
 public struct PMGradient: Sendable, Hashable {
-  /// No partner hue: two equal stops.
+  /// Two equal stops: the palette has no partner hue and pins no stop. The
+  /// same in both modes.
   public let solid: Bool
   /// Degrees, CSS convention: 0 points up, 90 right.
   public let angle: Double

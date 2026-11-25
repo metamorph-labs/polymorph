@@ -4,8 +4,9 @@ A **palette** is the colour seeds: `accentHue`, `gradientHue?`, `neutralHue?`,
 `neutralTint`, `chromaBudget`, `pins?`, plus `chartCaps`, the measured any-neighbour cap record.
 `chartCaps` is stored here because the cap belongs to the palette, but the chart-law sweep
 measures it and no derivation takes it as input (`docs/charts.md`). `pins` states exact colours
-for the accent fills, their label and the focus pair, and `moreContrast` names the palette a
-reader who asks for more contrast gets instead. No house palette uses either
+for the accent fills, their label, the focus pair and the colour the accent gradient runs to, and
+`moreContrast` names the palette a reader who asks for more contrast gets instead. No house
+palette uses either
 (`docs/theming.md`). A **system**
 (`design/systems/`) is the structure: the eight axes, the three font slots, the
 presentation defaults. A **pairing** is one system × one palette. It is the unit that

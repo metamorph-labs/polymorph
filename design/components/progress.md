@@ -42,7 +42,7 @@ size, which a ring then replaces in place.
 | Part | Tokens |
 | --- | --- |
 | track | height `--pm-space-2` (4) · bg `--pm-bg-subtle` · radius `--pm-radius-pill` · overflow hidden |
-| fill | bg `--pm-accent-gradient` *(a theme with no partner hue resolves this to the same pinned step-9 solid as `accent.bg`, so nothing changes for it; in a gradient system the fill runs across its two hues)* (`danger` → `--pm-danger-solid`) · full track height · width 100% scaled by `transform: scaleX(value/100)`, from the inline start: the left, and the right where the document runs right to left |
+| fill | bg `--pm-accent-gradient` *(a theme with no partner hue and no pinned second stop resolves this to the same solid as `accent.bg`, so nothing changes for it; in a gradient system the fill runs across its two hues)* (`danger` → `--pm-danger-solid`) · full track height · width 100% scaled by `transform: scaleX(value/100)`, from the inline start: the left, and the right where the document runs right to left |
 | ring | inline-flex · box `--pm-icon-size-{sm,md,lg}` square · padding half of `--pm-space-1`, so the stroke ends at the box's edge |
 | dial | SVG filling the ring's content box · overflow visible · `transform: rotate(-90deg)`, so the arc starts at 12 o'clock and runs clockwise |
 | groove | a circle on the dial's own radius · stroke `--pm-border-default` · stroke width `--pm-space-1` (2) · no fill |
@@ -61,10 +61,10 @@ container, as Meter's track and Slider's rail are. A 2px line around a dial an i
 not, and on a dark page it all but disappears. The groove shows where the whole is, which the
 arc is read against, so it must be seen wherever the ring is put.
 
-A stroke takes no gradient, so the ring's accent is `accent.bg`, the solid the gradient
-resolves to in a theme with no partner hue. A gradient system's ring is that system's solid
-accent. The arc's ends are butt, because a round cap draws a dot at 0 and overlaps itself at
-100.
+A stroke takes no gradient, so the ring's accent is `accent.bg`, the gradient's first stop and
+the solid it resolves to in a theme with no partner hue and no pinned second stop. A gradient
+system's ring is that system's solid accent. The arc's ends are butt, because a round cap draws a
+dot at 0 and overlaps itself at 100.
 
 **Direction.** The bar runs the way text runs, so in a right-to-left document it fills from
 the right. The ring is a clock face, which no reading direction mirrors: it fills clockwise
