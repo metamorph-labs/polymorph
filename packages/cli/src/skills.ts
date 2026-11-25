@@ -3,7 +3,7 @@ import { FRAMEWORKS, type Registry } from '@polymorph/registry'
 import { DEFAULT_SYSTEM, ELEMENTS_DIR, ELEMENTS_THEME_SHEET } from './plan'
 
 /**
- * The texts of the four agent skills, in the Agent Skills format
+ * The texts of the agent skills, in the Agent Skills format
  * (agentskills.io): a directory per skill with a `SKILL.md` whose front
  * matter holds `name` and `description`, and a `references/` directory for
  * what a model reads only when a step sends it there.
@@ -759,7 +759,9 @@ system card in \`polymorph/system-card.md\`. \`--harness\` takes \`claude\`, \`c
 \`generic\` or \`all\`. It records what it wrote in \`polymorph/agents.json\`. Run it again at any
 time: a file it wrote and nobody edited is brought up to date, a file someone edited is kept and
 named, and text outside its block in \`AGENTS.md\` and other servers in an MCP config are left as
-they are. \`--force\` overwrites edited files.
+they are. \`--force\` overwrites edited files. \`--remove <harness>\` stops writing for a harness
+and removes the files only it reads that nobody edited. An older release refuses to write over a
+newer one's files.
 
 ## Moving to a newer release
 

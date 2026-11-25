@@ -59,7 +59,7 @@ node ../polymorph/packages/cli/bin/polymorph.js init my-app
 | `polymorph emit <spec.json> <out>` | Compiles a screen spec to a file in the project (`emit_screen`) |
 | `polymorph theme propose "<intent>"` | A checked system and palette from plain words (`propose_theme`); `--save` writes them (`save_theme`) |
 | `polymorph mcp [--project <path>] [--read-only]` | Starts the MCP server over stdio, as `polymorph-mcp` does |
-| `polymorph agents [--harness <list>] [--framework <name>] [--force] [--dry-run]` | Writes the files a coding agent reads: a marked block in `AGENTS.md`, a `CLAUDE.md` that includes it, the four skills in `.claude/skills/` and `.agents/skills/`, the MCP entries for Claude Code, Cursor and Codex, and the card, recorded in `polymorph/agents.json` so a rerun keeps what was edited. `planAgents` (`src/agents.ts`) plans them as data, `init` writes the same plan, and `pluginFiles` (`src/plugin.ts`) turns it into the repository's plugin |
+| `polymorph agents [--harness <list>] [--remove <list>] [--framework <name>] [--force] [--dry-run]` | Writes the files a coding agent reads: a marked block in `AGENTS.md`, a `CLAUDE.md` that includes it, the skills in `.claude/skills/` and `.agents/skills/`, the MCP entries for Claude Code, Cursor and Codex, and the card, recorded in `polymorph/agents.json` so a rerun keeps what was edited. `planAgents` (`src/agents.ts`) plans them as data, `init` writes the same plan, and `pluginFiles` (`src/plugin.ts`) turns it into the repository's plugin |
 
 Flags: `--dir <path>` (where vendored source lands, default `src/polymorph`), `--dry-run` (print
 the plan, write nothing), `--force` (overwrite files you have edited), `--out <path>` (where

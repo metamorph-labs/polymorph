@@ -744,7 +744,10 @@ export default defineConfig({
         tools: toolsOf(options.programs, registry),
         mcp: options.programs.mcp,
         // The app's ESLint config spreads the fragment written above, so its lint runs the rules.
-        lint: { command: runScript(options.manager ?? DEFAULT_MANAGER[origin], 'lint'), redRules: true },
+        lint: {
+          command: runScript(options.manager ?? DEFAULT_MANAGER[origin], 'lint'),
+          redRules: true,
+        },
       }),
     ),
     { kind: 'write', path: WELCOME_SPEC, contents: json(welcome) },

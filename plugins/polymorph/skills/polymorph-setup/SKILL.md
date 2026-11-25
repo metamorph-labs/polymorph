@@ -80,7 +80,9 @@ system card in `polymorph/system-card.md`. `--harness` takes `claude`, `codex`, 
 `generic` or `all`. It records what it wrote in `polymorph/agents.json`. Run it again at any
 time: a file it wrote and nobody edited is brought up to date, a file someone edited is kept and
 named, and text outside its block in `AGENTS.md` and other servers in an MCP config are left as
-they are. `--force` overwrites edited files.
+they are. `--force` overwrites edited files. `--remove <harness>` stops writing for a harness
+and removes the files only it reads that nobody edited. An older release refuses to write over a
+newer one's files.
 
 ## Moving to a newer release
 

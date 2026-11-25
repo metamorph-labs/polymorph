@@ -49,7 +49,7 @@ export const INIT_WRITES: readonly { title: string; description: string; file: s
   {
     title: 'Your agent, connected',
     description:
-      'The MCP server, four skills, the system card and an AGENTS.md for Claude Code, Codex and Cursor.',
+      'The MCP server, the skills, the system card and an AGENTS.md for Claude Code, Codex and Cursor.',
     file: '.mcp.json',
   },
   {
@@ -513,7 +513,7 @@ export const THEME_STEPS: readonly Snippet[] = [
 export const AGENT_SETUP: readonly Snippet[] = [
   {
     title: 'Set up your agent’s files',
-    help: 'Adds a short section to AGENTS.md, four skills and the MCP server for Claude Code, Codex and Cursor. Run it again after you upgrade: anything you’ve edited stays yours.',
+    help: 'Adds a short section to AGENTS.md, the skills and the MCP server for Claude Code, Codex and Cursor. Run it again after you upgrade: anything you’ve edited stays yours.',
     code: `${TOOLS} agents`,
   },
   {
