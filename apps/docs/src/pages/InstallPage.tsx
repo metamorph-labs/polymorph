@@ -14,6 +14,7 @@ import {
 
 import { AGENT_FILES, MCP_READ_TOOLS, MCP_WRITE_TOOLS, REGISTRY_ACCESS } from '../reference/facts'
 import {
+  AGENT_SETUP,
   GUIDE,
   INIT_WRITES,
   MCP_CONFIG,
@@ -220,9 +221,13 @@ export function InstallPage() {
       <Section
         id="agents"
         title="Build with your coding agent"
-        lede="Polymorph comes with an MCP server. Your agent can look up components, check its code against the lint rules, and see the screens it builds."
+        lede="Polymorph comes with skills and an MCP server for your coding agent. It can look up components, check its code against the lint rules, and see the screens it builds."
       >
         <Stack gap={7}>
+          <Stack gap={6}>
+            <CopyStep step={AGENT_SETUP[0]!} />
+            <CopyStep step={AGENT_SETUP[1]!} />
+          </Stack>
           <Grid columns={2} gap={6}>
             <Step
               title="Connect it"
