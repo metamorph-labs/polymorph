@@ -822,8 +822,10 @@
     /// Toast: a call that sets neither `retained` nor `durationMs` takes its
     /// tone's lifetime, as the web's store gives it: danger and warning are
     /// pinned until they are dismissed, and success, info and neutral leave
-    /// after the default duration. A call that sets either takes what it sets.
+    /// after the default duration, unless the toast has an action, which pins
+    /// it whatever its tone. A call that sets either takes what it sets.
     func testAToastTakesItsLifetimeFromItsTone() throws {
+      let undo = PMToastAction(label: "Undo", onClick: {})
       let cases: [(props: PMToastProps, pinned: Bool)] = [
         (PMToastProps(title: "Could not save", tone: .danger), true),
         (PMToastProps(title: "Storage nearly full", tone: .warning), true),
@@ -832,6 +834,9 @@
         (PMToastProps(title: "Ticket created"), false),
         (PMToastProps(retained: false, title: "Could not save", tone: .danger), false),
         (PMToastProps(durationMs: .infinity, title: "Saved", tone: .success), true),
+        (PMToastProps(action: undo, title: "Ticket archived", tone: .success), true),
+        (PMToastProps(action: undo, title: "Ticket moved"), true),
+        (PMToastProps(action: undo, durationMs: 5000, title: "Ticket closed"), false),
       ]
       for (props, pinned) in cases {
         let scene = Scene(PMToast(props: props))

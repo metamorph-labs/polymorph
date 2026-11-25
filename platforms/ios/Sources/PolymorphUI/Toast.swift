@@ -19,8 +19,10 @@
 // Its tone sets how long it stays when the call sets neither `retained` nor
 // `durationMs`, by the rule the web's store applies (`toast.md` §Lifetime):
 // danger and warning are pinned until they are dismissed, and success, info and
-// neutral leave after 5000 milliseconds. A call that sets either takes what it
-// sets, with 5000 for a duration it leaves out. `.infinity` pins it, and
+// neutral leave after 5000 milliseconds. A toast with an action that sets
+// neither is pinned whatever its tone, so a reader has the time to reach the
+// action. A call that sets either takes what it sets, with 5000 for a duration
+// it leaves out. `.infinity` pins it, and
 // `dismissible: false` keeps it until its owner removes it: no timer, no close
 // button, no swipe. A dismissible toast also leaves on a swipe towards the
 // trailing edge and on the accessibility escape gesture. While VoiceOver runs
@@ -86,11 +88,13 @@ public struct PMToast: PMToastRendering {
   private var tone: PMToastTone { props.tone ?? .neutral }
   private var dismissible: Bool { props.dismissible ?? true }
 
-  /// How long the card stays, in milliseconds: its tone's lifetime when the
-  /// call sets neither `retained` nor `durationMs`, otherwise `durationMs`,
-  /// or the default where only `retained` is set.
+  /// How long the card stays, in milliseconds: when the call sets neither
+  /// `retained` nor `durationMs`, pinned for an action and otherwise its
+  /// tone's lifetime; otherwise `durationMs`, or the default where only
+  /// `retained` is set.
   private var duration: Double {
     if props.retained == nil && props.durationMs == nil {
+      if props.action != nil { return .infinity }
       return tone == .danger || tone == .warning ? .infinity : PMSpecDefault.toastDurationMs
     }
     return props.durationMs ?? PMSpecDefault.toastDurationMs

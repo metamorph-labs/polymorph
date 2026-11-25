@@ -1018,7 +1018,8 @@ class BehaviourTest {
      * Toast: a call that sets neither `retained` nor `durationMs` takes its
      * tone's lifetime, as the web's store gives it: danger and warning stay
      * until they are dismissed, and success, info and neutral leave after the
-     * default duration. A call that sets either takes what it sets.
+     * default duration, unless the toast has an action, which keeps it whatever
+     * its tone. A call that sets either takes what it sets.
      */
     @Test
     fun aToastTakesItsLifetimeFromItsTone() = runComposeUiTest {
@@ -1032,13 +1033,18 @@ class BehaviourTest {
                     }
                     PMToast(onDismiss = { left += "danger, not retained" }, retained = false, title = "Could not save", tone = PMToastTone.Danger)
                     PMToast(durationMs = Double.POSITIVE_INFINITY, onDismiss = { left += "success, pinned" }, title = "Saved", tone = PMToastTone.Success)
+                    PMToast(action = PMToastAction(label = "Undo", onClick = {}), onDismiss = { left += "success, with an action" }, title = "Ticket archived", tone = PMToastTone.Success)
+                    PMToast(action = PMToastAction(label = "Undo", onClick = {}), durationMs = 5000.0, onDismiss = { left += "success, with an action and a time" }, title = "Ticket closed", tone = PMToastTone.Success)
                 }
             }
         }
         mainClock.advanceTimeBy(4_000)
         assertEquals(emptyList(), left, "nothing leaves before the default duration")
         mainClock.advanceTimeBy(6_000)
-        assertEquals(setOf("success", "info", "neutral", "danger, not retained"), left.toSet())
+        assertEquals(
+            setOf("success", "info", "neutral", "danger, not retained", "success, with an action and a time"),
+            left.toSet(),
+        )
     }
 
     /**
