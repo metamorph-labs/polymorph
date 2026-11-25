@@ -224,6 +224,8 @@ const runs: Record<string, Evaluation> = {}
 const LANE = ['--fake', '--mode', 'project', ...SETTINGS]
 
 // The four runs through each stand-in. The evals of the later sections have setups of their own.
+// Each run starts a harness and then the judge's processes, so the eight take over a minute on a
+// machine that runs nothing else, and several times that beside the rest of the suite.
 beforeAll(async () => {
   const [cli, codex] = await Promise.all([
     // Signed in as `/login` signs in, with nothing in the environment, whatever the machine has.
@@ -238,7 +240,7 @@ beforeAll(async () => {
     evaluate('codex', [...LANE, '--runner', 'codex', '--runs', '4', '--max-turns', '8']),
   ])
   Object.assign(runs, { cli, codex })
-}, 120_000)
+}, 420_000)
 
 afterAll(() => {
   runner.stopAll()
