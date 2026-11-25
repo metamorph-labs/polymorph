@@ -190,6 +190,7 @@ function screenSkill(registry: Registry, run: string): SkillFile[] {
   const spacing = all(f.shared(['Stack', 'Inline', 'Grid'], ['gap', 'p', 'px', 'py']))
   const pages = f
     .tier('archetypes')
+    .filter((name) => name.endsWith('Page'))
     .slice(0, 3)
     .map((name) => f.m(name))
   const body = `
@@ -247,8 +248,7 @@ answered with suggestions and exit code 1.
 
 - Lay out with ${f.m('Stack')}, ${f.m('Inline')} and ${f.m('Grid')} and their spacing props
   (${spacing}), which take steps of the space scale, never lengths.
-- Start a page from a page archetype (${all(pages)} and the others the card lists) or from
-  ${f.m('PageHeader')}.
+- Start a page from a page archetype, such as ${either(pages)}, or from ${f.m('PageHeader')}.
 - Show an icon with ${f.m('Icon')}, its ${f.roleProp('Icon')} one of the card's icon roles.
 - Put text in ${f.m('Text')}, whose ${f.p('Text', 'tone')} and ${f.p('Text', 'size')} take the
   place of a colour or a font size, and a heading in ${f.m('Heading')}, whose
@@ -589,7 +589,8 @@ function ladderReference(registry: Registry, run: string): string {
     .patches()
     .map(
       ({ members, keys }) =>
-        `${all(members.map((name) => f.m(name)))} take ${all(keys.map((key) => `\`${key}\``))}.`,
+        `${all(members.map((name) => f.m(name)))} ${members.length === 1 ? 'takes' : 'take'} ` +
+        `${all(keys.map((key) => `\`${key}\``))}.`,
     )
     .join(' ')
   return `# The exception ladder, rung by rung

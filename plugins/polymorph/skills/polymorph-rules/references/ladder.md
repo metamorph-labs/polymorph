@@ -52,7 +52,7 @@ of a scale, never a length.
 <Card patch={{ p: 4, radius: 'sm' }}>…</Card>
 ```
 
-`Stack`, `Inline` and `Grid` take `gap`, `p`, `px` and `py`. `Card` take `p`, `px`, `py` and `radius`.
+`Stack`, `Inline` and `Grid` take `gap`, `p`, `px` and `py`. `Card` takes `p`, `px`, `py` and `radius`.
 
 ## Rung 4: a `Bespoke` zone or a `ThirdParty` boundary
 

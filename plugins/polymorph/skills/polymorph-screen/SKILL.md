@@ -71,8 +71,7 @@ answered with suggestions and exit code 1.
 
 - Lay out with `Stack`, `Inline` and `Grid` and their spacing props
   (`gap`, `p`, `px` and `py`), which take steps of the space scale, never lengths.
-- Start a page from a page archetype (`AppShell`, `ListPage` and `DetailPage` and the others the card lists) or from
-  `PageHeader`.
+- Start a page from a page archetype, such as `ListPage`, `DetailPage` or `FormPage`, or from `PageHeader`.
 - Show an icon with `Icon`, its `name` one of the card's icon roles.
 - Put text in `Text`, whose `tone` and `size` take the
   place of a colour or a font size, and a heading in `Heading`, whose
