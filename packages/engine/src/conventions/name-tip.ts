@@ -21,18 +21,20 @@ import { TOOLTIP_DELAY_MS, TOOLTIP_SKIP_DELAY_MS } from './tooltip'
  *   `aria-label` and nothing is announced twice.
  * - **When.** Hover by a mouse opens it after `TOOLTIP_DELAY_MS`, at once
  *   while another tip shows or within `TOOLTIP_SKIP_DELAY_MS` of one closing.
- *   Touch and pen contact do not open it. Focus opens it when the button
- *   matches `:focus-visible`, so focus a script returns after a pointer
- *   action does not.
+ *   Touch and pen contact do not open it. Focus opens it when the person
+ *   moved focus to the button with the keyboard: the last key pressed was
+ *   Tab, an arrow key, Home or End, and the button matches `:focus-visible`.
+ *   So roving focus a member gives on an arrow key opens it, and focus a
+ *   script gives after Enter, Space or a press does not: a Dialog that puts
+ *   focus on its icon-only close button opens no tip, and the first Escape
+ *   closes the Dialog.
  * - **Closing.** The pointer leaving the button, the bubble and the gap
  *   between them; blur; Escape; a press anywhere; a scroll of anything that
  *   holds the button; and the function this returns, which the Button calls
- *   when it unmounts, is disabled or loses `iconOnly`. Escape on a tip the
- *   pointer opened closes the tip and nothing else, so a Dialog around the
- *   button stays open, as it does when Escape closes a Tooltip's bubble.
- *   Escape on a tip focus opened closes the tip and reaches the page too,
- *   because a Dialog that puts focus on its icon-only close button opens one,
- *   and the key there is the reader's request to close the Dialog.
+ *   when it unmounts, is disabled or loses `iconOnly`. Escape on an open tip
+ *   closes the tip and nothing else, however it opened: the key does not reach
+ *   the page, so a Dialog or Menu around the button stays open and focus stays
+ *   where it is (WCAG 1.4.13).
  * - **Never twice.** A button inside a Tooltip's trigger (`data-tooltip-part`)
  *   shows the app's Tooltip instead, decided when a tip would open.
  * - **Never in the way.** The bubble takes no pointer events. Whether the
@@ -59,12 +61,16 @@ let held = false
 let closedAt = Number.NEGATIVE_INFINITY
 /** The page listeners an open tip holds. */
 let page: AbortController | undefined
+/** True while the last key pressed moves focus (Tab, an arrow key, Home, End), and no press came since. */
+let moving = false
+/** True once the window records the keys, from the first tip on. */
+let tracking = false
 
 /** Adds each of `handlers` to `target` until `signal` aborts. */
 function listen(
   target: EventTarget,
   handlers: Record<string, (event: Event) => void>,
-  signal: AbortSignal,
+  signal?: AbortSignal,
   capture?: boolean,
 ): void {
   for (const type in handlers) {
@@ -146,14 +152,8 @@ function open(
         keydown(event) {
           const key = event as KeyboardEvent
           if (key.key !== 'Escape' || key.isComposing) return
-          // A tip the pointer holds takes the key, so a Dialog around the button stays open, as
-          // it does when Escape closes a Tooltip's bubble. A tip focus holds lets the key
-          // through: focus a Dialog gives its close button opens one, and Escape still closes
-          // the Dialog in one press.
-          if (held) {
-            key.preventDefault()
-            key.stopPropagation()
-          }
+          key.preventDefault()
+          key.stopPropagation()
           close()
         },
         pointerdown: close,
@@ -185,6 +185,23 @@ export function nameTip(
   className: string | undefined,
 ): () => void {
   if (!control || !label) return () => {}
+  if (!tracking) {
+    // The first tip: from now on the window records whether the person is moving focus.
+    tracking = true
+    listen(
+      window,
+      {
+        keydown(event) {
+          moving = /^(Tab|Arrow|Home|End)/.test((event as KeyboardEvent).key)
+        },
+        pointerdown() {
+          moving = false
+        },
+      },
+      undefined,
+      true,
+    )
+  }
   let timer: ReturnType<typeof setTimeout> | undefined
   const own = new AbortController()
   const mine = () => owner === control
@@ -206,10 +223,12 @@ export function nameTip(
       click: dismiss,
       blur: dismiss,
       focus() {
-        // A frame later, once the browser has scrolled the button into view, so the bubble is
-        // placed where the button is and that scroll does not close it.
+        // Read now: the key that moved focus here. The tip opens a frame later, once the browser
+        // has scrolled the button into view, so it is placed where the button is and that scroll
+        // does not close it.
+        const keyed = moving
         requestAnimationFrame(() => {
-          if (own.signal.aborted || !control.matches(':focus-visible')) return
+          if (!keyed || own.signal.aborted || !control.matches(':focus-visible')) return
           if (mine()) held = false
           else show(false)
         })

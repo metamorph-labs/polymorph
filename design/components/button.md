@@ -104,17 +104,19 @@ follow their platforms' own controls and show none.
   visible label shows none, and so does a disabled one.
 - **When it opens.** A mouse rests on the button for `TOOLTIP_DELAY_MS`, or enters it while
   another tip shows or within `TOOLTIP_SKIP_DELAY_MS` of one closing, when it opens at once. These
-  are Tooltip's delays. Touch and pen contact do not open it. Focus opens it when the button
-  matches `:focus-visible`: focus from the keyboard does, and so does focus a Dialog gives its
-  close button after a key press, while focus a script returns after a pointer press does not.
+  are Tooltip's delays. Touch and pen contact do not open it. Focus opens it when the reader
+  moved focus to the button with the keyboard: the last key pressed was Tab, an arrow key, Home
+  or End, with no press since, and the button matches `:focus-visible`. So a Tab and the roving
+  focus a member gives on an arrow key open it. Focus a script gives after Enter, Space or a
+  pointer press does not: a Dialog opened with Enter that puts focus on its icon-only close
+  button shows no tip there, and the first Escape closes the Dialog.
 - **When it closes.** The pointer leaves the button, the bubble and the gap between them; the
   button loses focus; Escape; a press anywhere; a scroll of anything that holds the button; or
   the button leaves the document, is disabled or loses `iconOnly`.
-- **Escape.** On a tip the pointer opened, Escape closes the tip and nothing else. The key reaches
-  no other listener, so a Dialog around the button stays open, as it does when Escape closes the
-  React Tooltip's bubble. On a tip keyboard focus opened, Escape closes the tip and goes on to the
-  page. A Dialog that puts focus on its icon-only close button opens that button's tip, and the
-  reader's Escape there closes the Dialog in one press.
+- **Escape.** While a tip shows, Escape closes the tip and nothing else, however the tip opened.
+  The key reaches no other listener, so a Dialog or Menu around the button stays open and focus
+  stays where it is, as when Escape closes the React Tooltip's bubble. The next Escape is the
+  Dialog's.
 - **WCAG 1.4.13.** Escape dismisses it without moving the pointer, the pointer may cross the gap
   onto the bubble without closing it, and it stays until one of the above closes it.
 - **Inside a Tooltip.** A Button inside a Tooltip's trigger (`data-tooltip-part="trigger"`) shows
@@ -141,7 +143,11 @@ way: SplitButton's chevron, CopyButton, AvatarButton and Pagination's arrows dra
 
 A contract statement cannot say any of this: a hover is not a statement, and the tip adds no
 attribute a statement could read. `nameTipLaw` (`packages/conformance/src/name-tip.ts`) holds it
-instead, and every web renderer's tests run it with that renderer's mount adapter.
+instead, and every web renderer's tests run it with that renderer's mount adapter
+(`controls/name-tip.test` in each vocabulary). It holds WCAG 1.4.13's four statements in each:
+the tip is not announced twice, Escape dismisses it and leaves a Dialog around the button open,
+the pointer may cross onto it, and it stays until it is dismissed or the pointer and focus
+leave.
 
 ## Lawful variant × tone grid
 

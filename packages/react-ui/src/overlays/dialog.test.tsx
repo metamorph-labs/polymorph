@@ -3,6 +3,7 @@ import { page, userEvent } from 'vitest/browser'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { dialogFitLaw } from '@polymorph/conformance/dialog-fit'
+import { TAB_PASSES_BUTTONS } from '@polymorph/conformance/engines'
 import { serverPassed } from '@polymorph/conformance/server-passed'
 import { assertGoverned } from '@polymorph/react'
 import { Button } from '../controls/Button'
@@ -172,6 +173,37 @@ describe('opening and closing', () => {
     // Focus is restored when the focus scope unmounts, after the exit.
     await vi.waitFor(() => expect(document.activeElement).toBe(trigger))
   })
+
+  // An icon-only Button's name tip (`button.md`, Name tip): Escape dismisses the tip and nothing
+  // else, so the Dialog closes on the next Escape. The words are the test's own labels.
+  it.skipIf(TAB_PASSES_BUTTONS)(
+    'keeps the Dialog open when Escape closes the tip of a button the reader tabbed to',
+    async () => {
+      render(
+        <Dialog title="Discard?" trigger={<Button label="Open" />}>
+          <Button label="Keep" />
+          <Button variant="ghost" tone="neutral" iconOnly icon="edit" label="Edit" />
+        </Dialog>,
+      )
+      screen.getByRole('button', { name: 'Open' }).focus()
+      await userEvent.keyboard('{Enter}')
+      await vi.waitFor(() =>
+        expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Keep' })),
+      )
+      await userEvent.keyboard('{Tab}')
+      const edit = screen.getByRole('button', { name: 'Edit' })
+      expect(document.activeElement).toBe(edit)
+      const tip = () => document.querySelector('body > [popover]')
+      await vi.waitFor(() => expect(tip()?.textContent).toBe('Edit'))
+      await userEvent.keyboard('{Escape}')
+      expect(tip()).toBeNull()
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      expect(panels()).toHaveLength(1)
+      expect(document.activeElement).toBe(edit)
+      await userEvent.keyboard('{Escape}')
+      await vi.waitFor(() => expect(panels()).toHaveLength(0))
+    },
+  )
 
   it('closes on a click outside the panel, because the scrim is the dismiss surface', async () => {
     render(

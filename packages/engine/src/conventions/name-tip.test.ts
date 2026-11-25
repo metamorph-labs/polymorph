@@ -192,30 +192,45 @@ describe('hover', () => {
 })
 
 /**
- * Moves focus to `target` from the keyboard: Enter on a button whose press puts focus there, as
- * a key that opens a dialog does when the dialog focuses its first control. Tab is not used,
- * because on WebKit it passes over buttons and links (`TAB_PASSES_BUTTONS` in
+ * A plain button whose `key` moves focus to `target`, as a member's own handler does: an arrow
+ * key in a roving toolbar, or Enter on a trigger whose dialog focuses its first control. Tab is
+ * not used, because on WebKit it passes over buttons and links (`TAB_PASSES_BUTTONS` in
  * `@polymorph/conformance`); each shell's law reaches a control with Tab where the engine allows.
  */
-async function focusByKey(target: HTMLElement) {
+async function focusWithKey(target: HTMLElement, key: 'ArrowRight' | 'Enter') {
   const from = document.createElement('button')
   from.textContent = 'From'
-  from.addEventListener('click', () => target.focus())
+  from.addEventListener('keydown', (event) => {
+    if (event.key !== key) return
+    event.preventDefault()
+    target.focus()
+  })
   document.body.append(from)
   from.focus()
-  await userEvent.keyboard('{Enter}')
+  await userEvent.keyboard(`{${key}}`)
   expect(document.activeElement).toBe(target)
 }
 
+/** Two frames: the tip a focus opens is placed a frame after the focus. */
+const frames = () =>
+  new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+
 describe('keyboard focus', () => {
-  it('opens when a key press moves focus to the button, and closes on blur', async () => {
+  it('opens when a key that moves focus puts it on the button, and closes on blur', async () => {
     const button = tipped('Archive')
-    await focusByKey(button)
+    await focusWithKey(button, 'ArrowRight')
     await vi.waitFor(() => expect(bubble()?.textContent).toBe('Archive'))
     // Held by focus, the tip stays while the pointer moves elsewhere.
     await userEvent.hover(rest)
     expect(bubble()).not.toBeNull()
     button.blur()
+    expect(bubble()).toBeNull()
+  })
+
+  it('does not open for focus a script gives after Enter, as a Dialog gives its close button', async () => {
+    const button = tipped('Close')
+    await focusWithKey(button, 'Enter')
+    await frames()
     expect(bubble()).toBeNull()
   })
 
@@ -228,13 +243,13 @@ describe('keyboard focus', () => {
     // A dialog closed by a press returns focus to the button that opened it.
     await userEvent.click(elsewhere)
     button.focus()
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    await frames()
     expect(bubble()).toBeNull()
   })
 
   it('closes when the button is pressed from the keyboard', async () => {
     const button = tipped('Archive')
-    await focusByKey(button)
+    await focusWithKey(button, 'ArrowRight')
     await vi.waitFor(() => expect(bubble()).not.toBeNull())
     await userEvent.keyboard('{Enter}')
     expect(bubble()).toBeNull()
@@ -242,36 +257,52 @@ describe('keyboard focus', () => {
 })
 
 describe('Escape', () => {
-  it('closes a tip the pointer opened and reaches nothing else, so a Dialog around it stays open', async () => {
-    await fakeTimersAfterSkip()
-    const heard = vi.fn()
-    await hoverAndWait(tipped('Archive'))
-    expect(bubble()).not.toBeNull()
-    document.addEventListener('keydown', heard, { capture: true })
-    try {
-      await userEvent.keyboard('{Escape}')
-      expect(bubble()).toBeNull()
-      expect(heard).not.toHaveBeenCalled()
-      // Once the tip is closed, the key reaches the page again.
-      await userEvent.keyboard('{Escape}')
-      expect(heard).toHaveBeenCalledOnce()
-    } finally {
-      document.removeEventListener('keydown', heard, { capture: true })
-    }
-  })
+  for (const opened of ['the pointer', 'keyboard focus'] as const) {
+    it(`closes a tip ${opened} opened and reaches nothing else, so a Dialog around it stays open`, async () => {
+      const heard = vi.fn()
+      const button = tipped('Archive')
+      if (opened === 'the pointer') {
+        await fakeTimersAfterSkip()
+        await hoverAndWait(button)
+      } else {
+        await focusWithKey(button, 'ArrowRight')
+        await vi.waitFor(() => expect(bubble()).not.toBeNull())
+      }
+      expect(bubble()).not.toBeNull()
+      const focused = document.activeElement
+      document.addEventListener('keydown', heard, { capture: true })
+      try {
+        await userEvent.keyboard('{Escape}')
+        expect(bubble()).toBeNull()
+        expect(heard).not.toHaveBeenCalled()
+        expect(document.activeElement).toBe(focused)
+        // Once the tip is closed, the key reaches the page again.
+        await userEvent.keyboard('{Escape}')
+        expect(heard).toHaveBeenCalledOnce()
+      } finally {
+        document.removeEventListener('keydown', heard, { capture: true })
+      }
+    })
+  }
+})
 
-  it('closes a tip focus opened and reaches the page, so a Dialog that focused the button closes', async () => {
-    const heard = vi.fn()
-    await focusByKey(tipped('Close'))
+describe('until dismissed', () => {
+  it('stays while the pointer rests and while focus stays, with no time limit', async () => {
+    const button = tipped('Archive')
+    await fakeTimersAfterSkip()
+    await hoverAndWait(button)
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(bubble()).not.toBeNull()
+    await restPointer()
+    expect(bubble()).toBeNull()
+    vi.useRealTimers()
+    await focusWithKey(button, 'ArrowRight')
     await vi.waitFor(() => expect(bubble()).not.toBeNull())
-    document.addEventListener('keydown', heard, { capture: true })
-    try {
-      await userEvent.keyboard('{Escape}')
-      expect(bubble()).toBeNull()
-      expect(heard).toHaveBeenCalledOnce()
-    } finally {
-      document.removeEventListener('keydown', heard, { capture: true })
-    }
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(bubble()).not.toBeNull()
+    button.blur()
+    expect(bubble()).toBeNull()
   })
 })
 
@@ -338,7 +369,7 @@ describe('an icon-only link', () => {
     expect(bubble()).toBeNull()
   })
 
-  it('opens when a key press moves focus to it, and not for focus a script gives after a press', async () => {
+  it('opens when a key that moves focus puts it on the link, and not for focus a script gives after a press', async () => {
     const elsewhere = document.createElement('button')
     elsewhere.textContent = 'Elsewhere'
     elsewhere.style.cssText = 'position: fixed; left: 400px; top: 400px'
@@ -346,18 +377,18 @@ describe('an icon-only link', () => {
     const link = tippedLink()
     await userEvent.click(elsewhere)
     link.focus()
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    await frames()
     expect(document.activeElement).toBe(link)
     expect(bubble()).toBeNull()
     link.blur()
-    await focusByKey(link)
+    await focusWithKey(link, 'ArrowRight')
     await vi.waitFor(() => expect(bubble()?.textContent).toBe('Next page'))
   })
 
   it('closes when the link is followed from the keyboard', async () => {
     const link = tippedLink()
     link.addEventListener('click', (event) => event.preventDefault())
-    await focusByKey(link)
+    await focusWithKey(link, 'ArrowRight')
     await vi.waitFor(() => expect(bubble()).not.toBeNull())
     await userEvent.keyboard('{Enter}')
     expect(bubble()).toBeNull()

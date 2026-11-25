@@ -17,11 +17,13 @@
 
 **Every icon-only Button shows its label on hover and keyboard focus.** A Button with `iconOnly`
 shows its `label` in a bubble that looks like a Tooltip's: after the Tooltip's delay when the mouse
-rests on it, at once on keyboard focus, and not for touch or pen. It is a name tip, not a Tooltip:
-the bubble is hidden from assistive technology, adds no `aria-describedby`, and the button's name
-is unchanged. It is drawn in the top layer, so it shows over a Dialog, Drawer, Popover or Menu,
-takes no pointer events, and adds nothing inside or around the button. Escape closes it; on a tip
-the pointer opened, the key goes no further, so a Dialog around the button stays open.
+rests on it, and at once when the reader moves focus to it with Tab or an arrow key. Touch, pen and
+focus a script gives after Enter or a press do not open it, so a Dialog that focuses its icon-only
+close button shows no tip there. It is a name tip, not a Tooltip: the bubble is hidden from
+assistive technology, adds no `aria-describedby`, and the button's name is unchanged. It is drawn
+in the top layer, so it shows over a Dialog, Drawer, Popover or Menu, takes no pointer events, and
+adds nothing inside or around the button. Escape closes the tip and nothing else, so a Dialog
+around the button stays open until the next Escape.
 
 SplitButton's chevron, CopyButton, AvatarButton and Pagination's arrows drawn as links show their
 names the same way. CopyButton shows none while its confirmation shows.

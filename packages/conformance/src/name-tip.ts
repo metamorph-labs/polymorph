@@ -5,6 +5,7 @@ import { TOOLTIP_DELAY_MS, TOOLTIP_SKIP_DELAY_MS } from '@polymorph/engine'
 import { installTestTheme } from '@polymorph/engine/testing'
 
 import { TAB_PASSES_BUTTONS } from './engines'
+import { harness } from './harness'
 import type { MountAdapter } from './run'
 
 /**
@@ -14,9 +15,14 @@ import type { MountAdapter } from './run'
  * Tooltip's bubble; a labelled Button shows none; a Button inside a Tooltip
  * shows only the Tooltip; the members that draw Button's icon-only box without
  * the Button member show their names the same way; and over a modal Dialog the
- * tip is drawn above the panel and its scrim while focus stays in the panel. A
- * contract statement cannot say any of it: hover is not a statement, and the
- * tip adds no attribute a statement could read.
+ * tip is drawn above the panel and its scrim while focus stays in the panel.
+ *
+ * It holds the four statements of WCAG 1.4.13 the tip makes: it is not
+ * announced twice, Escape dismisses it and leaves a Dialog around the button
+ * open, the pointer may move onto it, and it stays until it is dismissed or
+ * the pointer and focus leave. A contract statement cannot say any of it: a
+ * hover is not a statement, and the tip adds no attribute a statement could
+ * read.
  *
  * Each case mounts a states fixture entry by the name every shell gives it.
  * The words are the entries' own labels, which no machine formats, so no case
@@ -98,8 +104,12 @@ export function nameTipLaw({ shell, adapter }: NameTipLaw): void {
     const unmounts: (() => void)[] = []
 
     /** Mounts an entry below the window's top edge, where a tip has room above the control. */
-    async function mount(member: string, state: string): Promise<HTMLElement> {
-      const { root, unmount } = await adapter.mount(member, { state })
+    async function mount(
+      member: string,
+      state: string,
+      overrides?: Readonly<Record<string, string>>,
+    ): Promise<HTMLElement> {
+      const { root, unmount } = await adapter.mount(member, { state, overrides })
       unmounts.push(unmount)
       root.style.paddingTop = '96px'
       return root
@@ -108,18 +118,27 @@ export function nameTipLaw({ shell, adapter }: NameTipLaw): void {
     const extras: Element[] = []
 
     /**
-     * Moves focus to `target` from the keyboard: Enter on a plain button before `root`, whose
-     * press puts focus there, as a key that opens a dialog does when the dialog focuses its first
-     * control. It reaches a button on every engine, where Tab does not (`TAB_PASSES_BUTTONS`).
+     * Moves focus to `target` with a key, from a plain button before `root` whose handler for
+     * that key puts focus there: an arrow key as a roving toolbar moves focus, or Enter as a
+     * trigger does whose dialog focuses its first control. It reaches a button on every engine,
+     * where Tab does not (`TAB_PASSES_BUTTONS`).
      */
-    async function focusByKey(root: HTMLElement, target: HTMLElement): Promise<void> {
+    async function focusWithKey(
+      root: HTMLElement,
+      target: HTMLElement,
+      key: 'ArrowRight' | 'Enter' = 'ArrowRight',
+    ): Promise<void> {
       const from = document.createElement('button')
       from.textContent = 'From'
-      from.addEventListener('click', () => target.focus())
+      from.addEventListener('keydown', (event) => {
+        if (event.key !== key) return
+        event.preventDefault()
+        target.focus()
+      })
       root.before(from)
       extras.push(from)
       from.focus()
-      await userEvent.keyboard('{Enter}')
+      await userEvent.keyboard(`{${key}}`)
       expect(document.activeElement).toBe(target)
     }
 
@@ -156,11 +175,77 @@ export function nameTipLaw({ shell, adapter }: NameTipLaw): void {
       expect(tip()).toBeNull()
     })
 
-    it('an icon-only Button shows its label on keyboard focus', async () => {
+    it('an icon-only Button shows its label when a key that moves focus puts focus on it', async () => {
       const root = await mount('Button', 'icon-only')
       const button = find<HTMLButtonElement>(root, 'button[aria-label="Edit"]')
-      await focusByKey(root, button)
+      await focusWithKey(root, button)
       await vi.waitFor(() => expect(tip()?.textContent).toBe('Edit'))
+      button.blur()
+      expect(tip()).toBeNull()
+    })
+
+    it('an icon-only Button shows no tip for focus a script gives after Enter', async () => {
+      const root = await mount('Button', 'icon-only')
+      await focusWithKey(root, find<HTMLButtonElement>(root, 'button[aria-label="Edit"]'), 'Enter')
+      await frames()
+      expect(tip()).toBeNull()
+    })
+
+    it('not announced twice: the name is the aria-label alone, and the bubble is hidden and referred to by nothing', async () => {
+      const hint = document.createElement('p')
+      hint.id = 'name-tip-law-hint'
+      hint.textContent = 'Opens the editor.'
+      document.body.append(hint)
+      extras.push(hint)
+      const root = await mount('Button', 'icon-only', { 'aria-describedby': hint.id })
+      const button = find<HTMLButtonElement>(root, 'button[aria-label="Edit"]')
+      await fakeTimersAfterSkip()
+      await hoverAndWait(button)
+      const bubble = tip() as HTMLElement
+      expect(bubble.textContent).toBe('Edit')
+      expect(harness.nameOf(button)).toBe('Edit')
+      expect(bubble.getAttribute('aria-hidden')).toBe('true')
+      expect(bubble.getAttribute('role')).toBeNull()
+      expect(bubble.id).toBe('')
+      // The app's description is untouched, and nothing names or describes the button by the tip.
+      expect(button.getAttribute('aria-describedby')).toBe(hint.id)
+      expect(button.hasAttribute('aria-labelledby')).toBe(false)
+    })
+
+    it('hoverable: the tip stays while the pointer crosses the gap onto it', async () => {
+      const root = await mount('Button', 'icon-only')
+      const button = find<HTMLButtonElement>(root, 'button[aria-label="Edit"]')
+      await fakeTimersAfterSkip()
+      await hoverAndWait(button)
+      const bubble = tip() as HTMLElement
+      const box = bubble.getBoundingClientRect()
+      const gap = document.createElement('div')
+      gap.style.cssText = `position: fixed; left: ${box.left}px; top: ${box.bottom}px; width: ${box.width}px; height: ${button.getBoundingClientRect().top - box.bottom}px`
+      document.body.append(gap)
+      extras.push(gap)
+      await userEvent.hover(gap)
+      expect(tip()).toBe(bubble)
+      await userEvent.hover(bubble, { force: true })
+      expect(tip()).toBe(bubble)
+      await restPointer()
+      expect(tip()).toBeNull()
+    })
+
+    it('persistent: the tip stays while the pointer rests or focus stays, with no time limit', async () => {
+      const root = await mount('Button', 'icon-only')
+      const button = find<HTMLButtonElement>(root, 'button[aria-label="Edit"]')
+      await fakeTimersAfterSkip()
+      await hoverAndWait(button)
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(tip()).not.toBeNull()
+      await restPointer()
+      expect(tip()).toBeNull()
+      vi.useRealTimers()
+      await focusWithKey(root, button)
+      await vi.waitFor(() => expect(tip()).not.toBeNull())
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(tip()).not.toBeNull()
       button.blur()
       expect(tip()).toBeNull()
     })
@@ -172,7 +257,7 @@ export function nameTipLaw({ shell, adapter }: NameTipLaw): void {
       await hoverAndWait(button)
       expect(tip()).toBeNull()
       vi.useRealTimers()
-      await focusByKey(root, button)
+      await focusWithKey(root, button)
       await frames()
       expect(tip()).toBeNull()
     })
@@ -282,8 +367,9 @@ export function nameTipLaw({ shell, adapter }: NameTipLaw): void {
         expect(document.elementFromPoint(x, box.bottom - 1)).not.toBe(bubble)
       })
 
-      it('Escape on a tip the pointer opened closes the tip, and the Dialog stays open', async () => {
+      it('dismissible: Escape on a tip the pointer opened closes the tip, and the Dialog stays open', async () => {
         await openDialog()
+        const focused = document.activeElement
         await fakeTimersAfterSkip()
         await hoverAndWait(close())
         expect(tip()).not.toBeNull()
@@ -292,20 +378,41 @@ export function nameTipLaw({ shell, adapter }: NameTipLaw): void {
         expect(tip()).toBeNull()
         await frames()
         expect(panel().isConnected).toBe(true)
+        expect(document.activeElement).toBe(focused)
       })
 
-      it('Escape on a tip keyboard focus opened closes the tip and the Dialog', async () => {
+      it.skipIf(TAB_PASSES_BUTTONS)(
+        'dismissible: Tab to the close button shows its tip, Escape closes the tip and the Dialog stays open, and a second Escape closes the Dialog',
+        async () => {
+          await openDialog()
+          for (let step = 0; step < 6 && document.activeElement !== close(); step += 1) {
+            await userEvent.keyboard('{Tab}')
+          }
+          expect(document.activeElement).toBe(close())
+          await vi.waitFor(() => expect(tip()?.textContent).toBe('Close'))
+          await userEvent.keyboard('{Escape}')
+          expect(tip()).toBeNull()
+          await frames()
+          expect(panel().isConnected).toBe(true)
+          expect(document.activeElement).toBe(close())
+          await userEvent.keyboard('{Escape}')
+          await vi.waitFor(() =>
+            expect(document.querySelector('[data-member="dialog"][role="dialog"]')).toBeNull(),
+          )
+        },
+      )
+
+      it('a Dialog opened with Enter shows no tip on the close button it focuses, and the first Escape closes it', async () => {
         const root = await mount('Dialog', 'plain')
         find<HTMLElement>(root, 'button').focus()
         await userEvent.keyboard('{Enter}')
-        // The Dialog puts focus on its close button, which opens the close button's tip.
         await vi.waitFor(() => expect(document.activeElement).toBe(close()))
-        await vi.waitFor(() => expect(tip()?.textContent).toBe('Close'))
+        await frames()
+        expect(tip()).toBeNull()
         await userEvent.keyboard('{Escape}')
         await vi.waitFor(() =>
           expect(document.querySelector('[data-member="dialog"][role="dialog"]')).toBeNull(),
         )
-        expect(tip()).toBeNull()
       })
     })
   })
