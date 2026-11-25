@@ -154,7 +154,7 @@ export function nearestFocusable(
   const avoid = [place.element, ...skip].filter((element): element is Element => !!element)
   const gap = gapOf(place)
   if (gap !== null) {
-    const stops = [...top.querySelectorAll<HTMLElement>(TABBABLE)].filter(
+    const stops = Array.from(top.querySelectorAll<HTMLElement>(TABBABLE)).filter(
       (candidate) => tabbable(candidate) && !avoid.some((element) => element.contains(candidate)),
     )
     const after = stops.find((candidate) => follows(candidate, gap))
@@ -230,9 +230,7 @@ export function focusAfterRemoval(region: Element | null | undefined): () => voi
     if (held === null) return
     const active = top.activeElement
     const lost =
-      active === null ||
-      active === top.body ||
-      (region.isConnected && region.contains(active))
+      active === null || active === top.body || (region.isConnected && region.contains(active))
     if (lost) nearestFocusable(held, [region])?.focus()
   }
 }

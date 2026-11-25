@@ -283,7 +283,11 @@ export default describeMember({
       effects: [
         // Focus in a card whose toast starts to leave moves to the next toast, else the previous
         // one, else where it came from (`focusAfterToast`), before the card leaves the page.
-        { watch: 'record.closing', mount: false, run: 'record.closing === true && focusAfterToast(card)' },
+        {
+          watch: 'record.closing',
+          mount: false,
+          run: 'record.closing === true && focusAfterToast(card)',
+        },
         // Step two of dismissal: once the exit has played, the record leaves the store.
         { watch: 'present', mount: false, run: 'present || removeToast(record.id)' },
         // The timer: restarted by an update, held while the reader is on the list, and none for

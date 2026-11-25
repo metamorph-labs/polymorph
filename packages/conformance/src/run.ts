@@ -961,7 +961,9 @@ class Run {
     try {
       page.focus()
       if (document.activeElement !== page) {
-        throw new Divergence(`focus cannot rest on the page: it is on ${describe(document.activeElement)}`)
+        throw new Divergence(
+          `focus cannot rest on the page: it is on ${describe(document.activeElement)}`,
+        )
       }
       await this.harness.keyboard(keystrokes(statement.key))
       await this.wait(() => {

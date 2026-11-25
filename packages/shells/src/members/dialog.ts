@@ -28,7 +28,10 @@ export default describeMember({
   // opened, and a press leaves a button unfocused in WebKit. When that element has left the
   // page by the time the panel closes, focus goes to the focusable element nearest where it was
   // (`focusReturnTarget`).
-  state: { pressed: 'null as HTMLElement | null', returnTo: 'null as ReturnType<typeof focusPlace>' },
+  state: {
+    pressed: 'null as HTMLElement | null',
+    returnTo: 'null as ReturnType<typeof focusPlace>',
+  },
   machine: {
     of: 'dialog',
     context: {
@@ -57,7 +60,10 @@ export default describeMember({
   effects: [
     { run: 'lender && (lender.element = () => panel)' },
     // Where focus returns is recorded as the panel opens, before the trap moves focus into it.
-    { watch: 'api.open', run: 'api.open && ((returnTo = focusPlace(pressed ?? document.activeElement)), (pressed = null))' },
+    {
+      watch: 'api.open',
+      run: 'api.open && ((returnTo = focusPlace(pressed ?? document.activeElement)), (pressed = null))',
+    },
   ],
   // The spec's `agent` fence. The machine owns the open state, controlled or not, so closing goes
   // through it and it reports `openChange`. A non-dismissible dialog asks for a choice among its

@@ -97,6 +97,18 @@ describe('the grammar', () => {
       moment: 'on-close',
       target: 'previous',
     })
+    expect(parseStatement('focus on-close nearest')).toMatchObject({
+      moment: 'on-close',
+      target: 'nearest',
+    })
+    expect(parseStatement('key F8 focuses viewport when the viewport')).toEqual({
+      kind: 'key',
+      key: 'F8',
+      effect: 'focuses',
+      into: 'viewport',
+      text: 'key F8 focuses viewport when the viewport',
+      state: 'the viewport',
+    })
     expect(parseStatement('dismiss none when non-dismissible')).toMatchObject({ by: 'none' })
     expect(parseStatement('announces live:polite when loading')).toMatchObject({
       channel: 'live:polite',
@@ -174,6 +186,9 @@ describe('the grammar', () => {
       ['key Return opens', /a key is one of/],
       ['key Escape vanishes', /a key effect must be one of/],
       ['key Escape closes in panel', /expected `key <Key> <effect> on <part>`/],
+      ['key Escape closes panel', /expected `key <Key> <effect> \[on <part>\]`/],
+      ['key F8 focuses', /expected `key <Key> focuses <part>`/],
+      ['key F8 focuses on viewport', /expected `key <Key> focuses <part>`/],
       ['click activates', /expected `click <effect> on <part>`/],
       ['click opens on trigger', /a click effect must be one of/],
       ['click activates in row', /expected `click <effect> on <part>`/],

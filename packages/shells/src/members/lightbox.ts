@@ -127,7 +127,10 @@ export default describeMember({
   effects: [
     { watch: 'shown', mount: false, run: 'focusAfterMove()' },
     // Where focus returns is recorded as the panel opens, as in Dialog.
-    { watch: 'api.open', run: 'api.open && ((returnTo = focusPlace(pressed ?? document.activeElement)), (pressed = null))' },
+    {
+      watch: 'api.open',
+      run: 'api.open && ((returnTo = focusPlace(pressed ?? document.activeElement)), (pressed = null))',
+    },
   ],
   // The spec's `agent` fence. A move goes through `travel` and a close through the machine, so
   // the member reports `indexChange` and `openChange` as it does for a person's controls. A move

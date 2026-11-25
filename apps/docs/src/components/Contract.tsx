@@ -55,6 +55,10 @@ function keyEffect(statement: KeyStatement): string {
       return 'Steps the value up'
     case 'decrements':
       return 'Steps the value down'
+    case 'focuses':
+      return statement.into === undefined
+        ? 'Moves focus into it from anywhere on the page'
+        : `Moves focus to the ${partName(statement.into)} from anywhere on the page`
     case 'nothing':
       return 'Does nothing here'
   }
@@ -94,6 +98,9 @@ function describe(statement: Statement): ReactNode {
     case 'focus':
       if (statement.moment === 'on-open') {
         return `Opening it moves focus to the ${partName(statement.part)}`
+      }
+      if (statement.target === 'nearest') {
+        return 'If its trigger is gone by the time it closes, focus goes to the nearest control instead of the top of the page'
       }
       return statement.target === 'trigger'
         ? 'Closing it puts focus back on the trigger'

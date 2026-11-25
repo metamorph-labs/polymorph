@@ -27,7 +27,9 @@ export interface ToasterMessages {
 
 export interface ToastProps {
   /**
-   * At most one; a shortcut, never the only way to do what it does.
+   * At most one; a shortcut, never the only way to do what it does. A call with an action that
+   * sets neither `durationMs` nor `retained` is pinned, so a reader has the time to reach the
+   * action.
    */
   action?: ToastAction
   /**

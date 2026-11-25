@@ -32,7 +32,9 @@ export interface ToasterMessages {
 /** Notifications that report the outcome of an action: the inputs it takes, by the React member's prop names. */
 export interface ToastProps {
   /**
-   * At most one; a shortcut, never the only way to do what it does.
+   * At most one; a shortcut, never the only way to do what it does. A call with an action that
+   * sets neither `durationMs` nor `retained` is pinned, so a reader has the time to reach the
+   * action.
    */
   action?: ToastAction
   description?: string
@@ -74,7 +76,9 @@ export interface ToastProps {
 })
 export class Toast {
   /**
-   * At most one; a shortcut, never the only way to do what it does.
+   * At most one; a shortcut, never the only way to do what it does. A call with an action that
+   * sets neither `durationMs` nor `retained` is pinned, so a reader has the time to reach the
+   * action.
    */
   readonly action = input<ToastProps['action']>(undefined)
   readonly description = input<ToastProps['description']>(undefined)

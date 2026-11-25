@@ -37,7 +37,7 @@ export function focusAfterToast(card: Element | null | undefined): void {
   if (!card || !card.contains(card.ownerDocument.activeElement)) return
   const list = card.closest<HTMLElement>('[data-toast-part="list"]')
   if (list === null) return
-  const staying = [...list.querySelectorAll<HTMLElement>('[data-member="toast"]')].filter(
+  const staying = Array.from(list.querySelectorAll<HTMLElement>('[data-member="toast"]')).filter(
     (other) => other !== card && other.getAttribute('data-state') !== 'closed',
   )
   const next = staying.find(

@@ -77,7 +77,9 @@ describe('nearestFocusable', () => {
   })
 
   it('falls back to the page’s main, made focusable while it holds focus', () => {
-    const { main, row } = draw(`<main id="main"><div id="row"><button id="opener">Only</button></div></main>`)
+    const { main, row } = draw(
+      `<main id="main"><div id="row"><button id="opener">Only</button></div></main>`,
+    )
     const place = focusPlace(page.querySelector('#opener'))
     row?.remove()
     const target = place && nearestFocusable(place)
@@ -96,7 +98,9 @@ describe('focusReturnTarget', () => {
   })
 
   it('goes to the nearest element when the element is still there but disabled', () => {
-    const { opener, after } = draw(`<button id="opener">Open</button><button id="after">After</button>`)
+    const { opener, after } = draw(
+      `<button id="opener">Open</button><button id="after">After</button>`,
+    )
     const place = focusPlace(opener)
     opener?.setAttribute('disabled', '')
     expect(focusReturnTarget(place)).toBe(after)

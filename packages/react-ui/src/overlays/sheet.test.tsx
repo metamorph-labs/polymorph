@@ -528,8 +528,8 @@ describe('a sheet inside a Dialog', () => {
       <Menu
         trigger={<Button label="More" />}
         items={[
-          { id: 'archive', label: 'Archive', onSelect: () => undefined },
-          { id: 'delete', label: 'Delete', onSelect: () => undefined },
+          { label: 'Archive', onSelect: () => undefined },
+          { label: 'Delete', onSelect: () => undefined },
         ]}
       />,
       () => screen.getByRole('button', { name: 'More' }),
