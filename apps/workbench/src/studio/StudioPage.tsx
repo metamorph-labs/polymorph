@@ -3,8 +3,8 @@ import {
   AXIS_VALUES,
   CHROMA_BUDGETS,
   CONTROL_HEIGHT_PX,
+  focusPx,
   FONT_ROLES,
-  GEOMETRY_FOCUS_OFFSET,
   GEOMETRY_RADII,
   INSET_ASSIGNMENT_CLASSES,
   INSET_ASSIGNMENT_DEFAULT,
@@ -301,6 +301,9 @@ export function StudioPage() {
   }
 
   const overrides = draft.system.overrides
+  // The focus mark's width, the file's or the temperament's, and the offset derived from it,
+  // which an `offset` in the file replaces.
+  const focus = focusPx(draft.system.axes.contrastTemperament, { width: overrides?.focus?.width })
   // The two steps under the base show the size the ratio derives until set.
   const typeBase = overrides?.type?.base ?? TYPE_BASE_PX
   const typeRatio = overrides?.type?.ratio ?? TYPE_RATIO[draft.system.axes.density]
@@ -587,7 +590,7 @@ export function StudioPage() {
                   onChange={(value) => setOverride('shadow', 'throw', value, 1)}
                 />
               </FormField>
-              <Heading level={3}>Focus ring</Heading>
+              <Heading level={3}>Focus mark</Heading>
               <Grid columns={2} gap={4}>
                 <FormField
                   label={withBase(
@@ -595,7 +598,7 @@ export function StudioPage() {
                     overrides?.focus?.width !== undefined,
                     `${TEMPERAMENT_FOCUS_WIDTH[draft.system.axes.contrastTemperament]}px`,
                   )}
-                  description="Never thinner than the floor — the ring announces where the keyboard is."
+                  description="Never thinner than the floor — the mark announces where the keyboard is."
                 >
                   <NumberInput
                     min={2}
@@ -618,28 +621,19 @@ export function StudioPage() {
                 </FormField>
                 <FormField
                   label={withBase(
-                    'Air',
+                    'Offset',
                     overrides?.focus?.offset !== undefined,
-                    `${GEOMETRY_FOCUS_OFFSET[draft.system.axes.geometry]}px`,
+                    `${focus.offset}px`,
                   )}
-                  description="Space between the ring and the control's edge."
+                  description="Minus the thickness draws the mark just inside the control's edge, where nothing can clip it. Zero or more draws it outside, with that much air."
                 >
                   <NumberInput
-                    min={0}
+                    min={-focus.width}
                     max={4}
                     step={1}
-                    value={
-                      overrides?.focus?.offset ?? GEOMETRY_FOCUS_OFFSET[draft.system.axes.geometry]
-                    }
+                    value={overrides?.focus?.offset ?? focus.offset}
                     suffix="px"
-                    onChange={(value) =>
-                      setOverride(
-                        'focus',
-                        'offset',
-                        value,
-                        GEOMETRY_FOCUS_OFFSET[draft.system.axes.geometry],
-                      )
-                    }
+                    onChange={(value) => setOverride('focus', 'offset', value, focus.offset)}
                   />
                 </FormField>
               </Grid>

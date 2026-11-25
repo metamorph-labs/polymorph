@@ -32,7 +32,7 @@ palette and shape is a system.
 | typePersonality | `grotesque` | Even colour, no calligraphic traits, legible before characterful. This axis sets the voice. The family is a separate decision (see Fonts). |
 | colorStrategy | `quiet` | Neutral surfaces, with blue only where something is interactive or has state: a bright blue button on white, not a blue page. `tinted` would put the accent in the background and weaken the blue's signal that something is tappable. |
 | motionTemperament | `expressive` | Touch motion overshoots and settles instead of easing to a stop. `expressive` is the only temperament that resolves real spring parameters, 1.35× travel and a press scale. This axis separates pebble from desktop the most, which is correct: motion is the largest difference between a hand and a desk. |
-| ornament | `minimal` | Hover lift and focus halo, no texture. pebble decorates with shape and response, not pattern, and translucent material is `depth: glass`, glassmorphic's axis. `grain` or `grid` would add a decoration the register does not have. |
+| ornament | `minimal` | Hover lift and the pending drop's halo, no texture. pebble decorates with shape and response, not pattern, and translucent material is `depth: glass`, glassmorphic's axis. `grain` or `grid` would add a decoration the register does not have. |
 
 Divergence from the catalogue: 3 axes from desktop (geometry, density, motion:
 everything that distinguishes a phone from a desk), 4 from plain and

@@ -60,7 +60,11 @@ axes. The body is the part that shrinks, so a long body scrolls while the title 
 footer stay in place. The panel itself scrolls (`overflow-y: auto`) only when the title, the
 description and the footer alone are taller than it, as with a long description or large text
 in a short window. Every part then stays in reach instead of running past the panel's edge. Padding `--pm-space-6`; header→description gap `--pm-space-2`; description→body
-`--pm-space-5`; body→footer `--pm-space-6`; footer actions gap `--pm-space-3`.
+`--pm-space-5`; body→footer `--pm-space-6`; footer actions gap `--pm-space-3`. The gaps and the
+padding are measured to the body's content. A scroll container cuts what it holds at its
+padding edge on both axes, so the body is larger than its content by `--pm-space-2` on every
+side, inside the panel's padding, and its margins take that back: a field at the body's edge
+draws its whole seat shadow, and its rounded corners stay round.
 
 The max-height uses `dvh` with a fallback. The `100vh` value is the base, and the `100dvh`
 override follows it inside an `@supports (height: 1dvh)` block, so engines without `dvh` keep

@@ -288,7 +288,8 @@ object PMTable : PMTableRendering {
                             spoken?.let { stateDescription = it }
                         }
                         .pmHitTarget()
-                        .pmFocusRing(focused, theme.radius.sm.dp),
+                        // Around the header's label, which reaches its edge.
+                        .pmFocusRing(focused, theme.radius.sm.dp, around = true),
                     horizontalArrangement = Arrangement.spacedBy(space.s1),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

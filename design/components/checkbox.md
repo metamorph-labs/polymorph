@@ -58,7 +58,7 @@ Transitions: `background-color, border-color` over `--pm-motion-duration-control
 | disabled unchecked | bg `--pm-bg-subtle` · border `--pm-border-subtle` |
 | disabled checked | bg `--pm-border-subtle` · border `--pm-border-subtle` · glyph `--pm-text-disabled` |
 | disabled label | `--pm-text-disabled` |
-| focus | ring on the **box** per conventions §4 |
+| focus | ring **around the box** with a `--pm-space-1` gap, in `--pm-border-focus-solid`, in every state (conventions §4, the around placement): the box is too small to hold the line, and the ring leaves its checked or invalid border uncovered |
 
 ## States
 

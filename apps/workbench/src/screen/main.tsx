@@ -69,8 +69,11 @@ export interface DrawReport {
 export interface ScreenPage {
   /** Draws a spec, and resolves when fonts and layout have settled. */
   draw: (request: DrawRequest) => Promise<DrawReport>
-  /** The layout faults of what is drawn, at the window's current size. */
-  measure: () => Measurement
+  /**
+   * The layout faults of what is drawn, at the window's current size. It resolves after it has
+   * moved keyboard focus through every control and put focus back.
+   */
+  measure: () => Promise<Measurement>
 }
 
 declare global {

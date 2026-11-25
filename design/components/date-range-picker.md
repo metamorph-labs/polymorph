@@ -85,7 +85,9 @@ mapping: **in-range = §11's choice wash; endpoints = the full content-selection
 | today, in-range          | keeps its `1px --pm-accent-bg` border inside the wash, because today is a fact, not a choice (`calendar.md`). At an endpoint, selection wins and `aria-current` still marks today |
 | anchored preview         | while selecting, the cells between the anchor and the focused position get the same three attributes. The preview *is* the range being made, not a hover effect, and it commits or cancels as a whole |
 
-Unavailable, outside-month, grid-disabled and focus cells: `calendar.md` verbatim. One month
+Unavailable, outside-month, grid-disabled and focus cells: `calendar.md` verbatim, so a focused
+endpoint's ring lies inside its fill with a gap, in `--pm-selection-text`, inside its selection
+border. One month
 per popup. A second month pane can be added if the registry shows evidence that it is needed.
 Navigation while anchored already spans months (below).
 

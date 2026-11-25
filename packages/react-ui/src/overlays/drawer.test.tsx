@@ -5,7 +5,9 @@ import { page, userEvent } from 'vitest/browser'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { Button } from '../controls/Button'
+import { FormField } from '../controls/FormField'
 import { Input } from '../controls/Input'
+import { reachCuts, shadowCuts, shadowReach, tokenLength } from '../controls/token-probe'
 import { createAgentBridge } from '@polymorph/engine/agent'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { Drawer, type DrawerProps } from './Drawer'
@@ -456,6 +458,118 @@ describe('a window shorter than the content, at phone width', () => {
       )
     })
   }
+})
+
+/**
+ * Fields at the edges of the body. The body scrolls, and a scroll container cuts what it holds
+ * at its padding edge on both axes. Its inline padding gives a field's seat shadow room at the
+ * sides; at its top, and at its end where the footer follows, the body is larger than its content
+ * by the room the seat takes, and its margins take that room back, so nothing moves.
+ */
+describe('fields at the edges of the body', () => {
+  const frame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)))
+  const open = () => panel() as HTMLElement
+  const part = (name: 'body' | 'footer') =>
+    open().querySelector(`[data-dialog-part="${name}"]`) as HTMLElement
+  const fields = () => [...part('body').querySelectorAll<HTMLElement>('[data-member="input"]')]
+
+  /** The panel once its slide-in has ended: its box the same on two frames in a row. */
+  const settled = () =>
+    vi.waitFor(async () => {
+      const before = open().getBoundingClientRect().toJSON()
+      await frame()
+      await frame()
+      expect(open().getBoundingClientRect().toJSON()).toEqual(before)
+    })
+
+  async function drawer(props: Partial<DrawerProps>, paragraphs: number) {
+    render(
+      <Drawer defaultOpen title="Hosting" {...props}>
+        <Input aria-label="Search" defaultValue="orbit" />
+        {Array.from({ length: paragraphs }, (_, index) => (
+          <p key={index}>Paragraph {index + 1} between the fields.</p>
+        ))}
+        <FormField label="Monthly cap">
+          <Input defaultValue="120" />
+        </FormField>
+      </Drawer>,
+    )
+    await vi.waitFor(() => expect(panel()).not.toBeNull())
+    await settled()
+    // At rest: the drawer focused the first field when it opened.
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    return fields() as [HTMLElement, HTMLElement]
+  }
+
+  for (const side of ['end', 'start', 'bottom'] as const) {
+    for (const scrolls of [false, true]) {
+      it(`draws the whole seat of the first and the last field in a ${side} drawer, with a body that ${scrolls ? 'scrolls' : 'does not scroll'}`, async () => {
+        const [first, last] = await drawer(
+          { side, footer: <Button label="Apply" /> },
+          scrolls ? 60 : 1,
+        )
+        const body = part('body')
+        expect(body.scrollHeight > body.clientHeight, 'the body scrolls').toBe(scrolls)
+
+        // A control's focus mark, a 2px line drawn a `space-1` gap outside it, fits the same room.
+        const mark = Number.parseFloat(tokenLength('--pm-space-1')) + 2
+        body.scrollTop = 0
+        await frame()
+        expect(shadowReach(first).bottom, 'the field draws no seat').toBeGreaterThan(0)
+        expect(shadowCuts(first), 'the first field’s seat is cut').toEqual([])
+        expect(reachCuts(first, mark), 'a focus mark on the first field is cut').toEqual([])
+        body.scrollTop = body.scrollHeight
+        await frame()
+        expect(shadowCuts(last), 'the last field’s seat is cut').toEqual([])
+        expect(reachCuts(last, mark), 'a focus mark on the last field is cut').toEqual([])
+
+        // The room scrolls nothing that did not scroll before.
+        expect(open().scrollHeight, 'the panel scrolls').toBeLessThanOrEqual(
+          open().clientHeight + 1,
+        )
+        expect(open().scrollWidth, 'the panel pans').toBeLessThanOrEqual(open().clientWidth + 1)
+      })
+    }
+  }
+
+  it('keeps the body’s content where it was: under the header, at its inset, over the footer', async () => {
+    const [first, last] = (await drawer({ footer: <Button label="Apply" /> }, 1)).map((field) =>
+      field.getBoundingClientRect(),
+    ) as [DOMRect, DOMRect]
+    const header = (open().querySelector('h2') as HTMLElement).closest('div')?.parentElement
+    const box = open().getBoundingClientRect()
+    const border = Number.parseFloat(getComputedStyle(open()).borderInlineStartWidth)
+    const inset = Number.parseFloat(tokenLength('--pm-space-5'))
+    expect(first.top).toBeCloseTo((header as HTMLElement).getBoundingClientRect().bottom, 1)
+    expect(first.left).toBeCloseTo(box.left + border + inset, 1)
+    expect(last.right).toBeCloseTo(box.right - inset, 1)
+    expect(last.bottom).toBeCloseTo(part('footer').getBoundingClientRect().top, 1)
+  })
+
+  it('scrolls only the body without a footer, at any length', async () => {
+    for (const side of ['end', 'bottom'] as const) {
+      for (const paragraphs of [1, 60]) {
+        const view = render(
+          <Drawer defaultOpen side={side} title="Hosting">
+            {Array.from({ length: paragraphs }, (_, index) => (
+              <p key={index}>Paragraph {index + 1}.</p>
+            ))}
+            <FormField label="Monthly cap">
+              <Input defaultValue="120" />
+            </FormField>
+          </Drawer>,
+        )
+        await vi.waitFor(() => expect(panel()).not.toBeNull())
+        await settled()
+        const what = `a ${side} drawer with ${paragraphs} paragraphs`
+        expect(open().scrollHeight, `${what}: the panel scrolls`).toBeLessThanOrEqual(
+          open().clientHeight + 1,
+        )
+        view.unmount()
+        await vi.waitFor(() => expect(panels()).toHaveLength(0))
+      }
+    }
+  })
 })
 
 /**

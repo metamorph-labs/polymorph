@@ -43,14 +43,14 @@ recipe's edge fade reads it.
 | --- | --- |
 | list | row · gap `--pm-space-5` · full-width bottom rule `1px solid --pm-border-subtle`, drawn by the root so it spans the container |
 | list, wider than its container | scrolls on the inline axis · edge fade `--pm-space-6` wide at an edge with more tabs beyond it · scroll padding `--pm-space-6` plus the focus room · where the fade is not supported, a thin scrollbar on `--pm-border-strong` |
-| list, focus room | padding of `--pm-focus-offset` + `--pm-focus-width` (at least `--pm-space-2`, for the halo) on every side, taken back by negative margins except at the inline end |
+| list, focus room | padding of how far a trigger's ring reaches outside its box: the ring goes around the trigger, so its offset (`--pm-space-1`, or the system's own where it is larger) plus `--pm-focus-width`, at least `--pm-space-2`, on every side, taken back by negative margins except at the inline end. The floor keeps the list's padding, its scroll padding and the indicator's inset the same whatever the ring's reach below it |
 | vertical list | column · gap `--pm-space-1` · intrinsic block size · start-edge rule `1px solid --pm-border-subtle` ending with the final trigger |
 | trigger | `text.sm` quartet · padding `--pm-space-3` 0 · color `--pm-text-secondary` · gap `--pm-space-2` to icon (`sm`, muted) / count Badge (soft neutral) |
 | trigger hover | color `--pm-text-primary` |
 | trigger active | color `--pm-text-primary` · count Badge → soft accent |
 | indicator | `2px` rule, bg `--pm-accent-bg`, sitting on the list rule under the active trigger |
 | trigger disabled | `--pm-text-disabled`, no hover |
-| focus | the shared focus ring, conventions §4 (the offset may overlap the rule; this is intended) |
+| focus | the shared focus ring around the trigger with a `--pm-space-1` gap (conventions §4, around), because the trigger has no inline padding around its label |
 | content | padding-top `--pm-space-5` · no other chrome; the content is composed from the vocabulary |
 
 ## Overflow
@@ -72,7 +72,8 @@ rule sit where a list that does not scroll has them.
 - **Focus.** The browser scrolls a tab that takes focus into view. The list's scroll
   padding keeps that tab, and the current one, clear of the fade.
 - **The focus ring.** A scroll container clips at its padding edge, so the list is
-  larger than its triggers by the ring's reach on every side. Negative margins keep the
+  larger than its triggers by the focus room on every side: the reach of the ring, which
+  goes around a trigger with a gap, and at least `--pm-space-2`. Negative margins keep the
   triggers where they are without that padding, except at the inline end, where a box
   past the container's edge would let the page scroll.
 - **The indicator** is inside the list, so it scrolls with its tab.

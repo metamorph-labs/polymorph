@@ -301,7 +301,7 @@ internal object Flint_Cobalt {
                 dark = PMRgba(18, 24, 28, 1f),
             ),
         ),
-        focus = PMFocus(width = 2f, offset = 0f),
+        focus = PMFocus(width = 2f, offset = -2f),
         icon = PMIcons(
             sm = PMIconScale(size = 14f, stroke = 1.71f),
             md = PMIconScale(size = 16f, stroke = 1.5f),
@@ -593,8 +593,8 @@ internal object Flint_Cobalt {
                 dark = PMRgba(0, 143, 210, 0.5f),
             ),
             borderFocusSolid = PMDynamicColor(
-                light = PMRgba(0, 143, 210, 1f),
-                dark = PMRgba(0, 143, 210, 1f),
+                light = PMRgba(0, 133, 196, 1f),
+                dark = PMRgba(0, 133, 196, 1f),
             ),
             dangerSolid = PMDynamicColor(
                 light = PMRgba(209, 92, 86, 1f),

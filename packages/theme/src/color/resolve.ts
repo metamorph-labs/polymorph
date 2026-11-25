@@ -2,9 +2,11 @@ import { converter } from 'culori'
 
 import {
   isDelineation,
+  isFocus,
   LAWFUL_GRADIENT_PAIRINGS,
   LAWFUL_PAIRINGS,
   pairingId,
+  pairingMeasure,
   type GradientPairing,
   type Pairing,
 } from '../pairings'
@@ -30,7 +32,14 @@ import {
   type Seeds,
 } from '../seeds'
 import type { Mode, Theme } from '../theme'
-import { composite, contrast, contrastDirection, deltaL, type Translucent } from './contrast'
+import {
+  composite,
+  contrast,
+  contrastDirection,
+  deltaL,
+  wcagRatio,
+  type Translucent,
+} from './contrast'
 import {
   gamutMap,
   generateNeutralRamp,
@@ -109,9 +118,11 @@ export class ContrastLawError extends Error {
     readonly themeName: string,
     readonly mode: Mode,
   ) {
-    const measure = isDelineation(pairing)
-      ? `ΔL ${achieved.toFixed(3)}, floor is ${pairing.minDeltaL}`
-      : `Lc ${achieved.toFixed(1)}, floor is ${pairing.minLc}`
+    const measure = pairingMeasure(pairing, {
+      lc: achieved,
+      deltaL: achieved,
+      ratio: achieved,
+    })
     super(
       `${themeName} (${mode}): ${pairingId(pairing)} reached ${measure}. ` +
         `Nudging the foreground by up to ${MAX_NUDGE} lightness ` +
@@ -126,13 +137,20 @@ function painted(color: WorkingColor): Translucent {
   return { ...color.oklch, alpha: color.alpha }
 }
 
+/** The WCAG contrast ratio of a foreground as drawn: composited over its background first. */
+export function ratioOn(foreground: Translucent, background: Oklch): number {
+  return wcagRatio(composite(foreground, background), background)
+}
+
 /** What a pairing achieved, in the measure its class is stated in. */
 export function measurePairing(
   pairing: Pairing,
   foreground: Translucent,
   background: Oklch,
 ): number {
-  return isDelineation(pairing) ? deltaL(foreground, background) : contrast(foreground, background)
+  if (isDelineation(pairing)) return deltaL(foreground, background)
+  if (isFocus(pairing)) return ratioOn(foreground, background)
+  return contrast(foreground, background)
 }
 
 /** Whether it passed its floor, in whichever measure its class uses. */
@@ -142,6 +160,7 @@ export function pairingPasses(
   background: Oklch,
 ): boolean {
   if (isDelineation(pairing)) return deltaL(foreground, background) >= (pairing.minDeltaL ?? 0)
+  if (isFocus(pairing)) return ratioOn(foreground, background) >= (pairing.minRatio ?? 0)
   return contrast(foreground, background) >= pairing.minLc
 }
 
@@ -151,18 +170,24 @@ function pinnedWorking(value: string): WorkingColor {
   return { oklch: { l: parsed.l, c: parsed.c, h: parsed.h }, alpha: parsed.alpha ?? 1 }
 }
 
+/**
+ * `other` is the other mode's seeded roles. The `firstLawful` pass measures a
+ * shared candidate against its backgrounds too, so it runs only when they are
+ * given; seeding the other mode for that purpose leaves it out.
+ */
 function seedRoles(
   roleMap: RoleMap,
   ramps: Record<Mode, Ramps>,
   mode: Mode,
   seeds: Seeds,
   pins: ModePins = {},
+  other?: Record<ColorRole, WorkingColor>,
 ): Record<ColorRole, WorkingColor> {
   const working: Partial<Record<ColorRole, WorkingColor>> = {}
   const lookup = (ref: StepRef): Oklch => ramps[ref.ladder ?? mode][ref.ramp][ref.step]
 
-  // The off-ladder ring (see `RoleSource`): the reference's lightness, tinted
-  // like the palette's neutrals. A true grey matches the reference exactly.
+  // The off-ladder ink ring (see `RoleSource`), tinted like the palette's
+  // neutrals.
   const ring: Oklch = {
     l: RING_LIGHTNESS[mode],
     c: seeds.neutralTint,
@@ -204,6 +229,30 @@ function seedRoles(
     }
     if (!best) throw new Error(`${role} has no candidates to choose from`)
     working[role] = { oklch: best, alpha: 1 }
+  }
+
+  // Pass 3: the first candidate that passes every pairing the role is held to.
+  // It runs last, so the backgrounds and washes it is measured on, pins
+  // included, are final: no background is ever nudged.
+  for (const [role, source] of Object.entries(roleMap) as [ColorRole, RoleMap[ColorRole]][]) {
+    if (source.kind !== 'firstLawful' || other === undefined) continue
+    if (pins[role as PinRole] !== undefined) continue
+    const pairings = LAWFUL_PAIRINGS.filter((pairing) => pairing.foreground === role)
+    const lawfulOn = (seeded: Partial<Record<ColorRole, WorkingColor>>) => (color: Oklch) =>
+      pairings.every((pairing) => {
+        const background = seeded[pairing.background]
+        if (!background) throw new Error(`${role} is measured on ${pairing.background}, unseeded`)
+        return pairingPasses(pairing, { ...color, alpha: 1 }, background.oklch)
+      })
+    const here = lawfulOn(working)
+    const there = lawfulOn(other)
+    const either = source.either.map(lookup)
+    const chosen =
+      source.both.map(lookup).find((color) => here(color) && there(color)) ??
+      either.find(here) ??
+      either[either.length - 1]
+    if (!chosen) throw new Error(`${role} has no candidates to choose from`)
+    working[role] = { oklch: chosen, alpha: 1 }
   }
 
   return working as Record<ColorRole, WorkingColor>
@@ -303,12 +352,23 @@ export function resolveModeColors(
   ramps: Record<Mode, Ramps> = generateAllRamps(theme.seeds),
 ): ColorRoleValues {
   const pins = theme.seeds.pins?.[mode] ?? {}
+  // The other mode's backgrounds, which a role shared by both modes is
+  // measured on too (`firstLawful`).
+  const otherMode: Mode = mode === 'light' ? 'dark' : 'light'
+  const other = seedRoles(
+    buildRoleMap(theme.axes, otherMode, theme.seeds.chromaBudget),
+    ramps,
+    otherMode,
+    theme.seeds,
+    theme.seeds.pins?.[otherMode] ?? {},
+  )
   const working = seedRoles(
     buildRoleMap(theme.axes, mode, theme.seeds.chromaBudget),
     ramps,
     mode,
     theme.seeds,
     pins,
+    other,
   )
   const pinned = PIN_ROLES.filter((role) => pins[role] !== undefined)
   enforceContrast(working, theme.name, mode, new Set(pinned))
@@ -428,6 +488,8 @@ export interface PairingResult {
   lc: number
   /** OKLCH lightness difference on the composite. Delineation pairs are measured in this. */
   deltaL: number
+  /** WCAG contrast ratio on the composite. Focus pairs are measured in this. */
+  ratio: number
   passes: boolean
 }
 
@@ -444,6 +506,7 @@ export function auditPairings(colors: ColorRoleValues): PairingResult[] {
       pairing,
       lc: contrast(foreground, background),
       deltaL: deltaL(foreground, background),
+      ratio: ratioOn(foreground, background),
       passes: pairingPasses(pairing, foreground, background),
     }
   })

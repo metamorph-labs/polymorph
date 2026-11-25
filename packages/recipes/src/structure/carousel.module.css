@@ -49,7 +49,7 @@
    `--pm-hit-target` square, the minimum pressable size at every density, so the
    dots can stay small. A space step would shrink with density, below it. */
 .dot {
-  composes: focusRing from '../conventions/focus.module.css';
+  composes: focusAround from '../conventions/focus.module.css';
   composes: stateFeedback from '../conventions/motion.module.css';
   position: relative;
   inline-size: var(--pm-space-2);

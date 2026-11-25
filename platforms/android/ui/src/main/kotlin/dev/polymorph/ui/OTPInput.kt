@@ -158,7 +158,7 @@ object PMOTPInput : PMOTPInputRendering {
             modifier
                 .width(side)
                 .height(side)
-                .pmFocusRing(caret && !disabled, theme.radius.control.dp)
+                .pmFocusRing(caret && !disabled, theme.radius.control.dp, stateBorder = invalid)
                 .pmShadow(if (disabled) PMShadow(emptyList()) else theme.shadows.seat, shape)
                 .background((if (disabled) colors.bgSubtle else colors.bgSurface).color, shape)
                 .border(PMGeometry.hairline, border, shape),

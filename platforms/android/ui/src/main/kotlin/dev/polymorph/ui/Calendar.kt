@@ -315,7 +315,12 @@ object PMCalendar : PMCalendarRendering {
                 modifier = Modifier
                     .size(theme.defaultDensity.controlHeight.sm.dp)
                     .pmPressFeedback(pressed && !off)
-                    .pmFocusRing(focused && !off, theme.radius.sm.dp)
+                    .pmFocusRing(
+                        focused && !off,
+                        theme.radius.sm.dp,
+                        onFill = if (chosen) ink else null,
+                        stateBorder = chosen,
+                    )
                     .clip(shape)
                     .background(wash)
                     .border(PMGeometry.hairline, edge, shape),

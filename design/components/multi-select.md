@@ -122,7 +122,7 @@ prop, in the same element as the count (TagInput's one-sentence rule).
 | Part | Tokens |
 | --- | --- |
 | field | TagInput's container recipe unchanged (`tag-input.md`): Input's recipe in every state, `flex-wrap`, row/column gap `--pm-space-1`, padding `--pm-space-1` `--pm-space-2`, min-height `--pm-control-height-{size}`, height grows with wrapping · seat `--pm-shadow-control` (`none` disabled), Input's seat row |
-| chip / chip remove / chip focused | TagInput's chip rows unchanged: pill radius, `--pm-bg-subtle` on `1px --pm-border-subtle`, labelled `close` remove with its own focus ring (conventions §4), `--pm-border-focus` border while a chip has keyboard focus |
+| chip / chip remove / chip focused | TagInput's chip rows unchanged: pill radius, `--pm-bg-subtle` on `1px --pm-border-subtle`, labelled `close` remove with its own focus ring (conventions §4), `--pm-border-focus-solid` border while a chip has keyboard focus |
 | chevron | as Combobox: Icon `expand` `--pm-text-muted`, rotates 180° while open; while `loading` the `loading` glyph (`spin` ambient) sits in its place and the chevron returns when loading ends |
 | popup panel | Select's content recipe **unchanged**, as Combobox uses it (`select.md`): `--pm-bg-overlay` · `1px --pm-border-subtle` · `--pm-radius-lg` · `--pm-shadow-overlay` · padding `--pm-space-2` · min-width trigger · `sideOffset 2` popper, bottom-start |
 | option | Select's item recipe unchanged **with the check column** (`select.md`: width `--pm-icon-size-sm` + gap `--pm-space-2`). Checked options show Icon `confirm` `--pm-accent-text`, and the label stays `--pm-text-primary`; optional `description` line as in Combobox's two-line row |

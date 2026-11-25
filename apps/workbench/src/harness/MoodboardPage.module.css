@@ -149,7 +149,7 @@
 
 .focusChip {
   border-radius: var(--pm-radius-control);
-  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline: var(--pm-focus-width) solid var(--pm-border-focus-solid);
   outline-offset: var(--pm-focus-offset);
 }
 

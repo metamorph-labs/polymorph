@@ -762,28 +762,36 @@ export function deriveTexture(ornament: Ornament): { page: Record<Mode, string> 
 }
 
 /**
- * **The ring sits on the border.**
- *
- * A ring on the border reads as part of the control. A ring with a gap
- * looks like a second border. The only offset is at `round`, where the 24px
- * corner would otherwise cut through the ring.
- */
-export const GEOMETRY_FOCUS_OFFSET: Record<Geometry, number> = {
-  sharp: 0,
-  crisp: 0,
-  soft: 0,
-  round: 2,
-}
-
-/**
- * **3px at the standard temperament**, the reference's width. The ring is
- * half-alpha (`FOCUS_RING_ALPHA` in `role-map.ts`), so the extra pixel keeps
- * its visual weight. Temperament sets edge strength, so it still varies.
+ * **2px at the standard temperament.** The mark is drawn in the solid focus
+ * colour (`border.focusSolid`), so 2px carries the weight the reference's 3px
+ * half-alpha ring did. Temperament sets edge strength, so stark draws 3px.
+ * Soft keeps 2px, the floor a system file may not go under.
  */
 export const TEMPERAMENT_FOCUS_WIDTH: Record<ContrastTemperament, number> = {
   soft: 2,
-  standard: 3,
-  stark: 4,
+  standard: 2,
+  stark: 3,
+}
+
+/**
+ * The focus mark's width and offset in px, for a temperament and a system's
+ * `overrides.focus`.
+ *
+ * **The mark sits inside the edge.** The derived offset is minus the width at
+ * every geometry, so the outline covers the border and the pixels inside it,
+ * and nothing is drawn outside the control. A container that clips its
+ * content (a scroll area, a pane, a table's wrapper) then never cuts the mark,
+ * and a field's border reads as taking the focus colour and thickening inward.
+ * A system that re-values the width and leaves the offset moves the mark in by
+ * the new width. A system may move the mark back outside with an offset of 0
+ * or more (`focusOverrideSchema`).
+ */
+export function focusPx(
+  temperament: ContrastTemperament,
+  override?: { width?: number; offset?: number },
+): { width: number; offset: number } {
+  const width = override?.width ?? TEMPERAMENT_FOCUS_WIDTH[temperament]
+  return { width, offset: override?.offset ?? -width }
 }
 
 // ------------------------------------------------------------------ stacking
@@ -1057,6 +1065,7 @@ export function deriveNonColorTokens(
   const glowLayers = deriveGlowLayers(axes.ornament)
   const insetTopLayer = deriveInsetTopLayer(axes.depth)
   const shellRef = deriveShellRef(axes.depth)
+  const focus = focusPx(axes.contrastTemperament, overrides.focus)
   // Tabular figures, plus `slashed-zero` for mono, where zero is ambiguous.
   const numericVariants: NumericVariant[] =
     axes.typePersonality === 'mono' ? ['tabular-nums', 'slashed-zero'] : ['tabular-nums']
@@ -1093,10 +1102,11 @@ export function deriveNonColorTokens(
     shellRef,
     focus: {
       // Overridable. The schema's 2px floor (the softest temperament's width)
-      // keeps the ring visible.
-      width: `${overrides.focus?.width ?? TEMPERAMENT_FOCUS_WIDTH[axes.contrastTemperament]}px`,
-      offset: `${overrides.focus?.offset ?? GEOMETRY_FOCUS_OFFSET[axes.geometry]}px`,
-      // A choice, not a value: the recipe branches on the flag. The ring is the
+      // keeps the mark visible.
+      width: `${focus.width}px`,
+      offset: `${focus.offset}px`,
+      place: focus.offset < 0 ? 'inside' : 'outside',
+      // A choice, not a value: the recipe branches on the flag. `ring` is the
       // default because it is the convention every other focusable part draws.
       field: overrides.focus?.field ?? 'ring',
     },

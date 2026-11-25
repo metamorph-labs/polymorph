@@ -343,7 +343,11 @@ data class PMGlows(val focus: PMDynamicShadow, val hover: PMDynamicShadow)
 /** The glass pane: backdrop blur in dp, saturation as a multiplier, and its fill. */
 data class PMMaterial(val blur: Float, val saturate: Float, val surface: PMDynamicColor)
 
-/** The focus ring's width and offset, in dp. */
+/**
+ * The focus mark's width and offset, in dp. Its colour is
+ * `colors.borderFocusSolid`. A negative offset lies inside the part's edge,
+ * the derived default at minus the width; 0 or more lies outside it.
+ */
 data class PMFocus(val width: Float, val offset: Float)
 
 /**

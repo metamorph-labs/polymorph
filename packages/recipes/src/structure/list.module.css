@@ -157,12 +157,13 @@
   background: var(--pm-bg-subtle);
 }
 
-/* The focus ring on the item via `:has()`, with the shared rule's tokens.
-   Restated because the focusable element is the title, and the delegating
-   selector in `focus.module.css` covers only composite fields. It is drawn
-   inside the item's edge: rows share their edges, and an outer ring would be cut
-   by the surface around the list. A focused trailing control draws its own ring. */
+/* The focus mark on the item via `:has()`, with the shared convention's
+   tokens. Restated because the focusable element is the title, and the
+   delegating selector in `focus.module.css` covers only composite fields. It is
+   drawn inside the item's edge by its width at every system's offset: rows
+   share their edges, and a mark outside would be cut by the surface around the
+   list. A focused trailing control draws its own mark. */
 .item:has(> .text > .primary:focus-visible) {
-  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline: var(--pm-focus-width) solid var(--pm-border-focus-solid);
   outline-offset: calc(var(--pm-focus-width) * -1);
 }

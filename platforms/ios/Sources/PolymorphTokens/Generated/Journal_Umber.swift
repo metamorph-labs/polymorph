@@ -269,7 +269,7 @@ extension PMTheme {
       saturate: 1,
       surface: PMDynamicColor(light: PMRGBA(255, 255, 255), dark: PMRGBA(25, 23, 20))
     ),
-    focus: PMFocus(width: 2, offset: 0),
+    focus: PMFocus(width: 2, offset: -2),
     icon: PMIconScale(
       size: PMSizeSteps(sm: 14, md: 16, lg: 22),
       stroke: PMSizeSteps(sm: 1.43, md: 1.25, lg: 1)

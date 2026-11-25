@@ -94,8 +94,10 @@
   }
 }
 
+/* The panel takes focus when a step opens. The shared convention's mark, restated on the panel:
+   the outline in the focus colour at the system's offset, inside the panel's edge by default. */
 .panel:focus-visible {
-  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline: var(--pm-focus-width) solid var(--pm-border-focus-solid);
   outline-offset: var(--pm-focus-offset);
 }
 

@@ -69,17 +69,17 @@ and the title weight (mono personality title weight 500, per the weight rule abo
 Inspected and kept as derived for terminal: stark borders a step up the ladder (on dark,
 the page's own light at 15% alpha rather than standard's 10%), because the direction draws
 separation as lines. Status borders are stronger for the same reason. The focus ring at
-`4px / offset 0` (stark width, sharp offset), so the ring hugs the cut edge like a selection
-rectangle. Icon stroke 1.75 (mono 1.5 + stark 0.25). `bg.app` at #080b0b with surfaces
+`3px / offset -3px` (stark width, inside the edge), so the ring lies on the cut edge like a
+selection rectangle. Icon stroke 1.75 (mono 1.5 + stark 0.25). `bg.app` at #080b0b with surfaces
 rising to #323637, the full elevation-as-lightness range, because lightness is the only
 elevation cue a flat theme's resting surfaces get.
 
 ## Signature details
 
 1. **Glow discipline**: live state emits light. The accent solid glows cyan on hover
-   (`--pm-glow-hover`). Every focusable composes ring + halo (`--pm-glow-focus` beneath
-   the shared focus ring). The glow is decorative by law: the ring stands alone wherever
-   glow derives `none`. Flat glows strongest (alpha 0.28), because it is the only
+   (`--pm-glow-hover`), and a pending drop glows with `--pm-glow-focus`. The focus ring
+   takes no glow: it is the accessibility surface and stands alone in every system. The
+   glow is decorative by law and derives `none` where the ornament axis says so. Flat glows strongest (alpha 0.28), because it is the only
    detachment cue a shadowless resting surface has. Status lamps do not glow: the glow
    shape tokens carry the accent's colour, and per-tone lamp shapes would be an engine
    capability, not a terminal workaround.

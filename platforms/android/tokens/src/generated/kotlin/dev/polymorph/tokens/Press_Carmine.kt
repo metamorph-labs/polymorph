@@ -253,7 +253,7 @@ internal object Press_Carmine {
                 dark = PMRgba(24, 23, 23, 1f),
             ),
         ),
-        focus = PMFocus(width = 4f, offset = 0f),
+        focus = PMFocus(width = 3f, offset = -3f),
         icon = PMIcons(
             sm = PMIconScale(size = 14f, stroke = 1.71f),
             md = PMIconScale(size = 16f, stroke = 1.5f),

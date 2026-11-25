@@ -76,10 +76,10 @@ seeds. No token sheet is written by hand (`packages/theme/src/derive.ts`,
 
 | Axis | Values | What it decides |
 | --- | --- | --- |
-| `geometry` | `sharp` · `crisp` · `soft` · `round` | The radius ladder sm/md/lg: 0/0/0, 2/4/8, 4/8/14, 6/12/24 px (`none` = 0 and `pill` = 9999 at every geometry). Focus-ring offset: 2px at `round`, 0 elsewhere. |
+| `geometry` | `sharp` · `crisp` · `soft` · `round` | The radius ladder sm/md/lg: 0/0/0, 2/4/8, 4/8/14, 6/12/24 px (`none` = 0 and `pill` = 9999 at every geometry). |
 | `depth` | `flat` · `borders` · `elevated` · `glass` | How surfaces separate. Shadow layers for the `control`, `raised` and `overlay` steps; the lit-fill top highlight; border weight (`flat` one step heavier); scrim strength; halo strength; the app-shell edges. `flat` casts no resting shadow but still gives transient surfaces a real overlay shadow. `glass` makes transient panes translucent over a 24px backdrop blur. |
 | `density` | `compact` · `standard` · `comfortable` | The spacing ladder (0, 2, 4, 8, 12, 16, 24, 32, 48, 64, 96 px at standard) × 0.85 / 1 / 1.15, control heights (32/36/40 at standard), snapped to a 2px grid. Also the type ratio: 1.2 / 1.25 / 1.3. |
-| `contrastTemperament` | `soft` · `standard` · `stark` | How strong edges and supporting text are: the ramp steps for secondary and muted text, page-to-surface spread, border weight, focus-ring width (2/3/4 px), icon stroke, link underline strength. Primary text stays on step 12 at every temperament. |
+| `contrastTemperament` | `soft` · `standard` · `stark` | How strong edges and supporting text are: the ramp steps for secondary and muted text, page-to-surface spread, border weight, focus-ring width (2/2/3 px), icon stroke, link underline strength. Primary text stays on step 12 at every temperament. |
 | `typePersonality` | `grotesque` · `humanist` · `mono` · `editorial` | Body, title and display weights; tracking; icon stroke; the default fallback class (`editorial` falls back to serif); `mono` adds slashed zeros to tabular figures. |
 | `colorStrategy` | `quiet` · `tinted` | `quiet` keeps surfaces neutral and uses the accent only on interactive parts; `tinted` gives surfaces a low-chroma wash at the neutral hue. |
 | `motionTemperament` | `none` · `subtle` · `standard` · `expressive` | Duration scale, springs, press scale, ambient loop periods, stagger. `none` is lawful and zeroes every duration. See [motion.md](motion.md). |
@@ -124,8 +124,9 @@ can require a structurally different recipe, not only a different value:
 ```
 
 The other five axes affect token values only. `laws.test.ts` asserts this list. The two system
-choices in `overrides` (`--pm-focus-field`, `--pm-hover-unfilled`) are flags of the same kind, each
-read by the one convention it belongs to.
+choices in `overrides` (`--pm-focus-field`, `--pm-hover-unfilled`) and where the focus ring sits
+(`--pm-focus-place`, read from the offset) are flags of the same kind, each read by the one
+convention it belongs to.
 
 ### The three font slots
 
@@ -156,7 +157,7 @@ scale's law is checked against the merged result.
 | `space` | steps 1–10, 2–128 px (the standard-density base) | ladder stays non-decreasing; density still re-derives |
 | `controlHeight` | `sm`/`md`/`lg`, 24–64 px | monotone; `sm` at compact density ≥ 24px (WCAG 2.5.8) |
 | `shadow.throw` | 0.5–1.75 | scales shadow distance and blur, never darkness |
-| `focus` | `width` 2–6 px, `offset` 0–4 px, `field` `ring` or `border` | the focus floor on every surface, below |
+| `focus` | `width` 2–6 px; `offset` minus the width (the ring inside the edge, the derived default) or 0–4 px (outside, with that much air); `field` `ring` or `border` | the offset judged against the merged width, never further in than the width and never across the edge; the focus colour at 3:1 on every surface and wash, below |
 | `type.base` | 12–20 px, on the half-pixel grid | the text-entry floor stays at 16px or the base, whichever is larger |
 | `type.ratio` | 1.125–1.4 | derives every step that is not set; the base never moves with it |
 | `type.sm`, `type.xs` | 10–20 px, on the half-pixel grid | xs ≤ sm ≤ base on the merged ladder, xs never under 10px, and each step's line box fits its control at compact density (xs in sm, sm in md, the base in lg); an unset step is judged at the size the ratio derives from the base |
@@ -169,15 +170,32 @@ exception does not apply inside a preview of another pairing.
 [rules.md](rules.md#per-member-exceptions-in-a-system-file) explains how they relate to the other
 ways to deviate.
 
+**Where the focus ring sits.** The ring is an outline at `focus.width`. The derived offset is
+minus the width, so the ring lies inside the part's edge, over its border, and nothing is drawn
+outside the part: a container that clips its content does not cut it. A system that sets
+`focus.offset` to 0 or more moves every ring outside, with that much air. Those are the only two
+places: an offset further in than minus the width would float the ring inside the control with a
+gap, and one between minus the width and 0 would lay it across the edge, over the border an
+invalid or selected part draws, so the schema refuses both, judged against the width the file
+sets or the temperament's. The emitter writes where the ring sits as the flag `--pm-focus-place`
+(`inside` or `outside`), read from the offset, and the focus convention branches on it. The
+offset places the ring on most parts; two shapes adjust it in the convention
+(`design/components/README.md`, the focus ring): a solid fill draws it one width further in, in
+its label colour, so the fill shows on both sides; and a part that cannot hold the line, a
+control too small for it or a part whose box is its text, draws it around itself, `--pm-space-1`
+out or at the offset. Outside the edge, the fill's colour and gap do not apply and
+the ring keeps the focus colour and the system's offset.
+
 **Two choices.** `focus.field` and `hover.unfilled` choose between two drawings rather than change
 a value:
 
-- `focus.field: "border"` draws a focused field's focus inside its edge instead of around it. The
-  indicator is still the outline at `focus.width`: it moves inside the border box by that width,
-  takes `border.focusSolid`, and the field keeps its seat shadow in place of the halo. A field is
-  Input's composite form, a textarea, Select's trigger, PromptInput's frame or OTPInput's caret
-  cell. An invalid field keeps the ring, so its danger border stays visible. The default, `ring`,
-  is the shared ring every other part draws.
+- `focus.field: "border"` draws a focused field's ring inside its edge whatever the offset. The
+  indicator is still the outline at `focus.width` in `border.focusSolid`: it lies inside the
+  border box by that width, and inside an invalid field's danger border by 1px more, so the
+  border stays visible. A field is Input's composite form, a textarea, Select's trigger,
+  PromptInput's frame, RichTextInput's frame or OTPInput's caret cell. Under the derived offset
+  every ring already lies there, so the choice changes a field only in a system that moves the
+  ring outside. The default, `ring`, is the shared ring every other part draws.
 - `hover.unfilled: "none"` gives Button's `outline` and `ghost` variants no wash under the pointer.
   The press still washes one step, because a control must answer the click, and a toggle that is
   on keeps its wash, because an on toggle must look on. The neutral tone's border and text changes
@@ -187,9 +205,10 @@ Each is emitted as a flag (`--pm-focus-field`, `--pm-hover-unfilled`) that `focu
 `button.module.css` branch on with a style query, as they branch on the exposed axis flags below.
 A value token cannot carry either choice: each changes which role a rule reads, and a token that
 referenced a role would keep the outer scope's value inside `[data-tone="inverse"]`. The token
-document carries both as `invariant` entries. The SwiftUI and Compose members do not read them:
-their fields draw the ring and their Buttons wash on hover whatever the system chooses, because no
-native theme has a field for either choice ([native.md](native.md)).
+document carries both as `invariant` entries, with `focus.place`. The SwiftUI and Compose members
+do not read them: their fields draw the ring at the system's offset and their Buttons wash on hover
+whatever the system chooses, because no native theme has a field for either choice, and they read
+where the ring sits from `focus.offset` itself ([native.md](native.md)).
 
 ## The palette document
 
@@ -234,8 +253,9 @@ The pin is applied after the ramps are read and before the derived choices are m
 (`packages/theme/src/color/resolve.ts`). An unpinned `accent.contrast` is therefore chosen against
 the pinned `accent.bg`. The gradient's first stop is `accent.bg`, so it follows the pin too. The
 contrast law never moves a pin, and holds it to the same floors as a derived value: a pinned fill
-whose label measures under Lc 60 is refused with the measured value, and a pinned focus colour is
-held to the focus floor. The admission report names the pin behind each fault, including the
+whose label measures under Lc 60 is refused with the measured value, and a pinned
+`border.focusSolid` is held to the focus floor, 3:1 by the WCAG ratio, and refused with the
+measured ratio. The admission report names the pin behind each fault, including the
 pinned fill a derived label was chosen against. Pin the whole family when you pin one fill: a light
 pinned `accent.bg` turns the derived label dark, and that label then fails on the derived hover and
 pressed fills.
@@ -342,12 +362,31 @@ its hover fill at step 4, so on a palette with no hue its selected surface is on
 hover fill, ΔL 0.015. The law declares that case and holds it to a different colour.
 **Hairlines** (`border.default`, `selection.border` and the link's rest underline) are judged by
 lightness separation instead: ΔL ≥ 0.04 in OKLCH, measured on the composite. APCA is not used for
-hairlines, because it models text and scores a visible hairline as exactly zero. **The focus
-colours** (`border.focus`, composited, and `border.focusSolid`) are judged the same way against
-every text-bearing background, at twice the hairline floor, ΔL ≥ 0.08
-(`FOCUS_MIN_DELTA_L`, `packages/theme/src/pairings.ts`): a focus indicator must stand out from the
-borders beside it. Both are held whichever field style a system chooses, and a pinned focus colour
-is held like a derived one. `text.disabled` is the one declared exemption. It uses WCAG's
+hairlines, because it models text and scores a visible hairline as exactly zero.
+
+**The focus colour** (`border.focusSolid`) is the colour of the focus ring, a 2px line, so the
+colour carries it. It is held to **3:1 by the WCAG contrast ratio** (`FOCUS_MIN_RATIO`,
+`packages/theme/src/pairings.ts`), WCAG 1.4.11's floor for a component's visual state, on every
+text-bearing background and on every wash a focusable part fills with (`FOCUS_WASHES`): the
+accent and status washes at rest, hovered and pressed, and the selected surfaces. The ring is
+drawn inside a part's edge, on the part's own background, so the wash counts as well as the
+surface behind it. The layout measure (`apps/workbench/src/screen/measure.ts`) reports a focus
+mark under the same 3:1 as faint. A part with a solid fill draws the ring in its label colour,
+inside the fill with a gap, which the on-solid floor already holds on the fill. The colour is held
+whichever field style a system chooses, and a pinned focus colour is held like a derived one.
+
+The focus colour is derived so that every shipped pairing passes with no pins. A hued system
+starts at the accent's solid, step 9 of the solid ladder, and moves along that ladder (steps 10,
+11, 12) to the first step that passes in both modes, so the ring is one colour in either mode, as
+the fills beside it are. Where no step does (a `stark` system's dark washes can leave none), each
+mode moves from step 9 along its own ladder, which darkens in light mode and lightens in dark
+mode. An ink system draws the ring in the off-ladder `ring` grey (`RING_LIGHTNESS`,
+`packages/theme/src/color/role-map.ts`): the reference's two ring greys, L 0.556 in light mode
+and L 0.708 in dark mode, the other way round from the reference, which draws them at half alpha.
+`border.focus`, the half-alpha focus colour, is held by lightness separation, ΔL ≥ 0.08
+(`FOCUS_MIN_DELTA_L`) on every text-bearing background. Nothing in the vocabulary draws in it: it
+stays a token and a pin for a palette that pins the pair and for a part an application draws in a
+translucent focus colour. `text.disabled` is the one declared exemption. It uses WCAG's
 incidental-text exemption, because disabled text must look unavailable.
 
 During resolution, a failing foreground is moved away from its background in 0.01 lightness steps,
@@ -574,7 +613,7 @@ lazily loaded cross-pairing, because it is part of that pairing's sheet.
 
 Forced colours are in the query because the browser replaces most colours then, and whatever it
 leaves (an image layer, an SVG fill) is drawn from the partner. Every focus indicator is an outline,
-which forced colours keep; a `box-shadow` they drop is only ever the halo or the seat.
+which forced colours keep; a `box-shadow` they drop is only ever a decorative glow or the seat.
 
 `admitTheme({ system, palette, moreContrast })` admits the partner with the pairing: the partner
 document must be the one the palette names, every colour law runs on the partner pairing too, and
@@ -674,7 +713,7 @@ document; both read the resolved theme.
 | `pairing` | name, system, palette, kind, all eight axes, default mode, chart cap |
 | `fonts` | per slot: the family without Fontsource's `Variable` suffix, whether the seed is the variable build, the fallback class, the style, every weight a type step sets, and for display every optical size |
 | `floor` | the platform's floors, `controlHeight` (the web's 24, on every platform) and `hitTarget` (the platform's minimum hit area), and `raised`: each value a floor raised, by density, with the derived and raised values |
-| `invariant` | every token no scope changes: type, radii and their classes, shadows and their classes, the top highlight, material, focus ring, the field focus and unfilled hover choices, icons, z-ladder |
+| `invariant` | every token no scope changes: type, radii and their classes, shadows and their classes, the top highlight, material, focus ring and where it sits, the field focus and unfilled hover choices, icons, z-ladder |
 | `density` | per density: space, control heights, hit target, container insets |
 | `motion` | per temperament: durations, ambient periods and stagger in milliseconds, easings as cubic-bezier control values, springs with their damping ratio, press scale |
 | `mode` | per mode: colour, gradient and chart roles, glows, shell surfaces, page texture, glass surface |

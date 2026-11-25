@@ -96,14 +96,14 @@
 
 /* states -------------------------------------------------------------------- */
 
-/* The focus ring is drawn on the card. The hidden control receives focus, but the card is what the
-   user watches. This mirrors `card.md`'s interactive rules, including the glow. It comes first
-   among the state rules only for the specificity law. It shares no property with them, so nothing
-   overrides the ring. */
+/* The focus mark is drawn on the card. The hidden control receives focus, but the card is what the
+   user watches. This mirrors `card.md`'s interactive rule: the shared convention's outline in the
+   focus colour at the system's offset, inside the card's edge by default, where it covers a checked
+   card's accent border with a line of the focus colour. It comes first among the state rules only
+   for the specificity law. It shares no property with them, so nothing overrides the mark. */
 .option:has(:focus-visible) {
-  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline: var(--pm-focus-width) solid var(--pm-border-focus-solid);
   outline-offset: var(--pm-focus-offset);
-  box-shadow: var(--pm-glow-focus);
 }
 
 /* Only the selection treatment's ghost wash. Border and elevation do not change. Hover on a

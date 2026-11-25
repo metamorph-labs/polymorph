@@ -123,15 +123,27 @@ by `id`, so an update is one publish rather than a remove and an add. Toast attr
 
 ## Dimensions & stacking
 
-Viewport: bottom-right, inset `--pm-space-6`, width `calc(var(--pm-space-10) * 4)`
-(384), max 4 visible (oldest auto-collapses), stack gap `--pm-space-3`, newest at the
-bottom. Toast padding `--pm-space-5`; icon–text gap `--pm-space-3`; text–action gap
-`--pm-space-4`.
+Cards: bottom-right, inset `--pm-space-6` from the window's edges, width
+`calc(var(--pm-space-10) * 4)` (384), max 4 visible (oldest auto-collapses), stack gap
+`--pm-space-3`, newest at the bottom. Toast padding `--pm-space-5`; icon–text gap
+`--pm-space-3`; text–action gap `--pm-space-4`.
+
+The viewport is the list that holds the cards, and it scrolls when they are taller than
+the window. A scroll container cuts what it holds at its padding edge on both axes, so
+the cards' shadows are drawn inside the viewport's padding. The viewport reaches the
+window's end and bottom edges, and its padding there is the cards' inset, `--pm-space-6`.
+On the start side and the top its padding is `--pm-space-9`, the reach of the longest
+transient shadow the shipped systems derive. Its sizes are `content-box`, so its width and
+its caps (`calc(100vw - var(--pm-space-6) * 2)` and `calc(100dvh - var(--pm-space-6) * 2)`)
+are the cards' own, the padding is room around them, and the cards keep the inset and the
+width above. The viewport takes no pointer events and an open
+card does, so the padding and the gaps between the cards take no click meant for the
+page under them.
 
 **The phone register, below `30rem`**: a fixed-width card at `bottom-end` with
 `space-6` insets collides with thumbs and the home indicator (`docs/layout.md`). So the
 viewport becomes full width: `inset-inline: 0` with `padding-inline: var(--pm-space-4)`,
-and `inset-block-end` adds the safe area:
+and the bottom padding adds the safe area:
 `calc(var(--pm-space-6) + env(safe-area-inset-bottom, 0px))`, which is zero on devices
 without a notch. Cards run full width, and the width cap above stops applying. Max
 visible, stack gap, ordering, timers and swipe-to-dismiss (x-axis) do not change.

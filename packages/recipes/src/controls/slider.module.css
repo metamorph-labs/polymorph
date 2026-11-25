@@ -76,7 +76,7 @@
  * `transition` shorthand, and with two shorthands on one rule one is silently dropped.
  * So the colour feedback is repeated here in the same list as the grab. */
 .thumb {
-  composes: focusRing from '../conventions/focus.module.css';
+  composes: focusAround from '../conventions/focus.module.css';
   display: block;
   inline-size: var(--pm-space-5);
   block-size: var(--pm-space-5);
@@ -95,12 +95,9 @@
 /* Dragging shows the thumb as active. The glow replaces the lit list instead of adding to
    it. Under a halo the 1px seat is not visible, and a mixed list with an
    ornament-`none` glow would make the whole value invalid. An ornament-`none` theme has
-   no glow and no seat, so its dragging thumb uses only scale and border.
- *
- * The selector goes through `.control` so it is more specific than the focus glow the
- * focus module composes in. The outline is the accessible focus indicator and is a
- * different property, so changing the halo under it loses nothing. */
-.control .thumb[data-state='dragging'] {
+   no glow and no seat, so its dragging thumb uses only scale and border. The focus mark
+   is an outline, a different property, so a focused thumb keeps it while dragged. */
+.thumb[data-state='dragging'] {
   box-shadow: var(--pm-glow-hover);
   transform: scale(1.12);
 }

@@ -65,7 +65,7 @@ the same reason.
 
 The toggle: the clear button's embedded-adornment rows, unchanged. Rest icon `--pm-text-muted`;
 hover icon `--pm-text-primary` on a `--pm-bg-subtle` fill at `--pm-radius-sm`; the shared focus
-ring (conventions §4), which may overflow the frame; never `--pm-danger-*` in an invalid field
+ring (conventions §4), inside the toggle's own edge; never `--pm-danger-*` in an invalid field
 (it is an action, not a status). Hit target: square, the input's height, per the minimum target
 rule. The phone floor comes from the inner Input's §13 rule (`input.md`; conventions §13).
 

@@ -27,7 +27,7 @@ measured. plain is measured, then designed, so it is the baseline for the rest.
 | typePersonality | `grotesque` | Even colour, no calligraphic traits, legible before characterful, so the interface recedes behind the content. |
 | colorStrategy | `quiet` | Neutral surfaces. A wash would be the system's only hue and would dominate every screen. `quiet` is the only strategy that fits an achromatic palette. |
 | motionTemperament | `standard` | Motion confirms without performing. `subtle` with borders would feel unresponsive, and `expressive` with an ink primary would feel like another product. |
-| ornament | `minimal` | Hover lift and focus halo only. At `chromaBudget: none` the glow resolves to a fully transparent colour and the gradient to the plain fill regardless. |
+| ornament | `minimal` | Hover lift and the pending drop's halo only. At `chromaBudget: none` the glow resolves to a fully transparent colour and the gradient to the plain fill regardless. |
 
 Divergence: plain is reference-calibrated, so the divergence law requires one differing axis in
 any pair that includes it, not three. `desktop` differs by 1 (`depth`, see `desktop.md`). Every

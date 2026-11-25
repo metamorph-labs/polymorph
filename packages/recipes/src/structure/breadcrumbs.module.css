@@ -61,7 +61,7 @@
    track's width. */
 .crumb {
   composes: stateFeedback from '../conventions/motion.module.css';
-  composes: focusRing from '../conventions/focus.module.css';
+  composes: focusAround from '../conventions/focus.module.css';
   display: inline-block;
   min-inline-size: 0;
   max-inline-size: calc(var(--pm-space-10) * 2);

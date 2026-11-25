@@ -5,8 +5,8 @@
  * square, so the row does not shift from page 9 to 10. */
 
 /* The root takes focus when the app's hold disables the button that had it
-   (`pagination.md`, A11y), so it draws the one focus ring. It has the
-   controls' corners, so the ring follows the row it surrounds. */
+   (`pagination.md`, A11y), so it draws the one focus mark. It has the
+   controls' corners, so the mark follows the row's edge. */
 .pagination {
   composes: focusRing from '../conventions/focus.module.css';
   display: inline-flex;
@@ -19,7 +19,7 @@
 
 /* A control drawn as a link, when the app gives the pages addresses (`pagination.md`). It is
    the Button it replaces, by reference, as Link's button variant is: composing `.button` brings
-   the base, the sizes, every rest, hover and active cell, the press feedback and the focus ring,
+   the base, the sizes, every rest, hover and active cell, the press feedback and the focus mark,
    all keyed off the `data-variant` × `data-tone` × `data-size` attributes the link sets. This rule
    removes what an `<a>` has and a `<button>` does not, the browser's underline, and keeps the
    link at least square, as the rule above keeps a button. */

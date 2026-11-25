@@ -51,7 +51,7 @@ struct PMFieldBox: ViewModifier {
           .pmShadow(disabled ? PMShadow(layers: []) : theme.shadows.seat)
       }
       .overlay { shape.strokeBorder(border.color, lineWidth: 1) }
-      .pmFocusRing(focused && !disabled, cornerRadius: theme.radius.control)
+      .pmFocusRing(focused && !disabled, cornerRadius: theme.radius.control, stateBorder: invalid)
       .animation(
         motion.easing.standard.animation(duration: motion.duration.control),
         value: [hovering, held, invalid, disabled]

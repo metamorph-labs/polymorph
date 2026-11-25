@@ -10,6 +10,10 @@ import { assertGoverned, DATA_ATTRS } from '@polymorph/react'
 import { createAgentBridge } from '@polymorph/engine/agent'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { Button } from '../controls/Button'
+import { FormField } from '../controls/FormField'
+import { Input } from '../controls/Input'
+import { reachCuts, shadowCuts, shadowReach, tokenLength } from '../controls/token-probe'
+import { Stack } from '../layout/Stack'
 import { Collapsible, type CollapsibleProps } from './Collapsible'
 
 /**
@@ -279,6 +283,56 @@ describe('keepMounted', () => {
       hydrated.unmount()
       host.remove()
     }
+  })
+})
+
+/**
+ * Room at the region's sides. The region clips, because its height animates, and a box that clips
+ * cuts what is drawn outside its content at its padding edge: a field's or a Button's seat shadow,
+ * and a control's focus mark, a 2px line drawn a `space-1` gap outside it.
+ */
+describe('room at the region’s sides', () => {
+  const sides = (cuts: string[]) => cuts.filter((cut) => /^(left|right),/.test(cut))
+
+  it('cuts neither a seat nor a focus mark at its sides, and moves nothing', () => {
+    // Inside a padded host, so the window's edge is not the region's.
+    render(
+      <div style={{ padding: 40 }}>
+        <Collapsible label="Advanced options" defaultOpen>
+          <Stack gap={3}>
+            <Input aria-label="Region" defaultValue="eu-west" />
+            <FormField label="Retries">
+              <Input defaultValue="3" />
+            </FormField>
+            <Button variant="solid" tone="accent" label="Save" />
+          </Stack>
+        </Collapsible>
+      </div>,
+    )
+    const mark = Number.parseFloat(tokenLength('--pm-space-1')) + 2
+    const controls = [
+      ...document.querySelectorAll<HTMLElement>('[data-member="input"], [data-member="button"]'),
+    ].filter((control) => control !== trigger())
+    expect(controls).toHaveLength(3)
+    for (const control of controls) {
+      const name = control.textContent || control.querySelector('input')?.value
+      expect(shadowReach(control).bottom, `${name}: no seat`).toBeGreaterThan(0)
+      expect(sides(shadowCuts(control)), `${name}: its seat`).toEqual([])
+      expect(sides(reachCuts(control, mark)), `${name}: a focus mark`).toEqual([])
+    }
+
+    // The content stays flush with the trigger, and the room adds nothing to the height Radix
+    // measures, which the open and close animations run to.
+    const region = document.getElementById(trigger().getAttribute('aria-controls') ?? '')
+    const inner = (region as HTMLElement).firstElementChild as HTMLElement
+    expect((controls[0] as HTMLElement).getBoundingClientRect().left).toBeCloseTo(
+      trigger().getBoundingClientRect().left,
+      1,
+    )
+    expect((region as HTMLElement).getBoundingClientRect().height).toBeCloseTo(
+      inner.getBoundingClientRect().height,
+      1,
+    )
   })
 })
 

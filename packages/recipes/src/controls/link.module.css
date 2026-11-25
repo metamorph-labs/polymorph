@@ -7,8 +7,11 @@
  * `text-decoration-thickness` is not animatable, and the recipe accepts that: text cues change
  * instantly, and only surfaces transition. */
 
+/* The focus mark goes around the text box with a gap (`focusAround`): a link's box is its text,
+   so a line inside it would cross the first and last letters, and a line on its edge would touch
+   them. The button costume below composes Button and keeps its mark inside its edge. */
 .link {
-  composes: focusRing from '../conventions/focus.module.css';
+  composes: focusAround from '../conventions/focus.module.css';
   display: inline;
   gap: var(--pm-space-1);
   color: var(--pm-accent-text);

@@ -22,7 +22,7 @@
 }
 
 .trigger {
-  composes: focusRing from '../conventions/focus.module.css';
+  composes: focusAround from '../conventions/focus.module.css';
   composes: stateFeedback from '../conventions/motion.module.css';
   display: inline-flex;
   gap: var(--pm-space-2);
@@ -146,9 +146,16 @@
 }
 
 .root[data-orientation='horizontal'] > .list {
-  /* How far a focused trigger draws outside its box: the ring's offset and
-     width, or `--pm-space-2` for the halo under the ring where that is more. */
-  --pm-tabs-reach: max(calc(var(--pm-focus-offset) + var(--pm-focus-width)), var(--pm-space-2));
+  /* How far a focused trigger's mark reaches outside its box. A trigger's box
+     is its label, so the mark goes around it (`focusAround`), `--pm-space-1`
+     out or at the system's offset, and reaches out by that and its width. The
+     room is at least `--pm-space-2`: the list's padding, its scroll padding
+     and the indicator's inset are measured from it, and the floor keeps that
+     geometry the same whatever the mark's reach below it. */
+  --pm-tabs-reach: max(
+    calc(max(var(--pm-space-1), var(--pm-focus-offset)) + var(--pm-focus-width)),
+    var(--pm-space-2)
+  );
 
   order: -2;
 

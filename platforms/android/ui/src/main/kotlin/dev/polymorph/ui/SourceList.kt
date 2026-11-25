@@ -129,7 +129,7 @@ object PMSourceList : PMSourceListRendering {
                         .clickable(interactionSource = interaction, indication = null) { runCatching { uri.openUri(source.href) } }
                         .clearAndSetSemantics { contentDescription = source.title }
                         .pmHitTarget(horizontal = false, alignment = Alignment.CenterStart)
-                        .pmFocusRing(focused, theme.radius.sm.dp),
+                        .pmFocusRing(focused, theme.radius.sm.dp, around = true),
                 )
                 source.domain?.let { Text(it, style = theme.text.xs.textStyle, color = theme.colors.textMuted.color) }
                 source.snippet?.let { Text(it, style = theme.text.sm.textStyle, color = theme.colors.textSecondary.color) }

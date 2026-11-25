@@ -213,7 +213,7 @@ them.
 | dock | shares the content cell (`grid-area: content`) · `align-self: end` · centred · padding `0 --pm-space-6 --pm-space-5` · `z-index --pm-z-raise` · `pointer-events: none`, children `auto` *(It shares the cell instead of taking its own row, so the page keeps its height, the layer floats over it, and a collapsing rail re-centres it automatically. It is not a child of `<main>`, because an absolutely positioned child of a scroll container scrolls with it, and a dock must not scroll away.)* |
 | skip link | visually hidden until `:focus-visible`; then a `--pm-bg-surface` chip, `text.sm` `--pm-accent-text`, inset `--pm-space-3`, ring per conventions §4 |
 | root, navigation on top | from `48rem`: rows `banner` / `sidebar topbar` / `content content`, columns `auto minmax(min-content, 1fr)` |
-| sidebar, navigation on top | from `48rem`: a row, centred · padding `--pm-space-2` block, `--pm-space-4` at the start, none at the end · bg `--pm-shell-topbar-bg` · border-bottom `1px solid --pm-shell-topbar-border` · shadow `--pm-shadow-resting` · no end border · `overflow: visible`, so the last item's focus ring is not cut · the head drops its min-height and the collapse toggle, and takes no room without a brand · the nav slot wraps, and is not a scroll container |
+| sidebar, navigation on top | from `48rem`: a row, centred · padding `--pm-space-2` block, `--pm-space-4` at the start, none at the end · bg `--pm-shell-topbar-bg` · border-bottom `1px solid --pm-shell-topbar-border` · shadow `--pm-shadow-resting` · no end border · `overflow: visible`, so the last item's focus ring is not cut where a system draws the ring outside the edge · the head drops its min-height and the collapse toggle, and takes no room without a brand · the nav slot wraps, and is not a scroll container |
 
 ## AppShell.NavItem
 
@@ -248,7 +248,7 @@ radius `--pm-radius-md`, label `text.sm` (truncates with ellipsis), icon `md`:
 | hover | bg `--pm-bg-surface` · label `--pm-text-primary` · icon `--pm-text-secondary` *(not `bg.subtle`: the rail itself sits on it, so hover steps up to the surface level in both modes)* |
 | active | hover colours + press-feedback |
 | current | bg `--pm-selection-bg` · label + icon `--pm-selection-text` · `aria-current="page"`; hover on current changes nothing (selection outranks hover, as in Table) *(the current item is a selection, not a stuck hover)* |
-| focus | ring per conventions §4 |
+| focus | ring per conventions §4; on the current item the ring lies inside the fill with a gap, in `--pm-selection-text` (§4, inside a fill) |
 
 Colour transitions `--pm-motion-duration-control` × `--pm-motion-easing-standard`. No
 per-item entrance motion, because rails do not animate their nav.

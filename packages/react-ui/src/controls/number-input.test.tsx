@@ -5,7 +5,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { assertGoverned } from '@polymorph/react'
 import { createAgentBridge } from '@polymorph/engine/agent'
-import { installTestTheme } from '@polymorph/engine/testing'
+import { fixedWidthHost, installTestTheme } from '@polymorph/engine/testing'
 import { Input } from './Input'
 import { NumberInput, type NumberInputProps } from './NumberInput'
 import { tokenLength } from './token-probe'
@@ -108,6 +108,57 @@ describe('NumberInput — the field', () => {
     const pair = steppers(field)
     expect(pair).toHaveLength(2)
     expect(pair.every((button) => button.disabled)).toBe(true)
+  })
+
+  it('keeps its affixes whole in a narrow field, where the value gives way', () => {
+    const affixes = (field: HTMLElement) =>
+      [...field.querySelectorAll('span[aria-hidden="true"]')].map((node) =>
+        node.getBoundingClientRect(),
+      )
+    const natural = affixes(
+      mount(<NumberInput prefix="$" suffix="/ month" defaultValue={120} aria-label="Cap" />),
+    ).map((box) => box.width)
+
+    const host = fixedWidthHost(200)
+    const { container } = render(
+      <NumberInput
+        prefix="$"
+        suffix="/ month"
+        defaultValue={1234567890123}
+        aria-label="Monthly cap"
+      />,
+      { container: host },
+    )
+    const field = container.firstElementChild as HTMLElement
+    const frame = field.getBoundingClientRect()
+    const style = getComputedStyle(field)
+    const start =
+      frame.left + Number.parseFloat(style.borderLeftWidth) + Number.parseFloat(style.paddingLeft)
+    const end =
+      frame.right -
+      Number.parseFloat(style.borderRightWidth) -
+      Number.parseFloat(style.paddingRight)
+    const [prefix, suffix] = affixes(field) as [DOMRect, DOMRect]
+    const pair = steppers(field).map((button) => button.getBoundingClientRect())
+
+    expect(frame.width, 'the field fits its container').toBeLessThanOrEqual(200.5)
+    expect([prefix.width, suffix.width], 'each affix keeps the width of its text').toEqual(
+      natural.map((width) => expect.closeTo(width, 0)),
+    )
+    expect(prefix.left, 'the field keeps its padding before the prefix').toBeGreaterThanOrEqual(
+      start - 0.5,
+    )
+    expect(suffix.right, 'the suffix ends before the steppers').toBeLessThanOrEqual(
+      (pair[0] as DOMRect).left + 0.5,
+    )
+    expect(
+      (pair.at(-1) as DOMRect).right,
+      'the field keeps its padding at its end',
+    ).toBeLessThanOrEqual(end + 0.5)
+    const inner = input(field)
+    expect(inner.scrollWidth, 'the value does not fit').toBeGreaterThan(inner.clientWidth)
+    expect(getComputedStyle(inner).textOverflow, 'the value ends in an ellipsis').toBe('ellipsis')
+    host.remove()
   })
 })
 

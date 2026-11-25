@@ -76,7 +76,7 @@ is a token in the stylesheet.
 | rails | block-size `--pm-space-4` · radius `--pm-radius-pill` · border `1px solid --pm-border-subtle` · hue bg from `--pm-color-input-hue-rail`; alpha bg from `--pm-color-input-alpha-rail` over the checker |
 | thumbs | `--pm-space-5` square · radius `--pm-radius-pill` · border `2px solid --pm-bg-surface` · shadow `--pm-shadow-control` · fill from the current colour, so the thumb acts as the swatch at the point of choice |
 | thumb dragging | shadow `--pm-glow-hover`, marking the thumb as held (Slider's rule). Flat and ornament-`none` derive the glow away, and the border alone shows it |
-| focus | the shared focus ring (conventions §4). The swatch takes it as a button. Each thumb takes it through the composite-field selector, because the channel inputs are what receive focus |
+| focus | the shared focus ring (conventions §4). The swatch takes it inside its edge, as a button. Each thumb takes it around itself with a `--pm-space-1` gap, in `--pm-border-focus-solid` (the around placement), through the composite-field selector, because the channel inputs are what receive focus: a thumb is too small to hold the line, and its fill is the colour it points at |
 | disabled | swatch fill replaced by `--pm-bg-subtle` · border `--pm-border-subtle` · cursor not-allowed · field disabled as Input |
 | invalid | field invalid as Input · swatch border `--pm-danger-border` |
 

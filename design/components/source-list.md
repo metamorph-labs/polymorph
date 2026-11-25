@@ -44,7 +44,7 @@ Attributes: none.
 | row | row · gap `--pm-space-3` · aligned to the first line |
 | index | Citation's mark: `text.xs` on a square the size of the `text.xs` line box, `--pm-accent-text` on `--pm-accent-subtle`, radius `--pm-radius-detail`. It is inert, because the title is the row's only link |
 | body | column · gap `--pm-space-1` · `min-inline-size: 0` |
-| title | an `<a target="_blank" rel="noreferrer">` in Link's standalone recipe: `text.sm` quartet · `--pm-accent-text` · no underline at rest, `2px` on hover · the shared focus ring · `overflow-wrap: anywhere`. The recipe is restated instead of using Link, because Link's external style is `nowrap`, which suits a word but not a sentence-length title that must wrap on a phone · Icon `open-external` `sm` after the last word at `--pm-space-1` |
+| title | an `<a target="_blank" rel="noreferrer">` in Link's standalone recipe: `text.sm` quartet · `--pm-accent-text` · no underline at rest, `2px` on hover · the shared focus ring around the text box with a `--pm-space-1` gap, as Link draws it · `overflow-wrap: anywhere`. The recipe is restated instead of using Link, because Link's external style is `nowrap`, which suits a word but not a sentence-length title that must wrap on a phone · Icon `open-external` `sm` after the last word at `--pm-space-1` |
 | domain | `text.xs` · `--pm-text-muted` |
 | snippet | `text.sm` · `--pm-text-secondary` |
 

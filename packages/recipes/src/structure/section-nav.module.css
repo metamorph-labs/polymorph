@@ -72,3 +72,10 @@
   color: var(--pm-text-primary);
   background: var(--pm-bg-subtle);
 }
+
+/* The current item is the selection fill, so the focus mark lies inside the fill with a gap, in
+   its text colour, the one the contrast law holds on that fill (`conventions/focus.module.css`). */
+.link[aria-current='page']:focus-visible {
+  --pm-focus-mark: currentcolor;
+  --pm-focus-inset: var(--pm-focus-width);
+}
