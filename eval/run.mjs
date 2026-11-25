@@ -2324,8 +2324,6 @@ const everyBrief = readdirSync(BRIEFS)
  */
 const card = settings.mode === RUNTIME ? await cardFor(settings) : null
 
-const out =
-  settings.out ?? (settings.fake ? mkdtempSync(resolve(tmpdir(), 'polymorph-eval-')) : RESULTS)
 const at = new Date().toISOString()
 const toolbox = await loadToolbox()
 const project = settings.mode === PROJECT
@@ -2416,6 +2414,9 @@ const removeScratch = () => {
   if (lane !== null) rmSync(lane.scratch, { recursive: true, force: true })
 }
 
+// Made once the eval has set up everything it refuses on, so a refusal leaves no directory.
+const out =
+  settings.out ?? (settings.fake ? mkdtempSync(resolve(tmpdir(), 'polymorph-eval-')) : RESULTS)
 mkdirSync(out, { recursive: true })
 const stem = freeStem(out, at, settings.model, settings.mode, settings.runner)
 const resultsFile = resolve(out, `${stem}.json`)
