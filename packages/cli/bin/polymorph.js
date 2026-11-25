@@ -19,8 +19,9 @@ import { createJiti } from 'jiti'
  *
  * The registry is built here instead of read from a file because it is never
  * committed. The catalogue is whatever the publishing tree produces, and for a
- * workspace-local install that tree is this one. A published CLI would read the
- * `registry.json` shipped beside it. `run` receives the same shape either way.
+ * workspace-local install that tree is this one. The published tools
+ * (`packages/tools`) read the `registry.json` they ship instead, and `main`
+ * receives the same shape either way.
  *
  * The verbs that ask the MCP tools (`card`, `validate`, `render`, …) and `mcp`
  * need the server's code, which `packages/cli/src` may not import. So this file
@@ -70,11 +71,13 @@ const { code } = await main(
     out: (line) => console.log(line),
     err: (line) => console.error(line),
     // What `polymorph init` wires a new app to: this checkout's MCP server,
-    // which its `.mcp.json` launches, and the screen emitter it runs once.
+    // which its `.mcp.json` launches by its path on this machine, and the
+    // screen emitter it runs once, with the node that runs this file.
     programs: {
-      mcp: resolve(SOURCE, 'packages/mcp/bin/polymorph-mcp.js'),
-      emit: resolve(SOURCE, 'packages/spec/bin/emit.js'),
+      mcp: { command: 'node', args: [resolve(SOURCE, 'packages/mcp/bin/polymorph-mcp.js')] },
+      emit: { command: process.execPath, args: [resolve(SOURCE, 'packages/spec/bin/emit.js')] },
     },
+    origin: 'checkout',
     tools,
     serve,
   },

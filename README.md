@@ -70,7 +70,7 @@ export function Inbox({ onNewTicket }: { onNewTicket: () => void }) {
 
 | You are building | Start with |
 | --- | --- |
-| a React app | `node <checkout>/packages/cli/bin/polymorph.js init my-app`, then `cd my-app && pnpm dev` |
+| a React app | `npx -y @metamorph-labs/polymorph@latest init my-app`, then `cd my-app && npm run dev` |
 | a Vue, Svelte, Solid or Angular app | the same command with `--framework vue`, `svelte`, `solid` or `angular` |
 | a page in HTML: static, server-rendered, htmx or Turbo | the same command with `--framework elements`, which copies the files the page loads into its static directory ([docs/consuming.md](docs/consuming.md#a-page-with-no-build)) |
 | an iOS app | the Swift package in `platforms/ios` as a path dependency: products `PolymorphTokens` and `PolymorphUI` |
@@ -78,8 +78,12 @@ export function Inbox({ onNewTicket }: { onNewTicket: () => void }) {
 | a Flutter or Dart app | the tokens only, in `platforms/dart` (`polymorph_tokens`); there is no Flutter renderer |
 | an existing web app | [docs/consuming.md](docs/consuming.md): the packages by hand, or members vendored with `polymorph add` |
 
-`init` needs a checkout of this repository and a GitHub token that can read the packages
-([docs/consuming.md](docs/consuming.md) has both, and a section per framework and platform).
+`@metamorph-labs/polymorph` is the command line and the MCP server in one package, with no
+checkout needed: the app `init` writes installs the packages from npmjs.com, and its `.mcp.json`
+runs the server with `npx`. Always run it by that scoped name; the unscoped `polymorph` on npm is
+another package. From a checkout, `node <checkout>/packages/cli/bin/polymorph.js init my-app` writes
+the same app wired to the checkout ([docs/consuming.md](docs/consuming.md) has both, and a section
+per framework and platform).
 
 ## Working on polymorph
 

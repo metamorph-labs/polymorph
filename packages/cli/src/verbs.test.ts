@@ -233,6 +233,7 @@ describe('polymorph mcp', () => {
     expect(code).toBe(2)
     expect(projects).toEqual([])
     expect(out).toBe('')
-    expect(err).toContain('it takes no flag "--readonly"')
+    expect(err).toContain('unknown argument "--readonly"')
+    expect(err).toContain('usage: polymorph mcp [--project <path>] [--read-only]')
   })
 })

@@ -26,6 +26,7 @@ A few terms used throughout:
 | `pnpm registry` | Builds `registry/registry.json`, its JSON Schema and the system card | `packages/registry/bin/registry.js` |
 | `pnpm polymorph <command>` | The CLI: `init`, `add`, `diff`, `update`, `theme`, `check`, and a verb for each MCP tool (`card`, `search`, `component`, `axes`, `plan`, `validate`, `fix`, `emit`, `render`, `theme propose`) and `mcp`, the server | `packages/cli` |
 | `pnpm mcp` | The MCP server, over stdio | `packages/mcp` |
+| `npx -y @metamorph-labs/polymorph@<range> <command>` | The CLI and the MCP server (`mcp`) from the published package, in any repository, with no checkout | `packages/tools` |
 | `pnpm emit <spec.json> [out.tsx \| out.vue \| out.svelte \| out.ts \| out.swift \| out.kt]` | Validates a screen spec and emits TSX (Solid's with `--framework solid`), a Vue or Svelte single-file component, an Angular standalone component, SwiftUI for a spec for `ios`, or Jetpack Compose for a spec for `android` | `packages/spec` |
 | `pnpm emit:theme <system> <palette> [out.css]` | Emits one pairing's stylesheet, for inspection | `scripts/emit-theme.mjs` |
 | `pnpm dev` | The workbench: studio, composer, components, pages, mood board, Relay | `apps/workbench` |
@@ -239,7 +240,8 @@ screen written from the card alone names only members and icon roles the card me
 
 ## The CLI
 
-`packages/cli` — bin `polymorph`; in this repository, `pnpm polymorph`.
+`packages/cli` — bin `polymorph`; in this repository, `pnpm polymorph`. Published with the MCP
+server as `@metamorph-labs/polymorph` (`packages/tools`).
 
 The CLI creates a new app that installs the packages (`init`), and copies chosen members (and
 themes) from this repository into another one, setting up the red rules there too (`add`). It
@@ -262,11 +264,22 @@ submodule of this repository, and [native.md](native.md) describes them.
 
 ### Running it
 
-The CLI has two roots. It reads the vocabulary from the checkout that holds the bin, and it
-installs into the **current directory**.
+The CLI has two roots. It reads the vocabulary from a source tree, and it installs into the
+**current directory**.
 
-- **Into another repository** — run the bin from that repository's root, pointing at a checkout
-  of this one:
+- **From the published package**, in any repository, with no checkout of this one:
+
+  ```sh
+  npx -y @metamorph-labs/polymorph@latest add button dialog theme:pastel
+  ```
+
+  `@metamorph-labs/polymorph` (`packages/tools`) carries the CLI, the MCP server, the registry of
+  its release and every file that registry names, and that is its source tree. A command or a
+  document that runs it names the scoped package, never a bare `npx polymorph`: the unscoped
+  `polymorph` on npm is another package.
+
+- **From a checkout, into another repository** — run the bin from that repository's root,
+  pointing at a checkout of this one:
 
   ```sh
   node ../polymorph/packages/cli/bin/polymorph.js add button dialog theme:pastel
@@ -323,6 +336,7 @@ the same job. `polymorph <verb> --help` prints one verb's usage and flags.
 | `--out <path>` | `theme emit`, `theme schema` | Write to a file instead of stdout |
 | `--out <dir>` | `render` | Where the pictures are written. Default `<spec>.render/` beside the spec |
 | `--system <name>` | `init` | The catalogue system the app wears. Default `plain`; an unknown name lists the catalogue |
+| `--registry <name>` | `init` | Where the app installs the packages from: `npmjs` (no `.npmrc`, no token) or `github` (GitHub Packages, with a token). Default `npmjs` from the published package and `github` from a checkout |
 | `--system <name>` | `render` | The shipped system the screen is drawn in. Required |
 | `--palette <name>`, `--mode <mode>` | `render` | A shipped palette, and `light` or `dark`. Default the system's own |
 | `--data <file>`, `--empty <file>` | `render` | A JSON file of input values: the populated screen, and a second drawing laid over it |
@@ -340,7 +354,7 @@ the same job. `polymorph <verb> --help` prints one verb's usage and flags.
 | `--save`, `--overwrite` | `theme propose` | Save the proposal; replace files already saved under its names |
 | `--project <path>`, `--read-only` | `mcp` | As for `polymorph-mcp`: the project the write tools write into, or none |
 | `--json` | `check` and every verb that asks a tool | Print the report, or the tool's answer, as JSON |
-| `--no-install` | `init` | Write the app and do not run `pnpm install` |
+| `--no-install` | `init` | Write the app and do not install it |
 | `--force` | `add`, `update` | Overwrite files you have edited |
 | `--dry-run` | `add`, `init` | Print the plan and write nothing |
 | `--dry-run` | `fix` | Print the fixed code and write nothing |
@@ -348,14 +362,16 @@ the same job. `polymorph <verb> --help` prints one verb's usage and flags.
 ### `init`
 
 ```sh
-node ../polymorph/packages/cli/bin/polymorph.js init my-app [--system pastel] [--no-install]
+npx -y @metamorph-labs/polymorph@latest init my-app [--system pastel] [--no-install]
+node ../polymorph/packages/cli/bin/polymorph.js init my-app   # from a checkout
 ```
 
 `init` writes a new Vite React app that installs `@polymorph/engine`, `@polymorph/react` and
 `@polymorph/react-ui` as npm aliases of their published names and `@polymorph/rules` as a dev
 dependency, at the registry's ranges. The directory must be new or empty (a lone `.git` is
 allowed) and outside any checkout of polymorph. In order, it writes `package.json`, an `.npmrc`
-that names `NODE_AUTH_TOKEN` and holds no token, the Vite app with the theme plugin, the system
+that names `NODE_AUTH_TOKEN` and holds no token when the app installs from GitHub Packages, the
+Vite app with the theme plugin, the system
 and palette JSON under `src/theme/` (copied from the files the registry names), the two lint
 fragments and the configs that spread them, an `.mcp.json` that runs this checkout's MCP server
 against the app, the system card under `polymorph/`, an `AGENTS.md` (and a `CLAUDE.md` that
@@ -370,31 +386,53 @@ because the app imports every member from `@polymorph/react-ui`, so `eslint --fi
 text-only `<button>` as `Button` and imports it from there. It has no block for a vendored tree,
 because the app has none.
 
-`.mcp.json` names the MCP server by its absolute path in the checkout that ran `init`, because the
-server runs from that checkout. The path is machine-specific. A team changes it on each machine or
-adds `.mcp.json` to `.gitignore`, and the written `AGENTS.md` says so.
+What `init` writes for an agent depends on where it runs from (the CLI's `origin`):
 
-Last, it runs `pnpm install --ignore-workspace` in the app. Without the flag, a
-`pnpm-workspace.yaml` in a directory above the app makes pnpm install that workspace instead. The
-token is `NODE_AUTH_TOKEN` from the environment, or `gh auth token` when that is unset, and it is
-passed in pnpm's environment only. When `init` uses the GitHub CLI's token, it prints one line
-saying so, and that a token with only `read:packages` in `NODE_AUTH_TOKEN` is the recommended way.
-pnpm's output is captured, printed with the token masked, and read to tell the failures apart. In
-each case below `init` keeps the app it wrote and exits 1:
+- **From the published package**, `.mcp.json` runs the server with
+  `npx -y @metamorph-labs/polymorph@^<version> mcp --project .`, which names no path and works on
+  any machine, and `package.json` lists `@metamorph-labs/polymorph` as a dev dependency at the
+  release, so `npx` runs the installed copy. `AGENTS.md` says so, and says that `render_screen`
+  answers with the command that downloads its browser when the browser is missing.
+- **From a checkout**, `.mcp.json` names the MCP server by its absolute path in the checkout that
+  ran `init`, because the server runs from that checkout. The path is machine-specific. A team
+  changes it on each machine or adds `.mcp.json` to `.gitignore`, and the written `AGENTS.md`
+  says so. The app does not list the published package.
 
-- **No token, or a token the registry refuses** (401 or 403). It prints
+The rest of the app is the same from either: `packages/tools/packaging.test.ts` writes one with
+each and compares every other file.
+
+Last, it installs the app with the package manager that ran the command, read from the user agent
+a package manager sets for what it runs (`npm_config_user_agent`): npm, pnpm, Yarn or Bun. When
+none can be told, it is npm from the published package and pnpm from a checkout, which is a pnpm
+workspace. pnpm runs `pnpm install --ignore-workspace`: without the flag, a `pnpm-workspace.yaml`
+in a directory above the app makes pnpm install that workspace instead.
+
+`--registry` says where the packages come from. From npmjs.com (`npmjs`, the published package's
+default) the install needs no `.npmrc` and no token. From GitHub Packages (`github`, a checkout's
+default, because a release reaches it first) the token is `NODE_AUTH_TOKEN` from the environment,
+or `gh auth token` when that is unset, and it is passed in the package manager's environment only.
+When `init` uses the GitHub CLI's token, it prints one line saying so, and that a token with only
+`read:packages` in `NODE_AUTH_TOKEN` is the recommended way. The package manager's output is
+captured, printed with the token masked, and read to tell the failures apart. In each case below
+`init` keeps the app it wrote and exits 1:
+
+- **No token, or a token the registry refuses** (401 or 403), from GitHub Packages. It prints
   `gh auth refresh -s read:packages` and the install command.
 - **No release at the app's ranges** (a 404, or no matching version, for a package in the
-  published scope). The ranges are the checkout's own versions, so a checkout ahead of the last
-  release asks for versions that are not published. `init` names the four packages with their
-  ranges, says that, and points at the release steps in CONTRIBUTING.md.
-- **pnpm is not on the `PATH`.** It says so and prints the install command to run once pnpm is
-  installed.
-- **Anything else.** pnpm's output is above, and `init` prints the install command to retry.
+  published scope). From a checkout the ranges are the checkout's own versions, so a checkout
+  ahead of the last release asks for versions that are not published: `init` names the packages
+  with their ranges, says that, and points at the release steps in CONTRIBUTING.md. From the
+  published package on npmjs.com it says that a release reaches npmjs.com after GitHub Packages,
+  and that `--registry github` installs from there.
+- **The package manager is not on the `PATH`.** It says so and prints the install command to run
+  once it is installed.
+- **Anything else.** The package manager's output is above, and `init` prints the install command
+  to retry.
 
-`packages/cli/init.test.ts` runs the bin with `--no-install`, installs the four packages from their
-builds, and checks that the app typechecks, builds and lints clean, and that `eslint --fix`
-rewrites a raw `<button>` as `Button` imported from `@polymorph/react-ui`.
+`packages/cli/init.test.ts` runs the checkout's bin with `--no-install`, installs the four packages
+from their builds, and checks that the app typechecks, builds and lints clean, and that
+`eslint --fix` rewrites a raw `<button>` as `Button` imported from `@polymorph/react-ui`.
+`packages/tools/packaging.test.ts` runs the published package's bin where no checkout is.
 `packages/cli/src/vue.test.ts`, `frameworks.test.ts` (Svelte and Solid) and `angular.test.ts` plan
 the app in each other framework and check that its container and welcome screen compile and lint
 clean under its ESLint fragment.
@@ -437,7 +475,8 @@ files a page loads the elements from (`polymorph.js`, its chunks, `polymorph-all
 example page (`public/index.html`), the elements card, `.mcp.json`, `AGENTS.md` and a
 `polymorph.json` that records every copy with its hash. It writes no `package.json` and installs
 nothing. The files are a build output, so a checkout that has not run `pnpm build:packages` is
-refused with that command, before anything is written.
+refused with that command, before anything is written. The published package ships them, so
+`init` copies them from there.
 [frameworks.md](frameworks.md#a-page-with-no-build-polymorph-init---framework-elements) lists the
 files.
 
@@ -671,8 +710,9 @@ application code, through `verify` from `@polymorph/rules/verify`, the function 
 `card`, `search`, `component`, `axes`, `plan`, `validate`, `fix`, `emit`, `render` and
 `theme propose` each call an [MCP tool](#the-mcp-server) and print its answer. A verb is the tool
 of the same job and gives the same answer: the CLI turns the flags into the tool's arguments, and
-the tool decides everything. Both read the vocabulary from the checkout that holds the bin and
-write into the directory the command runs in, which is the tools' project.
+the tool decides everything. Both read the vocabulary from the checkout that holds the bin, or
+from the published package, and write into the directory the command runs in, which is the
+tools' project.
 
 | Verb | Tool |
 | --- | --- |
@@ -711,7 +751,8 @@ The CLI cannot load the tools itself, because `@polymorph/mcp` depends on it. It
 supplies them: `cli.tools` is a function that calls one tool by name in the same process
 (`toolCaller` from `@polymorph/mcp`), and `cli.serve` starts the server (`serveStdio`). The bin
 loads each the first time a verb calls it, so `add` and `diff` never load the linters the tools
-carry.
+carry. The published package's bin (`packages/tools`) supplies the same two functions over the
+registry and the files it ships, so every verb runs there with no checkout.
 
 ### Looking up: `card`, `search`, `component`, `axes`, `plan`
 
@@ -786,18 +827,22 @@ It exits 1 when the proposal is not lawful or the save wrote nothing.
 ### Agents: `mcp`
 
 `polymorph mcp [--project <path>] [--read-only]` starts the MCP server over stdio, with the flags
-`polymorph-mcp` takes and through the same function (`serveStdio`), so the two are one server.
+`polymorph-mcp` takes, read by the same parser (`serverFlags`), and through the same function
+(`serveStdio`), so the two are one server.
 `--project` is resolved against the directory the command runs in. From then on stdout is the
 protocol: a refusal goes to stderr, and the command exits when the client closes stdin and every
 request has its answer.
 
 ## The MCP server
 
-`packages/mcp` — bin `polymorph-mcp`; in this repository, `pnpm mcp`.
+`packages/mcp` — bin `polymorph-mcp`; in this repository, `pnpm mcp`. Published with the CLI as
+`@metamorph-labs/polymorph` (`packages/tools`), whose `polymorph mcp` and `polymorph-mcp` start the
+same server with the same flags.
 
 A [Model Context Protocol](https://modelcontextprotocol.io) server that exposes the system to an
-agent as tools. It runs over **stdio only**: no port, no auth, nothing to host. At startup it
-builds the registry from the checkout that contains it.
+agent as tools. It runs over **stdio only**: no port, no auth, nothing to host. From a checkout it
+builds the registry at startup from the checkout that contains it. The published package reads the
+registry of its release, which it ships.
 
 Some tools read and some write, and each declares which in its annotations. A client shows these
 annotations to the person deciding whether to approve a call.
@@ -887,17 +932,22 @@ Vite configuration and sends the files back over the process channel. The files 
 server's memory for its lifetime, as the registry does, so a change to the vocabulary shows after
 the server restarts. The browser is given the files by request interception under an address
 nothing listens on. No port is opened and no file is written. Every other request the page makes
-is refused and listed in the answer as `blocked`. A published package would ship the built page
-beside its registry and skip the build.
+is refused and listed in the answer as `blocked`. The published package ships the page built
+(`dist/screen/`, written by the same builder when the package is built), and its server reads those
+files and starts no build.
 
-**The browser is optional.** Playwright is an optional dependency of `@polymorph/mcp`, loaded when
-the tool is called and by no other tool. An install does not download a browser. Where Playwright
-or its Chromium is missing, the tool answers with a tool error that says which and gives the
-command, and every other tool works as before:
+**The browser is optional.** Playwright is an optional dependency of `@polymorph/mcp` and of the
+published package, loaded when the tool is called and by no other tool. An install does not
+download a browser. Where Playwright or its Chromium is missing, the tool answers with a tool error
+that says which and gives the command, and every other tool works as before. The entry point names
+the command (`browserSetup`): a checkout's is
 
 ```sh
 pnpm exec playwright install chromium
 ```
+
+and the published package's is `npx -y playwright@<version> install chromium`, with the version of
+the Playwright it loads, because each version downloads its own Chromium.
 
 **What fills the inputs.** A spec binds its content to inputs and holds no data, so a picture
 needs some. The caller decides which pictures it gets:
@@ -982,7 +1032,7 @@ annotated as writes that can replace a file (`destructiveHint`).
 ### The project
 
 The server has two roots, like the CLI. It reads the vocabulary from the checkout that holds the
-bin. It writes into the **project**: the directory the server was started in, or the path given as
+bin, or from the published package. It writes into the **project**: the directory the server was started in, or the path given as
 `--project <path>`. An agent working in a repository starts its stdio servers there.
 
 - A project is a directory with a `package.json`. A write tool refuses any other directory, so a
@@ -1007,9 +1057,22 @@ the project, and checks that `validate` returns exactly what ESLint reports for 
 
 ### Registering it with a client
 
-The repository ships no client configuration. The server is a command that speaks MCP on stdin
-and stdout, so register it the way your client registers a stdio server. Many clients read an
-`mcpServers` object in this shape:
+The server is a command that speaks MCP on stdin and stdout, so register it the way your client
+registers a stdio server. `polymorph init` writes it into a new app's `.mcp.json`. Many clients
+read an `mcpServers` object in this shape, which runs the published package and names no path:
+
+```json
+{
+  "mcpServers": {
+    "polymorph": {
+      "command": "npx",
+      "args": ["-y", "@metamorph-labs/polymorph@^<version>", "mcp"]
+    }
+  }
+}
+```
+
+From a checkout, run the checkout's bin instead:
 
 ```json
 {
@@ -1023,7 +1086,9 @@ and stdout, so register it the way your client registers a stdio server. Many cl
 ```
 
 Add `"--project", "/absolute/path/to/your/repository"` to `args` for a client that does not start
-the server in your repository, or `"--read-only"` for a server that only reads.
+the server in your repository, or `"--read-only"` for a server that only reads. Every entry point
+reads the flags with one parser (`serverFlags`, `packages/cli/src/server-flags.ts`) and starts the
+server with one function (`serveStdio`).
 
 Run it by hand with `pnpm mcp`, or `pnpm polymorph mcp`, which starts the same server. Diagnostics
 go to stderr. Stdout carries only protocol messages.

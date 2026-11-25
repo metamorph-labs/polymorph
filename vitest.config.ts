@@ -554,7 +554,7 @@ export default defineConfig({
             // project does not claim them. The `pnpm new:member` generator test
             // is here for the same reason: it writes files and edits four lists,
             // which needs no browser.
-            'packages/{engine,react,rules,cli,mcp,spec,screen,conformance,react-ui,vue,vue-ui,solid,solid-ui,svelte,svelte-ui,angular,angular-ui,elements,elements-ui}/*.test.ts',
+            'packages/{engine,react,rules,cli,mcp,spec,screen,tools,conformance,react-ui,vue,vue-ui,solid,solid-ui,svelte,svelte-ui,angular,angular-ui,elements,elements-ui}/*.test.ts',
             // The member descriptions and the generators that write the shells from them.
             'packages/shells/src/**/*.test.ts',
             // `.tsx` for the composer's renderer law. A test of React output is

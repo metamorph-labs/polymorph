@@ -25,7 +25,7 @@ import type { ToolContext } from './tools'
  *
  * The context is the server's, and nothing here assumes a checkout: `root` is
  * where the vocabulary is read from, `project` where the write tools write,
- * and `screenBuilder` the program `render_screen` builds its page with. A
+ * and `screenBuilder` or `screenPage` where `render_screen` gets its page. A
  * context with no project gives a caller with no write tool, as a server
  * started with `--read-only` has none.
  */

@@ -54,9 +54,10 @@ import { installFramework, UnshippedMemberError } from './vue'
 const ROOT = resolve(import.meta.dirname, '../../..')
 const VOCABULARY = resolve(ROOT, 'packages/angular-ui')
 const registry: Registry = buildRegistry(ROOT)
+/** The checkout's programs, as its bin names them. */
 const programs = {
-  mcp: resolve(ROOT, 'packages/mcp/bin/polymorph-mcp.js'),
-  emit: resolve(ROOT, 'packages/spec/bin/emit.js'),
+  mcp: { command: 'node', args: [resolve(ROOT, 'packages/mcp/bin/polymorph-mcp.js')] },
+  emit: { command: process.execPath, args: [resolve(ROOT, 'packages/spec/bin/emit.js')] },
 }
 
 /** The registry with one member marked absent in Angular, with a reason. */

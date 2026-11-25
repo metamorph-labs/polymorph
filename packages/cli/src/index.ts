@@ -25,12 +25,29 @@ export {
   DEFAULT_SYSTEM,
   InitError,
   installApp,
+  installCommand,
+  mcpConfig,
+  PACKAGE_MANAGERS,
+  PACKAGE_REGISTRIES,
+  packageManagerOf,
   planInit,
   REACT_RANGE,
   refuseDirectory,
+  TOOLS_NAME,
+  toolsRange,
   writeInit,
 } from './init'
-export type { InitPlan, InitPrograms, InitStep, InstallOutcome } from './init'
+export type {
+  InitPlan,
+  InitPrograms,
+  InitStep,
+  InstallOptions,
+  InstallOutcome,
+  Origin,
+  PackageManager,
+  PackageRegistry,
+  Program,
+} from './init'
 
 export { main, run } from './cli'
 export type { Cli, Outcome } from './cli'
@@ -52,6 +69,13 @@ export type {
   VerbFlag,
   VerbGroup,
 } from './verbs'
+
+/**
+ * The MCP server's command line, read alike by `polymorph mcp` and by every bin
+ * that starts the server.
+ */
+export { SERVER_FLAGS, serverFlags, ServerFlagsError } from './server-flags'
+export type { ServerFlags } from './server-flags'
 
 export { check, CheckError, checkLines } from './check'
 

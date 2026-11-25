@@ -20,9 +20,11 @@ import {
   APP_TOOLING,
   INSTALL_COMMAND,
   installApp,
+  packageManagerOf,
   planInit,
   REACT_RANGE,
   refuseDirectory,
+  TOOLS_NAME,
 } from './init'
 import { DEFAULT_DIR } from './plan'
 
@@ -34,9 +36,10 @@ import { DEFAULT_DIR } from './plan'
 
 const ROOT = resolve(import.meta.dirname, '../../..')
 const registry: Registry = buildRegistry(ROOT)
+/** The checkout's programs, as its bin names them. */
 const programs = {
-  mcp: resolve(ROOT, 'packages/mcp/bin/polymorph-mcp.js'),
-  emit: resolve(ROOT, 'packages/spec/bin/emit.js'),
+  mcp: { command: 'node', args: [resolve(ROOT, 'packages/mcp/bin/polymorph-mcp.js')] },
+  emit: { command: process.execPath, args: [resolve(ROOT, 'packages/spec/bin/emit.js')] },
 }
 
 const scratch = mkdtempSync(resolve(tmpdir(), 'polymorph-init-unit-'))
@@ -158,6 +161,110 @@ describe('the plan', () => {
     const pastel = planInit(registry, { dir: '/x/app', system: 'pastel', programs })
     expect(pastel.palette).toBe('amethyst')
     expect(manifestOf(pastel).dependencies).toHaveProperty('@fontsource-variable/plus-jakarta-sans')
+  })
+})
+
+/**
+ * The app the published tools write. Their `.mcp.json` runs the server with
+ * `npx`, so it names no path and works on any machine, and the app lists the
+ * tools as a dev dependency, so `npx` runs the installed copy. They install
+ * from npmjs.com, where the packages are public, unless `--registry github`.
+ */
+describe('the plan from the published tools', () => {
+  const published = {
+    mcp: { command: 'npx', args: ['-y', `${TOOLS_NAME}@^${registry.version}`, 'mcp'] },
+    emit: { command: process.execPath, args: ['/tools/emit.js'] },
+  }
+  const written = (target: ReturnType<typeof planInit>, path: string): string => {
+    const step = target.steps.find((entry) => entry.path === path)
+    if (step?.kind !== 'write') throw new Error(`the plan writes no ${path}`)
+    return step.contents
+  }
+
+  it('runs the server with npx, against the app, with no path of this machine', () => {
+    const plan = planInit(registry, { dir: '/x/app', programs: published, origin: 'published' })
+    expect(JSON.parse(written(plan, '.mcp.json'))).toEqual({
+      mcpServers: {
+        polymorph: {
+          command: 'npx',
+          args: ['-y', `${TOOLS_NAME}@^${registry.version}`, 'mcp', '--project', '.'],
+        },
+      },
+    })
+    expect(written(plan, '.mcp.json')).not.toContain(ROOT)
+  })
+
+  it('lists the tools as a dev dependency at the release, under their published name', () => {
+    const plan = planInit(registry, { dir: '/x/app', programs: published, origin: 'published' })
+    expect(manifestOf(plan).devDependencies[TOOLS_NAME]).toBe(`^${registry.version}`)
+    expect(TOOLS_NAME).toBe('@metamorph-labs/polymorph')
+    // From a checkout the server is the checkout's, so the app does not list the tools.
+    const checkout = planInit(registry, { dir: '/x/app', programs })
+    expect(manifestOf(checkout).devDependencies[TOOLS_NAME]).toBeUndefined()
+  })
+
+  it('tells an agent the server runs anywhere, and how render_screen gets its browser', () => {
+    for (const framework of ['react', 'vue', 'svelte', 'solid', 'angular'] as const) {
+      const plan = planInit(registry, {
+        dir: '/x/app',
+        programs: published,
+        origin: 'published',
+        framework,
+      })
+      const agents = written(plan, 'AGENTS.md')
+      expect(agents, framework).not.toContain('machine-specific')
+      expect(agents, framework).not.toContain('polymorph checkout')
+      expect(agents, framework).toContain(`with \`npx\` from \`${TOOLS_NAME}\``)
+      expect(agents, framework).toContain('answers with the command that downloads it')
+    }
+  })
+
+  it('installs from npmjs.com with no .npmrc, or from GitHub Packages when asked', () => {
+    const npmjs = planInit(registry, { dir: '/x/app', programs: published, origin: 'published' })
+    expect(npmjs.steps.map((step) => step.path)).not.toContain('.npmrc')
+    const github = planInit(registry, {
+      dir: '/x/app',
+      programs: published,
+      origin: 'published',
+      packageRegistry: 'github',
+    })
+    expect(written(github, '.npmrc')).toContain('${NODE_AUTH_TOKEN}')
+    // A checkout keeps GitHub Packages, the registry a release reaches first.
+    expect(
+      planInit(registry, { dir: '/x/app', programs }).steps.map((step) => step.path),
+    ).toContain('.npmrc')
+  })
+
+  it('differs from a checkout’s app only in the files that say where it runs from', () => {
+    const fromCheckout = planInit(registry, { dir: '/x/app', programs, packageRegistry: 'npmjs' })
+    const fromTools = planInit(registry, {
+      dir: '/x/app',
+      programs: published,
+      origin: 'published',
+    })
+    const contents = (plan: ReturnType<typeof planInit>) =>
+      new Map(plan.steps.map((step) => [step.path, JSON.stringify(step)]))
+    const checkoutFiles = contents(fromCheckout)
+    const different = [...contents(fromTools)]
+      .filter(([path, step]) => checkoutFiles.get(path) !== step)
+      .map(([path]) => path)
+    expect(different).toEqual(['package.json', '.mcp.json', 'AGENTS.md'])
+  })
+})
+
+describe('the package manager', () => {
+  it('is the one that ran the command, read from its user agent', () => {
+    const agent = (name: string) => ({ npm_config_user_agent: `${name}/1.0.0 npm/? node/v24` })
+    expect(packageManagerOf(agent('npm'), 'published')).toBe('npm')
+    expect(packageManagerOf(agent('pnpm'), 'published')).toBe('pnpm')
+    expect(packageManagerOf(agent('yarn'), 'checkout')).toBe('yarn')
+    expect(packageManagerOf(agent('bun'), 'checkout')).toBe('bun')
+  })
+
+  it('is npm for the published tools and pnpm in a checkout when none can be told', () => {
+    expect(packageManagerOf({}, 'published')).toBe('npm')
+    expect(packageManagerOf({}, 'checkout')).toBe('pnpm')
+    expect(packageManagerOf({ npm_config_user_agent: 'deno/2.0' }, 'published')).toBe('npm')
   })
 })
 
@@ -341,7 +448,7 @@ describe('the command', () => {
         source: ROOT,
         registry,
         out: (line) => lines.push(line),
-        programs: { ...programs, emit: refusing },
+        programs: { ...programs, emit: { command: process.execPath, args: [refusing] } },
       },
       ['init', 'refused', '--no-install'],
     )
@@ -495,9 +602,29 @@ describe('the install', () => {
     expect(installApp(emptyApp(), { PATH: programsOnPath({ gh: 'exit 1' }) })).toBe('no-token')
   })
 
+  it('installs from npmjs.com with no token, with npm when npm ran the command', () => {
+    const app = emptyApp()
+    const lines: string[] = []
+    const recordingNpm =
+      'printf %s "${NODE_AUTH_TOKEN:-none}" > "$PWD/seen-token"; printf %s "$*" > "$PWD/seen-args"'
+    const outcome = installApp(
+      app,
+      { PATH: programsOnPath({ gh: 'echo should-not-be-asked', npm: recordingNpm }) },
+      (line) => lines.push(line),
+      { packageRegistry: 'npmjs', manager: 'npm' },
+    )
+    expect(outcome).toBe('installed')
+    expect(readFileSync(resolve(app, 'seen-args'), 'utf8')).toBe('install')
+    expect(readFileSync(resolve(app, 'seen-token'), 'utf8')).toBe('none')
+    expect(lines.join('\n')).toContain('npm install')
+    expect(lines.join('\n')).not.toContain('gh auth token')
+  }, 30_000)
+
   it('tells a missing pnpm from a failed install', () => {
     const token = { NODE_AUTH_TOKEN: 'from-env' }
-    expect(installApp(emptyApp(), { ...token, PATH: programsOnPath({}) })).toBe('no-pnpm')
+    expect(installApp(emptyApp(), { ...token, PATH: programsOnPath({}) })).toBe(
+      'no-package-manager',
+    )
     expect(installApp(emptyApp(), { ...token, PATH: programsOnPath({ pnpm: 'exit 1' }) })).toBe(
       'failed',
     )
@@ -509,8 +636,14 @@ describe('the install', () => {
    * for the length of the call and put back.
    */
   function initWith(dir: string, scripts: Record<string, string>, token?: string) {
-    const saved = { PATH: process.env['PATH'], NODE_AUTH_TOKEN: process.env['NODE_AUTH_TOKEN'] }
+    const saved = {
+      PATH: process.env['PATH'],
+      NODE_AUTH_TOKEN: process.env['NODE_AUTH_TOKEN'],
+      npm_config_user_agent: process.env['npm_config_user_agent'],
+    }
     process.env['PATH'] = programsOnPath(scripts)
+    // No package manager ran this, so the checkout's own, pnpm, installs the app.
+    delete process.env['npm_config_user_agent']
     if (token === undefined) delete process.env['NODE_AUTH_TOKEN']
     else process.env['NODE_AUTH_TOKEN'] = token
     try {

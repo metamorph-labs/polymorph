@@ -4,6 +4,7 @@ import { dirname, posix, resolve } from 'node:path'
 import { renderSystemCard, type Registry, type RegistrySystem } from '@polymorph/registry'
 import { admitTheme } from '@polymorph/theme'
 
+import { mcpConfig, serverNote, type Origin, type Program } from './init-app'
 import { digest, MANIFEST_FILE, readManifest, writeManifest, type Manifest } from './manifest'
 import { injectPrepaint } from './patch'
 import { ELEMENTS_DIR, ELEMENTS_THEME_SHEET, planInstall } from './plan'
@@ -219,7 +220,7 @@ export interface ElementsInitPlan {
 }
 
 /** The page's notes for an agent, written as `AGENTS.md`. */
-function agentNotes(dir: string, page: string): string {
+function agentNotes(dir: string, page: string, origin: Origin): string {
   return `# Working in this app
 
 This app is built with polymorph, a closed component vocabulary, as custom elements on pages with
@@ -233,8 +234,7 @@ no build.
   prop is a child with \`slot="name"\`; \`onFoo\` is the event \`poly-foo\`; a function is a property
   set from script.
 - The MCP server in \`.mcp.json\` serves the card (\`get_system_card\` with \`framework: "elements"\`).
-  It starts the server from the polymorph checkout that created this app, by its absolute path on
-  that machine. On another machine, change it to that machine's checkout.
+${serverNote(origin, false)}
 - The red rules do not read HTML, so nothing checks a page. Write no \`class\` or \`style\` on a
   member and no raw \`<button>\` or \`<input>\`: a member's look is the theme's.
 - Another library's component (a map, a rich-text editor, a data grid) goes inside
@@ -292,7 +292,14 @@ function examplePage(name: string, files: string, system: string, palette: strin
 export function planElementsInit(
   registry: Registry,
   source: string,
-  options: { name: string; system: RegistrySystem; staticDir: string; mcp: string },
+  options: {
+    name: string
+    system: RegistrySystem
+    staticDir: string
+    mcp: Program
+    /** A checkout when omitted. */
+    origin?: Origin
+  },
 ): ElementsInitPlan {
   const { name, system, staticDir } = options
   const unshipped = PAGE_MEMBERS.flatMap((member) => {
@@ -331,14 +338,12 @@ export function planElementsInit(
         path: 'polymorph/system-card.md',
         contents: renderSystemCard(registry, { framework: 'elements' }),
       },
+      { kind: 'write', path: '.mcp.json', contents: mcpConfig(options.mcp) },
       {
         kind: 'write',
-        path: '.mcp.json',
-        contents: json({
-          mcpServers: { polymorph: { command: 'node', args: [options.mcp, '--project', '.'] } },
-        }),
+        path: 'AGENTS.md',
+        contents: agentNotes(dir, page, options.origin ?? 'checkout'),
       },
-      { kind: 'write', path: 'AGENTS.md', contents: agentNotes(dir, page) },
       { kind: 'write', path: 'CLAUDE.md', contents: '@AGENTS.md\n' },
       // Written in the same shape `writeManifest` writes, so a later install reads it back.
       { kind: 'write', path: MANIFEST_FILE, contents: json(ordered(manifest)) },

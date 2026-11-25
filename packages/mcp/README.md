@@ -6,8 +6,10 @@ for an agent. While an agent writes code, the server answers questions about pol
 of the exception ladder answers each violation. It also writes the results (a screen, an install, a
 theme) into the repository the agent is working on.
 
-It runs over **stdio only**, with no port, no auth and nothing to host. It builds the registry from
-the checkout that holds it when it starts.
+It runs over **stdio only**, with no port, no auth and nothing to host. From a checkout it builds
+the registry from the checkout that holds it when it starts. It is also published, with the CLI, as
+`@metamorph-labs/polymorph` (`packages/tools`), which reads the registry of its release and needs
+no checkout.
 
 The tools that only read are marked with `readOnlyHint`. Those that take `framework` (`react`,
 `vue`, `svelte`, `solid` or `angular`) answer for that framework's vocabulary, and those that take
@@ -50,21 +52,28 @@ documents the engine admitted) instead of a model's copy of it.
 
 `render_screen` is the one tool that runs a browser. Playwright is an optional dependency, loaded
 when the tool is called, so a server without it starts and answers every other tool. Download the
-browser once:
+browser once. In a checkout:
 
 ```sh
 pnpm exec playwright install chromium
 ```
 
+The published package's server names its own command when the browser is missing
+(`npx -y playwright@<version> install chromium`, for the Playwright it loads): the entry point
+passes the advice as the context's `browserSetup`.
+
 The screen is drawn by the workbench's screen page (`apps/workbench/src/screen/`), not by this
-package. The first call builds that page in memory through `apps/workbench/screen.build.mjs`, which
-the bin names, and the page is kept for the life of the server. No port is opened and no file is
+package. From a checkout, the first call builds that page in memory through
+`apps/workbench/screen.build.mjs`, which the bin names, and the page is kept for the life of the
+server. The published package ships the page built and names its directory (`screenPage`), so its
+server builds nothing. No port is opened and no file is
 written. [docs/tooling.md](../../docs/tooling.md#seeing-a-screen-render_screen) has the arguments,
 the answer, the faults and what fills a spec's inputs.
 
 ## The project
 
-The server has two roots. It reads the vocabulary from the checkout that holds the bin. It writes
+The server has two roots. It reads the vocabulary from the checkout that holds the bin, or from the
+published package. It writes
 only into the **project**, which is the working directory it was started in, or the path given as
 `--project <path>`. An agent working in a repository starts its stdio servers there, and
 `--project` is for a client that starts servers somewhere else. A project is a directory with a
@@ -82,8 +91,9 @@ pnpm mcp
 ```
 
 `pnpm mcp` runs the bin `polymorph-mcp` (`bin/polymorph-mcp.js`) with this repository as the
-project. Register it with a client as a stdio server whose command is
-`node /absolute/path/to/polymorph/packages/mcp/bin/polymorph-mcp.js`;
+project. Outside a checkout, register the published package with a client as a stdio server whose
+command is `npx -y @metamorph-labs/polymorph@^<version> mcp`; from a checkout, the command is
+`node /absolute/path/to/polymorph/packages/mcp/bin/polymorph-mcp.js`.
 [docs/tooling.md](../../docs/tooling.md) shows the usual `mcpServers` shape. stdout carries only
 protocol messages. Diagnostics go to stderr. `polymorph mcp` starts the same server, with the same
 flags, through the same function (`serveStdio`).
@@ -96,7 +106,8 @@ in its own process and prints the same answer
 
 `@polymorph/mcp` exports `createServer(context)`, which returns a server with no transport
 attached. It also exports `READ_TOOL_NAMES`, `WRITE_TOOL_NAMES` and `TOOL_NAMES`, and each tool as
-a plain function that takes a `{ registry, root, project?, screenBuilder? }` context:
+a plain function that takes a `{ registry, root, project?, screenBuilder?, screenPage?,
+browserSetup? }` context:
 `searchComponents`, `getComponent`, `getInstallPlan`, `getSystemCard`, `getThemeAxes`, `validate`,
 `fix`, `proposeTheme`, `renderScreen`, `emitScreen`, `install`, `saveTheme`, `fixFile`.
 `src/server.ts` holds one table of the tools (`TOOLS`): each name, argument schema, annotations
@@ -112,8 +123,9 @@ Two functions use the same table outside a client's session, for an entry point 
   is an error. A context with no project has no write tool, as a `--read-only` server has none.
   The CLI's verbs run on it (`cli.tools`).
 - `serveStdio(context)` runs the server over stdio and resolves when the client has closed stdin
-  and every request has its answer. `bin/polymorph-mcp.js` and `polymorph mcp` (`cli.serve`) both
-  start the server with it.
+  and every request has its answer. `bin/polymorph-mcp.js`, `polymorph mcp` (`cli.serve`) and the
+  published tools' bins all start the server with it, and all read its flags with `serverFlags`
+  (from `@polymorph/cli`, which this package re-exports).
 
 The server is a **thin front** over `@polymorph/registry`. Every answer is a field of the
 registry, a projection of one, or a file the registry names. It never reads the vocabulary's

@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/tools.tsbuildinfo",
+    // DOM for the same reason as the CLI's and the server's configs: the
+    // entry points import both fronts as workspace source, which reaches
+    // `@polymorph/theme`'s `runtime.ts`, typed against the DOM. Nothing here
+    // runs in a browser.
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"]
+  },
+  // The package root holds the build config, the dist lock and the laws, all
+  // node code checked like the entry points.
+  "include": ["src/**/*.ts", "*.ts"]
+}

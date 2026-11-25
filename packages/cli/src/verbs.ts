@@ -150,8 +150,8 @@ export const VERBS: readonly Verb[] = [
     group: 'start',
     summary: 'Write a new app: packages, theme, rules, agent tools and a first screen.',
     usage:
-      'polymorph init <dir> [--framework <name>] [--system <name>] [--dir <path>] ' +
-      '[--no-install] [--dry-run]',
+      'polymorph init <dir> [--framework <name>] [--system <name>] [--registry <name>] ' +
+      '[--dir <path>] [--no-install] [--dry-run]',
     flags: [
       {
         name: 'framework',
@@ -164,11 +164,22 @@ export const VERBS: readonly Verb[] = [
         summary: `the catalogue system the app wears (default \`${DEFAULT_SYSTEM}\`)`,
       },
       {
+        name: 'registry',
+        value: 'name',
+        summary:
+          'where the app installs the packages from: `npmjs` (no `.npmrc`, no token) or ' +
+          '`github` (GitHub Packages, with a token); default `npmjs` from the published ' +
+          'tools, `github` from a checkout',
+      },
+      {
         name: 'dir',
         value: 'path',
         summary: `for \`elements\`, the static directory the page is written in (default \`${ELEMENTS_DIR.split('/')[0]}\`)`,
       },
-      { name: 'no-install', summary: 'write the app and do not run `pnpm install`' },
+      {
+        name: 'no-install',
+        summary: 'write the app and do not install it with the package manager that ran this',
+      },
       { name: 'dry-run', summary: 'print the plan and write nothing' },
     ],
     tools: [],

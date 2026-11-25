@@ -66,6 +66,8 @@ export type { CardOptions } from './card'
 
 export { firstDifference } from './diff'
 
+export { namedFiles } from './files'
+
 export {
   fileClosure,
   fontPackage,
@@ -74,6 +76,7 @@ export {
   PREPAINT,
   PUBLISHED_NAMES,
   PUBLISHED_REGISTRY,
+  TOOLS_PACKAGE,
 } from './install'
 export type { FontRequirement } from './install'
 

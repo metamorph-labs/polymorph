@@ -17,8 +17,18 @@ the packages, which `init` sets up. [docs/consuming.md](../../docs/consuming.md)
 
 ## Running it
 
-The bin is `polymorph` (`bin/polymorph.js`). It reads the vocabulary from the checkout that holds
-it and installs into the **current directory**, so run it from the other repository's root:
+The CLI is published with the MCP server as `@metamorph-labs/polymorph` (`packages/tools`), which
+carries the registry of its release and every file an install copies, so it runs in any
+repository with no checkout of this one:
+
+```sh
+npx -y @metamorph-labs/polymorph@latest init my-app
+npx -y @metamorph-labs/polymorph@latest add button dialog theme:pastel
+```
+
+From a checkout, the bin is `polymorph` (`bin/polymorph.js`). It reads the vocabulary from the
+checkout that holds it and installs into the **current directory**, so run it from the other
+repository's root:
 
 ```sh
 node ../polymorph/packages/cli/bin/polymorph.js add button dialog theme:pastel
@@ -36,7 +46,7 @@ node ../polymorph/packages/cli/bin/polymorph.js init my-app
 
 | Command | What it does |
 | --- | --- |
-| `polymorph init <dir>` | Writes a new Vite app into a new or empty directory, in React or in the framework `--framework` names: that framework's packages as npm aliases (`@polymorph/rules` as a dev dependency), an `.npmrc` that names the token, a catalogue theme compiled by the Vite plugin, the lint configs, an `.mcp.json` for this checkout's MCP server, the system card, `AGENTS.md`, and a first screen emitted from its spec. Then runs `pnpm install` with `NODE_AUTH_TOKEN` or `gh auth token` |
+| `polymorph init <dir>` | Writes a new Vite app into a new or empty directory, in React or in the framework `--framework` names: that framework's packages as npm aliases (`@polymorph/rules` as a dev dependency), a catalogue theme compiled by the Vite plugin, the lint configs, an `.mcp.json` for the MCP server, the system card, `AGENTS.md`, and a first screen emitted from its spec. Then installs it with the package manager that ran the command. From the published package the app installs from npmjs.com, its `.mcp.json` runs `npx -y @metamorph-labs/polymorph@^<version> mcp`, and it lists that package as a dev dependency. From a checkout it installs from GitHub Packages through an `.npmrc` that names the token (`NODE_AUTH_TOKEN` or `gh auth token`), and its `.mcp.json` runs the checkout's server by its path. `--registry npmjs\|github` chooses the registry either way |
 | `polymorph add <item…>` | Vendors members (`button`) in the install's framework, the exception ladder's primitives (`bespoke`, `third-party`, `density-scope`, `tone-scope`), a theme (`theme:pastel`: a system, its default palette and its fonts) or a palette (`palette:orchid`) |
 | `polymorph diff` | Lists what you have changed since the install, and what has changed upstream |
 | `polymorph update` | Re-vendors the files you have not edited, keeps and reports the files you have edited, and recompiles the installed themes |
@@ -56,9 +66,10 @@ the plan, write nothing), `--force` (overwrite files you have edited), `--out <p
 default `plain`), `--framework <name>` (`react`, the default, `vue`, `svelte`, `solid` or
 `angular`: the app `init` writes and the members `add` vendors; once an install has
 `polymorph.json`, `add` uses the framework it records and refuses another; `check` reads every file
-in it instead of inferring each file's), `--no-install` (`init` writes the app and skips
-`pnpm install`), `--json` (`check` prints its report as JSON, and a verb that asks a tool prints
-exactly the tool's answer). `polymorph <verb> --help` prints every flag of one verb.
+in it instead of inferring each file's), `--registry <name>` (`npmjs` or `github`: where `init`'s
+app installs the packages from), `--no-install` (`init` writes the app and skips the install),
+`--json` (`check` prints its report as JSON, and a verb that asks a tool prints exactly the tool's
+answer). `polymorph <verb> --help` prints every flag of one verb.
 
 A verb that asks a tool exits 0 when the answer is clean, 1 when it reports violations, faults or
 a refusal, and 2 when the command line cannot be read. It refuses a flag it does not take.
@@ -78,13 +89,17 @@ to recompile.
 ## Entry point
 
 `main(cli, argv)` takes everything from its entry point: the two roots, the registry, where to
-print, and two functions this package cannot build because `@polymorph/mcp` depends on it.
-`cli.tools` calls one MCP tool by name in this process (`toolCaller` from `@polymorph/mcp`), and
-`cli.serve` starts the server for `mcp` (`serveStdio`). A verb whose function is absent refuses
-with one line. `bin/polymorph.js` builds both from `packages/mcp/src`, each the first time a verb
-calls it, with this checkout as the root the vocabulary is read from and the working directory as
-the project. `cli.err` takes what a verb writes beside its answer when the answer is the whole of
-stdout, and `cli.input` reads stdin for `-`.
+print, where it runs from (`origin`: `checkout` or `published`), the programs `init` wires a new
+app to, as commands (`InitPrograms`), and two functions this package cannot build because
+`@polymorph/mcp` depends on it. `cli.tools` calls one MCP tool by name in this process
+(`toolCaller` from `@polymorph/mcp`), and `cli.serve` starts the server for `mcp` (`serveStdio`).
+A verb whose function is absent refuses with one line. `bin/polymorph.js` builds both from
+`packages/mcp/src`, each the first time a verb calls it, with this checkout as the root the
+vocabulary is read from and the working directory as the project. The published tools' bin
+(`packages/tools`) builds them the same way from the registry and the files it ships. `cli.err`
+takes what a verb writes beside its answer when the answer is the whole of stdout, and `cli.input`
+reads stdin for `-`. `mcp` reads its flags with `serverFlags`, which every entry point that
+starts the server reads them with.
 
 `VERBS` lists every verb as data (name, group, summary, usage, flags, and the MCP tools of the
 same job). The help is built from it, and a law in `@polymorph/mcp` holds it to the server's table
@@ -137,7 +152,8 @@ pnpm exec vitest run packages/cli
   outside the workspace, builds `@polymorph/engine`, `@polymorph/react`, `@polymorph/rules` and
   `@polymorph/react-ui`, installs them from their builds, and checks that the new app
   typechecks, builds with its theme and fonts, and lints clean under the red rules.
-  `consumer-app.ts` assembles both apps' `node_modules`.
+  `consumer-app.ts` assembles both apps' `node_modules`. `packages/tools/packaging.test.ts` runs
+  the published package's `init` where no checkout is, and compares its app with this bin's.
 
 ## Read more
 

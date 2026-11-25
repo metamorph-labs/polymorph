@@ -31,6 +31,8 @@ export {
   UnemittedFrameworkError,
 } from './emit'
 export type { EmitOptions } from './emit'
+export { emitCommand } from './command'
+export type { EmitCommand } from './command'
 export { MissingRegistryError, VUE_IMPORT_SOURCE } from './emit-vue'
 export { SVELTE_IMPORT_SOURCE } from './emit-svelte'
 export { ANGULAR_IMPORT_SOURCE, angularScreenSelector } from './emit-angular'

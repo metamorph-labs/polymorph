@@ -580,7 +580,18 @@ export const PUBLISHED_NAMES: Readonly<Record<string, string>> = {
   '@polymorph/elements': '@metamorph-labs/polymorph-elements',
   '@polymorph/elements-ui': '@metamorph-labs/polymorph-elements-ui',
   '@polymorph/screen': '@metamorph-labs/polymorph-screen',
+  '@polymorph/tools': '@metamorph-labs/polymorph',
 }
+
+/**
+ * The CLI and the MCP server as one package, which a person or an agent runs
+ * and no app imports (`packages/tools`). It is published under the scope's own
+ * name, `@metamorph-labs/polymorph`, and run as
+ * `npx -y @metamorph-labs/polymorph@<range> <verb>`. A new app lists it under
+ * that name as a dev dependency at the release's range, so `npx` resolves the
+ * installed copy, and never under an alias, because nothing imports it.
+ */
+export const TOOLS_PACKAGE = '@polymorph/tools'
 
 /**
  * The Vue foundation and vocabulary. The registry ranges them in
@@ -643,11 +654,12 @@ export const PUBLISHED_REGISTRY = 'https://npm.pkg.github.com'
  * Solid, Angular and elements packages (`FRAMEWORK_PACKAGES`) are published too. Each is
  * ranged with its own framework (`readFrameworkPackageVersions`), and a React
  * install never names them. Nor does it name the run-time packages
- * (`RUNTIME_PACKAGES`).
+ * (`RUNTIME_PACKAGES`), or the tools (`TOOLS_PACKAGE`), which no code imports.
  */
 export const INSTALLED_PACKAGES = Object.keys(PUBLISHED_NAMES).filter(
   (name) =>
     name !== RECIPES_PACKAGE &&
+    name !== TOOLS_PACKAGE &&
     !FRAMEWORK_PACKAGES.includes(name) &&
     !RUNTIME_PACKAGES.includes(name),
 )

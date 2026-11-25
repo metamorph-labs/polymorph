@@ -27,6 +27,7 @@ import {
   type Reported,
   type SavedReading,
 } from './readings'
+import { serverFlags, ServerFlagsError } from './server-flags'
 import type { ToolAnswer, Verb } from './verbs'
 
 /**
@@ -121,8 +122,8 @@ function readArguments(verb: Verb, argv: string[]): Arguments {
 export async function runToolVerb(cli: Cli, verb: Verb, argv: string[]): Promise<Outcome> {
   const json = verb.needs === 'tools' && argv.includes('--json')
   try {
+    if (verb.needs === 'server') return await serve(cli, verb, argv)
     const args = readArguments(verb, argv)
-    if (verb.needs === 'server') return await serve(cli, verb, args)
     if (cli.tools === undefined) {
       say(
         cli,
@@ -702,21 +703,25 @@ async function propose(verb: Verb, asked: Asked): Promise<Outcome> {
 
 /**
  * `polymorph mcp`: the server over stdio, started by the entry point's
- * function, with the flags `polymorph-mcp` takes. The project is resolved
- * against the root. The server owns stdout from here on, so nothing is
- * printed there: a refusal goes to `cli.err`.
+ * function, with the flags `polymorph-mcp` takes, read by the parser every
+ * bin that starts the server reads them with (`server-flags.ts`). `argv` is
+ * the command line with the verb's word. The project is resolved against the
+ * root. The server owns stdout from here on, so nothing is printed there: a
+ * refusal goes to `cli.err`.
  */
-async function serve(cli: Cli, verb: Verb, args: Arguments): Promise<Outcome> {
-  if (args.positionals.length > 0) {
-    throw new UsageError(verb, `it takes no argument "${args.positionals[0]}"`)
+async function serve(cli: Cli, verb: Verb, argv: string[]): Promise<Outcome> {
+  const at = argv.indexOf(verb.name)
+  let flags: ReturnType<typeof serverFlags>
+  try {
+    flags = serverFlags(argv.filter((_, index) => index !== at))
+  } catch (error) {
+    if (error instanceof ServerFlagsError) throw new UsageError(verb, error.message)
+    throw error
   }
   if (cli.serve === undefined) {
     ;(cli.err ?? cli.out)('polymorph mcp starts the MCP server, and this entry point supplied none')
     return { code: 1 }
   }
-  const project = args.switches.has('read-only')
-    ? undefined
-    : resolve(cli.root, args.values.get('project') ?? '.')
-  await cli.serve(project === undefined ? {} : { project })
+  await cli.serve(flags.readOnly ? {} : { project: resolve(cli.root, flags.project ?? '.') })
   return { code: 0 }
 }
