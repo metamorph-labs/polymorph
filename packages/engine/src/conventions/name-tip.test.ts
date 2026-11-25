@@ -223,18 +223,33 @@ describe('keyboard focus', () => {
 })
 
 describe('Escape', () => {
-  it('closes the tip and reaches nothing else, and reaches the page again once it is closed', async () => {
+  it('closes a tip the pointer opened and reaches nothing else, so a Dialog around it stays open', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
     const heard = vi.fn()
-    tipped('Archive')
+    await hoverAndWait(tipped('Archive'))
+    expect(bubble()).not.toBeNull()
+    document.addEventListener('keydown', heard, { capture: true })
+    try {
+      await userEvent.keyboard('{Escape}')
+      expect(bubble()).toBeNull()
+      expect(heard).not.toHaveBeenCalled()
+      // Once the tip is closed, the key reaches the page again.
+      await userEvent.keyboard('{Escape}')
+      expect(heard).toHaveBeenCalledOnce()
+    } finally {
+      document.removeEventListener('keydown', heard, { capture: true })
+    }
+  })
+
+  it('closes a tip focus opened and reaches the page, so a Dialog that focused the button closes', async () => {
+    const heard = vi.fn()
+    tipped('Close')
     await userEvent.keyboard('{Tab}')
     await vi.waitFor(() => expect(bubble()).not.toBeNull())
     document.addEventListener('keydown', heard, { capture: true })
     try {
       await userEvent.keyboard('{Escape}')
       expect(bubble()).toBeNull()
-      // A dialog listening on the document stays open.
-      expect(heard).not.toHaveBeenCalled()
-      await userEvent.keyboard('{Escape}')
       expect(heard).toHaveBeenCalledOnce()
     } finally {
       document.removeEventListener('keydown', heard, { capture: true })
@@ -249,7 +264,8 @@ describe('closing for other reasons', () => {
 
   it('closes when something that holds the button scrolls', async () => {
     const box = document.createElement('div')
-    box.style.cssText = 'position: fixed; left: 100px; top: 100px; width: 200px; height: 200px; overflow: auto'
+    box.style.cssText =
+      'position: fixed; left: 100px; top: 100px; width: 200px; height: 200px; overflow: auto'
     const tall = document.createElement('div')
     tall.style.height = '600px'
     const button = document.createElement('button')

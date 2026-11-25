@@ -23,9 +23,12 @@ import { TOOLTIP_DELAY_MS, TOOLTIP_SKIP_DELAY_MS } from './tooltip'
  * - **Closing.** The pointer leaving the button, the bubble and the gap
  *   between them; blur; Escape; a press anywhere; a scroll of anything that
  *   holds the button; and the function this returns, which the Button calls
- *   when it unmounts, is disabled or loses `iconOnly`. Escape closes the tip
- *   and nothing else: the key does not reach the page, so a Dialog around the
+ *   when it unmounts, is disabled or loses `iconOnly`. Escape on a tip the
+ *   pointer opened closes the tip and nothing else, so a Dialog around the
  *   button stays open, as it does when Escape closes a Tooltip's bubble.
+ *   Escape on a tip focus opened closes the tip and reaches the page too,
+ *   because a Dialog that puts focus on its icon-only close button opens one,
+ *   and the key there is the reader's request to close the Dialog.
  * - **Never twice.** A button inside a Tooltip's trigger (`data-tooltip-part`)
  *   shows the app's Tooltip instead, decided when a tip would open.
  * - **Never in the way.** The bubble takes no pointer events. Whether the
@@ -139,8 +142,14 @@ function open(
         keydown(event) {
           const key = event as KeyboardEvent
           if (key.key !== 'Escape' || key.isComposing) return
-          key.preventDefault()
-          key.stopPropagation()
+          // A tip the pointer holds takes the key, so a Dialog around the button stays open, as
+          // it does when Escape closes a Tooltip's bubble. A tip focus holds lets the key
+          // through: focus a Dialog gives its close button opens one, and Escape still closes
+          // the Dialog in one press.
+          if (held) {
+            key.preventDefault()
+            key.stopPropagation()
+          }
           close()
         },
         pointerdown: close,
