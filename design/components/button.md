@@ -118,8 +118,8 @@ the validation a screen spec gets (`docs/rules.md`, the usage rules):
   not in the dialog (`polymorph/one-main-button`).
 - **A destructive Button comes last.** Within one group of Buttons placed together, a danger
   Button comes last. A destructive action in a group of its own, apart from the group that holds
-  the main Button, may come first (`polymorph/danger-last`). It never has focus when a dialog or
-  drawer opens (`dialog.md`), and Button takes no `autoFocus`.
+  the main Button, may come first. `polymorph/danger-last` checks it. A destructive Button never
+  has focus when a dialog or drawer opens (`dialog.md`), and Button takes no `autoFocus`.
 - **A trailing icon points onward or opens.** `trailingIcon` takes a role marked `trailing` in
   `design/icons.json`. Every other icon leads its label, in `icon`
   (`polymorph/trailing-icon`).
