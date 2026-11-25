@@ -5,9 +5,10 @@
 How an agent given a screen brief and the system’s own tools gets on: how often its first
 `validate` call is lawful, how many calls it takes to get there, how often it ends lawful, how
 often the screen it hands back has every part its brief requires, and what that costs. The
-model is reached through the Messages API or through the Claude Code CLI, measured the same
-way. [docs/verification.md](../docs/verification.md) says what each number measures, how to run
-the eval with either runner and what a run costs.
+model is reached through the Messages API, through the Claude Code CLI or through the Codex
+CLI, measured the same way apart from what Codex does not report.
+[docs/verification.md](../docs/verification.md) says what each number measures, how to run the
+eval with each runner and what a run costs.
 
 A rate from a few runs is known only loosely, so each one is printed with its 95% interval: the
 rates that many runs are consistent with. Each results file’s section says which rates a
@@ -402,3 +403,14 @@ Answers that were not lawful in 2026-11-23-claude-haiku-5-5-runtime-cli.json, in
 - `settings-workspace` #3: $.root.children[0].children[1].children[1].props.control.props.name: `SegmentedControl` has no prop `name`
 - `settings-workspace` #4: $.root.children[0].children[0].props.control.props.aria: an object here has `$`, `component` or `$object`, and this one has `aria-label` — a binding is `{ "$": "anInput" }`, an element is `{ "component": … }`, and a plain object, such as a column or an option, is written `{ "$object": { … } }`; $.root.children[0].children[1].props.control.props.aria: an object here has `$`, `component` or `$object`, and this one has `aria-label` — a binding is `{ "$": "anInput" }`, an element is `{ "component": … }`, and a plain object, such as a column or an option, is written `{ "$object": { … } }`; $.root.children[1].children[0].props.control.props.aria: an object here has `$`, `component` or `$object`, and this one has `aria-label` — a binding is `{ "$": "anInput" }`, an element is `{ "component": … }`, and a plain object, such as a column or an option, is written `{ "$object": { … } }` (and 3 more)
 - `settings-workspace` #5: $.root.children[0].children[0].props.control.props.aria: an object here has `$`, `component` or `$object`, and this one has `aria-label` — a binding is `{ "$": "anInput" }`, an element is `{ "component": … }`, and a plain object, such as a column or an option, is written `{ "$object": { … } }`; $.root.children[0].children[1].props.control.props.aria: an object here has `$`, `component` or `$object`, and this one has `aria-label` — a binding is `{ "$": "anInput" }`, an element is `{ "component": … }`, and a plain object, such as a column or an option, is written `{ "$object": { … } }`; $.root.children[4].children[1].props.control.children[0].props.aria: an object here has `$`, `component` or `$object`, and this one has `aria-label` — a binding is `{ "$": "anInput" }`, an element is `{ "component": … }`, and a plain object, such as a column or an option, is written `{ "$object": { … } }`
+
+## The project lane
+
+How a harness gets on in a real app with only what the tools wrote there: Claude Code or Codex
+is started in an app `polymorph init` set up, given the brief as an ordinary request and nothing
+else from the eval, and judged on the project it leaves. How often the project ends lawful, how
+often it builds, how often its screen meets the brief, and all three; which MCP tools and
+`polymorph` verbs the harness called; and what it cost. A run its budget stopped is judged on
+what it left. Each rate is over the runs judged for it.
+
+No project number is recorded: `eval/results/` holds no real run of the project lane over every brief. It is measured with `pnpm eval --mode project --runner cli`, with Claude Code signed in, or `--runner codex`, with Codex signed in.

@@ -1,0 +1,173 @@
+{
+  "project": true,
+  "turns": [
+    {
+      "usage": {
+        "input_tokens": 1000,
+        "output_tokens": 20
+      },
+      "content": [
+        {
+          "type": "shell",
+          "command": "ls src/screens # look 1",
+          "output": "Welcome.tsx\nwelcome.json\n"
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 1000,
+        "output_tokens": 20
+      },
+      "content": [
+        {
+          "type": "shell",
+          "command": "ls src/screens # look 2",
+          "output": "Welcome.tsx\nwelcome.json\n"
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 1000,
+        "output_tokens": 20
+      },
+      "content": [
+        {
+          "type": "shell",
+          "command": "ls src/screens # look 3",
+          "output": "Welcome.tsx\nwelcome.json\n"
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 1000,
+        "output_tokens": 20
+      },
+      "content": [
+        {
+          "type": "shell",
+          "command": "ls src/screens # look 4",
+          "output": "Welcome.tsx\nwelcome.json\n"
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 1000,
+        "output_tokens": 20
+      },
+      "content": [
+        {
+          "type": "shell",
+          "command": "ls src/screens # look 5",
+          "output": "Welcome.tsx\nwelcome.json\n"
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 1000,
+        "output_tokens": 20
+      },
+      "content": [
+        {
+          "type": "shell",
+          "command": "ls src/screens # look 6",
+          "output": "Welcome.tsx\nwelcome.json\n"
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 1000,
+        "output_tokens": 20
+      },
+      "content": [
+        {
+          "type": "shell",
+          "command": "ls src/screens # look 7",
+          "output": "Welcome.tsx\nwelcome.json\n"
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 1000,
+        "output_tokens": 20
+      },
+      "content": [
+        {
+          "type": "shell",
+          "command": "ls src/screens # look 8",
+          "output": "Welcome.tsx\nwelcome.json\n"
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 1000,
+        "output_tokens": 20
+      },
+      "content": [
+        {
+          "type": "shell",
+          "command": "ls src/screens # look 9",
+          "output": "Welcome.tsx\nwelcome.json\n"
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 1000,
+        "output_tokens": 20
+      },
+      "content": [
+        {
+          "type": "shell",
+          "command": "ls src/screens # look 10",
+          "output": "Welcome.tsx\nwelcome.json\n"
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 1000,
+        "output_tokens": 20
+      },
+      "content": [
+        {
+          "type": "shell",
+          "command": "ls src/screens # look 11",
+          "output": "Welcome.tsx\nwelcome.json\n"
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 1000,
+        "output_tokens": 20
+      },
+      "content": [
+        {
+          "type": "shell",
+          "command": "ls src/screens # look 12",
+          "output": "Welcome.tsx\nwelcome.json\n"
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 1000,
+        "output_tokens": 20
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "Done."
+        }
+      ]
+    }
+  ]
+}

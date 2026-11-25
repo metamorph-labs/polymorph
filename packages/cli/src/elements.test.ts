@@ -57,9 +57,10 @@ const registry: Registry = {
   })),
 }
 
+/** The checkout's programs, as its bin names them. */
 const programs = {
-  mcp: resolve(ROOT, 'packages/mcp/bin/polymorph-mcp.js'),
-  emit: resolve(ROOT, 'packages/spec/bin/emit.js'),
+  mcp: { command: 'node', args: [resolve(ROOT, 'packages/mcp/bin/polymorph-mcp.js')] },
+  emit: { command: process.execPath, args: [resolve(ROOT, 'packages/spec/bin/emit.js')] },
 }
 
 const temporaries: string[] = []
@@ -176,15 +177,15 @@ describe('polymorph init --framework elements', () => {
 
   it('writes the elements card and an agent’s notes, and no package, lint config or build', () => {
     expect(read(site, 'polymorph/system-card.md')).toContain('`<poly-button>`')
-    const agents = read(site, 'AGENTS.md')
+    const agents = read(site, 'AGENTS.md').replace(/\s+/g, ' ')
     expect(agents).toContain('`<poly-third-party library="…" reason="…">`')
     expect(agents).toContain('The red rules do not read HTML')
     expect(agents).toContain('`<html data-agent="on-call">`')
-    expect(JSON.parse(read(site, '.mcp.json')).mcpServers.polymorph.args).toEqual([
-      programs.mcp,
-      '--project',
-      '.',
-    ])
+    expect(agents).toContain('card --framework elements')
+    expect(JSON.parse(read(site, '.mcp.json')).mcpServers.polymorph).toEqual({
+      command: 'node',
+      args: [...programs.mcp.args, '--project', '.'],
+    })
     for (const file of ['package.json', '.npmrc', 'eslint.config.js', 'vite.config.ts']) {
       expect(existsSync(resolve(site, file)), file).toBe(false)
     }

@@ -1,11 +1,13 @@
+import { PUBLISHED_NAMES, TOOLS_PACKAGE } from '@polymorph/registry'
+
 /**
  * What `polymorph init --framework <name>` writes for an app in Vue, Svelte,
  * Solid or Angular, where it differs from the React app: the framework and its
  * tools in the manifest, the scripts, the entry, the Vite config, the
- * container and the agent notes, and where the welcome screen is emitted.
- * Everything else (the theme, the stylesheet rules, the MCP config, the card
- * and the lint fragment for the framework) is written by `init.ts` from the
- * registry for every framework alike. Each framework's values are in its own module
+ * container, and where the welcome screen is emitted. Everything else (the
+ * theme, the stylesheet rules, the agent files and the lint fragment for the
+ * framework) is written by `init.ts` from the registry for every framework
+ * alike. Each framework's values are in its own module
  * (`init-vue.ts`, `init-svelte.ts`, `init-solid.ts`, `init-angular.ts`).
  */
 export interface FrameworkApp {
@@ -33,8 +35,33 @@ export interface FrameworkApp {
   welcome: string
   /** The container that owns the state and renders the welcome screen. */
   app: { path: string; contents: string }
-  agents: string
 }
+
+/**
+ * Where the CLI that writes the app runs from: a checkout of this repository,
+ * or the published tools (`@metamorph-labs/polymorph`). What `init` writes for
+ * an agent depends on it. From a checkout, `.mcp.json` runs that checkout's
+ * server by a path that belongs to one machine. From the published tools, it
+ * runs the server with `npx`, which works on any machine.
+ */
+export type Origin = 'checkout' | 'published'
+
+/** A program a new app runs: a command, and the arguments that come before its own. */
+export interface Program {
+  command: string
+  args: readonly string[]
+}
+
+/** `.mcp.json`: the MCP server, run against the app it is in. */
+export function mcpConfig(mcp: Program): string {
+  const config = {
+    mcpServers: { polymorph: { command: mcp.command, args: [...mcp.args, '--project', '.'] } },
+  }
+  return `${JSON.stringify(config, null, 2)}\n`
+}
+
+/** The published tools, by the name `npx` runs them with. */
+export const TOOLS_NAME = PUBLISHED_NAMES[TOOLS_PACKAGE] as string
 
 /**
  * The welcome screen of an app in Vue, Svelte, Solid or Angular, as a spec:

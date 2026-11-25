@@ -467,7 +467,25 @@ function holds(check, elements) {
  * lists them. A document that cannot be read meets none.
  */
 export function unmet(requirements, mode, document) {
-  const elements = elementsOf(mode, document)
+  return unmetIn(requirements, elementsOf(mode, document))
+}
+
+/**
+ * The requirements a screen written as several documents does not meet, each
+ * given as `{ mode, document }`. The project lane needs it: a harness may
+ * write one screen as two specs, or as a module and the helpers it imports.
+ * The documents' elements are read together, as one document's are. A
+ * document that cannot be read adds none, and when none can be read, no
+ * requirement is met.
+ */
+export function unmetAcross(requirements, documents) {
+  const read = documents
+    .map(({ mode, document }) => elementsOf(mode, document))
+    .filter((elements) => elements !== null)
+  return unmetIn(requirements, read.length === 0 ? null : read.flat())
+}
+
+function unmetIn(requirements, elements) {
   return requirements
     .filter((requirement) => elements === null || !holds(requirement.check, elements))
     .map((requirement) => requirement.id)

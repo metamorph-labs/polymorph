@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "A results file of the agent eval: a run of the `spec` or `tsx` mode, or of the run-time lane (`runtime`).",
+  "description": "A results file of the agent eval: a run of the `spec` or `tsx` mode, of the run-time lane (`runtime`), or of the project lane (`project`).",
   "anyOf": [
     {
       "type": "object",
@@ -27,14 +27,14 @@
         },
         "runner": {
           "type": "string",
-          "description": "`api`: the harness sent each request to the Messages API. `cli`: each run went through `claude -p`, with the same tools served over MCP. Both are measured the same way.",
-          "enum": ["api", "cli"]
+          "description": "`api`: the harness sent each request to the Messages API. `cli`: each run went through `claude -p`, and `codex`: through `codex exec`, with the same tools served over MCP. All three are measured the same way, apart from what Codex does not report.",
+          "enum": ["api", "cli", "codex"]
         },
         "cliVersion": {
           "anyOf": [
             {
               "type": "string",
-              "description": "The Claude Code version the CLI runner ran, as `claude --version` prints it; `scripted` for its stand-in. Null for the API runner."
+              "description": "The version of the harness the runner ran, as its `--version` prints it: Claude Code for the `cli` runner, Codex for the `codex` runner; `scripted` for their stand-ins. Null for the API runner."
             },
             { "type": "null" }
           ]
@@ -55,8 +55,15 @@
               "properties": {
                 "reason": {
                   "type": "string",
-                  "description": "`api`: the Messages API refused, or kept failing. `cli`: the CLI failed, or reported an error, such as one from the API. `usage-limit`: the CLI reported a usage or rate limit on the account it is signed in to. `tokens-per-run`, `tokens-total`: a token ceiling was reached.",
-                  "enum": ["api", "cli", "usage-limit", "tokens-per-run", "tokens-total"]
+                  "description": "`api`: the Messages API refused, or kept failing. `cli`: the harness the runner started (Claude Code or Codex) failed, or reported an error, such as one from the API. `usage-limit`: the harness reported a usage or rate limit on the account it is signed in to. `tokens-per-run`, `tokens-total`: a token ceiling was reached. `tokens-unknown`: `--max-tokens-total` was given, and a run ended before its harness reported its tokens, so the ceiling could no longer be held.",
+                  "enum": [
+                    "api",
+                    "cli",
+                    "usage-limit",
+                    "tokens-per-run",
+                    "tokens-total",
+                    "tokens-unknown"
+                  ]
                 },
                 "brief": { "type": "string", "description": "The brief whose run was under way." },
                 "run": { "type": "integer", "description": "Which run of that brief." },
@@ -110,12 +117,17 @@
             "maxTokens": { "type": "integer", "description": "`max_tokens` on every request." },
             "effort": {
               "type": "string",
-              "description": "The effort sent as `output_config.effort`, or passed to the CLI as `--effort`; `default` sends none, so the model’s own default applies, or the CLI’s.",
+              "description": "The effort sent as `output_config.effort`, passed to Claude Code as `--effort`, or to Codex as `model_reasoning_effort`; `default` sends none, so the model’s own default applies, or the harness’s own.",
               "enum": ["default", "low", "medium", "high", "xhigh", "max"]
             },
             "maxTokensPerRun": {
-              "type": "integer",
-              "description": "The token ceiling per run, counted as `inputTokens`, `outputTokens` and `discardedTokens` together. No request starts once a run has reached it."
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "description": "The token ceiling per run, counted as `inputTokens`, `outputTokens` and `discardedTokens` together. No request starts once a run has reached it. Null for the `codex` runner: Codex reports its tokens only when its turn completes, so no ceiling per run can be held."
+                },
+                { "type": "null" }
+              ]
             },
             "maxTokensTotal": {
               "type": "integer",
@@ -315,7 +327,7 @@
                   "anyOf": [
                     {
                       "type": "integer",
-                      "description": "Mean input tokens per run, cached and uncached together."
+                      "description": "Mean input tokens per run, cached and uncached together, over the runs that report them. Null when none does."
                     },
                     { "type": "null" }
                   ]
@@ -324,7 +336,7 @@
                   "anyOf": [
                     {
                       "type": "integer",
-                      "description": "Mean output tokens per run, thinking included."
+                      "description": "Mean output tokens per run, thinking included, over the runs that report them."
                     },
                     { "type": "null" }
                   ]
@@ -339,16 +351,31 @@
                   ]
                 },
                 "retries": {
-                  "type": "integer",
-                  "description": "Requests sent again after a transient failure, summed over every run."
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Requests sent again after a transient failure, summed over the runs that report them. Null when no run does: Codex reports none."
+                    },
+                    { "type": "null" }
+                  ]
                 },
                 "backoffMs": {
-                  "type": "integer",
-                  "description": "Time spent waiting to send a request again, summed over every run."
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Time spent waiting to send a request again, summed over the runs that report it. Null when no run does."
+                    },
+                    { "type": "null" }
+                  ]
                 },
                 "discardedTokens": {
-                  "type": "integer",
-                  "description": "Tokens of attempts that broke off and were retried, summed over every run."
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Tokens of attempts that broke off and were retried, summed over the runs that report them. Null when no run does."
+                    },
+                    { "type": "null" }
+                  ]
                 }
               },
               "required": [
@@ -511,7 +538,7 @@
                     "anyOf": [
                       {
                         "type": "integer",
-                        "description": "Mean input tokens per run, cached and uncached together."
+                        "description": "Mean input tokens per run, cached and uncached together, over the runs that report them. Null when none does."
                       },
                       { "type": "null" }
                     ]
@@ -520,7 +547,7 @@
                     "anyOf": [
                       {
                         "type": "integer",
-                        "description": "Mean output tokens per run, thinking included."
+                        "description": "Mean output tokens per run, thinking included, over the runs that report them."
                       },
                       { "type": "null" }
                     ]
@@ -535,16 +562,31 @@
                     ]
                   },
                   "retries": {
-                    "type": "integer",
-                    "description": "Requests sent again after a transient failure, summed over every run."
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Requests sent again after a transient failure, summed over the runs that report them. Null when no run does: Codex reports none."
+                      },
+                      { "type": "null" }
+                    ]
                   },
                   "backoffMs": {
-                    "type": "integer",
-                    "description": "Time spent waiting to send a request again, summed over every run."
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Time spent waiting to send a request again, summed over the runs that report it. Null when no run does."
+                      },
+                      { "type": "null" }
+                    ]
                   },
                   "discardedTokens": {
-                    "type": "integer",
-                    "description": "Tokens of attempts that broke off and were retried, summed over every run."
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Tokens of attempts that broke off and were retried, summed over the runs that report them. Null when no run does."
+                      },
+                      { "type": "null" }
+                    ]
                   }
                 },
                 "required": [
@@ -608,7 +650,7 @@
               },
               "ended": {
                 "type": "string",
-                "description": "`answered`: the model stopped. `cap`: the iteration cap was reached with the last `validate` call unlawful. `turns`: the request limit was reached. `max_tokens`: a response was cut off. `refusal`: the model declined. `harness`: the harness itself failed, so the run measures nothing about the model.",
+                "description": "`answered`: the model stopped. `cap`: the iteration cap was reached with the last `validate` call unlawful. `turns`: the request limit was reached; Codex reports no request, so for the `codex` runner it is counted in tool calls. `max_tokens`: a response was cut off. `refusal`: the model declined. `harness`: the harness itself failed, so the run measures nothing about the model.",
                 "enum": ["answered", "cap", "turns", "max_tokens", "refusal", "harness"]
               },
               "harnessFault": {
@@ -621,40 +663,80 @@
                 ]
               },
               "inputTokens": {
-                "type": "integer",
-                "description": "Every input token the model read across the run: uncached, cache writes and cache reads."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Every input token the model read across the run: uncached, cache writes and cache reads. Null when the harness did not report it: Codex reports its tokens only when it finishes on its own."
+                  },
+                  { "type": "null" }
+                ]
               },
               "cacheReadTokens": {
-                "type": "integer",
-                "description": "The part of `inputTokens` read from the prompt cache."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "The part of `inputTokens` read from the prompt cache."
+                  },
+                  { "type": "null" }
+                ]
               },
               "cacheWriteTokens": {
-                "type": "integer",
-                "description": "The part of `inputTokens` written to the prompt cache."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "The part of `inputTokens` written to the prompt cache. Null where the harness reports no such part."
+                  },
+                  { "type": "null" }
+                ]
               },
               "outputTokens": {
-                "type": "integer",
-                "description": "Every output token across the run, thinking included."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Every output token across the run, thinking included."
+                  },
+                  { "type": "null" }
+                ]
               },
               "discardedTokens": {
-                "type": "integer",
-                "description": "Tokens of attempts that broke off mid-stream and were sent again, as far as their usage was reported. Billed, but in neither `inputTokens` nor `outputTokens`."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Tokens of attempts that broke off mid-stream and were sent again, as far as their usage was reported. Billed, but in neither `inputTokens` nor `outputTokens`. Null for the `codex` runner, because Codex does not report them."
+                  },
+                  { "type": "null" }
+                ]
               },
               "wallMs": {
                 "type": "integer",
                 "description": "Wall-clock time from the first request to the end of the run, tools included and retry waits (`backoffMs`) left out."
               },
               "retries": {
-                "type": "integer",
-                "description": "Requests sent again after a transient failure."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Requests sent again after a transient failure. Null for the `codex` runner, because Codex does not report them."
+                  },
+                  { "type": "null" }
+                ]
               },
               "backoffMs": {
-                "type": "integer",
-                "description": "Time spent waiting before those requests, in milliseconds."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Time spent waiting before those requests, in milliseconds. Null for the `codex` runner."
+                  },
+                  { "type": "null" }
+                ]
               },
               "turns": {
-                "type": "integer",
-                "description": "Messages API requests the run made, retries not counted, through either runner."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Messages API requests the run made, retries not counted, through the `api` or the `cli` runner. Null for the `codex` runner, because Codex reports no request."
+                  },
+                  { "type": "null" }
+                ]
               },
               "toolCalls": {
                 "type": "object",
@@ -723,6 +805,10 @@
                   "required": ["call", "fatal", "faults", "violations", "contract"],
                   "additionalProperties": false
                 }
+              },
+              "planUpdates": {
+                "type": "integer",
+                "description": "How often Codex started or updated its plan (its `todo_list` items). Its plan tool, which no setting turns off, writes nothing and calls nothing. Present for the `codex` runner only."
               }
             },
             "required": [
@@ -793,14 +879,14 @@
         },
         "runner": {
           "type": "string",
-          "description": "`api`: the harness sent the request to the Messages API. `cli`: each run went through `claude -p` with no tool and no MCP server, stopped after its first response.",
-          "enum": ["api", "cli"]
+          "description": "`api`: the harness sent the request to the Messages API. `cli`: each run went through `claude -p` with no tool and no MCP server, stopped after its first response. `codex`: each run went through `codex exec` with no MCP server and its own tools turned off.",
+          "enum": ["api", "cli", "codex"]
         },
         "cliVersion": {
           "anyOf": [
             {
               "type": "string",
-              "description": "The Claude Code version the CLI runner ran, as `claude --version` prints it; `scripted` for its stand-in. Null for the API runner."
+              "description": "The version of the harness the runner ran, as its `--version` prints it: Claude Code for the `cli` runner, Codex for the `codex` runner; `scripted` for their stand-ins. Null for the API runner."
             },
             { "type": "null" }
           ]
@@ -821,8 +907,15 @@
               "properties": {
                 "reason": {
                   "type": "string",
-                  "description": "`api`: the Messages API refused, or kept failing. `cli`: the CLI failed, or reported an error, such as one from the API. `usage-limit`: the CLI reported a usage or rate limit on the account it is signed in to. `tokens-per-run`, `tokens-total`: a token ceiling was reached.",
-                  "enum": ["api", "cli", "usage-limit", "tokens-per-run", "tokens-total"]
+                  "description": "`api`: the Messages API refused, or kept failing. `cli`: the harness the runner started (Claude Code or Codex) failed, or reported an error, such as one from the API. `usage-limit`: the harness reported a usage or rate limit on the account it is signed in to. `tokens-per-run`, `tokens-total`: a token ceiling was reached. `tokens-unknown`: `--max-tokens-total` was given, and a run ended before its harness reported its tokens, so the ceiling could no longer be held.",
+                  "enum": [
+                    "api",
+                    "cli",
+                    "usage-limit",
+                    "tokens-per-run",
+                    "tokens-total",
+                    "tokens-unknown"
+                  ]
                 },
                 "brief": { "type": "string", "description": "The brief whose run was under way." },
                 "run": { "type": "integer", "description": "Which run of that brief." },
@@ -871,22 +964,27 @@
             "maxTokens": { "type": "integer", "description": "`max_tokens` on the request." },
             "effort": {
               "type": "string",
-              "description": "The effort sent as `output_config.effort`, or passed to the CLI as `--effort`; `default` sends none, so the model’s own default applies, or the CLI’s.",
+              "description": "The effort sent as `output_config.effort`, passed to Claude Code as `--effort`, or to Codex as `model_reasoning_effort`; `default` sends none, so the model’s own default applies, or the harness’s own.",
               "enum": ["default", "low", "medium", "high", "xhigh", "max"]
             },
             "thinking": {
               "anyOf": [
                 {
                   "type": "string",
-                  "description": "What the API runner sent as `thinking.type`. Null for the CLI runner, which chooses its own.",
+                  "description": "What the API runner sent as `thinking.type`. Null for the `cli` and `codex` runners, whose harness chooses its own.",
                   "enum": ["adaptive", "disabled", "between_tools"]
                 },
                 { "type": "null" }
               ]
             },
             "maxTokensPerRun": {
-              "type": "integer",
-              "description": "The token ceiling per run, counted as `inputTokens`, `outputTokens` and `discardedTokens` together. No request starts once a run has reached it."
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "description": "The token ceiling per run, counted as `inputTokens`, `outputTokens` and `discardedTokens` together. No request starts once a run has reached it. Null for the `codex` runner: Codex reports its tokens only when its turn completes, so no ceiling per run can be held."
+                },
+                { "type": "null" }
+              ]
             },
             "maxTokensTotal": {
               "type": "integer",
@@ -1123,7 +1221,7 @@
                   "anyOf": [
                     {
                       "type": "integer",
-                      "description": "Mean time to the first text of the answer, in milliseconds, over the measured runs that have one. Null when none has: the CLI runner measures none."
+                      "description": "Mean time to the first text of the answer, in milliseconds, over the measured runs that have one. Null when none has: the `cli` and `codex` runners measure none."
                     },
                     { "type": "null" }
                   ]
@@ -1168,16 +1266,31 @@
                   ]
                 },
                 "retries": {
-                  "type": "integer",
-                  "description": "Requests sent again after a transient failure, summed over every run."
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Requests sent again after a transient failure, summed over the runs that report them. Null when no run does: Codex reports none."
+                    },
+                    { "type": "null" }
+                  ]
                 },
                 "backoffMs": {
-                  "type": "integer",
-                  "description": "Time spent waiting to send a request again, summed over every run."
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Time spent waiting to send a request again, summed over the runs that report it. Null when no run does."
+                    },
+                    { "type": "null" }
+                  ]
                 },
                 "discardedTokens": {
-                  "type": "integer",
-                  "description": "Tokens of attempts that broke off and were retried, summed over every run."
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Tokens of attempts that broke off and were retried, summed over the runs that report them. Null when no run does."
+                    },
+                    { "type": "null" }
+                  ]
                 }
               },
               "required": [
@@ -1364,7 +1477,7 @@
                     "anyOf": [
                       {
                         "type": "integer",
-                        "description": "Mean time to the first text of the answer, in milliseconds, over the measured runs that have one. Null when none has: the CLI runner measures none."
+                        "description": "Mean time to the first text of the answer, in milliseconds, over the measured runs that have one. Null when none has: the `cli` and `codex` runners measure none."
                       },
                       { "type": "null" }
                     ]
@@ -1409,16 +1522,31 @@
                     ]
                   },
                   "retries": {
-                    "type": "integer",
-                    "description": "Requests sent again after a transient failure, summed over every run."
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Requests sent again after a transient failure, summed over the runs that report them. Null when no run does: Codex reports none."
+                      },
+                      { "type": "null" }
+                    ]
                   },
                   "backoffMs": {
-                    "type": "integer",
-                    "description": "Time spent waiting to send a request again, summed over every run."
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Time spent waiting to send a request again, summed over the runs that report it. Null when no run does."
+                      },
+                      { "type": "null" }
+                    ]
                   },
                   "discardedTokens": {
-                    "type": "integer",
-                    "description": "Tokens of attempts that broke off and were retried, summed over every run."
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Tokens of attempts that broke off and were retried, summed over the runs that report them. Null when no run does."
+                      },
+                      { "type": "null" }
+                    ]
                   }
                 },
                 "required": [
@@ -1507,49 +1635,93 @@
                 "items": { "type": "string" }
               },
               "inputTokens": {
-                "type": "integer",
-                "description": "Every input token the request read: uncached, cache writes and cache reads together."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Every input token the request read: uncached, cache writes and cache reads together. Null when the harness did not report it."
+                  },
+                  { "type": "null" }
+                ]
               },
               "uncachedInputTokens": {
-                "type": "integer",
-                "description": "The part of `inputTokens` the API reported as `input_tokens`."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "The part of `inputTokens` the API reported as `input_tokens`; for Codex, its input less what it reported as cached."
+                  },
+                  { "type": "null" }
+                ]
               },
               "cacheWriteTokens": {
-                "type": "integer",
-                "description": "The part of `inputTokens` written to the prompt cache (`cache_creation_input_tokens`)."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "The part of `inputTokens` written to the prompt cache (`cache_creation_input_tokens`). Null where the harness reports no such part."
+                  },
+                  { "type": "null" }
+                ]
               },
               "cacheReadTokens": {
-                "type": "integer",
-                "description": "The part of `inputTokens` read from the prompt cache (`cache_read_input_tokens`)."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "The part of `inputTokens` read from the prompt cache (`cache_read_input_tokens`)."
+                  },
+                  { "type": "null" }
+                ]
               },
               "outputTokens": {
-                "type": "integer",
-                "description": "Every output token of the answer, thinking included."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Every output token of the answer, thinking included."
+                  },
+                  { "type": "null" }
+                ]
               },
               "discardedTokens": {
-                "type": "integer",
-                "description": "Tokens of attempts that broke off mid-stream and were sent again, as far as their usage was reported. Billed, but in neither `inputTokens` nor `outputTokens`."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Tokens of attempts that broke off mid-stream and were sent again, as far as their usage was reported. Billed, but in neither `inputTokens` nor `outputTokens`. Null for the `codex` runner, because Codex does not report them."
+                  },
+                  { "type": "null" }
+                ]
               },
               "firstTokenMs": {
                 "anyOf": [
                   {
                     "type": "integer",
-                    "description": "Milliseconds from sending the request that was answered to the first text of its answer. Thinking is not text, so time spent thinking is inside it. Null when the answer has no text, and for the CLI runner, which does not report when it sends a request."
+                    "description": "Milliseconds from sending the request that was answered to the first text of its answer. Thinking is not text, so time spent thinking is inside it. Null when the answer has no text, and for the `cli` and `codex` runners, which do not report when they send a request."
                   },
                   { "type": "null" }
                 ]
               },
               "wallMs": {
                 "type": "integer",
-                "description": "Milliseconds from the first request to the end of the answer, retry waits (`backoffMs`) left out; for the CLI runner, from the CLI’s start-up report."
+                "description": "Milliseconds from the first request to the end of the answer, retry waits (`backoffMs`) left out; for the `cli` and `codex` runners, from the harness’s start-up report."
               },
               "retries": {
-                "type": "integer",
-                "description": "Requests sent again after a transient failure."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Requests sent again after a transient failure. Null for the `codex` runner."
+                  },
+                  { "type": "null" }
+                ]
               },
               "backoffMs": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Time spent waiting before those requests, in milliseconds. Null for the `codex` runner."
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "planUpdates": {
                 "type": "integer",
-                "description": "Time spent waiting before those requests, in milliseconds."
+                "description": "How often Codex started or updated its plan (its `todo_list` items). Its plan tool, which no setting turns off, writes nothing and calls nothing. Present for the `codex` runner only."
               }
             },
             "required": [
@@ -1591,6 +1763,969 @@
         "briefs",
         "settings",
         "card",
+        "outputs",
+        "requirements",
+        "summary",
+        "records"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "description": "One run of the agent eval’s project lane: per-run measurements and their summary, per brief and overall.",
+      "properties": {
+        "schema": {
+          "type": "string",
+          "description": "Identifies the shape. Bumped only by a breaking change.",
+          "enum": ["polymorph-eval/1"]
+        },
+        "at": {
+          "type": "string",
+          "description": "When the run started, as an ISO timestamp in UTC.",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+        },
+        "model": {
+          "type": "string",
+          "description": "The model id, or `fake` for the scripted model."
+        },
+        "mode": {
+          "type": "string",
+          "description": "The project lane: a harness started in an app the tools set up, given the brief as a request and nothing else from the eval, and judged on the project it leaves.",
+          "enum": ["project"]
+        },
+        "runner": {
+          "type": "string",
+          "description": "`cli`: Claude Code, through `claude -p`. `codex`: Codex, through `codex exec`.",
+          "enum": ["cli", "codex"]
+        },
+        "cliVersion": {
+          "type": "string",
+          "description": "The version of the harness the runner ran, as its `--version` prints it: Claude Code for the `cli` runner, Codex for the `codex` runner; `scripted` for their stand-ins."
+        },
+        "fake": {
+          "type": "boolean",
+          "description": "True for the scripted model. A fake run measures the harness."
+        },
+        "partial": {
+          "type": "boolean",
+          "description": "True for a checkpoint, written after every run while the eval is under way, and for an eval that stopped before every run finished. A partial file is never the number."
+        },
+        "stopped": {
+          "anyOf": [
+            {
+              "type": "object",
+              "description": "Why the eval stopped early; null when it did not.",
+              "properties": {
+                "reason": {
+                  "type": "string",
+                  "description": "`api`: the Messages API refused, or kept failing. `cli`: the harness the runner started (Claude Code or Codex) failed, or reported an error, such as one from the API. `usage-limit`: the harness reported a usage or rate limit on the account it is signed in to. `tokens-per-run`, `tokens-total`: a token ceiling was reached. `tokens-unknown`: `--max-tokens-total` was given, and a run ended before its harness reported its tokens, so the ceiling could no longer be held.",
+                  "enum": [
+                    "api",
+                    "cli",
+                    "usage-limit",
+                    "tokens-per-run",
+                    "tokens-total",
+                    "tokens-unknown"
+                  ]
+                },
+                "brief": { "type": "string", "description": "The brief whose run was under way." },
+                "run": { "type": "integer", "description": "Which run of that brief." },
+                "message": { "type": "string", "description": "What stopped it." },
+                "tokens": {
+                  "type": "integer",
+                  "description": "Tokens the unfinished run had spent, discarded attempts included. It has no record."
+                }
+              },
+              "required": ["reason", "brief", "run", "message", "tokens"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "polymorph": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "string",
+              "description": "The registry’s version: the release that was measured."
+            },
+            "commit": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "description": "The commit the eval ran on, when there is one."
+                },
+                { "type": "null" }
+              ]
+            }
+          },
+          "required": ["version", "commit"],
+          "additionalProperties": false
+        },
+        "briefs": {
+          "type": "array",
+          "description": "Every brief in `eval/briefs/` when the eval ran, by name. Only a run over all of them can be the number; one over fewer is a smoke run.",
+          "items": { "type": "string" }
+        },
+        "settings": {
+          "type": "object",
+          "properties": {
+            "briefs": { "type": "string", "description": "The glob the briefs were chosen by." },
+            "runs": { "type": "integer", "description": "Runs per brief." },
+            "framework": {
+              "type": "string",
+              "description": "The framework `polymorph init` wrote the app in."
+            },
+            "maxTurns": {
+              "type": "integer",
+              "description": "The turn budget: responses for Claude Code, tool calls for Codex. The run is stopped at it and judged."
+            },
+            "maxMinutes": {
+              "type": "number",
+              "description": "The time budget per run, in minutes."
+            },
+            "effort": {
+              "type": "string",
+              "description": "The effort sent as `output_config.effort`, passed to Claude Code as `--effort`, or to Codex as `model_reasoning_effort`; `default` sends none, so the model’s own default applies, or the harness’s own.",
+              "enum": ["default", "low", "medium", "high", "xhigh", "max"]
+            },
+            "maxTokensPerRun": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "description": "The token ceiling per run, counted as `inputTokens`, `outputTokens` and `discardedTokens` together. No request starts once a run has reached it. Null for the `codex` runner: Codex reports its tokens only when its turn completes, so no ceiling per run can be held."
+                },
+                { "type": "null" }
+              ]
+            },
+            "maxTokensTotal": {
+              "type": "integer",
+              "description": "The same ceiling over the whole eval."
+            }
+          },
+          "required": [
+            "briefs",
+            "runs",
+            "framework",
+            "maxTurns",
+            "maxMinutes",
+            "effort",
+            "maxTokensPerRun",
+            "maxTokensTotal"
+          ],
+          "additionalProperties": false
+        },
+        "project": {
+          "type": "object",
+          "description": "How the app was set up, once per eval, in a template every run copies: `polymorph init`, the install, and `polymorph agents`.",
+          "properties": {
+            "tools": {
+              "type": "object",
+              "description": "The tools that set the app up and judged it.",
+              "properties": {
+                "from": {
+                  "type": "string",
+                  "description": "Where the tools came from: this checkout’s bins, a directory holding a bin, or a packed tarball of the tools package, installed for the eval.",
+                  "enum": ["checkout", "directory", "tarball"]
+                },
+                "path": {
+                  "type": "string",
+                  "description": "The bin the lane ran, or the tarball it installed."
+                },
+                "version": {
+                  "anyOf": [
+                    { "type": "string", "description": "The version their `package.json` names." },
+                    { "type": "null" }
+                  ]
+                }
+              },
+              "required": ["from", "path", "version"],
+              "additionalProperties": false
+            },
+            "installed": {
+              "type": "boolean",
+              "description": "Whether the app’s packages were installed, so its typecheck and build could run. A scripted harness and `--no-install` install nothing."
+            },
+            "agents": {
+              "type": "object",
+              "description": "What the tools wrote for the harness besides `init`.",
+              "properties": {
+                "ran": {
+                  "type": "boolean",
+                  "description": "Whether `polymorph agents --harness <harness>` ran and succeeded. False when the tools have no such verb: the harness then has what `init` wrote."
+                },
+                "said": { "type": "string", "description": "The end of what the verb printed." }
+              },
+              "required": ["ran", "said"],
+              "additionalProperties": false
+            },
+            "mcpServers": {
+              "type": "array",
+              "description": "The MCP servers the project configures for the harness, by name.",
+              "items": { "type": "string" }
+            },
+            "harnessHome": {
+              "type": "string",
+              "description": "Where the harness kept its own state. `scratch`: a directory of each run’s own (Codex’s `CODEX_HOME`, always; Claude Code’s `CLAUDE_CONFIG_DIR`, when it signs in from its environment). `owner`: the owner’s, because Claude Code signed in with `/login` keys that sign-in to its configuration directory, so it wrote `~/.claude.json` and `~/.claude/`.",
+              "enum": ["scratch", "owner"]
+            }
+          },
+          "required": ["tools", "installed", "agents", "mcpServers", "harnessHome"],
+          "additionalProperties": false
+        },
+        "outputs": {
+          "type": "string",
+          "description": "The file beside this one that holds every run’s final document."
+        },
+        "requirements": {
+          "type": "array",
+          "description": "What each chosen brief required when the eval ran, in brief order. Absent in a results file written before requirements were judged.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "brief": {
+                "type": "string",
+                "description": "The brief these requirements belong to."
+              },
+              "digest": {
+                "type": "string",
+                "description": "A digest of the requirements as they were checked. Two results files whose digests differ for a brief judged it by different requirements, so their `meetsBrief` rates do not compare."
+              },
+              "requirements": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "The id a record’s `failedRequirements` names."
+                    },
+                    "says": {
+                      "type": "string",
+                      "description": "What the requirement asks for, in words."
+                    }
+                  },
+                  "required": ["id", "says"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": ["brief", "digest", "requirements"],
+            "additionalProperties": false
+          }
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "overall": {
+              "type": "object",
+              "properties": {
+                "runs": {
+                  "type": "integer",
+                  "description": "How many runs this summary covers, harness faults included."
+                },
+                "measured": {
+                  "type": "integer",
+                  "description": "How many of them the rates and means are over: every run that did not end in a harness fault. The size of the sample each interval is computed from."
+                },
+                "endings": {
+                  "type": "object",
+                  "description": "How the runs ended. A `harness` run is left out of every figure below; a run its budget stopped is judged on the project it left.",
+                  "properties": {
+                    "answered": { "type": "integer", "description": "Runs that ended `answered`." },
+                    "turns": { "type": "integer", "description": "Runs that ended `turns`." },
+                    "time": { "type": "integer", "description": "Runs that ended `time`." },
+                    "harness": { "type": "integer", "description": "Runs that ended `harness`." }
+                  },
+                  "required": ["answered", "turns", "time", "harness"],
+                  "additionalProperties": false
+                },
+                "lawfulRate": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "description": "The share of runs, from 0 to 1, whose project ends lawful. Null when no run was judged for it."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "lawfulInterval": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "description": "The 95% Wilson interval of `lawfulRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                      "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                      "required": ["low", "high"],
+                      "additionalProperties": false
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "lawfulMeasured": {
+                  "type": "integer",
+                  "description": "How many runs `lawfulRate` is over: every measured run."
+                },
+                "buildsRate": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "description": "The share of runs, from 0 to 1, whose project typechecks and builds. Null when no run was judged for it."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "buildsInterval": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "description": "The 95% Wilson interval of `buildsRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                      "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                      "required": ["low", "high"],
+                      "additionalProperties": false
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "buildsMeasured": {
+                  "type": "integer",
+                  "description": "How many runs `buildsRate` is over: the measured runs whose project was installed, so its typecheck and build ran."
+                },
+                "meetsBriefRate": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "description": "The share of runs, from 0 to 1, whose screen meets every requirement of its brief. Null when no run was judged for it."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "meetsBriefInterval": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "description": "The 95% Wilson interval of `meetsBriefRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                      "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                      "required": ["low", "high"],
+                      "additionalProperties": false
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "meetsBriefMeasured": {
+                  "type": "integer",
+                  "description": "How many runs `meetsBriefRate` is over: the measured runs whose screen could be read: a spec, a React or Solid module, or no screen at all."
+                },
+                "allThreeRate": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "description": "The share of runs, from 0 to 1, whose project ends lawful, builds and has a screen that meets its brief. Null when no run was judged for it."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "allThreeInterval": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "description": "The 95% Wilson interval of `allThreeRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                      "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                      "required": ["low", "high"],
+                      "additionalProperties": false
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "allThreeMeasured": {
+                  "type": "integer",
+                  "description": "How many runs `allThreeRate` is over: the measured runs judged for all three."
+                },
+                "failedRequirements": {
+                  "type": "object",
+                  "description": "Every requirement a measured run did not meet, as `<brief>/<id>`, counted over the runs.",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "description": "How many runs did not meet it."
+                  }
+                },
+                "meanInputTokens": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Mean input tokens per run, cached and uncached together, over the runs that report them. Null when none does."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "meanOutputTokens": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Mean output tokens per run, thinking included, over the runs that report them."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "meanWallMs": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Mean wall-clock time per run, in milliseconds, retry waits left out."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "mcpCalls": {
+                  "type": "object",
+                  "description": "Every MCP tool the harnesses called, by tool name, summed over the runs.",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "description": "Calls to it, summed over the runs."
+                  }
+                },
+                "verbs": {
+                  "type": "object",
+                  "description": "Every `polymorph` verb the harnesses ran in a shell command, summed.",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "description": "Shell commands that ran it, summed over the runs."
+                  }
+                },
+                "shellCommands": {
+                  "type": "integer",
+                  "description": "Shell commands the harnesses ran, summed over the runs."
+                },
+                "skills": {
+                  "type": "object",
+                  "description": "Every skill a harness loaded, by name, with the runs that loaded it.",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "description": "Runs that loaded it."
+                  }
+                },
+                "denied": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Tool calls the harnesses refused, summed over the runs that report them. Null when no run does."
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "retries": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Requests sent again after a transient failure, summed over the runs that report them. Null when no run does: Codex reports none."
+                    },
+                    { "type": "null" }
+                  ]
+                }
+              },
+              "required": [
+                "runs",
+                "measured",
+                "endings",
+                "lawfulRate",
+                "lawfulInterval",
+                "lawfulMeasured",
+                "buildsRate",
+                "buildsInterval",
+                "buildsMeasured",
+                "meetsBriefRate",
+                "meetsBriefInterval",
+                "meetsBriefMeasured",
+                "allThreeRate",
+                "allThreeInterval",
+                "allThreeMeasured",
+                "failedRequirements",
+                "meanInputTokens",
+                "meanOutputTokens",
+                "meanWallMs",
+                "mcpCalls",
+                "verbs",
+                "shellCommands",
+                "skills",
+                "denied",
+                "retries"
+              ],
+              "additionalProperties": false
+            },
+            "briefs": {
+              "type": "array",
+              "description": "One summary per brief chosen, in brief order, including briefs not yet run.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "brief": { "type": "string" },
+                  "runs": {
+                    "type": "integer",
+                    "description": "How many runs this summary covers, harness faults included."
+                  },
+                  "measured": {
+                    "type": "integer",
+                    "description": "How many of them the rates and means are over: every run that did not end in a harness fault. The size of the sample each interval is computed from."
+                  },
+                  "endings": {
+                    "type": "object",
+                    "description": "How the runs ended. A `harness` run is left out of every figure below; a run its budget stopped is judged on the project it left.",
+                    "properties": {
+                      "answered": {
+                        "type": "integer",
+                        "description": "Runs that ended `answered`."
+                      },
+                      "turns": { "type": "integer", "description": "Runs that ended `turns`." },
+                      "time": { "type": "integer", "description": "Runs that ended `time`." },
+                      "harness": { "type": "integer", "description": "Runs that ended `harness`." }
+                    },
+                    "required": ["answered", "turns", "time", "harness"],
+                    "additionalProperties": false
+                  },
+                  "lawfulRate": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "description": "The share of runs, from 0 to 1, whose project ends lawful. Null when no run was judged for it."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "lawfulInterval": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "description": "The 95% Wilson interval of `lawfulRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                        "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                        "required": ["low", "high"],
+                        "additionalProperties": false
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "lawfulMeasured": {
+                    "type": "integer",
+                    "description": "How many runs `lawfulRate` is over: every measured run."
+                  },
+                  "buildsRate": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "description": "The share of runs, from 0 to 1, whose project typechecks and builds. Null when no run was judged for it."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "buildsInterval": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "description": "The 95% Wilson interval of `buildsRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                        "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                        "required": ["low", "high"],
+                        "additionalProperties": false
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "buildsMeasured": {
+                    "type": "integer",
+                    "description": "How many runs `buildsRate` is over: the measured runs whose project was installed, so its typecheck and build ran."
+                  },
+                  "meetsBriefRate": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "description": "The share of runs, from 0 to 1, whose screen meets every requirement of its brief. Null when no run was judged for it."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "meetsBriefInterval": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "description": "The 95% Wilson interval of `meetsBriefRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                        "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                        "required": ["low", "high"],
+                        "additionalProperties": false
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "meetsBriefMeasured": {
+                    "type": "integer",
+                    "description": "How many runs `meetsBriefRate` is over: the measured runs whose screen could be read: a spec, a React or Solid module, or no screen at all."
+                  },
+                  "allThreeRate": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "description": "The share of runs, from 0 to 1, whose project ends lawful, builds and has a screen that meets its brief. Null when no run was judged for it."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "allThreeInterval": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "description": "The 95% Wilson interval of `allThreeRate`, from 0 to 1: the rates the measured runs are consistent with.",
+                        "properties": { "low": { "type": "number" }, "high": { "type": "number" } },
+                        "required": ["low", "high"],
+                        "additionalProperties": false
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "allThreeMeasured": {
+                    "type": "integer",
+                    "description": "How many runs `allThreeRate` is over: the measured runs judged for all three."
+                  },
+                  "failedRequirements": {
+                    "type": "object",
+                    "description": "Every requirement a measured run did not meet, as `<brief>/<id>`, counted over the runs.",
+                    "additionalProperties": {
+                      "type": "integer",
+                      "description": "How many runs did not meet it."
+                    }
+                  },
+                  "meanInputTokens": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Mean input tokens per run, cached and uncached together, over the runs that report them. Null when none does."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "meanOutputTokens": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Mean output tokens per run, thinking included, over the runs that report them."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "meanWallMs": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Mean wall-clock time per run, in milliseconds, retry waits left out."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "mcpCalls": {
+                    "type": "object",
+                    "description": "Every MCP tool the harnesses called, by tool name, summed over the runs.",
+                    "additionalProperties": {
+                      "type": "integer",
+                      "description": "Calls to it, summed over the runs."
+                    }
+                  },
+                  "verbs": {
+                    "type": "object",
+                    "description": "Every `polymorph` verb the harnesses ran in a shell command, summed.",
+                    "additionalProperties": {
+                      "type": "integer",
+                      "description": "Shell commands that ran it, summed over the runs."
+                    }
+                  },
+                  "shellCommands": {
+                    "type": "integer",
+                    "description": "Shell commands the harnesses ran, summed over the runs."
+                  },
+                  "skills": {
+                    "type": "object",
+                    "description": "Every skill a harness loaded, by name, with the runs that loaded it.",
+                    "additionalProperties": {
+                      "type": "integer",
+                      "description": "Runs that loaded it."
+                    }
+                  },
+                  "denied": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Tool calls the harnesses refused, summed over the runs that report them. Null when no run does."
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "retries": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Requests sent again after a transient failure, summed over the runs that report them. Null when no run does: Codex reports none."
+                      },
+                      { "type": "null" }
+                    ]
+                  }
+                },
+                "required": [
+                  "brief",
+                  "runs",
+                  "measured",
+                  "endings",
+                  "lawfulRate",
+                  "lawfulInterval",
+                  "lawfulMeasured",
+                  "buildsRate",
+                  "buildsInterval",
+                  "buildsMeasured",
+                  "meetsBriefRate",
+                  "meetsBriefInterval",
+                  "meetsBriefMeasured",
+                  "allThreeRate",
+                  "allThreeInterval",
+                  "allThreeMeasured",
+                  "failedRequirements",
+                  "meanInputTokens",
+                  "meanOutputTokens",
+                  "meanWallMs",
+                  "mcpCalls",
+                  "verbs",
+                  "shellCommands",
+                  "skills",
+                  "denied",
+                  "retries"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": ["overall", "briefs"],
+          "additionalProperties": false
+        },
+        "records": {
+          "type": "array",
+          "description": "One record per finished run, by brief and then by run.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "brief": {
+                "type": "string",
+                "description": "The brief’s file name in `eval/briefs/`, without `.md`."
+              },
+              "run": { "type": "integer", "description": "Which run of this brief, from 1." },
+              "lawful": {
+                "type": "boolean",
+                "description": "Whether the project ends lawful: `polymorph check` reads every file and reports no violation, and every spec the harness wrote under `src/screens/` passes the spec check `validate` runs. False for a run that ended `harness`."
+              },
+              "violations": {
+                "type": "array",
+                "description": "What made the project unlawful, as `path: rule: message`, in the words of the check that reported it, at most twenty.",
+                "items": { "type": "string" }
+              },
+              "builds": {
+                "anyOf": [
+                  {
+                    "type": "boolean",
+                    "description": "Whether the app’s `typecheck` and `build` scripts both pass at the end. Null when the app was not installed, so neither ran."
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "buildFault": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "The script that failed and the end of what it printed; null otherwise."
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "meetsBrief": {
+                "anyOf": [
+                  {
+                    "type": "boolean",
+                    "description": "Whether the screen the harness wrote meets every requirement of its brief (`eval/requirements/<brief>.json`). False when it wrote none, or only modules that hold none. Null when it wrote one the requirements cannot read: a Vue or Svelte single-file component, an Angular component, or a page that uses the elements."
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "failedRequirements": {
+                "type": "array",
+                "description": "The requirements the screen does not meet, by id, in the brief’s order: every one when the harness wrote no screen. Empty when the screen was not judged.",
+                "items": { "type": "string" }
+              },
+              "screen": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "description": "What was judged against the brief; null when the harness wrote no screen.",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "`spec`: specs the harness wrote under `src/screens/`, judged together. `tsx`: React or Solid modules it wrote under `src/`, judged together, which name the same members. `unread`: a Vue or Svelte single-file component, an Angular component or a page that uses the elements, which the requirements cannot read.",
+                        "enum": ["spec", "tsx", "unread"]
+                      },
+                      "files": {
+                        "type": "array",
+                        "description": "The files judged, relative to the project.",
+                        "items": { "type": "string" }
+                      }
+                    },
+                    "required": ["kind", "files"],
+                    "additionalProperties": false
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "written": {
+                "type": "array",
+                "description": "Every file the harness added or changed, relative to the project, outside `node_modules` and the build’s output.",
+                "items": { "type": "string" }
+              },
+              "ended": {
+                "type": "string",
+                "description": "`answered`: the harness finished on its own. `turns`: the turn budget stopped it (responses for Claude Code; tool calls for Codex, which reports no response). `time`: the time budget stopped it. `harness`: the eval failed, so the run measures nothing about the model.",
+                "enum": ["answered", "turns", "time", "harness"]
+              },
+              "harnessFault": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "What failed when the run ended `harness`; null for every other run."
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "inputTokens": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Every input token the harness reported, cached and uncached. Null when it reported none: Codex reports its tokens only when it finishes on its own."
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "cacheReadTokens": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "The part of `inputTokens` read from the prompt cache."
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "cacheWriteTokens": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "The part of `inputTokens` written to the prompt cache."
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "outputTokens": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Every output token the harness reported, thinking included."
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "wallMs": {
+                "type": "integer",
+                "description": "Milliseconds from the harness’s start-up report to its end."
+              },
+              "turns": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Responses the harness reported. Null for Codex, which reports none."
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "mcpCalls": {
+                "type": "object",
+                "description": "The MCP tools the harness called, by tool name.",
+                "additionalProperties": { "type": "integer", "description": "Calls to it." }
+              },
+              "verbs": {
+                "type": "object",
+                "description": "The `polymorph` verbs the harness ran in shell commands, by verb: through `npx`, `pnpm`, the bin by its path, or `polymorph` on the `PATH`.",
+                "additionalProperties": {
+                  "type": "integer",
+                  "description": "Shell commands that ran it."
+                }
+              },
+              "shellCommands": {
+                "type": "integer",
+                "description": "Shell commands the harness ran."
+              },
+              "skills": {
+                "type": "array",
+                "description": "The skills the harness loaded, by name: a Claude Code `Skill` call, or a `SKILL.md` the harness read.",
+                "items": { "type": "string" }
+              },
+              "denied": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Tool calls the harness refused: a permission Claude Code denied, a command Codex declined, or an MCP call it denied. Null when Claude Code was stopped before it reported its result, which is where it reports what it refused."
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "retries": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Requests the harness reported sending again after a transient failure. Null for Codex, which does not report them."
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": [
+              "brief",
+              "run",
+              "lawful",
+              "violations",
+              "builds",
+              "buildFault",
+              "meetsBrief",
+              "failedRequirements",
+              "screen",
+              "written",
+              "ended",
+              "harnessFault",
+              "inputTokens",
+              "cacheReadTokens",
+              "cacheWriteTokens",
+              "outputTokens",
+              "wallMs",
+              "turns",
+              "mcpCalls",
+              "verbs",
+              "shellCommands",
+              "skills",
+              "denied",
+              "retries"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "schema",
+        "at",
+        "model",
+        "mode",
+        "runner",
+        "cliVersion",
+        "fake",
+        "partial",
+        "stopped",
+        "polymorph",
+        "briefs",
+        "settings",
+        "project",
         "outputs",
         "requirements",
         "summary",

@@ -1,24 +1,24 @@
-import { existsSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import {
   PUBLISHED_NAMES as REGISTRY_NAMES,
   PUBLISHED_REGISTRY as REGISTRY_HOST,
+  TOOLS_PACKAGE,
 } from '@polymorph/registry'
 import { describe, expect, it } from 'vitest'
 
 import { READ_TOOL_NAMES, WRITE_TOOL_NAMES } from '../../../../packages/mcp/src/server'
-import { CLI_BIN as LLMS_CLI_BIN, LLMS_PATHS, MCP_BIN as LLMS_MCP_BIN } from '../llms'
+import { LLMS_PATHS } from '../llms'
 import {
   AGENT_FILES,
-  CLI_BIN,
-  MCP_BIN,
   MCP_READ_TOOLS,
   MCP_WRITE_TOOLS,
   PUBLISHED_NAMES,
   PUBLISHED_REGISTRY,
   PUBLISHED_SCOPE,
   REGISTRY_ACCESS,
+  TOOLS_NAME,
 } from './facts'
 
 /**
@@ -58,11 +58,12 @@ describe('the MCP server', () => {
 })
 
 describe('the commands and files', () => {
-  it('name bins that exist, the ones /llms.txt names', () => {
-    expect(CLI_BIN).toBe(LLMS_CLI_BIN)
-    expect(MCP_BIN).toBe(LLMS_MCP_BIN)
-    expect(existsSync(resolve(ROOT, CLI_BIN))).toBe(true)
-    expect(existsSync(resolve(ROOT, MCP_BIN))).toBe(true)
+  it('run the tools by the name the registry publishes them under, scoped', () => {
+    expect(TOOLS_NAME).toBe(REGISTRY_NAMES[TOOLS_PACKAGE])
+    expect(TOOLS_NAME.startsWith(`${PUBLISHED_SCOPE}/`)).toBe(true)
+    // The bins the published package carries, which a reader's `npx` runs.
+    const manifest = JSON.parse(readFileSync(resolve(ROOT, 'packages/tools/package.json'), 'utf8'))
+    expect(Object.keys((manifest as { bin: Record<string, string> }).bin)).toContain('polymorph')
   })
 
   it('link the files the site serves for agents', () => {

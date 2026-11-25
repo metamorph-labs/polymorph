@@ -60,3 +60,7 @@ platforms/dart/pubspec.lock
 # that ships it (packages/registry/src/screen-table.ts). Generated on every
 # install via `prepare`, never committed — for the same reason as /registry/.
 packages/screen/src/vocabulary.gen.ts
+
+# `polymorph render` writes its pictures beside the spec, in `<spec>.render/`; they
+# are output to look at, not sources.
+*.render/

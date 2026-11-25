@@ -5,11 +5,25 @@ import { fileURLToPath } from 'node:url'
 import { createJiti } from 'jiti'
 
 /**
- * The four tools the agent eval offers, shared by its two runners
+ * What loads a source file of the repository by its path from the root. The
+ * eval runs under node, which cannot import TypeScript with the repository's
+ * aliases, so it loads through `jiti`. A test passes its own `importModule`:
+ * a module loaded twice in one process, once by the test runner and once by
+ * `jiti`, is two scripts with one name, and the coverage of the two cannot be
+ * joined, so the file reports less than its tests cover.
+ */
+function loader(importModule) {
+  if (importModule !== undefined) return (path) => importModule(resolve(ROOT, path))
+  const jiti = createJiti(import.meta.url)
+  return (path) => jiti.import(resolve(ROOT, path))
+}
+
+/**
+ * The four tools the agent eval offers, shared by its runners
  * (`docs/verification.md`, "The agent eval"). `eval/run.mjs` answers the
  * Messages API runner's tool calls with them, and `eval/mcp.mjs` serves the
- * same functions to the Claude Code CLI over MCP, so both runners' models
- * read the same answers and are judged by the same check.
+ * same functions to Claude Code and Codex over MCP, so every runner's model
+ * reads the same answers and is judged by the same check.
  *
  * The `runtime` mode offers no tool. `loadScreen` loads what it uses instead:
  * the run-time card it sends, and the check and the reader it judges with.
@@ -36,16 +50,16 @@ const EXCERPT_LIMIT = 6000
  * does before it writes anything. A spec is lawful here only when the screen
  * it emits may be written.
  */
-export async function loadToolbox({ registry: built } = {}) {
-  const jiti = createJiti(import.meta.url)
-  const load = (path) => jiti.import(resolve(ROOT, path))
+export async function loadToolbox({ registry: built, importModule } = {}) {
+  const load = loader(importModule)
 
   const { jsonSchema, validate: validateShape } = await load('packages/registry/src/shape.ts')
   const mcp = await load('packages/mcp/src/tools.ts')
   const { withClimb } = await load('packages/mcp/src/violations.ts')
   const { emitCheckedScreen, validateSpec } = await load('packages/spec/src/lawful.ts')
   const { SCREEN_SHAPE } = await load('packages/spec/src/schema.ts')
-  const { ENDINGS, RESULTS_SHAPE, RUNTIME_ENDINGS } = await load('eval/results-shape.ts')
+  const { ENDINGS, PROJECT_ENDINGS, RESULTS_SHAPE, RUNTIME_ENDINGS } =
+    await load('eval/results-shape.ts')
   const { KINDS_SHAPE, REQUIREMENTS_SHAPE } = await load('eval/requirements-shape.ts')
 
   const registry = built ?? (await load('packages/registry/src/build.ts')).buildRegistry(ROOT)
@@ -189,6 +203,7 @@ export async function loadToolbox({ registry: built } = {}) {
     call,
     endings: ENDINGS,
     runtimeEndings: RUNTIME_ENDINGS,
+    projectEndings: PROJECT_ENDINGS,
     validateResults: (results) => validateShape(RESULTS_SHAPE, results),
     // The shape checks `loadRequirements` asks for (`eval/requirements.mjs`). The runner
     // judges with the requirements; no tool hands them to the model.
@@ -207,9 +222,8 @@ export async function loadToolbox({ registry: built } = {}) {
  * loaded from source, as the tools are, so a run measures the card of the
  * tree it runs on.
  */
-export async function loadScreen() {
-  const jiti = createJiti(import.meta.url)
-  const load = (path) => jiti.import(resolve(ROOT, path))
+export async function loadScreen({ importModule } = {}) {
+  const load = loader(importModule)
   const { runtimeCard } = await load('packages/screen/src/card.ts')
   const { checkScreen } = await load('packages/screen/src/check.ts')
   const { parsePartial } = await load('packages/screen/src/partial.ts')

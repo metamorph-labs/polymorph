@@ -251,6 +251,7 @@ A release ships every package, each the way its kind is shipped:
 | Packages | Versioned by | Shipped by |
 | --- | --- | --- |
 | The published web packages: `@polymorph/engine`, `@polymorph/rules`, `@polymorph/recipes`, `@polymorph/screen`, and the foundation and vocabulary of each web framework (`@polymorph/react`, `@polymorph/react-ui`, `@polymorph/vue`, `@polymorph/vue-ui`, `@polymorph/svelte`, `@polymorph/svelte-ui`, `@polymorph/solid`, `@polymorph/solid-ui`, `@polymorph/elements`, `@polymorph/elements-ui`, `@polymorph/angular`, `@polymorph/angular-ui`) | changesets: the release's version, in each `package.json` | `pnpm publish:packages`, to GitHub Packages, and with `--to npmjs` to npmjs.com, as `@metamorph-labs/polymorph-<name>` |
+| The published tools: `@polymorph/tools`, the CLI and the MCP server with the internal packages they run bundled in | the same | the same, as `@metamorph-labs/polymorph` |
 | The internal packages: `@polymorph/theme`, `@polymorph/registry`, `@polymorph/cli`, `@polymorph/mcp`, `@polymorph/spec`, `@polymorph/shells`, `@polymorph/conformance`, `@polymorph/native` | changesets: the same version, with their changelogs | nothing: they run from a checkout |
 | The native packages: `platforms/ios`, `platforms/android`, `platforms/dart` | the release's version: `pnpm version-packages` writes it into the Android builds and the Dart package (`pnpm native:version`), and SwiftPM reads it from the tag | the tag: an iOS app adds the repository's URL at it, through the root `Package.swift`; an Android app pins its checkout or submodule to it, and a Dart app its path or git dependency |
 
@@ -264,12 +265,19 @@ Releases are cut from a clean `main`, locally:
 pnpm eval                                 # the owner's step, with ANTHROPIC_API_KEY set or with --runner cli and Claude Code signed in; commit eval/results and eval/README.md
 pnpm changeset status --verbose           # the version the release gives every package
 pnpm version-packages                     # apply pending changesets: the version and CHANGELOGs, and the version in the native manifests
+pnpm agents                               # the plugin and server.json name the new version
 git commit -am "Release <version>"        # the version bump is a commit like any other
 pnpm gate:ios && pnpm gate:android        # the gates for the native packages, which ship at the tag
 pnpm gate:engines                         # the browser tests on Firefox and WebKit, which pnpm gate runs on Chromium only
 pnpm publish:packages                     # pnpm gate, then build, pack, rewrite, check, upload, tag
 git push origin main v<version>           # the tag by name; the publish workflow uploads it to npmjs.com
 ```
+
+The plugin in `plugins/polymorph/` and the MCP Registry's `packages/tools/server.json` name the
+release, so `pnpm agents` writes them again after the version bump, and its freshness law fails in
+the gate until it has. Once the release is on npmjs.com, the owner publishes `server.json` to the
+MCP Registry with `mcp-publisher publish` from `packages/tools`, and the plugin listings follow
+`main` ([docs/listing.md](docs/listing.md)).
 
 Each gate runs before what it covers ships. `pnpm publish:packages` runs `pnpm gate`, the gate for
 everything it uploads, first, and stops if it is red, so an upload cannot skip the laws; there is

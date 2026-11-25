@@ -5,7 +5,8 @@ checks: the gates (`pnpm gate` for the web, `pnpm gate:engines` for the web on F
 `pnpm gate:ios`, `pnpm gate:android`), the test projects, the laws, the lint gate, the type check,
 the exception inventory, the layout scan, the size budgets, `pnpm proof`, which runs the ten product guarantees
 against this repository and takes screenshots of the result, and `pnpm eval`, which measures how a
-real model gets on when it builds screens with the system.
+real model gets on when it builds screens with the system, through the system's tools or in a
+coding harness working in an app the tools set up.
 
 Terms used on this page:
 
@@ -32,7 +33,7 @@ Terms used on this page:
 | `pnpm build` | the workbench and docs apps build | yes |
 | `pnpm site` | every page of the built docs site renders in Chromium without an error and links only to pages the site has; the step writes each page as static HTML ([The site check](#the-site-check)) | yes, on the build `pnpm build` made |
 | `pnpm layout` | no page of the built workbench has a layout fault: every member's gallery, the Relay screens and the sample pages, at a phone's width and a desktop's ([The layout scan](#the-layout-scan)) | yes |
-| `pnpm build:packages` | the published builds of `@polymorph/engine`, `@polymorph/rules`, `@polymorph/screen`, `@polymorph/react`, `@polymorph/react-ui`, `@polymorph/vue`, `@polymorph/vue-ui`, `@polymorph/svelte`, `@polymorph/svelte-ui`, `@polymorph/solid`, `@polymorph/solid-ui`, `@polymorph/elements`, `@polymorph/elements-ui` (with the files a page with no build loads, `dist/cdn/`), `@polymorph/angular` and `@polymorph/angular-ui` | yes |
+| `pnpm build:packages` | the published builds of `@polymorph/engine`, `@polymorph/rules`, `@polymorph/screen`, `@polymorph/react`, `@polymorph/react-ui`, `@polymorph/vue`, `@polymorph/vue-ui`, `@polymorph/svelte`, `@polymorph/svelte-ui`, `@polymorph/solid`, `@polymorph/solid-ui`, `@polymorph/elements`, `@polymorph/elements-ui` (with the files a page with no build loads, `dist/cdn/`), `@polymorph/angular`, `@polymorph/angular-ui` and `@polymorph/tools` (the CLI and the MCP server, with the registry, the source tree and the screen page they ship) | yes |
 | `pnpm size` | what a consumer ships stays under its budget | yes |
 | `pnpm gate:no-build` | a page with no build, served as plain files, loads the elements' no-build files and works: before and after the tags are defined, from markup, in a form, through an overlay, through htmx-style and morphing swaps and page snapshots, and drawing a run-time screen ([The static-page check](#the-static-page-check)) | yes, on Chromium, on the builds `pnpm build:packages` made; `pnpm gate:engines` runs it on Firefox and WebKit |
 | `pnpm gate:next` | a Next.js App Router application built from the published builds, on Turbopack, on webpack and on the development server: the members' stylesheets reach each page, the pages hydrate, the theme installs, and the red rules run ([The Next.js gate](#the-nextjs-gate)) | yes, last, on the builds `pnpm build:packages` made |
@@ -40,7 +41,7 @@ Terms used on this page:
 | `pnpm gate:android` | the Compose members: contracts, example screens, Kotlin laws, the JVM build and harness, the Android library, and the accessibility audit under Robolectric ([The Android gate](#the-android-gate)) | no: its own gate, which needs a JDK, and an Android SDK for the Android library and the audit |
 | `pnpm gate:engines` | the browser projects again, on Firefox and on WebKit ([The engines gate](#the-engines-gate)) | no: its own gate, which needs Playwright's builds of Firefox and WebKit |
 | `pnpm proof` | the ten guarantees, run and captured as screenshots | no, run by hand |
-| `pnpm eval` | how often a model given a brief and the system's tools produces a lawful screen, and at what cost | no, run by hand before a release |
+| `pnpm eval` | how often a model given a brief and the system's tools produces a lawful screen, how often a coding harness in an app the tools set up leaves a lawful project that builds and meets the brief, and at what cost | no, run by hand before a release |
 
 ## Test projects
 
@@ -48,7 +49,7 @@ Terms used on this page:
 
 | Project | Environment | Root | Picks up |
 | --- | --- | --- | --- |
-| `logic` | node | repository root | `packages/{theme,rules,registry,cli,mcp,spec,screen}/src/**/*.test.ts`, `packages/{engine,react,rules,cli,mcp,spec,screen,conformance,react-ui,vue,vue-ui,solid,solid-ui,svelte,svelte-ui,angular,angular-ui,elements,elements-ui}/*.test.ts`, `packages/shells/src/**/*.test.ts`, `packages/native/src/**/*.test.ts`, `apps/workbench/src/**/*.test.{ts,tsx}`, `apps/docs/src/**/*.test.{ts,tsx}`, `eval/*.test.ts` |
+| `logic` | node | repository root | `packages/{theme,rules,registry,cli,mcp,spec,screen}/src/**/*.test.ts`, `packages/{engine,react,rules,cli,mcp,spec,screen,tools,conformance,react-ui,vue,vue-ui,solid,solid-ui,svelte,svelte-ui,angular,angular-ui,elements,elements-ui}/*.test.ts`, `packages/shells/src/**/*.test.ts`, `packages/native/src/**/*.test.ts`, `apps/workbench/src/**/*.test.{ts,tsx}`, `apps/docs/src/**/*.test.{ts,tsx}`, `eval/*.test.ts` |
 | `core` | Chromium, through Playwright | `packages/react` | `packages/{engine,react}/src/**/*.test.{ts,tsx}`, the run-time renderer's tests (`packages/react/src/screen/`) among them |
 | `ui` | Chromium, through Playwright | `packages/react-ui` | `src/**/*.test.{ts,tsx}`, with `src/test-setup.ts`. Includes the behaviour conformance law (`src/conformance.test.tsx`), which runs every statement in every spec's `contract` fence against the React shell; [conformance.md](conformance.md) has the grammar, the runner, each shell's adapter and the ledgers |
 | `vue` | Chromium, through Playwright | `packages/vue-ui` | `src/**/*.test.ts`, with `src/test-setup.ts`: the Vue shell's laws over the generated members (completeness, identity, axe), its behaviour conformance law (`src/conformance.test.ts`), which runs every contract statement of every member the Vue shell ships through the Vue adapter, with the React law's runner and locators, and is shown a false statement of every kind, and the members' behaviour tests beside them (`src/<tier>/<member>.test.ts`) for what the contract grammar cannot state ([shells.md](shells.md)) |
@@ -213,6 +214,7 @@ project its path falls under in the table above, unless its row names another ga
 | Agent staleness | `packages/registry/src/agent-staleness.test.ts` | a state or action a spec's `agent` fence declares that the React member or its description does not register, or the reverse, and a member that registers with no fence |
 | Member exceptions | `packages/registry/src/exceptions.test.ts` | a system file's exception for a member that does not exist or does not read the token it re-points |
 | Package ranges | `packages/registry/src/install.test.ts` | a range for a published package other than a caret on its own version |
+| The named files | `packages/registry/src/files.test.ts` | a file the registry names that this tree does not have, a member's or a primitive's file, a support file, the base layer or a theme document left out of the list the published tools ship |
 | The release version | `packages/registry/src/install.test.ts` | a package at a version other than the release's, a registry that reports another, or a changeset config that does not hold every package in one fixed group |
 | The system card | `packages/registry/src/card.test.ts` | a card over its character budget, or one that leaves out a member, a law, a rung, a framework, a platform or the packages a consumer installs |
 
@@ -253,9 +255,16 @@ project its path falls under in the table above, unless its row names another ga
 | The round trip | `packages/spec/roundtrip.test.ts` | a Relay screen spec that does not emit code the real vocabulary typechecks |
 | Install and init | `packages/cli/scratch.test.ts`, `packages/cli/init.test.ts` | a vendored install, or a new app, that does not build and lint clean against the packages' builds |
 | The MCP server | `packages/mcp/transcript.test.ts` | a tool that fails over a real stdio session |
+| The CLI's verbs | `packages/mcp/src/verbs.test.ts`, `packages/cli/src/verbs.test.ts` | a tool with no CLI verb, or a verb that names a tool the server does not register; a one-shot call that answers differently from the server; a verb whose `--json` is not the tool's answer, whose exit code does not say whether the answer was clean, or that reads a command line it should refuse; `polymorph mcp` that drops an answer or does not exit when its client closes stdin |
+| The published tools | `packages/tools/packaging.test.ts` | a tarball, cut as the publish step cuts it and installed outside the repository with no workspace above it, whose bins do not run there: `--help` (which lists every verb, `mcp` among them), `init` (whose `.mcp.json` runs `npx` and names no path, and whose app is the checkout bin's apart from `package.json`, the agent files that name the tools and their record), `init` in every other framework and for a page with no build, `agents` in a project (its files name the tools with `npx` and no path, and a rerun changes nothing), `add`, `diff`, `update`, `check` over every framework's files, `theme validate`, every verb that asks a tool (`card`, `search`, `component`, `validate` on code and on a spec, `fix --dry-run`, `emit`, `render` where Playwright's Chromium starts, `theme propose`), and the MCP server over stdio through `polymorph mcp` and `polymorph-mcp` (`get_system_card`, `get_component` with its source, `validate` on code, a stylesheet and a spec, `emit_screen`, `install`, `render_screen` drawing in the shipped page where Chromium starts, and the command that downloads it where it does not); a published bin whose verbs and the server's tools are not each other's; a tarball that holds a file outside the declared set or a path of this machine, misses a file the registry names, or imports a package it does not declare. It builds the elements vocabulary and the tools under their locks first |
+| The agent files | `packages/cli/src/agents.test.ts` | a command an agent text or the plugin names that the CLI does not run as written: a verb it lacks, a flag the verb does not take or that lacks its value, too few arguments, or a system, palette, framework, harness or member the registry does not have; a rule or an MCP tool a text names that the registry and the verbs do not; a bare `npx polymorph`; a skill outside the Agent Skills format (its name, its directory, a description over 1024 characters or not a plain YAML scalar, a field the format does not define, a body of 500 lines or more, a reference not linked or not one level deep); a rules skill missing a rung of the registry's ladder or an application rule; an always-loaded block over 45 lines; and `polymorph agents` that writes again on a rerun, loses text outside its block or another server, overwrites an edited file, drops a harness written before, keeps a file a release no longer writes, writes through a link out of the project, writes in a checkout, or writes other files than `init` writes for the same project |
+| The plugin for coding agents | `packages/cli/src/plugin.test.ts` | a file `pnpm agents` writes that differs on disk, is missing or is no longer written, or a drawn icon that is missing or the wrong size; a launcher in the plugin that runs a range rather than the release; a manifest past a directory's limits or missing what it requires (Claude Code's: kebab-case name, version, description, author, licence, icon, https links, a README of 40 words, no hooks, one read-only server; the portable one: only the schema's keys, the lengths and counts OpenAI's submission sets, https links, square icons of at least 48 pixels, no hooks or apps, five positive and three negative review cases; each marketplace's required fields); skills the `skills` CLI cannot find through the marketplace; a `server.json` whose name, version, package or description differ from the published tools' `mcpName`, version and command |
+| The plugin's tools | `packages/mcp/src/plugin.test.ts` | a review case that names a tool the read-only server does not register, or a skill that names a tool the server does not have |
+| The tools add no decision | `packages/tools/entries.test.ts` | a module in the tools' `src/` other than the entry points, an import other than Node, the fronts and the emitter, a registry built at run time, or a polymorph package as a dependency instead of bundled |
 | The docs site | `apps/docs/src/llms.test.ts` | an `/llms.txt` that does not point an agent at the card, the tools, every guide's markdown file and every application rule; a guide's markdown file with a link the site does not serve |
 | The docs site | `apps/docs/src/page-head.test.ts` | a page title that does not name the pages above it; structured data with an address that is not written in full |
-| The eval's harness | `eval/eval.test.ts` | a harness that counts a run the model did not earn, a brief's requirement that names something the vocabulary lacks or that a screen without the part still meets, a run-time request that is not the card, the brief and no tool, or a run-time answer judged before its document is whole, or a report that differs from what `pnpm eval:report` renders ([The agent eval](#the-agent-eval)) |
+| The eval's harness | `eval/eval.test.ts` | a harness that counts a run the model did not earn, a brief's requirement that names something the vocabulary lacks or that a screen without the part still meets, a run-time request that is not the card, the brief and no tool, or a run-time answer judged before its document is whole, a Codex run that records a count Codex did not report as zero, starts Codex with the owner's configuration or goes on past a total it cannot know, a signal that leaves a harness running or a scratch directory behind, or a report that differs from what `pnpm eval:report` renders ([The agent eval](#the-agent-eval)) |
+| The eval's project lane | `eval/project.test.ts` | a project run that gives the harness a prompt or a tool of the eval's or runs its commands unsandboxed, judges a project other than the one the harness left, misses a lawful or an unlawful screen, an empty project, a broken `package.json` or a budget that stops the harness, counts a call, a verb, a skill or a cache the stream and the project do not show, or leaves a harness running after a signal ([The project lane](#the-project-lane)) |
 
 ### The run-time screens
 
@@ -843,6 +852,14 @@ either on the first attempt or after correcting itself using the system's own fe
   outside the workspace. A `--read-only` server offers none of the write tools. `render_screen`
   returns its pictures over the transport, and a server started where Playwright has downloaded no
   browser answers that tool with the install command and every other tool as before.
+- `packages/mcp/src/verbs.test.ts`: every CLI verb that asks a tool, run through `main` with the
+  real one-shot caller in a scratch project outside the workspace. `--json` prints exactly what the
+  tool answers for the same call; `validate` prints one line for each violation; `emit` writes the
+  bytes `emit_screen` writes; `render` writes its pictures beside the spec, and is skipped, saying
+  why, on a machine where Playwright has no Chromium. The caller's answers are compared with the
+  server's over an in-memory transport, refusals and schema errors included. `polymorph mcp` is
+  spoken to by hand over stdio and exits 0 once it has answered everything sent before stdin
+  closed.
 - `packages/mcp/src/render.test.ts`: `render_screen` as a function, in a real Chromium over the
   page the workbench's builder builds in memory. A lawful spec comes back as one PNG for each width,
   of the window's size. A row told not to wrap is reported at the phone's width and not the
@@ -968,12 +985,17 @@ what it took. The agent-loop test (`packages/spec/agent-loop.test.ts`) proves th
 faults are specific, and a corrected spec passes every law. The eval measures what a real model
 does inside that loop.
 
-It reaches the model through one of two runners. The API runner (`--runner api`, the default)
+It reaches the model through one of three runners. The API runner (`--runner api`, the default)
 sends each request to the Messages API itself and needs `ANTHROPIC_API_KEY`. The CLI runner
 (`--runner cli`) runs each brief through `claude -p`, the owner's own Claude Code, and needs no
-key, because the CLI signs in the way it does for the owner. Both runners give the model the same
-prompt and the same tools, stop it at the same points, and judge and record it the same way, so
-their numbers compare.
+key, because the CLI signs in the way it does for the owner. The Codex runner (`--runner codex`)
+runs each brief through `codex exec`, the owner's own Codex, signed in the same way. Every runner
+gives the model the same prompt and the same tools, stops it at the same points, and judges and
+records it the same way, so their numbers compare, apart from what Codex does not report.
+
+The project lane ([The project lane](#the-project-lane)) measures something else: a coding
+harness, Claude Code or Codex, started in an app the tools set up, with only what the tools wrote
+there to help it, and judged on the project it leaves.
 
 ### What a run does
 
@@ -1183,6 +1205,111 @@ than the `claude` on the `PATH`.
 A usage or rate limit the CLI reports stops the eval with `stopped.reason` `usage-limit`. The runs
 that finished are kept, marked partial, and a partial file is never the number.
 
+### The Codex runner
+
+`--runner codex` starts `codex exec` once per run, the owner's own Codex. It needs `--model`,
+because Codex names no model in what it reports and the results must name the model they
+measured. `--codex <path>` runs a Codex other than the `codex` on the `PATH`. No eval has
+been run through a real Codex. Two smaller checks have met one (Codex CLI 0.146). Each lane's
+arguments were given to a Codex that was not signed in, which reads them, starts its MCP servers
+and stops at the first request. One turn was run signed in, with the project lane's arguments, in
+a project `polymorph agents` had set up, asked to read a skill and to call the project's server.
+The rest of what the runner does with a run rests on Codex's documentation and source, and the
+list at the end of this section says what a first eval has to confirm.
+
+It gives Codex what the CLI runner gives Claude Code, in Codex's terms (`eval/run.mjs` names the
+page each one rests on beside it):
+
+- a Codex home of the run's own (`CODEX_HOME`), empty but for a link to the owner's saved sign-in
+  (`auth.json` in their Codex home), so none of their configuration, global `AGENTS.md`, plugins,
+  MCP servers, hooks or memories reach the run. `CODEX_API_KEY` is kept and every other `CODEX*`
+  variable is dropped;
+- an empty directory outside the repository to work in, which is not a Git repository
+  (`--skip-git-repo-check`), and no saved session (`--ephemeral`);
+- the API runner's system prompt as `model_instructions_file`, which replaces Codex's built-in
+  instructions, and its opening message on stdin;
+- the eval's MCP server and no other (`-c mcp_servers=…`), marked `required` so a server that does
+  not start fails the run, with every tool approved (`default_tools_approval_mode = "approve"`).
+  With no person to ask (`approval_policy = "never"`), Codex denies an MCP call that needs
+  approval, and a tool the server does not mark read-only needs one. Each tool's output limit is
+  raised so every answer comes back whole;
+- none of its own tools: the shell, images, subagents, connectors, web search, skills and the
+  skills catalogue are turned off, and the sandbox is read-only;
+- `--model`, and `model_reasoning_effort` unless `--effort` is `default`.
+
+Codex reports less than Claude Code, and the record says so rather than filling it in:
+
+- It reports its tokens once, in `turn.completed`, when it finishes. A run the runner stops before
+  then (at the iteration cap, the request limit or a harness fault) records its tokens as `null`,
+  never zero, and the mean of a count is over the runs that report it. Its `input_tokens` counts
+  the cached input too. The runner records `cached_input_tokens` as the cache read and
+  `cache_write_input_tokens`, where Codex reports it, as the cache write.
+- It reports no request, so `turns` is `null`, and the request limit is counted in tool calls.
+- It reports no request it sent again, so `retries`, `backoffMs` and `discardedTokens` are `null`.
+- It reports no stop reason and no cost, so no run of it ends `refusal` or `max_tokens`, and no
+  cost is printed.
+- The token ceilings hold only as far as its reports allow
+  ([The token ceilings](#the-token-ceilings)): `--max-tokens-per-run` is refused, and a run whose
+  tokens are unknown stops the eval before its next run.
+
+The runner reads each MCP call as Codex reports it started and completed, and checks the
+iteration cap when the last call in flight completes. A command, a file change, a web search, a
+subagent or a call to another MCP server in the stream means a tool other than the four was
+offered and used. Every run would go the same way, so the eval stops and says so. Codex also
+offers the model its plan tool, which no setting turns off. A plan writes nothing and calls
+nothing, so a run that plans goes on, and its record counts each plan Codex started or updated
+(`planUpdates`, its `todo_list` items). `--effort` passes every level the eval
+takes, `max` included, which Codex's documentation lists among its levels; a model that lacks a
+level refuses it, and the eval stops with Codex's error. It also stops when Codex finishes
+without having listed the eval's tools, reports `turn.failed` (with `stopped.reason` `usage-limit`
+when it words a usage limit), or exits before its turn ends.
+
+What the Codex that was not signed in settled:
+
+- `codex exec` takes every flag both lanes pass, and `codex --version` prints a number the runner
+  reads.
+- With `--strict-config`, which refuses a key Codex does not know, it takes each `-c` override as
+  written, the inline tables for `mcp_servers` and `skills.config` included, but two. It does not
+  know `features.view_image`, so that version keeps its image tool. It does not know the output
+  limit written for each tool of a server, so the runner also passes `tool_output_token_limit`,
+  which it does know. Without `--strict-config`, as the runner starts it, it passes over both.
+- A `required` server that does not start fails the run before any request.
+- A project's `.codex/config.toml` loads only when the home's `config.toml` trusts the project by
+  its path with every link resolved. `codex exec` refuses `--trust`, and a `-c` override trusts
+  nothing.
+- The stream opens with `thread.started` and `turn.started`. A request that fails is an `error`
+  event with a `message`, worded `Reconnecting...` while Codex sends it again.
+
+What the turn that was signed in settled:
+
+- A linked `auth.json` signs Codex in from a home of the run's own.
+- With `approval_policy = "never"`, a call to a server whose tools are approved
+  (`default_tools_approval_mode = "approve"`, laid over the server the project's
+  `.codex/config.toml` defines) goes through.
+- The stream is the one the readers expect. An item is reported in `item.started` and
+  `item.completed`. A `command_execution` item carries `command`, `aggregated_output`,
+  `exit_code` and `status`. An `mcp_tool_call` item carries `server`, `tool`, `arguments`,
+  `result`, `error` and `status`. An `agent_message` item carries `text`, and the last one is the
+  answer. `turn.completed` carries `usage` with `input_tokens`, `cached_input_tokens`,
+  `cache_write_input_tokens`, `output_tokens` and `reasoning_output_tokens`.
+- Codex runs a command through a shell (`/bin/zsh -lc "…"`), and reads a skill with a command
+  that names its `SKILL.md`, which the project lane's reader counts as the skill loaded.
+
+What only an eval through Codex can confirm:
+
+1. That each override of the tools lane does what its name says once a model runs, beyond being
+   read: that the feature switches take Codex's own tools away, so the four tools are all the
+   model is offered (the runner stops the eval if one is still used), and that
+   `model_instructions_file` replaces the built-in instructions, with what Codex adds to the
+   prompt besides, as the CLI runner's section lists what Claude Code adds.
+2. `turn.failed`, which the turn did not meet, and the words Codex uses for a usage limit.
+3. That `usage` is the whole run's when a run takes several requests, and that its
+   `input_tokens` includes the cache-written tokens. In the turn it included the cached ones.
+
+The stand-in (`eval/fake/codex.mjs`) speaks the event format as Codex's source defines it, checks
+every argument the runner passes and the environment it gets, and calls the eval's MCP server for
+real. The item shapes it writes are the ones the signed-in turn reported.
+
 ### The token ceilings
 
 Two ceilings guard what an eval can cost. Each counts tokens the way a record does: every input
@@ -1199,6 +1326,28 @@ run that finishes on the request that crossed one is kept, and the per-run ceili
 with the next run. A run that needs another request past either ceiling stops the eval, with a
 partial results file.
 
+A ceiling holds only over tokens a harness reports, so what holds differs by harness:
+
+| Runner | Per-run ceiling | Total ceiling |
+| --- | --- | --- |
+| `api` | before every request | before every request |
+| `cli`, and Claude Code in the project lane | when the last tool result of a turn goes back | the same, and before each run |
+| `codex`, and Codex in the project lane | refused: Codex reports its tokens only when its turn completes, so no run can be stopped part-way; the results record `maxTokensPerRun` as `null` | before each run, over the tokens the finished runs reported |
+
+A run whose tokens are unknown is a Codex run stopped at the iteration cap, the request limit or
+its budget, or a Claude Code run in the project lane stopped before its first response ended. Its
+record holds `null` tokens. What happens next depends on whether `--max-tokens-total` was given:
+
+- **Not given**: the run is recorded and the eval goes on. The default total ceiling counts only
+  the tokens the runs reported, so it no longer bounds what the eval spends.
+- **Given**: what the eval has spent is no longer known, so the ceiling the owner asked for can no
+  longer be held. The eval stops before its next run with `stopped.reason` `tokens-unknown`, and
+  the report says that a run's tokens went unreported, not that the ceiling was reached. When the
+  run is the eval's last, nothing more is stopped.
+
+Codex writes a count of its tokens to its session store as it goes, which `--ephemeral` turns off
+and the runner does not read: its format is Codex's own and not documented.
+
 ### What it measures
 
 Per run, as `eval/results.schema.json` describes:
@@ -1211,9 +1360,10 @@ Per run, as `eval/results.schema.json` describes:
 | `meetsBrief` | the final document meets every requirement of its brief; never for a run that ended in `refusal`, `max_tokens` or `harness`. It is judged apart from `lawful`: a screen can be either without the other |
 | `failedRequirements` | the ids of the requirements the final document does not meet; every id when the document cannot be read; empty for a run that ended in `refusal`, `max_tokens` or `harness`, which is not judged |
 | `ended` | `answered`, `cap`, `turns`, `max_tokens`, `refusal`, or `harness` for a harness fault |
-| `inputTokens`, `outputTokens` | from the API's `usage`, summed over the run; the CLI runner reads the same `usage` from the stream events the CLI passes on. Input counts cached and uncached tokens; `cacheReadTokens` and `cacheWriteTokens` say how much of it was which |
+| `inputTokens`, `outputTokens` | from the API's `usage`, summed over the run; the CLI runner reads the same `usage` from the stream events the CLI passes on, and the Codex runner from the `usage` Codex reports when it finishes, and records `null` for a run it stopped before then. Input counts cached and uncached tokens; `cacheReadTokens` and `cacheWriteTokens` say how much of it was which |
 | `discardedTokens` | tokens of attempts that broke off and were sent again |
-| `wallMs` | wall-clock time for the run, tool calls included, retry waits left out; for the CLI runner, from the CLI's start-up report to the end of the run |
+| `wallMs` | wall-clock time for the run, tool calls included, retry waits left out; for the CLI and Codex runners, from the harness's start-up report to the end of the run |
+| `turns` | requests the run made; `null` for the Codex runner, which reports none |
 | `retries`, `backoffMs` | requests sent again, and the time spent waiting before them |
 | `violationsSeen` | everything `validate` reported, counted: red-rule violations by rule, spec faults by kind with names and values elided |
 | `misses` | each `validate` call that came back unlawful, in the validator's words: its number, what was fatal, the faults, the violations and the contract messages, so a miss can be acted on; the report lists each run's first-shot miss under its table. Absent in a results file written before the field was kept |
@@ -1277,11 +1427,166 @@ CLI at the end of the first response, and stops the eval when the CLI starts wit
 server. It cannot measure the time to the first text, which it records as `null`, and the CLI adds
 text of its own to the prompt and sets its own cache breakpoints, so its cache split is the CLI's.
 
+The Codex runner runs the lane through `codex exec` with an MCP configuration that names no
+server, its own tools off, and the card as `model_instructions_file`. A run that uses a tool stops
+the eval. It has no time to the first text either, and its cache split is Codex's.
+
 A run writes `eval/results/<date>-<model>-runtime.json` (`-runtime-cli.json` through the CLI
-runner). `eval/README.md` prints the lane last, in a section of its own, with its own number for
-each model, runner, thinking setting, effort, framework and members. A run is compared only with an
-earlier one that has the same settings. `eval/fake/<brief>.runtime.json` scripts each brief's
-answer for `--fake`, and `eval/eval.test.ts` runs the lane through both runners with it.
+runner, `-runtime-codex.json` through the Codex runner). `eval/README.md` prints the lane after the
+loop modes, in a section of its own, with its own number for each model, runner, thinking setting,
+effort, framework and members. A run is compared only with an earlier one that has the same
+settings. `eval/fake/<brief>.runtime.json` scripts each brief's answer for `--fake`, and
+`eval/eval.test.ts` runs the lane through every runner with it.
+
+### The project lane
+
+`pnpm eval --mode project --runner cli|codex` measures what the other modes cannot: how a person's
+coding harness gets on in a real app, where the only help is what the tools wrote into it (an
+`AGENTS.md`, an MCP entry, the system card, the skills `polymorph agents` writes, and the CLI).
+The harness is Claude Code (`--runner cli`) or Codex (`--runner codex`). The API runner starts no
+harness, so the lane refuses it (`eval/project.mjs`).
+
+Once per eval, the lane sets up a template with the tools:
+
+1. `polymorph init template --framework <framework>` (`--framework`, `react` when absent), which
+   writes the app and installs its packages as `init` does for a person. A scripted harness
+   (`--fake`) and `--no-install` install nothing.
+2. `polymorph agents --harness claude|codex`, when the tools have that verb, so the harness finds
+   its skills and its MCP entry. Tools that answer that there is no such command leave the harness
+   with what `init` wrote, and the results say so (`project.agents`).
+
+Each run copies the template into a scratch directory outside the repository. The copy keeps
+symbolic links as they are, so the relative links of pnpm's `node_modules` resolve inside it, and
+clones files where the file system can, so an installed app costs little to copy. npm's cache,
+pnpm's store, pnpm's metadata cache and pnpm's state are in the eval's scratch directory too, for
+the install of a `--tools` tarball, the template's install, every harness and the judge's scripts
+(`npm_config_cache`, `npm_config_store_dir`, `npm_config_cache_dir`, `npm_config_state_dir`, and
+pnpm's own `pnpm_config_` names for the last three). Both sandboxes below let a command write
+there, so a harness can install a package into its own copy, and the owner's own caches, store and
+state are never written. The template is installed into that store, so an eval fetches the app's
+packages once, and a copy's `node_modules` and the store a harness's pnpm finds agree.
+
+The harness starts in the copy with the brief on stdin, followed by one sentence asking for the
+screen, and nothing else from the eval: no system prompt and no tool. The owner's own
+configuration is kept out, as in the other runners, and the project's is left in:
+
+- **Claude Code**: `--setting-sources project`, so the project's settings, `CLAUDE.md` and skills
+  load and the owner's do not; the project's `.mcp.json` with `--strict-mcp-config`;
+  `--permission-mode acceptEdits` with `Skill` and each of the project's MCP servers allowed; and
+  `--permission-prompts none`, so whatever would wait on a person is refused
+  ([cli-reference](https://code.claude.com/docs/en/cli-reference.md)). Where Claude Code keeps its
+  own state depends on how it signs in. Signed in from its environment (`CLAUDE_CODE_OAUTH_TOKEN`
+  from `claude setup-token`, an API key or bearer token, or a cloud provider), it gets a
+  configuration directory of the run's own (`CLAUDE_CONFIG_DIR`). Signed in with `/login`, it
+  keeps the owner's: Claude Code keys that sign-in to its configuration directory, in the macOS
+  Keychain or in `.credentials.json`, so another directory would not be signed in
+  ([authentication](https://code.claude.com/docs/en/authentication.md)). The results say which
+  (`project.harnessHome`).
+- **Codex**: a home of the run's own, as in the Codex runner, whose `config.toml` trusts the
+  project, so the project's `.codex/` configuration and MCP servers load (`codex exec` takes no
+  flag that trusts a project); `approval_policy = "never"` with every tool of
+  each server the project configures approved, as a person at the prompt would approve it; and
+  the owner's own skills (`~/.agents/skills`, `/etc/codex/skills`) turned off by path.
+
+Each harness's commands run in a sandbox:
+
+| | Claude Code | Codex |
+| --- | --- | --- |
+| How | `--settings` with `sandbox.enabled`, `failIfUnavailable` (it refuses to start rather than run unsandboxed), `allowUnsandboxedCommands: false` (a blocked command is not retried outside it) and `autoAllowBashIfSandboxed`, so no `Bash` permission is given ([sandboxing](https://code.claude.com/docs/en/sandboxing.md), [settings](https://code.claude.com/docs/en/settings.md)) | `--sandbox workspace-write` ([config reference](https://learn.chatgpt.com/docs/config-file/config-reference)) |
+| Commands write | the project, the per-user temporary directory, and the eval's cache and store (`sandbox.filesystem.allowWrite`); never the template (`denyWrite`) | the project, `/tmp` and `$TMPDIR`, which holds the eval's cache and store |
+| File tools write | the project only (`permissions.blockWritesOutsideWorkingDirectories`) | through the same sandbox |
+| Network | npm's registry and GitHub Packages only (`sandbox.network.allowedDomains`) | any host (`sandbox_workspace_write.network_access`) |
+| Its own state | a configuration directory of the run's own when it signs in from its environment; signed in with `/login`, the owner's `~/.claude.json` and `~/.claude/`, which Claude Code itself writes, outside the sandbox | a Codex home of the run's own, always |
+| Not confined | reads anywhere the owner can read, the home directory included; MCP servers, which run outside the sandbox; Claude Code's own writes to its state, above | reads anywhere; MCP servers; the template, which sits in `$TMPDIR` |
+
+Neither sandbox keeps a harness from reading the owner's files, and both leave the temporary
+directory writable. So after every run the lane checks that the template every run copies is
+unchanged, and stops the eval when a harness wrote into it, because the runs after it would not
+start from the same app.
+
+A budget stops each run: `--max-turns` (80 when absent), counted in responses for Claude Code and
+in tool calls for Codex, which reports no response, and `--max-minutes` (20 when absent). Stopping
+a harness stops its process group, its MCP servers and any command it left running included. A
+command that leaves that group (one started with `setsid`, or a daemon) is not stopped: the lane
+knows a harness's processes only by its group, and the operating system offers no other handle on
+everything a process started. A run the budget stopped is judged all the same, on what it left.
+
+When the harness ends, the lane judges the project:
+
+| Field | Holds when |
+| --- | --- |
+| `lawful` | the tools' `polymorph check --json` reads every file and reports no violation, and every spec the harness wrote under `src/screens/` passes the check `validate` runs. The red rules read code, so a spec the harness never emitted is held to the spec check |
+| `builds` | the app's `typecheck` and `build` scripts pass, run with pnpm; `null` when the app was not installed |
+| `meetsBrief` | the screen meets every requirement of its brief ([Whether the screen meets its brief](#whether-the-screen-meets-its-brief)); `null` when the screen is in a form the requirements cannot read |
+
+What the harness wrote is found by comparing every file of the copy before and after the run
+(`written`), leaving out installed packages, a build's output (`dist`, `build`, `out`,
+`coverage`), the caches the frameworks' tools write (`.vite`, `.angular`, `.svelte-kit`, `.cache`,
+`.turbo`, `*.tsbuildinfo`, `.eslintcache`) and `.git`. The screen is the specs it wrote under
+`src/screens/`, read together. When it wrote none, the screen is the React or Solid modules it
+wrote under `src/`, read together as TSX. When it wrote neither, a Vue or Svelte single-file
+component, an Angular component (a module that declares `@Component`) or a page that uses the
+elements is a screen the requirements cannot read: `screen.kind` is `unread`, and the run is left
+out of the rate that meets its brief. A harness that wrote no screen, or only modules that hold
+none (a helper, a store), meets no requirement: `meetsBrief` is `false`.
+
+A `package.json` the harness left unreadable is the harness's work: the project is not lawful,
+and an installed one does not build, with the reason in `violations` and `buildFault`. The judge
+does not run `polymorph check` on it, because the red rules read it to tell which vocabulary a
+file uses. A `package.json` the harness deleted, or a `typecheck` or `build` script it took out of
+one, leaves an installed app that does not build, so the run counts in the rate that builds.
+
+A record also keeps which MCP tools the harness called (`mcpCalls`), the `polymorph` verbs its
+shell commands ran (`verbs`: through `npx -y @metamorph-labs/polymorph@<range>`, through pnpm, by
+the bin's path or as `polymorph` on the `PATH`), how many shell commands it ran, the skills it
+loaded (a Claude Code `Skill` call, or a `SKILL.md` Codex read, counted when loading it
+succeeded), the tool calls it refused (`denied`: `null` when Claude Code was stopped before its
+result, where it reports them), its tokens (`null` where it reported none), its requests sent
+again (`retries`, `null` for Codex), its responses (`turns`, `null` for Codex), its wall time from
+its start-up report, and how it ended
+(`answered`, `turns`, `time`, or `harness` when judging the project failed). The outputs file
+beside the results keeps the harness's last message and the text of every file it wrote.
+
+"First shot lawful" has no meaning here, because no eval tool sees the first attempt. The headline
+is four rates: the projects that end lawful, the ones that build, the ones whose screen meets its
+brief, and the ones that do all three. Each rate is over the runs judged for it (`buildsMeasured`,
+`meetsBriefMeasured`, `allThreeMeasured`), with its interval. A harness that fails (an error it
+reports, a usage limit, an exit before it finishes) stops the eval as in the other runners, and so
+does a token ceiling, held as [The token ceilings](#the-token-ceilings) says for each harness.
+
+`--tools <path>` names the tools: a directory holding the bin (its `package.json`'s
+`bin.polymorph`, a `bin/polymorph.js`, or a `polymorph` file), such as `packages/tools`, or a
+packed tarball of the tools package, which npm installs once into the eval's scratch directory.
+Without it, the lane uses this checkout's bin (`packages/cli/bin/polymorph.js`). The tools judge
+the project as well as set it up: their `check` is the one that decides `lawful`. A published
+build's `init` writes an `.mcp.json` that starts the server with
+`npx -y @metamorph-labs/polymorph@^<version> mcp`, so the harness's MCP server comes from the
+registry at that range. A tarball of a version that is not published is therefore measured with
+the published server.
+
+A run writes `eval/results/<date>-<model>-project-cli.json`, or `-project-codex.json`.
+`eval/README.md` prints the lane last, with its own number for each model, runner, effort and
+framework. `eval/fake/<brief>.project.json` scripts each brief's harness for `--fake`. Its turns
+hold actions (`write`, `shell`, `mcp`, `skill` and `text`), which each stand-in plays as its
+harness's own tools: a file is written, an MCP call goes to the project's server for real, and a
+shell command reports the output the script gives it and runs nothing.
+
+What only a real run can confirm, besides the Codex runner's list:
+
+1. That `--setting-sources project` keeps the owner's skills and `CLAUDE.md` out and the
+   project's in. A record lists the skills the harness loaded, so an owner's skill in it shows
+   that it did not.
+2. That `acceptEdits` with the allowed tools and `--permission-prompts none` lets Claude Code do
+   its work in `-p` with no person, and how many calls it refuses (`denied`).
+3. That Claude Code's sandbox applies in `-p`, that `failIfUnavailable` makes it refuse to start
+   where the sandbox cannot, that the registries it is allowed are all an install needs, and that
+   `permissions.blockWritesOutsideWorkingDirectories` and `--permission-prompts` are in the
+   version run (the documentation names the first in 2.1.314 and the second in 2.1.259).
+4. That pnpm takes its store from `npm_config_store_dir`, so an install inside either sandbox
+   writes the eval's store and not the owner's.
+5. That `skills.config` turns the owner's skills off.
+6. How long a real app's copy, `polymorph check`, typecheck and build take, against which the
+   budget's defaults are set.
 
 ### How far a rate can be trusted
 
@@ -1328,29 +1633,47 @@ call for. No interval says anything about a screen that is not among the briefs.
 ANTHROPIC_API_KEY=… pnpm eval                     # every brief, spec mode, claude-sonnet-5-5, one run each
 pnpm eval --runner cli --effort high              # the same through Claude Code as you are signed in, no key
 pnpm eval --runner cli --claude /path/to/claude   # through another installed CLI than the one on the PATH
+pnpm eval --runner codex --model <id>             # the same through Codex as you are signed in; Codex needs a model named
+pnpm eval --runner codex --model <id> --codex /path/to/codex   # through another installed Codex
 pnpm eval --runs 5                                # five runs per brief, for narrower intervals
 pnpm eval --mode tsx --runs 3                     # TSX modules instead of specs, three runs per brief
 pnpm eval --mode runtime --members small          # the run-time lane: one request, no tools, the card for a subset
+pnpm eval --mode project --runner cli             # the project lane: Claude Code in an app this checkout sets up
+pnpm eval --mode project --runner codex --model <id> --tools packages/tools   # Codex, in an app the tools package sets up
+pnpm eval --mode project --runner cli --framework vue --max-minutes 10   # a Vue app, ten minutes a run
 pnpm eval --model claude-opus-5-5 --effort high   # another model, at a chosen effort
 pnpm eval --briefs 'eval/briefs/list*.md' --max-iterations 3   # a smoke run over a subset
 pnpm eval --max-tokens-per-run 300000 --max-tokens-total 2000000   # tighter ceilings
 pnpm eval:report                                  # re-render eval/README.md from eval/results/
 pnpm eval --fake --briefs 'eval/briefs/list*.md'  # the scripted model, into a temporary directory
 pnpm eval --fake --runner cli --briefs 'eval/briefs/list*.md'   # the scripted model, through the CLI runner
+pnpm eval --fake --runner codex --briefs 'eval/briefs/list*.md' # the scripted model, through the Codex runner
+pnpm eval --fake --mode project --runner codex --briefs 'eval/briefs/list*.md'   # a scripted harness in an app
 ```
 
-The API runner refuses to start without `ANTHROPIC_API_KEY`, and the CLI runner refuses to start
-when `claude --version` does not run. A run writes `eval/results/<date>-<model>-<mode>.json`, with
-`-cli` before `.json` for the CLI runner, and the outputs file beside it. It rewrites both after
+The API runner refuses to start without `ANTHROPIC_API_KEY`, the CLI runner refuses to start when
+`claude --version` does not run, and the Codex runner when `codex --version` does not run or no
+`--model` is named. The project lane refuses to start when the tools cannot set the app up, with
+what they printed. A run writes `eval/results/<date>-<model>-<mode>.json`, with `-cli` or `-codex`
+before `.json` for the runners that start a harness, and the outputs file beside it. It rewrites both after
 every run (marked `partial` until the last), and re-renders `eval/README.md`. Each results file
 records `briefs`, every brief in `eval/briefs/` when it ran. `--fake` replays the turns in
 `eval/fake/` instead of calling a model and writes to a temporary directory: in place of the
-Messages API for the API runner, and in place of the CLI for the CLI runner, through
-`eval/fake/cli.mjs`, a stand-in for `claude -p` that starts the eval's real MCP server. A brief's
+Messages API for the API runner, and in place of the harness for the others, through
+`eval/fake/cli.mjs`, a stand-in for `claude -p`, and `eval/fake/codex.mjs`, a stand-in for
+`codex exec`, each of which starts the MCP servers it is given for real. A brief's
 script is `eval/fake/<brief>.<mode>.json`, and `eval/fake/<brief>.<mode>.<run>.json` replaces it
 for that run of the brief, so a scripted eval with `--runs` can hold runs that differ. `--fake`
-refuses an `--out` that is `eval/results` or inside it, through either runner, so the committed
+refuses an `--out` that is `eval/results` or inside it, through any runner, so the committed
 results only ever hold real runs.
+
+Ctrl-C, or SIGTERM, stops the eval at once: it stops every harness still running (the project
+lane's in its own process group, with its MCP servers and any command it left running in that
+group), removes
+its scratch directories, the project lane's template among them, and exits with 130 or 143. The
+results file holds the runs that finished, marked partial. A signal that arrives while the eval
+waits on a command it runs to the end (`polymorph init`, the judge's check and build) is acted on
+when that command returns.
 
 `eval/README.md` has one table per model and mode, latest run first, and above them the number:
 for each model, mode and runner, its latest run that can be one, most recent first. Only a
@@ -1376,12 +1699,20 @@ of this estimate. Judging a screen against its requirements sends no request and
 
 Through the CLI runner the tokens count against the plan the CLI is signed in to, or the key it
 uses. The runner prints, for each run the CLI finishes, what the CLI reports that run would cost
-at API prices.
+at API prices. Through the Codex runner the tokens count against the plan or key Codex signs in
+with, and Codex reports no cost.
+
+The project lane has no estimate until a real run is recorded: the harness reads its own prompt
+and whatever it chooses of the project, and the results hold what it reported. Besides the
+tokens, an eval sets up one app (`polymorph init` and its install, which needs the network, and a
+token when the packages come from GitHub Packages), and each run copies the app and runs
+`polymorph check`, the typecheck and the build, which take seconds to minutes and cost nothing.
 
 ### When it runs
 
 By hand, by the owner, before a release, with its results committed in the same change. It is not
-part of any gate: it needs a key or a signed-in Claude Code, it costs money or plan usage, and it
+part of any gate: it needs a key, or a signed-in Claude Code or Codex, it costs money or plan
+usage, and it
 depends on a model that changes outside this repository. When `eval/results/` holds no complete
 real run, `eval/README.md` reports no number. Producing the number is the owner's step in the
 release ([CONTRIBUTING.md](../CONTRIBUTING.md#releasing)).
@@ -1399,8 +1730,20 @@ and a response cut off at `max_tokens`. The CLI runner plays the same scripts th
 wall time aside. One more eval starts that stand-in as `--claude`, with no key, as it would start
 the owner's CLI. It checks the flags and the environment the CLI is given, the four endings that
 must not count for the model, and a usage limit that stops the eval. Two more give the stand-in a
-journal line half written, which is not read, and one that is not JSON, which stops the CLI. The same file checks that
-`--fake` refuses `eval/results` through either runner, holds the results schema to
+journal line half written, which is not read, and one that is not JSON, which stops the CLI. The
+Codex runner plays the same scripts through `eval/fake/codex.mjs`, and its records come out equal
+to the API runner's, apart from the wall time and the request count Codex does not report; a run
+stopped at the cap records no tokens rather than zero. One more eval starts that stand-in as
+`--codex`, with an owner's Codex home and a variable a Codex session sets, and checks that the run
+gets a home of its own with only the owner's sign-in in it, the eval's prompt as its instructions,
+the four tools and none of Codex's own, and that a usage limit stops the eval. Runs stopped at the
+cap leave their tokens unknown: with no total ceiling given the eval goes on, and with one given it
+stops before the next run with `tokens-unknown`, which the report words as such. A model that uses
+Codex's plan tool goes on, with its plans counted, and `--max-tokens-per-run` is refused for
+Codex. One more eval starts a CLI
+that sleeps, sends the eval SIGTERM, and checks that the CLI is stopped, the scratch directories
+are gone and the eval exits with 143. The same file
+checks that `--fake` refuses `eval/results` through the API and CLI runners, holds the results schema to
 `eval/results-shape.ts`, and holds `eval/README.md` to what `pnpm eval:report` renders, the
 headline rule included.
 
@@ -1415,6 +1758,34 @@ should be. One scripted eval gives every
 brief three runs, one of them a lawful screen that leaves out part of its brief, and the records,
 the summary's rates and intervals, and the report's sentences are checked against it. The interval
 and the told-apart test are checked against values worked by hand.
+
+The project lane is tested in `eval/project.test.ts` (`logic` project), with no model and no
+package install. Each eval there sets its app up with `polymorph init` for real, uninstalled, and
+judges each project with `polymorph check` and the brief's requirements for real. Four runs of one
+brief through each stand-in leave a lawful screen that meets its brief, an unlawful module, an
+untouched project and a run the turn budget stops, and each is judged as it should be. One eval
+sets the app up with a tools directory whose `agents` verb writes Codex's MCP entry and a skill, and
+Codex then finds both. One starts the Claude Code stand-in as `--claude` with `--no-install`, checks
+that it gets the brief as its request, its sandbox and nothing of the eval's, and stops it at its
+time budget. The stand-ins refuse to start without the sandbox settings and the arguments the lane
+depends on, and the stand-in for the time budget, signed in from its environment, gets a
+configuration directory of the run's own. The judge's typecheck and build run against a fixture
+project whose scripts are stubs, so the test needs no installed app; a fixture whose
+`package.json` is broken counts as unlawful and unbuilt, and one whose `package.json` or `build`
+script was taken away as unbuilt. A tarball of tools with no dependencies is installed into the
+eval's own npm cache, and a tools directory whose declared bin is not built is refused with that
+reason. One eval starts a harness that sleeps and leaves a command of its own running, sends
+the eval SIGINT, and checks that both are gone, the eval's scratch directories with them, and that
+the eval exits with 130. The same file checks the choice of the screen, the caches left out of
+what a harness wrote, the reading of verbs, skills and MCP servers, the refusals, the results
+schema and the report's section.
+
+Both files start their evals a few at a time (`eval/running.ts`), half as many at once as the
+machine has cores, and each section of evals has a setup of its own, so no setup waits on all of
+them. When a file ends, an eval still running (a setup that timed out leaves some) is sent
+SIGTERM, which stops the harnesses it started; an eval still waiting for its turn is refused, and
+so is one asked for afterwards, so none starts once the file has ended. `eval/running.test.ts`
+checks that with a script that waits in place of the eval.
 
 ## What this does not prove
 

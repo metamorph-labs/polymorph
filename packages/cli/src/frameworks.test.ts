@@ -45,9 +45,10 @@ import { installFramework, UnshippedMemberError } from './vue'
 
 const ROOT = resolve(import.meta.dirname, '../../..')
 const registry: Registry = buildRegistry(ROOT)
+/** The checkout's programs, as its bin names them. */
 const programs = {
-  mcp: resolve(ROOT, 'packages/mcp/bin/polymorph-mcp.js'),
-  emit: resolve(ROOT, 'packages/spec/bin/emit.js'),
+  mcp: { command: 'node', args: [resolve(ROOT, 'packages/mcp/bin/polymorph-mcp.js')] },
+  emit: { command: process.execPath, args: [resolve(ROOT, 'packages/spec/bin/emit.js')] },
 }
 
 const FRAMEWORKS = ['svelte', 'solid'] as const
@@ -250,10 +251,10 @@ describe.each(FRAMEWORKS)('polymorph init --framework %s', (framework) => {
     expect(written(plan, 'polymorph/system-card.md')).toBe(
       renderSystemCard(registry, { framework }),
     )
-    const agents = written(plan, 'AGENTS.md')
+    const agents = written(plan, 'AGENTS.md').replace(/\s+/g, ' ')
     expect(agents).toContain(`\`${FRAMEWORK_VOCABULARY[framework]}\``)
-    expect(agents).toContain(`framework: "${framework}"`)
-    expect(agents).toContain('`render_screen`')
+    expect(agents).toContain(`card --framework ${framework}`)
+    expect(agents).toContain(' render <spec.json> --system <name>')
     expect(written(plan, '.mcp.json')).toContain('--project')
   })
 

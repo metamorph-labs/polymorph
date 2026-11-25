@@ -39,9 +39,10 @@ import { FrameworkMismatchError, installFramework, UnshippedMemberError } from '
 
 const ROOT = resolve(import.meta.dirname, '../../..')
 const registry: Registry = buildRegistry(ROOT)
+/** The checkout's programs, as its bin names them. */
 const programs = {
-  mcp: resolve(ROOT, 'packages/mcp/bin/polymorph-mcp.js'),
-  emit: resolve(ROOT, 'packages/spec/bin/emit.js'),
+  mcp: { command: 'node', args: [resolve(ROOT, 'packages/mcp/bin/polymorph-mcp.js')] },
+  emit: { command: process.execPath, args: [resolve(ROOT, 'packages/spec/bin/emit.js')] },
 }
 
 /** The registry with one member marked absent in Vue, with a reason. */
@@ -169,10 +170,11 @@ describe('polymorph init --framework vue', () => {
     expect(written(plan, 'polymorph/system-card.md')).toBe(
       renderSystemCard(registry, { framework: 'vue' }),
     )
-    const agents = written(plan, 'AGENTS.md')
+    const agents = written(plan, 'AGENTS.md').replace(/\s+/g, ' ')
     expect(agents).toContain('`@polymorph/vue-ui`')
     expect(agents).toContain('`<style>` blocks')
-    expect(agents).toContain('`render_screen`')
+    expect(agents).toContain('card --framework vue')
+    expect(agents).toContain(' render <spec.json> --system <name>')
     expect(written(plan, '.mcp.json')).toContain('--project')
   })
 

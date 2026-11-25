@@ -31,11 +31,16 @@ import { apart, interval, resolution, smallestGap } from './spread.mjs'
  * The page carries no dates of its own. A results file's name starts with the
  * day it ran, and its `at` field orders the rows.
  *
- * The run-time lane (`--mode runtime`) prints last, as a section of its own
- * with its own number: one request with no tools has no first shot apart
- * from its answer and no `validate` call, and it is measured by what a host
- * pays, the card's tokens cached and uncached apart, and by how soon the
- * answer starts and ends.
+ * The run-time lane (`--mode runtime`) prints after the loop modes, as a
+ * section of its own with its own number: one request with no tools has no
+ * first shot apart from its answer and no `validate` call, and it is
+ * measured by what a host pays, the card's tokens cached and uncached apart,
+ * and by how soon the answer starts and ends.
+ *
+ * The project lane (`--mode project`) prints last, with its own number: a
+ * harness in an app has no `validate` call of the eval's to count, so it is
+ * measured by what its project holds at the end (lawful, builds, meets its
+ * brief, and all three) and by what the harness called on the way.
  */
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -105,6 +110,9 @@ const RATES = [
 /** The mode of the run-time lane. */
 const RUNTIME = 'runtime'
 
+/** The mode of the project lane. */
+const PROJECT = 'project'
+
 /**
  * The three rates of the run-time lane. Its one request is its first shot,
  * so the lawful rate is the first-shot rate as well, and is printed once.
@@ -117,9 +125,15 @@ const RUNTIME_RATES = [
 /** The runs a summary's rates are over: every run that was not a harness fault. */
 const measuredOf = (summary) => summary.measured ?? summary.runs - summary.endings.harness
 
-/** A rate as successes out of the measured runs, or `null` where the summary has no such rate. */
+/**
+ * A rate as successes out of the runs it is over, or `null` where the summary
+ * has no such rate. A rate of the project lane names its own number of runs
+ * (`buildsMeasured` beside `buildsRate`); every other rate is over the
+ * measured runs.
+ */
 function countOf(summary, key) {
-  const [rate, total] = [summary[key], measuredOf(summary)]
+  const own = summary[key.replace(/Rate$/, 'Measured')]
+  const [rate, total] = [summary[key], typeof own === 'number' ? own : measuredOf(summary)]
   if (rate === null || rate === undefined || total === 0) return null
   return { successes: Math.round(rate * total), total }
 }
@@ -148,26 +162,34 @@ const seconds = (ms) => (ms === null ? '—' : `${(ms / 1000).toFixed(1)} s`)
 const iterations = (value) => (value === null ? '—' : value.toFixed(1))
 const runs = (count) => `${count} run${count === 1 ? '' : 's'}`
 
-/** The effort the run asked for; `default` asked for none, which the CLI fills with its own. */
+/** The effort the run asked for; `default` asked for none, which a harness fills with its own. */
 const effort = ({ runner, settings }) =>
   settings.effort === 'default' && runner === 'cli'
     ? 'the CLI’s default effort'
-    : `${settings.effort} effort`
+    : settings.effort === 'default' && runner === 'codex'
+      ? 'Codex’s default effort'
+      : `${settings.effort} effort`
 
 /** How the model was reached, as the number says it. */
 const through = ({ runner, cliVersion }) =>
-  runner === 'cli' ? `through Claude Code ${cliVersion}` : 'through the Messages API'
+  runner === 'cli'
+    ? `through Claude Code ${cliVersion}`
+    : runner === 'codex'
+      ? `through Codex ${cliVersion}`
+      : 'through the Messages API'
 
 /** How the model was reached, as a table cell says it. */
-const runnerCell = ({ runner, cliVersion }) => (runner === 'cli' ? `CLI ${cliVersion}` : 'API')
+const runnerCell = ({ runner, cliVersion }) =>
+  runner === 'cli' ? `CLI ${cliVersion}` : runner === 'codex' ? `Codex ${cliVersion}` : 'API'
 
 /** Why a partial file's eval stopped, as its row says. */
 const STOPPED = {
   api: 'the API failed',
-  cli: 'the CLI failed',
+  cli: 'the harness failed',
   'usage-limit': 'stopped at a usage limit',
   'tokens-per-run': 'stopped at the per-run token ceiling',
   'tokens-total': 'stopped at the total token ceiling',
+  'tokens-unknown': 'stopped when a run’s tokens went unreported under a total ceiling given',
 }
 
 function version({ polymorph }) {
@@ -238,8 +260,8 @@ function resolutionLines({ summary }, rates = RATES) {
     const count = countOf(summary.overall, key)
     if (count === null) return []
     const { below, above } = resolution(count.successes, count.total)
-    const from = percent((below === null ? 0 : below + 1) / total)
-    const to = percent((above === null ? total : above - 1) / total)
+    const from = percent((below === null ? 0 : below + 1) / count.total)
+    const to = percent((above === null ? count.total : above - 1) / count.total)
     const here = percent(count.successes / count.total)
     return [
       `- ${name}: ${from === to ? `only ${from}` : `anything from ${from} to ${to}`} (${here} here)`,
@@ -417,6 +439,8 @@ function briefsCell(results) {
 }
 
 function retriesCell({ retries, backoffMs, discardedTokens }) {
+  // Codex reports no retry, so its runs have no count.
+  if (retries === null) return 'not reported'
   if (retries === 0) return '0'
   return `${retries} (${seconds(backoffMs)} waiting, ${thousands(discardedTokens)} tokens discarded)`
 }
@@ -431,7 +455,7 @@ function endingsCell({ endings }) {
 /** The page, as a string. `readme` is where it will live, so its links resolve from there. */
 export function renderReport(all, readme) {
   const link = (file) => relative(dirname(readme), file).split('\\').join('/')
-  const entries = all.filter(({ results }) => results.mode !== RUNTIME)
+  const entries = all.filter(({ results }) => results.mode !== RUNTIME && results.mode !== PROJECT)
   const lines = [
     '# The agent eval',
     '',
@@ -440,9 +464,10 @@ export function renderReport(all, readme) {
     'How an agent given a screen brief and the system’s own tools gets on: how often its first',
     '`validate` call is lawful, how many calls it takes to get there, how often it ends lawful, how',
     'often the screen it hands back has every part its brief requires, and what that costs. The',
-    'model is reached through the Messages API or through the Claude Code CLI, measured the same',
-    `way. [docs/verification.md](${link(VERIFICATION)}) says what each number measures, how to run`,
-    'the eval with either runner and what a run costs.',
+    'model is reached through the Messages API, through the Claude Code CLI or through the Codex',
+    'CLI, measured the same way apart from what Codex does not report.',
+    `[docs/verification.md](${link(VERIFICATION)}) says what each number measures, how to run the`,
+    'eval with each runner and what a run costs.',
     '',
     'A rate from a few runs is known only loosely, so each one is printed with its 95% interval: the',
     'rates that many runs are consistent with. Each results file’s section says which rates a',
@@ -486,6 +511,10 @@ export function renderReport(all, readme) {
   lines.push(
     ...runtimeSection(
       all.filter(({ results }) => results.mode === RUNTIME),
+      link,
+    ),
+    ...projectSection(
+      all.filter(({ results }) => results.mode === PROJECT),
       link,
     ),
   )
@@ -695,6 +724,202 @@ function runtimeSection(entries, link) {
       )
     }
     for (const entry of group) lines.push(...detail(entry, group, link, RUNTIME_LANE))
+  }
+  return lines
+}
+
+/* -------------------------------------------------------------------------- */
+/* The project lane                                                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The four rates of the project lane. Each is over the runs judged for it:
+ * the builds over the runs whose app was installed, the brief over the runs
+ * whose screen could be read.
+ */
+const PROJECT_RATES = [
+  { key: 'lawfulRate', name: 'lawful', title: 'Lawful', phrase: 'end lawful' },
+  { key: 'buildsRate', name: 'builds', title: 'Builds', phrase: 'build' },
+  {
+    key: 'meetsBriefRate',
+    name: 'meets brief',
+    title: 'Meets brief',
+    phrase: 'meet their brief',
+    judged: true,
+  },
+  {
+    key: 'allThreeRate',
+    name: 'all three',
+    title: 'All three',
+    phrase: 'do all three',
+    judged: true,
+  },
+]
+
+/** Whether two project results files ran under the same condition: runner, effort and framework. */
+const sameProjectCondition = (one, other) =>
+  sameLoopCondition(one, other) && one.settings.framework === other.settings.framework
+
+/** The tools a project eval set its app up with, as a phrase. */
+const toolsPhrase = ({ project }) =>
+  `the tools ${project.tools.version ?? 'of no version'} from ` +
+  (project.tools.from === 'checkout' ? 'a checkout' : `a ${project.tools.from}`)
+
+/** Counts summed over a summary, as `name 3, other 1`, most first; `—` when there are none. */
+const tallyCell = (counts) => {
+  const entries = Object.entries(counts ?? {}).sort(
+    ([a, one], [b, other]) => other - one || a.localeCompare(b),
+  )
+  return entries.length === 0 ? '—' : entries.map(([key, count]) => `${key} ${count}`).join(', ')
+}
+
+/** What the rates leave out, as a sentence; empty when nothing. */
+function projectCaveats({ runs: total, endings, buildsMeasured, meetsBriefMeasured, measured }) {
+  const parts = [
+    endings.turns > 0 && `${endings.turns} stopped at the turn budget`,
+    endings.time > 0 && `${endings.time} stopped at the time budget`,
+    buildsMeasured < measured && `${measured - buildsMeasured} were not built`,
+    meetsBriefMeasured < measured &&
+      `${measured - meetsBriefMeasured} wrote a screen the requirements cannot read`,
+    endings.harness > 0 && `${endings.harness} ended in a harness fault, left out of the figures`,
+  ].filter(Boolean)
+  return parts.length === 0 ? '' : ` Of ${runs(total)}, ${parts.join(', ')}.`
+}
+
+/**
+ * The project lane's number: for each model, runner, effort and framework,
+ * its latest run that can be one, by the same rule as the other modes.
+ */
+function projectNumbers(entries, link) {
+  const latest = new Map()
+  for (const entry of entries) {
+    const { model, runner, settings } = entry.results
+    const key = [model, runner, settings.effort, settings.framework].join(' · ')
+    if (canBeTheNumber(entry.results) && !latest.has(key)) latest.set(key, entry)
+  }
+  if (latest.size === 0) {
+    return [
+      'No project number is recorded: `eval/results/` holds no real run of the project lane over ' +
+        'every brief. It is measured with `pnpm eval --mode project --runner cli`, with Claude Code ' +
+        'signed in, or `--runner codex`, with Codex signed in.',
+    ]
+  }
+  return [...latest.values()].flatMap(({ file, results }, index) => {
+    const { overall } = results.summary
+    const rates = PROJECT_RATES.flatMap(({ key, phrase }) => {
+      const count = countOf(overall, key)
+      return count === null
+        ? []
+        : [
+            `${percent(count.successes / count.total)} ${phrase} (${range(count, ' to ')}, ` +
+              `${runs(count.total)})`,
+          ]
+    })
+    return [
+      ...(index === 0 ? [] : ['']),
+      `**The project number:** \`${results.model}\`, ${effort(results)}, ${through(results)}, ` +
+        `a ${results.settings.framework} app set up by ${toolsPhrase(results)}, ` +
+        `${version(results)} — ${rates.join(', ')}; ` +
+        `${thousands(overall.meanInputTokens)} input and ${thousands(overall.meanOutputTokens)} ` +
+        `output tokens and ${seconds(overall.meanWallMs)} per run ` +
+        `([${fileName(file)}](${link(file)})). Each range is the 95% interval its runs support.` +
+        projectCaveats(overall),
+    ]
+  })
+}
+
+/**
+ * What made each run's project unlawful, one line per run, in the words of
+ * the check that reported it.
+ */
+function projectMisses(results) {
+  return results.records.flatMap((record) => {
+    if (record.lawful || record.ended === 'harness' || record.violations.length === 0) return []
+    const shown = record.violations.slice(0, 3).join('; ')
+    const more = record.violations.length > 3 ? ` (and ${record.violations.length - 3} more)` : ''
+    return [`\`${record.brief}\` #${record.run}: ${shown}${more}`]
+  })
+}
+
+/** The project lane: its rates, its condition, and what made its projects unlawful. */
+const PROJECT_LANE = {
+  rates: PROJECT_RATES,
+  same: sameProjectCondition,
+  heading: '####',
+  misses: (entry) => {
+    const { overall } = entry.results.summary
+    const misses = projectMisses(entry.results)
+    const skills = Object.keys(overall.skills ?? {})
+    return [
+      `What the harnesses called in ${fileName(entry.file)}: MCP tools ${tallyCell(overall.mcpCalls)}; ` +
+        `\`polymorph\` verbs ${tallyCell(overall.verbs)}; ${overall.shellCommands} shell ` +
+        `command${overall.shellCommands === 1 ? '' : 's'}; ` +
+        (skills.length === 0 ? 'no skill loaded' : `skills ${tallyCell(overall.skills)}`) +
+        (overall.denied === null
+          ? '; refused calls not reported.'
+          : overall.denied === 0
+            ? '.'
+            : `; ${overall.denied} tool calls refused.`),
+      ...(misses.length === 0
+        ? []
+        : [
+            '',
+            'Projects that did not end lawful, in the words of the check:',
+            '',
+            ...misses.map((miss) => `- ${miss}`),
+          ]),
+    ]
+  },
+}
+
+/**
+ * The project lane's section: what it measures, its number, and one table
+ * per model, latest run first, each results file with a section of its own.
+ */
+function projectSection(entries, link) {
+  const lines = [
+    '',
+    '## The project lane',
+    '',
+    'How a harness gets on in a real app with only what the tools wrote there: Claude Code or Codex',
+    'is started in an app `polymorph init` set up, given the brief as an ordinary request and nothing',
+    'else from the eval, and judged on the project it leaves. How often the project ends lawful, how',
+    'often it builds, how often its screen meets the brief, and all three; which MCP tools and',
+    '`polymorph` verbs the harness called; and what it cost. A run its budget stopped is judged on',
+    'what it left. Each rate is over the runs judged for it.',
+    '',
+    ...projectNumbers(entries, link),
+  ]
+  const groups = new Map()
+  for (const entry of entries) {
+    const { model, fake } = entry.results
+    const key = `${model}${fake ? ' (scripted model: measures the harness, not a model)' : ''}`
+    groups.set(key, [...(groups.get(key) ?? []), entry])
+  }
+  for (const [title, group] of groups) {
+    lines.push(
+      '',
+      `### ${title}`,
+      '',
+      '| Results | Version | Runner | Effort | App | Tools | Agents | Briefs × runs | Lawful | Builds | Meets brief | All three | Input tokens | Output tokens | Wall time | Endings |',
+      '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+    )
+    for (const entry of group) {
+      const { results } = entry
+      const { overall } = results.summary
+      const { project } = results
+      lines.push(
+        `| ${resultsCell(entry, link)} | ${version(results)} | ${runnerCell(results)} | ` +
+          `${results.settings.effort} | ${results.settings.framework}` +
+          `${project.installed ? '' : ', not installed'} | ` +
+          `${project.tools.version ?? '—'} (${project.tools.from}) | ` +
+          `${project.agents.ran ? 'ran' : 'none'} | ${briefsCell(results)} | ` +
+          `${PROJECT_RATES.map(({ key }) => rateCell(overall, key)).join(' | ')} | ` +
+          `${thousands(overall.meanInputTokens)} | ${thousands(overall.meanOutputTokens)} | ` +
+          `${seconds(overall.meanWallMs)} | ${endingsCell(overall)} |`,
+      )
+    }
+    for (const entry of group) lines.push(...detail(entry, group, link, PROJECT_LANE))
   }
   return lines
 }

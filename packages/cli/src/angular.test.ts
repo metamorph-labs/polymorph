@@ -54,9 +54,10 @@ import { installFramework, UnshippedMemberError } from './vue'
 const ROOT = resolve(import.meta.dirname, '../../..')
 const VOCABULARY = resolve(ROOT, 'packages/angular-ui')
 const registry: Registry = buildRegistry(ROOT)
+/** The checkout's programs, as its bin names them. */
 const programs = {
-  mcp: resolve(ROOT, 'packages/mcp/bin/polymorph-mcp.js'),
-  emit: resolve(ROOT, 'packages/spec/bin/emit.js'),
+  mcp: { command: 'node', args: [resolve(ROOT, 'packages/mcp/bin/polymorph-mcp.js')] },
+  emit: { command: process.execPath, args: [resolve(ROOT, 'packages/spec/bin/emit.js')] },
 }
 
 /** The registry with one member marked absent in Angular, with a reason. */
@@ -265,10 +266,10 @@ describe('polymorph init --framework angular', () => {
     expect(written(plan, 'polymorph/system-card.md')).toBe(
       renderSystemCard(registry, { framework: 'angular' }),
     )
-    const agents = written(plan, 'AGENTS.md')
+    const agents = written(plan, 'AGENTS.md').replace(/\s+/g, ' ')
     expect(agents).toContain(`\`${FRAMEWORK_VOCABULARY.angular}\``)
-    expect(agents).toContain('framework: "angular"')
-    expect(agents).toContain('`render_screen`')
+    expect(agents).toContain('card --framework angular')
+    expect(agents).toContain(' render <spec.json> --system <name>')
     expect(written(plan, '.mcp.json')).toContain('--project')
   })
 

@@ -30,6 +30,7 @@ import {
 } from '@polymorph/registry'
 import { readNativePackage, validateSpec, type SpecFault } from '@polymorph/spec'
 
+import type { BrowserSetup } from './render'
 import { submittedDocument, type SubmittedSpec } from './submitted'
 
 import { withClimb, type Rung, type Violation } from './violations'
@@ -77,6 +78,19 @@ export interface ToolContext {
    * so and the others are unaffected.
    */
   screenBuilder?: string
+  /**
+   * The page `render_screen` draws in, already built: a directory of its files.
+   * The published tools ship it, so their server builds nothing. When given, it
+   * is used instead of `screenBuilder`.
+   */
+  screenPage?: string
+  /**
+   * What `render_screen` tells a person to do when its browser is missing. The
+   * entry point names it, because a checkout and an installed package install
+   * the browser differently. When absent, the advice is the checkout's
+   * (`checkoutBrowserSetup`).
+   */
+  browserSetup?: BrowserSetup
 }
 
 /* -------------------------------------------------------------------------- */
@@ -139,8 +153,15 @@ export type { SubmittedSpec } from './submitted'
  * is called, so no other tool depends on it being installed. It is re-exported
  * here so the server imports every tool from one place.
  */
-export { browserAdvice, renderScreen, ScreenUnavailableError, VIEWPORTS } from './render'
+export {
+  browserAdvice,
+  checkoutBrowserSetup,
+  renderScreen,
+  ScreenUnavailableError,
+  VIEWPORTS,
+} from './render'
 export type {
+  BrowserSetup,
   InputFill,
   LayoutFault,
   RenderedScreen,

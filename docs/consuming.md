@@ -41,11 +41,20 @@ framework's own section says what differs.
 
 ## One command
 
-For a new app that installs the packages, run `polymorph init` from a checkout of this repository:
+For a new app that installs the packages, run `polymorph init` from the published tools. It needs
+Node 24 and no checkout of this repository:
 
 ```sh
-node ../polymorph/packages/cli/bin/polymorph.js init my-app   # --system pastel for another system
-cd my-app && pnpm dev
+npx -y @metamorph-labs/polymorph@latest init my-app   # --system pastel for another system
+cd my-app && npm run dev
+```
+
+The command is always the scoped `@metamorph-labs/polymorph`: the unscoped `polymorph` on npm is
+another package. From a checkout of this repository, the checkout's bin writes the same app, wired
+to that checkout ([tooling.md](tooling.md#init)):
+
+```sh
+node ../polymorph/packages/cli/bin/polymorph.js init my-app
 ```
 
 `--framework vue`, `svelte`, `solid` or `angular` writes the app in that framework; the default is
@@ -54,28 +63,36 @@ polymorph. For React, `init` writes:
 
 | File | What it is |
 | --- | --- |
-| `package.json` | `@polymorph/engine`, `@polymorph/react` and `@polymorph/react-ui` as npm aliases, React and the system's fonts as dependencies; `@polymorph/rules`, Vite, TypeScript, ESLint and Stylelint as dev dependencies; `dev`, `build`, `lint` and `typecheck` scripts |
-| `.npmrc` | the two lines from [Registry access](#1-registry-access). It names `NODE_AUTH_TOKEN` and never holds a token |
+| `package.json` | `@polymorph/engine`, `@polymorph/react` and `@polymorph/react-ui` as npm aliases, React and the system's fonts as dependencies; `@polymorph/rules`, Vite, TypeScript, ESLint and Stylelint as dev dependencies, and from the published tools `@metamorph-labs/polymorph` at the release; `dev`, `build`, `lint` and `typecheck` scripts |
+| `.npmrc` | only with `--registry github`, the default from a checkout: the two lines from [Registry access](#1-registry-access). It names `NODE_AUTH_TOKEN` and never holds a token |
 | `index.html`, `tsconfig.json`, `vite.config.ts`, `src/main.tsx`, `src/vite-env.d.ts` | a Vite React app with the theme plugin, as in [A theme](#4-a-theme) |
 | `src/theme/<system>.json`, `src/theme/<palette>.json` | a catalogue system (`plain` unless `--system` names another) and the palette it declares |
 | `polymorph.eslint.js`, `polymorph.stylelint.js`, `eslint.config.js`, `stylelint.config.js` | the red rules, as in [The red rules](#6-the-red-rules) |
-| `.mcp.json` | the MCP server ([tooling.md](tooling.md)), run from the checkout against the app, by an absolute path that belongs to this machine: change it on each machine, or add `.mcp.json` to `.gitignore` |
-| `polymorph/system-card.md`, `AGENTS.md`, `CLAUDE.md` | the system card, and what an agent working in the app needs to know: the card is the contract, the MCP tools, screens as specs, `render_screen` to see one drawn (and the one command that downloads its browser), no styles |
+| `.mcp.json` | the MCP server ([tooling.md](tooling.md)), run against the app. From the published tools it is `npx -y @metamorph-labs/polymorph@^<version> mcp`, which runs the copy the app installed and works on any machine. From a checkout it is the checkout's bin by an absolute path that belongs to that machine: change it on each machine, or add `.mcp.json` to `.gitignore` |
+| `AGENTS.md`, `CLAUDE.md`, `.claude/skills/`, `.agents/skills/`, `.cursor/mcp.json`, `.codex/config.toml`, `polymorph/system-card.md`, `polymorph/agents.json` | the files a coding agent reads, as `polymorph agents` writes them ([harnesses.md](harnesses.md)): a short block in `AGENTS.md` (the card is the contract, what application code may not contain, the ladder, the commands for the card, `validate` and `render`), the skills, the server for Cursor and Codex as well, the system card, and the record of what was written |
 | `src/screens/welcome.json`, `src/screens/Welcome.tsx`, `src/App.tsx` | a first screen as a spec, the TSX emitted from it, and the container that renders it |
 | `.gitignore`, `.prettierrc.json` | `node_modules` and `dist` ignored; the formatting every file above is written in |
 
-Then it runs `pnpm install --ignore-workspace`, with `NODE_AUTH_TOKEN` from your environment or,
-when that is unset, from `gh auth token`, and says when it used the GitHub CLI's token; a token with
-only `read:packages` in `NODE_AUTH_TOKEN` is the recommended way. The token is passed in the
-environment only. When the install fails, `init` keeps the app and exits 1: with no token, or a
-token the registry refuses, it prints `gh auth refresh -s read:packages` and the install command;
-when the packages are not published at the app's ranges, it names them and points at the release
-steps in CONTRIBUTING.md.
+Then it installs the app with the package manager that ran the command (npm when `npx` ran it;
+pnpm, Yarn or Bun when one of them did), or, when none can be told, npm from the published tools
+and pnpm from a checkout. pnpm installs with `--ignore-workspace`, so a workspace in a directory
+above the app is left alone. From npmjs.com, the published tools' default, the install needs no
+configuration and no token. With `--registry github` (a checkout's default) it installs from GitHub
+Packages, with `NODE_AUTH_TOKEN` from your environment or, when that is unset, from
+`gh auth token`, and says when it used the GitHub CLI's token; a token with only `read:packages`
+in `NODE_AUTH_TOKEN` is the recommended way. The token is passed in the environment only. When the
+install fails, `init` keeps the app and exits 1: with no token, or a token the registry refuses, it
+prints `gh auth refresh -s read:packages` and the install command; when the packages are not
+published at the app's ranges, it names them, and from a checkout points at the release steps in
+CONTRIBUTING.md.
 `--no-install` writes the app and skips the install. `--dry-run` lists the files and writes
 nothing.
 
 The sections below are the same setup done by hand, for React. Follow them to add polymorph to an
-app that already exists. Each framework's own section lists what its `init` writes instead.
+app that already exists. Each framework's own section lists what its `init` writes instead. In an
+app that exists, `polymorph agents` writes the agent files `init` writes, for Claude Code, Codex,
+Cursor or another harness ([harnesses.md](harnesses.md)), and the plugin in `plugins/polymorph`
+gives Claude Code and Codex the skills and the server with no files in the project.
 
 ## Installing
 
@@ -102,6 +119,7 @@ The packages are published to npmjs.com, as public packages, and to GitHub Packa
 | `@polymorph/elements` | `@metamorph-labs/polymorph-elements` | `@polymorph/elements`, in an app with a build that uses the elements |
 | `@polymorph/elements-ui` | `@metamorph-labs/polymorph-elements-ui` | `@polymorph/elements-ui`, in an app with a build that uses the elements |
 | `@polymorph/screen` | `@metamorph-labs/polymorph-screen` | `@polymorph/screen`, in an app that builds a run-time card or checks a model's screen; also a dependency of `@polymorph/react` and `@polymorph/elements-ui` ([run-time-screens.md](run-time-screens.md)) |
+| `@polymorph/tools` | `@metamorph-labs/polymorph` | `@metamorph-labs/polymorph`, under its own name and no alias, because no code imports it: the CLI and the MCP server, run with `npx`, and a dev dependency of an app the published tools write ([tooling.md](tooling.md)) |
 
 The names come from `PUBLISHED_NAMES` in `packages/registry/src/install.ts`, which
 `pnpm publish:packages` and `polymorph init` both read.
@@ -1145,6 +1163,14 @@ names another static directory), compiles the theme sheet, and writes an example
 The files are a build output of this repository, which `pnpm build:packages` writes into
 `dist/cdn/` of `@polymorph/elements-ui`. No public URL serves them, because the packages are
 published to a restricted registry, so `init` copies them and `polymorph update` copies them again.
+
+A page has no `package.json`, so nothing installs the tools beside it. The MCP server its
+`.mcp.json` names downloads them with `npx` the first time a client starts it, which can take
+longer than the client waits. Run the tools once before then, and `npx` keeps them:
+
+```sh
+npx -y @metamorph-labs/polymorph@^<version> --help
+```
 
 ### The page
 

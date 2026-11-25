@@ -503,6 +503,10 @@ importers:
       jiti:
         specifier: ^2.7.0
         version: 2.7.0
+    devDependencies:
+      smol-toml:
+        specifier: ^1.4.2
+        version: 1.4.2
 
   packages/conformance:
     dependencies:
@@ -1308,6 +1312,80 @@ importers:
       '@types/culori':
         specifier: ^4.0.1
         version: 4.0.1
+
+  packages/tools:
+    dependencies:
+      '@angular-eslint/eslint-plugin-template':
+        specifier: ^22.6.0
+        version: 22.6.0(@angular-eslint/template-parser@22.6.0(eslint@10.8.0(jiti@2.7.0))(typescript@5.9.3))(@typescript-eslint/types@8.65.0)(@typescript-eslint/utils@8.65.0(eslint@10.8.0(jiti@2.7.0))(typescript@5.9.3))(eslint@10.8.0(jiti@2.7.0))(typescript@5.9.3)
+      '@angular-eslint/template-parser':
+        specifier: ^22.6.0
+        version: 22.6.0(eslint@10.8.0(jiti@2.7.0))(typescript@5.9.3)
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.30.0
+        version: 1.30.0(zod@4.4.3)
+      '@typescript-eslint/parser':
+        specifier: ^8.65.0
+        version: 8.65.0(eslint@10.8.0(jiti@2.7.0))(typescript@5.9.3)
+      culori:
+        specifier: ^4.0.2
+        version: 4.0.2
+      eslint:
+        specifier: ^10.8.0
+        version: 10.8.0(jiti@2.7.0)
+      postcss-value-parser:
+        specifier: ^4.2.0
+        version: 4.2.0
+      prettier:
+        specifier: ^3.9.6
+        version: 3.9.6
+      stylelint:
+        specifier: ^17.14.1
+        version: 17.14.1(typescript@5.9.3)
+      svelte:
+        specifier: ^5.57.2
+        version: 5.57.2(@typescript-eslint/types@8.65.0)
+      svelte-eslint-parser:
+        specifier: ^1.9.0
+        version: 1.9.0(svelte@5.57.2(@typescript-eslint/types@8.65.0))
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vue-eslint-parser:
+        specifier: ^10.4.1
+        version: 10.4.1(eslint@10.8.0(jiti@2.7.0))
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@polymorph/cli':
+        specifier: workspace:*
+        version: link:../cli
+      '@polymorph/mcp':
+        specifier: workspace:*
+        version: link:../mcp
+      '@polymorph/registry':
+        specifier: workspace:*
+        version: link:../registry
+      '@polymorph/rules':
+        specifier: workspace:*
+        version: link:../rules
+      '@polymorph/spec':
+        specifier: workspace:*
+        version: link:../spec
+      '@polymorph/theme':
+        specifier: workspace:*
+        version: link:../theme
+      jiti:
+        specifier: ^2.7.0
+        version: 2.7.0
+      vite:
+        specifier: ^8.1.5
+        version: 8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)
+    optionalDependencies:
+      playwright:
+        specifier: ^1.62.0
+        version: 1.62.0
 
   packages/vue:
     dependencies:
@@ -6443,6 +6521,10 @@ packages:
   slice-ansi@9.0.1:
     resolution: {integrity: sha512-aBY19bn/XA+hKOKX0qL7Z0UfdBsbQvc9hn993U8ALUjzxCvDcuZqLoRXjGJrUARWAlwMnsRVD9sw2AFNOYvalA==}
     engines: {node: '>=22'}
+
+  smol-toml@1.4.2:
+    resolution: {integrity: sha512-rInDH6lCNiEyn3+hH8KVGFdbjc099j47+OSgbMrfDYX1CmXLfdKd7qi6IfcWj2wFxvSVkuI46M+wPGYfEOEj6g==}
+    engines: {node: '>= 18'}
 
   solid-js@1.9.17:
     resolution: {integrity: sha512-4GAmLOWPfNV8H9Jfn2LSFTpNEG6jiOKPiwd5lnLGQtehHaX6l3TOLzJqQ7mqwB/3k1Yy3zyumFVopmc/tm34ow==}
@@ -12050,6 +12132,8 @@ snapshots:
     dependencies:
       ansi-styles: 6.2.3
       is-fullwidth-code-point: 5.1.0
+
+  smol-toml@1.4.2: {}
 
   solid-js@1.9.17:
     dependencies:

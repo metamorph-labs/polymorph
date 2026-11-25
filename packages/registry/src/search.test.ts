@@ -30,6 +30,30 @@ describe('searchRegistry', () => {
     expect(hits[0]?.matched).toBe('name')
   })
 
+  it('several words find a member by its name as a person says it', () => {
+    for (const query of ['date picker', 'date-picker', 'Date Picker']) {
+      const hits = searchRegistry(registry, { query })
+      expect(hits[0]?.name, query).toBe('DatePicker')
+      expect(hits[0]?.matched, query).toBe('name')
+    }
+  })
+
+  it('several words that are no name and no phrase are matched word by word', () => {
+    const hits = searchRegistry(registry, { query: 'table sortable rows' })
+    expect(hits[0]?.name).toBe('Table')
+    expect(hits[0]?.matched).toContain('name')
+
+    // A member that answers some of the words is found below one that answers them all.
+    const some = searchRegistry(registry, { query: 'button zzzz' })
+    expect(some[0]?.name).toBe('Button')
+    const all = searchRegistry(registry, { query: 'button' })
+    expect(all.length).toBeGreaterThanOrEqual(some.length)
+
+    expect(searchRegistry(registry, { query: 'zzzz qqqq' })).toEqual([])
+    // Common words that name no member do not match the catalogue through its purposes.
+    expect(searchRegistry(registry, { query: 'no member is called this' })).toEqual([])
+  })
+
   it('wears narrows to the members whose own stylesheet reads the token', () => {
     const seat = searchRegistry(registry, { wears: '--pm-shadow-seat' })
     expect(seat.length).toBeGreaterThan(0)

@@ -1,0 +1,33 @@
+{
+  "project": true,
+  "turns": [
+    {
+      "usage": {
+        "input_tokens": 4000,
+        "output_tokens": 2000
+      },
+      "content": [
+        {
+          "type": "write",
+          "path": "src/screens/Settings.tsx",
+          "content": {
+            "$file": "list-incidents/attempt-1.tsx"
+          }
+        }
+      ]
+    },
+    {
+      "usage": {
+        "input_tokens": 40,
+        "cache_read_input_tokens": 6000,
+        "output_tokens": 60
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "The settings page is written in src/screens/Settings.tsx."
+        }
+      ]
+    }
+  ]
+}

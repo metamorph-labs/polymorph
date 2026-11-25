@@ -40,7 +40,7 @@ import { Section } from '../components/Section'
 import { TIER_COPY } from '../components/tiers'
 import { FixtureFrame } from '../FixtureFrame'
 import { useMeta } from '../meta'
-import { CLI_FROM_APP } from '../reference/install'
+import { TOOLS } from '../reference/install'
 import { componentBySlug, componentSlug, findComponent, type TIERS } from '../registry'
 import { navigate } from '../router'
 
@@ -386,8 +386,8 @@ function Usage({ component }: { component: RegistryComponent }) {
       )}
       {component.origin === 'vendored' ? (
         <Text>
-          {'Want to own the code instead? From a copy of the repository beside your app, run '}
-          <Code>{`${CLI_FROM_APP} add ${slug}`}</Code>
+          {'Want to own the code instead? In your app’s folder, run '}
+          <Code>{`${TOOLS} add ${slug}`}</Code>
           {` and it copies ${component.name} into your project, ${component.dependencies.files.length} files in all, ready for you to change.`}
         </Text>
       ) : (

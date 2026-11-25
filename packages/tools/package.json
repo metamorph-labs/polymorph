@@ -1,0 +1,77 @@
+{
+  "name": "@polymorph/tools",
+  "version": "1.0.17",
+  "description": "The Polymorph design system's command line and MCP server in one package: write a new app, vendor members and themes, run the red rules over a repository, and give a coding agent the system as tools. Needs no checkout of the repository.",
+  "keywords": [
+    "polymorph",
+    "design-system",
+    "cli",
+    "mcp",
+    "model-context-protocol",
+    "agents",
+    "eslint",
+    "stylelint",
+    "components",
+    "ui"
+  ],
+  "private": true,
+  "mcpName": "io.github.metamorph-labs/polymorph",
+  "type": "module",
+  "bin": {
+    "polymorph": "./dist/polymorph.js",
+    "polymorph-mcp": "./dist/polymorph-mcp.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "homepage": "https://github.com/metamorph-labs/polymorph#readme",
+  "bugs": {
+    "url": "https://github.com/metamorph-labs/polymorph/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/metamorph-labs/polymorph.git",
+    "directory": "packages/tools"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs"
+  },
+  "dependencies": {
+    "@angular-eslint/eslint-plugin-template": "^22.6.0",
+    "@angular-eslint/template-parser": "^22.6.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@typescript-eslint/parser": "^8.65.0",
+    "culori": "^4.0.2",
+    "eslint": "^10.8.0",
+    "postcss-value-parser": "^4.2.0",
+    "prettier": "^3.9.6",
+    "stylelint": "^17.14.1",
+    "svelte": "^5.57.2",
+    "svelte-eslint-parser": "^1.9.0",
+    "typescript": "^5.9.3",
+    "vue-eslint-parser": "^10.4.1",
+    "zod": "^4.4.3"
+  },
+  "optionalDependencies": {
+    "playwright": "^1.62.0"
+  },
+  "devDependencies": {
+    "@polymorph/cli": "workspace:*",
+    "@polymorph/mcp": "workspace:*",
+    "@polymorph/registry": "workspace:*",
+    "@polymorph/rules": "workspace:*",
+    "@polymorph/spec": "workspace:*",
+    "@polymorph/theme": "workspace:*",
+    "jiti": "^2.7.0",
+    "vite": "^8.1.5"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "license": "MIT"
+}

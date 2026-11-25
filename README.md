@@ -70,16 +70,21 @@ export function Inbox({ onNewTicket }: { onNewTicket: () => void }) {
 
 | You are building | Start with |
 | --- | --- |
-| a React app | `node <checkout>/packages/cli/bin/polymorph.js init my-app`, then `cd my-app && pnpm dev` |
+| a React app | `npx -y @metamorph-labs/polymorph@latest init my-app`, then `cd my-app && npm run dev` |
 | a Vue, Svelte, Solid or Angular app | the same command with `--framework vue`, `svelte`, `solid` or `angular` |
 | a page in HTML: static, server-rendered, htmx or Turbo | the same command with `--framework elements`, which copies the files the page loads into its static directory ([docs/consuming.md](docs/consuming.md#a-page-with-no-build)) |
 | an iOS app | the Swift package, added by this repository's URL: products `PolymorphTokens` and `PolymorphUI` |
 | an Android app | the Gradle build in `platforms/android`, included with `includeBuild`: `dev.polymorph:tokens` and `dev.polymorph:ui` |
 | a Flutter or Dart app | the tokens only, in `platforms/dart` (`polymorph_tokens`); there is no Flutter renderer |
 | an existing web app | [docs/consuming.md](docs/consuming.md): the packages by hand, or members vendored with `polymorph add` |
+| a coding agent's setup, in any of those | `npx -y @metamorph-labs/polymorph@latest agents`, or the plugin for Claude Code and Codex in `plugins/polymorph` ([docs/harnesses.md](docs/harnesses.md)) |
 
-`init` needs a checkout of this repository and a GitHub token that can read the packages
-([docs/consuming.md](docs/consuming.md) has both, and a section per framework and platform).
+`@metamorph-labs/polymorph` is the command line and the MCP server in one package, with no
+checkout needed: the app `init` writes installs the packages from npmjs.com, and its `.mcp.json`
+runs the server with `npx`. Always run it by that scoped name; the unscoped `polymorph` on npm is
+another package. From a checkout, `node <checkout>/packages/cli/bin/polymorph.js init my-app` writes
+the same app wired to the checkout ([docs/consuming.md](docs/consuming.md) has both, and a section
+per framework and platform).
 
 ## Working on polymorph
 
@@ -162,6 +167,9 @@ The commands, by what they do:
 | [docs/rules.md](docs/rules.md) | The red rules and the exception ladder |
 | [docs/verification.md](docs/verification.md) | Every gate, test project and law, `pnpm proof`, and the agent eval |
 | [docs/tooling.md](docs/tooling.md) | Registry, CLI, MCP server, spec DSL, workbench |
+| [docs/harnesses.md](docs/harnesses.md) | Claude Code, Codex, Cursor and other coding agents: the plugin, `polymorph agents` and what each reads |
+| [docs/listing.md](docs/listing.md) | Where the plugin and the MCP server are listed, and the steps each listing needs |
+| [PRIVACY.md](PRIVACY.md), [TERMS.md](TERMS.md) | What the tools collect (nothing), and the terms they are provided under |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to change things, how to add a member, and how to release |
 | [AGENTS.md](AGENTS.md) | The operating guide for coding agents working in this repository |
 

@@ -1,20 +1,56 @@
-import type { Registry } from '@polymorph/registry'
+import { FRAMEWORKS, type Framework, type Registry } from '@polymorph/registry'
 
+import {
+  AGENT_RECORD,
+  agentLines,
+  AgentRecordError,
+  applyAgents,
+  DEFAULT_HARNESSES,
+  harnessNames,
+  HarnessError,
+  orderHarnesses,
+  planAgents,
+  projectFramework,
+  projectLint,
+  readAgentRecord,
+  readHarnesses,
+} from './agents'
 import { applyPlan } from './apply'
 import { check, CheckError, checkLines, type Verify } from './check'
 import { addElements, NoBuildFilesError, updateElements, type ElementsResult } from './elements'
-import { checkoutHolding, DEFAULT_SYSTEM, initCommand, InitError, type InitPrograms } from './init'
+import {
+  checkoutHolding,
+  initCommand,
+  InitError,
+  packageManagerOf,
+  TOOLS_NAME,
+  toolsOf,
+  type InitPrograms,
+  type Origin,
+} from './init'
 import { readManifest } from './manifest'
-import { planInstall, EscapingDirError, UnknownItemError, DEFAULT_DIR, ELEMENTS_DIR } from './plan'
+import { planInstall, EscapingDirError, UnknownItemError } from './plan'
 import { PatchError } from './patch'
 import {
   FrameworkMismatchError,
   installFramework,
+  KNOWN_FRAMEWORKS,
   UnknownFrameworkError,
   UnshippedMemberError,
 } from './vue'
+import { planHeadLines, planLines, row, writesNothing } from './readings'
 import { diffInstall, updateInstall, type FileState } from './status'
 import { themeCommand } from './theme'
+import { runToolVerb } from './tool-verbs'
+import {
+  synopsis,
+  VERB_GROUPS,
+  verbHelp,
+  verbNamed,
+  VERBS,
+  type ServerStarter,
+  type ToolCaller,
+} from './verbs'
 
 /**
  * `polymorph`, the command surface.
@@ -27,6 +63,12 @@ import { themeCommand } from './theme'
  * Arguments are parsed by hand on purpose. The grammar is a few verbs and a
  * few flags. A parser library would be more code than the grammar it parses, and
  * every new dependency has to justify itself.
+ *
+ * The verbs that ask the MCP tools (`card`, `validate`, `render` and the
+ * rest) are in `tool-verbs.ts`, and every verb is listed as data in
+ * `verbs.ts`. This package cannot load the tools: `@polymorph/mcp` depends on
+ * it. So the entry point supplies them (`tools`), and the server for `mcp`
+ * (`serve`), as it supplies the registry.
  */
 
 export interface Cli {
@@ -37,25 +79,69 @@ export interface Cli {
   registry: Registry
   out: (line: string) => void
   /**
-   * The checkout's MCP server and screen emitter, which `init` wires a new app
-   * to. The entry point resolves them, as it resolves `source`. Only `init`
-   * reads them.
+   * The MCP server and the screen emitter `init` wires a new app to, as
+   * commands. The entry point names them, as it resolves `source`: a checkout's
+   * by their paths, the published tools' by `npx`. Only `init` reads them.
    */
   programs?: InitPrograms
+  /**
+   * Where this CLI runs from: a checkout (the default) or the published tools.
+   * What `init` writes for an agent, and where it installs from by default,
+   * depend on it.
+   */
+  origin?: Origin
+  /**
+   * Calls one MCP tool by name in this process, with the project at `root`:
+   * `toolCaller` from `@polymorph/mcp`. Every verb that asks a tool calls it,
+   * and refuses with one line when the entry point did not supply it.
+   */
+  tools?: ToolCaller
+  /** Starts the MCP server over stdio, for `polymorph mcp`: `serveStdio` from `@polymorph/mcp`. */
+  serve?: ServerStarter
+  /**
+   * Where a verb writes what is not its answer when its answer is the whole of
+   * stdout: the report of `fix --dry-run`, whose stdout is the fixed code, and
+   * a refusal of `mcp`, whose stdout is the protocol. The entry point passes
+   * stderr. Without it, those lines go to `out`.
+   */
+  err?: (line: string) => void
+  /** Reads all of stdin, for a verb given `-`. Without it, this process's stdin is read. */
+  input?: () => Promise<string>
 }
 
 export interface Outcome {
   code: number
 }
 
-const USAGE = `polymorph — install the vocabulary into your repository
+/**
+ * The verbs, each group under its name, with the usage up to the first flag.
+ * A usage wider than the column puts its summary on the next line.
+ */
+function verbList(): string {
+  const column = 34
+  const line = (usage: string, summary: string) =>
+    usage.length > column
+      ? `  ${usage}\n  ${''.padEnd(column)}  ${summary}`
+      : `  ${usage.padEnd(column)}  ${summary}`
+  return VERB_GROUPS.map((group) =>
+    [
+      `${group.charAt(0).toUpperCase()}${group.slice(1)}`,
+      ...VERBS.filter((verb) => verb.group === group).map((verb) =>
+        line(synopsis(verb), verb.summary),
+      ),
+    ].join('\n'),
+  ).join('\n\n')
+}
 
-  polymorph init <dir>        a new app: packages, theme, rules, agent tools, a first screen
-  polymorph add <item...>     vendor components and themes, and travel the rules
-  polymorph diff              what you have changed, and what we have
-  polymorph update            re-vendor what you have not touched
-  polymorph theme <verb>      bring your own system — validate, emit, schema
-  polymorph check [dir]       run the red rules over a directory, with no config
+const USAGE = `polymorph — the vocabulary, its red rules and its agent tools, in your repository
+
+${verbList()}
+
+\`polymorph <verb> --help\` prints a verb's flags. A verb that asks the MCP
+tools gives the answer the tool of the same job gives: \`--json\` prints that
+answer as JSON and nothing else, and without it the verb prints a plain
+reading. Exit codes: 0 when the answer is clean, 1 when it reports violations,
+faults or a refusal, 2 when the command line cannot be read.
 
 Items are component names (\`button\`, \`date-picker\`), the exception
 ladder's primitives (\`bespoke\`, \`third-party\`, \`density-scope\`,
@@ -73,35 +159,26 @@ directory, and prints each violation with the rungs that answer it. It exits 1
 on any violation and writes nothing.
 
 \`polymorph init\` writes a new app into an empty directory: the packages as
-npm aliases, an \`.npmrc\`, the Vite theme plugin with a catalogue system,
-the red rules, an MCP config, a system card and a first screen. Then it runs
-\`pnpm install\` with a token from NODE_AUTH_TOKEN or \`gh auth token\`.
+npm aliases, the Vite theme plugin with a catalogue system, the red rules, an
+MCP config, a system card and a first screen. Then it installs them with the
+package manager that ran it. From npmjs.com that needs nothing more; from
+GitHub Packages (\`--registry github\`) it writes an \`.npmrc\` and installs
+with a token from NODE_AUTH_TOKEN or \`gh auth token\`.
 With \`--framework elements\` it writes a page with no build instead: the
 files the page loads the elements from, copied into its static directory, a
 theme sheet, an example page, an MCP config and a system card. \`add\`
 installs no element by name, because the page loads every one;
 \`add theme:<system>\` writes the theme sheet again, and \`update\` copies
 the files again.
-
-  --dir <path>       where vendored source lands (default ${DEFAULT_DIR}); for
-                     elements, the static directory \`init\` writes the page in
-                     (default ${ELEMENTS_DIR.split('/')[0]}), the files going in its polymorph/
-  --out <path>       where \`theme emit\`/\`theme schema\` write
-  --system <name>    the system \`init\` themes the app with (default ${DEFAULT_SYSTEM})
-  --framework <name> \`react\` (default), \`vue\`, \`svelte\`, \`solid\`, \`angular\` or
-                     \`elements\`: the app \`init\` writes, the members \`add\` vendors
-                     (that framework's components); \`add\` reads it from polymorph.json
-                     once an install has one; \`check\` reads every file in it instead
-                     of inferring
-  --json             \`check\` prints its report as JSON
-  --no-install       \`init\` writes the app and does not run \`pnpm install\`
-  --force            overwrite files you have edited
-  --dry-run          print the plan, write nothing
 `
 
+/** Whether a command line asks for help. A verb's own `--help` prints its usage and flags. */
+const HELP = new Set(['--help', '-h'])
+
 /**
- * The entry point: every command. `check` is asynchronous, because Stylelint's
- * API is, so it is answered here; every other command is `run`'s.
+ * The entry point: every command. `check` and the verbs that ask the tools are
+ * asynchronous, because Stylelint's API and the tools are, so they are
+ * answered here; every other command is `run`'s.
  *
  * `verify` is `@polymorph/rules/verify`'s, loaded only when `check` runs, so
  * the other commands never load ESLint or Stylelint. A caller may pass its own.
@@ -109,6 +186,12 @@ the files again.
 export async function main(cli: Cli, argv: string[], verify?: Verify): Promise<Outcome> {
   const { flags, rest } = parse(argv)
   const [command, ...items] = rest
+  const verb = verbNamed(command, items[0])
+  if (verb !== undefined && argv.some((argument) => HELP.has(argument))) {
+    cli.out(verbHelp(verb))
+    return { code: 0 }
+  }
+  if (verb !== undefined && verb.needs !== null) return runToolVerb(cli, verb, argv)
   if (command !== 'check') return run(cli, argv)
 
   try {
@@ -142,9 +225,24 @@ export function run(cli: Cli, argv: string[]): Outcome {
         return update(cli, flags)
       case 'theme':
         return themeCommand(cli, items, flags)
+      case 'agents':
+        return agents(cli, items, flags)
       case 'check':
         // Linting is asynchronous and this function is not; `main` runs it.
         cli.out('polymorph check runs through `main`, which waits for the linters')
+        return { code: 1 }
+      case 'card':
+      case 'search':
+      case 'component':
+      case 'axes':
+      case 'plan':
+      case 'validate':
+      case 'fix':
+      case 'emit':
+      case 'render':
+      case 'mcp':
+        // The tools answer asynchronously and this function is not; `main` runs them.
+        cli.out(`polymorph ${command} runs through \`main\`, which waits for the tools`)
         return { code: 1 }
       case undefined:
       case 'help':
@@ -154,7 +252,7 @@ export function run(cli: Cli, argv: string[]): Outcome {
         return { code: command === undefined ? 1 : 0 }
       default:
         cli.out(`polymorph: no such command "${command}"\n\n${USAGE}`)
-        return { code: 1 }
+        return { code: 2 }
     }
   } catch (error) {
     if (
@@ -165,7 +263,8 @@ export function run(cli: Cli, argv: string[]): Outcome {
       error instanceof UnshippedMemberError ||
       error instanceof FrameworkMismatchError ||
       error instanceof UnknownFrameworkError ||
-      error instanceof NoBuildFilesError
+      error instanceof NoBuildFilesError ||
+      error instanceof AgentRecordError
     ) {
       cli.out(error.message)
       return { code: 1 }
@@ -179,14 +278,14 @@ interface Flags {
   out?: string
   system?: string
   framework?: string
+  registry?: string
+  harness?: string
+  remove?: string
   install: boolean
   force: boolean
   dryRun: boolean
   json: boolean
 }
-
-/** One aligned row. Every label pads to the width of the widest one, `kept yours`. */
-const row = (label: string, value: string) => `  ${label.padEnd(11)}${value}`
 
 function parse(argv: string[]): { flags: Flags; rest: string[] } {
   const flags: Flags = { install: true, force: false, dryRun: false, json: false }
@@ -204,6 +303,15 @@ function parse(argv: string[]): { flags: Flags; rest: string[] } {
     } else if (argument === '--system') {
       index += 1
       flags.system = argv[index]
+    } else if (argument === '--registry') {
+      index += 1
+      flags.registry = argv[index]
+    } else if (argument === '--harness') {
+      index += 1
+      flags.harness = argv[index]
+    } else if (argument === '--remove') {
+      index += 1
+      flags.remove = argv[index]
     } else if (argument === '--dir') {
       index += 1
       flags.dir = argv[index]
@@ -232,11 +340,14 @@ function parse(argv: string[]): { flags: Flags; rest: string[] } {
 function refuseCheckout(cli: Cli, command: 'add' | 'update'): string | null {
   const checkout = checkoutHolding(cli.root, cli.source, cli.registry)
   if (checkout === null) return null
+  const elsewhere =
+    (cli.origin ?? 'checkout') === 'checkout'
+      ? `pointing at this checkout: node ../polymorph/packages/cli/bin/polymorph.js ${command} …`
+      : `with the published tools: npx -y ${TOOLS_NAME}@^${cli.registry.version} ${command} …`
   return (
     `polymorph ${command}: ${cli.root} is in a checkout of polymorph (${checkout}), and ` +
     `${command} would vendor the vocabulary into its own source — run it in the repository ` +
-    'that consumes polymorph, pointing at this checkout: ' +
-    `node ../polymorph/packages/cli/bin/polymorph.js ${command} …`
+    `that consumes polymorph, ${elsewhere}`
   )
 }
 
@@ -266,41 +377,13 @@ function add(cli: Cli, items: string[], flags: Flags): Outcome {
     ...(flags.dir ? { dir: flags.dir } : {}),
     ...(framework === 'react' ? {} : { framework }),
   })
-  const themeFiles = plan.systems.length + plan.palettes.length
 
-  if (plan.files.length === 0 && themeFiles === 0) {
-    for (const note of plan.notes) cli.out(`  · ${note}`)
+  // A dry run prints what `polymorph plan` prints for the same items.
+  if (flags.dryRun || writesNothing(plan)) {
+    for (const line of planLines(plan)) cli.out(line)
     return { code: 0 }
   }
-
-  const dragged = plan.components.filter((name) => !plan.requested.includes(name))
-  // Palettes that a system declares, as opposed to palettes the user named.
-  // This is the same rule as `came along` for components.
-  const declared = new Set(plan.systems.map((system) => system.defaultPalette))
-
-  cli.out(`polymorph ${plan.version} → ${plan.dir}`)
-  if (plan.requested.length > 0) cli.out(row('components', plan.requested.join(', ')))
-  // Components pulled in as dependencies are always listed by name. An install
-  // that adds components silently would surprise the consumer later.
-  if (dragged.length > 0) cli.out(row('came along', dragged.join(', ')))
-  for (const system of plan.systems) {
-    const fonts = system.fonts.map((font) => font.family).join(', ')
-    cli.out(row('system', `${system.name} + ${system.defaultPalette} (${fonts})`))
-  }
-  for (const palette of plan.palettes.filter((entry) => !declared.has(entry.name))) {
-    cli.out(row('palette', palette.name))
-  }
-  cli.out(row('files', String(plan.files.length + themeFiles)))
-
-  if (flags.dryRun) {
-    for (const file of plan.files) cli.out(`    ${file.to}`)
-    for (const entry of [...plan.systems, ...plan.palettes]) cli.out(`    ${entry.file.to}`)
-    cli.out(row('packages', Object.keys(plan.packages).join(', ')))
-    if (Object.keys(plan.devPackages).length > 0) {
-      cli.out(row('dev', Object.keys(plan.devPackages).join(', ')))
-    }
-    return { code: 0 }
-  }
+  for (const line of planHeadLines(plan)) cli.out(line)
 
   const result = applyPlan(cli.root, cli.source, cli.registry, plan, { force: flags.force })
 
@@ -327,11 +410,7 @@ function addToPage(cli: Cli, items: string[], flags: Flags): Outcome {
       framework: 'elements',
       ...(flags.dir ? { dir: flags.dir } : {}),
     })
-    for (const note of plan.notes) cli.out(`  · ${note}`)
-    for (const system of plan.systems) cli.out(row('system', system.name))
-    for (const palette of plan.palettes) cli.out(row('palette', palette.name))
-    const sheet = [...plan.systems, ...plan.palettes][0]?.file.to
-    if (sheet !== undefined) cli.out(`    ${sheet}`)
+    for (const line of planLines(plan)) cli.out(line)
     return { code: 0 }
   }
   const result = addElements(cli.root, cli.source, cli.registry, items, {
@@ -415,6 +494,139 @@ async function checkCommand(
   if (flags.json) cli.out(JSON.stringify(report, null, 2))
   else for (const line of checkLines(cli.registry, report)) cli.out(line)
   return { code: report.ok ? 0 : 1 }
+}
+
+/* -------------------------------------------------------------------------- */
+/* agents                                                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * `polymorph agents`: the files a coding agent reads, merged into the project
+ * (`agents.ts`). The harnesses are the ones named, added to the ones written
+ * before, so a rerun never drops a harness's files; with none named and none
+ * written, the default three. The framework is the one named, else the one
+ * written before, else the project's.
+ */
+function agents(cli: Cli, items: string[], flags: Flags): Outcome {
+  if (items.length > 0) {
+    cli.out(`polymorph agents: it takes no argument "${items[0]}" — ${AGENTS_USAGE}`)
+    return { code: 2 }
+  }
+  if (!cli.programs) {
+    cli.out(
+      'polymorph agents: needs the MCP server the files name — run it through `bin/polymorph.js` ' +
+        `or \`npx -y ${TOOLS_NAME}\``,
+    )
+    return { code: 1 }
+  }
+  if (
+    flags.framework !== undefined &&
+    !(FRAMEWORKS as readonly string[]).includes(flags.framework)
+  ) {
+    cli.out(
+      `polymorph agents: there is no framework called "${flags.framework}" — ${KNOWN_FRAMEWORKS}`,
+    )
+    return { code: 2 }
+  }
+  let asked
+  let removed
+  try {
+    asked = flags.harness === undefined ? [] : readHarnesses(flags.harness)
+    removed = flags.remove === undefined ? [] : readHarnesses(flags.remove)
+  } catch (error) {
+    if (error instanceof HarnessError) {
+      cli.out(error.message)
+      return { code: 2 }
+    }
+    throw error
+  }
+  const both = asked.filter((harness) => removed.includes(harness))
+  if (both.length > 0) {
+    cli.out(`polymorph agents: ${both.join(', ')} is both added and removed — ${AGENTS_USAGE}`)
+    return { code: 2 }
+  }
+  // A dry run writes nothing, so it may show a plan anywhere, this checkout included.
+  if (!flags.dryRun) {
+    const checkout = checkoutHolding(cli.root, cli.source, cli.registry)
+    if (checkout !== null) {
+      cli.out(
+        `polymorph agents: ${cli.root} is in a checkout of polymorph (${checkout}), whose own ` +
+          'agent files are its own — run it in the repository that uses polymorph',
+      )
+      return { code: 1 }
+    }
+  }
+
+  const origin = cli.origin ?? 'checkout'
+  const previous = readAgentRecord(cli.root)
+  // An older release would replace a newer one's files with older text.
+  if (previous !== null && newerRelease(previous.version, cli.registry.version) && !flags.force) {
+    cli.out(
+      `polymorph agents: polymorph ${previous.version} wrote these agent files, and this is ` +
+        `polymorph ${cli.registry.version}, an older release. Run ${previous.version} or later, ` +
+        `or \`--force\` to write ${cli.registry.version}'s files over them.`,
+    )
+    return { code: 1 }
+  }
+  const harnesses = orderHarnesses([
+    ...(previous?.harnesses ?? []),
+    ...asked,
+    ...(asked.length === 0 && (previous?.harnesses.length ?? 0) === 0 ? DEFAULT_HARNESSES : []),
+  ]).filter((harness) => !removed.includes(harness))
+  if (harnesses.length === 0) {
+    cli.out(
+      'polymorph agents: `--remove` leaves no harness to write for. Name the ones to keep, or ' +
+        `delete the agent files and ${AGENT_RECORD} by hand.`,
+    )
+    return { code: 2 }
+  }
+  const framework =
+    (flags.framework as Framework | undefined) ?? previous?.framework ?? projectFramework(cli.root)
+  const plan = planAgents(cli.registry, {
+    harnesses,
+    framework,
+    origin,
+    tools: toolsOf(cli.programs, cli.registry),
+    mcp: cli.programs.mcp,
+    lint: projectLint(cli.root, packageManagerOf(process.env, origin)),
+  })
+  const result = applyAgents(cli.root, cli.registry, plan, previous, {
+    force: flags.force,
+    dryRun: flags.dryRun,
+  })
+
+  cli.out(
+    `polymorph ${cli.registry.version} → agent files for ${harnessNames(plan.harnesses)} ` +
+      `(${framework})${flags.dryRun ? ', a dry run that writes nothing' : ''}`,
+  )
+  for (const line of agentLines(result, plan, flags.dryRun)) cli.out(line)
+  // A part kept because it can no longer be written, or because its file cannot take it, is
+  // not one `--force` replaces, so the line is said only for the parts it does.
+  if (result.outcomes.some((outcome) => outcome.replaceable)) {
+    cli.out('')
+    cli.out('  The parts kept as yours are replaced with polymorph’s by `--force`.')
+  }
+  return { code: result.outcomes.some((outcome) => outcome.action === 'refused') ? 1 : 0 }
+}
+
+const AGENTS_USAGE =
+  '`polymorph agents [--harness <list>] [--remove <list>] [--framework <name>] [--force] [--dry-run]`'
+
+/** Whether release `a` is newer than release `b`: by major, minor and patch, then a release over its prerelease. */
+export function newerRelease(a: string, b: string): boolean {
+  const parse = (version: string) => {
+    const [core = '', pre] = version.split('-', 2)
+    return { parts: core.split('.').map((part) => Number.parseInt(part, 10) || 0), pre }
+  }
+  const left = parse(a)
+  const right = parse(b)
+  for (let index = 0; index < 3; index += 1) {
+    const difference = (left.parts[index] ?? 0) - (right.parts[index] ?? 0)
+    if (difference !== 0) return difference > 0
+  }
+  if (left.pre === undefined || right.pre === undefined)
+    return left.pre === undefined && right.pre !== undefined
+  return left.pre.localeCompare(right.pre, 'en', { numeric: true }) > 0
 }
 
 /* -------------------------------------------------------------------------- */

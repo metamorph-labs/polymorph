@@ -5,6 +5,7 @@ import type { Registry } from '@polymorph/registry'
 
 import { GUIDE_GROUPS, GUIDES, guideMarkdownPath, guidesInGroup } from './guide-catalogue'
 import { rewriteLinks, stripComments } from './guide-links'
+import { TOOLS_NAME } from './reference/facts'
 
 /**
  * The plain-text files an agent fetches first, in the `llms.txt` convention
@@ -31,12 +32,16 @@ export const LLMS_PATHS = {
   card: '/system-card.md',
 } as const
 
-/** The repository an agent clones for the CLI and the MCP server, which are not published. */
+/** The repository a guide's link to a source file points into. */
 export const REPOSITORY = 'https://github.com/metamorph-labs/polymorph'
 
-/** The bins an agent runs, relative to a checkout. `llms.test.ts` checks that they exist. */
-export const MCP_BIN = 'packages/mcp/bin/polymorph-mcp.js'
-export const CLI_BIN = 'packages/cli/bin/polymorph.js'
+/**
+ * The command an agent runs the CLI and the MCP server with: the published tools at the
+ * registry's release range, by their scoped name, with `npx`. The unscoped `polymorph` on npm is
+ * another package.
+ */
+export const toolsCommand = (registry: Registry): string =>
+  `npx -y ${TOOLS_NAME}@^${registry.version}`
 
 /**
  * `/llms.txt`. `origin` is the site's address with no trailing slash, or the
@@ -72,15 +77,24 @@ export function llmsTxt(registry: Registry, origin = ''): string {
     '',
     '## Commands',
     '',
-    `The MCP server and the CLI run from a checkout of ${REPOSITORY}.`,
+    `The MCP server and the CLI are one published package, \`${TOOLS_NAME}\`. Run it with ` +
+      '`npx` by that scoped name; it needs no checkout.',
     '',
-    `- MCP server, over stdio: \`node <checkout>/${MCP_BIN}\`, started in the project it ` +
+    `- MCP server, over stdio: \`${toolsCommand(registry)} mcp\`, started in the project it ` +
       'writes into. Call `get_system_card` first.',
-    `- A new app: \`node <checkout>/${CLI_BIN} init my-app\`. It writes a Vite app that ` +
+    `- A new app: \`${toolsCommand(registry)} init my-app\`. It writes a Vite app that ` +
       'installs the packages, with a theme, the red rules, the MCP configuration and a first ' +
       'screen spec; `--framework vue`, `svelte`, `solid` or `angular` writes it in that framework. ' +
       '`--framework elements` writes a page with no build instead: the files it loads the ' +
       'elements from, a theme sheet and an example page.',
+    '- Every MCP tool is also a verb of the same command, for a harness with a shell and no MCP ' +
+      'client: `card`, `validate`, `emit`, `render` and the rest. `--help` lists them, and ' +
+      '`--json` prints the tool’s answer.',
+    `- A coding agent's files in an app that exists: \`${toolsCommand(registry)} agents\`. It ` +
+      'writes a block in `AGENTS.md`, the skills (`polymorph-screen`, `polymorph-rules`, ' +
+      '`polymorph-setup`, `polymorph-theme`) and the MCP server for Claude Code, Codex and Cursor. ' +
+      `Claude Code and Codex can install the same skills and server as a plugin from the ` +
+      `repository's marketplace instead: \`claude plugin marketplace add metamorph-labs/polymorph\`.`,
     '',
     '## Guides',
     '',
