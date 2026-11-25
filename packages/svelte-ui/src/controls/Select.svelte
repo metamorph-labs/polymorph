@@ -153,7 +153,7 @@ const flat = $derived([
   ...(emptyOption === undefined ? [] : [emptyChoice]),
   ...options.flatMap((entry) => ('options' in entry ? entry.options : [entry])),
 ])
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => trigger)
 const service = useMachine(
   zag.machine,
   () =>

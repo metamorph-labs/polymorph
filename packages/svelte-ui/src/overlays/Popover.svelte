@@ -81,7 +81,7 @@ let scrim = $state<HTMLElement | null>(null)
 let sheetPanel = $state<HTMLElement | null>(null)
 const phone = useMediaQuery('phone')
 const sheeting = $derived(presentation === 'sheet' && phone.current)
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => anchor)
 const service = useMachine(
   zag.machine,
   () =>

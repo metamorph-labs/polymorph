@@ -344,6 +344,22 @@
   background: var(--pm-texture-page) var(--pm-bg-app);
 }
 
+/* The region and the page's heading take focus from script and the skip link
+   only, so the reader is at the page after a skip or a page change
+   (`arriveAtPage`). A ring around the whole region or a heading adds no
+   information, because neither is a control. The heading carries `tabindex`
+   only while it holds that focus. This is the standard exception for a
+   programmatically focused `tabindex="-1"` target, as on Dialog's panel. */
+.content:focus-visible,
+.content h1[tabindex='-1']:focus-visible {
+  outline: none;
+}
+
+/* The live region that says a new page's title. It is never drawn. */
+.announcer {
+  composes: visuallyHidden from '../conventions/a11y.module.css';
+}
+
 .page {
   min-inline-size: 0;
   inline-size: 100%;

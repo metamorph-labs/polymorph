@@ -111,7 +111,7 @@ export default function Carousel(given: CarouselProps): JSX.Element {
         viewport.value !== null &&
         Math.abs(Math.abs(viewport.value.scrollLeft) - nearest * viewport.value.clientWidth) <= 1,
     )
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => root.value)
     const service = useMachine(
       zag.machine,
       () =>

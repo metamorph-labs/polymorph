@@ -15,6 +15,8 @@ import {
   SlotOutlet,
   SlotTemplate,
   agentMember,
+  anchorFocusReturns,
+  arriveAtPage,
   cell,
   classes,
   currentRailDestination,
@@ -24,8 +26,10 @@ import {
   goToRailDestination,
   isTemplate,
   mountEffect,
+  presence,
   provideOwner,
   railDestinations,
+  uniqueId,
   useMember,
   watchEffect,
   type NodeTemplate,
@@ -109,96 +113,112 @@ export interface AppShellOwner {
 [attr.data-navigation]="e3()"
 [attr.data-drawer]="e4()"
 data-member="app-shell"
+[pmRef]="frame"
 ><!-- skip -->
 <a
 [attr.class]="e5()"
 href="#content"
->{{ e6() }}</a>
-@if (e7()) {<!-- banner -->
+[attr.inert]="e6()"
+>{{ e7() }}</a>
+@if (e8()) {<!-- banner -->
 <div
-[attr.class]="e8()"
+[attr.class]="e9()"
+[attr.inert]="e10()"
 ><ng-container [pmSlotOutlet]="'banner'" [pmSlotOf]="$" /></div>}
 <!-- sidebar -->
 <nav
-[attr.class]="e9()"
-[attr.aria-label]="e10()"
+[attr.class]="e11()"
+[attr.id]="e12()"
+[attr.aria-label]="e13()"
 tabindex="-1"
 [pmRef]="rail"
 ><!-- railHead -->
 <div
-[attr.class]="e11()"
->@if (e12()) {<!-- brand -->
+[attr.class]="e14()"
+>@if (e15()) {<!-- brand -->
 <div
-[attr.class]="e13()"
+[attr.class]="e16()"
 ><ng-container [pmSlotOutlet]="'brand'" [pmSlotOf]="$" /></div>}
 <!-- toggle -->
 <div
-[attr.class]="e14()"
+[attr.class]="e17()"
 [pmRef]="railToggle"
 ><pm-button
 variant="ghost"
 tone="neutral"
 size="sm"
-[iconOnly]="e15()"
-[icon]="e16()"
-[label]="e17()"
+[iconOnly]="e18()"
+[icon]="e19()"
+[label]="e20()"
 (click)="h1()"
 ></pm-button></div></div>
 <!-- nav -->
 <div
-[attr.class]="e18()"
+[attr.class]="e21()"
 ><ng-container [pmSlotOutlet]="'sidebar'" [pmSlotOf]="$" /></div>
-@if (e19()) {<!-- sidebarFooter -->
+@if (e22()) {<!-- sidebarFooter -->
 <div
-[attr.class]="e20()"
+[attr.class]="e23()"
 ><ng-container [pmSlotOutlet]="'sidebarFooter'" [pmSlotOf]="$" /></div>}</nav>
 <!-- topbar -->
 <header
-[attr.class]="e21()"
+[attr.class]="e24()"
+[attr.inert]="e6()"
 ><!-- leading -->
 <div
-[attr.class]="e22()"
+[attr.class]="e25()"
 ><!-- drawerToggle -->
 <span
-[attr.class]="e23()"
+[attr.class]="e26()"
 [pmRef]="drawerToggle"
 ><pm-button
 variant="ghost"
 tone="neutral"
 size="sm"
-[iconOnly]="e15()"
+[iconOnly]="e18()"
 icon="menu"
-[label]="e24()"
+[label]="e27()"
+[expanded]="e28()"
+[aria-controls]="e29()"
 (click)="h2()"
 ></pm-button></span>
-@if (e25()) {@if (template(e26())) {<ng-container [pmRender]="e26()" />} @else {{{ e26() }}}}</div>
+@if (e30()) {@if (template(e31())) {<ng-container [pmRender]="e31()" />} @else {{{ e31() }}}}</div>
 <!-- trailing -->
 <div
-[attr.class]="e22()"
->@if (e27()) {@if (template(e28())) {<ng-container [pmRender]="e28()" />} @else {{{ e28() }}}}</div></header>
-@if (e29()) {<!-- scrim -->
+[attr.class]="e25()"
+>@if (e32()) {@if (template(e33())) {<ng-container [pmRender]="e33()" />} @else {{{ e33() }}}}</div></header>
+@if (e34()) {<!-- scrim -->
 <button
-[attr.class]="e30()"
+[attr.class]="e35()"
 type="button"
-[attr.aria-label]="e31()"
+[attr.aria-label]="e36()"
 (click)="h3()"
 ></button>}
 <!-- content -->
 <main
 pmPageTransition
-[transitionKey]="e32()"
-[pending]="e33()"
-[ribbon]="e34()"
-[attr.class]="e35()"
+[transitionKey]="e37()"
+[pending]="e38()"
+[ribbon]="e39()"
+[attr.class]="e40()"
 id="content"
->@if (e36()) {<!-- page -->
+tabindex="-1"
+[attr.inert]="e6()"
+>@if (e41()) {<!-- page -->
 <div
-[attr.class]="e37()"
+[attr.class]="e42()"
 ><ng-container [pmSlotOutlet]="'default'" [pmSlotOf]="$" /></div>} @else {<ng-container [pmSlotOutlet]="'default'" [pmSlotOf]="$" />}</main>
-@if (e38()) {<!-- dock -->
+@if (e43()) {<!-- dock -->
 <div
-[attr.class]="e39()"
-><ng-container [pmSlotOutlet]="'dock'" [pmSlotOf]="$" /></div>}</div>`,
+[attr.class]="e44()"
+[attr.inert]="e45()"
+><ng-container [pmSlotOutlet]="'dock'" [pmSlotOf]="$" /></div>}
+<!-- announcer -->
+<div
+[attr.class]="e46()"
+role="status"
+[pmRef]="announcer"
+></div></div>`,
 })
 export class AppShell {
   readonly collapsed = input<AppShellProps['collapsed']>(undefined)
@@ -253,9 +273,13 @@ export class AppShell {
     },
   })
   protected readonly $p = this.$.props
+  protected readonly uid = uniqueId()
   protected readonly uncontrolled = cell(() => this.$p.defaultCollapsed ?? false)
   protected readonly drawer = cell(() => false)
+  protected readonly arrived = cell(() => this.$p.transitionKey)
+  protected readonly announcer = elementRef<HTMLElement>()
   protected readonly drawerToggle = elementRef<HTMLElement>()
+  protected readonly frame = elementRef<HTMLElement>()
   protected readonly rail = elementRef<HTMLElement>()
   protected readonly railToggle = elementRef<HTMLElement>()
   protected readonly held = derived(() => this.$p.collapsed ?? this.uncontrolled.value)
@@ -276,7 +300,10 @@ export class AppShell {
     this.$.emit(this.onCollapsedChange, 'onCollapsedChange', next)
   })
   protected readonly template = isTemplate
+  private release2: (() => void) | undefined
   private release3: (() => void) | undefined
+  private release6: (() => void) | undefined
+  private release7: (() => void) | undefined
 
   constructor() {
     this.$.owner = getters<AppShellOwner>({ collapsed: () => this.isCollapsed.value })
@@ -285,13 +312,24 @@ export class AppShell {
       () => this.effect1(),
       false,
     )
-    watchEffect(
-      () => this.$p.transitionKey,
-      () => this.effect2(),
-      false,
-    )
+    inject(DestroyRef).onDestroy(() => this.release2?.())
+    mountEffect(() => this.effect2())
     inject(DestroyRef).onDestroy(() => this.release3?.())
     mountEffect(() => this.effect3())
+    watchEffect(
+      () => this.$p.transitionKey,
+      () => this.effect4(),
+      false,
+    )
+    mountEffect(() => this.effect5())
+    inject(DestroyRef).onDestroy(() => this.release6?.())
+    watchEffect(
+      () => (this.$p.pending ? undefined : this.$p.transitionKey),
+      () => this.effect6(),
+      false,
+    )
+    inject(DestroyRef).onDestroy(() => this.release7?.())
+    mountEffect(() => this.effect7())
   }
 
   protected e1() {
@@ -315,52 +353,65 @@ export class AppShell {
   }
 
   protected e6() {
-    return this.say.value.skipToContent ?? 'Skip to content'
+    return presence(this.drawer.value)
   }
 
   protected e7() {
-    return this.$.filled('banner')
+    return this.say.value.skipToContent ?? 'Skip to content'
   }
 
   protected e8() {
+    return this.$.filled('banner')
+  }
+
+  protected e9() {
     if (!this.$.filled('banner')) return undefined as never
     return styles.banner
   }
 
-  protected e9() {
-    return styles.sidebar
-  }
-
   protected e10() {
-    return this.say.value.primaryNavigation
+    if (!this.$.filled('banner')) return undefined as never
+    return presence(this.drawer.value)
   }
 
   protected e11() {
-    return styles.railHead
+    return styles.sidebar
   }
 
   protected e12() {
-    return this.$.filled('brand')
+    return this.uid
   }
 
   protected e13() {
+    return this.say.value.primaryNavigation
+  }
+
+  protected e14() {
+    return styles.railHead
+  }
+
+  protected e15() {
+    return this.$.filled('brand')
+  }
+
+  protected e16() {
     if (!this.$.filled('brand')) return undefined as never
     return styles.brand
   }
 
-  protected e14() {
+  protected e17() {
     return styles.toggle
   }
 
-  protected e15(): ButtonProps['iconOnly'] {
+  protected e18(): ButtonProps['iconOnly'] {
     return true
   }
 
-  protected e16(): ButtonProps['icon'] {
+  protected e19(): ButtonProps['icon'] {
     return this.isCollapsed.value ? 'next' : 'previous'
   }
 
-  protected e17(): ButtonProps['label'] {
+  protected e20(): ButtonProps['label'] {
     return this.isCollapsed.value ? this.say.value.expandSidebar : this.say.value.collapseSidebar
   }
 
@@ -368,67 +419,75 @@ export class AppShell {
     this.toggle.value()
   }
 
-  protected e18() {
+  protected e21() {
     return styles.nav
   }
 
-  protected e19() {
+  protected e22() {
     return this.$.filled('sidebarFooter')
   }
 
-  protected e20() {
+  protected e23() {
     if (!this.$.filled('sidebarFooter')) return undefined as never
     return styles.sidebarFooter
   }
 
-  protected e21() {
+  protected e24() {
     return styles.topbar
   }
 
-  protected e22() {
+  protected e25() {
     return styles.topbarSlot
   }
 
-  protected e23() {
+  protected e26() {
     return styles.drawerToggle
   }
 
-  protected e24(): ButtonProps['label'] {
+  protected e27(): ButtonProps['label'] {
     return this.drawer.value ? this.say.value.closeNavigation : this.say.value.openNavigation
+  }
+
+  protected e28(): ButtonProps['expanded'] {
+    return this.drawer.value
+  }
+
+  protected e29(): ButtonProps['aria-controls'] {
+    return this.uid
   }
 
   protected h2(): void {
     this.drawer.value = !this.drawer.value
   }
 
-  protected e25() {
+  protected e30() {
     return this.$p.topbar?.leading !== undefined
   }
 
-  protected e26() {
+  protected e31() {
     if (!(this.$p.topbar?.leading !== undefined)) return undefined as never
     return this.$p.topbar?.leading
   }
 
-  protected e27() {
+  protected e32() {
     return this.$p.topbar?.trailing !== undefined
   }
 
-  protected e28() {
+  protected e33() {
     if (!(this.$p.topbar?.trailing !== undefined)) return undefined as never
     return this.$p.topbar?.trailing
   }
 
-  protected e29() {
+  protected e34() {
     return this.drawer.value
   }
 
-  protected e30() {
+  protected e35() {
     if (!this.drawer.value) return undefined as never
     return styles.scrim
   }
 
-  protected e31() {
+  protected e36() {
     if (!this.drawer.value) return undefined as never
     return this.say.value.closeNavigation
   }
@@ -438,55 +497,117 @@ export class AppShell {
     this.drawer.value = false
   }
 
-  protected e32() {
+  protected e37() {
     return this.$p.transitionKey
   }
 
-  protected e33() {
+  protected e38() {
     return this.$p.pending
   }
 
-  protected e34() {
+  protected e39() {
     return transitions.indicator
   }
 
-  protected e35() {
+  protected e40() {
     return classes(
       styles.content,
       this.$p.transitionKey !== undefined ? transitions.page : undefined,
     )
   }
 
-  protected e36() {
+  protected e41() {
     return this.$p.contentLayout === 'page'
   }
 
-  protected e37() {
+  protected e42() {
     if (!(this.$p.contentLayout === 'page')) return undefined as never
     return styles.page
   }
 
-  protected e38() {
+  protected e43() {
     return this.$.filled('dock')
   }
 
-  protected e39() {
+  protected e44() {
     if (!this.$.filled('dock')) return undefined as never
     return styles.dock
+  }
+
+  protected e45() {
+    if (!this.$.filled('dock')) return undefined as never
+    return presence(this.drawer.value)
+  }
+
+  protected e46() {
+    return styles.announcer
   }
 
   private effect1(): void {
     void (this.drawer.value
       ? this.rail.value?.focus()
-      : this.drawerToggle.value?.querySelector<HTMLElement>('button')?.focus())
+      : this.drawerToggle.value &&
+        anchorFocusReturns(this.drawerToggle.value, this.rail.value ?? null) &&
+        this.drawerToggle.value.querySelector<HTMLElement>('button')?.focus())
   }
 
   private effect2(): void {
-    this.drawer.value = false
+    this.release2?.()
+    const listener = ($event: KeyboardEvent) => {
+      void (
+        this.drawer.value &&
+        $event.key === 'Escape' &&
+        !$event.defaultPrevented &&
+        (this.drawer.value = false)
+      )
+    }
+    document.addEventListener('keydown', listener)
+    this.release2 = () => document.removeEventListener('keydown', listener)
   }
 
   private effect3(): void {
     this.release3?.()
+    const run = () => {
+      void (
+        this.drawer.value &&
+        this.drawerToggle.value &&
+        window.getComputedStyle(this.drawerToggle.value).display === 'none' &&
+        (this.drawer.value = false)
+      )
+    }
+    const resize = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(run)
+    for (const element of [this.drawerToggle.value]) if (element) resize?.observe(element)
+    this.release3 = () => {
+      resize?.disconnect()
+    }
+    run()
+  }
+
+  private effect4(): void {
+    this.drawer.value = false
+  }
+
+  private effect5(): void {
+    this.arrived.value = this.$p.transitionKey
+  }
+
+  private effect6(): void {
+    this.release6?.()
+    const ran =
+      this.$p.pending || this.$p.transitionKey === this.arrived.value
+        ? () => {}
+        : ((this.arrived.value = this.$p.transitionKey),
+          arriveAtPage(
+            this.frame.value?.querySelector<HTMLElement>(':scope > main'),
+            this.announcer.value,
+          ))
+    this.release6 = () => {
+      ran()
+    }
+  }
+
+  private effect7(): void {
+    this.release7?.()
     const ran = agentMember({
       member: 'AppShell',
       element: () => this.rail.value,
@@ -559,7 +680,7 @@ export class AppShell {
       },
       withholds: () => [this.railToggle.value, this.drawerToggle.value],
     })
-    this.release3 = () => {
+    this.release7 = () => {
       ran()
     }
   }

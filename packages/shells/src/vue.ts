@@ -23,6 +23,7 @@ import {
   checkSlots,
   classReference,
   composed,
+  directionPlace,
   entrySubject,
   fixtureName,
   fixtureValues,
@@ -1002,7 +1003,10 @@ export function renderVueMember(
         return `${name}: (details) => { ${body} }`
       }),
     ]
-    lines.push('const documentDirection = useDirection()')
+    const place = directionPlace(template)
+    lines.push(
+      `const documentDirection = useDirection(${place === undefined ? '' : `() => ${scriptExpr(place)}`})`,
+    )
     lines.push(
       `const service = useMachine(zag.machine, computed(() => ({ ${context.join(', ')} })))`,
     )

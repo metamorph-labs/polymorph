@@ -41,7 +41,7 @@ const owner: Record<string, any> = getContext('polymorph:ContextMenu') ?? {}
 let panel = $state<HTMLElement | null>(null)
 let row = $state<HTMLElement | null>(null)
 const items = $derived(entry.kind === 'submenu' ? entry.items : [])
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => row)
 const service = useMachine(
   zag.machine,
   () =>

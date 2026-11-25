@@ -58,7 +58,7 @@ const lender = inject<{ element?: () => Element | null | undefined } | undefined
 )
 provide('polymorph:borrowed', undefined)
 const track = useTemplateRef<HTMLElement>('track')
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => track.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({

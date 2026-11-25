@@ -166,6 +166,9 @@ export default describeMember({
     at: '{ row: 0, column: 0, detail: false }',
     // Whether focus or a key has placed the stop. Until then it is where the grid starts.
     placed: 'false',
+    // Whether focus is in the grid, so focus that falls to the page as its row leaves the
+    // document is known to be the grid's.
+    holds: 'false',
   },
   derived: {
     // Where the stop goes in a cell, per the APG: its one enabled control, so reaching a
@@ -200,7 +203,11 @@ export default describeMember({
     // attribute is compared before it is written, so a cell already in place is left alone.
     rove: `(element: HTMLTableElement, to: ${AT}) => { at = to; for (const [index, row] of gridRows(element).entries()) { for (const cell of Array.from(row.cells)) { const stop = stopIn(cell); const wanted = !to.detail && index === to.row && cell.cellIndex === to.column ? '0' : '-1'; if (stop !== cell && cell.getAttribute('tabindex') !== '-1') cell.setAttribute('tabindex', '-1'); if (stop.getAttribute('tabindex') !== wanted) stop.setAttribute('tabindex', wanted) } const under = detailUnder(row); const held = to.detail && index === to.row ? '0' : '-1'; if (under !== null && under.getAttribute('tabindex') !== held) under.setAttribute('tabindex', held) } }`,
     // Focus says where the current cell is, so a click and a key end in the same state.
-    focusIn: `(event: FocusEvent) => { ${TABLE}; if (element === null) return; const cell = gridCellOf(element, event.target); if (cell === null) return; const to = clampCell(element, positionOf(element, cell, whereIn(element).column)); if (to === null) return; placed = true; rove(element, to) }`,
+    focusIn: `(event: FocusEvent) => { ${TABLE}; if (element === null) return; if (!holds) holds = true; const cell = gridCellOf(element, event.target); if (cell === null) return; const to = clampCell(element, positionOf(element, cell, whereIn(element).column)); if (to === null) return; placed = true; rove(element, to) }`,
+    // A browser may report focus leaving a cell as the cell leaves the document. That cell is
+    // gone a moment later, and the grid still holds focus for it. A cell that is still drawn
+    // lost focus to something else.
+    focusOut: `(event: FocusEvent) => { ${TABLE}; const left = event.target; queueMicrotask(() => { if (element !== null && left instanceof Node && left.isConnected && !element.contains(document.activeElement)) holds = false }) }`,
     // The arrows are physical, so which one moves to the next cell follows the writing
     // direction. The grid takes its keys even at an edge, so a held ArrowDown on the last
     // row stays there instead of scrolling the page. Ctrl or Meta with Home or End reaches
@@ -210,8 +217,10 @@ export default describeMember({
     // Meta, which name a cell of the grid. A key pressed in what a detail holds is its own.
     keyDown: `(event: KeyboardEvent) => { ${TABLE}; const target = event.target instanceof HTMLElement ? event.target : null; if (element === null || target === null || target.closest('${TEXT_ENTRY}') !== null) return; const cell = gridCellOf(element, target); if (cell === null) return; const rows = gridRows(element); const here = positionOf(element, cell, whereIn(element).column); const forward = getComputedStyle(element).direction === 'rtl' ? -1 : 1; const far = event.ctrlKey || event.metaKey; const last = Number.MAX_SAFE_INTEGER; let next: ${AT} | null; if (here.detail) { switch (event.key) { case 'ArrowDown': next = here.row + 1 < rows.length ? { ...here, row: here.row + 1, detail: false } : null; break; case 'ArrowUp': next = { ...here, detail: false }; break; case 'ArrowRight': case 'ArrowLeft': next = null; break; case 'Home': next = far ? { row: 0, column: 0, detail: false } : null; break; case 'End': next = far ? { row: last, column: last, detail: false } : null; break; default: return } } else { switch (event.key) { case 'ArrowRight': next = { ...here, column: here.column + forward }; break; case 'ArrowLeft': next = { ...here, column: here.column - forward }; break; case 'ArrowDown': next = detailUnder(rows[here.row]) !== null ? { ...here, detail: true } : { ...here, row: here.row + 1 }; break; case 'ArrowUp': next = detailUnder(rows[here.row - 1]) !== null ? { ...here, row: here.row - 1, detail: true } : { ...here, row: here.row - 1 }; break; case 'Home': next = far ? { row: 0, column: 0, detail: false } : { ...here, column: 0 }; break; case 'End': next = far ? { row: last, column: last, detail: false } : { ...here, column: last }; break; default: return } } event.preventDefault(); const to = next === null ? null : clampCell(element, next); if (to === null) return; placed = true; rove(element, to); stopAt(element, to)?.focus() }`,
     // Sorting, paging and loading replace rows, and a stop on a removed cell would leave the
-    // table with none. Clamping again also covers a shorter last page.
-    reclamp: `() => { ${TABLE}; if (element === null || !grid) return; const to = clampCell(element, whereIn(element)); if (to !== null) rove(element, to) }`,
+    // table with none. Clamping again also covers a shorter last page. Focus that fell to the
+    // page from a removed row goes to the stop that takes its place: the same column of the row
+    // now at its position, or of the last row.
+    reclamp: `() => { ${TABLE}; if (element === null || !grid) return; const to = clampCell(element, whereIn(element)); if (to === null) return; rove(element, to); const fell = document.activeElement === null || document.activeElement === document.body; if (holds && fell) stopAt(element, to)?.focus() }`,
   },
   effects: [
     // The wrapper is a tab stop only while it overflows, because a tab stop with nothing to
@@ -276,6 +285,7 @@ export default describeMember({
           },
           on: {
             focusin: run('focusIn($event)', 'grid'),
+            focusout: run('focusOut($event)', 'grid'),
             keydown: run('keyDown($event)', 'grid'),
           },
         },

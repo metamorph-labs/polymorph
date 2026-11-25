@@ -95,8 +95,10 @@ export function SegmentedControl({
 }: SegmentedControlProps) {
   const member = useContext(TrackMember)
   const lentTrack = useContext(LentTrack)
-  // The document's direction, which Radix would otherwise take to be left-to-right.
-  const dir = useDirection()
+  // The direction of the place the member is in, which Radix would otherwise take to be
+  // left-to-right.
+  const trackRef = useRef<HTMLDivElement | null>(null)
+  const dir = useDirection(trackRef)
   // Arrow-key selection that also works for a quick tap (`radio-arrows.ts`).
   const arrows = useArrowSelection()
 
@@ -112,7 +114,6 @@ export function SegmentedControl({
     onChange?.(next)
   }
 
-  const trackRef = useRef<HTMLDivElement | null>(null)
   const holdTrack = useCallback(
     (track: HTMLDivElement | null) => {
       trackRef.current = track

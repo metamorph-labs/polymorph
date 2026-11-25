@@ -157,7 +157,7 @@ const toDraft = $derived((text: string) =>
     .trim()
     .slice(0, alpha ? 8 : 6),
 )
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => root)
 const service = useMachine(
   zag.machine,
   () =>

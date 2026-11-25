@@ -44,7 +44,7 @@ const emit = defineEmits<{ openChange: [open: boolean] }>()
 defineSlots<{ default: (props: Record<string, never>) => unknown }>()
 const uid = useId()
 const trigger = useTemplateRef<HTMLElement>('trigger')
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => trigger.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({

@@ -60,7 +60,7 @@ export default function Checkbox(given: CheckboxProps): JSX.Element {
   return scope(() => {
     const uid = createUniqueId()
     const box = elementRef<HTMLElement>()
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => box.value)
     const service = useMachine(
       zag.machine,
       () =>

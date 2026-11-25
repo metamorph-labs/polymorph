@@ -39,6 +39,7 @@ import {
   classReference,
   composed,
   descriptionPath,
+  directionPlace,
   entrySubject,
   fixtureName,
   fixtureValues,
@@ -680,6 +681,10 @@ export function renderSvelteMember(
     ...Object.values(shell.presence ?? {}).map((presence) => presence.ref),
     ...Object.values(shell.departures ?? {}).map((departure) => departure.ref),
     ...Object.keys(shell.controlRefs ?? {}),
+    // The element a machine's member reads its reading direction around.
+    ...(shell.machine === undefined
+      ? []
+      : [directionPlace(template)].filter((ref) => ref !== undefined)),
   ])
   for (const name of [...refs]) {
     if (!readRefs.has(name) && !names.has(name)) {
@@ -1142,7 +1147,10 @@ export function renderSvelteMember(
     ]
     // Read as the machine's props, so a literal (`placement`) takes the machine's type and a
     // callback's details are typed; a prop the machine does not take is passed and ignored.
-    body.push('const documentDirection = useDirection()')
+    const place = directionPlace(template)
+    body.push(
+      `const documentDirection = useDirection(${place === undefined ? '' : `() => ${sx(place)}`})`,
+    )
     body.push(
       `const service = useMachine(zag.machine, () => ({ ${machineContext.join(', ')} }) as Partial<zag.Props>)`,
     )

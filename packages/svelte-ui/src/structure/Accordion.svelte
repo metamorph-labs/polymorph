@@ -69,7 +69,7 @@ const joined = joinSlot(undefined, () => ({}))
 let heights = $state(new Map())
 const regions = refList()
 let root = $state<HTMLElement | null>(null)
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => root)
 const service = useMachine(
   zag.machine,
   () =>

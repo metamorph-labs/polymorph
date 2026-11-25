@@ -86,7 +86,13 @@ export default describeMember({
   },
   template: el(
     'div',
-    { class: ['root'], spread: ['api.getRootProps()'], attrs: { ...identity('ScrollArea') } },
+    {
+      class: ['root'],
+      spread: ['api.getRootProps()'],
+      attrs: { ...identity('ScrollArea') },
+      // The element the member reads its reading direction around.
+      ref: 'root',
+    },
     [
       el(
         'div',

@@ -6,7 +6,7 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { computed, useId } from 'vue'
+import { computed, useId, useTemplateRef } from 'vue'
 
 import * as zag from '@zag-js/scroll-area'
 import { normalizeProps, useMachine } from '@zag-js/vue'
@@ -40,8 +40,9 @@ const props = withDefaults(defineProps<ScrollAreaProps>(), {
 })
 defineSlots<{ default: (props: Record<string, never>) => unknown }>()
 const uid = useId()
+const root = useTemplateRef<HTMLElement>('root')
 const fades = computed(() => props.type === 'hover')
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => root.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({ id: uid, dir: documentDirection.value })),
@@ -51,7 +52,7 @@ const overflowing = computed(() => api.value.hasOverflowX || api.value.hasOverfl
 </script>
 
 <template>
-  <div v-bind="api.getRootProps()" :class="styles.root" data-member="scroll-area">
+  <div ref="root" v-bind="api.getRootProps()" :class="styles.root" data-member="scroll-area">
     <div
       v-bind="api.getViewportProps()"
       :class="styles.viewport"

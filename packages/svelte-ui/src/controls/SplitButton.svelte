@@ -130,7 +130,7 @@ const flat = $derived(
       : [entry],
   ),
 )
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => primary)
 const service = useMachine(
   zag.machine,
   () =>

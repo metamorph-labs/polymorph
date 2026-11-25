@@ -264,7 +264,7 @@ const opened = $derived((now: boolean): void => {
   })(items, branches, chosen)
   if (next !== branches) changeExpanded(next)
 })
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => trigger)
 const service = useMachine(
   zag.machine,
   () =>

@@ -249,7 +249,7 @@ const segmentInput = $derived(
     }
   },
 )
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => field)
 const service = useMachine(
   zag.machine,
   () =>

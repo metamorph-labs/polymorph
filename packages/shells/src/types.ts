@@ -166,6 +166,9 @@ export const ENGINE_HELPERS: readonly string[] = [
   'chooseMenuEntry',
   'menubarChoices',
   'chooseMenubarEntry',
+  // Where focus goes when an anchored overlay closes, and a new page's arrival (AppShell).
+  'anchorFocusReturns',
+  'arriveAtPage',
   // What an agent goes to in AppShell's rail, read from the rail in the document, and how.
   'railDestinations',
   'currentRailDestination',
@@ -219,6 +222,8 @@ export const ENGINE_HELPERS: readonly string[] = [
   'PAGINATION_ELLIPSIS',
   'TOOLTIP_DELAY_MS',
   'TOOLTIP_SKIP_DELAY_MS',
+  // A tooltip's close on scroll, held off while the keyboard holds its control.
+  'closeTooltipOnScroll',
   'formatBytes',
   'gateFiles',
   'promptToken',

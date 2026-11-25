@@ -171,7 +171,7 @@ export class Menubar {
   protected readonly phone = useMediaQuery('phone')
   protected readonly stop = derived(() => menubarStop(this.$p.menus, this.last.value))
   protected readonly collapsed = derived(() => menubarEntries(this.$p.menus))
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.bar.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,

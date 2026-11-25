@@ -347,7 +347,7 @@ export class ColorInput {
         .trim()
         .slice(0, this.$p.alpha ? 8 : 6),
   )
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.root.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,

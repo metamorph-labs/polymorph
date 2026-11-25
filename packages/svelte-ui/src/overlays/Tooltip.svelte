@@ -6,7 +6,7 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { type Snippet } from 'svelte'
+import { onDestroy, type Snippet } from 'svelte'
 
 import * as zag from '@zag-js/tooltip'
 import { useMachine } from '@zag-js/svelte'
@@ -17,6 +17,7 @@ import {
   TOOLTIP_SKIP_DELAY_MS,
   anchorProps,
   attributes,
+  closeTooltipOnScroll,
   joinSlot,
   normalizeProps,
   syncTriggerAnchor,
@@ -51,7 +52,7 @@ const uid = $props.id()
 const joined = joinSlot(undefined, () => ({}))
 let anchor = $state<HTMLElement | null>(null)
 let bubble = $state<HTMLElement | null>(null)
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => anchor)
 const service = useMachine(
   zag.machine,
   () =>
@@ -61,6 +62,7 @@ const service = useMachine(
       defaultOpen: defaultOpen,
       openDelay: TOOLTIP_DELAY_MS,
       closeDelay: TOOLTIP_SKIP_DELAY_MS,
+      closeOnScroll: false,
       positioning: { placement: align === 'center' ? side : `${side}-${align}`, gutter: 0 },
     }) as Partial<zag.Props>,
 )
@@ -82,6 +84,16 @@ const effect1 = () => {
   syncTriggerAnchor(anchor, api.getTriggerProps(), api.open, false)
 }
 watchEffect(effect1, { watch: () => api.open })
+let release2: (() => void) | undefined
+const effect2 = () => {
+  release2?.()
+  const ran = closeTooltipOnScroll(api.open ? anchor : null, () => api.setOpen(false))
+  release2 = () => {
+    ran()
+  }
+}
+watchEffect(effect2, { watch: () => api.open })
+onDestroy(() => release2?.())
 </script>
 
 {@render joined.start?.()

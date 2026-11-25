@@ -34,7 +34,8 @@ Attributes: triggers `data-state="active|inactive"`, `data-disabled?`;
 `data-orientation="horizontal|vertical"` on root, list, triggers **and** content. The
 substrate sets it on all four (the list gets it through roving-focus slot merging). The
 spec records the DOM that renders, not one package's dist. The root also carries `dir`,
-the document's reading direction, which the member hands to its substrate, and the
+the reading direction of the place the member is in, which the member hands to its substrate,
+and the
 recipe's edge fade reads it.
 
 ## Recipe (exact tokens)

@@ -103,7 +103,7 @@ const invalid = $derived(
     : (joined.passed['invalid'] as typeof invalidOwn),
 )
 let root = $state<HTMLElement | null>(null)
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => root)
 const service = useMachine(
   zag.machine,
   () =>

@@ -295,7 +295,7 @@ const removeButton = computed(
     chipList.value?.querySelectorAll<HTMLElement>(':scope > li:not([data-removing]) button')[at] ??
     null,
 )
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => frame.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({

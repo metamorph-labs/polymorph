@@ -74,7 +74,7 @@ export default function SegmentedControl(given: SegmentedControlProps): JSX.Elem
     provide(BORROWED, undefined)
     const uid = createUniqueId()
     const track = elementRef<HTMLElement>()
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => track.value)
     const service = useMachine(
       zag.machine,
       () =>

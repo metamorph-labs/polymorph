@@ -237,7 +237,7 @@ export default function DatePicker(given: DatePickerProps): JSX.Element {
           }
         },
     )
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => field.value)
     const service = useMachine(
       zag.machine,
       () =>

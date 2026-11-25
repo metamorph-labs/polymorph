@@ -647,7 +647,9 @@ pnpm exec vitest run src/conformance.test -t "agent"                    # the ag
   (`packages/conformance/src/direction.ts`), which every shell's `direction.test` calls with its
   adapter and galleries, renders each states fixture entry in a right-to-left document. No
   element may say `dir="ltr"` there, and Tabs must start at the right edge, move to the next tab
-  on the arrow that points left, and turn when the document does.
+  on the arrow that points left, and turn when the document does. Each shell's `direction.test`
+  also mounts Tabs and Rating in an element that says `dir="rtl"` on a left-to-right page, where
+  the arrow that points left must move to the next item.
 - **When an announcement is made.** `announces` checks the channel in the state, and with a
   message the words the region holds then, not whether a screen reader is told when they change.
 - **A substrate's announcement outside the member.** A region the substrate keeps elsewhere

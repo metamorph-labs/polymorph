@@ -30,6 +30,7 @@ import {
   classReference,
   composed,
   descriptionPath,
+  directionPlace,
   EVENT_TYPES,
   fixtureName,
   foundationTypeExports,
@@ -1424,7 +1425,10 @@ export function renderSolidMember(
     ]
     // The assertion gives the literals their machine's types (`placement: 'bottom-end'`), and
     // the callbacks their details.
-    body.push('const documentDirection = useDirection()')
+    const place = directionPlace(template)
+    body.push(
+      `const documentDirection = useDirection(${place === undefined ? '' : `() => ${scriptExpr(place)}`})`,
+    )
     body.push(
       `const service = useMachine(zag.machine, () => ({ ${machineContext.join(', ')} }) as Partial<zag.Props>)`,
     )

@@ -131,7 +131,7 @@ export class SplitButtonSubmenu {
   protected readonly items = derived(() =>
     this.$p.entry.kind === 'submenu' ? this.$p.entry.items : [],
   )
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.row.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,

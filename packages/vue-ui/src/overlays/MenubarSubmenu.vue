@@ -29,7 +29,7 @@ const owner = inject<Record<string, any>>('polymorph:Menubar', {})
 const panel = useTemplateRef<HTMLElement>('panel')
 const row = useTemplateRef<HTMLElement>('row')
 const items = computed(() => (props.entry.kind === 'submenu' ? props.entry.items : []))
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => row.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({

@@ -127,8 +127,8 @@ export function ratingPress(
 /**
  * The mark a key moves to from the mark that has focus, or `undefined` for a
  * key the rating does not take. The arrows that point along the row follow
- * the reading direction: in a right-to-left document the row starts at the
- * right, so the arrow that points left moves to the next mark. Down is the
+ * the reading direction: in a right-to-left page or section the row starts at
+ * the right, so the arrow that points left moves to the next mark. Down is the
  * next mark and Up the previous one, as in a radio group. Home and End move to
  * the first and the last mark. A move stops at either end and does not wrap,
  * because one press past the top would set the lowest score.
@@ -185,7 +185,7 @@ export function roveRating(event: RatingKeyEvent, choose: (value: number) => voi
   const marks = Array.from(group.querySelectorAll<HTMLElement>('[role="radio"]'))
   const at = marks.indexOf(mark)
   if (at === -1) return
-  const target = ratingStep(event.key, at + 1, marks.length, readDirection())
+  const target = ratingStep(event.key, at + 1, marks.length, readDirection(group))
   if (target === undefined) return
   event.preventDefault()
   marks[target - 1]?.focus()

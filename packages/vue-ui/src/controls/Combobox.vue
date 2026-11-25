@@ -173,7 +173,7 @@ const requestMore = computed(
     ((loadMoreAt.value = props.options.length), emit('loadMore'), true),
 )
 const emitBlur = computed(() => (event: FocusEvent) => setTimeout(() => emit('blur', event)))
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => input.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({

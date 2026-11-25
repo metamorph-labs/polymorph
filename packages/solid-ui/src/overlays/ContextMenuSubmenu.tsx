@@ -48,7 +48,7 @@ export default function ContextMenuSubmenu(given: ContextMenuSubmenuProps): JSX.
     const panel = elementRef<HTMLElement>()
     const row = elementRef<HTMLElement>()
     const items = createDerived(() => (props.entry.kind === 'submenu' ? props.entry.items : []))
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => row.value)
     const service = useMachine(
       zag.machine,
       () =>

@@ -71,7 +71,7 @@ export default function Accordion(given: AccordionProps): JSX.Element {
     const regions = elementList<HTMLElement>()
     const root = elementRef<HTMLElement>()
     const heights = createCell(new Map())
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => root.value)
     const service = useMachine(
       zag.machine,
       () =>

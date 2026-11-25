@@ -5,12 +5,15 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useRef,
   useState,
   type ReactNode,
 } from 'react'
 
 import {
+  anchorFocusReturns,
+  arriveAtPage,
   currentRailDestination,
   dataFlag,
   goToRailDestination,
@@ -164,6 +167,7 @@ export function AppShellRoot({
   const [drawer, setDrawer] = useState(false)
   const rail = useRef<HTMLElement>(null)
   const drawerToggle = useRef<HTMLSpanElement>(null)
+  const railId = useId()
 
   /*
    * A new page closes the drawer, as it does on iOS and Android. With the app's
@@ -181,7 +185,9 @@ export function AppShellRoot({
    * Focus follows the drawer, because the rail comes before the topbar in the
    * DOM. Without this, opening the drawer from the topbar button and pressing
    * Tab would move past the navigation that just opened. Opening moves focus
-   * into the landmark, and closing returns it to the button that opened it.
+   * into the landmark, and closing returns it to the button that opened it,
+   * when focus was in the rail or nowhere. A page change that closes the drawer
+   * moves focus to the new page instead (below).
    *
    * The button is reached through a wrapper this component renders, not
    * through a ref on the control. Governed controls deliberately forward no
@@ -200,8 +206,57 @@ export function AppShellRoot({
     // `visibility` from the transition when opening. The comment there covers
     // the other half of this.
     if (drawer) rail.current?.focus()
-    else drawerToggle.current?.querySelector('button')?.focus()
+    else if (
+      drawerToggle.current !== null &&
+      anchorFocusReturns(drawerToggle.current, rail.current)
+    )
+      drawerToggle.current.querySelector('button')?.focus()
   }, [drawer])
+
+  /*
+   * While the drawer is open it is the only part of the frame a reader reaches:
+   * the rest is `inert` (below), and Escape closes it, as it closes every
+   * surface over the page. A key another layer took, such as Escape closing a
+   * menu opened from the rail, is that layer's.
+   *
+   * The drawer exists only below the breakpoint, which the stylesheet decides.
+   * A window that grows past it while the drawer is open closes the drawer,
+   * because the frame drawn there has no drawer and an inert page would be
+   * unreachable. The drawer's button is drawn exactly where the drawer exists,
+   * so its box says which side of the breakpoint the window is on.
+   */
+  useEffect(() => {
+    if (!drawer) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !event.defaultPrevented) setDrawer(false)
+    }
+    const toggleBox = drawerToggle.current
+    const observer = new ResizeObserver(() => {
+      if (toggleBox !== null && getComputedStyle(toggleBox).display === 'none') setDrawer(false)
+    })
+    if (toggleBox !== null) observer.observe(toggleBox)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      observer.disconnect()
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [drawer])
+
+  /*
+   * A new page moves focus to it and says its title (`arriveAtPage`), because
+   * the shell stays mounted while the app's router changes the page, and the
+   * browser does neither for such a change. The first page is not an arrival:
+   * the browser has already loaded it. A page that is still loading
+   * (`pending`) arrives when it is drawn.
+   */
+  const content = transition.ref
+  const announcer = useRef<HTMLDivElement>(null)
+  const arrived = useRef(transitionKey)
+  useEffect(() => {
+    if (pending || transitionKey === arrived.current) return
+    arrived.current = transitionKey
+    return arriveAtPage(content.current, announcer.current)
+  }, [content, pending, transitionKey])
 
   const toggle = useCallback(() => {
     const next = !held
@@ -285,13 +340,19 @@ export function AppShellRoot({
           data-drawer={drawer ? '' : undefined}
           {...memberAttr('AppShell')}
         >
-          {/* First in the DOM, and invisible until it receives keyboard focus. */}
-          <a className={styles.skip} href={`#${CONTENT_ID}`}>
+          {/* First in the DOM, and invisible until it receives keyboard focus.
+            Everything but the rail and the scrim is `inert` while the drawer is
+            open, so Tab and a screen reader stay in the drawer. */}
+          <a className={styles.skip} href={`#${CONTENT_ID}`} inert={drawer}>
             {messages.skipToContent ?? DEFAULT_SKIP_TO_CONTENT}
           </a>
 
           {/* Before the rail in the document, so it is read first on every page. */}
-          {banner === undefined ? null : <div className={styles.banner}>{banner}</div>}
+          {banner === undefined ? null : (
+            <div className={styles.banner} inert={drawer}>
+              {banner}
+            </div>
+          )}
 
           {/* `tabIndex={-1}` only so the drawer can focus the landmark. It is
             not a tab stop, and above the breakpoint nothing focuses it.
@@ -302,6 +363,7 @@ export function AppShellRoot({
             breakpoint it is the same drawer. */}
           <nav
             ref={rail}
+            id={railId}
             className={styles.sidebar}
             aria-label={messages.primaryNavigation}
             tabIndex={-1}
@@ -337,7 +399,7 @@ export function AppShellRoot({
 
           {/* The bar renders even when empty, because its height and border hold
             the frame together. */}
-          <header className={styles.topbar}>
+          <header className={styles.topbar} inert={drawer}>
             <div className={styles.topbarSlot}>
               {/* The drawer toggle, hidden above the breakpoint by CSS and not
                 by a JavaScript media query, so the layout decision stays in the
@@ -350,6 +412,8 @@ export function AppShellRoot({
                   iconOnly
                   icon="menu"
                   label={drawer ? messages.closeNavigation : messages.openNavigation}
+                  expanded={drawer}
+                  aria-controls={railId}
                   onClick={() => setDrawer(!drawer)}
                 />
               </span>
@@ -369,15 +433,27 @@ export function AppShellRoot({
             />
           ) : null}
 
+          {/* `tabIndex={-1}` so the skip link and a page change can move focus
+            into the region. It is not a tab stop. */}
           <main
             {...transition}
             className={[styles.content, transition.className].filter(Boolean).join(' ')}
             id={CONTENT_ID}
+            tabIndex={-1}
+            inert={drawer}
           >
             {contentLayout === 'page' ? <div className={styles.page}>{children}</div> : children}
           </main>
 
-          {dock === undefined ? null : <div className={styles.dock}>{dock}</div>}
+          {dock === undefined ? null : (
+            <div className={styles.dock} inert={drawer}>
+              {dock}
+            </div>
+          )}
+
+          {/* Says a new page's title. Empty until the first page change, because
+            a region that mounts with its words in it announces nothing. */}
+          <div ref={announcer} className={styles.announcer} role="status" />
         </div>
       </CollapsedContext>
     </TooltipProvider>

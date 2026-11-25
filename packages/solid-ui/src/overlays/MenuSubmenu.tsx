@@ -47,7 +47,7 @@ export default function MenuSubmenu(given: MenuSubmenuProps): JSX.Element {
     const panel = elementRef<HTMLElement>()
     const row = elementRef<HTMLElement>()
     const items = createDerived(() => props.entry.items)
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => row.value)
     const service = useMachine(
       zag.machine,
       () =>

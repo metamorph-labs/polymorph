@@ -11,11 +11,13 @@ import * as zag from '@zag-js/scroll-area'
 
 import {
   MEMBER_PROVIDERS,
+  Ref,
   SlotOutlet,
   SlotTemplate,
   Spread,
   classes,
   derived,
+  elementRef,
   mergeParts,
   normalizeProps,
   setup,
@@ -51,11 +53,12 @@ export interface ScrollAreaProps {
   encapsulation: ViewEncapsulation.None,
   host: { style: 'display: contents' },
   providers: [...MEMBER_PROVIDERS],
-  imports: [SlotOutlet, SlotTemplate, Spread],
+  imports: [Ref, SlotOutlet, SlotTemplate, Spread],
   // prettier-ignore
   template: `<ng-template pmSlot="default" [pmSlotOf]="$"><ng-content /></ng-template>
 <div
 [pmSpread]="e1()"
+[pmRef]="root"
 ><div
 [pmSpread]="e2()"
 ><div
@@ -106,8 +109,9 @@ export class ScrollArea {
   })
   protected readonly $p = this.$.props
   protected readonly uid = uniqueId()
+  protected readonly root = elementRef<HTMLElement>()
   protected readonly fades = derived(() => this.$p.type === 'hover')
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.root.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,

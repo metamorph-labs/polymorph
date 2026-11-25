@@ -82,6 +82,7 @@ const label = $derived(
 let overflowing = $state(false)
 let at = $state({ row: 0, column: 0, detail: false })
 let placed = $state(false)
+let holds = $state(false)
 let table = $state<HTMLElement | null>(null)
 let wrapper = $state<HTMLElement | null>(null)
 const stopIn = $derived((cell: HTMLTableCellElement): HTMLElement => {
@@ -190,12 +191,26 @@ const rove = $derived(
 const focusIn = $derived((event: FocusEvent) => {
   const element = table as HTMLTableElement | null
   if (element === null) return
+  if (!holds) holds = true
   const cell = gridCellOf(element, event.target)
   if (cell === null) return
   const to = clampCell(element, positionOf(element, cell, whereIn(element).column))
   if (to === null) return
   placed = true
   rove(element, to)
+})
+const focusOut = $derived((event: FocusEvent) => {
+  const element = table as HTMLTableElement | null
+  const left = event.target
+  queueMicrotask(() => {
+    if (
+      element !== null &&
+      left instanceof Node &&
+      left.isConnected &&
+      !element.contains(document.activeElement)
+    )
+      holds = false
+  })
 })
 const keyDown = $derived((event: KeyboardEvent) => {
   const element = table as HTMLTableElement | null
@@ -278,7 +293,10 @@ const reclamp = $derived(() => {
   const element = table as HTMLTableElement | null
   if (element === null || !grid) return
   const to = clampCell(element, whereIn(element))
-  if (to !== null) rove(element, to)
+  if (to === null) return
+  rove(element, to)
+  const fell = document.activeElement === null || document.activeElement === document.body
+  if (holds && fell) stopAt(element, to)?.focus()
 })
 setContext('polymorph:Table', {
   get grid() {
@@ -363,6 +381,7 @@ onDestroy(() => release3?.())
       role={grid ? 'grid' : undefined}
       aria-multiselectable={grid && multiselectable ? 'true' : undefined}
       onfocusin={(event) => { if (grid) focusIn(event) }}
+      onfocusout={(event) => { if (grid) focusOut(event) }}
       onkeydown={(event) => { if (grid) keyDown(event) }}
       >{#if caption !== undefined
         }<caption

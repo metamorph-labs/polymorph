@@ -5,7 +5,7 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { createMemo, createUniqueId, mergeProps, type JSX } from 'solid-js'
+import { createMemo, createUniqueId, mergeProps, onCleanup, type JSX } from 'solid-js'
 import { Portal } from 'solid-js/web'
 
 import * as zag from '@zag-js/tooltip'
@@ -17,6 +17,7 @@ import {
   afresh,
   anchorProps,
   claimSlot,
+  closeTooltipOnScroll,
   createDerived,
   elementRef,
   mergeParts,
@@ -58,7 +59,7 @@ export default function Tooltip(given: TooltipProps): JSX.Element {
     const uid = createUniqueId()
     const anchor = elementRef<HTMLElement>()
     const bubble = elementRef<HTMLElement>()
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => anchor.value)
     const service = useMachine(
       zag.machine,
       () =>
@@ -68,6 +69,7 @@ export default function Tooltip(given: TooltipProps): JSX.Element {
           defaultOpen: props.defaultOpen,
           openDelay: TOOLTIP_DELAY_MS,
           closeDelay: TOOLTIP_SKIP_DELAY_MS,
+          closeOnScroll: false,
           positioning: {
             placement: props.align === 'center' ? props.side : `${props.side}-${props.align}`,
             gutter: 0,
@@ -96,6 +98,22 @@ export default function Tooltip(given: TooltipProps): JSX.Element {
       effect1,
       true,
     )
+    let release2: (() => void) | undefined
+    const effect2 = () => {
+      release2?.()
+      const ran = closeTooltipOnScroll(api.value.open ? anchor.value : null, () =>
+        api.value.setOpen(false),
+      )
+      release2 = () => {
+        ran()
+      }
+    }
+    watchEffect(
+      createMemo(() => api.value.open),
+      effect2,
+      true,
+    )
+    onCleanup(() => release2?.())
     return (
       <>
         {/* trigger */}

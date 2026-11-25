@@ -163,6 +163,10 @@ export interface PageTransitionProps {
   class?: string | undefined
   /** The element's id, which a frame's skip link targets (AppShell's `#content`). */
   id?: string | undefined
+  /** `-1` where focus moves into the element from script (AppShell's region). */
+  tabindex?: number | string | undefined
+  /** Out of reach while something over it holds the reader (AppShell's open drawer). */
+  inert?: boolean | undefined
   children?: JSX.Element
 }
 

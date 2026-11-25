@@ -178,7 +178,7 @@ export class Slider {
   protected readonly $p = this.$.props
   protected readonly uid = uniqueId()
   protected readonly root = elementRef<HTMLElement>()
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.root.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,

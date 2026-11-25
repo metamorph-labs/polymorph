@@ -329,7 +329,7 @@ export default function MultiSelect(given: MultiSelectProps): JSX.Element {
           at
         ] ?? null,
     )
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => frame.value)
     const service = useMachine(
       zag.machine,
       () =>

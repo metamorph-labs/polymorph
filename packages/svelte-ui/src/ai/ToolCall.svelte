@@ -122,7 +122,7 @@ const statusIcon = $derived(
     } as const
   )[status],
 )
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => trigger)
 const service = useMachine(
   zag.machine,
   () =>

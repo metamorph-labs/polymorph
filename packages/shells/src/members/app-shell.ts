@@ -220,11 +220,14 @@ const row: Node = cond(
  * drawn. Below the drawer breakpoint the rail is a drawer, which the topbar's
  * button opens; it is the shell's own state, because whether the rail
  * overlays the page depends on the viewport. Opening it moves focus into the
- * rail, and closing it returns focus to the button. The content region is the
- * foundation's `PageTransition`, so a new `transitionKey` replays the page's
- * arrival without remounting the page, and `pending` holds it still. A new
+ * rail, and closing it returns focus to the button. While it is open the rest
+ * of the frame is `inert`, Escape closes it, and a window that grows past the
+ * breakpoint closes it. The content region is the foundation's
+ * `PageTransition`, so a new `transitionKey` replays the page's arrival
+ * without remounting the page, and `pending` holds it still. A new
  * `transitionKey` also closes the drawer, because the reader chose the new
- * page from it and the shell stays mounted under the app's router.
+ * page from it and the shell stays mounted under the app's router, and it
+ * moves focus to the new page and says its title (`arriveAtPage`).
  */
 export default describeMember({
   member: 'AppShell',
@@ -243,6 +246,8 @@ export default describeMember({
     uncontrolled: 'defaultCollapsed ?? false',
     // The small viewport's drawer, which no prop reaches: the viewport decides it.
     drawer: 'false',
+    // The page the reader has arrived at: a page that loads arrives once it is drawn.
+    arrived: 'transitionKey',
   },
   derived: {
     held: 'collapsed ?? uncontrolled',
@@ -254,14 +259,36 @@ export default describeMember({
   },
   provide: { collapsed: 'isCollapsed' },
   effects: [
-    // Focus follows the drawer: into the rail when it opens, back to its button when it closes.
+    // Focus follows the drawer: into the rail when it opens, back to its button when it closes
+    // with focus in the rail or nowhere. A page change moves it to the new page instead.
     {
       watch: 'drawer',
       mount: false,
-      run: "drawer ? rail?.focus() : drawerToggle?.querySelector<HTMLElement>('button')?.focus()",
+      run: "drawer ? rail?.focus() : drawerToggle && anchorFocusReturns(drawerToggle, rail ?? null) && drawerToggle.querySelector<HTMLElement>('button')?.focus()",
+    },
+    // Escape closes the open drawer, unless a layer over it took the key.
+    {
+      listen: 'keydown',
+      run: "drawer && $event.key === 'Escape' && !$event.defaultPrevented && (drawer = false)",
+    },
+    // A window that grows past the breakpoint has no drawer, and its button is not drawn there.
+    // The observer is made once, so a close it makes does not make another inside its callback.
+    {
+      resize: ['drawerToggle'],
+      run: "drawer && drawerToggle && window.getComputedStyle(drawerToggle).display === 'none' && (drawer = false)",
     },
     // A new page closes the drawer, as on iOS and Android.
     { watch: 'transitionKey', mount: false, run: 'drawer = false' },
+    // The first page is no arrival: the browser loaded it. Read once mounted, when every renderer
+    // has its props.
+    { run: 'arrived = transitionKey' },
+    // A new page takes focus and says its title, once it is drawn.
+    {
+      watch: 'pending ? undefined : transitionKey',
+      mount: false,
+      run: "pending || transitionKey === arrived ? () => {} : ((arrived = transitionKey), arriveAtPage(frame?.querySelector<HTMLElement>(':scope > main'), announcer))",
+      release: 'ran()',
+    },
   ],
   // The spec's `agent` fence. An agent reads the collapse and the drawer, collapses and expands
   // the rail through the shell's own toggle, and opens and closes the drawer as a press on its
@@ -312,6 +339,7 @@ export default describeMember({
     {
       part: 'root',
       class: ['shell'],
+      ref: 'frame',
       attrs: {
         'data-collapsed': flag('isCollapsed'),
         'data-navigation': when("navigation === 'top'", lit('top')),
@@ -320,12 +348,19 @@ export default describeMember({
       },
     },
     [
-      // First in the document, and drawn only while it has keyboard focus.
-      el('a', { part: 'skip', class: ['skip'], attrs: { href: lit('#content') } }, [
-        text("say.skipToContent ?? 'Skip to content'"),
-      ]),
+      // First in the document, and drawn only while it has keyboard focus. Everything but the
+      // rail and the scrim is inert while the drawer is open.
+      el(
+        'a',
+        { part: 'skip', class: ['skip'], attrs: { href: lit('#content'), inert: 'drawer' } },
+        [text("say.skipToContent ?? 'Skip to content'")],
+      ),
       // Before the rail in the document, so it is read first on every page.
-      cond('slots.banner', [el('div', { part: 'banner', class: ['banner'] }, [slot('banner')])]),
+      cond('slots.banner', [
+        el('div', { part: 'banner', class: ['banner'], attrs: { inert: 'drawer' } }, [
+          slot('banner'),
+        ]),
+      ]),
       // Focusable from script only, so the drawer can move focus into the landmark. With the
       // navigation on top it is the same element, which the recipe lays at the top row's start.
       el(
@@ -334,7 +369,7 @@ export default describeMember({
           part: 'sidebar',
           class: ['sidebar'],
           ref: 'rail',
-          attrs: { 'aria-label': 'say.primaryNavigation', tabindex: lit('-1') },
+          attrs: { id: 'uid', 'aria-label': 'say.primaryNavigation', tabindex: lit('-1') },
         },
         [
           el('div', { part: 'railHead', class: ['railHead'] }, [
@@ -361,7 +396,7 @@ export default describeMember({
         ],
       ),
       // The bar is drawn even when empty: its height and border hold the frame together.
-      el('header', { part: 'topbar', class: ['topbar'] }, [
+      el('header', { part: 'topbar', class: ['topbar'], attrs: { inert: 'drawer' } }, [
         el('div', { part: 'leading', class: ['topbarSlot'] }, [
           // The drawer's button, hidden above the breakpoint by the recipe.
           el('span', { part: 'drawerToggle', class: ['drawerToggle'], ref: 'drawerToggle' }, [
@@ -374,6 +409,8 @@ export default describeMember({
                 iconOnly: 'true',
                 icon: lit('menu'),
                 label: 'drawer ? say.closeNavigation : say.openNavigation',
+                expanded: 'drawer',
+                'aria-controls': 'uid',
               },
               { on: { click: run('drawer = !drawer') } },
             ),
@@ -401,6 +438,9 @@ export default describeMember({
           attrs: {
             as: lit('main'),
             id: lit('content'),
+            // Focusable from script, so the skip link and a new page move focus into it.
+            tabindex: lit('-1'),
+            inert: 'drawer',
             transitionKey: 'transitionKey',
             pending: 'pending',
             ribbon: 'transitions.indicator',
@@ -414,7 +454,16 @@ export default describeMember({
           ),
         ],
       ),
-      cond('slots.dock', [el('div', { part: 'dock', class: ['dock'] }, [slot('dock')])]),
+      cond('slots.dock', [
+        el('div', { part: 'dock', class: ['dock'], attrs: { inert: 'drawer' } }, [slot('dock')]),
+      ]),
+      // Says a new page's title; empty until the first page change.
+      el('div', {
+        part: 'announcer',
+        class: ['announcer'],
+        attrs: { role: lit('status') },
+        ref: 'announcer',
+      }),
     ],
   ),
   parts: [

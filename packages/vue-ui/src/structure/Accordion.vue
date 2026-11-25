@@ -64,7 +64,7 @@ const uid = useId()
 const heights = ref(new Map())
 const regions = useTemplateRef<HTMLElement[]>('regions')
 const root = useTemplateRef<HTMLElement>('root')
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => root.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({
