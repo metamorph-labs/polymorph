@@ -222,7 +222,8 @@ export type GradientRole = (typeof GRADIENT_ROLES)[number]
 
 /**
  * One resolved gradient. `solid` marks the no-op form: without a partner hue
- * the role is a plain colour, so recipes never branch on gradients.
+ * or a pinned stop the role is a plain colour, so recipes never branch on
+ * gradients. It is the same in both modes (`gradientPinFault`).
  */
 export interface GradientValue {
   from: string
@@ -243,7 +244,10 @@ export interface GradientStop {
 
 export type GradientRoleValues = Record<GradientRole, GradientValue>
 
-/** The colour role a gradient collapses to when the theme seeds no partner hue. */
+/**
+ * The colour role a gradient starts from, and collapses to when the theme seeds
+ * no partner hue and pins no stop.
+ */
 export const GRADIENT_BASE: Record<GradientRole, ColorRole> = {
   'accent.gradient': 'accent.bg',
   'bg.wash': 'bg.app',

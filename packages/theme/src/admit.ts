@@ -8,7 +8,15 @@ import { emitThemeCSS } from './emit'
 import { gradientPairingId, pairingId, pairingMeasure } from './pairings'
 import { resolveTheme } from './resolve-theme'
 import { GRADIENT_BASE, type ColorRole } from './roles'
-import { fontPackage, FONT_ROLES, type FontFamilies, type FontRole } from './seeds'
+import {
+  fontPackage,
+  FONT_ROLES,
+  GRADIENT_STOP_PINS,
+  type FontFamilies,
+  type FontRole,
+  type GradientPin,
+  type ModePins,
+} from './seeds'
 import {
   composeTheme,
   paletteSchema,
@@ -170,16 +178,19 @@ export function auditResolvedTheme(theme: ResolvedTheme): AdmissionFault[] {
     }
     for (const result of auditGradientPairings(theme.color[mode], theme.gradient[mode])) {
       if (result.passes) continue
+      // The 'from' stop is the base colour role. The 'to' stop is the pin
+      // where the palette pins one, and otherwise a step of the partner ramp,
+      // which no palette states.
+      const gradient = result.pairing.background
       faults.push({
         law: 'gradient',
         message:
           `${theme.name} (${mode}): ${gradientPairingId(result.pairing)} reached Lc ` +
           `${result.lc.toFixed(1)} at its '${result.worstStop}' stop, floor is ` +
           `${result.pairing.minLc}.` +
-          pinNote(theme, mode, [
-            result.pairing.foreground,
-            GRADIENT_BASE[result.pairing.background],
-          ]),
+          (result.worstStop === 'from'
+            ? pinNote(theme, mode, [result.pairing.foreground, GRADIENT_BASE[gradient]])
+            : pinNote(theme, mode, [result.pairing.foreground], GRADIENT_STOP_PINS[gradient])),
       })
     }
     if (theme.axes.depth === 'glass') {
@@ -201,18 +212,29 @@ export function auditResolvedTheme(theme: ResolvedTheme): AdmissionFault[] {
 }
 
 /**
- * Names the pins behind a failing pairing: a pinned role in it, or the pinned
- * fill a derived label in it was chosen against. The law never moves a pin, so
- * the palette's author is the one who can fix the fault, and the report says
- * which value to change.
+ * Names the pins behind a failing pairing: a pinned role in it, the pinned
+ * fill a derived label in it was chosen against, or the pinned gradient stop
+ * it failed at. The law never moves a pin, so the palette's author is the one
+ * who can fix the fault, and the report says which value to change.
  */
-function pinNote(theme: ResolvedTheme, mode: Mode, roles: readonly ColorRole[]): string {
-  const pins: Partial<Record<ColorRole, string>> = theme.seeds.pins?.[mode] ?? {}
-  if (Object.keys(pins).length === 0) return ''
+function pinNote(
+  theme: ResolvedTheme,
+  mode: Mode,
+  roles: readonly ColorRole[],
+  stop?: GradientPin,
+): string {
+  const modePins: ModePins = theme.seeds.pins?.[mode] ?? {}
+  if (Object.keys(modePins).length === 0) return ''
+  // The colour roles' view of the pins. A gradient stop is read by its own
+  // key, `stop`.
+  const pins: Partial<Record<ColorRole, string>> = modePins
   const roleMap = buildRoleMap(theme.axes, mode, theme.seeds.chromaBudget)
   const notes: string[] = []
   const pinned = roles.filter((role) => pins[role] !== undefined)
   if (pinned.length > 0) notes.push(`The palette pins ${pinned.join(' and ')} in ${mode} mode.`)
+  if (stop !== undefined && modePins[stop] !== undefined) {
+    notes.push(`The 'to' stop is ${stop}, which the palette pins in ${mode} mode.`)
+  }
   for (const role of roles) {
     const source = roleMap[role]
     if (pins[role] !== undefined || source.kind !== 'bestOn') continue

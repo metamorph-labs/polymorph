@@ -1,9 +1,26 @@
+import { converter } from 'culori'
 import { describe, expect, it } from 'vitest'
 
 import { admitTheme, auditResolvedTheme, paletteJsonSchema, systemJsonSchema } from './admit'
+import { contrast } from './color/contrast'
+import { emitDart } from './emit-dart'
+import { emitKotlin } from './emit-kotlin'
+import { emitSwift } from './emit-swift'
+import { emitTokenDocument } from './emit-tokens'
 import { MAX_NEUTRAL_TINT } from './seeds'
 import { resolveTheme } from './resolve-theme'
 import { exampleQuietTheme } from './examples'
+import { composeTheme, parsePalette, parseSystem } from './systems'
+import { MODES, type Mode, type ResolvedTheme } from './theme'
+
+const toOklch = converter('oklch')
+
+/** A colour the stylesheet writes, as OKLCH, for measuring. */
+function oklch(value: string): { l: number; c: number; h: number } {
+  const parsed = toOklch(value)
+  if (!parsed) throw new Error(`cannot parse ${value}`)
+  return { l: parsed.l, c: parsed.c, h: parsed.h ?? 0 }
+}
 
 /**
  * Admission: the law suite for guest pairings.
@@ -259,6 +276,213 @@ describe('a pin is held to the floor its derived value would be', () => {
     )
     expect(fault?.message).toMatch(/reached 2\.\d{2}:1, floor is 3:1\./)
     expect(fault?.message).toContain('The palette pins border.focusSolid in light mode.')
+  })
+})
+
+describe('a pinned gradient stop', () => {
+  /**
+   * A cream primary button on a palette with a partner hue: amethyst's seeds,
+   * written out so this file reads no catalogue document. The fills and their
+   * label are pinned as a brand states them, the same in both modes.
+   */
+  const CREAM = {
+    'accent.bg': '#f3e7cf',
+    'accent.bgHover': '#ecdcbd',
+    'accent.bgActive': '#e4d0aa',
+    'accent.contrast': '#3b2a12',
+  }
+  const creamPalette = (stop?: string) => {
+    const mode = stop === undefined ? CREAM : { ...CREAM, 'accent.gradientTo': stop }
+    return {
+      name: 'meridian-cream',
+      accentHue: 298,
+      gradientHue: 265,
+      neutralTint: 0.02,
+      chromaBudget: 'medium',
+      pins: { light: mode, dark: mode },
+    }
+  }
+
+  /** The label's |Lc| on each stop of the accent gradient, as the stylesheet writes them. */
+  const lcOnStops = (resolved: ResolvedTheme, mode: Mode) => {
+    const label = oklch(resolved.color[mode]['accent.contrast'])
+    const { from, to } = resolved.gradient[mode]['accent.gradient']
+    return [from, to].map((stop) => contrast({ ...label, alpha: 1 }, oklch(stop)))
+  }
+
+  it('is refused without the pin, at the stop the partner hue derives', () => {
+    const admission = admitTheme({ system: GUEST_SYSTEM, palette: creamPalette() })
+    expect(admission.lawful).toBe(false)
+    expect(admission.faults.map((fault) => fault.law)).toEqual(['gradient', 'gradient'])
+    expect(admission.faults[0]?.message).toMatch(
+      /accent\.contrast on accent\.gradient reached Lc \d+\.\d at its 'to' stop, floor is 60\./,
+    )
+  })
+
+  it('admits a cream button whose gradient runs to a pinned tan, with two different stops', () => {
+    const admission = admitTheme({ system: GUEST_SYSTEM, palette: creamPalette('#E2C79A') })
+    expect(admission.faults).toEqual([])
+    if (!admission.lawful) return
+    for (const mode of MODES) {
+      const gradient = admission.resolved.gradient[mode]['accent.gradient']
+      expect(gradient.from, mode).toBe('#f3e7cf')
+      expect(gradient.to, mode).toBe('#e2c79a')
+      expect(gradient.solid, mode).toBe(false)
+      expect(
+        gradient.stops.map((stop) => stop.color),
+        mode,
+      ).toEqual(['#f3e7cf', '#e2c79a'])
+      // The label is measured on both stops at the floor a derived stop has.
+      for (const lc of lcOnStops(admission.resolved, mode)) expect(lc).toBeGreaterThanOrEqual(60)
+    }
+    // The stylesheet writes the stop as stated, in lower case, under the gradient's own name.
+    expect(admission.css).toContain(
+      '--pm-accent-gradient: linear-gradient(135deg, #f3e7cf, #e2c79a);',
+    )
+    expect(admission.css).toContain('--pm-accent-gradient-to: #e2c79a;')
+  })
+
+  it('leaves the page wash as the partner hue makes it', () => {
+    const pinned = admitTheme({ system: GUEST_SYSTEM, palette: creamPalette('#e2c79a') })
+    const unpinned = admitTheme({
+      system: GUEST_SYSTEM,
+      palette: { ...creamPalette(), name: 'meridian-plain', pins: undefined },
+    })
+    if (!pinned.lawful || !unpinned.lawful) throw new Error('expected both to be lawful')
+    for (const mode of MODES) {
+      expect(pinned.resolved.gradient[mode]['bg.wash']).toEqual(
+        unpinned.resolved.gradient[mode]['bg.wash'],
+      )
+    }
+  })
+
+  it('refuses a pinned stop the label fails on, naming the stop and the pin', () => {
+    const admission = admitTheme({ system: GUEST_SYSTEM, palette: creamPalette('#a07a46') })
+    expect(admission.lawful).toBe(false)
+    const fault = admission.faults.find((entry) => entry.message.includes('(light)'))
+    expect(fault?.law).toBe('gradient')
+    expect(fault?.message).toMatch(
+      /accent\.contrast on accent\.gradient reached Lc \d+\.\d at its 'to' stop, floor is 60\./,
+    )
+    expect(fault?.message).toContain(
+      "The 'to' stop is accent.gradientTo, which the palette pins in light mode.",
+    )
+  })
+
+  it('carries the pinned stop to the token document and the SwiftUI, Compose and Flutter sources', () => {
+    const admission = admitTheme({ system: GUEST_SYSTEM, palette: creamPalette('#e2c79a') })
+    if (!admission.lawful) throw new Error('expected lawful')
+    const theme = admission.resolved
+    const tan = { r: 226, g: 199, b: 154 }
+    const doc = emitTokenDocument(theme, { platform: 'ios' })
+    for (const mode of MODES) {
+      expect(doc.mode[mode].gradient['accent.gradient'].to).toMatchObject(tan)
+      expect(doc.mode[mode].gradient['accent.gradient'].stops[1]?.color).toMatchObject(tan)
+    }
+    // Each source between its accent gradient and its page wash.
+    const section = (source: string, start: string, end: string) =>
+      source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start)))
+    expect(section(emitSwift(theme), 'accentGradient:', 'bgWash:')).toContain(
+      'PMRGBA(226, 199, 154)',
+    )
+    expect(section(emitKotlin(theme), 'accentGradient =', 'bgWash =')).toContain(
+      'PMRgba(226, 199, 154, 1f)',
+    )
+    expect(section(emitDart(theme), 'accentGradient:', 'bgWash:')).toContain(
+      'PMRgba(226, 199, 154, 1.0)',
+    )
+  })
+
+  it('takes the stop as an opaque #rrggbb only', () => {
+    for (const stop of ['rgb(226 199 154 / 0.5)', '#e2c79a80', 'tan']) {
+      const admission = admitTheme({ system: GUEST_SYSTEM, palette: creamPalette(stop) })
+      expect(admission.lawful, stop).toBe(false)
+      expect(admission.faults[0]?.message, stop).toMatch(
+        /^palette\.pins\.light\.accent\.gradientTo: a pinned fill or label is an opaque #rrggbb/,
+      )
+    }
+  })
+
+  it('makes the accent gradient real without a partner hue, and leaves the page wash solid', () => {
+    // The palette states both colours, so the gradient needs no partner hue. Under `none` too:
+    // the pinned fill and stop replace the ink fill and the absent stop.
+    for (const chromaBudget of ['medium', 'none']) {
+      const palette = {
+        ...GUEST_PALETTE,
+        chromaBudget,
+        pins: {
+          light: { ...CREAM, 'accent.gradientTo': '#e2c79a' },
+          dark: { ...CREAM, 'accent.gradientTo': '#e2c79a' },
+        },
+      }
+      const admission = admitTheme({ system: GUEST_SYSTEM, palette })
+      expect(admission.faults, chromaBudget).toEqual([])
+      if (!admission.lawful) continue
+      for (const mode of MODES) {
+        const accent = admission.resolved.gradient[mode]['accent.gradient']
+        const wash = admission.resolved.gradient[mode]['bg.wash']
+        expect([accent.solid, accent.from, accent.to], chromaBudget).toEqual([
+          false,
+          '#f3e7cf',
+          '#e2c79a',
+        ])
+        expect([wash.solid, wash.css], chromaBudget).toEqual([true, wash.from])
+      }
+    }
+  })
+
+  it('keeps the derived stop in a mode that pins none, when the palette has a partner hue', () => {
+    const admission = admitTheme({
+      system: GUEST_SYSTEM,
+      palette: { ...creamPalette(), pins: { light: { ...CREAM, 'accent.gradientTo': '#e2c79a' } } },
+    })
+    if (!admission.resolved) throw new Error('expected a resolved theme')
+    const derived = admitTheme({
+      system: GUEST_SYSTEM,
+      palette: { ...creamPalette(), name: 'meridian-plain', pins: undefined },
+    })
+    if (!derived.resolved) throw new Error('expected a resolved theme')
+    expect(admission.resolved.gradient.light['accent.gradient'].to).toBe('#e2c79a')
+    expect(admission.resolved.gradient.dark['accent.gradient'].to).toBe(
+      derived.resolved.gradient.dark['accent.gradient'].to,
+    )
+    expect(admission.resolved.gradient.dark['accent.gradient'].solid).toBe(false)
+  })
+
+  it('refuses a stop pinned in one mode only when the palette has no partner hue', () => {
+    // A gradient has one shape in both modes, and without a partner hue the other mode has no
+    // stop to run to.
+    const oneMode = { light: { 'accent.gradientTo': '#e2c79a' } }
+    const admission = admitTheme({
+      system: GUEST_SYSTEM,
+      palette: { ...GUEST_PALETTE, pins: oneMode },
+    })
+    expect(admission.faults).toEqual([
+      {
+        law: 'schema',
+        message:
+          'palette.pins: accent.gradientTo is pinned in light mode only and the palette seeds no ' +
+          'gradientHue, so dark mode would draw a solid where light mode draws a gradient — a ' +
+          'gradient has one shape in both modes: pin accent.gradientTo in dark mode too, or seed ' +
+          'gradientHue',
+      },
+    ])
+    const ink = admitTheme({
+      system: GUEST_SYSTEM,
+      palette: { ...GUEST_PALETTE, chromaBudget: 'none', gradientHue: 200, pins: oneMode },
+    })
+    expect(ink.faults[0]?.message).toContain(
+      'chromaBudget none derives no gradient stop, so dark mode would draw a solid',
+    )
+    expect(ink.faults[0]?.message).toMatch(/pin accent\.gradientTo in dark mode too$/)
+  })
+
+  it('throws on such seeds built in code, which the palette schema never sees', () => {
+    const theme = composeTheme(parseSystem(GUEST_SYSTEM), parsePalette(GUEST_PALETTE))
+    const seeds = { ...theme.seeds, pins: { dark: { 'accent.gradientTo': '#e2c79a' } } }
+    expect(() => resolveTheme({ ...theme, seeds })).toThrow(
+      'accent.gradientTo is pinned in dark mode only',
+    )
   })
 })
 

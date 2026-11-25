@@ -16,6 +16,7 @@ import {
 import {
   chromaBudgetSchema,
   fontFamiliesSchema,
+  gradientPinFault,
   hueSchema,
   neutralTintSchema,
   pinsSchema,
@@ -573,9 +574,10 @@ export const paletteSchema = z
     neutralTint: neutralTintSchema,
     chromaBudget: chromaBudgetSchema,
     /**
-     * Exact colours for the accent fills, their label and the focus pair, per
-     * mode (`PIN_ROLES`). Each replaces its derived value, and the contrast law
-     * holds it to the derived value's floor.
+     * Exact colours for the accent fills, their label, the focus pair
+     * (`PIN_ROLES`) and the colour the accent gradient runs to
+     * (`GRADIENT_PINS`), per mode. Each replaces its derived value, and the
+     * contrast law holds it to the derived value's floor.
      */
     pins: pinsSchema.optional(),
     /**
@@ -609,6 +611,12 @@ export const paletteSchema = z
   .refine((palette) => palette.moreContrast !== palette.name, {
     path: ['moreContrast'],
     message: 'moreContrast names another palette — a palette cannot be its own partner',
+  })
+  // A gradient has one shape in both modes, so a palette with no partner hue
+  // pins its gradient stop in both modes or in neither (`gradientPinFault`).
+  .superRefine((palette, ctx) => {
+    const fault = gradientPinFault(palette)
+    if (fault !== undefined) ctx.addIssue({ code: 'custom', path: ['pins'], message: fault })
   })
 
 export type Palette = z.infer<typeof paletteSchema>

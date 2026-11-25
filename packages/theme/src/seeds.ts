@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import type { ColorRole } from './roles'
+import type { ColorRole, GradientRole } from './roles'
 
 /**
  * Seeds: the brand inputs a tenant supplies (`docs/theming.md`): hue, neutral
@@ -76,7 +76,8 @@ export const neutralTintSchema = z.number().min(0).max(MAX_NEUTRAL_TINT)
  * on them, and the focus pair. A brand that owns its primary button's colour
  * states it here instead of in application CSS. A pin replaces the derived
  * value after derivation (`color/resolve.ts`), the contrast law never moves
- * it, and admission measures it like any derived value (`admit.ts`).
+ * it, and admission measures it like any derived value (`admit.ts`). The
+ * accent gradient's last stop is pinned in the same `pins` (`GRADIENT_PINS`).
  */
 export const PIN_ROLES = [
   'accent.bg',
@@ -88,12 +89,35 @@ export const PIN_ROLES = [
 ] as const satisfies readonly ColorRole[]
 export type PinRole = (typeof PIN_ROLES)[number]
 
+/**
+ * The gradient stops a palette may pin. `accent.gradientTo` is the colour
+ * `accent.gradient` runs to from the accent fill. The stylesheet writes that
+ * stop as `--pm-accent-gradient-to`, the name `cssVarName` gives the key.
+ *
+ * A stop is not a colour role, so it is not in `PIN_ROLES`: no colour role is
+ * chosen against it, the contrast law measures it only as a stop
+ * (`auditGradientPairings`), and only the gradient's `to` and `stops` carry it.
+ * It sits in `pins` beside the colour roles because a palette states both the
+ * same way, per mode.
+ */
+export const GRADIENT_PINS = ['accent.gradientTo'] as const
+export type GradientPin = (typeof GRADIENT_PINS)[number]
+
+/**
+ * The pin that sets each gradient role's last stop. `bg.wash` has none, so a
+ * page wash is always what `hasGradient` makes it.
+ */
+export const GRADIENT_STOP_PINS: Record<GradientRole, GradientPin | undefined> = {
+  'accent.gradient': 'accent.gradientTo',
+  'bg.wash': undefined,
+}
+
 const OPAQUE_PIN = /^#[0-9a-fA-F]{6}$/
 const TRANSLUCENT_PIN = /^rgb\((\d{1,3}) (\d{1,3}) (\d{1,3}) \/ (0?\.\d{1,2})\)$/
 
 /**
- * A fill or a label is opaque, because the contrast law measures a background
- * as drawn and composites only a foreground.
+ * A fill, a gradient stop or a label is opaque, because the contrast law
+ * measures a background as drawn and composites only a foreground.
  */
 const opaquePinSchema = z
   .string()
@@ -117,6 +141,7 @@ export const modePinsSchema = z.strictObject({
   'accent.contrast': opaquePinSchema.optional(),
   'border.focus': ringPinSchema.optional(),
   'border.focusSolid': opaquePinSchema.optional(),
+  'accent.gradientTo': opaquePinSchema.optional(),
 })
 export type ModePins = z.infer<typeof modePinsSchema>
 
@@ -144,7 +169,8 @@ export const seedsSchema = z.strictObject({
   /**
    * The partner hue for gradient roles. **Usually absent**, which is normal:
    * every gradient role then resolves to a solid colour, so recipes need no
-   * branch.
+   * branch. A pinned `accent.gradientTo` is the one exception
+   * (`gradientStopPin`).
    */
   gradientHue: hueSchema.optional(),
   /**
@@ -157,7 +183,10 @@ export const seedsSchema = z.strictObject({
   /** OKLCH chroma mixed into the neutral ramp. */
   neutralTint: neutralTintSchema,
   chromaBudget: chromaBudgetSchema,
-  /** Exact colours for the roles in `PIN_ROLES`, per mode. Usually absent. */
+  /**
+   * Exact colours for the roles in `PIN_ROLES` and the stops in
+   * `GRADIENT_PINS`, per mode. Usually absent.
+   */
   pins: pinsSchema.optional(),
   fonts: fontFamiliesSchema,
 })
@@ -197,15 +226,70 @@ export function neutralHueOf(seeds: Seeds): number {
 }
 
 /**
- * Whether gradient roles have two stops or one colour. The derivation and the
- * laws share it, so "no partner hue means solid" is defined once.
+ * Whether the palette derives a second stop for its gradient roles from a
+ * partner hue. Without one, a gradient role is one colour, unless the palette
+ * pins its last stop (`gradientStopPin`). The derivation and the laws share
+ * it, so "no partner hue means solid" is defined once.
  *
  * Under `none` the answer is no even with a partner hue: both stops would be
  * the same grey, a `linear-gradient` that costs bytes and draws a solid. So an
  * achromatic palette need not omit the field.
  */
-export function hasGradient(seeds: Seeds): boolean {
+export function hasGradient(seeds: Pick<Seeds, 'chromaBudget' | 'gradientHue'>): boolean {
   return seeds.chromaBudget !== 'none' && seeds.gradientHue !== undefined
+}
+
+/**
+ * The colour a palette pins as a gradient role's last stop in one mode, as the
+ * stylesheet writes it, or `undefined` where it pins none. A pinned stop gives
+ * the role two stops whether or not `hasGradient` holds, because the palette
+ * states both colours: the fill and the stop.
+ */
+export function gradientStopPin(
+  seeds: Pick<Seeds, 'pins'>,
+  mode: keyof Pins,
+  role: GradientRole,
+): string | undefined {
+  const pin = GRADIENT_STOP_PINS[role]
+  const value = pin === undefined ? undefined : seeds.pins?.[mode]?.[pin]
+  return value === undefined ? undefined : pinnedColor(value)
+}
+
+/**
+ * Why a palette's gradient pins are unlawful, or `undefined` when they are
+ * lawful. The palette schema reports the sentence and the derivation refuses
+ * the seeds with it.
+ *
+ * A gradient role has one shape in both modes, two stops or one colour,
+ * because the SwiftUI renderer draws one geometry with a colour per mode
+ * (`emit-swift.ts` refuses a gradient whose shape differs). With a partner hue,
+ * a mode that pins no stop takes the derived one, so both modes have two
+ * stops. Without one there is no derived stop, so a stop pinned in one mode
+ * must be pinned in the other too.
+ */
+export function gradientPinFault(
+  seeds: Pick<Seeds, 'chromaBudget' | 'gradientHue' | 'pins'>,
+): string | undefined {
+  if (hasGradient(seeds)) return undefined
+  const reason =
+    seeds.chromaBudget === 'none'
+      ? 'chromaBudget none derives no gradient stop'
+      : 'the palette seeds no gradientHue'
+  for (const pin of GRADIENT_PINS) {
+    const pinned = (['light', 'dark'] as const).filter(
+      (mode) => seeds.pins?.[mode]?.[pin] !== undefined,
+    )
+    const [mode] = pinned
+    if (pinned.length !== 1 || mode === undefined) continue
+    const other = mode === 'light' ? 'dark' : 'light'
+    return (
+      `${pin} is pinned in ${mode} mode only and ${reason}, so ${other} mode would draw a ` +
+      `solid where ${mode} mode draws a gradient — a gradient has one shape in both modes: ` +
+      `pin ${pin} in ${other} mode too` +
+      (seeds.chromaBudget === 'none' ? '' : ', or seed gradientHue')
+    )
+  }
+  return undefined
 }
 
 /**

@@ -22,6 +22,8 @@ import type { Depth } from '../axes'
 import { GLASS_SURFACE_MIX } from '../derive'
 import {
   CHROMA_BUDGET_PEAK,
+  gradientPinFault,
+  gradientStopPin,
   hasGradient,
   neutralHueOf,
   PIN_ROLES,
@@ -206,8 +208,10 @@ function seedRoles(
 
   // The palette's pins replace what pass 1 derived, before pass 2, so a label
   // the palette leaves derived (`accent.contrast`) is chosen against the
-  // pinned fill it sits on.
-  for (const [role, value] of Object.entries(pins) as [PinRole, string | undefined][]) {
+  // pinned fill it sits on. A pinned gradient stop is not a colour role, so it
+  // is read by `resolveModeGradients`, not here.
+  for (const role of PIN_ROLES) {
+    const value = pins[role]
     if (value !== undefined) working[role] = pinnedWorking(value)
   }
 
@@ -384,7 +388,8 @@ export function resolveModeColors(
 }
 
 /**
- * Where each gradient's second stop comes from.
+ * Where each gradient's second stop comes from when the palette derives it
+ * from a partner hue instead of pinning it.
  *
  * One step apart on the partner ramp, so the gradient crosses two hues at
  * nearly one lightness instead of fading to grey. `accent.gradient` uses the
@@ -406,11 +411,38 @@ export const GRADIENT_ANGLE_DEG = 135
 export const GRADIENT_ANGLE = `${GRADIENT_ANGLE_DEG}deg`
 
 /**
+ * The colour a gradient role runs to in one mode, or `undefined` when the role
+ * is one colour. A stop the palette pins comes first, as the palette states it.
+ * Otherwise a palette with a partner hue derives it from the partner ramp, and
+ * a palette without one has no second stop.
+ */
+function gradientTo(
+  seeds: Seeds,
+  mode: Mode,
+  role: GradientRole,
+  ramps: Record<Mode, Ramps>,
+): string | undefined {
+  const pinned = gradientStopPin(seeds, mode, role)
+  if (pinned !== undefined) return pinned
+  if (!hasGradient(seeds)) return undefined
+  const [, second] = GRADIENT_STOPS[role].to
+  // `accent.gradient` uses the solid fills' ladder (`SOLID_LADDER`). `bg.wash`
+  // uses the resolved mode, because a page wash belongs to its mode.
+  const ladder: Mode = role === 'accent.gradient' ? 'light' : mode
+  return toCssColor(ramps[ladder].gradient[second])
+}
+
+/**
  * Gradient roles for one mode.
  *
- * The no-op form matters most: with no `gradientHue`, `from`, `to` and `css`
- * are the same colour. A recipe reading `var(--pm-accent-gradient)` gets a
- * solid with no branch, so it stays theme-neutral.
+ * The no-op form matters most: with no `gradientHue` and no pinned stop,
+ * `from`, `to` and `css` are the same colour. A recipe reading
+ * `var(--pm-accent-gradient)` gets a solid with no branch, so it stays
+ * theme-neutral.
+ *
+ * Throws on seeds whose pinned stops would give a role a different shape in
+ * each mode (`gradientPinFault`). The palette schema refuses such a palette
+ * first, so only seeds built in code reach the throw.
  */
 export function resolveModeGradients(
   theme: Theme,
@@ -418,6 +450,8 @@ export function resolveModeGradients(
   colors: ColorRoleValues,
   ramps: Record<Mode, Ramps> = generateAllRamps(theme.seeds),
 ): GradientRoleValues {
+  const fault = gradientPinFault(theme.seeds)
+  if (fault !== undefined) throw new Error(`${theme.name}: ${fault}`)
   const values: Partial<GradientRoleValues> = {}
 
   for (const role of GRADIENT_ROLES) {
@@ -426,7 +460,8 @@ export function resolveModeGradients(
       { color: from, at: 0 },
       { color: to, at: 1 },
     ]
-    if (!hasGradient(theme.seeds)) {
+    const to = gradientTo(theme.seeds, mode, role, ramps)
+    if (to === undefined) {
       values[role] = {
         from,
         to: from,
@@ -437,11 +472,6 @@ export function resolveModeGradients(
       }
       continue
     }
-    const [, second] = GRADIENT_STOPS[role].to
-    // `accent.gradient` uses the pinned solid ladder. `bg.wash` uses the
-    // resolved mode, because a page wash belongs to its mode.
-    const ladder: Mode = role === 'accent.gradient' ? 'light' : mode
-    const to = toCssColor(ramps[ladder].gradient[second])
     values[role] = {
       from,
       to,
