@@ -225,6 +225,12 @@ The model (`packages/react-ui/src/structure/grid-keyboard.ts`):
   that shows nothing puts a focus ring around an empty corner. The cell stays reachable
   with the arrow keys, because it carries the column's name, and a stop the reader has
   placed stays where it is.
+- Rows that sorting, paging, loading or the app's own data replace keep one tab stop: the stop
+  goes to the same coordinates, or to the last row when there are fewer. When the row that holds
+  focus leaves the document, a browser hands focus to the page; the grid takes it back to the
+  same column of the row that takes the removed row's place, or of the last row when the removed
+  row was the last. Focus the reader moved out of the grid stays where it is. Tree keeps focus
+  the same way (`tree.md`).
 
 ```contract
 role table grid

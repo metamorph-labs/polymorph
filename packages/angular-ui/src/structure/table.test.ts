@@ -405,3 +405,52 @@ describe('DataTable row expansion', () => {
     )
   })
 })
+
+/** Three tickets the test takes rows from, as the app's data changes. */
+@Component({
+  selector: 'test-data-table-rows',
+  imports: [DataTable],
+  template: `<pm-data-table
+    label="Tickets"
+    [columns]="columns"
+    [data]="tickets()"
+    [getRowId]="idOf"
+    [emptyState]="empty"
+  />`,
+})
+class Leaving {
+  readonly columns = [
+    { key: 'subject', header: 'Ticket' },
+    { key: 'id', header: 'Id' },
+  ]
+  readonly tickets = signal<Ticket[]>([...TICKETS, { id: 'c', subject: 'Empty CSV' }])
+  readonly idOf = (ticket: Ticket) => ticket.id
+  readonly empty = { title: 'Nothing here', description: 'Try a wider filter.' }
+}
+
+/**
+ * A row that leaves while it holds focus (`design/components/data-table.md`, the grid model):
+ * a browser hands focus to the page, and the grid takes it back to the same column of the row
+ * that takes the removed row's place, or of the last row.
+ */
+describe('DataTable, when the focused row leaves', () => {
+  it('keeps focus in the grid, on the same column of the next row', async () => {
+    const { host, ref } = await mountComponent(Leaving)
+    const leaving = ref.instance as Leaving
+    const cell = (name: string) => getByRole(host, 'cell', { name })
+    cell('SSO loop').focus()
+    await userEvent.keyboard('{ArrowRight}')
+    await vi.waitFor(() => expect(document.activeElement).toBe(cell('b')))
+    leaving.tickets.update((tickets) => tickets.filter((ticket) => ticket.id !== 'b'))
+    await vi.waitFor(() => expect(document.activeElement).toBe(cell('c')))
+  })
+
+  it('goes to the row before when the last row leaves', async () => {
+    const { host, ref } = await mountComponent(Leaving)
+    const leaving = ref.instance as Leaving
+    const cell = (name: string) => getByRole(host, 'cell', { name })
+    cell('Empty CSV').focus()
+    leaving.tickets.update((tickets) => tickets.filter((ticket) => ticket.id !== 'c'))
+    await vi.waitFor(() => expect(document.activeElement).toBe(cell('SSO loop')))
+  })
+})

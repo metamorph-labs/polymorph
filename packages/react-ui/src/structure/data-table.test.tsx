@@ -890,3 +890,43 @@ describe('DataTable, for an agent', () => {
     }
   })
 })
+
+/**
+ * A row that leaves while it holds focus (`design/components/data-table.md`, the grid model):
+ * a browser hands focus to the page, and the grid takes it back to the same column of the row
+ * that takes the removed row's place, or of the last row.
+ */
+describe('DataTable, when the focused row leaves', () => {
+  it('keeps focus in the grid, on the same column of the next row', async () => {
+    const view = table({ rowDetail: undefined })
+    screen.getByRole('cell', { name: 'SSO loop' }).focus()
+    await userEvent.keyboard('{ArrowRight}')
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('cell', { name: '26' })),
+    )
+    view.again({ data: DATA.filter((row) => row.id !== 'b') })
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('cell', { name: '91' })),
+    )
+  })
+
+  it('goes to the row before when the last row leaves', async () => {
+    const view = table({ rowDetail: undefined })
+    screen.getByRole('cell', { name: 'Empty CSV' }).focus()
+    view.again({ data: DATA.filter((row) => row.id !== 'c') })
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('cell', { name: 'SSO loop' })),
+    )
+  })
+
+  it('leaves focus the reader moved out of the grid', async () => {
+    const view = render(<Input aria-label="Filter" />)
+    const rows = table({ rowDetail: undefined })
+    screen.getByRole('cell', { name: 'SSO loop' }).focus()
+    const filter = view.getByRole('textbox', { name: 'Filter' })
+    filter.focus()
+    rows.again({ data: DATA.filter((row) => row.id !== 'b') })
+    await new Promise((settle) => setTimeout(settle, 50))
+    expect(document.activeElement).toBe(filter)
+  })
+})

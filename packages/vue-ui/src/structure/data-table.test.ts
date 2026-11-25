@@ -1,7 +1,7 @@
 import { getAllByRole, getByRole, getByText, queryByRole, queryByText } from '@testing-library/dom'
 import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { h, reactive, shallowRef } from 'vue'
+import { h, nextTick, reactive, shallowRef } from 'vue'
 
 import { createAgentBridge } from '@polymorph/engine/agent'
 import { agentRegistrations, installTestTheme } from '@polymorph/engine/testing'
@@ -672,5 +672,39 @@ describe('for an agent', () => {
     } finally {
       bridge.dispose()
     }
+  })
+})
+
+/**
+ * A row that leaves while it holds focus (`design/components/data-table.md`, the grid model):
+ * a browser hands focus to the page, and the grid takes it back to the same column of the row
+ * that takes the removed row's place, or of the last row.
+ */
+describe('the grid, when the focused row leaves', () => {
+  async function rows() {
+    const held = reactive({ data: DATA })
+    const { host } = await mount(() => h(DataTable, { ...BASE, data: held.data }))
+    const setData = async (data: Row[]) => {
+      held.data = data
+      await nextTick()
+    }
+    const cell = (name: string) => getByRole(host, 'cell', { name })
+    return { cell, setData }
+  }
+
+  it('keeps focus in the grid, on the same column of the next row', async () => {
+    const { cell, setData } = await rows()
+    cell('SSO loop').focus()
+    await userEvent.keyboard('{ArrowRight}')
+    await vi.waitFor(() => expect(document.activeElement).toBe(cell('26')))
+    await setData(DATA.filter((row) => row.id !== 'b'))
+    await vi.waitFor(() => expect(document.activeElement).toBe(cell('91')))
+  })
+
+  it('goes to the row before when the last row leaves', async () => {
+    const { cell, setData } = await rows()
+    cell('Empty CSV').focus()
+    await setData(DATA.filter((row) => row.id !== 'c'))
+    await vi.waitFor(() => expect(document.activeElement).toBe(cell('SSO loop')))
   })
 })

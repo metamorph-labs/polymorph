@@ -104,7 +104,8 @@ data-member="table"
 [attr.role]="e8()"
 [attr.aria-multiselectable]="e9()"
 (focusin)="h1($event)"
-(keydown)="h2($event)"
+(focusout)="h2($event)"
+(keydown)="h3($event)"
 [pmRef]="table"
 >@if (e10()) {<!-- caption -->
 <caption
@@ -176,6 +177,7 @@ export class Table {
   protected readonly overflowing = cell(() => false)
   protected readonly at = cell(() => ({ row: 0, column: 0, detail: false }))
   protected readonly placed = cell(() => false)
+  protected readonly holds = cell(() => false)
   protected readonly table = elementRef<HTMLElement>()
   protected readonly wrapper = elementRef<HTMLElement>()
   protected readonly stopIn = derived(() => (cell: HTMLTableCellElement): HTMLElement => {
@@ -294,6 +296,7 @@ export class Table {
   protected readonly focusIn = derived(() => (event: FocusEvent) => {
     const element = this.table.value as HTMLTableElement | null
     if (element === null) return
+    if (!this.holds.value) this.holds.value = true
     const cell = this.gridCellOf.value(element, event.target)
     if (cell === null) return
     const to = this.clampCell.value(
@@ -303,6 +306,19 @@ export class Table {
     if (to === null) return
     this.placed.value = true
     this.rove.value(element, to)
+  })
+  protected readonly focusOut = derived(() => (event: FocusEvent) => {
+    const element = this.table.value as HTMLTableElement | null
+    const left = event.target
+    queueMicrotask(() => {
+      if (
+        element !== null &&
+        left instanceof Node &&
+        left.isConnected &&
+        !element.contains(document.activeElement)
+      )
+        this.holds.value = false
+    })
   })
   protected readonly keyDown = derived(() => (event: KeyboardEvent) => {
     const element = this.table.value as HTMLTableElement | null
@@ -385,7 +401,10 @@ export class Table {
     const element = this.table.value as HTMLTableElement | null
     if (element === null || !this.$p.grid) return
     const to = this.clampCell.value(element, this.whereIn.value(element))
-    if (to !== null) this.rove.value(element, to)
+    if (to === null) return
+    this.rove.value(element, to)
+    const fell = document.activeElement === null || document.activeElement === document.body
+    if (this.holds.value && fell) this.stopAt.value(element, to)?.focus()
   })
   private release1: (() => void) | undefined
   private release2: (() => void) | undefined
@@ -447,7 +466,13 @@ export class Table {
     }
   }
 
-  protected h2($event: KeyboardEvent): void {
+  protected h2($event: FocusEvent): void {
+    if (this.$p.grid) {
+      this.focusOut.value($event)
+    }
+  }
+
+  protected h3($event: KeyboardEvent): void {
     if (this.$p.grid) {
       this.keyDown.value($event)
     }
