@@ -32,7 +32,8 @@ const list = () => document.querySelector<HTMLElement>('[data-toast-part="list"]
 toastFocusLaw({
   shell: 'Vue',
   mount: () => mount(() => h(Toast.Viewport)),
-  raise: (options) => void toast({ ...options, durationMs: Number.POSITIVE_INFINITY }),
+  raise: (options) => toast({ durationMs: Number.POSITIVE_INFINITY, ...options }),
+  remove: (id) => removeToast(id),
   clear: () => getToasts().forEach((record) => removeToast(record.id)),
 })
 
@@ -130,6 +131,12 @@ describe('a declared Toast', () => {
     await mount(() => h(App))
     await vi.waitFor(() => expect(cards()).toHaveLength(1))
     expect(cards()[0]?.textContent).toContain('Three files.')
+    // The content is said with the toast.
+    await vi.waitFor(() =>
+      expect(document.querySelector('[aria-live="polite"]')?.textContent?.trim()).toBe(
+        'Notification Export ready Three files.',
+      ),
+    )
     shown.value = false
     await vi.waitFor(() => expect(getToasts()).toHaveLength(0))
   })

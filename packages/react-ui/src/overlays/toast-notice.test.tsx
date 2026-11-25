@@ -108,6 +108,46 @@ describe('application feedback', () => {
     )
   })
 
+  it('moves focus on when its screen resolves a notice whose recovery control holds focus', async () => {
+    const fixture = (failed: boolean) => (
+      <ToastHost messages={messages}>
+        <Button label="Save" onClick={() => {}} />
+        {failed && (
+          <ToastNotice title="Could not save" dismissible={false}>
+            <Button label="Retry saved request" onClick={() => {}} />
+          </ToastNotice>
+        )}
+      </ToastHost>
+    )
+    const { rerender } = render(fixture(true))
+    await settled(1)
+    const save = screen.getByRole('button', { name: 'Save' })
+    save.focus()
+    await userEvent.keyboard('{F8}')
+    // Put on the control rather than reached with Tab, because WebKit's Tab passes over buttons.
+    const retry = screen.getByRole('button', { name: 'Retry saved request' })
+    retry.focus()
+    expect(document.activeElement).toBe(retry)
+    // The retry succeeds and the screen stops rendering the notice.
+    rerender(fixture(false))
+    await vi.waitFor(() => expect(getToasts()).toHaveLength(0))
+    await vi.waitFor(() => expect(document.activeElement).toBe(save))
+  })
+
+  it('says a notice’s content with it, so a reader learns of its recovery control', async () => {
+    render(
+      <ToastHost messages={messages}>
+        <ToastNotice title="Could not save" description="The network is down.">
+          <Button label="Retry saved request" onClick={() => {}} />
+        </ToastNotice>
+      </ToastHost>,
+    )
+    const assertive = () => document.querySelector('[aria-live="assertive"]')?.textContent ?? ''
+    await vi.waitFor(() =>
+      expect(assertive()).toBe('Update Could not save The network is down. Retry saved request'),
+    )
+  })
+
   it('respects dismissal across renders and announces a new attempt with the same error', async () => {
     const fixture = (attempt: number) => (
       <ToastHost messages={messages}>

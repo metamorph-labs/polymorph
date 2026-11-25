@@ -12,6 +12,7 @@ import {
   TOAST_TONE_ICON,
   claimSlot,
   classes,
+  composingKey,
   createCell,
   createDerived,
   elementRef,
@@ -144,7 +145,10 @@ export default function ToastCard(given: ToastCardProps): JSX.Element {
         data-swipe-direction="right"
         data-member="toast"
         onkeydown={($event: KeyboardEvent) =>
-          $event.key === 'Escape' && ($event.preventDefault(), dismiss.value())
+          $event.key === 'Escape' &&
+          !$event.defaultPrevented &&
+          !composingKey($event) &&
+          ($event.preventDefault(), dismiss.value())
         }
         onpointerdown={($event: PointerEvent) => press.value($event)}
         onpointermove={($event: PointerEvent) => drag.value($event)}
@@ -171,7 +175,9 @@ export default function ToastCard(given: ToastCardProps): JSX.Element {
             <div class={styles.description}>{props.record.description}</div>
           ) : null}
           {props.record.content !== undefined ? (
-            <div class={styles.content}>{props.record.content}</div>
+            <div class={styles.content} data-toast-content={''}>
+              {props.record.content}
+            </div>
           ) : null}
         </div>
         {props.record.action !== undefined ? (

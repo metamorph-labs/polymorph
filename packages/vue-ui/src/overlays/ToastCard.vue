@@ -11,6 +11,7 @@ import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from
 import {
   Icon,
   TOAST_TONE_ICON,
+  composingKey,
   focusAfterToast,
   removeToast,
   toast,
@@ -122,7 +123,12 @@ onBeforeUnmount(() => release3?.())
     :data-swipe="swipe === '' ? undefined : swipe"
     data-swipe-direction="right"
     data-member="toast"
-    @keydown="$event.key === 'Escape' && ($event.preventDefault(), dismiss())"
+    @keydown="
+      $event.key === 'Escape' &&
+      !$event.defaultPrevented &&
+      !composingKey($event) &&
+      ($event.preventDefault(), dismiss())
+    "
     @pointerdown="press($event)"
     @pointermove="drag($event)"
     @pointerup="lift()"
@@ -147,7 +153,7 @@ onBeforeUnmount(() => release3?.())
         {{ record.description }}
       </div>
       <!-- content -->
-      <div v-if="record.content !== undefined" :class="styles.content">
+      <div v-if="record.content !== undefined" :class="styles.content" data-toast-content="">
         <component :is="record.content" />
       </div>
     </div>

@@ -5,24 +5,28 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { onCleanup, onMount, type JSX } from 'solid-js'
+import { createMemo, onCleanup, onMount, type JSX } from 'solid-js'
 
 import {
   Each,
+  TOAST_QUIET,
   actOnToastNotice,
   agentMember,
+  announceToasts,
   claimSlot,
   createCell,
   createDerived,
   dismissToastNotice,
   elementRef,
+  followToastFocus,
   getToasts,
-  noteToastEntry,
+  holdToastTimers,
   scope,
   subscribeToasts,
   toast,
   toastDetails,
   toastNotices,
+  watchEffect,
 } from '@polymorph/solid'
 import styles from '@polymorph/recipes/overlays/toast.module.css'
 import a11y from '@polymorph/recipes/conventions/a11y.module.css'
@@ -44,6 +48,7 @@ export default function ToastViewport(given: ToastViewportProps): JSX.Element {
     const region = elementRef<HTMLElement>()
     const version = createCell(0)
     const paused = createCell(false)
+    const said = createCell(TOAST_QUIET)
     const say = createDerived(
       () =>
         props.messages ?? {
@@ -53,17 +58,6 @@ export default function ToastViewport(given: ToastViewportProps): JSX.Element {
         },
     )
     const records = createDerived(() => (version.value < 0 ? [] : getToasts()))
-    const words = createDerived(() => (urgent: boolean): string => {
-      const record = records.value
-        .filter(
-          (each) =>
-            each.closing !== true && (each.tone === 'danger' || each.tone === 'warning') === urgent,
-        )
-        .at(-1)
-      return record === undefined
-        ? ''
-        : [say.value.notification, record.title, record.description].filter(Boolean).join(' ')
-    })
     let release1: (() => void) | undefined
     const effect1 = () => {
       release1?.()
@@ -92,6 +86,36 @@ export default function ToastViewport(given: ToastViewportProps): JSX.Element {
     let release3: (() => void) | undefined
     const effect3 = () => {
       release3?.()
+      const ran = holdToastTimers(region.value, (held) => {
+        paused.value = held
+      })
+      release3 = () => {
+        ran()
+      }
+    }
+    onMount(effect3)
+    onCleanup(() => release3?.())
+    let release4: (() => void) | undefined
+    const effect4 = () => {
+      release4?.()
+      const ran = followToastFocus(list.value)
+      release4 = () => {
+        ran()
+      }
+    }
+    onMount(effect4)
+    onCleanup(() => release4?.())
+    const effect5 = () => {
+      said.value = announceToasts(said.value, records.value, list.value, say.value.notification)
+    }
+    watchEffect(
+      createMemo(() => version.value),
+      effect5,
+      true,
+    )
+    let release6: (() => void) | undefined
+    const effect6 = () => {
+      release6?.()
       const ran = agentMember({
         member: 'Toast',
         element: () => region.value,
@@ -107,28 +131,16 @@ export default function ToastViewport(given: ToastViewportProps): JSX.Element {
           ...(list.value?.querySelectorAll('[data-member="toast"] > div ~ div') ?? []),
         ],
       })
-      release3 = () => {
+      release6 = () => {
         ran()
       }
     }
-    onMount(effect3)
-    onCleanup(() => release3?.())
+    onMount(effect6)
+    onCleanup(() => release6?.())
     return (
       <div role="region" aria-label={say.value.viewport} tabindex="-1" ref={region.attach}>
         {/* list */}
-        <ol
-          class={styles.viewport}
-          tabindex="-1"
-          data-toast-part="list"
-          onpointerenter={() => (paused.value = true)}
-          onpointerleave={() => (paused.value = false)}
-          onfocusin={($event: FocusEvent) => (
-            (paused.value = true),
-            noteToastEntry(list.value, $event.relatedTarget)
-          )}
-          onfocusout={() => (paused.value = false)}
-          ref={list.attach}
-        >
+        <ol class={styles.viewport} tabindex="-1" data-toast-part="list" ref={list.attach}>
           <Each of={records.value} by={(record) => record.id} renew>
             {(record) => (
               <ToastCard record={record} dismissLabel={say.value.dismiss} paused={paused.value} />
@@ -137,11 +149,15 @@ export default function ToastViewport(given: ToastViewportProps): JSX.Element {
         </ol>
         {/* polite */}
         <div class={a11y.visuallyHidden} role="status" aria-live="polite" aria-atomic="true">
-          {words.value(false)}
+          <Each of={[said.value.polite]} by={(saying) => saying.key} renew>
+            {(saying) => <span>{saying.words}</span>}
+          </Each>
         </div>
         {/* assertive */}
         <div class={a11y.visuallyHidden} role="alert" aria-live="assertive" aria-atomic="true">
-          {words.value(true)}
+          <Each of={[said.value.assertive]} by={(saying) => saying.key} renew>
+            {(saying) => <span>{saying.words}</span>}
+          </Each>
         </div>
       </div>
     )

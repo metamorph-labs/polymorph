@@ -12,6 +12,7 @@ import {
   Icon,
   Render,
   TOAST_TONE_ICON,
+  composingKey,
   focusAfterToast,
   joinSlot,
   removeToast,
@@ -122,7 +123,7 @@ onDestroy(() => release3?.())
     data-swipe={swipe === '' ? undefined : swipe}
     data-swipe-direction="right"
     data-member="toast"
-    onkeydown={(event) => { if (event.key === 'Escape') (event.preventDefault(), dismiss()) }}
+    onkeydown={(event) => { if (event.key === 'Escape' && !event.defaultPrevented && !composingKey(event)) (event.preventDefault(), dismiss()) }}
     onpointerdown={(event) => { press(event) }}
     onpointermove={(event) => { drag(event) }}
     onpointerup={() => { lift() }}
@@ -138,7 +139,7 @@ onDestroy(() => release3?.())
         }<div class={styles.description}>{record.description}</div
       >{/if
       }{#if record.content !== undefined
-        }<div class={styles.content}><Render node={record.content} /></div
+        }<div class={styles.content} data-toast-content=""><Render node={record.content} /></div
       >{/if
     }</div
     >{#if record.action !== undefined

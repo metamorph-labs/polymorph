@@ -13,6 +13,7 @@ import {
 import { createPortal } from 'react-dom'
 import { DismissableLayer } from '@radix-ui/react-dismissable-layer'
 import { FocusScope } from '@radix-ui/react-focus-scope'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { usePreventScroll } from 'react-aria'
 
 import { MotionPresence, MotionSurface } from '@polymorph/react/motion'
@@ -41,12 +42,20 @@ import styles from '@polymorph/recipes/overlays/sheet.module.css'
  *  - **A layer of its own.** A sheet opened from inside a Dialog or a Drawer
  *    is portalled out of it, so the panel is a Radix layer and a Radix focus
  *    scope, as the overlay it sits on is. The topmost layer takes Escape, so
- *    Escape closes the sheet and not the Dialog beneath it. A new focus scope
+ *    Escape closes the sheet and not the Dialog beneath it, and a Tooltip or a
+ *    Menu open inside the sheet takes the Escape that closes it, which then
+ *    leaves the sheet open. A new focus scope
  *    pauses the one beneath, so the Dialog's trap does not pull focus out of
  *    the sheet. The layer dismisses nothing by itself: the panel's own Escape
  *    and the scrim do, as below.
  *  - **Containment**: a trapped focus scope, the sheet presentation's
- *    Dialog-lane rule for modal sheets. Menus and Popover contain focus
+ *    Dialog-lane rule for modal sheets. The scope wraps Tab only at the
+ *    panel's first and last controls, as Radix's Dialog does, and Radix's
+ *    Dialog also puts a focusable guard at each end of the page. The sheet
+ *    keeps one on each side of its panel for the same reason: a browser whose
+ *    Tab passes over buttons (Safari's default) moves focus from a field past
+ *    the panel's last button, onto the guard, and the scope takes it back
+ *    into the panel instead of letting it leave the page. Menus and Popover contain focus
  *    (Popover because its sheet form changes its contract to modal,
  *    `design/components/popover.md`). The combobox lane opts out with
  *    `containFocus={false}`, following the sheet presentation's split: a
@@ -227,8 +236,19 @@ function SheetPortal({
     if (panel && !panel.contains(document.activeElement)) panel.focus()
   }, [containFocus, ready])
 
+  /**
+   * The Escape the sheet's own layer took as the topmost layer. Radix hands a
+   * layer the keydown on the document before any element sees it, and only
+   * the topmost layer's: a Tooltip or a Menu open inside the sheet takes the
+   * Escape that closes it, and the sheet's layer is not handed that one. The
+   * panel's own handler below then runs after the content's, so a member's
+   * substrate has handled the key when `holdEscape` is asked.
+   */
+  const topmost = useRef<Event | null>(null)
+
   function onKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (event.key !== 'Escape' || state === 'closed') return
+    if (topmost.current !== event.nativeEvent) return
     if (holdEscape?.() === true) return
     event.stopPropagation()
     onDismiss()
@@ -252,8 +272,18 @@ function SheetPortal({
     </MotionSurface>
   )
 
-  // The layer takes Escape from the layers beneath it and dismisses nothing by itself.
-  const layered = <DismissableLayer asChild>{panel}</DismissableLayer>
+  // The layer takes Escape from the layers beneath it and dismisses nothing by
+  // itself: it records the Escape it was handed, and the panel decides.
+  const layered = (
+    <DismissableLayer
+      asChild
+      onEscapeKeyDown={(event) => {
+        topmost.current = event
+      }}
+    >
+      {panel}
+    </DismissableLayer>
+  )
 
   return createPortal(
     <>
@@ -273,18 +303,22 @@ function SheetPortal({
             moves focus neither as it mounts nor as it unmounts: the lane and
             the member decide both. */}
         {containFocus ? (
-          <FocusScope
-            asChild
-            loop
-            trapped={state === 'open'}
-            onMountAutoFocus={(event) => {
-              event.preventDefault()
-              setReady(true)
-            }}
-            onUnmountAutoFocus={(event) => event.preventDefault()}
-          >
-            {layered}
-          </FocusScope>
+          <>
+            <VisuallyHidden tabIndex={0} data-sheet-guard="" />
+            <FocusScope
+              asChild
+              loop
+              trapped={state === 'open'}
+              onMountAutoFocus={(event) => {
+                event.preventDefault()
+                setReady(true)
+              }}
+              onUnmountAutoFocus={(event) => event.preventDefault()}
+            >
+              {layered}
+            </FocusScope>
+            <VisuallyHidden tabIndex={0} data-sheet-guard="" />
+          </>
         ) : (
           layered
         )}

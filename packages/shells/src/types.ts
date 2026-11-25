@@ -216,7 +216,11 @@ export const ENGINE_HELPERS: readonly string[] = [
   'focusReturnTarget',
   'focusAfterRemoval',
   'focusAfterToast',
-  'noteToastEntry',
+  'followToastFocus',
+  // When a toast viewport's timers wait, and what its live regions say.
+  'holdToastTimers',
+  'announceToasts',
+  'TOAST_QUIET',
   'avatarTone',
   'initialsOf',
   'paginationWindow',

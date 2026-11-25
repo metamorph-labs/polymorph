@@ -76,6 +76,17 @@ describe('nearestFocusable', () => {
     expect(place && nearestFocusable(place, [panel])).toBe(after)
   })
 
+  it('leaves the page’s main as it was when focus does not land on it', async () => {
+    const { main, row } = draw(
+      `<main id="main"><div id="row"><button id="opener">Only</button></div></main>`,
+    )
+    const place = focusPlace(page.querySelector('#opener'))
+    row?.remove()
+    expect(place && nearestFocusable(place)).toBe(main)
+    await new Promise((settle) => setTimeout(settle, 0))
+    expect(main?.hasAttribute('tabindex')).toBe(false)
+  })
+
   it('falls back to the page’s main, made focusable while it holds focus', () => {
     const { main, row } = draw(
       `<main id="main"><div id="row"><button id="opener">Only</button></div></main>`,
@@ -113,17 +124,23 @@ describe('focusReturnTarget', () => {
 })
 
 describe('focusAfterRemoval', () => {
-  it('moves focus out of a region that leaves while it holds focus', () => {
+  /** A microtask later, when the returned function has looked at the page again. */
+  const settled = () => new Promise<void>((settle) => queueMicrotask(settle))
+
+  it('moves focus out of a region that leaves while it holds focus', async () => {
     const { region, inside, after } = draw(`
       <div id="region"><button id="inside">Dismiss</button></div>
       <button id="after">After</button>`)
     const release = focusAfterRemoval(region)
     inside?.focus()
+    // A framework runs the function, then takes the region out, in one update.
     release()
+    region?.remove()
+    await settled()
     expect(document.activeElement).toBe(after)
   })
 
-  it('moves focus near where the region was when it has already gone', () => {
+  it('moves focus near where the region was when it has already gone', async () => {
     const { region, inside, after } = draw(`
       <div id="region"><button id="inside">Dismiss</button></div>
       <button id="after">After</button>`)
@@ -131,10 +148,24 @@ describe('focusAfterRemoval', () => {
     inside?.focus()
     region?.remove()
     release()
+    await settled()
     expect(document.activeElement).toBe(after)
   })
 
-  it('leaves focus alone once it has moved to another element', () => {
+  it('leaves focus in a region that stays, as StrictMode’s rehearsed unmount leaves it', async () => {
+    const { region, inside } = draw(`
+      <div id="region"><button id="inside" autofocus>Retry</button></div>
+      <button>After</button>`)
+    inside?.focus()
+    const release = focusAfterRemoval(region)
+    release()
+    const again = focusAfterRemoval(region)
+    await settled()
+    expect(document.activeElement).toBe(inside)
+    again()
+  })
+
+  it('leaves focus alone once it has moved to another element', async () => {
     const { region, inside, before } = draw(`
       <button id="before">Before</button>
       <div id="region"><button id="inside">Dismiss</button></div>
@@ -144,6 +175,7 @@ describe('focusAfterRemoval', () => {
     before?.focus()
     region?.remove()
     release()
+    await settled()
     expect(document.activeElement).toBe(before)
   })
 })
