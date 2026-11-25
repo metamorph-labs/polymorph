@@ -24,7 +24,7 @@ exist only through `iconOnly` (below) and stay square.
 | `tone` | `'neutral' \| 'accent' \| 'danger'` | `'accent'` | allowed grid below; `neutral` exists only for `outline`/`ghost` |
 | `size` | `'sm' \| 'md' \| 'lg'` | `'md'` | conventions §2 |
 | `icon` | `IconRole` | — | leading |
-| `trailingIcon` | `IconRole` | — | a direction or a disclosure only: a role `design/icons.json` lists as `trailing` (`forward`, `next`, `down`, `expand`, `collapse`, `open-external`). Any other role leads, in `icon` (`polymorph/trailing-icon`) |
+| `trailingIcon` | `IconRole` | — | a direction or a disclosure only: a role `design/icons.json` marks `trailing` (`collapse`, `down`, `expand`, `forward`, `next`, `open-external`). Any other role leads, in `icon` (`polymorph/trailing-icon`) |
 | `iconOnly` | `boolean` | `false` | square (width = control height); requires `label` |
 | `label` | `string` | — | **required.** Visible text, or the accessible name when `iconOnly` |
 | `loading` | `boolean` | `false` | conventions §5 |
@@ -119,7 +119,7 @@ the validation a screen spec gets (`docs/rules.md`, the usage rules):
 - **A destructive Button comes last.** Among sibling Buttons, a `tone="danger"` one has no
   other Button after it (`polymorph/danger-last`). It never has focus when a dialog or drawer
   opens (`dialog.md`), and Button takes no `autoFocus`.
-- **A trailing icon points onward or opens.** `trailingIcon` takes a role from `trailing` in
+- **A trailing icon points onward or opens.** `trailingIcon` takes a role marked `trailing` in
   `design/icons.json`. Every other icon leads its label, in `icon`
   (`polymorph/trailing-icon`).
 

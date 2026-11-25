@@ -8,7 +8,7 @@
  * the same thing.
  *
  * The roles a trailing icon may take are not here. They are owned beside the
- * roles themselves, as `trailing` in `design/icons.json`. The rule reads that
+ * roles themselves, as `trailing` on each such role in `design/icons.json`. The rule reads that
  * file, and the validator reads the list from the vocabulary it is given.
  *
  * This module imports nothing, so a page can load it: the validator runs in a

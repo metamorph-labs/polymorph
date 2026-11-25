@@ -62,7 +62,7 @@ type checker. Solid TSX is TSX ([below](#in-solid-tsx)).
 | `polymorph/one-opener` | one module that renders both `<PageHeader>` and `<Hero>` — each renders the page's `<h1>`, so the pair puts two on the page | application | 1 |
 | `polymorph/one-main-button` | a second main Button (`variant="solid"`, `tone="accent"`, which are Button's defaults) in one dialog (`Dialog`, `Drawer`, `Popover`) or one section (`Card`, `Dashboard.Panel`) | application | 1, 4 |
 | `polymorph/danger-last` | a Button with `tone="danger"` before a Button without it, in one row of siblings | application | 1, 4 |
-| `polymorph/trailing-icon` | a Button's `trailingIcon` that is not a direction or a disclosure: any role but the ones `design/icons.json` lists as `trailing` | application | 1, 4 |
+| `polymorph/trailing-icon` | a Button's `trailingIcon` that is not a direction or a disclosure: any role but the ones `design/icons.json` marks `trailing` | application | 1, 4 |
 | `polymorph/vendorable-imports` | in vendored component source: a relative import that leaves the vendored tree, a deep `@polymorph/<pkg>/src/…` import, or an import of `@polymorph/theme`, `@polymorph/rules`, `@polymorph/registry`, `@polymorph/react-ui`, `@polymorph/spec`, `@polymorph/cli` or `@polymorph/mcp` (another member is imported by relative path). The published surfaces of `@polymorph/engine` and `@polymorph/react` are allowed, because a consumer installs them | vocabulary | none |
 
 The last three are the usage rules ([below](#the-usage-rules)). Three of the application rules have a second use in this repository. `eslint.config.ts` also applies
@@ -94,8 +94,8 @@ the validation a screen spec gets reads too ([tooling.md](tooling.md)).
   the engine's `modalFocusTarget` passes over a danger Button in every renderer's modal
   surfaces, and Button takes no `autoFocus`, so no call site can ask for it.
 - **`trailing-icon`.** An icon leads its text. The roles that may trail it point onward or
-  show a disclosure: `trailing` in `design/icons.json` (`forward`, `next`, `down`,
-  `expand`, `collapse`, `open-external`). A back arrow leads.
+  show a disclosure, the roles `design/icons.json` marks `trailing` (`collapse`, `down`, `expand`,
+  `forward`, `next`, `open-external`). A back arrow leads.
 
 Each reads only what the code writes out. Buttons in different branches of one conditional (a
 ternary, `v-if` and `v-else`, `{#if}` and `{:else}`, `@if` and `@else`, `@switch`'s cases) are
@@ -368,7 +368,7 @@ theme.
 | `one-opener` | which opener to keep: the archetype's own title when the module renders one, otherwise `PageHeader` on a working screen and `Hero` on an opening page | ``<ListPage> renders its PageHeader from `<ListPage title="…">`: keep that and drop both here (rung 1).`` |
 | `one-main-button` | the scope, and the lesser variant | ``Unexpected second main Button in <Card>: a section has one solid accent Button, which marks its next step. Make this one `<Button variant="outline" tone="neutral">` (rung 1).`` |
 | `danger-last` | where the destructive Button goes | ``Unexpected <Button tone="danger"> before another Button in its row: the destructive action comes last, so a reader meets the safe one first. Move it after the others (rung 1).`` |
-| `trailing-icon` | the roles that may trail, and `icon` | ``Unexpected trailing icon "delete" on <Button>: an icon leads its label. Use `icon="delete"` (rung 1). Only forward, next, down, expand, collapse and open-external follow it.`` |
+| `trailing-icon` | the roles that may trail, and `icon` | ``Unexpected trailing icon "delete" on <Button>: an icon leads its label. Use `icon="delete"` (rung 1). Only collapse, down, expand, forward, next and open-external follow it.`` |
 | `scoped-token-owners` | the file that owns the pattern | ``"--pm-shell-*" belongs to app-shell.module.css and 1 more, not this file (…).`` |
 | `vendorable-imports` | the published import that replaces the path: `@polymorph/react` for the engine, the theme or the role data, a member's relative path, or no import at all for a dev-time tool | ``Import `@polymorph/theme` is not in the boundary a consumer installs. Import it from `@polymorph/react`, which re-exports the engine and the theme.`` |
 | `token-values-only` | the nearest token by value, for a colour, a length or a duration | ``Unexpected raw value "12px" in "padding". It is `var(--pm-space-4)` (12px).`` |

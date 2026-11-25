@@ -13,8 +13,7 @@ import { reporterFor } from './vue'
  * An icon goes before the text it stands for. The exceptions point the way
  * the action goes or show that it opens something: a forward or next arrow, a
  * chevron that expands or collapses, the mark of a link that leaves the
- * product. `design/icons.json` owns that list as `trailing`, beside the roles
- * themselves, and the validation a screen spec gets reads the same list. Any
+ * product. `design/icons.json` owns that list, as `trailing` on each such role, and the validation a screen spec gets reads the same list. Any
  * other role in `trailingIcon` belongs in `icon`. A back arrow goes before the
  * text, so it is not on the list.
  *
@@ -25,8 +24,11 @@ import { reporterFor } from './vue'
  * A `<Bespoke>` zone lifts the rule inside it.
  */
 
-/** The roles a trailing icon may take, in `design/icons.json`'s order. */
-export const TRAILING_ROLES: readonly string[] = iconSet.trailing
+/** The roles a trailing icon may take: the ones `design/icons.json` marks `trailing`, sorted. */
+export const TRAILING_ROLES: readonly string[] = Object.entries(iconSet.roles)
+  .filter(([, meta]) => (meta as { trailing?: boolean }).trailing === true)
+  .map(([role]) => role)
+  .sort()
 
 export const trailingIcon: Rule.RuleModule = {
   meta: {

@@ -963,7 +963,7 @@ member that framework's vocabulary does not ship, with the framework map's reaso
 3. **Usage** — the three usage rules the red rules hold code to ([rules.md](rules.md#the-usage-rules)),
    from the same definitions (`@polymorph/rules/usage`): one main Button in a dialog or a
    section, a danger Button last among the Buttons of one list, and a `trailingIcon` from the
-   roles the registry lists as `trailing`. A value bound to an input is not read. A screen drawn
+   roles the registry lists in `icons.trailing`. A value bound to an input is not read. A screen drawn
    at run time gets the same faults, because `checkScreen` runs this validator.
 
 The emitter prints four fields as code. Each is checked to be exactly what it claims to be,

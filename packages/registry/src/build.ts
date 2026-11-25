@@ -285,7 +285,10 @@ export function buildRegistry(root: string): Registry {
         .sort((a, b) => a.name.localeCompare(b.name)),
       // The roles a Button's trailing icon may take: a direction or a disclosure. The red rule
       // `trailing-icon` and the spec validator read this one list.
-      trailing: [...iconSet.trailing],
+      trailing: Object.entries(iconSet.roles)
+        .filter(([, meta]) => (meta as { trailing?: boolean }).trailing === true)
+        .map(([name]) => name)
+        .sort(),
     },
     theme,
     exceptions: { ladder, primitives },

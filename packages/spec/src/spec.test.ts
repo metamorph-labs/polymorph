@@ -445,7 +445,7 @@ describe('the usage rules, told to a spec as the red rules tell code', () => {
       {
         path: '$.root.children[1].props.trailingIcon',
         message:
-          '`delete` does not trail its text — an icon leads its text, and only `forward`, `next`, `down`, `expand`, `collapse` and `open-external` trail it; make it `"icon": "delete"`',
+          '`delete` does not trail its text — an icon leads its text, and only `collapse`, `down`, `expand`, `forward`, `next` and `open-external` trail it; make it `"icon": "delete"`',
       },
     ])
   })

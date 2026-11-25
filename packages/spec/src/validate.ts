@@ -136,7 +136,7 @@ export interface SpecVocabulary {
   readonly icons: {
     readonly roles: readonly { readonly name: string }[]
     /**
-     * The roles a Button's trailing icon may take (`trailing` in
+     * The roles a Button's trailing icon may take (marked `trailing` in
      * `design/icons.json`). A vocabulary without the list leaves
      * `trailingIcon` unchecked.
      */
@@ -1490,7 +1490,7 @@ interface UsageScope {
  *   action. A spec has no conditional, so every Button in a scope renders.
  * - A danger Button comes last among the Buttons of one list: an element's
  *   children, or a prop that holds several.
- * - A trailing icon is one of the roles the vocabulary lists as `trailing`.
+ * - A trailing icon is one of the roles the vocabulary lists in `icons.trailing`.
  *
  * A value bound to an input is computed, and none of them reads it. A
  * `Bespoke` zone lifts them inside it, as it lifts the rules.

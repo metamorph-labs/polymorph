@@ -42,7 +42,7 @@ jsxRuleTester().run('trailing-icon', trailingIcon, {
       errors: [
         {
           message:
-            'Unexpected trailing icon "delete" on <Button>: an icon leads its label. Use `icon="delete"` (rung 1). Only forward, next, down, expand, collapse and open-external follow it.',
+            'Unexpected trailing icon "delete" on <Button>: an icon leads its label. Use `icon="delete"` (rung 1). Only collapse, down, expand, forward, next and open-external follow it.',
         },
       ],
     },
