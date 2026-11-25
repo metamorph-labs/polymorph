@@ -51,7 +51,7 @@ interface Scope {
 
 export const oneMainButton: Rule.RuleModule = {
   meta: {
-    type: 'suggestion',
+    type: 'problem',
     docs: { description: 'A dialog or a section holds one main Button: one solid accent action.' },
     schema: [],
     messages: {

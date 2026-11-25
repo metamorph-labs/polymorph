@@ -2,7 +2,13 @@ import type { Rule } from 'eslint'
 
 import { BUTTON, dangerBeforeOthers, type RowPlace } from '../usage'
 import { angularSelector, isAngularTemplate } from './angular'
-import { composedTrees, eachElement, isZone, type Composed, type ComposedElement } from './composition'
+import {
+  composedTrees,
+  eachElement,
+  isZone,
+  type Composed,
+  type ComposedElement,
+} from './composition'
 import { reporterFor } from './vue'
 
 /**
@@ -29,7 +35,7 @@ import { reporterFor } from './vue'
 
 export const dangerLast: Rule.RuleModule = {
   meta: {
-    type: 'suggestion',
+    type: 'problem',
     docs: { description: 'A danger Button comes last among the Buttons beside it.' },
     schema: [],
     messages: {
@@ -54,7 +60,9 @@ export const dangerLast: Rule.RuleModule = {
                 const [only] = branch
                 return branch.length === 1 && only?.type === 'element' ? [only] : []
               })
-        const buttons = candidates.filter((candidate) => candidate.name === BUTTON && !isZone(candidate))
+        const buttons = candidates.filter(
+          (candidate) => candidate.name === BUTTON && !isZone(candidate),
+        )
         if (buttons.length === 0) continue
         places.push({ place: buttons.map((one) => one.prop('tone').value), buttons })
       }

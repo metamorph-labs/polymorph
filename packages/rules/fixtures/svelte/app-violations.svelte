@@ -4,7 +4,7 @@
   import { fade } from 'svelte/transition'
   import { Trash2 } from 'lucide-svelte'
 
-  import { Button, Hero, PageHeader } from '@polymorph/svelte-ui'
+  import { Button, Card, Hero, PageHeader } from '@polymorph/svelte-ui'
 
   import './Inbox.module.css'
 
@@ -24,6 +24,12 @@
   <Trash2 />
   <p transition:fade>{String(scaleLinear)}</p>
   <span>{TOPBAR}</span>
+  <!-- A second main Button, a danger Button before a safe one, and a trailing icon that neither points nor opens. -->
+  <Card title="Plan">
+    <Button label="Upgrade" />
+    <Button tone="danger" label="Cancel plan" />
+    <Button trailingIcon="delete" label="Remove seat" />
+  </Card>
 </div>
 
 <style>

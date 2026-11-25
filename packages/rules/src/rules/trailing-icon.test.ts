@@ -14,14 +14,20 @@ describe('the trailing roles', () => {
 
 jsxRuleTester().run('trailing-icon', trailingIcon, {
   valid: [
-    { filename: APP_FILE, code: `export const A = () => <Button trailingIcon="next" label="Continue" />` },
+    {
+      filename: APP_FILE,
+      code: `export const A = () => <Button trailingIcon="next" label="Continue" />`,
+    },
     {
       filename: APP_FILE,
       code: `export const A = () => <Button trailingIcon="open-external" label="Docs" />`,
     },
     { filename: APP_FILE, code: `export const A = () => <Button icon="delete" label="Delete" />` },
     // A computed role is not read, and a declared zone lifts the rule.
-    { filename: APP_FILE, code: `export const A = () => <Button trailingIcon={role} label="Go" />` },
+    {
+      filename: APP_FILE,
+      code: `export const A = () => <Button trailingIcon={role} label="Go" />`,
+    },
     {
       filename: APP_FILE,
       code: `export const A = () => <Bespoke reason="Kiosk keypad as the hardware labels it"><Button trailingIcon="delete" label="Del" /></Bespoke>`,

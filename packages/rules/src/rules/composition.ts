@@ -123,7 +123,8 @@ function jsxValue(value: Node | null): Written {
   let written = value
   if (written.type === 'JSXExpressionContainer') written = written['expression'] as Node
   while (TS_WRAPPERS.has(written.type)) written = written['expression'] as Node
-  if (written.type === 'Literal') return typeof written['value'] === 'string' ? written['value'] : null
+  if (written.type === 'Literal')
+    return typeof written['value'] === 'string' ? written['value'] : null
   if (written.type === 'TemplateLiteral' && (written['expressions'] as unknown[]).length === 0) {
     return (written['quasis'] as { value: { cooked: string } }[])[0]?.value.cooked ?? null
   }
@@ -170,7 +171,9 @@ function jsxElement(node: Node): Composed[] {
     const value = attribute['value'] as Node | null
     if (value === null) continue
     const content =
-      value.type === 'JSXExpressionContainer' ? jsxContent(value['expression'] as Node) : jsxContent(value)
+      value.type === 'JSXExpressionContainer'
+        ? jsxContent(value['expression'] as Node)
+        : jsxContent(value)
     if (content.length > 0) slots.set(String((attribute['name'] as Node)['name']), content)
   }
   return [
@@ -278,7 +281,10 @@ function vueBound(attribute: VueAttribute): Written {
   if (expression.type === 'Literal') {
     return typeof expression['value'] === 'string' ? (expression['value'] as string) : null
   }
-  if (expression.type === 'TemplateLiteral' && (expression['expressions'] as unknown[]).length === 0) {
+  if (
+    expression.type === 'TemplateLiteral' &&
+    (expression['expressions'] as unknown[]).length === 0
+  ) {
     return (expression['quasis'] as { value: { cooked: string } }[])[0]?.value.cooked ?? null
   }
   return null
@@ -328,11 +334,15 @@ function vueNode(element: VueElement, imports: ReadonlySet<string>): Composed[] 
       else rest.push(child)
       continue
     }
-    slots.set(slot, [...(slots.get(slot) ?? []), ...vueContent((child as VueElement).children, imports)])
+    slots.set(slot, [
+      ...(slots.get(slot) ?? []),
+      ...vueContent((child as VueElement).children, imports),
+    ])
   }
   const attributes = element.startTag.attributes
   const spread = attributes.some(
-    (attribute) => directiveOf(attribute) === 'bind' && (attribute.key as VueDirectiveKey).argument === null,
+    (attribute) =>
+      directiveOf(attribute) === 'bind' && (attribute.key as VueDirectiveKey).argument === null,
   )
   return [
     {
@@ -367,7 +377,10 @@ function vueNode(element: VueElement, imports: ReadonlySet<string>): Composed[] 
 }
 
 function vueTrees(context: Rule.RuleContext): Composed[] {
-  const ast = context.sourceCode.ast as unknown as { templateBody?: VueElement | null; body?: unknown[] }
+  const ast = context.sourceCode.ast as unknown as {
+    templateBody?: VueElement | null
+    body?: unknown[]
+  }
   const template = ast.templateBody
   if (!template) return []
   return vueContent(template.children, scriptImports(ast))
@@ -386,13 +399,15 @@ interface SvelteBlock extends SvelteNode {
 /** A Svelte attribute's value as written: its text, a string in braces, or `null`. */
 function svelteValue(attribute: SvelteNode): Written {
   if (attribute.type !== 'SvelteAttribute') return null
-  const parts = (attribute as unknown as { value: { type: string; value?: string; expression?: Node }[] })
-    .value
+  const parts = (
+    attribute as unknown as { value: { type: string; value?: string; expression?: Node }[] }
+  ).value
   if (parts.every((part) => part.type === 'SvelteLiteral')) {
     return parts.map((part) => part.value ?? '').join('')
   }
   const [only] = parts
-  if (parts.length === 1 && only?.type === 'SvelteMustacheTag') return jsxValue(only.expression ?? null)
+  if (parts.length === 1 && only?.type === 'SvelteMustacheTag')
+    return jsxValue(only.expression ?? null)
   return null
 }
 
@@ -440,15 +455,17 @@ function svelteNode(element: SvelteElement): Composed[] {
     if (child.type === 'SvelteSnippetBlock' && element.kind === 'component') {
       const name = (child as SvelteBlock).id?.name
       if (name !== undefined) {
-        slots.set(name, [...(slots.get(name) ?? []), ...svelteContent((child as SvelteBlock).children)])
+        slots.set(name, [
+          ...(slots.get(name) ?? []),
+          ...svelteContent((child as SvelteBlock).children),
+        ])
       }
       continue
     }
     const slot = child.type === 'SvelteElement' ? svelteSlotAttribute(child as SvelteElement) : null
     if (slot !== null && element.kind === 'component') {
       const held = child as SvelteElement
-      const content =
-        held.kind === 'special' ? svelteContent(held.children) : svelteNode(held)
+      const content = held.kind === 'special' ? svelteContent(held.children) : svelteNode(held)
       slots.set(slot, [...(slots.get(slot) ?? []), ...content])
       continue
     }
@@ -522,7 +539,9 @@ function angularContent(nodes: readonly AngularNode[], context: Rule.RuleContext
         out.push({
           type: 'branch',
           id: node,
-          branches: (block.branches ?? []).map((branch) => angularContent(branch.children, context)),
+          branches: (block.branches ?? []).map((branch) =>
+            angularContent(branch.children, context),
+          ),
         })
         break
       case 'SwitchBlock':
@@ -601,7 +620,8 @@ function angularNode(element: AngularElement, context: Rule.RuleContext): Compos
 }
 
 function angularTrees(context: Rule.RuleContext): Composed[] {
-  const nodes = (context.sourceCode.ast as unknown as { templateNodes: AngularNode[] }).templateNodes
+  const nodes = (context.sourceCode.ast as unknown as { templateNodes: AngularNode[] })
+    .templateNodes
   return angularContent(nodes, context)
 }
 

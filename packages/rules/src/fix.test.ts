@@ -136,7 +136,11 @@ export const A = () => (
   </Card>
 )
 `)
-    expect(result.diagnostics).toEqual([])
+    // The fix writes Button's defaults, which make a main Button. Which of the two leads the
+    // Card is a decision, so `one-main-button` reports the second and nothing rewrites it.
+    expect(result.diagnostics.map((diagnostic) => [diagnostic.rule, diagnostic.line])).toEqual([
+      ['polymorph/one-main-button', 6],
+    ])
   })
 
   it('leaves a `<button>` as written when there is no module to import `Button` from', () => {

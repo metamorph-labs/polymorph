@@ -9,14 +9,17 @@ import { describe, expect, it } from 'vitest'
 import { allRules } from '../index'
 import { verifyCode } from '../verify'
 import { noAppCss } from './no-app-css'
+import { dangerLast } from './danger-last'
 import { noExternalDataviz } from './no-external-dataviz'
 import { noExternalIcons } from './no-external-icons'
 import { noExternalMotion } from './no-external-motion'
 import { noRawInteractive } from './no-raw-interactive'
 import { noRawStyles } from './no-raw-styles'
+import { oneMainButton } from './one-main-button'
 import { oneOpener } from './one-opener'
 import { TEST_VALUES } from './rule-tester'
 import { scopedTokenOwners } from './scoped-token-owners'
+import { trailingIcon } from './trailing-icon'
 
 /**
  * The red rules, reading a Svelte component.
@@ -532,4 +535,59 @@ describe('verify on a Svelte file', () => {
   it('reports markup the Svelte parser cannot read as fatal', () => {
     expect(verifyCode('<div>{#if}</div>', { filename: FILE }).fatal).not.toBeNull()
   })
+})
+
+tester.run('one-main-button in Svelte markup', oneMainButton, {
+  valid: [
+    // `{#if}` and `{:else}` are alternatives, a trigger snippet stays on the page, and `{#each}`
+    // writes Buttons the rule cannot count.
+    {
+      filename: FILE,
+      code: component(
+        '<Card title="a">{#if saved}<Button label="Publish" />{:else if draft}<Button label="Save" />{:else}<Button label="Start" />{/if}{#each xs as x}<Button label={x} />{/each}</Card>' +
+          '<Dialog title="b">{#snippet trigger()}<Button label="Open" />{/snippet}{#snippet footer()}<Button label="Done" />{/snippet}</Dialog>',
+      ),
+    },
+  ],
+  invalid: [
+    {
+      filename: FILE,
+      code: component(
+        '<Dialog title="a">{#snippet footer()}<Button label="Save" />{/snippet}<Button variant={\'solid\'} label="Reset" /></Dialog>',
+      ),
+      errors: [{ messageId: 'secondMain' }],
+    },
+  ],
+})
+
+tester.run('danger-last in Svelte markup', dangerLast, {
+  valid: [
+    {
+      filename: FILE,
+      code: component(
+        '<Inline><Button label="Keep" /><Button tone="danger" label="Delete" /></Inline>',
+      ),
+    },
+  ],
+  invalid: [
+    {
+      filename: FILE,
+      code: component(
+        '<Inline><Button tone="danger" label="Delete" /><Button label="Keep" /></Inline>',
+      ),
+      errors: [{ messageId: 'dangerFirst' }],
+    },
+  ],
+})
+
+tester.run('trailing-icon in Svelte markup', trailingIcon, {
+  valid: [{ filename: FILE, code: component('<Button trailingIcon="next" label="Continue" />') }],
+  invalid: [
+    {
+      filename: FILE,
+      code: component('<Button trailingIcon="delete" label="Delete" />'),
+      output: component('<Button icon="delete" label="Delete" />'),
+      errors: [{ messageId: 'notTrailing' }],
+    },
+  ],
 })

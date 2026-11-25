@@ -30,7 +30,7 @@ export const TRAILING_ROLES: readonly string[] = iconSet.trailing
 
 export const trailingIcon: Rule.RuleModule = {
   meta: {
-    type: 'suggestion',
+    type: 'problem',
     docs: { description: "A Button's trailing icon is a direction or a disclosure." },
     fixable: 'code',
     schema: [],
@@ -49,7 +49,8 @@ export const trailingIcon: Rule.RuleModule = {
           if (element.name !== BUTTON) return
           const trailing = element.prop('trailingIcon')
           const role = trailing.value
-          if (typeof role !== 'string' || role === '' || isTrailingRole(role, TRAILING_ROLES)) return
+          if (typeof role !== 'string' || role === '' || isTrailingRole(role, TRAILING_ROLES))
+            return
           const leading = element.prop('icon').value
           const rename = trailing.rename
           report({

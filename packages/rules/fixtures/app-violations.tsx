@@ -3,7 +3,7 @@ import { scaleLinear } from 'd3-scale'
 import { motion } from 'framer-motion'
 import { Trash2 } from 'lucide-react'
 
-import { Button, Hero, PageHeader } from '@polymorph/react-ui'
+import { Button, Card, Hero, PageHeader } from '@polymorph/react-ui'
 
 import './Inbox.module.css'
 
@@ -26,6 +26,12 @@ export function Inbox() {
       <motion.div />
       <span>{String(scaleLinear)}</span>
       <span>{TOPBAR}</span>
+      {/* A second main Button, a danger Button before a safe one, and a trailing icon that neither points nor opens. */}
+      <Card title="Plan">
+        <Button label="Upgrade" />
+        <Button tone="danger" label="Cancel plan" />
+        <Button trailingIcon="delete" label="Remove seat" />
+      </Card>
     </div>
   )
 }

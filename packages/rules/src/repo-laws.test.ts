@@ -252,14 +252,17 @@ describe('both stages of the red rules are switched on', () => {
 
   it('applies every application rule the plugin ships to application code', () => {
     expect(resolved.app).toEqual([
+      'polymorph/danger-last',
       'polymorph/no-app-css',
       'polymorph/no-external-dataviz',
       'polymorph/no-external-icons',
       'polymorph/no-external-motion',
       'polymorph/no-raw-interactive',
       'polymorph/no-raw-styles',
+      'polymorph/one-main-button',
       'polymorph/one-opener',
       'polymorph/scoped-token-owners',
+      'polymorph/trailing-icon',
     ])
   })
 

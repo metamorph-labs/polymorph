@@ -4,7 +4,7 @@ import { scaleLinear } from 'd3-scale'
 import { motion } from 'motion-v'
 import { Trash2 } from 'lucide-vue-next'
 
-import { Button, Hero, PageHeader } from '@polymorph/vue-ui'
+import { Button, Card, Hero, PageHeader } from '@polymorph/vue-ui'
 
 import './Inbox.module.css'
 
@@ -26,6 +26,12 @@ const TOPBAR = 'var(--pm-shell-topbar-height)'
     <motion.div />
     <span>{{ String(scaleLinear) }}</span>
     <span>{{ TOPBAR }}</span>
+    <!-- A second main Button, a danger Button before a safe one, and a trailing icon that neither points nor opens. -->
+    <Card title="Plan">
+      <Button label="Upgrade" />
+      <Button tone="danger" label="Cancel plan" />
+      <Button trailing-icon="delete" label="Remove seat" />
+    </Card>
   </div>
 </template>
 
