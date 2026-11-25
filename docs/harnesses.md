@@ -95,8 +95,10 @@ claude plugin install polymorph@metamorph-labs
 The plugin's skills run as `/polymorph:polymorph-screen` and the others. Its server starts with
 `--read-only`, because a plugin's server is not started in a known project: it reads the
 vocabulary, validates, draws screens and proposes themes, and the skills write through the CLI.
-The plugin's manifest carries the fields Anthropic's directory lists it with, which Claude Code
-reads from v2.1.281 on; an earlier Claude Code refuses those fields. A project set up with
+The plugin's manifest carries the fields Anthropic's directory lists it with (`displayName`, `icon`
+and the four links). Claude Code accepts them from v2.1.281 on. An earlier release warns about each
+one, and an early one such as v2.1.92 refuses the manifest, so the plugin needs a current Claude
+Code. A project set up with
 `agents` and the plugin installed has each skill twice, once by its own name and once under
 `polymorph:`.
 
