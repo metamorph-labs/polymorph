@@ -1250,9 +1250,11 @@ Codex reports less than Claude Code, and the record says so rather than filling 
 
 The runner reads each MCP call as Codex reports it started and completed, and checks the
 iteration cap when the last call in flight completes. A command, a file change, a web search, a
-subagent, a plan (a `todo_list` item: Codex's plan tool, which no setting turns off) or a call to
-another MCP server in the stream means a tool other than the four was offered and used. Every run
-would go the same way, so the eval stops and says so. `--effort` passes every level the eval
+subagent or a call to another MCP server in the stream means a tool other than the four was
+offered and used. Every run would go the same way, so the eval stops and says so. Codex also
+offers the model its plan tool, which no setting turns off. A plan writes nothing and calls
+nothing, so a run that plans goes on, and its record counts each plan Codex started or updated
+(`planUpdates`, its `todo_list` items). `--effort` passes every level the eval
 takes, `max` included, which Codex's documentation lists among its levels; a model that lacks a
 level refuses it, and the eval stops with Codex's error. It also stops when Codex finishes
 without having listed the eval's tools, reports `turn.failed` (with `stopped.reason` `usage-limit`
@@ -1305,13 +1307,21 @@ A ceiling holds only over tokens a harness reports, so what holds differs by har
 | --- | --- | --- |
 | `api` | before every request | before every request |
 | `cli`, and Claude Code in the project lane | when the last tool result of a turn goes back | the same, and before each run |
-| `codex`, and Codex in the project lane | refused: Codex reports its tokens only when its turn completes, so no run can be stopped part-way; the results record `maxTokensPerRun` as `null` | before each run, over the runs that finished; a run stopped before it reported its tokens leaves the total unknown, and the eval stops before the next run (`stopped.reason` `tokens-total`) |
+| `codex`, and Codex in the project lane | refused: Codex reports its tokens only when its turn completes, so no run can be stopped part-way; the results record `maxTokensPerRun` as `null` | before each run, over the tokens the finished runs reported |
 
 A run whose tokens are unknown is a Codex run stopped at the iteration cap, the request limit or
 its budget, or a Claude Code run in the project lane stopped before its first response ended. Its
-record is kept, and when it is the eval's last run nothing more is stopped. Codex writes a count of
-its tokens to its session store as it goes, which `--ephemeral` turns off and the runner does not
-read: its format is Codex's own and not documented.
+record holds `null` tokens. What happens next depends on whether `--max-tokens-total` was given:
+
+- **Not given**: the run is recorded and the eval goes on. The default total ceiling counts only
+  the tokens the runs reported, so it no longer bounds what the eval spends.
+- **Given**: what the eval has spent is no longer known, so the ceiling the owner asked for can no
+  longer be held. The eval stops before its next run with `stopped.reason` `tokens-unknown`, and
+  the report says that a run's tokens went unreported, not that the ceiling was reached. When the
+  run is the eval's last, nothing more is stopped.
+
+Codex writes a count of its tokens to its session store as it goes, which `--ephemeral` turns off
+and the runner does not read: its format is Codex's own and not documented.
 
 ### What it measures
 
@@ -1422,12 +1432,14 @@ Once per eval, the lane sets up a template with the tools:
 
 Each run copies the template into a scratch directory outside the repository. The copy keeps
 symbolic links as they are, so the relative links of pnpm's `node_modules` resolve inside it, and
-clones files where the file system can, so an installed app costs little to copy. npm's cache and
-pnpm's store are in the eval's scratch directory too, for the template's install, every harness
-and the judge's scripts (`npm_config_cache`, `npm_config_store_dir`). Both sandboxes below let a
-command write there, so a harness can install a package into its own copy, and the owner's own
-cache and store are never written. The template is installed into that store, so an eval fetches
-the app's packages once, and a copy's `node_modules` and the store a harness's pnpm finds agree.
+clones files where the file system can, so an installed app costs little to copy. npm's cache,
+pnpm's store, pnpm's metadata cache and pnpm's state are in the eval's scratch directory too, for
+the install of a `--tools` tarball, the template's install, every harness and the judge's scripts
+(`npm_config_cache`, `npm_config_store_dir`, `npm_config_cache_dir`, `npm_config_state_dir`, and
+pnpm's own `pnpm_config_` names for the last three). Both sandboxes below let a command write
+there, so a harness can install a package into its own copy, and the owner's own caches, store and
+state are never written. The template is installed into that store, so an eval fetches the app's
+packages once, and a copy's `node_modules` and the store a harness's pnpm finds agree.
 
 The harness starts in the copy with the brief on stdin, followed by one sentence asking for the
 screen, and nothing else from the eval: no system prompt and no tool. The owner's own
@@ -1437,7 +1449,14 @@ configuration is kept out, as in the other runners, and the project's is left in
   load and the owner's do not; the project's `.mcp.json` with `--strict-mcp-config`;
   `--permission-mode acceptEdits` with `Skill` and each of the project's MCP servers allowed; and
   `--permission-prompts none`, so whatever would wait on a person is refused
-  ([cli-reference](https://code.claude.com/docs/en/cli-reference.md)).
+  ([cli-reference](https://code.claude.com/docs/en/cli-reference.md)). Where Claude Code keeps its
+  own state depends on how it signs in. Signed in from its environment (`CLAUDE_CODE_OAUTH_TOKEN`
+  from `claude setup-token`, an API key or bearer token, or a cloud provider), it gets a
+  configuration directory of the run's own (`CLAUDE_CONFIG_DIR`). Signed in with `/login`, it
+  keeps the owner's: Claude Code keys that sign-in to its configuration directory, in the macOS
+  Keychain or in `.credentials.json`, so another directory would not be signed in
+  ([authentication](https://code.claude.com/docs/en/authentication.md)). The results say which
+  (`project.harnessHome`).
 - **Codex**: a home of the run's own, as in the Codex runner; `--trust`, so the project's
   `.codex/` configuration and MCP servers load; `approval_policy = "never"` with every tool of
   each server the project configures approved, as a person at the prompt would approve it; and
@@ -1451,7 +1470,8 @@ Each harness's commands run in a sandbox:
 | Commands write | the project, the per-user temporary directory, and the eval's cache and store (`sandbox.filesystem.allowWrite`); never the template (`denyWrite`) | the project, `/tmp` and `$TMPDIR`, which holds the eval's cache and store |
 | File tools write | the project only (`permissions.blockWritesOutsideWorkingDirectories`) | through the same sandbox |
 | Network | npm's registry and GitHub Packages only (`sandbox.network.allowedDomains`) | any host (`sandbox_workspace_write.network_access`) |
-| Not confined | reads anywhere the owner can read, the home directory included; MCP servers, which run outside the sandbox | reads anywhere; MCP servers; the template, which sits in `$TMPDIR` |
+| Its own state | a configuration directory of the run's own when it signs in from its environment; signed in with `/login`, the owner's `~/.claude.json` and `~/.claude/`, which Claude Code itself writes, outside the sandbox | a Codex home of the run's own, always |
+| Not confined | reads anywhere the owner can read, the home directory included; MCP servers, which run outside the sandbox; Claude Code's own writes to its state, above | reads anywhere; MCP servers; the template, which sits in `$TMPDIR` |
 
 Neither sandbox keeps a harness from reading the owner's files, and both leave the temporary
 directory writable. So after every run the lane checks that the template every run copies is
@@ -1460,8 +1480,10 @@ start from the same app.
 
 A budget stops each run: `--max-turns` (80 when absent), counted in responses for Claude Code and
 in tool calls for Codex, which reports no response, and `--max-minutes` (20 when absent). Stopping
-a harness stops its process group, its MCP servers and any command it left running included. A run
-the budget stopped is judged all the same, on what it left.
+a harness stops its process group, its MCP servers and any command it left running included. A
+command that leaves that group (one started with `setsid`, or a daemon) is not stopped: the lane
+knows a harness's processes only by its group, and the operating system offers no other handle on
+everything a process started. A run the budget stopped is judged all the same, on what it left.
 
 When the harness ends, the lane judges the project:
 
@@ -1485,7 +1507,8 @@ none (a helper, a store), meets no requirement: `meetsBrief` is `false`.
 A `package.json` the harness left unreadable is the harness's work: the project is not lawful,
 and an installed one does not build, with the reason in `violations` and `buildFault`. The judge
 does not run `polymorph check` on it, because the red rules read it to tell which vocabulary a
-file uses.
+file uses. A `package.json` the harness deleted, or a `typecheck` or `build` script it took out of
+one, leaves an installed app that does not build, so the run counts in the rate that builds.
 
 A record also keeps which MCP tools the harness called (`mcpCalls`), the `polymorph` verbs its
 shell commands ran (`verbs`: through `npx -y @metamorph-labs/polymorph@<range>`, through pnpm, by
@@ -1622,7 +1645,8 @@ refuses an `--out` that is `eval/results` or inside it, through any runner, so t
 results only ever hold real runs.
 
 Ctrl-C, or SIGTERM, stops the eval at once: it stops every harness still running (the project
-lane's in its own process group, with its MCP servers and any command it left running), removes
+lane's in its own process group, with its MCP servers and any command it left running in that
+group), removes
 its scratch directories, the project lane's template among them, and exits with 130 or 143. The
 results file holds the runs that finished, marked partial. A signal that arrives while the eval
 waits on a command it runs to the end (`polymorph init`, the judge's check and build) is acted on
@@ -1689,9 +1713,11 @@ to the API runner's, apart from the wall time and the request count Codex does n
 stopped at the cap records no tokens rather than zero. One more eval starts that stand-in as
 `--codex`, with an owner's Codex home and a variable a Codex session sets, and checks that the run
 gets a home of its own with only the owner's sign-in in it, the eval's prompt as its instructions,
-the four tools and none of Codex's own, and that a usage limit stops the eval. A run stopped at the
-cap leaves its tokens unknown and stops the eval before the next run, a model that uses Codex's
-plan tool stops it, and `--max-tokens-per-run` is refused for Codex. One more eval starts a CLI
+the four tools and none of Codex's own, and that a usage limit stops the eval. Runs stopped at the
+cap leave their tokens unknown: with no total ceiling given the eval goes on, and with one given it
+stops before the next run with `tokens-unknown`, which the report words as such. A model that uses
+Codex's plan tool goes on, with its plans counted, and `--max-tokens-per-run` is refused for
+Codex. One more eval starts a CLI
 that sleeps, sends the eval SIGTERM, and checks that the CLI is stopped, the scratch directories
 are gone and the eval exits with 143. The same file
 checks that `--fake` refuses `eval/results` through the API and CLI runners, holds the results schema to
@@ -1719,9 +1745,13 @@ sets the app up with a tools directory whose `agents` verb writes Codex's MCP en
 Codex then finds both. One starts the Claude Code stand-in as `--claude` with `--no-install`, checks
 that it gets the brief as its request, its sandbox and nothing of the eval's, and stops it at its
 time budget. The stand-ins refuse to start without the sandbox settings and the arguments the lane
-depends on. The judge's typecheck and build run against a fixture project whose scripts are stubs,
-so the test needs no installed app, and a fixture whose `package.json` is broken counts as unlawful
-and unbuilt. One eval starts a harness that sleeps and leaves a command of its own running, sends
+depends on, and the stand-in for the time budget, signed in from its environment, gets a
+configuration directory of the run's own. The judge's typecheck and build run against a fixture
+project whose scripts are stubs, so the test needs no installed app; a fixture whose
+`package.json` is broken counts as unlawful and unbuilt, and one whose `package.json` or `build`
+script was taken away as unbuilt. A tarball of tools with no dependencies is installed into the
+eval's own npm cache, and a tools directory whose declared bin is not built is refused with that
+reason. One eval starts a harness that sleeps and leaves a command of its own running, sends
 the eval SIGINT, and checks that both are gone, the eval's scratch directories with them, and that
 the eval exits with 130. The same file checks the choice of the screen, the caches left out of
 what a harness wrote, the reading of verbs, skills and MCP servers, the refusals, the results
@@ -1729,8 +1759,10 @@ schema and the report's section.
 
 Both files start their evals a few at a time (`eval/running.ts`), half as many at once as the
 machine has cores, and each section of evals has a setup of its own, so no setup waits on all of
-them. An eval still running when a file ends, a setup that timed out among them, is sent SIGTERM,
-which stops the harnesses it started.
+them. When a file ends, an eval still running (a setup that timed out leaves some) is sent
+SIGTERM, which stops the harnesses it started; an eval still waiting for its turn is refused, and
+so is one asked for afterwards, so none starts once the file has ended. `eval/running.test.ts`
+checks that with a script that waits in place of the eval.
 
 ## What this does not prove
 
