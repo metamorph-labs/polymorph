@@ -69,7 +69,7 @@ polymorph. For React, `init` writes:
 | `src/theme/<system>.json`, `src/theme/<palette>.json` | a catalogue system (`plain` unless `--system` names another) and the palette it declares |
 | `polymorph.eslint.js`, `polymorph.stylelint.js`, `eslint.config.js`, `stylelint.config.js` | the red rules, as in [The red rules](#6-the-red-rules) |
 | `.mcp.json` | the MCP server ([tooling.md](tooling.md)), run against the app. From the published tools it is `npx -y @metamorph-labs/polymorph@^<version> mcp`, which runs the copy the app installed and works on any machine. From a checkout it is the checkout's bin by an absolute path that belongs to that machine: change it on each machine, or add `.mcp.json` to `.gitignore` |
-| `polymorph/system-card.md`, `AGENTS.md`, `CLAUDE.md` | the system card, and what an agent working in the app needs to know: the card is the contract, the MCP tools, screens as specs, `render_screen` to see one drawn (and how its browser is downloaded), no styles |
+| `AGENTS.md`, `CLAUDE.md`, `.claude/skills/`, `.agents/skills/`, `.cursor/mcp.json`, `.codex/config.toml`, `polymorph/system-card.md`, `polymorph/agents.json` | the files a coding agent reads, as `polymorph agents` writes them ([harnesses.md](harnesses.md)): a short block in `AGENTS.md` (the card is the contract, what application code may not contain, the ladder, the commands for the card, `validate` and `render`), four skills, the server for Cursor and Codex as well, the system card, and the record of what was written |
 | `src/screens/welcome.json`, `src/screens/Welcome.tsx`, `src/App.tsx` | a first screen as a spec, the TSX emitted from it, and the container that renders it |
 | `.gitignore`, `.prettierrc.json` | `node_modules` and `dist` ignored; the formatting every file above is written in |
 
@@ -89,7 +89,10 @@ CONTRIBUTING.md.
 nothing.
 
 The sections below are the same setup done by hand, for React. Follow them to add polymorph to an
-app that already exists. Each framework's own section lists what its `init` writes instead.
+app that already exists. Each framework's own section lists what its `init` writes instead. In an
+app that exists, `polymorph agents` writes the agent files `init` writes, for Claude Code, Codex,
+Cursor or another harness ([harnesses.md](harnesses.md)), and the plugin in `plugins/polymorph`
+gives Claude Code and Codex the skills and the server with no files in the project.
 
 ## Installing
 
@@ -1155,6 +1158,14 @@ names another static directory), compiles the theme sheet, and writes an example
 The files are a build output of this repository, which `pnpm build:packages` writes into
 `dist/cdn/` of `@polymorph/elements-ui`. No public URL serves them, because the packages are
 published to a restricted registry, so `init` copies them and `polymorph update` copies them again.
+
+A page has no `package.json`, so nothing installs the tools beside it. The MCP server its
+`.mcp.json` names downloads them with `npx` the first time a client starts it, which can take
+longer than the client waits. Run the tools once before then, and `npx` keeps them:
+
+```sh
+npx -y @metamorph-labs/polymorph@^<version> --help
+```
 
 ### The page
 

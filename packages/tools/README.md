@@ -56,6 +56,21 @@ write into the project (`emit_screen`, `install`, `save_theme`, `fix_file`).
 browser is downloaded once: when it is missing, the tool answers with the command that downloads
 it, and every other tool works without it.
 
+## A coding agent's files
+
+```sh
+npx -y @metamorph-labs/polymorph@latest agents             # AGENTS.md, the skills, the MCP entries, the card
+npx -y @metamorph-labs/polymorph@latest agents --harness claude --dry-run
+```
+
+`agents` writes the files Claude Code, Codex, Cursor and other harnesses read in the repository it
+runs in: a marked block in `AGENTS.md` (the rest of the file is kept), a `CLAUDE.md` that includes
+it, four skills in `.claude/skills/` and `.agents/skills/`, the server's entry in `.mcp.json`,
+`.cursor/mcp.json` and `.codex/config.toml` (other servers are kept), and the system card. It
+records what it wrote in `polymorph/agents.json`. Run it again after an upgrade: what nobody
+edited is brought up to date, and an edited file is kept and named (`--force` replaces it). `init`
+writes the same files into a new app.
+
 ## Versions
 
 Each release of this package answers for the release of the vocabulary it was published with. An

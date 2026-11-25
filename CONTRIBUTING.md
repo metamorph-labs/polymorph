@@ -265,12 +265,19 @@ Releases are cut from a clean `main`, locally:
 pnpm eval                                 # the owner's step, with ANTHROPIC_API_KEY set or with --runner cli and Claude Code signed in; commit eval/results and eval/README.md
 pnpm changeset status --verbose           # the version the release gives every package
 pnpm version-packages                     # apply pending changesets: the version and CHANGELOGs
+pnpm agents                               # the plugin and server.json name the new version
 git commit -am "Release <version>"        # the version bump is a commit like any other
 pnpm gate:ios && pnpm gate:android        # the gates for the native packages, which ship at the tag
 pnpm gate:engines                         # the browser tests on Firefox and WebKit, which pnpm gate runs on Chromium only
 pnpm publish:packages                     # pnpm gate, then build, pack, rewrite, check, upload, tag
 git push origin main v<version>           # the tag by name; the publish workflow uploads it to npmjs.com
 ```
+
+The plugin in `plugins/polymorph/` and the MCP Registry's `packages/tools/server.json` name the
+release, so `pnpm agents` writes them again after the version bump, and its freshness law fails in
+the gate until it has. Once the release is on npmjs.com, the owner publishes `server.json` to the
+MCP Registry with `mcp-publisher publish` from `packages/tools`, and the plugin listings follow
+`main` ([docs/listing.md](docs/listing.md)).
 
 Each gate runs before what it covers ships. `pnpm publish:packages` runs `pnpm gate`, the gate for
 everything it uploads, first, and stops if it is red, so an upload cannot skip the laws; there is
