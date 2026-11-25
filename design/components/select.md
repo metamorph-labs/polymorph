@@ -87,7 +87,7 @@ from merging into a double-thickness seam. Item-aligned mode is never used.
 | item | height `--pm-control-height-sm` · padding-x `--pm-space-3` · radius `--pm-radius-sm` · text step per trigger size (§2) · text `--pm-text-primary` · check column width `--pm-icon-size-sm` + gap `--pm-space-2` |
 | item highlighted | bg `--pm-accent-subtle` · text `--pm-accent-text` |
 | item selected | check icon `confirm` visible, `--pm-accent-text`; label stays `--pm-text-primary` |
-| item disabled | text `--pm-text-disabled` · no highlight |
+| item disabled | text and check `--pm-text-disabled` · no highlight |
 | item description | Combobox's two-line cell verbatim (`combobox.md`): `text.xs` `--pm-text-muted` under the label; two-line items grow to fit, check column unchanged |
 | group label | Menu's label-entry recipe verbatim (`menu.md`): `text.xs` uppercase quartet · `--pm-text-muted` · padding `--pm-space-2` `--pm-space-3` *(every anchored list uses the same label recipe)* |
 

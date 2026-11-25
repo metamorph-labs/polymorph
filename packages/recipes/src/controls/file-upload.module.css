@@ -174,7 +174,8 @@
   border-color: var(--pm-border-subtle);
 }
 
-.zone[data-disabled] .title {
+.zone[data-disabled] .title,
+.zone[data-disabled] .hint {
   color: var(--pm-text-disabled);
 }
 

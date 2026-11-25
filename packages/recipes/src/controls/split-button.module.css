@@ -346,7 +346,9 @@
   background: var(--pm-danger-subtle);
 }
 
-.item[data-highlighted] .rowGlyph {
+/* A danger row's glyph takes the row's danger text, as a highlighted row's takes the accent. */
+.item[data-highlighted] .rowGlyph,
+.item[data-tone='danger'] .rowGlyph {
   color: inherit;
 }
 
@@ -356,12 +358,19 @@
   background: transparent;
 }
 
-.item[data-disabled] .rowGlyph {
+/* The glyph and a submenu's chevron fade with the label. */
+.item[data-disabled] .rowGlyph,
+.item[data-disabled] .hint {
   color: var(--pm-text-disabled);
 }
 
 .checkbox[data-state='checked'] .check {
   color: var(--pm-accent-text);
+}
+
+/* A checked entry that is disabled fades its check with its label. */
+.item[data-disabled] .check {
+  color: var(--pm-text-disabled);
 }
 
 /* Glass (`depth: glass`). The pane uses the surface role at the engine's mix

@@ -423,6 +423,11 @@
   color: var(--pm-accent-text);
 }
 
+/* A chosen option that is disabled fades its check with its label. */
+.option[data-disabled] .check {
+  color: var(--pm-text-disabled);
+}
+
 /* Both containers. The sheet uses the same rows with the same size steps. */
 .content[data-size='sm'] .option,
 .sheetBody[data-size='sm'] .option {

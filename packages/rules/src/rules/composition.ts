@@ -158,10 +158,50 @@ function jsxContent(node: Node | null | undefined): Composed[] {
   }
 }
 
+/** The content one attribute of a JSX element holds, or `null` when it has none. */
+function jsxAttributeContent(attributes: readonly Node[], name: string): Composed[] | null {
+  const attribute = attributes.find(
+    (candidate) =>
+      candidate.type === 'JSXAttribute' && (candidate['name'] as Node)['name'] === name,
+  )
+  const value = attribute?.['value'] as Node | null | undefined
+  if (!value) return null
+  return value.type === 'JSXExpressionContainer'
+    ? jsxContent(value['expression'] as Node)
+    : jsxContent(value)
+}
+
+/**
+ * Solid's own conditionals, read as one conditional each: a `<Show>` renders its
+ * content or its `fallback`, and a `<Switch>` one of its `<Match>`es or its
+ * `fallback`. `<For>` and `<Index>` write their content with a function, which
+ * is not read.
+ */
+function solidConditional(node: Node, name: string, attributes: readonly Node[]): Composed[] | null {
+  const children = node['children'] as Node[]
+  if (name === 'Show') {
+    const fallback = jsxAttributeContent(attributes, 'fallback') ?? []
+    return [{ type: 'branch', id: node, branches: [children.flatMap(jsxContent), fallback] }]
+  }
+  if (name === 'Switch') {
+    const matches = children.filter(
+      (child) =>
+        child.type === 'JSXElement' &&
+        jsxName((child['openingElement'] as Node)['name'] as Node) === 'Match',
+    )
+    const branches = matches.map((match) => (match['children'] as Node[]).flatMap(jsxContent))
+    branches.push(jsxAttributeContent(attributes, 'fallback') ?? [])
+    return [{ type: 'branch', id: node, branches }]
+  }
+  return null
+}
+
 function jsxElement(node: Node): Composed[] {
   const opening = node['openingElement'] as Node
   const name = jsxName(opening['name'] as Node)
   const attributes = opening['attributes'] as Node[]
+  const conditional = name === null ? null : solidConditional(node, name, attributes)
+  if (conditional !== null) return conditional
   const children = (node['children'] as Node[]).flatMap(jsxContent)
   if (name === null) return children
   const spread = attributes.some((attribute) => attribute.type === 'JSXSpreadAttribute')

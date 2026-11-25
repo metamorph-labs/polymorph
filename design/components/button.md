@@ -24,7 +24,7 @@ exist only through `iconOnly` (below) and stay square.
 | `tone` | `'neutral' \| 'accent' \| 'danger'` | `'accent'` | allowed grid below; `neutral` exists only for `outline`/`ghost` |
 | `size` | `'sm' \| 'md' \| 'lg'` | `'md'` | conventions §2 |
 | `icon` | `IconRole` | — | leading |
-| `trailingIcon` | `IconRole` | — | |
+| `trailingIcon` | `IconRole` | — | a direction or a disclosure only: a role `design/icons.json` lists as `trailing` (`forward`, `next`, `expand`, `collapse`, `open-external`). Any other role leads, in `icon` (`polymorph/trailing-icon`) |
 | `iconOnly` | `boolean` | `false` | square (width = control height); requires `label` |
 | `label` | `string` | — | **required.** Visible text, or the accessible name when `iconOnly` |
 | `loading` | `boolean` | `false` | conventions §5 |
@@ -106,6 +106,25 @@ has no neutral interactive fill with hover/active states, and will not get one, 
 a grey filled button competes with every surface role it sits on. This system's neutral
 secondary button is `outline`, and the tertiary is `ghost`. Disallowed combinations are
 a type error (overload/union typing), not a runtime warning.
+
+## Usage
+
+Three rules about how a screen uses Button are checked, by red rules in application code and by
+the validation a screen spec gets (`docs/rules.md`, the usage rules):
+
+- **One main Button.** A `solid`/`accent` Button, which is the default, leads a dialog
+  (`Dialog`, `Drawer`, `Popover`) or a section (`Card`, `Dashboard.Panel`), and each holds one.
+  Another action there is `outline`/`neutral`, or `ghost`. A dialog's trigger is on the page,
+  not in the dialog (`polymorph/one-main-button`).
+- **A destructive Button comes last.** Among sibling Buttons, a `tone="danger"` one has no
+  other Button after it (`polymorph/danger-last`). It never has focus when a dialog or drawer
+  opens (`dialog.md`), and Button takes no `autoFocus`.
+- **A trailing icon points onward or opens.** `trailingIcon` takes a role from `trailing` in
+  `design/icons.json`. Every other icon leads its label, in `icon`
+  (`polymorph/trailing-icon`).
+
+Two more are guidance that nothing checks: the icon's meaning is the action's, and the label
+says what happens ("Delete volume", not "OK").
 
 ## Sizes
 

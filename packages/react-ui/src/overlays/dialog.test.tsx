@@ -229,6 +229,27 @@ describe('focus', () => {
     render(
       <Dialog
         defaultOpen
+        title="Publish?"
+        trigger={<Button label="Open" />}
+        footer={
+          <>
+            <Button variant="outline" tone="neutral" label="Keep editing" />
+            <Button label="Publish" />
+          </>
+        }
+      >
+        <p>Nothing focusable in here.</p>
+      </Dialog>,
+    )
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Publish' })),
+    )
+  })
+
+  it('never starts on a destructive action: a destructive primary starts on the dismiss', async () => {
+    render(
+      <Dialog
+        defaultOpen
         title="Discard?"
         trigger={<Button label="Open" />}
         footer={
@@ -242,7 +263,23 @@ describe('focus', () => {
       </Dialog>,
     )
     await vi.waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Discard' })),
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Keep editing' })),
+    )
+  })
+
+  it('starts on close when every action is destructive, and passes over one in the body', async () => {
+    render(
+      <Dialog
+        defaultOpen
+        title="Discard?"
+        trigger={<Button label="Open" />}
+        footer={<Button tone="danger" label="Discard" />}
+      >
+        <Button variant="ghost" tone="danger" label="Discard all drafts" />
+      </Dialog>,
+    )
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close' })),
     )
   })
 

@@ -34,7 +34,7 @@ localized applications must pass their catalog value.
 | `children` | body content | — | |
 | `footer` | `ReactNode` | — | actions slot |
 | `dismissible` | `boolean` | `true` | `false` removes ✕ and disables closing by outside click or Escape. This forces a choice, so use it sparingly |
-| `initialFocus` | `'primary' \| 'dismiss'` | — | which footer control has focus on open. Unset means the first tabbable element, per the focus-order rule. `dismiss` is for a panel that asks whether the user meant the action (ConfirmDialog's cancel-first rule) |
+| `initialFocus` | `'primary' \| 'dismiss'` | — | which footer control has focus on open. Unset means the first tabbable element, per the focus-order rule. `dismiss` is for a panel that asks whether the user meant the action (ConfirmDialog's cancel-first rule). A destructive Button never has focus on open, under either value (A11y below) |
 | `alert` | `boolean` | `false` | `role="alertdialog"`, for an interruption the user must answer rather than a surface they chose to open. ConfirmDialog sets it for `tone="danger"` |
 | `presentation` | `'auto' \| 'sheet'` | `'auto'` | `'auto'` is the card, which fills the screen below `30rem` (the sheet cell below). `'sheet'` keeps the card above `30rem` and becomes a **bottom sheet** (conventions §12) below it. Use it for short confirm or pick dialogs, where full screen is too much. The bottom sheet is opt-in, never the default, and the closed union allows only these two values |
 | `closeLabel` | `string` | `'Close'` | the close icon's accessible name; see Localization above. Localized applications pass their catalog value |
@@ -164,7 +164,14 @@ sits rightmost.
 
 Radix modal semantics: focus trap, initial focus (first tabbable in body, else primary
 action, else close), focus return to trigger, scroll lock, `aria-labelledby` = title,
-`aria-describedby` = description. Escape and outside click respect `dismissible`. The click
+`aria-describedby` = description.
+
+A destructive Button (`tone="danger"`) never has focus on open, so a stray Enter destroys
+nothing. When the footer's rightmost action is destructive, the panel asks whether the user
+meant it and starts on its leftmost safe action, as `initialFocus="dismiss"` does. When every
+footer action is destructive, focus starts in the body, else on close. A destructive Button in
+the body is passed over in the same way. The order is the engine's `modalFocusTarget`, which
+every renderer's modal surfaces share. Escape and outside click respect `dismissible`. The click
 target is the scrim only, so a click on the panel padding does not close the dialog.
 
 ```contract
@@ -173,7 +180,7 @@ attr panel aria-modal=true when open md
 name panel from title when open md
 key Enter opens
 focus on-open body when with a form
-focus on-open primary when with a footer
+focus on-open dismiss when with a footer
 focus on-open close when plain
 focus on-close trigger
 key Escape closes when open md

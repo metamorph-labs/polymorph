@@ -88,7 +88,7 @@
 /* After hover, so a pointer over a disabled row does not highlight it. */
 .trigger[data-disabled],
 .trigger[data-disabled]:hover,
-.trigger[data-disabled]:hover .chevron {
+.trigger[data-disabled] .chevron {
   color: var(--pm-text-disabled);
   cursor: default;
 }

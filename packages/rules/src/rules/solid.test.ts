@@ -403,7 +403,7 @@ tester.run('one-main-button in Solid TSX', oneMainButton, {
     {
       filename: FILE,
       code: solid(
-        '<Card title="a"><Show when={saved()} fallback={<Button label="Save" />}><Button variant="outline" tone="neutral" label="Publish" /></Show></Card>',
+        '<><Card title="a"><Show when={saved()} fallback={<Button label="Save" />}><Button label="Publish" /></Show></Card><Card title="b"><Switch><Match when={a()}><Button label="A" /></Match><Match when={b()}><Button label="B" /></Match></Switch></Card></>',
       ),
     },
   ],

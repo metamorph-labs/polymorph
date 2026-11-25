@@ -169,6 +169,12 @@
   border-color: var(--pm-border-subtle);
 }
 
+/* The zone's text fades with its glyph. */
+.root[data-disabled] .title,
+.root[data-disabled] .hint {
+  color: var(--pm-text-disabled);
+}
+
 .root[data-disabled] .stage {
   cursor: not-allowed;
 }

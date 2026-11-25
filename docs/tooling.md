@@ -143,7 +143,8 @@ outline:
   against: the installed packages, what React's vendored members and the ladder's primitives
   import, and the systems' webfonts, read from the React manifests and the workbench. Two
   manifests that declare one package at different ranges stop the build.
-- **`icons`** — icon sizes and the closed set of icon roles.
+- **`icons`** — icon sizes, the closed set of icon roles, and `trailing`: the roles a Button's
+  trailing icon may take.
 - **`theme`** — the axes and their values, colour roles, token scales, standard-density
   magnitudes, every `--pm-*` custom property a theme emits, the systems, the palettes, and the
   pre-paint script. Each system carries `tokenValues`, what its colour, space, radius, type-size,
@@ -941,7 +942,7 @@ See [rules.md](rules.md).
 
 ### Validation
 
-`validateSpec(registry, document)` (`packages/spec/src/validate.ts`) runs two passes and returns
+`validateSpec(registry, document)` (`packages/spec/src/validate.ts`) runs three passes and returns
 `{ ok, faults }`. Each fault is a `{ path, message }`, with a path such as `$.root.children[1]`.
 Its first parameter is typed by what it reads, `SpecVocabulary`: the members, the exception
 primitives and the icon roles. The registry is one, and the run-time core's vocabulary table is
@@ -959,6 +960,11 @@ member that framework's vocabulary does not ship, with the framework map's reaso
    in the closed set; is every binding a path of names whose head is a declared input; is every
    exception at the rung its component actually is, with a reason; and does no node declare an
    exception it does not take.
+3. **Usage** — the three usage rules the red rules hold code to ([rules.md](rules.md#the-usage-rules)),
+   from the same definitions (`@polymorph/rules/usage`): one main Button in a dialog or a
+   section, a danger Button last among the Buttons of one list, and a `trailingIcon` from the
+   roles the registry lists as `trailing`. A value bound to an input is not read. A screen drawn
+   at run time gets the same faults, because `checkScreen` runs this validator.
 
 The emitter prints four fields as code. Each is checked to be exactly what it claims to be,
 because anything more would put unchecked text where code goes:

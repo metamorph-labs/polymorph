@@ -54,7 +54,8 @@ export { EVENT_HANDLER_ALIAS, isActionType } from './action-type'
  * component exist, and does it render on the screen's platform and in the
  * framework it is emitted for (an option, `SpecOptions`); does every prop
  * exist on it, does the grid have the variant × tone cell, is a declared
- * exception at the right rung with a reason.
+ * exception at the right rung with a reason. The usage rules the red rules
+ * hold code to are held here too (`checkUsage`).
  * All of it is read from the registry, and none from a list here. A validator
  * with its own copy of Button's props would be the second source of truth the
  * registry exists to prevent, and it would go stale the first time a prop was
@@ -1523,7 +1524,8 @@ function checkUsage(
       row(written, path)
       written.forEach((item, index) => value(item, `${path}[${index}]`, scope))
     } else if (isObjectValue(written)) {
-      for (const [key, field] of Object.entries(written.$object)) value(field, `${path}.${key}`, scope)
+      for (const [key, field] of Object.entries(written.$object))
+        value(field, `${path}.${key}`, scope)
     } else if (isElement(written)) {
       element(written, path, scope)
     }

@@ -798,8 +798,9 @@ refused address, a value where a function goes, a callback input where none is r
 element a required prop is missing from are left out and reported. A host still checks a whole answer, because a
 lawful document is the screen the model meant. A fault means part of that screen is missing from
 the drawing, and the model can supply it in one more turn. The validator also reads what the
-renderers do not, such as a variant and tone cell that does not exist and an icon role outside
-the set.
+renderers do not, such as a variant and tone cell that does not exist, an icon role outside
+the set, and the usage rules: a second main Button in a dialog or a section, a danger Button
+before another, and a trailing icon that neither points onward nor opens.
 
 ## Reference
 
