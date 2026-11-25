@@ -15,6 +15,7 @@ import {
   anchorFocusReturns,
   arriveAtPage,
   currentRailDestination,
+  focusFromScript,
   goToRailDestination,
   joinSlot,
   railDestinations,
@@ -140,8 +141,6 @@ const slots = {
 // svelte-ignore state_referenced_locally
 let uncontrolled = $state(defaultCollapsed ?? false)
 let drawer = $state(false)
-// svelte-ignore state_referenced_locally
-let arrived = $state(transitionKey)
 let announcer = $state<HTMLElement | null>(null)
 let drawerToggle = $state<HTMLElement | null>(null)
 let frame = $state<HTMLElement | null>(null)
@@ -209,27 +208,24 @@ const effect4 = () => {
   drawer = false
 }
 watchEffect(effect4, { watch: () => transitionKey, mount: false })
+let release5: (() => void) | undefined
 const effect5 = () => {
-  arrived = transitionKey
-}
-watchEffect(effect5)
-let release6: (() => void) | undefined
-const effect6 = () => {
-  release6?.()
-  const ran =
-    pending || transitionKey === arrived
-      ? () => {}
-      : ((arrived = transitionKey),
-        arriveAtPage(frame?.querySelector<HTMLElement>(':scope > main'), announcer))
-  release6 = () => {
+  release5?.()
+  const ran = arriveAtPage(
+    frame?.querySelector<HTMLElement>(':scope > main'),
+    announcer,
+    transitionKey,
+    pending,
+  )
+  release5 = () => {
     ran()
   }
 }
-watchEffect(effect6, { watch: () => (pending ? undefined : transitionKey), mount: false })
-onDestroy(() => release6?.())
-let release7: (() => void) | undefined
-const effect7 = () => {
-  release7?.()
+watchEffect(effect5, { watch: () => [transitionKey, pending] })
+onDestroy(() => release5?.())
+let release6: (() => void) | undefined
+const effect6 = () => {
+  release6?.()
   const ran = agentMember({
     member: 'AppShell',
     element: () => rail,
@@ -280,12 +276,12 @@ const effect7 = () => {
     },
     withholds: () => [railToggle, drawerToggle],
   })
-  release7 = () => {
+  release6 = () => {
     ran()
   }
 }
-watchEffect(effect7)
-onDestroy(() => release7?.())
+watchEffect(effect6)
+onDestroy(() => release6?.())
 </script>
 
 {@render joined.start?.()
@@ -297,7 +293,11 @@ onDestroy(() => release7?.())
     data-navigation={(navigation === 'top') ? 'top' : undefined}
     data-drawer={(drawer) ? '' : undefined}
     data-member="app-shell"
-    ><a class={styles.skip} href="#content" inert={drawer}
+    ><a
+      class={styles.skip}
+      href="#content"
+      inert={drawer}
+      onclick={() => { focusFromScript(frame?.querySelector<HTMLElement>(':scope > main')) }}
       >{say.skipToContent ?? 'Skip to content'
     }</a
     >{#if slots.banner}<div class={styles.banner} inert={drawer}>{@render banner?.()}</div>{/if
@@ -357,7 +357,6 @@ onDestroy(() => release7?.())
       class={[styles.content, transitionKey !== undefined ? transitions.page : undefined]}
       as="main"
       id="content"
-      tabindex="-1"
       inert={drawer}
       {transitionKey}
       {pending}

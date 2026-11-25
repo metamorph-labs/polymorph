@@ -293,7 +293,7 @@ export type {
 export { anchorFocusReturns, anchorProps, syncTriggerAnchor } from './conventions/trigger-anchor'
 export type { FocusHandlerNames } from './conventions/trigger-anchor'
 
-export { arriveAtPage } from './conventions/page-arrival'
+export { arriveAtPage, focusFromScript } from './conventions/page-arrival'
 
 export { DIFF_LINES_LIMIT, diffLines, diffRuns } from './conventions/diff'
 export type { DiffRow, DiffRowKind, DiffRun } from './conventions/diff'

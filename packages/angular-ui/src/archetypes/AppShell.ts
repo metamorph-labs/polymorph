@@ -22,6 +22,7 @@ import {
   currentRailDestination,
   derived,
   elementRef,
+  focusFromScript,
   getters,
   goToRailDestination,
   isTemplate,
@@ -119,6 +120,7 @@ data-member="app-shell"
 [attr.class]="e5()"
 href="#content"
 [attr.inert]="e6()"
+(click)="h1()"
 >{{ e7() }}</a>
 @if (e8()) {<!-- banner -->
 <div
@@ -150,7 +152,7 @@ size="sm"
 [iconOnly]="e18()"
 [icon]="e19()"
 [label]="e20()"
-(click)="h1()"
+(click)="h2()"
 ></pm-button></div></div>
 <!-- nav -->
 <div
@@ -180,7 +182,7 @@ icon="menu"
 [label]="e27()"
 [expanded]="e28()"
 [aria-controls]="e29()"
-(click)="h2()"
+(click)="h3()"
 ></pm-button></span>
 @if (e30()) {@if (template(e31())) {<ng-container [pmRender]="e31()" />} @else {{{ e31() }}}}</div>
 <!-- trailing -->
@@ -192,7 +194,7 @@ icon="menu"
 [attr.class]="e35()"
 type="button"
 [attr.aria-label]="e36()"
-(click)="h3()"
+(click)="h4()"
 ></button>}
 <!-- content -->
 <main
@@ -202,7 +204,6 @@ pmPageTransition
 [ribbon]="e39()"
 [attr.class]="e40()"
 id="content"
-tabindex="-1"
 [attr.inert]="e6()"
 >@if (e41()) {<!-- page -->
 <div
@@ -276,7 +277,6 @@ export class AppShell {
   protected readonly uid = uniqueId()
   protected readonly uncontrolled = cell(() => this.$p.defaultCollapsed ?? false)
   protected readonly drawer = cell(() => false)
-  protected readonly arrived = cell(() => this.$p.transitionKey)
   protected readonly announcer = elementRef<HTMLElement>()
   protected readonly drawerToggle = elementRef<HTMLElement>()
   protected readonly frame = elementRef<HTMLElement>()
@@ -302,8 +302,8 @@ export class AppShell {
   protected readonly template = isTemplate
   private release2: (() => void) | undefined
   private release3: (() => void) | undefined
+  private release5: (() => void) | undefined
   private release6: (() => void) | undefined
-  private release7: (() => void) | undefined
 
   constructor() {
     this.$.owner = getters<AppShellOwner>({ collapsed: () => this.isCollapsed.value })
@@ -321,15 +321,14 @@ export class AppShell {
       () => this.effect4(),
       false,
     )
-    mountEffect(() => this.effect5())
-    inject(DestroyRef).onDestroy(() => this.release6?.())
+    inject(DestroyRef).onDestroy(() => this.release5?.())
     watchEffect(
-      () => (this.$p.pending ? undefined : this.$p.transitionKey),
-      () => this.effect6(),
-      false,
+      () => [this.$p.transitionKey, this.$p.pending],
+      () => this.effect5(),
+      true,
     )
-    inject(DestroyRef).onDestroy(() => this.release7?.())
-    mountEffect(() => this.effect7())
+    inject(DestroyRef).onDestroy(() => this.release6?.())
+    mountEffect(() => this.effect6())
   }
 
   protected e1() {
@@ -354,6 +353,10 @@ export class AppShell {
 
   protected e6() {
     return presence(this.drawer.value)
+  }
+
+  protected h1(): void {
+    focusFromScript(this.frame.value?.querySelector<HTMLElement>(':scope > main'))
   }
 
   protected e7() {
@@ -415,7 +418,7 @@ export class AppShell {
     return this.isCollapsed.value ? this.say.value.expandSidebar : this.say.value.collapseSidebar
   }
 
-  protected h1(): void {
+  protected h2(): void {
     this.toggle.value()
   }
 
@@ -456,7 +459,7 @@ export class AppShell {
     return this.uid
   }
 
-  protected h2(): void {
+  protected h3(): void {
     this.drawer.value = !this.drawer.value
   }
 
@@ -492,7 +495,7 @@ export class AppShell {
     return this.say.value.closeNavigation
   }
 
-  protected h3(): void {
+  protected h4(): void {
     if (!this.drawer.value) return
     this.drawer.value = false
   }
@@ -588,26 +591,20 @@ export class AppShell {
   }
 
   private effect5(): void {
-    this.arrived.value = this.$p.transitionKey
-  }
-
-  private effect6(): void {
-    this.release6?.()
-    const ran =
-      this.$p.pending || this.$p.transitionKey === this.arrived.value
-        ? () => {}
-        : ((this.arrived.value = this.$p.transitionKey),
-          arriveAtPage(
-            this.frame.value?.querySelector<HTMLElement>(':scope > main'),
-            this.announcer.value,
-          ))
-    this.release6 = () => {
+    this.release5?.()
+    const ran = arriveAtPage(
+      this.frame.value?.querySelector<HTMLElement>(':scope > main'),
+      this.announcer.value,
+      this.$p.transitionKey,
+      this.$p.pending,
+    )
+    this.release5 = () => {
       ran()
     }
   }
 
-  private effect7(): void {
-    this.release7?.()
+  private effect6(): void {
+    this.release6?.()
     const ran = agentMember({
       member: 'AppShell',
       element: () => this.rail.value,
@@ -680,7 +677,7 @@ export class AppShell {
       },
       withholds: () => [this.railToggle.value, this.drawerToggle.value],
     })
-    this.release7 = () => {
+    this.release6 = () => {
       ran()
     }
   }

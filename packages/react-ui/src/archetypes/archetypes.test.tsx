@@ -1286,11 +1286,31 @@ describe('AppShell — a new page', () => {
     document.title = title
   })
 
-  it('is a region the skip link can move focus into', () => {
-    shell()
+  it('is a region the skip link moves focus into, which is a stop only while it holds that focus', async () => {
+    const root = shell()
     const main = screen.getByRole('main')
     expect(main.id).toBe('content')
-    expect(main.getAttribute('tabindex')).toBe('-1')
+    expect(main.hasAttribute('tabindex')).toBe(false)
+    const skip = root.querySelector('a[href="#content"]') as HTMLAnchorElement
+    skip.focus()
+    try {
+      await userEvent.keyboard('{Enter}')
+      await vi.waitFor(() => expect(document.activeElement).toBe(main))
+      expect(main.getAttribute('tabindex')).toBe('-1')
+      skip.focus()
+      expect(main.hasAttribute('tabindex')).toBe(false)
+    } finally {
+      history.replaceState(null, '', location.pathname + location.search)
+    }
+  })
+
+  it('leaves focus on the document after a click on the page’s empty space', async () => {
+    // A region that is always focusable takes focus from a click on it, and the keys a page
+    // listens for on the document would then come from the region.
+    shell()
+    const main = screen.getByRole('main')
+    await userEvent.click(main, { position: { x: main.clientWidth - 4, y: main.clientHeight - 4 } })
+    expect(document.activeElement).toBe(document.body)
   })
 
   it('does nothing for the first page', async () => {
@@ -1355,6 +1375,50 @@ describe('AppShell — a new page', () => {
     await vi.waitFor(() =>
       expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Settings' })),
     )
+  })
+
+  it('arrives at a page that starts loading in the frame after it changed', async () => {
+    // The router changes the page, then reports the load a moment later. The arrival the change
+    // scheduled is cancelled, and the page still arrives once it is drawn.
+    const view = render(frame('/tickets', <h1>Tickets</h1>))
+    screen.getByRole('link', { name: 'Inbox' }).focus()
+    view.rerender(frame('/settings', <h1>Tickets</h1>))
+    view.rerender(frame('/settings', <h1>Tickets</h1>, true))
+    await new Promise((settle) => setTimeout(settle, 100))
+    view.rerender(frame('/settings', <h1>Settings</h1>))
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Settings' })),
+    )
+  })
+
+  it('leaves focus where the reader moved it while the page loaded, and says the title', async () => {
+    const view = render(
+      <AppShell
+        sidebar={<AppShell.NavItem icon="inbox" label="Inbox" href="#inbox" />}
+        topbar={{ trailing: <Button label="New ticket" /> }}
+        transitionKey="/tickets"
+      >
+        <h1>Tickets</h1>
+      </AppShell>,
+    )
+    const again = (pending: boolean) => (
+      <AppShell
+        sidebar={<AppShell.NavItem icon="inbox" label="Inbox" href="#inbox" />}
+        topbar={{ trailing: <Button label="New ticket" /> }}
+        transitionKey="/settings"
+        pending={pending}
+      >
+        <h1>{pending ? 'Tickets' : 'Settings'}</h1>
+      </AppShell>
+    )
+    screen.getByRole('link', { name: 'Inbox' }).focus()
+    view.rerender(again(true))
+    await new Promise((settle) => setTimeout(settle, 100))
+    const topbar = screen.getByRole('button', { name: 'New ticket' })
+    topbar.focus()
+    view.rerender(again(false))
+    await vi.waitFor(() => expect(announcer().textContent).toBe('Settings'))
+    expect(document.activeElement).toBe(topbar)
   })
 })
 

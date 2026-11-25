@@ -11,8 +11,11 @@
  * Focus goes to the page's `<h1>`, the first thing a reader reads, or to the
  * content region when the page has none. It stays where it is when it is
  * already inside the page, because the page put it there (a form's first
- * field) or the reader's control is still on the new page. The heading takes
- * `tabindex="-1"` for the move and gives it back when focus leaves it.
+ * field) or the reader's control is still on the new page. It also stays
+ * where the reader moved it while the page loaded: focus moves only when it is
+ * still where it was when the page changed, or has fallen to the document. The
+ * heading and the region take `tabindex="-1"` for the move and give it back
+ * when focus leaves them (`focusFromScript`).
  *
  * The title is the heading's text, or the document's title when the page has
  * no heading. A polite live region says it only when focus does not land on
@@ -23,23 +26,63 @@
  * The arrival waits for the next frame. The page is drawn by then, and so is
  * every change the frame makes in the same update: a drawer that closes for
  * the new page has given back the focus it held and made the page reachable
- * again.
+ * again. Where focus is in that frame is where it was when the page changed.
  */
 
+/** What the engine holds for each content region: the page it shows, and the page focus is at. */
+interface Pages {
+  /** The page the frame shows. */
+  key: unknown
+  /** The page the frame has arrived at. A page that is loading has not arrived yet. */
+  arrived: unknown
+  /** Whether `from` has been noted for `key`. */
+  noted: boolean
+  /** Where focus was when the page changed to `key`. */
+  from: Element | null
+}
+
+const pages = new WeakMap<HTMLElement, Pages>()
+
 /**
- * Moves focus to the new page in `content` and says its title in `region`, a
- * frame from now. Returns the function that cancels it.
+ * Follows the page that `content` shows, and arrives at a new one: a frame
+ * from now, moves focus to it and says its title in `region`. Call it when the
+ * frame mounts and each time `key` or `pending` changes. The key of the first
+ * call is the page the browser loaded, which is no arrival. A page that is
+ * `pending` arrives once a call says it no longer is, and a key counts as
+ * arrived only once its arrival has run, so a page that starts loading in the
+ * frame after it changed still arrives. Returns the function that cancels what
+ * the call scheduled.
  */
 export function arriveAtPage(
   content: HTMLElement | null | undefined,
   region: HTMLElement | null | undefined,
+  key: unknown,
+  pending: boolean,
 ): () => void {
   if (content == null || typeof requestAnimationFrame === 'undefined') return () => {}
-  const frame = requestAnimationFrame(() => arrive(content, region ?? null))
+  const held = pages.get(content)
+  if (held === undefined) {
+    pages.set(content, { key, arrived: key, noted: true, from: null })
+    return () => {}
+  }
+  if (key !== held.key) {
+    held.key = key
+    held.noted = false
+  }
+  if (key === held.arrived) return () => {}
+  const frame = requestAnimationFrame(() => {
+    if (!held.noted) {
+      held.noted = true
+      held.from = document.activeElement
+    }
+    if (pending) return
+    held.arrived = key
+    arrive(content, region ?? null, held.from)
+  })
   return () => cancelAnimationFrame(frame)
 }
 
-function arrive(content: HTMLElement, region: HTMLElement | null): void {
+function arrive(content: HTMLElement, region: HTMLElement | null, from: Element | null): void {
   if (!content.isConnected) return
   const heading = content.querySelector('h1')
   const title = (heading?.textContent ?? '').trim() || document.title.trim()
@@ -48,20 +91,34 @@ function arrive(content: HTMLElement, region: HTMLElement | null): void {
   }
 
   const focused = document.activeElement
-  if (focused !== null && focused !== content && content.contains(focused)) {
+  const inPage = focused !== null && focused !== content && content.contains(focused)
+  const lost = focused === null || focused === document.body
+  if (inPage || (focused !== from && !lost)) {
     announce()
     return
   }
   if (heading === null) {
-    content.focus()
+    focusFromScript(content)
     announce()
     return
   }
-  if (!heading.hasAttribute('tabindex')) {
-    heading.setAttribute('tabindex', '-1')
-    heading.addEventListener('blur', () => heading.removeAttribute('tabindex'), { once: true })
+  focusFromScript(heading)
+}
+
+/**
+ * Moves focus to an element that is not a tab stop, such as a page's heading
+ * or its content region. The element takes `tabindex="-1"` for the move and
+ * gives it back when focus leaves it, so it never takes focus from a click on
+ * it and never joins the tab order. An element that already has a `tabindex`
+ * keeps it. AppShell's skip link moves focus into the content region with it.
+ */
+export function focusFromScript(element: HTMLElement | null | undefined): void {
+  if (element == null) return
+  if (!element.hasAttribute('tabindex')) {
+    element.setAttribute('tabindex', '-1')
+    element.addEventListener('blur', () => element.removeAttribute('tabindex'), { once: true })
   }
-  heading.focus()
+  element.focus()
 }
 
 /**

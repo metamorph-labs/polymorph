@@ -169,6 +169,7 @@ export const ENGINE_HELPERS: readonly string[] = [
   // Where focus goes when an anchored overlay closes, and a new page's arrival (AppShell).
   'anchorFocusReturns',
   'arriveAtPage',
+  'focusFromScript',
   // What an agent goes to in AppShell's rail, read from the rail in the document, and how.
   'railDestinations',
   'currentRailDestination',

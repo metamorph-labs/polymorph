@@ -16,6 +16,7 @@ import {
   arriveAtPage,
   currentRailDestination,
   dataFlag,
+  focusFromScript,
   goToRailDestination,
   Icon,
   memberAttr,
@@ -247,16 +248,15 @@ export function AppShellRoot({
    * the shell stays mounted while the app's router changes the page, and the
    * browser does neither for such a change. The first page is not an arrival:
    * the browser has already loaded it. A page that is still loading
-   * (`pending`) arrives when it is drawn.
+   * (`pending`) arrives when it is drawn. The engine follows the pages from
+   * the calls this effect makes, the one on mount included.
    */
   const content = transition.ref
   const announcer = useRef<HTMLDivElement>(null)
-  const arrived = useRef(transitionKey)
-  useEffect(() => {
-    if (pending || transitionKey === arrived.current) return
-    arrived.current = transitionKey
-    return arriveAtPage(content.current, announcer.current)
-  }, [content, pending, transitionKey])
+  useEffect(
+    () => arriveAtPage(content.current, announcer.current, transitionKey, pending),
+    [content, pending, transitionKey],
+  )
 
   const toggle = useCallback(() => {
     const next = !held
@@ -343,7 +343,12 @@ export function AppShellRoot({
           {/* First in the DOM, and invisible until it receives keyboard focus.
             Everything but the rail and the scrim is `inert` while the drawer is
             open, so Tab and a screen reader stay in the drawer. */}
-          <a className={styles.skip} href={`#${CONTENT_ID}`} inert={drawer}>
+          <a
+            className={styles.skip}
+            href={`#${CONTENT_ID}`}
+            inert={drawer}
+            onClick={() => focusFromScript(content.current)}
+          >
             {messages.skipToContent ?? DEFAULT_SKIP_TO_CONTENT}
           </a>
 
@@ -433,13 +438,14 @@ export function AppShellRoot({
             />
           ) : null}
 
-          {/* `tabIndex={-1}` so the skip link and a page change can move focus
-            into the region. It is not a tab stop. */}
+          {/* The skip link and a page change move focus into the region
+            (`focusFromScript`), which takes `tabindex="-1"` only while it holds
+            that focus. A permanent one would let a click on the page's empty
+            space focus the region, where the reader expects the document. */}
           <main
             {...transition}
             className={[styles.content, transition.className].filter(Boolean).join(' ')}
             id={CONTENT_ID}
-            tabIndex={-1}
             inert={drawer}
           >
             {contentLayout === 'page' ? <div className={styles.page}>{children}</div> : children}
