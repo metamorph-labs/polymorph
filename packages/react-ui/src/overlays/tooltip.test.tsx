@@ -166,6 +166,7 @@ describe('while the keyboard holds its control', () => {
       <div>
         <div style={{ blockSize: '10vh' }} />
         <Button label="Elsewhere" />
+        <Button label="Further" />
         <div style={{ blockSize: '40vh' }} />
         <Tooltip content="Archive this ticket">
           <Input aria-label="Field" />
@@ -182,7 +183,7 @@ describe('while the keyboard holds its control', () => {
     // Radix closes once the pointer moves outside the way from the control to the bubble, so the
     // pointer moves twice past it.
     await userEvent.hover(elsewhere)
-    await userEvent.hover(elsewhere, { position: { x: 2, y: 2 } })
+    await userEvent.hover(screen.getByRole('button', { name: 'Further' }))
     await vi.waitFor(() => expect(bubbles()).toHaveLength(0))
   })
 
