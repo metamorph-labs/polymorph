@@ -4,7 +4,9 @@
     "name": "Metamorph, Inc.",
     "url": "https://github.com/metamorph-labs"
   },
-  "description": "The Polymorph design system’s plugin for coding agents.",
+  "metadata": {
+    "description": "The Polymorph design system’s plugin for coding agents."
+  },
   "plugins": [
     {
       "name": "polymorph",

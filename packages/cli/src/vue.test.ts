@@ -170,10 +170,11 @@ describe('polymorph init --framework vue', () => {
     expect(written(plan, 'polymorph/system-card.md')).toBe(
       renderSystemCard(registry, { framework: 'vue' }),
     )
-    const agents = written(plan, 'AGENTS.md')
+    const agents = written(plan, 'AGENTS.md').replace(/\s+/g, ' ')
     expect(agents).toContain('`@polymorph/vue-ui`')
     expect(agents).toContain('`<style>` blocks')
-    expect(agents).toContain('`render_screen`')
+    expect(agents).toContain('card --framework vue')
+    expect(agents).toContain(' render <spec.json> --system <name>')
     expect(written(plan, '.mcp.json')).toContain('--project')
   })
 

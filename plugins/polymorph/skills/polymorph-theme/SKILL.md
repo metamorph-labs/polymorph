@@ -1,6 +1,6 @@
 ---
 name: polymorph-theme
-description: Change how an app built with polymorph looks: its colours, type, density, shape, motion or overall feel. Use when asked to restyle or rebrand a polymorph app, to make it calmer, denser, warmer, darker or more editorial, to pick or adjust a theme, system or palette, or when tempted to write a colour, font or length in application code. Proposes a theme from plain words, checks it against the theme laws and saves it.
+description: Change how an app built with polymorph looks, its colours, type, density, shape, motion or overall feel. Use when asked to restyle or rebrand a polymorph app, to make it calmer, denser, warmer, darker or more editorial, to pick or adjust a theme, system or palette, or when tempted to write a colour, font or length in application code. Proposes a theme from plain words, checks it against the theme laws and saves it.
 ---
 
 # Change the theme
@@ -46,7 +46,7 @@ npx -y @metamorph-labs/polymorph@1.0.17 theme propose "denser and cooler" --save
 The answer lists what each word moved, the words the table does not know, and the verdict of the
 theme's laws (contrast, legibility, the scales). `--based-on` starts from a shipped pairing, such
 as `desktop/azure`, `dew/verdigris`, `flint/cobalt`; either half may be left out. `--save` writes the two documents into
-`<dir>/systems/` and `<dir>/palettes/` (`design/` when `--dir` is left out), and
+`<dir>/systems/` and `<dir>/palettes/` (the directory `design` when `--dir` is left out), and
 `--overwrite` replaces files already saved under the same names. Then point the app at them: in an
 app `init` wrote, name the two files in `polymorphTheme` in `vite.config`.
 

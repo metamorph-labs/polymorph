@@ -601,16 +601,11 @@ they are. \`--force\` overwrites edited files.
 
 ## Moving to a newer release
 
-Run the newer tools. Each command names the release it runs, so name the newer one:
-
-\`\`\`sh
-npx -y @metamorph-labs/polymorph@latest agents
-npx -y @metamorph-labs/polymorph@latest update
-\`\`\`
-
-\`agents\` rewrites the agent files and the card for that release. In a vendoring project, \`update\`
-copies the new members. In a packages project, raise the ranges of the \`@polymorph/*\` aliases and
-of \`@metamorph-labs/polymorph\` in \`package.json\`, and install.
+Every command in this skill names the release it runs. To move to a newer one, run the same
+commands with the newer version in place of this one's. In every project, \`agents\` rewrites the
+agent files and the card for that release. In a vendoring project, \`update\` copies the new
+members. In a packages project, raise the ranges of the \`@polymorph/*\` aliases and of
+\`@metamorph-labs/polymorph\` in \`package.json\`, and install.
 
 ## Check the setup
 
@@ -629,7 +624,7 @@ card should list the members the app uses.
           'existing React, Vue, Svelte, Solid or Angular app or to an HTML page, vendor polymorph ' +
           'components into a repository, move to a newer polymorph release, or write the ' +
           'AGENTS.md block, skills and MCP configuration for Claude Code, Codex, Cursor or another ' +
-          'agent. Tells the routes apart: a new app, the packages route and the vendoring route.',
+          'agent. It tells a new app, the packages route and the vendoring route apart.',
         body,
       ),
     },
@@ -684,7 +679,7 @@ ${commands(run, 'theme propose "calmer, warmer paper, more editorial"', `theme p
 The answer lists what each word moved, the words the table does not know, and the verdict of the
 theme's laws (contrast, legibility, the scales). \`--based-on\` starts from a shipped pairing, such
 as ${pairings}; either half may be left out. \`--save\` writes the two documents into
-\`<dir>/systems/\` and \`<dir>/palettes/\` (\`design/\` when \`--dir\` is left out), and
+\`<dir>/systems/\` and \`<dir>/palettes/\` (the directory \`design\` when \`--dir\` is left out), and
 \`--overwrite\` replaces files already saved under the same names. Then point the app at them: in an
 app \`init\` wrote, name the two files in \`polymorphTheme\` in \`vite.config\`.
 
@@ -727,7 +722,7 @@ ${commands(run, 'theme propose "as shipped" --based-on journal/umber --save --di
       path: 'polymorph-theme/SKILL.md',
       contents: skill(
         'polymorph-theme',
-        'Change how an app built with polymorph looks: its colours, type, density, shape, motion ' +
+        'Change how an app built with polymorph looks, its colours, type, density, shape, motion ' +
           'or overall feel. Use when asked to restyle or rebrand a polymorph app, to make it ' +
           'calmer, denser, warmer, darker or more editorial, to pick or adjust a theme, system or ' +
           'palette, or when tempted to write a colour, font or length in application code. ' +

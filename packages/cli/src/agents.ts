@@ -304,6 +304,8 @@ interface FrameworkNotes {
   props: string
   /** Another library's component boundary, as written in this framework. */
   boundary: string
+  /** How a library inside the boundary gets the theme's values. */
+  themeValues: string
   /** Whether screens are specs `emit` compiles. The elements have no emitted screens. */
   specs: boolean
   /** What only this framework's projects need said. */
@@ -319,6 +321,7 @@ const FRAMEWORK_NOTES: Readonly<Record<Framework, FrameworkNotes>> = {
     forbids: `CSS files, \`style\` or \`className\`, ${RAW_CONTROLS}, ${LIBRARIES}`,
     props: '',
     boundary: '`<ThirdParty library="…" reason="…">`',
+    themeValues: `\`useThemeValues()\` from \`${FRAMEWORK_FOUNDATION.react}\``,
     specs: true,
     extra: [],
   },
@@ -329,6 +332,7 @@ const FRAMEWORK_NOTES: Readonly<Record<Framework, FrameworkNotes>> = {
       'A prop keeps its React name. A React `onFoo` is the event `@foo`, a node-typed prop is ' +
       'the slot `#foo`, and `children` is the default slot.',
     boundary: '`<ThirdParty library="…" reason="…">`',
+    themeValues: `\`useThemeValues()\` from \`${FRAMEWORK_FOUNDATION.vue}\``,
     specs: true,
     extra: [],
   },
@@ -339,6 +343,7 @@ const FRAMEWORK_NOTES: Readonly<Record<Framework, FrameworkNotes>> = {
       'A prop keeps its React name and type. A callback is the prop `onFoo`, and a node-typed ' +
       'prop is the snippet `foo`.',
     boundary: '`<ThirdParty library="…" reason="…">`',
+    themeValues: `\`useThemeValues()\` from \`${FRAMEWORK_FOUNDATION.svelte}\``,
     specs: true,
     extra: [],
   },
@@ -349,6 +354,7 @@ const FRAMEWORK_NOTES: Readonly<Record<Framework, FrameworkNotes>> = {
       'A prop keeps its React name and type. A component reads `props.foo` and never ' +
       'destructures its props, so a value stays reactive.',
     boundary: '`<ThirdParty library="…" reason="…">`',
+    themeValues: `\`useThemeValues()\` from \`${FRAMEWORK_FOUNDATION.solid}\``,
     specs: true,
     extra: [],
   },
@@ -359,6 +365,7 @@ const FRAMEWORK_NOTES: Readonly<Record<Framework, FrameworkNotes>> = {
       'A member is a standalone component written by its selector (`<pm-button>`). A prop is an ' +
       'input of the same name, and a callback `onFoo` is the output `(foo)`.',
     boundary: '`<pm-third-party library="…" reason="…">`',
+    themeValues: `\`useThemeValues()\` from \`${FRAMEWORK_FOUNDATION.angular}\``,
     specs: true,
     extra: [],
   },
@@ -369,6 +376,7 @@ const FRAMEWORK_NOTES: Readonly<Record<Framework, FrameworkNotes>> = {
       'A prop is the attribute in kebab case (`icon-only`), data is a JSON attribute, a node prop ' +
       'is a child with `slot="name"`, and `onFoo` is the event `poly-foo`.',
     boundary: '`<poly-third-party library="…" reason="…">`',
+    themeValues: '`var(--pm-…)`',
     specs: false,
     extra: [
       'A page loads the stylesheets and `polymorph.js` from the directory `polymorph.json` names, ' +
@@ -437,8 +445,8 @@ function agentsText(
     bullet(`Application code may not contain ${notes.forbids}.`),
     bullet(
       'A need the vocabulary does not cover climbs the exception ladder from its first rung: ' +
-        `${listed(ladder)}. Another library's component goes inside ${notes.boundary}. A rule ` +
-        'is never silenced with `eslint-disable`.',
+        `${listed(ladder)}. Another library's component goes inside ${notes.boundary}, and ` +
+        `takes the theme as ${notes.themeValues}. A rule is never silenced with \`eslint-disable\`.`,
     ),
   ]
   for (const extra of notes.extra) lines.push(bullet(extra))

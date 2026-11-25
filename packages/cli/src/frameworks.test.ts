@@ -251,10 +251,10 @@ describe.each(FRAMEWORKS)('polymorph init --framework %s', (framework) => {
     expect(written(plan, 'polymorph/system-card.md')).toBe(
       renderSystemCard(registry, { framework }),
     )
-    const agents = written(plan, 'AGENTS.md')
+    const agents = written(plan, 'AGENTS.md').replace(/\s+/g, ' ')
     expect(agents).toContain(`\`${FRAMEWORK_VOCABULARY[framework]}\``)
-    expect(agents).toContain(`framework: "${framework}"`)
-    expect(agents).toContain('`render_screen`')
+    expect(agents).toContain(`card --framework ${framework}`)
+    expect(agents).toContain(' render <spec.json> --system <name>')
     expect(written(plan, '.mcp.json')).toContain('--project')
   })
 

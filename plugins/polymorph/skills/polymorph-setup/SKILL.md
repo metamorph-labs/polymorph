@@ -1,6 +1,6 @@
 ---
 name: polymorph-setup
-description: Add the polymorph design system to a project, or set up the files a coding agent reads to work with it. Use when asked to start a new app with polymorph, add polymorph to an existing React, Vue, Svelte, Solid or Angular app or to an HTML page, vendor polymorph components into a repository, move to a newer polymorph release, or write the AGENTS.md block, skills and MCP configuration for Claude Code, Codex, Cursor or another agent. Tells the routes apart: a new app, the packages route and the vendoring route.
+description: Add the polymorph design system to a project, or set up the files a coding agent reads to work with it. Use when asked to start a new app with polymorph, add polymorph to an existing React, Vue, Svelte, Solid or Angular app or to an HTML page, vendor polymorph components into a repository, move to a newer polymorph release, or write the AGENTS.md block, skills and MCP configuration for Claude Code, Codex, Cursor or another agent. It tells a new app, the packages route and the vendoring route apart.
 ---
 
 # Set up polymorph
@@ -83,16 +83,11 @@ they are. `--force` overwrites edited files.
 
 ## Moving to a newer release
 
-Run the newer tools. Each command names the release it runs, so name the newer one:
-
-```sh
-npx -y @metamorph-labs/polymorph@latest agents
-npx -y @metamorph-labs/polymorph@latest update
-```
-
-`agents` rewrites the agent files and the card for that release. In a vendoring project, `update`
-copies the new members. In a packages project, raise the ranges of the `@polymorph/*` aliases and
-of `@metamorph-labs/polymorph` in `package.json`, and install.
+Every command in this skill names the release it runs. To move to a newer one, run the same
+commands with the newer version in place of this one's. In every project, `agents` rewrites the
+agent files and the card for that release. In a vendoring project, `update` copies the new
+members. In a packages project, raise the ranges of the `@polymorph/*` aliases and of
+`@metamorph-labs/polymorph` in `package.json`, and install.
 
 ## Check the setup
 

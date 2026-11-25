@@ -237,7 +237,9 @@ export function pluginFiles(registry: Registry): PluginFile[] {
       contents: json({
         name: MARKETPLACE,
         owner: PUBLISHER,
-        description: 'The Polymorph design system’s plugin for coding agents.',
+        // `metadata.description` rather than `description`: Claude Code reads either, and
+        // releases before the top-level field refuse a marketplace that has it.
+        metadata: { description: 'The Polymorph design system’s plugin for coding agents.' },
         plugins: [
           {
             name: PLUGIN_NAME,
