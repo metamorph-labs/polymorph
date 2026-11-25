@@ -8,7 +8,8 @@ import { describe, expect, it } from 'vitest'
  * what is imported.
  *
  * Its source imports no node module and no package but the spec's and the
- * registry's pure subpaths, which its build inlines: this law walks the value
+ * registry's pure subpaths, and the usage rules' definitions the validator
+ * reads (`@polymorph/rules/usage`), which its build inlines: this law walks the value
  * import graph of every entry, as `packages/spec/src/browser-surface.test.ts`
  * walks the spec's, and fails on anything else. That no module reads a DOM
  * global is the typecheck's to hold: `tsconfig.json` gives the source no DOM
@@ -33,6 +34,7 @@ const PURE: Record<string, string> = {
   '@polymorph/spec/schema': 'packages/spec/src/schema.ts',
   '@polymorph/spec/validate': 'packages/spec/src/validate.ts',
   '@polymorph/spec/action-type': 'packages/spec/src/action-type.ts',
+  '@polymorph/rules/usage': 'packages/rules/src/usage.ts',
 }
 
 const ENTRIES: Record<string, string> = {
