@@ -50,6 +50,8 @@ describe('searchRegistry', () => {
     expect(all.length).toBeGreaterThanOrEqual(some.length)
 
     expect(searchRegistry(registry, { query: 'zzzz qqqq' })).toEqual([])
+    // Common words that name no member do not match the catalogue through its purposes.
+    expect(searchRegistry(registry, { query: 'no member is called this' })).toEqual([])
   })
 
   it('wears narrows to the members whose own stylesheet reads the token', () => {

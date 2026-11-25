@@ -79,11 +79,15 @@ function scoreTerm(component: RegistryComponent, term: string): { rank: number; 
  * A query of several words is read three ways, and the best reading wins. The
  * words joined are a member's name as a person says it: `date picker` and
  * `date-picker` are `DatePicker`. The words as written are a phrase, which a
- * purpose or a prop's doc can hold. And each word is a term of its own: the
- * rank is the mean of the terms' ranks, a term that matches nothing counting
- * zero, so a member that answers two of three words is still found, below one
- * that answers all three. That last reading ranks one below the same match
- * made by a whole phrase.
+ * purpose or a prop's doc can hold. And each word of three letters or more is
+ * a term of its own. A member answers the terms when one of them is in its
+ * name, or when every one of them is in its name or its purpose: a sentence
+ * of common words, each found in some prop's doc, would otherwise match much
+ * of the catalogue. The rank is the mean of the terms' ranks, a term that
+ * matches nothing counting zero, so a member that answers two of three words
+ * ranks below one that answers all three, and one below the same match made
+ * by a whole phrase. What it matched on is what its strongest term matched
+ * on, in the form a single word reports, which the fronts read back.
  */
 export function scoreComponent(
   component: RegistryComponent,
@@ -91,22 +95,29 @@ export function scoreComponent(
 ): { rank: number; matched: string } {
   if (query === '') return { rank: 1, matched: 'listed' }
 
-  const terms = query.split(/[\s_-]+/).filter(Boolean)
-  if (terms.length < 2) return scoreTerm(component, query)
+  const words = query.split(/[\s_-]+/).filter(Boolean)
+  if (words.length < 2) return scoreTerm(component, query)
 
   const name = component.name.toLowerCase()
-  const joined = terms.join('')
+  const joined = words.join('')
   if (name === joined) return { rank: 100, matched: 'name' }
   if (name.includes(joined)) return { rank: 80, matched: 'name' }
 
   const phrase = scoreTerm(component, query)
+  const terms = words.filter((word) => word.length >= 3)
   const each = terms.map((term) => scoreTerm(component, term))
-  const mean = Math.floor(each.reduce((sum, entry) => sum + entry.rank, 0) / terms.length) - 1
+  const answers =
+    each.length > 0 &&
+    (each.some((entry) => entry.matched === 'name') ||
+      each.every((entry) => entry.matched === 'name' || entry.matched === 'purpose'))
+  const mean = answers
+    ? Math.floor(each.reduce((sum, entry) => sum + entry.rank, 0) / each.length) - 1
+    : 0
   if (phrase.rank >= mean) return phrase
   if (mean <= 0) return { rank: 0, matched: '' }
 
-  const matched = [...new Set(each.map((entry) => entry.matched).filter(Boolean))]
-  return { rank: mean, matched: matched.join(', ') }
+  const strongest = each.reduce((best, entry) => (entry.rank > best.rank ? entry : best))
+  return { rank: mean, matched: strongest.matched }
 }
 
 export function searchRegistry(registry: Registry, filters: SearchFilters = {}): SearchHit[] {
