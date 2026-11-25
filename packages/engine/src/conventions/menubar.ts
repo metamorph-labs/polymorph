@@ -201,7 +201,7 @@ export function roveMenubar(event: MenubarKeyEvent): boolean {
   const { elements, titles } = titlesOf(bar)
   const from = elements.indexOf(title)
   if (from === -1) return false
-  const to = menubarStep(event.key, from, titles, readDirection())
+  const to = menubarStep(event.key, from, titles, readDirection(bar))
   if (to === undefined) return false
   event.preventDefault()
   elements[to]?.focus()
@@ -236,7 +236,7 @@ export function menubarNeighbour(
       : focused.getAttribute('aria-haspopup') === 'menu'
         ? 'submenu-row'
         : 'entry'
-  return menubarHandOff(event.key, from, titles, readDirection(), place)
+  return menubarHandOff(event.key, from, titles, readDirection(bar), place)
 }
 
 /**

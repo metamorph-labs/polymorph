@@ -86,8 +86,10 @@ const ROW_STYLES: MenuRowStyles = {
 }
 
 export function Menubar({ label, menus, defaultOpen }: MenubarProps) {
-  // The document's direction, which Radix would otherwise take to be left-to-right.
-  const dir = useDirection()
+  // The direction of the place the member is in, which Radix would otherwise take to be
+  // left-to-right.
+  const bar = useRef<HTMLDivElement>(null)
+  const dir = useDirection(bar)
   const phone = usePhoneViewport()
 
   // The title whose menu is open. One menu is open at most, so the bar holds it, not each menu.
@@ -97,7 +99,6 @@ export function Menubar({ label, menus, defaultOpen }: MenubarProps) {
   // Where focus goes in the next menu to open: the end a key asked for, or the panel itself for
   // a menu the pointer opened. `null` leaves it to Radix, which focuses a panel as it mounts.
   const pending = useRef<MenubarEnd | 'panel' | null>(null)
-  const bar = useRef<HTMLDivElement>(null)
   const panels = useRef(new Map<string, HTMLDivElement>())
 
   /*

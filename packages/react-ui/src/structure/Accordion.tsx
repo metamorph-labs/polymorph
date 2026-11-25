@@ -105,8 +105,10 @@ function AccordionRegion({
 }
 
 export function Accordion(props: AccordionProps) {
-  // The document's direction, which Radix would otherwise take to be left-to-right.
-  const dir = useDirection()
+  // The direction of the place the member is in, which Radix would otherwise take to be
+  // left-to-right.
+  const rootRef = useRef<HTMLDivElement>(null)
+  const dir = useDirection(rootRef)
   const { items, headingLevel = 3, keepMounted = false } = props
   const multiple = props.type === 'multiple'
   const collapsible = multiple || (props.collapsible ?? true)
@@ -126,7 +128,6 @@ export function Accordion(props: AccordionProps) {
   // The spec's `agent` fence. An item's id is its `value`. A single accordion's expand replaces
   // the open item, and one that is not collapsible refuses to close its open item, as Radix
   // refuses a press on it.
-  const rootRef = useRef<HTMLDivElement>(null)
   useAgentMember({
     member: 'Accordion',
     element: () => rootRef.current,

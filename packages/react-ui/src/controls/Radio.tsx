@@ -60,8 +60,10 @@ export function RadioGroup({
   'aria-describedby': describedBy,
   'aria-required': required,
 }: RadioGroupProps) {
-  // The document's direction, which Radix would otherwise take to be left-to-right.
-  const dir = useDirection()
+  // The direction of the place the member is in, which Radix would otherwise take to be
+  // left-to-right.
+  const rootRef = useRef<HTMLDivElement>(null)
+  const dir = useDirection(rootRef)
   // Arrow-key selection that also works for a quick tap (`radio-arrows.ts`).
   const arrows = useArrowSelection()
 
@@ -77,7 +79,6 @@ export function RadioGroup({
     onChange?.(next)
   }
 
-  const rootRef = useRef<HTMLDivElement>(null)
   useAgentMember({
     member: 'RadioGroup',
     element: () => rootRef.current,
