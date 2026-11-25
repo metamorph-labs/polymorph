@@ -45,25 +45,19 @@ export interface SearchHit {
 }
 
 /**
- * An empty query lists the whole catalogue, deliberately. A caller usually asks
- * what the system contains before asking what it calls a dropdown. A search
- * that required a term would force the caller to guess one.
+ * How one word or phrase matches a member: its name first, then its purpose,
+ * a prop, and last the grid.
  */
-export function scoreComponent(
-  component: RegistryComponent,
-  query: string,
-): { rank: number; matched: string } {
-  if (query === '') return { rank: 1, matched: 'listed' }
-
+function scoreTerm(component: RegistryComponent, term: string): { rank: number; matched: string } {
   const name = component.name.toLowerCase()
-  if (name === query) return { rank: 100, matched: 'name' }
-  if (name.includes(query)) return { rank: 80, matched: 'name' }
+  if (name === term) return { rank: 100, matched: 'name' }
+  if (name.includes(term)) return { rank: 80, matched: 'name' }
 
-  if (component.purpose.toLowerCase().includes(query)) return { rank: 40, matched: 'purpose' }
+  if (component.purpose.toLowerCase().includes(term)) return { rank: 40, matched: 'purpose' }
 
   const prop = component.props.find(
     (entry) =>
-      entry.name.toLowerCase().includes(query) || (entry.doc ?? '').toLowerCase().includes(query),
+      entry.name.toLowerCase().includes(term) || (entry.doc ?? '').toLowerCase().includes(term),
   )
   if (prop) return { rank: 20, matched: `prop \`${prop.name}\`` }
 
@@ -72,9 +66,47 @@ export function scoreComponent(
   // the tones lawful with it.
   const cell = Object.entries(component.grid ?? {}).find(
     ([variant, tones]) =>
-      variant.toLowerCase() === query || tones.some((tone) => tone.toLowerCase() === query),
+      variant.toLowerCase() === term || tones.some((tone) => tone.toLowerCase() === term),
   )
   return cell ? { rank: 10, matched: `variant \`${cell[0]}\`` } : { rank: 0, matched: '' }
+}
+
+/**
+ * An empty query lists the whole catalogue, deliberately. A caller usually asks
+ * what the system contains before asking what it calls a dropdown. A search
+ * that required a term would force the caller to guess one.
+ *
+ * A query of several words is read three ways, and the best reading wins. The
+ * words joined are a member's name as a person says it: `date picker` and
+ * `date-picker` are `DatePicker`. The words as written are a phrase, which a
+ * purpose or a prop's doc can hold. And each word is a term of its own: the
+ * rank is the mean of the terms' ranks, a term that matches nothing counting
+ * zero, so a member that answers two of three words is still found, below one
+ * that answers all three. That last reading ranks one below the same match
+ * made by a whole phrase.
+ */
+export function scoreComponent(
+  component: RegistryComponent,
+  query: string,
+): { rank: number; matched: string } {
+  if (query === '') return { rank: 1, matched: 'listed' }
+
+  const terms = query.split(/[\s_-]+/).filter(Boolean)
+  if (terms.length < 2) return scoreTerm(component, query)
+
+  const name = component.name.toLowerCase()
+  const joined = terms.join('')
+  if (name === joined) return { rank: 100, matched: 'name' }
+  if (name.includes(joined)) return { rank: 80, matched: 'name' }
+
+  const phrase = scoreTerm(component, query)
+  const each = terms.map((term) => scoreTerm(component, term))
+  const mean = Math.floor(each.reduce((sum, entry) => sum + entry.rank, 0) / terms.length) - 1
+  if (phrase.rank >= mean) return phrase
+  if (mean <= 0) return { rank: 0, matched: '' }
+
+  const matched = [...new Set(each.map((entry) => entry.matched).filter(Boolean))]
+  return { rank: mean, matched: matched.join(', ') }
 }
 
 export function searchRegistry(registry: Registry, filters: SearchFilters = {}): SearchHit[] {
