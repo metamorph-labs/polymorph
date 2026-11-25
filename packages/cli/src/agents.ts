@@ -635,6 +635,8 @@ export interface AgentOutcome {
   action: AgentAction
   /** Why a part was kept or refused. */
   why?: string
+  /** A kept part that `--force` would replace: one the plan still writes, into a file that can take it. */
+  replaceable?: boolean
 }
 
 export interface AgentsResult {
@@ -779,6 +781,31 @@ function tomlEquals(line: string): number {
 }
 
 /**
+ * The multi-line string a TOML line leaves open, `"""` or `'''`, or `null`,
+ * given the one open where the line starts. Only the delimiter that opened a
+ * string closes it, so a `'''` inside a `"""` string is text.
+ */
+function tomlOpen(line: string, open: string | null): string | null {
+  let fence = open
+  let at = 0
+  while (at < line.length) {
+    if (fence !== null) {
+      const end = line.indexOf(fence, at)
+      if (end < 0) return fence
+      at = end + fence.length
+      fence = null
+      continue
+    }
+    const basic = line.indexOf('"""', at)
+    const literal = line.indexOf("'''", at)
+    if (basic < 0 && literal < 0) return null
+    fence = literal < 0 || (basic >= 0 && basic < literal) ? '"""' : "'''"
+    at = (fence === '"""' ? basic : literal) + fence.length
+  }
+  return fence
+}
+
+/**
  * Why a Codex config cannot take the block, or `null`. The block adds the
  * table `[mcp_servers.polymorph]`, which TOML refuses when the document
  * already defines that server in any form (a table header, a key under
@@ -788,15 +815,12 @@ function tomlEquals(line: string): number {
  */
 function tomlRefusal(text: string): string | null {
   let table: string[] = []
-  let inString = false
+  let open: string | null = null
   const server = (path: string[]) => path[0] === 'mcp_servers' && path[1] === SERVER_NAME
   for (const raw of text.split('\n')) {
-    const fences = raw.split('"""').length - 1 + (raw.split("'''").length - 1)
-    if (inString) {
-      if (fences % 2 === 1) inString = false
-      continue
-    }
-    if (fences % 2 === 1) inString = true
+    const inside = open !== null
+    open = tomlOpen(raw, open)
+    if (inside) continue
     const line = tomlCode(raw).trim()
     if (line === '') continue
     const header = /^\[\[?(.+?)\]\]?$/.exec(line)
@@ -884,8 +908,14 @@ export function applyAgents(
 
   for (const step of plan.steps) {
     const recorded = previous?.files[step.path]
-    const keep = (why: string): void => {
-      outcomes.push({ path: step.path, part: step.part, action: 'kept', why })
+    const keep = (why: string, replaceable = false): void => {
+      outcomes.push({
+        path: step.path,
+        part: step.part,
+        action: 'kept',
+        why,
+        ...(replaceable ? { replaceable } : {}),
+      })
       if (recorded !== undefined) files[step.path] = recorded
     }
     if (escapes(step.path) || !insideOnDisk(root, step.path)) {
@@ -916,6 +946,7 @@ export function applyAgents(
         recorded === undefined
           ? 'not written by `polymorph agents`; `--force` replaces it'
           : 'edited since `polymorph agents` wrote it; `--force` replaces it',
+        true,
       )
       continue
     }
@@ -1160,7 +1191,10 @@ export function agentLines(result: AgentsResult, plan: AgentPlan, dryRun: boolea
       ),
     )
   }
-  if (!dryRun) lines.push(row('recorded', AGENT_RECORD))
+  const recordRefused = result.outcomes.some(
+    (outcome) => outcome.path === AGENT_RECORD && outcome.action === 'refused',
+  )
+  if (!dryRun && !recordRefused) lines.push(row('recorded', AGENT_RECORD))
   for (const note of plan.notes) lines.push(note.startsWith('  ') ? `  ${note}` : `  · ${note}`)
   return lines
 }

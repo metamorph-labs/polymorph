@@ -600,10 +600,11 @@ function agents(cli: Cli, items: string[], flags: Flags): Outcome {
       `(${framework})${flags.dryRun ? ', a dry run that writes nothing' : ''}`,
   )
   for (const line of agentLines(result, plan, flags.dryRun)) cli.out(line)
-  const kept = result.outcomes.filter((outcome) => outcome.action === 'kept').length
-  if (kept > 0 && !flags.force) {
+  // A part kept because it can no longer be written, or because its file cannot take it, is
+  // not one `--force` replaces, so the line is said only for the parts it does.
+  if (result.outcomes.some((outcome) => outcome.replaceable)) {
     cli.out('')
-    cli.out('  The files kept are yours. `--force` replaces them with polymorph’s.')
+    cli.out('  The parts kept as yours are replaced with polymorph’s by `--force`.')
   }
   return { code: result.outcomes.some((outcome) => outcome.action === 'refused') ? 1 : 0 }
 }

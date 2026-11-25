@@ -43,10 +43,13 @@ describe('the evals a test file starts', () => {
     // The limit is one, so the second waits for the first.
     expect(existsSync(started('second'))).toBe(false)
 
+    // The second is refused as the evals stop, before the first has ended, so its refusal is
+    // awaited from here: a rejection nothing waits for is an error of the test run.
+    const refused = expect(second).rejects.toBeInstanceOf(StoppedError)
     runner.stopAll()
+    await refused
     // The first is stopped, and its end does not start the second.
     expect((await first).code).not.toBe(0)
-    await expect(second).rejects.toBeInstanceOf(StoppedError)
     await expect(runner.run([started('third')])).rejects.toBeInstanceOf(StoppedError)
     await new Promise((done) => setTimeout(done, 200))
     expect(readdirSync(SCRATCH).filter((entry) => entry.endsWith('.started'))).toEqual([

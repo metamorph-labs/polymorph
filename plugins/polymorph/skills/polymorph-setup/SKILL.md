@@ -41,18 +41,22 @@ installs nothing.
 
 ```sh
 npx -y @metamorph-labs/polymorph@1.0.17 plan button dialog theme:pastel --framework <framework>
-npx -y @metamorph-labs/polymorph@1.0.17 add button dialog theme:pastel
+npx -y @metamorph-labs/polymorph@1.0.17 add button dialog theme:pastel --framework <framework>
 npx -y @metamorph-labs/polymorph@1.0.17 diff
 npx -y @metamorph-labs/polymorph@1.0.17 update
 ```
 
-`<framework>` is the framework the project's members are in (`react` unless `polymorph.json`
-records another). `plan` prints what `add` would copy and install, and writes nothing. `add` copies the members you
+`<framework>` is the app's framework: the one `polymorph.json` records, or, in an app with no
+`polymorph.json` yet, the one its `package.json` depends on (`vue` for a Vue app). Name it on
+every `plan` and `add`. The first `add` records the framework in `polymorph.json`, and with no
+`--framework` it records `react` and copies React members, whatever the app is written in.
+
+`plan` prints what `add` would copy and install, and writes nothing. `add` copies the members you
 name, and every member they need, as source into `src/polymorph/` (`--dir` changes it), installs a
 theme (`theme:<system>`, or `palette:<name>` for a palette alone), adds the packages the members
 import to `package.json`, and links the red rules into the project's ESLint and Stylelint configs.
-Install the new dependencies afterwards with the project's package manager. `--framework` vendors
-another framework's members. `polymorph.json` records each file with a hash of what was written.
+Install the new dependencies afterwards with the project's package manager. `polymorph.json`
+records each file with a hash of what was written.
 
 `diff` lists the files you have edited and the files that changed upstream. `update` copies again
 the files you have not edited and keeps the ones you have; `--force` takes upstream's copy.

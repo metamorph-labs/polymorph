@@ -395,7 +395,7 @@ function factFaults(text: string): string[] {
 }
 
 /** The verbs whose answer depends on the app's framework, so a text names it. */
-const FRAMEWORK_VERBS = ['card', 'search', 'component', 'plan', 'validate', 'fix', 'emit']
+const FRAMEWORK_VERBS = ['card', 'search', 'component', 'plan', 'add', 'validate', 'fix', 'emit']
 
 describe('every member, prop and part a text names', () => {
   const all = texts()
@@ -708,6 +708,7 @@ describe('polymorph agents', () => {
     const upgrade = agents(dir, [], next)
     expect(upgrade.code).toBe(0)
     expect(upgrade.output).toContain(`kept yours ${edited}`)
+    expect(upgrade.output).toContain('replaced with polymorph’s by `--force`')
     expect(read(dir, edited)).toContain('Our note.')
     expect(read(dir, edited)).not.toContain('99.0.0')
     expect(read(dir, '.agents/skills/polymorph-theme/SKILL.md')).toContain(`${TOOLS_NAME}@^99.0.0`)
@@ -801,6 +802,8 @@ describe('polymorph agents', () => {
       'a dotted key': 'mcp_servers.polymorph.command = "mine"\n',
       'a dotted key under mcp_servers': '[mcp_servers]\npolymorph.command = "mine" # ours\n',
       'an inline mcp_servers': 'mcp_servers = { other = { command = "other" } }\n',
+      'a table after a string that holds the other delimiter':
+        'note = """\n\'\'\'\n"""\n[mcp_servers.polymorph]\ncommand = "mine"\n',
     }
     for (const [form, toml] of Object.entries(forms)) {
       const dir = project({ '.codex/config.toml': toml })
@@ -864,6 +867,8 @@ describe('polymorph agents', () => {
     // Codex reads `.agents/skills/` too, and the Cursor entry was edited.
     expect(existsSync(resolve(dir, '.agents/skills/polymorph-screen/SKILL.md'))).toBe(true)
     expect(outcome.output).toContain('kept yours .cursor/mcp.json')
+    // `--force` writes only what the plan still has, so it is not offered for a removed part.
+    expect(outcome.output).not.toContain('--force')
     expect(read(dir, 'CLAUDE.md')).toBe('@AGENTS.md\n')
     // A rerun brings back none of them.
     agents(dir)
@@ -879,6 +884,7 @@ describe('polymorph agents', () => {
     const outcome = agents(dir)
     expect(outcome.code).toBe(1)
     expect(outcome.output).toContain(`refused    ${AGENT_RECORD}`)
+    expect(outcome.output).not.toContain('recorded')
     expect(readdirSync(outside)).toEqual([])
   })
 

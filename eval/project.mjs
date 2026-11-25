@@ -159,7 +159,8 @@ function installTarball(tarball, scratch) {
   writeFileSync(resolve(prefix, 'package.json'), '{ "private": true }\n')
   const npm = spawnSync('npm', ['install', '--no-audit', '--no-fund', tarball], {
     cwd: prefix,
-    env: { ...process.env, ...packageStores(scratch) },
+    // npm's check for a newer npm is a request the install does not need.
+    env: { ...process.env, ...packageStores(scratch), npm_config_update_notifier: 'false' },
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
   })
@@ -282,7 +283,12 @@ export function makeTemplate({ tools, framework, harness, scratch, install }) {
 function manifestOf(dir) {
   const file = resolve(dir, 'package.json')
   if (!existsSync(file)) return { present: false, scripts: [] }
-  const scripts = JSON.parse(readFileSync(file, 'utf8')).scripts ?? {}
+  let scripts
+  try {
+    scripts = JSON.parse(readFileSync(file, 'utf8')).scripts ?? {}
+  } catch (error) {
+    throw new SetupError(`${file} cannot be read: ${error.message}`)
+  }
   return {
     present: true,
     scripts: BUILD_SCRIPTS.filter((name) => typeof scripts[name] === 'string'),

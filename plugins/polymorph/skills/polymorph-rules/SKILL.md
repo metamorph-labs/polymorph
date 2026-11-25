@@ -12,8 +12,8 @@ or `stylelint-disable` for a polymorph rule, and never change a lint config to t
 
 Every command in this skill starts with the same words, the polymorph tools run from a shell.
 `<framework>` is the app's: the `polymorph-screen` skill says how to tell it. An MCP server
-named `polymorph` does the same jobs through `validate`, `fix` and `get_component`, given
-the framework as `framework`.
+named `polymorph` does the same jobs through `validate` and `fix`, given the framework as
+`framework`, and `get_component`.
 
 ## 1. Read what the rule says
 

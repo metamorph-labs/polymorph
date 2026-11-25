@@ -68,13 +68,14 @@ editor.
 ## 5. Wear a shipped theme
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 add theme:pastel
-npx -y @metamorph-labs/polymorph@1.0.17 add palette:orchid
+npx -y @metamorph-labs/polymorph@1.0.17 add theme:pastel --framework <framework>
+npx -y @metamorph-labs/polymorph@1.0.17 add palette:orchid --framework <framework>
 ```
 
-In a vendoring project, `add theme:<system>` installs a shipped system with its own palette and
-its fonts, and `add palette:<name>` a palette alone, which any installed system can wear. In a page
-with no build, `add theme:<system>` compiles it into the theme sheet.
+`<framework>` is the app's framework, as the `polymorph-setup` skill tells it. In a vendoring
+project, `add theme:<system>` installs a shipped system with its own palette and its fonts, and
+`add palette:<name>` a palette alone, which any installed system can wear. In a page with no
+build, `add theme:<system>` compiles it into the theme sheet.
 
 An app that compiles its theme with the Vite plugin wears the documents `vite.config` names. To
 wear a shipped pairing there, save it as two documents of the app's own: words the table does not

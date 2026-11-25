@@ -498,8 +498,8 @@ or \`stylelint-disable\` for a polymorph rule, and never change a lint config to
 
 Every command in this skill starts with the same words, the polymorph tools run from a shell.
 \`<framework>\` is the app's: the \`polymorph-screen\` skill says how to tell it. An MCP server
-named \`polymorph\` does the same jobs through \`validate\`, \`fix\` and \`get_component\`, given
-the framework as \`framework\`.
+named \`polymorph\` does the same jobs through \`validate\` and \`fix\`, given the framework as
+\`framework\`, and \`get_component\`.
 
 ## 1. Read what the rule says
 
@@ -728,15 +728,19 @@ installs nothing.
 
 ## An existing app: vendoring
 
-${commands(run, 'plan button dialog theme:pastel --framework <framework>', 'add button dialog theme:pastel', 'diff', 'update')}
+${commands(run, 'plan button dialog theme:pastel --framework <framework>', 'add button dialog theme:pastel --framework <framework>', 'diff', 'update')}
 
-\`<framework>\` is the framework the project's members are in (\`react\` unless \`polymorph.json\`
-records another). \`plan\` prints what \`add\` would copy and install, and writes nothing. \`add\` copies the members you
+\`<framework>\` is the app's framework: the one \`polymorph.json\` records, or, in an app with no
+\`polymorph.json\` yet, the one its \`package.json\` depends on (\`vue\` for a Vue app). Name it on
+every \`plan\` and \`add\`. The first \`add\` records the framework in \`polymorph.json\`, and with no
+\`--framework\` it records \`react\` and copies React members, whatever the app is written in.
+
+\`plan\` prints what \`add\` would copy and install, and writes nothing. \`add\` copies the members you
 name, and every member they need, as source into \`src/polymorph/\` (\`--dir\` changes it), installs a
 theme (\`theme:<system>\`, or \`palette:<name>\` for a palette alone), adds the packages the members
 import to \`package.json\`, and links the red rules into the project's ESLint and Stylelint configs.
-Install the new dependencies afterwards with the project's package manager. \`--framework\` vendors
-another framework's members. \`polymorph.json\` records each file with a hash of what was written.
+Install the new dependencies afterwards with the project's package manager. \`polymorph.json\`
+records each file with a hash of what was written.
 
 \`diff\` lists the files you have edited and the files that changed upstream. \`update\` copies again
 the files you have not edited and keeps the ones you have; \`--force\` takes upstream's copy.
@@ -863,11 +867,12 @@ editor.
 
 ## 5. Wear a shipped theme
 
-${commands(run, 'add theme:pastel', 'add palette:orchid')}
+${commands(run, 'add theme:pastel --framework <framework>', 'add palette:orchid --framework <framework>')}
 
-In a vendoring project, \`add theme:<system>\` installs a shipped system with its own palette and
-its fonts, and \`add palette:<name>\` a palette alone, which any installed system can wear. In a page
-with no build, \`add theme:<system>\` compiles it into the theme sheet.
+\`<framework>\` is the app's framework, as the \`polymorph-setup\` skill tells it. In a vendoring
+project, \`add theme:<system>\` installs a shipped system with its own palette and its fonts, and
+\`add palette:<name>\` a palette alone, which any installed system can wear. In a page with no
+build, \`add theme:<system>\` compiles it into the theme sheet.
 
 An app that compiles its theme with the Vite plugin wears the documents \`vite.config\` names. To
 wear a shipped pairing there, save it as two documents of the app's own: words the table does not
