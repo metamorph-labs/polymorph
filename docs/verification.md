@@ -1209,11 +1209,13 @@ that finished are kept, marked partial, and a partial file is never the number.
 
 `--runner codex` starts `codex exec` once per run, the owner's own Codex. It needs `--model`,
 because Codex names no model in what it reports and the results must name the model they
-measured. `--codex <path>` runs a Codex other than the `codex` on the `PATH`. The runner has not
-run a model through a real Codex. Its arguments have been given to one that was not signed in
-(Codex CLI 0.146), which reads them, starts its MCP servers and stops at the first request. What
-the runner does with a run rests on Codex's documentation and source, and the list at the end of
-this section says what a first real run has to confirm.
+measured. `--codex <path>` runs a Codex other than the `codex` on the `PATH`. No eval has
+been run through a real Codex. Two smaller checks have met one (Codex CLI 0.146). Each lane's
+arguments were given to a Codex that was not signed in, which reads them, starts its MCP servers
+and stops at the first request. One turn was run signed in, with the project lane's arguments, in
+a project `polymorph agents` had set up, asked to read a skill and to call the project's server.
+The rest of what the runner does with a run rests on Codex's documentation and source, and the
+list at the end of this section says what a first eval has to confirm.
 
 It gives Codex what the CLI runner gives Claude Code, in Codex's terms (`eval/run.mjs` names the
 page each one rests on beside it):
@@ -1275,30 +1277,38 @@ What the Codex that was not signed in settled:
 - A project's `.codex/config.toml` loads only when the home's `config.toml` trusts the project by
   its path with every link resolved. `codex exec` refuses `--trust`, and a `-c` override trusts
   nothing.
-- The stream opens with `thread.started` and `turn.started`, and a request that fails is an
-  `error` event with a `message`.
+- The stream opens with `thread.started` and `turn.started`. A request that fails is an `error`
+  event with a `message`, worded `Reconnecting...` while Codex sends it again.
 
-What only a real run can confirm:
+What the turn that was signed in settled:
 
-1. That each override does what its name says once a model runs, beyond being read.
-2. That the feature switches take Codex's own tools away, so the four tools are all the model is
-   offered. The runner stops the eval if one is still used.
-3. That `model_instructions_file` replaces the built-in instructions in `codex exec`, and what
-   Codex adds to the prompt besides, as the CLI runner's section lists what Claude Code adds.
-4. That `default_tools_approval_mode = "approve"` lets every call through under
-   `approval_policy = "never"`.
-5. The event stream: `thread.started`, `item.started` and `item.completed` with `mcp_tool_call`
-   items carrying `server` and `tool`, `agent_message` items whose last is the answer,
-   `turn.completed` with `usage`, `turn.failed` and `error`, as `codex-rs/exec/src/exec_events.rs`
-   in the Codex repository defines them. That `usage` is the whole run's, that its `input_tokens`
-   includes the cached and cache-written tokens, and that an `error` Codex goes on after, worded as
-   a reconnect or a retry, is a retry.
-6. That a linked `auth.json` signs Codex in from another home, and the words Codex uses for a
-   usage limit.
+- A linked `auth.json` signs Codex in from a home of the run's own.
+- With `approval_policy = "never"`, a call to a server whose tools are approved
+  (`default_tools_approval_mode = "approve"`, laid over the server the project's
+  `.codex/config.toml` defines) goes through.
+- The stream is the one the readers expect. An item is reported in `item.started` and
+  `item.completed`. A `command_execution` item carries `command`, `aggregated_output`,
+  `exit_code` and `status`. An `mcp_tool_call` item carries `server`, `tool`, `arguments`,
+  `result`, `error` and `status`. An `agent_message` item carries `text`, and the last one is the
+  answer. `turn.completed` carries `usage` with `input_tokens`, `cached_input_tokens`,
+  `cache_write_input_tokens`, `output_tokens` and `reasoning_output_tokens`.
+- Codex runs a command through a shell (`/bin/zsh -lc "…"`), and reads a skill with a command
+  that names its `SKILL.md`, which the project lane's reader counts as the skill loaded.
 
-The stand-in (`eval/fake/codex.mjs`) speaks the event format as that source defines it, checks
+What only an eval through Codex can confirm:
+
+1. That each override of the tools lane does what its name says once a model runs, beyond being
+   read: that the feature switches take Codex's own tools away, so the four tools are all the
+   model is offered (the runner stops the eval if one is still used), and that
+   `model_instructions_file` replaces the built-in instructions, with what Codex adds to the
+   prompt besides, as the CLI runner's section lists what Claude Code adds.
+2. `turn.failed`, which the turn did not meet, and the words Codex uses for a usage limit.
+3. That `usage` is the whole run's when a run takes several requests, and that its
+   `input_tokens` includes the cache-written tokens. In the turn it included the cached ones.
+
+The stand-in (`eval/fake/codex.mjs`) speaks the event format as Codex's source defines it, checks
 every argument the runner passes and the environment it gets, and calls the eval's MCP server for
-real. Its events have never been compared with those of a real Codex's run.
+real. The item shapes it writes are the ones the signed-in turn reported.
 
 ### The token ceilings
 
@@ -1574,10 +1584,8 @@ What only a real run can confirm, besides the Codex runner's list:
    version run (the documentation names the first in 2.1.314 and the second in 2.1.259).
 4. That pnpm takes its store from `npm_config_store_dir`, so an install inside either sandbox
    writes the eval's store and not the owner's.
-5. That the approval overrides merge onto the servers the project's `.codex/config.toml` defines,
-   and that `skills.config` turns the owner's skills off.
-6. That Codex reads a skill by running a command that names its `SKILL.md`.
-7. How long a real app's copy, `polymorph check`, typecheck and build take, against which the
+5. That `skills.config` turns the owner's skills off.
+6. How long a real app's copy, `polymorph check`, typecheck and build take, against which the
    budget's defaults are set.
 
 ### How far a rate can be trusted
