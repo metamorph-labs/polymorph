@@ -53,7 +53,8 @@ export const LC_FLOORS = {
 
 /**
  * The smallest size, in px, at which text of a weight reads at
- * `LC_FLOORS.bodyText`: the Lc 75 row of APCA's font lookup table, for the
+ * `LC_FLOORS.bodyText`: the Lc 75 row of APCA's font lookup table
+ * (`fontMatrixAscend` in the reference implementation, `apca-w3`), for the
  * weights a heading step may take (`HEADING_WEIGHT_RANGE`).
  *
  * The colour floors above hold a colour on a background at every size. APCA
