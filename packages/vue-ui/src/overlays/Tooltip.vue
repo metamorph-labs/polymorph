@@ -16,6 +16,7 @@ import {
   TOOLTIP_SKIP_DELAY_MS,
   anchorProps,
   closeTooltipOnScroll,
+  holdTooltipFromPointer,
   syncTriggerAnchor,
   useDirection,
 } from '@polymorph/vue'
@@ -90,6 +91,16 @@ const effect2 = () => {
 onMounted(effect2)
 watch(() => api.value.open, effect2, { flush: 'post' })
 onBeforeUnmount(() => release2?.())
+let release3: (() => void) | undefined
+const effect3 = () => {
+  release3?.()
+  const ran = holdTooltipFromPointer(anchor.value)
+  release3 = () => {
+    ran()
+  }
+}
+onMounted(effect3)
+onBeforeUnmount(() => release3?.())
 </script>
 
 <template>

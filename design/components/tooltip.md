@@ -71,12 +71,15 @@ None.
 
 The bubble is `role="tooltip"`, and Radix sets `aria-describedby` on the trigger while open.
 Escape and a press outside dismiss it. Focus opens it, so keyboard users get the same as hover.
-A tooltip stays open while its control holds the focus the keyboard gave it (`:focus-visible`), and
-closes on Escape, when focus leaves, on a press on the control or outside it, or when another
-tooltip opens *(WCAG 1.4.13: the hint stays until its trigger goes or the reader dismisses it. A Tab
-to a control below the fold scrolls the page a frame after the focus that opened the tooltip, and
-the substrates close a tooltip on a scroll, which would take the hint and its description away
-with no action of the reader's)*. A scroll still closes a tooltip the pointer opened.
+A tooltip stays open while its control holds the focus the keyboard gave it, and closes on Escape,
+when focus leaves, on a press on the control or outside it, or when another tooltip opens *(WCAG
+1.4.13: the hint stays until its trigger goes or the reader dismisses it. A Tab to a control below
+the fold scrolls the page a frame after the focus that opened the tooltip, and the substrates close
+a tooltip on a scroll and when the pointer leaves the control, which would take the hint and its
+description away with no action of the reader's)*. Neither a scroll nor the pointer leaving closes
+it then. The keyboard gave the focus when a key, not a press of the pointer, came before it: a text
+field matches `:focus-visible` after a click as well, so `:focus-visible` does not say it. A scroll
+and the pointer leaving still close a tooltip on a control the pointer focused.
 Never put a tooltip on a disabled element, because it cannot take focus. The wrapper workaround
 is not offered; write visible help text instead.
 
