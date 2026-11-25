@@ -59,45 +59,50 @@ let bubble: HTMLElement | undefined
 let owner: Element | undefined
 /** True when the pointer opened the tip, so the pointer's place decides when it closes. */
 let held = false
-/** When the last tip closed, for the skip delay. */
-let closedAt = Number.NEGATIVE_INFINITY
+/** When the last tip closed, for the skip delay: never, at first. */
+let closedAt = 0
 /** True while the last key pressed moves focus (Tab, an arrow key, Home, End), and no press came since. */
 let moving = false
 /** True once the window's listeners are added, with the first tip. */
 let listening = false
 
-/** Adds each of `handlers` to `target` until `signal` aborts. */
+/**
+ * Adds each of `handlers` to `target`, captured, until `signal` aborts. On the
+ * window, capturing reads Escape before any listener of the page's; on the
+ * control, every event the tip follows targets the control or its glyph, so
+ * capturing it there changes nothing.
+ */
 function listen(
   target: EventTarget,
   handlers: Record<string, (event: Event) => void>,
   signal?: AbortSignal,
-  capture?: boolean,
 ): void {
   for (const type in handlers) {
-    target.addEventListener(type, handlers[type] as EventListener, { capture, signal })
+    target.addEventListener(type, handlers[type] as EventListener, { capture: true, signal })
   }
 }
 
-/** Whether the pointer is on the button, on the bubble, or in the gap between them. */
+/**
+ * Whether the pointer is on the bubble, or in the column the button's width
+ * makes from the bubble's far edge to the button's: the button and the gap.
+ */
 function over({ clientX: x, clientY: y }: PointerEvent): boolean {
   const button = (owner as Element).getBoundingClientRect()
   const tip = (bubble as HTMLElement).getBoundingClientRect()
-  const gap = {
-    left: Math.max(tip.left, button.left),
-    top: Math.min(tip.top, button.top),
-    right: Math.min(tip.right, button.right),
-    bottom: Math.max(tip.bottom, button.bottom),
-  }
-  return [button, tip, gap].some(
-    (box) => x >= box.left && x <= box.right && y >= box.top && y <= box.bottom,
+  return (
+    (x >= tip.left && x <= tip.right && y >= tip.top && y <= tip.bottom) ||
+    (x >= button.left &&
+      x <= button.right &&
+      y >= Math.min(tip.top, button.top) &&
+      y <= Math.max(tip.bottom, button.bottom))
   )
 }
 
 function close(): void {
-  if (owner === undefined) return
+  if (!owner) return
   owner = undefined
   closedAt = Date.now()
-  bubble?.remove()
+  ;(bubble as HTMLElement).remove()
 }
 
 /**
@@ -115,13 +120,13 @@ function place(button: Element, tip: HTMLElement): void {
   style.top = ''
   style.bottom = `${clientHeight - edges.top}px`
   // Measured from the window's start edge, where nothing narrows the bubble.
-  style.left = '0px'
+  style.left = '0'
+  const width = tip.offsetWidth
   if (tip.getBoundingClientRect().top < 0 && clientHeight - edges.bottom > edges.top) {
     dataset.side = 'bottom'
     style.top = `${edges.bottom}px`
     style.bottom = ''
   }
-  const width = tip.offsetWidth
   style.left = `${Math.max(0, Math.min(clientWidth - width, edges.left + (edges.width - width) / 2))}px`
 }
 
@@ -133,14 +138,14 @@ function open(
 ): void {
   // The app's Tooltip around the button shows its own bubble.
   if (button.closest('[data-tooltip-part]')) return
-  if (bubble === undefined) {
+  if (!bubble) {
     bubble = document.createElement('div')
     bubble.popover = 'manual'
-    bubble.setAttribute('aria-hidden', 'true')
+    bubble.ariaHidden = 'true'
   }
   bubble.className = className ?? ''
   bubble.textContent = label
-  if (owner === undefined) {
+  if (!owner) {
     document.body.append(bubble)
     bubble.showPopover?.()
   }
@@ -162,40 +167,36 @@ export function nameTip(
 ): () => void {
   if (!control || !label) return () => {}
   if (!listening) {
-    // Captured on the window, so Escape is read before any listener of the page's.
     listening = true
-    listen(
-      window,
-      {
-        keydown(event) {
-          const key = event as KeyboardEvent
-          moving = /^(Tab|Arrow|Home|End)/.test(key.key)
-          if (owner === undefined || key.key !== 'Escape' || key.isComposing) return
-          key.preventDefault()
-          key.stopPropagation()
-          close()
-        },
-        pointerdown() {
-          moving = false
-          close()
-        },
-        pointermove(event) {
-          if (owner && held && !over(event as PointerEvent)) close()
-        },
-        scroll(event) {
-          if (owner && (event.target as Node).contains(owner)) close()
-        },
+    listen(window, {
+      keydown(event) {
+        const { key, isComposing } = event as KeyboardEvent
+        moving = /^(Tab|Arrow|Home|End)/.test(key)
+        if (!owner || key !== 'Escape' || isComposing) return
+        event.preventDefault()
+        event.stopPropagation()
+        close()
       },
-      undefined,
-      true,
-    )
+      pointerdown() {
+        moving = false
+        close()
+      },
+      pointermove(event) {
+        if (owner && held && !over(event as PointerEvent)) close()
+      },
+      scroll(event) {
+        // `contains` is false for no owner.
+        if ((event.target as Node).contains(owner as Element)) close()
+      },
+    })
   }
   let timer: ReturnType<typeof setTimeout> | undefined
   const own = new AbortController()
   const mine = () => owner === control
   const show = (pointer: boolean) => open(control, label, className, pointer)
+  const wait = () => clearTimeout(timer)
   const dismiss = () => {
-    clearTimeout(timer)
+    wait()
     if (mine()) close()
   }
   listen(
@@ -203,11 +204,12 @@ export function nameTip(
     {
       pointerenter(event) {
         if ((event as PointerEvent).pointerType !== 'mouse' || mine()) return
-        if (owner !== undefined || Date.now() - closedAt < TOOLTIP_SKIP_DELAY_MS) show(true)
+        if (owner || Date.now() - closedAt < TOOLTIP_SKIP_DELAY_MS) show(true)
         else timer = setTimeout(show, TOOLTIP_DELAY_MS, true)
       },
-      pointerleave: () => clearTimeout(timer),
-      pointerdown: dismiss,
+      // A press closes any tip, through the window's listener, and ends the wait for this one.
+      pointerleave: wait,
+      pointerdown: wait,
       click: dismiss,
       blur: dismiss,
       focus() {
