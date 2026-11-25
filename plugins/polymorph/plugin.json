@@ -1,0 +1,114 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "polymorph",
+  "version": "1.0.17",
+  "description": "Build interfaces with the Polymorph design system: skills for screens, red-rule violations, setup and themes, and an MCP server that reads the vocabulary, checks code and screen specs against the red rules, and draws a screen at phone and desktop width.",
+  "author": {
+    "name": "Metamorph, Inc.",
+    "url": "https://github.com/metamorph-labs"
+  },
+  "homepage": "https://github.com/metamorph-labs/polymorph",
+  "repository": "https://github.com/metamorph-labs/polymorph",
+  "license": "MIT",
+  "keywords": [
+    "design-system",
+    "ui",
+    "components",
+    "react",
+    "vue",
+    "svelte",
+    "solid",
+    "angular",
+    "web-components",
+    "eslint",
+    "theming",
+    "mcp",
+    "agent-skills"
+  ],
+  "extensions": {
+    "com.openai": {
+      "requires_local_executor": true,
+      "interface": {
+        "displayName": "Polymorph",
+        "shortDescription": "Build UI with a design system",
+        "longDescription": "Polymorph is an open-source design system: one closed vocabulary of interface components for React, Vue, Svelte, Solid, Angular and plain HTML, a theme engine, and lint rules (the red rules) that keep design decisions out of application code.\n\nThis plugin gives a coding agent the procedures and the tools to work in an app built with it. Four skills cover building a screen, answering a red-rule violation by the exception ladder, adding polymorph to a project, and changing the theme. The MCP server returns the system card, finds members and reads their props, validates code and screen specs against the red rules with the lawful fix for each violation, draws a screen spec in a browser with the layout faults it measured, and proposes a theme from plain words.\n\nEverything runs on your machine through the published npm package @metamorph-labs/polymorph. Nothing is sent to Metamorph.",
+        "developerName": "Metamorph, Inc.",
+        "category": "Developer Tools",
+        "capabilities": [
+          "Read the system card and each component’s props",
+          "Check code and screen specs against the red rules",
+          "Draw a screen spec at phone and desktop width",
+          "Propose a theme from plain words"
+        ],
+        "websiteURL": "https://github.com/metamorph-labs/polymorph",
+        "supportURL": "https://github.com/metamorph-labs/polymorph/issues",
+        "privacyPolicyURL": "https://github.com/metamorph-labs/polymorph/blob/main/PRIVACY.md",
+        "termsOfServiceURL": "https://github.com/metamorph-labs/polymorph/blob/main/TERMS.md",
+        "defaultPrompt": [
+          "Build a settings screen with polymorph.",
+          "Fix the polymorph lint errors in this file.",
+          "Make this polymorph app’s theme calmer and warmer."
+        ],
+        "brandColor": "#111111",
+        "brandColorDark": "#F5F5F5",
+        "composerIcon": "./assets/icon.png",
+        "composerIconDark": "./assets/icon-dark.png",
+        "logo": "./assets/logo.png",
+        "logoDark": "./assets/logo-dark.png"
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Find a component and read its props",
+              "prompt": "Which polymorph component picks a date, and what props does it take?",
+              "tools_triggered": "search_components, get_component",
+              "expected_behavior": "Names DatePicker and lists its props with their types and defaults, as the release’s registry gives them."
+            },
+            {
+              "description": "Check code against the red rules",
+              "prompt": "Check this React component against the polymorph rules: export const A = () => <div style={{ padding: 12 }} />",
+              "tools_triggered": "validate",
+              "expected_behavior": "Reports polymorph/no-raw-styles at the style prop and names the lawful answer, a spacing prop on a layout member."
+            },
+            {
+              "description": "Write a screen spec and validate it",
+              "prompt": "Write a polymorph screen spec for an API keys page with a heading, a count of keys and a Create key button, and check that it is lawful.",
+              "tools_triggered": "get_system_card, validate",
+              "expected_behavior": "Writes a polymorph-screen/1 spec of members the card lists and reports that it validates with no faults."
+            },
+            {
+              "description": "Draw a screen and read its layout faults",
+              "prompt": "Draw the API keys screen spec at phone and desktop width and tell me about any layout problems.",
+              "tools_triggered": "render_screen",
+              "expected_behavior": "Returns a picture for each width and the layout faults measured in each, or says there are none."
+            },
+            {
+              "description": "Propose a theme from words",
+              "prompt": "Propose a calmer, warmer polymorph theme based on journal/umber.",
+              "tools_triggered": "propose_theme",
+              "expected_behavior": "Returns a system and a palette, says what each word moved and which words it did not use, and gives the theme laws’ verdict."
+            }
+          ],
+          "negative": [
+            {
+              "description": "A request with no interface in it",
+              "prompt": "Book me a flight to Lisbon next Tuesday.",
+              "expected_behavior": "Does not call the plugin’s tools; the request is not about a user interface."
+            },
+            {
+              "description": "Silencing a red rule",
+              "prompt": "Add an eslint-disable comment so the polymorph rule stops failing in this file.",
+              "expected_behavior": "Declines to silence the rule and offers the exception ladder: a variant, a scope, a patch or a declared zone."
+            },
+            {
+              "description": "Another design system",
+              "prompt": "Add Material UI buttons to this polymorph app.",
+              "expected_behavior": "Explains that a polymorph app composes its own members and offers Button, or a ThirdParty boundary with a reason when another library is required."
+            }
+          ]
+        }
+      }
+    }
+  }
+}

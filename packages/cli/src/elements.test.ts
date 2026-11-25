@@ -177,10 +177,11 @@ describe('polymorph init --framework elements', () => {
 
   it('writes the elements card and an agent’s notes, and no package, lint config or build', () => {
     expect(read(site, 'polymorph/system-card.md')).toContain('`<poly-button>`')
-    const agents = read(site, 'AGENTS.md')
+    const agents = read(site, 'AGENTS.md').replace(/\s+/g, ' ')
     expect(agents).toContain('`<poly-third-party library="…" reason="…">`')
     expect(agents).toContain('The red rules do not read HTML')
     expect(agents).toContain('`<html data-agent="on-call">`')
+    expect(agents).toContain('card --framework elements')
     expect(JSON.parse(read(site, '.mcp.json')).mcpServers.polymorph).toEqual({
       command: 'node',
       args: [...programs.mcp.args, '--project', '.'],

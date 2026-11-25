@@ -229,6 +229,8 @@ describe('the tarball', () => {
     }
     expect(manifest.name).toBe('@metamorph-labs/polymorph')
     expect(manifest.version).toBe(registry.version)
+    // The MCP Registry admits the package's `server.json` only when the package declares its name.
+    expect((manifest as { mcpName?: string }).mcpName).toBe('io.github.metamorph-labs/polymorph')
     expect(Object.keys(manifest.bin).sort()).toEqual(['polymorph', 'polymorph-mcp'])
     // The six polymorph packages are bundled, so the tools install with no other.
     expect(Object.keys(manifest.dependencies).filter((name) => name.includes('polymorph'))).toEqual(
@@ -411,9 +413,28 @@ describe('the installed CLI', () => {
       expect(manifest.devDependencies[NAME]).toBe(`^${registry.version}`)
     })
 
-    it('writes the checkout’s app, apart from where the server runs from', () => {
+    it('writes the checkout’s app, apart from where the tools and the server run from', () => {
       expect(filesBelow(app('published'))).toEqual(filesBelow(app('checkout')))
-      const ORIGIN_FILES = ['package.json', '.mcp.json', 'AGENTS.md']
+      // The files that name the tools: the manifest that lists them, the agent files whose
+      // commands run them (the checkout's by its path, the published ones with npx), and the
+      // record of those files' hashes.
+      const names = (file: string) =>
+        read('published', file).includes(`${NAME}@^${registry.version}`)
+      const ORIGIN_FILES = filesBelow(app('published')).filter(
+        (path) => path === 'package.json' || path === 'polymorph/agents.json' || names(path),
+      )
+      expect(
+        ORIGIN_FILES.filter((path) => !/^\.(claude|agents)\/skills\//.test(path)).sort(),
+      ).toEqual(
+        [
+          '.codex/config.toml',
+          '.cursor/mcp.json',
+          '.mcp.json',
+          'AGENTS.md',
+          'package.json',
+          'polymorph/agents.json',
+        ].sort(),
+      )
       for (const file of filesBelow(app('published')).filter(
         (path) => !ORIGIN_FILES.includes(path),
       )) {
@@ -460,6 +481,59 @@ describe('the installed CLI', () => {
         readFileSync(resolve(parents.published, 'page/.mcp.json'), 'utf8'),
       ) as { mcpServers: { polymorph: { command: string } } }
       expect(config.mcpServers.polymorph.command).toBe('npx')
+    })
+  })
+
+  describe('agents', () => {
+    const REPOSITORY = resolve(SCRATCH, 'agents-repository')
+
+    it('writes the agent files into a project, naming the tools with npx, and a rerun changes nothing', () => {
+      mkdirSync(REPOSITORY, { recursive: true })
+      writeFileSync(
+        resolve(REPOSITORY, 'package.json'),
+        `${JSON.stringify({ name: 'repository', private: true, scripts: { lint: 'eslint .' } }, null, 2)}\n`,
+      )
+      writeFileSync(resolve(REPOSITORY, 'AGENTS.md'), '# Ours\n')
+      const first = bin('polymorph', ['agents'], REPOSITORY)
+      expect(first.code, first.stdout + first.stderr).toBe(0)
+      const agents = readFileSync(resolve(REPOSITORY, 'AGENTS.md'), 'utf8')
+      expect(agents.startsWith('# Ours\n')).toBe(true)
+      expect(agents).toContain(`npx -y ${NAME}@^${registry.version} validate <file>`)
+      const skill = readFileSync(
+        resolve(REPOSITORY, '.agents/skills/polymorph-screen/SKILL.md'),
+        'utf8',
+      )
+      expect(skill).toContain(`npx -y ${NAME}@^${registry.version} card`)
+      const config = JSON.parse(readFileSync(resolve(REPOSITORY, '.mcp.json'), 'utf8')) as {
+        mcpServers: { polymorph: { command: string; args: string[] } }
+      }
+      expect(config.mcpServers.polymorph).toEqual({
+        command: 'npx',
+        args: ['-y', `${NAME}@^${registry.version}`, 'mcp', '--project', '.'],
+      })
+      for (const file of filesBelow(REPOSITORY)) {
+        const text = readFileSync(resolve(REPOSITORY, file), 'utf8')
+        expect(text, file).not.toContain(INSTALLED)
+        expect(text, file).not.toContain(ROOT)
+      }
+
+      const before = new Map(
+        filesBelow(REPOSITORY).map((file) => [
+          file,
+          readFileSync(resolve(REPOSITORY, file), 'utf8'),
+        ]),
+      )
+      const second = bin('polymorph', ['agents'], REPOSITORY)
+      expect(second.code, second.stdout).toBe(0)
+      expect(second.stdout).toContain('are as polymorph wrote them')
+      expect(
+        new Map(
+          filesBelow(REPOSITORY).map((file) => [
+            file,
+            readFileSync(resolve(REPOSITORY, file), 'utf8'),
+          ]),
+        ),
+      ).toEqual(before)
     })
   })
 

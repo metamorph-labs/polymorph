@@ -477,6 +477,33 @@ export const VERBS: readonly Verb[] = [
     tools: [],
     needs: 'server',
   },
+  {
+    name: 'agents',
+    group: 'agents',
+    summary:
+      'Write the files a coding agent reads: AGENTS.md, the skills, the MCP entries, the card.',
+    usage: 'polymorph agents [--harness <list>] [--framework <name>] [--force] [--dry-run]',
+    flags: [
+      {
+        name: 'harness',
+        value: 'list',
+        summary:
+          '`claude`, `codex`, `cursor`, `generic` or `all`, comma-separated; omitted, the ones ' +
+          'written before, or `claude,codex,cursor`',
+      },
+      {
+        name: 'framework',
+        value: 'name',
+        summary:
+          'the framework the texts and the card are for; omitted, the one written before, or the ' +
+          'project’s',
+      },
+      { name: 'force', summary: 'overwrite agent files you have edited' },
+      { name: 'dry-run', summary: 'print what would be written and write nothing' },
+    ],
+    tools: [],
+    needs: null,
+  },
 ]
 
 /**

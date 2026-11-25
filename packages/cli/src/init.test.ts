@@ -40,7 +40,11 @@ const registry: Registry = buildRegistry(ROOT)
 const programs = {
   mcp: { command: 'node', args: [resolve(ROOT, 'packages/mcp/bin/polymorph-mcp.js')] },
   emit: { command: process.execPath, args: [resolve(ROOT, 'packages/spec/bin/emit.js')] },
+  polymorph: { command: 'node', args: [resolve(ROOT, 'packages/cli/bin/polymorph.js')] },
 }
+
+/** A written text with its line breaks read as spaces, as a reader reads wrapped prose. */
+const flat = (text: string): string => text.replace(/\s+/g, ' ')
 
 const scratch = mkdtempSync(resolve(tmpdir(), 'polymorph-init-unit-'))
 afterAll(() => {
@@ -129,15 +133,17 @@ describe('the plan', () => {
   it('tells an agent that the MCP server’s path belongs to one machine', () => {
     const step = plan.steps.find((entry) => entry.path === 'AGENTS.md')
     if (step?.kind !== 'write') throw new Error('the plan writes no AGENTS.md')
-    expect(step.contents).toContain('The path is machine-specific.')
-    expect(step.contents).toContain('add `.mcp.json` to `.gitignore`')
+    expect(flat(step.contents)).toContain('by its path on that machine')
+    expect(flat(step.contents)).toContain("run `agents` again from that machine's checkout")
   })
 
-  it('tells an agent it can see a screen, and what that needs', () => {
+  it('tells an agent it can see a screen, with the checkout’s bin', () => {
     const step = plan.steps.find((entry) => entry.path === 'AGENTS.md')
     if (step?.kind !== 'write') throw new Error('the plan writes no AGENTS.md')
-    expect(step.contents).toContain('call `render_screen` with its spec')
-    expect(step.contents).toContain('`pnpm exec playwright install chromium`')
+    expect(step.contents).toContain(
+      `node ${resolve(ROOT, 'packages/cli/bin/polymorph.js')} render <spec.json> --system <name>`,
+    )
+    expect(step.contents).toContain('`pnpm lint` runs the same red rules')
   })
 
   it('tells an agent how another library’s component is hosted, in each framework', () => {
@@ -146,12 +152,12 @@ describe('the plan', () => {
         (entry) => entry.path === 'AGENTS.md',
       )
       if (written?.kind !== 'write') throw new Error('the plan writes no AGENTS.md')
-      expect(written.contents, framework).toContain(
+      expect(flat(written.contents), framework).toContain(
         framework === 'angular'
           ? '`<pm-third-party library="…" reason="…">`'
           : '`<ThirdParty library="…" reason="…">`',
       )
-      expect(written.contents, framework).toContain(
+      expect(flat(written.contents), framework).toContain(
         `\`useThemeValues()\` from \`@polymorph/${framework}\``,
       )
     }
@@ -174,6 +180,7 @@ describe('the plan from the published tools', () => {
   const published = {
     mcp: { command: 'npx', args: ['-y', `${TOOLS_NAME}@^${registry.version}`, 'mcp'] },
     emit: { command: process.execPath, args: ['/tools/emit.js'] },
+    polymorph: { command: 'npx', args: ['-y', `${TOOLS_NAME}@^${registry.version}`] },
   }
   const written = (target: ReturnType<typeof planInit>, path: string): string => {
     const step = target.steps.find((entry) => entry.path === path)
@@ -203,7 +210,7 @@ describe('the plan from the published tools', () => {
     expect(manifestOf(checkout).devDependencies[TOOLS_NAME]).toBeUndefined()
   })
 
-  it('tells an agent the server runs anywhere, and how render_screen gets its browser', () => {
+  it('tells an agent the server runs anywhere, and what a Windows client changes', () => {
     for (const framework of ['react', 'vue', 'svelte', 'solid', 'angular'] as const) {
       const plan = planInit(registry, {
         dir: '/x/app',
@@ -211,11 +218,14 @@ describe('the plan from the published tools', () => {
         origin: 'published',
         framework,
       })
-      const agents = written(plan, 'AGENTS.md')
-      expect(agents, framework).not.toContain('machine-specific')
+      const agents = flat(written(plan, 'AGENTS.md'))
       expect(agents, framework).not.toContain('polymorph checkout')
-      expect(agents, framework).toContain(`with \`npx\` from \`${TOOLS_NAME}\``)
-      expect(agents, framework).toContain('answers with the command that downloads it')
+      expect(agents, framework).toContain('as an MCP server with `npx`, naming no path')
+      expect(agents, framework).toContain('runs it as `cmd /c npx` with the same arguments')
+      expect(agents, framework).toContain(
+        `npx -y ${TOOLS_NAME}@^${registry.version} validate <file>`,
+      )
+      expect(agents, framework).toContain('`npm run lint` runs the same red rules')
     }
   })
 
@@ -248,7 +258,21 @@ describe('the plan from the published tools', () => {
     const different = [...contents(fromTools)]
       .filter(([path, step]) => checkoutFiles.get(path) !== step)
       .map(([path]) => path)
-    expect(different).toEqual(['package.json', '.mcp.json', 'AGENTS.md'])
+    // The files that name the tools or the server: the manifest that lists the published
+    // tools, the agent files, and the record of their hashes.
+    const agentFiles = fromTools.steps
+      .filter((step) => step.path.includes('/skills/') && JSON.stringify(step).includes(TOOLS_NAME))
+      .map((step) => step.path)
+    expect(agentFiles.length).toBeGreaterThan(0)
+    expect(different).toEqual([
+      'package.json',
+      'AGENTS.md',
+      ...agentFiles,
+      '.mcp.json',
+      '.cursor/mcp.json',
+      '.codex/config.toml',
+      'polymorph/agents.json',
+    ])
   })
 })
 

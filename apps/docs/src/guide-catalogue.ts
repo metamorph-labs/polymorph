@@ -118,6 +118,13 @@ export const GUIDES: readonly Guide[] = [
       'Let people write formatted text, mention things and comment on words, and store it all as plain JSON you own.',
   },
   {
+    slug: 'harnesses',
+    title: 'Coding agents and their harnesses',
+    group: 'agents',
+    description:
+      'Set up Claude Code, Codex, Cursor or any other coding agent to build with Polymorph, with one command or a plugin.',
+  },
+  {
     slug: 'agents',
     title: 'Agents',
     group: 'agents',
@@ -144,6 +151,13 @@ export const GUIDES: readonly Guide[] = [
     group: 'agents',
     description:
       'The lint rules that keep styling out of your app code, and the way out when you really do need an exception.',
+  },
+  {
+    slug: 'listing',
+    title: 'Listing the plugin and the server',
+    group: 'agents',
+    description:
+      'Where the plugin and the MCP server are listed for agents to find, and what each listing needs.',
   },
   {
     slug: 'architecture',

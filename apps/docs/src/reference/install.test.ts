@@ -3,10 +3,12 @@ import { resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
+import { publishedTools } from '../../../../packages/cli/src/init'
+import { mcpConfig } from '../../../../packages/cli/src/init-app'
 import { DEFAULT_SYSTEM } from '../../../../packages/cli/src/plan'
 import { REGISTRY } from '../registry'
 import { PUBLISHED_NAMES } from './facts'
-import { GUIDE, INIT_SYSTEM, QUICK_START, TARGETS } from './install'
+import { GUIDE, INIT_SYSTEM, MCP_CONFIG, QUICK_START, TARGETS } from './install'
 
 /**
  * The install page prints commands a reader runs outside this repository. These assertions hold
@@ -32,6 +34,13 @@ const snippets = TARGETS.flatMap((target) => [
 describe('the install page', () => {
   it('starts a new app with the system polymorph init uses', () => {
     expect(INIT_SYSTEM).toBe(DEFAULT_SYSTEM)
+  })
+
+  it('shows the MCP config the published tools write into .mcp.json', () => {
+    const tools = publishedTools(REGISTRY)
+    expect(JSON.parse(MCP_CONFIG)).toEqual(
+      JSON.parse(mcpConfig({ command: tools.command, args: [...tools.args, 'mcp'] })),
+    )
   })
 
   it('copies theme files that exist', () => {

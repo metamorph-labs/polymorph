@@ -4,10 +4,10 @@ import { PUBLISHED_NAMES, TOOLS_PACKAGE } from '@polymorph/registry'
  * What `polymorph init --framework <name>` writes for an app in Vue, Svelte,
  * Solid or Angular, where it differs from the React app: the framework and its
  * tools in the manifest, the scripts, the entry, the Vite config, the
- * container and the agent notes, and where the welcome screen is emitted.
- * Everything else (the theme, the stylesheet rules, the MCP config, the card
- * and the lint fragment for the framework) is written by `init.ts` from the
- * registry for every framework alike. Each framework's values are in its own module
+ * container, and where the welcome screen is emitted. Everything else (the
+ * theme, the stylesheet rules, the agent files and the lint fragment for the
+ * framework) is written by `init.ts` from the registry for every framework
+ * alike. Each framework's values are in its own module
  * (`init-vue.ts`, `init-svelte.ts`, `init-solid.ts`, `init-angular.ts`).
  */
 export interface FrameworkApp {
@@ -35,8 +35,6 @@ export interface FrameworkApp {
   welcome: string
   /** The container that owns the state and renders the welcome screen. */
   app: { path: string; contents: string }
-  /** `AGENTS.md`, which says where the MCP server runs from, and so depends on the origin. */
-  agents: (origin: Origin) => string
 }
 
 /**
@@ -64,35 +62,6 @@ export function mcpConfig(mcp: Program): string {
 
 /** The published tools, by the name `npx` runs them with. */
 export const TOOLS_NAME = PUBLISHED_NAMES[TOOLS_PACKAGE] as string
-
-/**
- * The bullet of `AGENTS.md` that says where the MCP server in `.mcp.json`
- * runs from. An app with a manifest lists the published tools as a dev
- * dependency, so `npx` runs that copy; a page with no build has no manifest,
- * and `npx` fetches the release that wrote the page.
- */
-export function serverNote(origin: Origin, manifest = true): string {
-  if (origin === 'checkout') {
-    return `- \`.mcp.json\` starts the server from the polymorph checkout that created this app, by its absolute
-  path on that machine. The path is machine-specific. On another machine, change it to that
-  machine's checkout. A team can instead add \`.mcp.json\` to \`.gitignore\` and keep one per person.`
-  }
-  return manifest
-    ? `- \`.mcp.json\` starts the server with \`npx\` from \`${TOOLS_NAME}\`, which \`package.json\` lists
-  as a dev dependency at the release that created this app. It names no path, so it works on any
-  machine that installs the app.`
-    : `- \`.mcp.json\` starts the server with \`npx\` from \`${TOOLS_NAME}\`, at the release that created
-  this page. It names no path, so it works on any machine with Node.`
-}
-
-/** The sentence of `AGENTS.md` that says what `render_screen` needs. */
-export function browserNote(origin: Origin): string {
-  return origin === 'checkout'
-    ? `It needs a browser, downloaded once in the polymorph checkout:
-  \`pnpm exec playwright install chromium\`.`
-    : `It needs a browser, downloaded once. When the browser is missing,
-  \`render_screen\` answers with the command that downloads it.`
-}
 
 /**
  * The welcome screen of an app in Vue, Svelte, Solid or Angular, as a spec:

@@ -1,14 +1,6 @@
 import { FRAMEWORK_FOUNDATION, FRAMEWORK_VOCABULARY } from '@polymorph/registry'
 
-import {
-  browserNote,
-  serverNote,
-  STATUS,
-  viteConfig,
-  type FrameworkApp,
-  type Origin,
-} from './init-app'
-import { ESLINT_FRAGMENT, STYLELINT_FRAGMENT } from './patch'
+import { STATUS, viteConfig, type FrameworkApp } from './init-app'
 
 /**
  * The files `polymorph init --framework angular` writes that differ from the
@@ -164,42 +156,6 @@ export class App {
 }
 `
 
-export const ANGULAR_AGENTS = (origin: Origin): string => `# Working in this app
-
-This app is built with polymorph, a closed component vocabulary with lint rules that enforce it,
-in Angular.
-
-- The vocabulary is \`${FRAMEWORK_VOCABULARY.angular}\`. Screens compose its members and bind content to them.
-  A member is a standalone component: list it in the component's \`imports\` and write it by its
-  selector (\`<pm-button>\`).
-- The contract is \`polymorph/system-card.md\`: every member, its props, the token families and the
-  rules. A member or prop that is not in the card does not exist. A prop keeps its React name and
-  type as an input (\`label="Save"\`, \`[gap]="4"\`; a boolean is always bound, \`[iconOnly]="true"\`),
-  a callback \`onFoo\` is the output \`foo\` (\`(click)="save()"\`), a node-typed prop is content marked
-  \`slot="foo"\` or an \`ng-container\` with \`ngProjectAs="[slot=foo]"\`, and \`children\` is the
-  content between the member's tags.
-- The MCP server in \`.mcp.json\` is the tool for both: \`get_system_card\` with \`framework: "angular"\`
-  returns the card, and \`validate\` with \`framework: "angular"\` checks a component, its inline
-  template included, against the red rules and names the lawful fix for each violation.
-${serverNote(origin)}
-- Screens are written as specs under \`src/screens/*.json\` and emitted to standalone components
-  (\`emit_screen\` with a \`.ts\` path). An emitted screen holds no state and no logic: its inputs are
-  signal inputs, callbacks included. A hand-written container, such as \`src/app.ts\`, renders it and
-  owns both. To change an emitted screen, change its spec and emit it again.
-- To see a screen, call \`render_screen\` with its spec. It draws the screen in a browser at a
-  phone and a desktop width, and returns the pictures with the layout faults it measured.
-  ${browserNote(origin)}
-- Application code may not write styles or raw controls: no CSS files, no \`styles\` or
-  \`styleUrl\`, no \`class\` or \`style\` on a member, no raw \`<button>\` or \`<input>\`, no Angular
-  animations. The red rules in \`${ESLINT_FRAGMENT}\` and \`${STYLELINT_FRAGMENT}\` read the
-  templates too, and \`pnpm lint\` runs them.
-- Another library's component (a map, a rich-text editor, a data grid) goes inside
-  \`<pm-third-party library="…" reason="…">\`, in the file that imports it. The card says what the
-  boundary allows. \`useThemeValues()\` from \`@polymorph/angular\` gives the theme's values to a
-  library that takes them in JavaScript.
-- The theme is the two JSON files in \`src/theme/\`, compiled at build time by the Vite plugin.
-`
-
 /** The Angular app, as `planInit` writes it. */
 export const ANGULAR_INIT: FrameworkApp = {
   name: 'Angular',
@@ -227,5 +183,4 @@ export const ANGULAR_INIT: FrameworkApp = {
     ),
   welcome: 'src/screens/welcome.ts',
   app: { path: 'src/app.ts', contents: ANGULAR_APP },
-  agents: ANGULAR_AGENTS,
 }

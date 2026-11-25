@@ -54,6 +54,7 @@ pnpm gate:no-build           # the static-page check: the elements' no-build fil
 pnpm inventory               # declared exceptions; non-zero on an undeclared one
 pnpm registry                # regenerate registry/ and the system card
 pnpm shells                  # regenerate the Vue, Svelte, Solid and Angular members and the elements from their descriptions
+pnpm agents                  # regenerate the plugin for coding agents, its marketplaces and server.json (--check; --icons)
 pnpm native:contracts        # regenerate the Swift and Kotlin contracts (--check: fail if stale)
 pnpm emit:native             # regenerate the native token sources (--check: fail if stale)
 pnpm emit:examples           # regenerate the native example screens from their specs (--check)
@@ -160,6 +161,11 @@ uploads a tagged release to npmjs.com. Browser tests need
     `pnpm emit:native`.
   - The native example screens (`InboxView.swift`, `NewTicketView.swift`, `InboxScreen.kt`):
     `pnpm emit:examples`.
+  - The plugin for coding agents (`plugins/polymorph/`), its two marketplaces
+    (`.claude-plugin/marketplace.json`, `.agents/plugins/marketplace.json`) and
+    `packages/tools/server.json`: `pnpm agents`, from `packages/cli/src/plugin.ts` and the skill
+    texts in `packages/cli/src/skills.ts`. The files name the release, so a version bump needs
+    `pnpm agents` too.
 - **Other repositories install these packages** (`@polymorph/engine`, `@polymorph/rules`,
   `@polymorph/recipes`, and the React, Vue, Svelte, Solid, Angular and elements foundations and
   vocabularies, from GitHub Packages), copy the elements' no-build files with
@@ -238,4 +244,6 @@ uploads a tagged release to npmjs.com. Browser tests need
 | How does a product draw a screen a model writes while it runs? | [docs/run-time-screens.md](docs/run-time-screens.md) |
 | How do I let a person write formatted text, mention things or comment on words? | [docs/rich-text.md](docs/rich-text.md), then `design/components/rich-text-input.md` |
 | CLI, MCP, registry, spec DSL, workbench | [docs/tooling.md](docs/tooling.md) |
+| How does Claude Code, Codex or Cursor use polymorph in another repository? | [docs/harnesses.md](docs/harnesses.md), then `polymorph agents` |
+| Where are the plugin and the MCP server listed, and what does each listing need? | [docs/listing.md](docs/listing.md) |
 | Native platforms: tokens, members, the screen contract, their laws | [docs/native.md](docs/native.md), then `design/native/screen-contract.md` |

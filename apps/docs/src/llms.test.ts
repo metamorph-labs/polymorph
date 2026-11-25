@@ -12,6 +12,7 @@ import {
   QUICK_START,
   TARGETS,
   THEME_STEPS,
+  AGENT_SETUP,
   TOOLS,
 } from './reference/install'
 import { REGISTRY } from './registry'
@@ -140,6 +141,7 @@ describe('the install page names the same bins', () => {
     MCP_CONFIG,
     OWN_THE_CODE.code,
     ...THEME_STEPS.map((step) => step.code),
+    ...AGENT_SETUP.map((step) => step.code),
     ...TARGETS.flatMap((target) => [
       ...(target.create === undefined ? [] : [target.create.code]),
       ...target.add.map((step) => step.code),
@@ -154,6 +156,7 @@ describe('the install page names the same bins', () => {
     expect(MCP_CONFIG).toContain(`"${TOOLS_NAME}@^${REGISTRY.version}", "mcp"`)
     expect(commands).toContain(`${TOOLS} add`)
     expect(commands).toContain(`${TOOLS} init my-app`)
+    expect(commands).toContain(`${TOOLS} agents`)
     expect(commands).not.toMatch(/^polymorph(-mcp)?\b/m)
     expect(commands).not.toMatch(/npx (-y )?polymorph\b/)
     expect(commands).not.toContain('node ../polymorph/')

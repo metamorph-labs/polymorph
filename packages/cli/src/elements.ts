@@ -1,10 +1,11 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, posix, resolve } from 'node:path'
 
-import { renderSystemCard, type Registry, type RegistrySystem } from '@polymorph/registry'
+import type { Registry, RegistrySystem } from '@polymorph/registry'
 import { admitTheme } from '@polymorph/theme'
 
-import { mcpConfig, serverNote, type Origin, type Program } from './init-app'
+import { DEFAULT_HARNESSES, freshRecord, planAgents, renderRecord, AGENT_RECORD } from './agents'
+import type { Origin, Program } from './init-app'
 import { digest, MANIFEST_FILE, readManifest, writeManifest, type Manifest } from './manifest'
 import { injectPrepaint } from './patch'
 import { ELEMENTS_DIR, ELEMENTS_THEME_SHEET, planInstall } from './plan'
@@ -219,35 +220,6 @@ export interface ElementsInitPlan {
   steps: ElementsInitStep[]
 }
 
-/** The page's notes for an agent, written as `AGENTS.md`. */
-function agentNotes(dir: string, page: string, origin: Origin): string {
-  return `# Working in this app
-
-This app is built with polymorph, a closed component vocabulary, as custom elements on pages with
-no build.
-
-- Every member is an element, \`<poly-button>\`. \`${page}\` loads them: the two stylesheets and the
-  prepaint script in \`<head>\`, then \`${dir}/polymorph.js\`, which defines every \`poly-*\` tag.
-- The contract is \`polymorph/system-card.md\`: every member, its props, the token families and the
-  rules. A member or prop that is not in the card does not exist.
-- A prop is the member's attribute in kebab case (\`icon-only\`); data is a JSON attribute; a node
-  prop is a child with \`slot="name"\`; \`onFoo\` is the event \`poly-foo\`; a function is a property
-  set from script.
-- The MCP server in \`.mcp.json\` serves the card (\`get_system_card\` with \`framework: "elements"\`).
-${serverNote(origin, false)}
-- The red rules do not read HTML, so nothing checks a page. Write no \`class\` or \`style\` on a
-  member and no raw \`<button>\` or \`<input>\`: a member's look is the theme's.
-- Another library's component (a map, a rich-text editor, a data grid) goes inside
-  \`<poly-third-party library="…" reason="…">\`, and takes the theme as \`var(--pm-…)\`.
-- The theme is \`${dir}/${ELEMENTS_THEME_SHEET}\`, compiled from a catalogue system and its palette.
-  \`polymorph add theme:<system>\` adds a system to it, and \`<html data-system data-palette>\`
-  chooses the one a page wears. \`polymorph update\` copies the files again when polymorph changes.
-- \`<html data-agent="on-call">\` registers the page's members with the browser's WebMCP API as
-  tools an agent in the browser calls, and loads the agent bridge on the first call; \`"eager"\`
-  loads it at once. No page states it until its owner decides an agent may operate that page.
-`
-}
-
 /** The example page: the stylesheets, the prepaint script and the elements, then a few members. */
 function examplePage(name: string, files: string, system: string, palette: string): string {
   return `<!doctype html>
@@ -297,6 +269,8 @@ export function planElementsInit(
     system: RegistrySystem
     staticDir: string
     mcp: Program
+    /** The CLI as the agent files name it: `toolsOf` in `init.ts`. */
+    tools: Program
     /** A checkout when omitted. */
     origin?: Origin
   },
@@ -314,6 +288,15 @@ export function planElementsInit(
   const files = installFiles(registry, source, dir, [system.name], [system.defaultPalette])
   const manifest = manifestOf(registry, dir, [system.name], [system.defaultPalette], files)
   const json = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`
+  // A page has no package.json, so no lint script: the red rules do not read HTML.
+  const agents = planAgents(registry, {
+    harnesses: DEFAULT_HARNESSES,
+    framework: 'elements',
+    origin: options.origin ?? 'checkout',
+    tools: options.tools,
+    mcp: options.mcp,
+    lint: null,
+  })
 
   return {
     system,
@@ -333,18 +316,13 @@ export function planElementsInit(
           registry.theme.prepaint,
         ),
       },
-      {
+      // The agent files `polymorph agents` writes, for the harnesses it writes by default.
+      ...agents.steps.map((step): ElementsInitStep => ({
         kind: 'write',
-        path: 'polymorph/system-card.md',
-        contents: renderSystemCard(registry, { framework: 'elements' }),
-      },
-      { kind: 'write', path: '.mcp.json', contents: mcpConfig(options.mcp) },
-      {
-        kind: 'write',
-        path: 'AGENTS.md',
-        contents: agentNotes(dir, page, options.origin ?? 'checkout'),
-      },
-      { kind: 'write', path: 'CLAUDE.md', contents: '@AGENTS.md\n' },
+        path: step.path,
+        contents: step.contents,
+      })),
+      { kind: 'write', path: AGENT_RECORD, contents: renderRecord(freshRecord(registry, agents)) },
       // Written in the same shape `writeManifest` writes, so a later install reads it back.
       { kind: 'write', path: MANIFEST_FILE, contents: json(ordered(manifest)) },
     ],

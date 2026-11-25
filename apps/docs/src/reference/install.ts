@@ -48,7 +48,8 @@ export const INIT_WRITES: readonly { title: string; description: string; file: s
   },
   {
     title: 'Your agent, connected',
-    description: 'The MCP server, the system card and an AGENTS.md for your coding agent.',
+    description:
+      'The MCP server, four skills, the system card and an AGENTS.md for Claude Code, Codex and Cursor.',
     file: '.mcp.json',
   },
   {
@@ -505,12 +506,32 @@ export const THEME_STEPS: readonly Snippet[] = [
   },
 ]
 
-/** The mcpServers entry most clients read (`docs/tooling.md`), as `polymorph init` writes it. */
+/**
+ * Setting up a coding agent in an app that already uses Polymorph: the agent files `init` writes,
+ * from `polymorph agents`, or the plugin from this repository's marketplace (`docs/harnesses.md`).
+ */
+export const AGENT_SETUP: readonly Snippet[] = [
+  {
+    title: 'Set up your agent’s files',
+    help: 'Adds a short section to AGENTS.md, four skills and the MCP server for Claude Code, Codex and Cursor. Run it again after you upgrade: anything you’ve edited stays yours.',
+    code: `${TOOLS} agents`,
+  },
+  {
+    title: 'Or add the plugin',
+    help: 'Claude Code installs the skills and the server in one go. In Codex, add the same repository with codex plugin marketplace add, then pick Polymorph under /plugins.',
+    code: 'claude plugin marketplace add metamorph-labs/polymorph\nclaude plugin install polymorph@metamorph-labs',
+  },
+]
+
+/**
+ * The mcpServers entry most clients read (`docs/tooling.md`), as `polymorph init` and
+ * `polymorph agents` write it into `.mcp.json`. `install.test.ts` holds it to the CLI's own.
+ */
 export const MCP_CONFIG = `{
   "mcpServers": {
     "polymorph": {
       "command": "npx",
-      "args": ["-y", "${TOOLS_NAME}@^${RELEASE}", "mcp"]
+      "args": ["-y", "${TOOLS_NAME}@^${RELEASE}", "mcp", "--project", "."]
     }
   }
 }`

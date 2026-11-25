@@ -59,6 +59,7 @@ node ../polymorph/packages/cli/bin/polymorph.js init my-app
 | `polymorph emit <spec.json> <out>` | Compiles a screen spec to a file in the project (`emit_screen`) |
 | `polymorph theme propose "<intent>"` | A checked system and palette from plain words (`propose_theme`); `--save` writes them (`save_theme`) |
 | `polymorph mcp [--project <path>] [--read-only]` | Starts the MCP server over stdio, as `polymorph-mcp` does |
+| `polymorph agents [--harness <list>] [--framework <name>] [--force] [--dry-run]` | Writes the files a coding agent reads: a marked block in `AGENTS.md`, a `CLAUDE.md` that includes it, the four skills in `.claude/skills/` and `.agents/skills/`, the MCP entries for Claude Code, Cursor and Codex, and the card, recorded in `polymorph/agents.json` so a rerun keeps what was edited. `planAgents` (`src/agents.ts`) plans them as data, `init` writes the same plan, and `pluginFiles` (`src/plugin.ts`) turns it into the repository's plugin |
 
 Flags: `--dir <path>` (where vendored source lands, default `src/polymorph`), `--dry-run` (print
 the plan, write nothing), `--force` (overwrite files you have edited), `--out <path>` (where
@@ -89,8 +90,9 @@ to recompile.
 ## Entry point
 
 `main(cli, argv)` takes everything from its entry point: the two roots, the registry, where to
-print, where it runs from (`origin`: `checkout` or `published`), the programs `init` wires a new
-app to, as commands (`InitPrograms`), and two functions this package cannot build because
+print, where it runs from (`origin`: `checkout` or `published`), the programs `init` and `agents`
+wire a project to, as commands (`InitPrograms`: the MCP server, the screen emitter, and the CLI as
+the agent files name it), and two functions this package cannot build because
 `@polymorph/mcp` depends on it. `cli.tools` calls one MCP tool by name in this process
 (`toolCaller` from `@polymorph/mcp`), and `cli.serve` starts the server for `mcp` (`serveStdio`).
 A verb whose function is absent refuses with one line. `bin/polymorph.js` builds both from

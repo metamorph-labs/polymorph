@@ -1,5 +1,19 @@
-import type { Registry } from '@polymorph/registry'
+import { FRAMEWORKS, type Framework, type Registry } from '@polymorph/registry'
 
+import {
+  agentLines,
+  AgentRecordError,
+  applyAgents,
+  DEFAULT_HARNESSES,
+  harnessNames,
+  HarnessError,
+  orderHarnesses,
+  planAgents,
+  projectFramework,
+  projectLint,
+  readAgentRecord,
+  readHarnesses,
+} from './agents'
 import { applyPlan } from './apply'
 import { check, CheckError, checkLines, type Verify } from './check'
 import { addElements, NoBuildFilesError, updateElements, type ElementsResult } from './elements'
@@ -7,7 +21,9 @@ import {
   checkoutHolding,
   initCommand,
   InitError,
+  packageManagerOf,
   TOOLS_NAME,
+  toolsOf,
   type InitPrograms,
   type Origin,
 } from './init'
@@ -17,6 +33,7 @@ import { PatchError } from './patch'
 import {
   FrameworkMismatchError,
   installFramework,
+  KNOWN_FRAMEWORKS,
   UnknownFrameworkError,
   UnshippedMemberError,
 } from './vue'
@@ -207,6 +224,8 @@ export function run(cli: Cli, argv: string[]): Outcome {
         return update(cli, flags)
       case 'theme':
         return themeCommand(cli, items, flags)
+      case 'agents':
+        return agents(cli, items, flags)
       case 'check':
         // Linting is asynchronous and this function is not; `main` runs it.
         cli.out('polymorph check runs through `main`, which waits for the linters')
@@ -243,7 +262,8 @@ export function run(cli: Cli, argv: string[]): Outcome {
       error instanceof UnshippedMemberError ||
       error instanceof FrameworkMismatchError ||
       error instanceof UnknownFrameworkError ||
-      error instanceof NoBuildFilesError
+      error instanceof NoBuildFilesError ||
+      error instanceof AgentRecordError
     ) {
       cli.out(error.message)
       return { code: 1 }
@@ -258,6 +278,7 @@ interface Flags {
   system?: string
   framework?: string
   registry?: string
+  harness?: string
   install: boolean
   force: boolean
   dryRun: boolean
@@ -283,6 +304,9 @@ function parse(argv: string[]): { flags: Flags; rest: string[] } {
     } else if (argument === '--registry') {
       index += 1
       flags.registry = argv[index]
+    } else if (argument === '--harness') {
+      index += 1
+      flags.harness = argv[index]
     } else if (argument === '--dir') {
       index += 1
       flags.dir = argv[index]
@@ -466,6 +490,98 @@ async function checkCommand(
   else for (const line of checkLines(cli.registry, report)) cli.out(line)
   return { code: report.ok ? 0 : 1 }
 }
+
+/* -------------------------------------------------------------------------- */
+/* agents                                                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * `polymorph agents`: the files a coding agent reads, merged into the project
+ * (`agents.ts`). The harnesses are the ones named, added to the ones written
+ * before, so a rerun never drops a harness's files; with none named and none
+ * written, the default three. The framework is the one named, else the one
+ * written before, else the project's.
+ */
+function agents(cli: Cli, items: string[], flags: Flags): Outcome {
+  if (items.length > 0) {
+    cli.out(`polymorph agents: it takes no argument "${items[0]}" — ${AGENTS_USAGE}`)
+    return { code: 2 }
+  }
+  if (!cli.programs) {
+    cli.out(
+      'polymorph agents: needs the MCP server the files name — run it through `bin/polymorph.js` ' +
+        `or \`npx -y ${TOOLS_NAME}\``,
+    )
+    return { code: 1 }
+  }
+  if (
+    flags.framework !== undefined &&
+    !(FRAMEWORKS as readonly string[]).includes(flags.framework)
+  ) {
+    cli.out(
+      `polymorph agents: there is no framework called "${flags.framework}" — ${KNOWN_FRAMEWORKS}`,
+    )
+    return { code: 2 }
+  }
+  let asked
+  try {
+    asked = flags.harness === undefined ? [] : readHarnesses(flags.harness)
+  } catch (error) {
+    if (error instanceof HarnessError) {
+      cli.out(error.message)
+      return { code: 2 }
+    }
+    throw error
+  }
+  // A dry run writes nothing, so it may show a plan anywhere, this checkout included.
+  if (!flags.dryRun) {
+    const checkout = checkoutHolding(cli.root, cli.source, cli.registry)
+    if (checkout !== null) {
+      cli.out(
+        `polymorph agents: ${cli.root} is in a checkout of polymorph (${checkout}), whose own ` +
+          'agent files are its own — run it in the repository that uses polymorph',
+      )
+      return { code: 1 }
+    }
+  }
+
+  const origin = cli.origin ?? 'checkout'
+  const previous = readAgentRecord(cli.root)
+  const harnesses = orderHarnesses([
+    ...(previous?.harnesses ?? []),
+    ...asked,
+    ...(asked.length === 0 && (previous?.harnesses.length ?? 0) === 0 ? DEFAULT_HARNESSES : []),
+  ])
+  const framework =
+    (flags.framework as Framework | undefined) ?? previous?.framework ?? projectFramework(cli.root)
+  const plan = planAgents(cli.registry, {
+    harnesses,
+    framework,
+    origin,
+    tools: toolsOf(cli.programs, cli.registry),
+    mcp: cli.programs.mcp,
+    lint: projectLint(cli.root, packageManagerOf(process.env, origin)),
+  })
+  const result = applyAgents(cli.root, cli.registry, plan, previous, {
+    force: flags.force,
+    dryRun: flags.dryRun,
+  })
+
+  cli.out(
+    `polymorph ${cli.registry.version} → agent files for ${harnessNames(plan.harnesses)} ` +
+      `(${framework})${flags.dryRun ? ', a dry run that writes nothing' : ''}`,
+  )
+  for (const line of agentLines(result, plan, flags.dryRun)) cli.out(line)
+  const kept = result.outcomes.filter((outcome) => outcome.action === 'kept').length
+  if (kept > 0 && !flags.force) {
+    cli.out('')
+    cli.out('  The files kept are yours. `--force` replaces them with polymorph’s.')
+  }
+  return { code: result.outcomes.some((outcome) => outcome.action === 'refused') ? 1 : 0 }
+}
+
+const AGENTS_USAGE =
+  '`polymorph agents [--harness <list>] [--framework <name>] [--force] [--dry-run]`'
 
 /* -------------------------------------------------------------------------- */
 /* update                                                                     */

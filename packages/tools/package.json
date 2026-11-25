@@ -15,6 +15,7 @@
     "ui"
   ],
   "private": true,
+  "mcpName": "io.github.metamorph-labs/polymorph",
   "type": "module",
   "bin": {
     "polymorph": "./dist/polymorph.js",

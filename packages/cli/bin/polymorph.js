@@ -70,12 +70,14 @@ const { code } = await main(
     registry,
     out: (line) => console.log(line),
     err: (line) => console.error(line),
-    // What `polymorph init` wires a new app to: this checkout's MCP server,
-    // which its `.mcp.json` launches by its path on this machine, and the
-    // screen emitter it runs once, with the node that runs this file.
+    // What `polymorph init` and `agents` wire a project to: this checkout's MCP
+    // server, which its `.mcp.json` launches by its path on this machine, and
+    // the screen emitter `init` runs once, with the node that runs this file.
     programs: {
       mcp: { command: 'node', args: [resolve(SOURCE, 'packages/mcp/bin/polymorph-mcp.js')] },
       emit: { command: process.execPath, args: [resolve(SOURCE, 'packages/spec/bin/emit.js')] },
+      // What the agent files `init` and `agents` write name before a verb: this bin.
+      polymorph: { command: 'node', args: [resolve(SOURCE, 'packages/cli/bin/polymorph.js')] },
     },
     origin: 'checkout',
     tools,

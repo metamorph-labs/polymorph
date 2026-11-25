@@ -28,6 +28,7 @@ A few terms used throughout:
 | `pnpm mcp` | The MCP server, over stdio | `packages/mcp` |
 | `npx -y @metamorph-labs/polymorph@<range> <command>` | The CLI and the MCP server (`mcp`) from the published package, in any repository, with no checkout | `packages/tools` |
 | `pnpm emit <spec.json> [out.tsx \| out.vue \| out.svelte \| out.ts \| out.swift \| out.kt]` | Validates a screen spec and emits TSX (Solid's with `--framework solid`), a Vue or Svelte single-file component, an Angular standalone component, SwiftUI for a spec for `ios`, or Jetpack Compose for a spec for `android` | `packages/spec` |
+| `pnpm agents` | Writes the plugin for coding agents (`plugins/polymorph/`), its marketplaces and `packages/tools/server.json`; `--check` compares, `--icons` draws the icons | `scripts/agents.mjs` |
 | `pnpm emit:theme <system> <palette> [out.css]` | Emits one pairing's stylesheet, for inspection | `scripts/emit-theme.mjs` |
 | `pnpm dev` | The workbench: studio, composer, components, pages, mood board, Relay | `apps/workbench` |
 | `pnpm dev:docs` | The docs site | `apps/docs` |
@@ -323,6 +324,7 @@ Themes
 
 Agents
   polymorph mcp                       Start the MCP server over stdio, for an agent’s client.
+  polymorph agents                    Write the files a coding agent reads: AGENTS.md, the skills, the MCP entries, the card.
 ```
 
 This is the list `polymorph help` prints, from the verb list `@polymorph/cli` exports (`VERBS`,
@@ -353,10 +355,12 @@ the same job. `polymorph <verb> --help` prints one verb's usage and flags.
 | `--based-on <system>/<palette>` | `theme propose` | Where the proposal starts; either half may be left out |
 | `--save`, `--overwrite` | `theme propose` | Save the proposal; replace files already saved under its names |
 | `--project <path>`, `--read-only` | `mcp` | As for `polymorph-mcp`: the project the write tools write into, or none |
+| `--harness <list>` | `agents` | `claude`, `codex`, `cursor`, `generic` or `all`, comma-separated, added to the harnesses written before; with none and none written before, `claude,codex,cursor` |
+| `--framework <name>` | `agents` | The framework the agent texts and the card are for; omitted, the one written before, else the project's |
 | `--json` | `check` and every verb that asks a tool | Print the report, or the tool's answer, as JSON |
 | `--no-install` | `init` | Write the app and do not install it |
-| `--force` | `add`, `update` | Overwrite files you have edited |
-| `--dry-run` | `add`, `init` | Print the plan and write nothing |
+| `--force` | `add`, `update`, `agents` | Overwrite files you have edited |
+| `--dry-run` | `add`, `init`, `agents` | Print the plan and write nothing |
 | `--dry-run` | `fix` | Print the fixed code and write nothing |
 
 ### `init`
@@ -373,9 +377,10 @@ allowed) and outside any checkout of polymorph. In order, it writes `package.jso
 that names `NODE_AUTH_TOKEN` and holds no token when the app installs from GitHub Packages, the
 Vite app with the theme plugin, the system
 and palette JSON under `src/theme/` (copied from the files the registry names), the two lint
-fragments and the configs that spread them, an `.mcp.json` that runs this checkout's MCP server
-against the app, the system card under `polymorph/`, an `AGENTS.md` (and a `CLAUDE.md` that
-includes it), and a first screen: `src/screens/welcome.json`, the `Welcome.tsx` the screen
+fragments and the configs that spread them, the agent files `polymorph agents` writes (an
+`AGENTS.md` block and a `CLAUDE.md` that includes it, the skills, the MCP entries with an
+`.mcp.json` that runs this checkout's MCP server against the app, and the system card under
+`polymorph/`), and a first screen: `src/screens/welcome.json`, the `Welcome.tsx` the screen
 emitter writes from it, and the `App.tsx` container that renders it. The emitter runs as a
 separate process in the new app, so the spec is validated against the registry and the output is
 formatted with the app's Prettier settings. [consuming.md](consuming.md#one-command) lists each
@@ -386,17 +391,20 @@ because the app imports every member from `@polymorph/react-ui`, so `eslint --fi
 text-only `<button>` as `Button` and imports it from there. It has no block for a vendored tree,
 because the app has none.
 
-What `init` writes for an agent depends on where it runs from (the CLI's `origin`):
+`init` writes the agent files `polymorph agents` writes for its default harnesses (Claude Code,
+Codex and Cursor), with the record of their hashes, so a later `agents` treats them as its own.
+What they say depends on where `init` runs from (the CLI's `origin`):
 
 - **From the published package**, `.mcp.json` runs the server with
   `npx -y @metamorph-labs/polymorph@^<version> mcp --project .`, which names no path and works on
-  any machine, and `package.json` lists `@metamorph-labs/polymorph` as a dev dependency at the
-  release, so `npx` runs the installed copy. `AGENTS.md` says so, and says that `render_screen`
-  answers with the command that downloads its browser when the browser is missing.
+  any machine, and `package.json` lists `@metamorph-labs/polymorph` as a dev dependency at a caret
+  range on the release, so `npx` runs the installed copy. The skills and `AGENTS.md` name the CLI
+  the same way, and `AGENTS.md` says what a client on native Windows changes.
 - **From a checkout**, `.mcp.json` names the MCP server by its absolute path in the checkout that
-  ran `init`, because the server runs from that checkout. The path is machine-specific. A team
-  changes it on each machine or adds `.mcp.json` to `.gitignore`, and the written `AGENTS.md`
-  says so. The app does not list the published package.
+  ran `init`, because the server runs from that checkout, and the skills and `AGENTS.md` name the
+  checkout's CLI bin the same way. The path is machine-specific: `AGENTS.md` says to run `agents`
+  again on another machine, or a team adds the files to `.gitignore`. The app does not list the
+  published package.
 
 The rest of the app is the same from either: `packages/tools/packaging.test.ts` writes one with
 each and compares every other file.
@@ -472,8 +480,8 @@ files a page loads the elements from (`polymorph.js`, its chunks, `polymorph-all
 `polymorph.css`, `prepaint.js`, `themes/`) from the directory the registry names
 (`vendor.frameworks.elements.noBuild`) into the app's static directory (`public/polymorph/`, or
 `--dir`), compiles `theme.css` there from the system's and its palette's documents, and writes an
-example page (`public/index.html`), the elements card, `.mcp.json`, `AGENTS.md` and a
-`polymorph.json` that records every copy with its hash. It writes no `package.json` and installs
+example page (`public/index.html`), the agent files `polymorph agents` writes (with the elements
+card), and a `polymorph.json` that records every copy with its hash. It writes no `package.json` and installs
 nothing. The files are a build output, so a checkout that has not run `pnpm build:packages` is
 refused with that command, before anything is written. The published package ships them, so
 `init` copies them from there.
@@ -825,7 +833,18 @@ table does not have, and the verdict. `--save` then calls `save_theme` with the 
 into `--dir` (default `design`), and `--overwrite` replaces files already saved under the names.
 It exits 1 when the proposal is not lawful or the save wrote nothing.
 
-### Agents: `mcp`
+### Agents: `mcp` and `agents`
+
+`polymorph agents [--harness <list>] [--framework <name>] [--force] [--dry-run]` writes the files a
+coding agent reads into the project it runs in: a marked block in `AGENTS.md`, a `CLAUDE.md` that
+includes it, the four skills in `.claude/skills/` and `.agents/skills/`, the MCP server's entry for
+Claude Code (`.mcp.json`), Cursor (`.cursor/mcp.json`) and Codex (`.codex/config.toml`), and the
+system card. `planAgents` (`packages/cli/src/agents.ts`) returns them as data, from the registry and
+the verb list, and `init` writes the same plan into a new app. `polymorph/agents.json` records the
+hash of each part written, so a rerun brings an unedited part up to date, keeps an edited one and
+names it, and removes one a release no longer writes; `--force` overwrites, and `--dry-run` reports
+and writes nothing. Like `add`, it refuses a checkout of polymorph and writes nothing outside the
+project. [harnesses.md](harnesses.md) lists every file, who reads it, and how a rerun treats it.
 
 `polymorph mcp [--project <path>] [--read-only]` starts the MCP server over stdio, with the flags
 `polymorph-mcp` takes, read by the same parser (`serverFlags`), and through the same function

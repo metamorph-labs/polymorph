@@ -266,10 +266,10 @@ describe('polymorph init --framework angular', () => {
     expect(written(plan, 'polymorph/system-card.md')).toBe(
       renderSystemCard(registry, { framework: 'angular' }),
     )
-    const agents = written(plan, 'AGENTS.md')
+    const agents = written(plan, 'AGENTS.md').replace(/\s+/g, ' ')
     expect(agents).toContain(`\`${FRAMEWORK_VOCABULARY.angular}\``)
-    expect(agents).toContain('framework: "angular"')
-    expect(agents).toContain('`render_screen`')
+    expect(agents).toContain('card --framework angular')
+    expect(agents).toContain(' render <spec.json> --system <name>')
     expect(written(plan, '.mcp.json')).toContain('--project')
   })
 

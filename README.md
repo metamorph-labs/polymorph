@@ -77,6 +77,7 @@ export function Inbox({ onNewTicket }: { onNewTicket: () => void }) {
 | an Android app | the Gradle build in `platforms/android`, included with `includeBuild`: `dev.polymorph:tokens` and `dev.polymorph:ui` |
 | a Flutter or Dart app | the tokens only, in `platforms/dart` (`polymorph_tokens`); there is no Flutter renderer |
 | an existing web app | [docs/consuming.md](docs/consuming.md): the packages by hand, or members vendored with `polymorph add` |
+| a coding agent's setup, in any of those | `npx -y @metamorph-labs/polymorph@latest agents`, or the plugin for Claude Code and Codex in `plugins/polymorph` ([docs/harnesses.md](docs/harnesses.md)) |
 
 `@metamorph-labs/polymorph` is the command line and the MCP server in one package, with no
 checkout needed: the app `init` writes installs the packages from npmjs.com, and its `.mcp.json`
@@ -166,6 +167,9 @@ The commands, by what they do:
 | [docs/rules.md](docs/rules.md) | The red rules and the exception ladder |
 | [docs/verification.md](docs/verification.md) | Every gate, test project and law, `pnpm proof`, and the agent eval |
 | [docs/tooling.md](docs/tooling.md) | Registry, CLI, MCP server, spec DSL, workbench |
+| [docs/harnesses.md](docs/harnesses.md) | Claude Code, Codex, Cursor and other coding agents: the plugin, `polymorph agents` and what each reads |
+| [docs/listing.md](docs/listing.md) | Where the plugin and the MCP server are listed, and the steps each listing needs |
+| [PRIVACY.md](PRIVACY.md), [TERMS.md](TERMS.md) | What the tools collect (nothing), and the terms they are provided under |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to change things, how to add a member, and how to release |
 | [AGENTS.md](AGENTS.md) | The operating guide for coding agents working in this repository |
 
