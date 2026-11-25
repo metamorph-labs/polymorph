@@ -487,9 +487,13 @@ pnpm exec vitest run src/conformance.test -t "agent"                    # the ag
   which every shell's `detail-page.test` calls with its adapter, and the React member's test too.
 - **Several instances of one member at once.** A statement mounts one fixture entry and reads
   one member. Where focus goes when a toast that holds it leaves a stack of several, by its
-  close control, its action or Escape, and that Escape outside the notifications reaches no
-  toast, are held by `toastFocusLaw` (`packages/conformance/src/toast-focus.ts`), which every
-  shell's `toast.test` calls with a mount of its own, the React shell's too.
+  close control, its action, Escape, its owner's removal or a newer toast's eviction; that
+  Escape outside the notifications reaches no toast, and an Escape something else handled or an
+  input method is handling dismisses none; what the live regions say as toasts are raised,
+  updated and leave; and that the timers wait while the window is in the background and run
+  again when focus falls out of the notifications with no `focusout`, are held by
+  `toastFocusLaw` (`packages/conformance/src/toast-focus.ts`), which every shell's `toast.test`
+  calls with a mount of its own, the React shell's too.
 - **A prop the application changes after the mount.** A statement starts from a states fixture
   entry, and the runner sets props only as it mounts. Where focus goes when the app holds a
   Pagination or a CursorPagination whose button has focus, and when that hold ends, is held by

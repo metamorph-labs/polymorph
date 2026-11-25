@@ -10,20 +10,24 @@ import { Component, DestroyRef, ViewEncapsulation, inject, input } from '@angula
 import {
   MEMBER_PROVIDERS,
   Ref,
+  TOAST_QUIET,
   actOnToastNotice,
   agentMember,
+  announceToasts,
   cell,
   derived,
   dismissToastNotice,
   elementRef,
+  followToastFocus,
   getToasts,
+  holdToastTimers,
   mountEffect,
-  noteToastEntry,
   subscribeToasts,
   toast,
   toastDetails,
   toastNotices,
   useMember,
+  watchEffect,
   type Each,
 } from '@polymorph/angular'
 import styles from '@polymorph/recipes/overlays/toast.module.css'
@@ -58,10 +62,6 @@ tabindex="-1"
 [attr.class]="e2()"
 tabindex="-1"
 data-toast-part="list"
-(pointerenter)="h1()"
-(pointerleave)="h2()"
-(focusin)="h3($event)"
-(focusout)="h4()"
 [pmRef]="list"
 >@for (record of e3(); track e4(record)) {<li
 pmToastCard
@@ -75,14 +75,16 @@ pmToastCard
 role="status"
 aria-live="polite"
 aria-atomic="true"
->{{ e9() }}</div>
+>@for (saying of e9(); track e10(saying)) {<!-- saying -->
+<span>{{ e11(saying) }}</span>}</div>
 <!-- assertive -->
 <div
 [attr.class]="e8()"
 role="alert"
 aria-live="assertive"
 aria-atomic="true"
->{{ e10() }}</div></div>`,
+>@for (saying of e12(); track e13(saying)) {<!-- urgent -->
+<span>{{ e14(saying) }}</span>}</div></div>`,
 })
 export class ToastViewport {
   /**
@@ -93,6 +95,7 @@ export class ToastViewport {
   protected readonly $p = this.$.props
   protected readonly version = cell(() => 0)
   protected readonly paused = cell(() => false)
+  protected readonly said = cell(() => TOAST_QUIET)
   protected readonly list = elementRef<HTMLElement>()
   protected readonly region = elementRef<HTMLElement>()
   protected readonly say = derived(
@@ -104,20 +107,11 @@ export class ToastViewport {
       },
   )
   protected readonly records = derived(() => (this.version.value < 0 ? [] : getToasts()))
-  protected readonly words = derived(() => (urgent: boolean): string => {
-    const record = this.records.value
-      .filter(
-        (each) =>
-          each.closing !== true && (each.tone === 'danger' || each.tone === 'warning') === urgent,
-      )
-      .at(-1)
-    return record === undefined
-      ? ''
-      : [this.say.value.notification, record.title, record.description].filter(Boolean).join(' ')
-  })
   private release1: (() => void) | undefined
   private release2: (() => void) | undefined
   private release3: (() => void) | undefined
+  private release4: (() => void) | undefined
+  private release6: (() => void) | undefined
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.release1?.())
@@ -126,6 +120,15 @@ export class ToastViewport {
     mountEffect(() => this.effect2())
     inject(DestroyRef).onDestroy(() => this.release3?.())
     mountEffect(() => this.effect3())
+    inject(DestroyRef).onDestroy(() => this.release4?.())
+    mountEffect(() => this.effect4())
+    watchEffect(
+      () => this.version.value,
+      () => this.effect5(),
+      true,
+    )
+    inject(DestroyRef).onDestroy(() => this.release6?.())
+    mountEffect(() => this.effect6())
   }
 
   protected e1() {
@@ -134,22 +137,6 @@ export class ToastViewport {
 
   protected e2() {
     return styles.viewport
-  }
-
-  protected h1(): void {
-    this.paused.value = true
-  }
-
-  protected h2(): void {
-    this.paused.value = false
-  }
-
-  protected h3($event: FocusEvent): void {
-    void ((this.paused.value = true), noteToastEntry(this.list.value, $event.relatedTarget))
-  }
-
-  protected h4(): void {
-    this.paused.value = false
   }
 
   e3() {
@@ -176,12 +163,28 @@ export class ToastViewport {
     return a11y.visuallyHidden
   }
 
-  protected e9() {
-    return this.words.value(false)
+  e9() {
+    return [this.said.value.polite]
   }
 
-  protected e10() {
-    return this.words.value(true)
+  protected e10(saying: Each<ReturnType<ToastViewport['e9']>>) {
+    return saying.key
+  }
+
+  protected e11(saying: Each<ReturnType<ToastViewport['e9']>>) {
+    return saying.words
+  }
+
+  e12() {
+    return [this.said.value.assertive]
+  }
+
+  protected e13(saying: Each<ReturnType<ToastViewport['e12']>>) {
+    return saying.key
+  }
+
+  protected e14(saying: Each<ReturnType<ToastViewport['e12']>>) {
+    return saying.words
   }
 
   private effect1(): void {
@@ -207,6 +210,33 @@ export class ToastViewport {
 
   private effect3(): void {
     this.release3?.()
+    const ran = holdToastTimers(this.region.value, (held) => {
+      this.paused.value = held
+    })
+    this.release3 = () => {
+      ran()
+    }
+  }
+
+  private effect4(): void {
+    this.release4?.()
+    const ran = followToastFocus(this.list.value)
+    this.release4 = () => {
+      ran()
+    }
+  }
+
+  private effect5(): void {
+    this.said.value = announceToasts(
+      this.said.value,
+      this.records.value,
+      this.list.value,
+      this.say.value.notification,
+    )
+  }
+
+  private effect6(): void {
+    this.release6?.()
     const ran = agentMember({
       member: 'Toast',
       element: () => this.region.value,
@@ -219,7 +249,7 @@ export class ToastViewport {
         ...(this.list.value?.querySelectorAll('[data-member="toast"] > div ~ div') ?? []),
       ],
     })
-    this.release3 = () => {
+    this.release6 = () => {
       ran()
     }
   }

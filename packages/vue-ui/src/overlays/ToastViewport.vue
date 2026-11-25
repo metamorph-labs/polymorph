@@ -6,14 +6,17 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
 import {
+  TOAST_QUIET,
   actOnToastNotice,
   agentMember,
+  announceToasts,
   dismissToastNotice,
+  followToastFocus,
   getToasts,
-  noteToastEntry,
+  holdToastTimers,
   subscribeToasts,
   toast,
   toastDetails,
@@ -36,6 +39,7 @@ defineOptions({ name: 'ToastViewport', inheritAttrs: false })
 const props = defineProps<ToastViewportProps>()
 const version = ref(0)
 const paused = ref(false)
+const said = ref(TOAST_QUIET)
 const list = useTemplateRef<HTMLElement>('list')
 const region = useTemplateRef<HTMLElement>('region')
 const say = computed(
@@ -47,17 +51,6 @@ const say = computed(
     },
 )
 const records = computed(() => (version.value < 0 ? [] : getToasts()))
-const words = computed(() => (urgent: boolean): string => {
-  const record = records.value
-    .filter(
-      (each) =>
-        each.closing !== true && (each.tone === 'danger' || each.tone === 'warning') === urgent,
-    )
-    .at(-1)
-  return record === undefined
-    ? ''
-    : [say.value.notification, record.title, record.description].filter(Boolean).join(' ')
-})
 let release1: (() => void) | undefined
 const effect1 = () => {
   release1?.()
@@ -86,6 +79,33 @@ onBeforeUnmount(() => release2?.())
 let release3: (() => void) | undefined
 const effect3 = () => {
   release3?.()
+  const ran = holdToastTimers(region.value, (held) => {
+    paused.value = held
+  })
+  release3 = () => {
+    ran()
+  }
+}
+onMounted(effect3)
+onBeforeUnmount(() => release3?.())
+let release4: (() => void) | undefined
+const effect4 = () => {
+  release4?.()
+  const ran = followToastFocus(list.value)
+  release4 = () => {
+    ran()
+  }
+}
+onMounted(effect4)
+onBeforeUnmount(() => release4?.())
+const effect5 = () => {
+  said.value = announceToasts(said.value, records.value, list.value, say.value.notification)
+}
+onMounted(effect5)
+watch(() => version.value, effect5, { flush: 'post' })
+let release6: (() => void) | undefined
+const effect6 = () => {
+  release6?.()
   const ran = agentMember({
     member: 'Toast',
     element: () => region.value,
@@ -96,38 +116,39 @@ const effect3 = () => {
     },
     withholds: () => [...(list.value?.querySelectorAll('[data-member="toast"] > div ~ div') ?? [])],
   })
-  release3 = () => {
+  release6 = () => {
     ran()
   }
 }
-onMounted(effect3)
-onBeforeUnmount(() => release3?.())
+onMounted(effect6)
+onBeforeUnmount(() => release6?.())
 </script>
 
 <template>
   <div ref="region" role="region" :aria-label="say.viewport" tabindex="-1">
     <!-- list -->
-    <ol
-      ref="list"
-      :class="styles.viewport"
-      tabindex="-1"
-      data-toast-part="list"
-      @pointerenter="paused = true"
-      @pointerleave="paused = false"
-      @focusin="((paused = true), noteToastEntry(list, $event.relatedTarget))"
-      @focusout="paused = false"
-    >
+    <ol ref="list" :class="styles.viewport" tabindex="-1" data-toast-part="list">
       <template v-for="record in records" :key="record.id">
         <ToastCard :record="record" :dismissLabel="say.dismiss" :paused="paused" />
       </template>
     </ol>
     <!-- polite -->
     <div :class="a11y.visuallyHidden" role="status" aria-live="polite" aria-atomic="true">
-      {{ words(false) }}
+      <template v-for="saying in [said.polite]" :key="saying.key">
+        <!-- saying -->
+        <span>
+          {{ saying.words }}
+        </span>
+      </template>
     </div>
     <!-- assertive -->
     <div :class="a11y.visuallyHidden" role="alert" aria-live="assertive" aria-atomic="true">
-      {{ words(true) }}
+      <template v-for="saying in [said.assertive]" :key="saying.key">
+        <!-- urgent -->
+        <span>
+          {{ saying.words }}
+        </span>
+      </template>
     </div>
   </div>
 </template>

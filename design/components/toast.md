@@ -105,8 +105,8 @@ a timer that ends first takes the action away (WCAG 2.2.1, timing adjustable). I
 decides whether newer toasts may evict it. A call that sets either one takes what it sets,
 with 5000 and no retention for the one it leaves out. The rule is the store's, so a
 raised toast, React's `ToastNotice` and a declared `Toast` in every other web framework
-follow it. The SwiftUI and Compose Toast apply the tone rule to their props, and do not pin a
-toast for its action.
+follow it. The SwiftUI and Compose Toast apply the same rule to their props, the action's pin
+included, as a Compose Snackbar with an action label is indefinite.
 
 **`toast.promise(promise, { loading, success, error })`** raises the `loading` face
 immediately: a neutral surface, the `loading` glyph (`spin` ambient) in the tone-icon
@@ -206,7 +206,10 @@ hit areas, callbacks and recovery gates remain intact.
   the toast springs back. While it is dragged the card is drawn at the finger's offset, which
   outranks the enter and the exit: the recipe marks that offset important, because the engine
   leaves its own `translate` inline on the card.
-- Timer pauses while the viewport is hovered or any toast focused; resumes on leave.
+- Timer pauses while the viewport is hovered, while any toast is focused, and while the window
+  is in the background (it has lost focus to another window or application), because a reader
+  who is not on the page has not read the toast; it resumes when none of the three holds. The
+  rule is the engine's (`holdToastTimers`).
 - An in-place update (`id` reuse, `toast.promise` settling) never re-enters. The card
   keeps its position and the content swaps without animation, because the springs are
   for cards arriving and leaving, and an update does neither.
@@ -223,20 +226,32 @@ visually.
 
 ## A11y
 
-The viewport holds two live regions: a polite one (`role="status"`) says the newest neutral,
-success or info toast, and an assertive one (`role="alert"`) the newest danger or warning toast.
-The cards are not live regions, because a region that appears with its words already in it is
-not reliably read. F8 focuses the notifications from anywhere on the page: the list, inside a
-labelled `region`. Escape on a focused toast dismisses it when it is dismissible. With focus
-anywhere else Escape is the page's, so a toast never takes it from a field or an open Dialog.
+The viewport holds two live regions: a polite one (`role="status"`) for neutral, success and info
+toasts, and an assertive one (`role="alert"`) for danger and warning toasts. A region says a toast
+when it is raised, also when it is raised again under the same id, and when an update in place
+changes its title, description, tone or action. It says nothing when a toast leaves, or when an
+update changes none of those, such as a notice whose screen renders again. The words are the
+catalog's notification word, the title, the description, the text of the content and the
+action's label, so a reader learns that the toast holds something to do. Each announcement is a
+new element in the region, so two toasts with the same words in a row are each said. Once none of
+the toasts a region said is showing, the region is emptied. The rule is the engine's
+(`announceToasts`). The cards are not live regions, because a region that appears with its words
+already in it is not reliably read.
 
-When a toast that holds focus leaves, by its close control, its action, Escape or a call to
-`toast.dismiss`, focus moves to the next toast, else the previous one, so a reader working down
-the stack stays in it. With no toast left, focus goes back to the element it came from as it
+F8 focuses the notifications from anywhere on the page: the list, inside a labelled `region`.
+Escape on a focused toast dismisses it when it is dismissible. With focus anywhere else Escape is
+the page's, so a toast never takes it from a field or an open Dialog. An Escape that a control in
+the toast's content has already handled, such as a Select or a Menu closing its list, and an
+Escape that an input method is handling (`composingKey`), are not the toast's.
+
+When a toast that holds focus leaves, by its close control, its action, Escape, a call to
+`toast.dismiss`, its owner's removal or a newer toast's eviction, focus moves to the next toast,
+else the previous one, so a reader working down the stack stays in it. With no toast left, focus goes back to the element it came from as it
 entered the notifications, by F8 or by Tab, while that element is in the document, and
-otherwise to the list. The rule is the engine's (`focusAfterToast`,
+otherwise to the list. The rule is the engine's (`focusAfterToast` and `followToastFocus`,
 `packages/engine/src/toast/focus.ts`), and the shared law in
-`packages/conformance/src/toast-focus.ts` holds it in every web framework.
+`packages/conformance/src/toast-focus.ts` holds it, the Escape rule, the announcements and the
+timers in every web framework.
 
 Imperative transient actions are accelerators. An application's sole recovery action instead
 uses the retained, non-dismissible `ToastNotice` described above. The live announcement is

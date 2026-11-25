@@ -26,6 +26,7 @@ describe('createToastStore', () => {
         retained: false,
         durationMs: TOAST_DEFAULT_DURATION_MS,
         revision: 0,
+        raised: 1,
       },
     ])
     expect(calls).toBe(1)
@@ -97,6 +98,17 @@ describe('createToastStore', () => {
       ['a', 'Export ready', 1],
       [expect.any(String), 'Other', 0],
     ])
+  })
+
+  it('keeps a toast’s raise through an update, and renews it when the id is raised again', () => {
+    const store = createToastStore()
+    store.toast({ id: 'a', title: 'Check your input' })
+    const raised = store.get()[0]?.raised
+    store.toast({ id: 'a', title: 'Check your input' })
+    expect(store.get()[0]?.raised).toBe(raised)
+    store.remove('a')
+    store.toast({ id: 'a', title: 'Check your input' })
+    expect(store.get()[0]?.raised).not.toBe(raised)
   })
 
   it('evicts the oldest transient toast past the cap, and never a retained one', () => {

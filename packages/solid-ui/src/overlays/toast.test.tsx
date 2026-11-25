@@ -31,7 +31,8 @@ const list = () => document.querySelector<HTMLElement>('[data-toast-part="list"]
 toastFocusLaw({
   shell: 'Solid',
   mount: () => mount(() => <Toast.Viewport />),
-  raise: (options) => void toast({ ...options, durationMs: Number.POSITIVE_INFINITY }),
+  raise: (options) => toast({ durationMs: Number.POSITIVE_INFINITY, ...options }),
+  remove: (id) => removeToast(id),
   clear: () => getToasts().forEach((record) => removeToast(record.id)),
 })
 

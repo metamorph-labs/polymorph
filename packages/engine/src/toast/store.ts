@@ -88,6 +88,13 @@ export interface ToastStoreRecord<Content = unknown> extends ToastStoreOptions<C
    */
   revision: number
   /**
+   * Which raise the record came from: the store's count of `toast()` calls when it was raised.
+   * An update in place keeps it, and a toast raised again under the same id gets a new one, so
+   * the viewport says it again (`announceToasts`) while an update that changes no words says
+   * nothing.
+   */
+  raised: number
+  /**
    * Set while the toast leaves. Dismissal has two steps so that a toast closed
    * by hand passes through the same `data-state="closed"` as one that timed
    * out. That state styles a leaving card and stops it taking clicks during the
@@ -224,6 +231,7 @@ export function createToastStore<Content = unknown>(): ToastStore<Content> {
         tone: options.tone ?? 'neutral',
         ...lifetimeOf(options),
         revision: previous.revision + 1,
+        raised: previous.raised,
       }
       publish(records.map((entry, index) => (index === live ? record : entry)))
       return id
@@ -235,6 +243,7 @@ export function createToastStore<Content = unknown>(): ToastStore<Content> {
       tone: options.tone ?? 'neutral',
       ...lifetimeOf(options),
       revision: 0,
+      raised: sequence,
     }
     // The oldest are evicted, so the toast just raised is always kept.
     const next = [...records, record]

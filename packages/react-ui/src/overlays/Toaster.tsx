@@ -15,14 +15,19 @@ import {
 import { Button } from '../controls/Button'
 import {
   actOnToastNotice,
+  announceToasts,
+  composingKey,
   dismissToastNotice,
   focusAfterToast,
+  followToastFocus,
+  holdToastTimers,
   Icon,
   memberAttr,
-  noteToastEntry,
+  TOAST_QUIET,
   toastDetails,
   toastNotices,
   useAgentMember,
+  type ToastAnnouncements,
 } from '@polymorph/react'
 import { MotionPresence, MotionSurface } from '@polymorph/react/motion'
 import styles from '@polymorph/recipes/overlays/toast.module.css'
@@ -44,11 +49,14 @@ import {
  *
  * The viewport is the one every web framework draws: a labelled region around
  * the list, which F8 focuses; a card per toast with its own timer, held while
- * the reader is on the notifications; Escape, the close button and a swipe to
- * the right dismiss a dismissible card; and a polite and an assertive live
- * region, which announce the newest toast of each politeness. A card is no
+ * the reader is on the notifications or the window is in the background
+ * (`holdToastTimers`); Escape, the close button and a swipe to the right
+ * dismiss a dismissible card; and a polite and an assertive live region, which
+ * say a toast as it is raised or updated (`announceToasts`). A card is no
  * dismissable layer of the page: Escape reaches it only while focus is in it,
- * so a toast raised while a Dialog is open never takes Escape from the dialog.
+ * so a toast raised while a Dialog is open never takes Escape from the dialog,
+ * and an Escape that a control in the card's content has already handled, or
+ * that an input method is handling, is not the card's.
  *
  * The motion engine handles the stacking:
  *
@@ -72,9 +80,6 @@ import {
 /** How far a card is dragged to the right, in pixels, before letting go dismisses it. */
 const SWIPE_THRESHOLD = 50
 
-/** Danger and warning interrupt; the other tones wait. */
-const urgent = (record: ToastRecord) => record.tone === 'danger' || record.tone === 'warning'
-
 function ToastCard({
   record,
   dismissLabel,
@@ -88,14 +93,32 @@ function ToastCard({
   const dismissible = record.dismissible !== false
   const card = useRef<HTMLElement | null>(null)
 
+  /*
+   * A card leaves when its toast starts to close, and also when its toast
+   * leaves the store without closing: its owner removed it, or a newer toast
+   * evicted it. `MotionPresence` then keeps the card for its exit with the
+   * props it last rendered, so the card reads the store itself. A leaving card
+   * is `data-state="closed"` for its whole exit, which stops it taking clicks
+   * and tells `focusAfterToast` it is not staying.
+   */
+  const held = useSyncExternalStore(
+    subscribeToasts,
+    () => getToasts().some((each) => each.id === record.id),
+    () => true,
+  )
+  const leaving = record.closing === true || !held
+
+  // Focus in a leaving card moves on before the card plays its exit, in the
+  // commit that marks it closed.
+  useLayoutEffect(() => {
+    if (leaving) focusAfterToast(card.current)
+  }, [leaving])
+
   // Step two of dismissal. When this runs, the card has already rendered its
   // closed state once, so the leaving element keeps `data-state="closed"`
-  // through its whole exit, whether it timed out or was dismissed. Focus in the
-  // card moves on first, because the card is about to leave the page.
+  // through its whole exit, whether it timed out or was dismissed.
   useEffect(() => {
-    if (!record.closing) return
-    focusAfterToast(card.current)
-    removeToast(record.id)
+    if (record.closing) removeToast(record.id)
   }, [record.closing, record.id])
 
   /*
@@ -109,25 +132,27 @@ function ToastCard({
     left.current = record.durationMs
   }, [record.revision, record.durationMs])
   useEffect(() => {
-    if (record.closing || paused || !dismissible || !Number.isFinite(record.durationMs)) return
+    if (leaving || paused || !dismissible || !Number.isFinite(record.durationMs)) return
     const started = Date.now()
     const timer = setTimeout(() => toast.dismiss(record.id), Math.max(0, left.current))
     return () => {
       clearTimeout(timer)
       left.current -= Date.now() - started
     }
-  }, [record.closing, record.revision, record.durationMs, record.id, paused, dismissible])
+  }, [leaving, record.revision, record.durationMs, record.id, paused, dismissible])
 
   // The swipe: '' at rest, `move` while the finger drags, then `cancel` or `end`.
+  // The drag itself is a ref, so the release reads the move that came before it
+  // even when no render has happened between them.
   const [swipe, setSwipe] = useState<'' | 'move' | 'cancel' | 'end'>('')
   const [offset, setOffset] = useState(0)
-  const drag = useRef<{ pointer: number; startX: number } | null>(null)
+  const drag = useRef<{ pointer: number; startX: number; moved: boolean } | null>(null)
 
   // A press on the card, not on one of its buttons, may start a swipe to the right.
   const press = (event: PointerEvent<HTMLElement>) => {
     if (!dismissible || event.button !== 0) return
     if ((event.target as Element).closest('button') !== null) return
-    drag.current = { pointer: event.pointerId, startX: event.clientX }
+    drag.current = { pointer: event.pointerId, startX: event.clientX, moved: false }
     setOffset(0)
     try {
       event.currentTarget.setPointerCapture(event.pointerId)
@@ -139,14 +164,18 @@ function ToastCard({
     if (drag.current === null) return
     const delta = Math.max(0, event.clientX - drag.current.startX)
     setOffset(delta)
-    if (delta > 0) setSwipe('move')
+    if (delta > 0) {
+      drag.current.moved = true
+      setSwipe('move')
+    }
   }
   // Past the threshold the card leaves from where the finger let go; short of it, it springs back.
   const lift = (event: PointerEvent<HTMLElement>) => {
     if (drag.current === null) return
     const delta = Math.max(0, event.clientX - drag.current.startX)
+    const moved = drag.current.moved
     drag.current = null
-    if (swipe !== 'move') return
+    if (!moved) return
     if (delta > SWIPE_THRESHOLD) {
       setOffset(delta)
       setSwipe('end')
@@ -157,8 +186,11 @@ function ToastCard({
     }
   }
 
+  // React passes a key from a portal to the card that renders it, so an Escape
+  // a Select or Menu in the content took to close itself arrives here with its
+  // default prevented.
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key !== 'Escape') return
+    if (event.key !== 'Escape' || event.defaultPrevented || composingKey(event.nativeEvent)) return
     event.preventDefault()
     if (dismissible) toast.dismiss(record.id)
   }
@@ -173,7 +205,7 @@ function ToastCard({
       // A list item the reader can focus; the viewport's live regions announce it.
       tabIndex={0}
       data-tone={record.tone}
-      data-state={record.closing ? 'closed' : 'open'}
+      data-state={leaving ? 'closed' : 'open'}
       {...(swipe === '' ? {} : { 'data-swipe': swipe })}
       data-swipe-direction="right"
       style={
@@ -212,7 +244,9 @@ function ToastCard({
           <div className={styles.description}>{record.description}</div>
         )}
         {record.content === undefined ? null : (
-          <div className={styles.content}>{record.content}</div>
+          <div className={styles.content} data-toast-content="">
+            {record.content}
+          </div>
         )}
       </div>
 
@@ -298,45 +332,27 @@ export function Toaster({
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  /*
-   * The timers wait while the reader is on the notifications: while focus is
-   * in the region, or the pointer moves over it. They resume when both have
-   * left. The listeners are the document's own, because `pointerleave` does not
-   * bubble and the region is where the reader leaves from.
-   */
+  // The timers wait while the reader is on the notifications, by focus or by
+  // the pointer, and while the window is in the background.
   const [paused, setPaused] = useState(false)
-  useEffect(() => {
-    const element = region.current
-    if (element === null) return
-    const pause = () => setPaused(true)
-    const focusOut = (event: FocusEvent) => {
-      if (event.relatedTarget instanceof Node && element.contains(event.relatedTarget)) return
-      if (!element.matches(':hover')) setPaused(false)
-    }
-    const pointerLeave = () => {
-      if (!element.contains(document.activeElement)) setPaused(false)
-    }
-    element.addEventListener('focusin', pause)
-    element.addEventListener('focusout', focusOut)
-    element.addEventListener('pointermove', pause)
-    element.addEventListener('pointerleave', pointerLeave)
-    return () => {
-      element.removeEventListener('focusin', pause)
-      element.removeEventListener('focusout', focusOut)
-      element.removeEventListener('pointermove', pause)
-      element.removeEventListener('pointerleave', pointerLeave)
-    }
-  }, [])
+  useEffect(() => holdToastTimers(region.current, setPaused), [])
 
-  // The newest showing toast of each politeness, in words. The cards are not
-  // live regions, because a region that appears with its content is not
-  // reliably read.
-  const words = (loud: boolean) => {
-    const record = records.filter((each) => each.closing !== true && urgent(each) === loud).at(-1)
-    return record === undefined
-      ? ''
-      : [messages.notification, record.title, record.description].filter(Boolean).join(' ')
-  }
+  // Focus in a card that leaves the page by any route moves on, and the list
+  // records where focus came from as it enters.
+  useEffect(() => followToastFocus(list.current), [])
+
+  // What the live regions say: a toast as it is raised, and again when an
+  // update changes its words. It is read after the change is drawn, because a
+  // notice's content is read from its card. The cards are not live regions,
+  // because a region that appears with its content is not reliably read.
+  const announced = useRef<ToastAnnouncements>(TOAST_QUIET)
+  const [said, setSaid] = useState<ToastAnnouncements>(TOAST_QUIET)
+  useEffect(() => {
+    const next = announceToasts(announced.current, records, list.current, messages.notification)
+    if (next === announced.current) return
+    announced.current = next
+    setSaid(next)
+  }, [records, messages.notification])
 
   // The spec's `agent` fence. A notice is a record of the store, so the viewport reads the
   // store, and an agent answers a notice through the store's own functions, as its card's
@@ -356,13 +372,7 @@ export function Toaster({
 
   return (
     <div ref={region} role="region" aria-label={messages.viewport} tabIndex={-1}>
-      <ol
-        ref={list}
-        tabIndex={-1}
-        className={styles.viewport}
-        data-toast-part="list"
-        onFocus={(event) => noteToastEntry(list.current, event.relatedTarget)}
-      >
+      <ol ref={list} tabIndex={-1} className={styles.viewport} data-toast-part="list">
         <MotionPresence>
           {records.map((record) => (
             <ToastCard
@@ -374,11 +384,13 @@ export function Toaster({
           ))}
         </MotionPresence>
       </ol>
+      {/* Each announcement is a new element, so the same words said twice are
+          said twice. */}
       <VisuallyHidden role="status" aria-live="polite" aria-atomic="true">
-        {words(false)}
+        <span key={said.polite.key}>{said.polite.words}</span>
       </VisuallyHidden>
       <VisuallyHidden role="alert" aria-live="assertive" aria-atomic="true">
-        {words(true)}
+        <span key={said.assertive.key}>{said.assertive.words}</span>
       </VisuallyHidden>
     </div>
   )

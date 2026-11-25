@@ -79,7 +79,8 @@ class Orphaned {}
 toastFocusLaw({
   shell: 'Angular',
   mount: () => mountComponent(ToastViewport),
-  raise: (options) => void toast({ ...options, durationMs: Number.POSITIVE_INFINITY }),
+  raise: (options) => toast({ durationMs: Number.POSITIVE_INFINITY, ...options }),
+  remove: (id) => removeToast(id),
   clear: () => getToasts().forEach((record) => removeToast(record.id)),
 })
 

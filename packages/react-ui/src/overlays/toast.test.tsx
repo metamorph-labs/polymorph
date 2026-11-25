@@ -22,9 +22,9 @@ import { Toaster } from './Toaster'
 import { getToasts, removeToast, toast, TOAST_MAX_VISIBLE, type ToastTone } from './toast-store'
 
 /**
- * Toast. The store is module-level and the viewport is portalled, so these
- * tests work as an application does: mount one `<Toaster />`, call `toast()`
- * from outside React, and check what renders.
+ * Toast. The store is module-level, so these tests work as an application
+ * does: mount one `<Toaster />`, call `toast()` from outside React, and check
+ * what renders.
  */
 
 beforeAll(installTestTheme)
@@ -105,7 +105,8 @@ const statesOf = (watch: { seen: { state: string }[] }) => watch.seen.map((entry
 toastFocusLaw({
   shell: 'React',
   mount: async () => render(<Toaster />),
-  raise: (options) => void toast({ ...options, durationMs: Number.POSITIVE_INFINITY }),
+  raise: (options) => toast({ durationMs: Number.POSITIVE_INFINITY, ...options }),
+  remove: (id) => removeToast(id),
   clear: () => getToasts().forEach((record) => removeToast(record.id)),
 })
 
@@ -358,6 +359,34 @@ describe('what it says, and how loudly', () => {
   })
 })
 
+describe('a control in the content', () => {
+  it('keeps the Escape that closes a Select in the content, and the toast stays', async () => {
+    render(<Toaster />)
+    toast({
+      title: 'Move the ticket',
+      content: (
+        <Select
+          aria-label="Queue"
+          options={[
+            { value: 'billing', label: 'Billing' },
+            { value: 'onboarding', label: 'Onboarding' },
+          ]}
+        />
+      ),
+      durationMs: Number.POSITIVE_INFINITY,
+    })
+    const listbox = () => document.querySelector('[role="listbox"]')
+    const trigger = await vi.waitFor(() => screen.getByRole('combobox', { name: 'Queue' }))
+    trigger.focus()
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(listbox()).not.toBeNull())
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(listbox()).toBeNull())
+    await sleep(300)
+    expect(getToasts().filter((record) => record.closing !== true)).toHaveLength(1)
+  })
+})
+
 describe('the action', () => {
   it('runs and then dismisses the toast', async () => {
     render(<Toaster />)
@@ -462,6 +491,24 @@ describe('leaving', () => {
     // It leaves from where the finger let go.
     expect(card.getBoundingClientRect().x - rest).toBeGreaterThan(0)
     await settled(0)
+  })
+
+  it('dismisses on a swipe let go before the drag has been drawn', async () => {
+    render(<Toaster />)
+    toast({ title: 'Dragged', durationMs: Number.POSITIVE_INFINITY })
+    await settled(1)
+    const card = cards()[0] as HTMLElement
+    const capture = vi.spyOn(card, 'setPointerCapture').mockImplementation(() => {})
+    const pointer = (type: string, clientX: number) =>
+      card.dispatchEvent(
+        new PointerEvent(type, { bubbles: true, pointerId: 1, button: 0, clientX, clientY: 0 }),
+      )
+    // One task: no render comes between the move and the release.
+    pointer('pointerdown', 0)
+    pointer('pointermove', 90)
+    pointer('pointerup', 90)
+    capture.mockRestore()
+    await vi.waitFor(() => expect(getToasts()).toHaveLength(0))
   })
 
   it('returns the card to rest when the drag is let go short of the threshold', async () => {

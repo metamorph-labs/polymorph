@@ -1315,7 +1315,7 @@ export function closureOf(
  * `closureOf`'s walk, because the two graphs differ by exactly the fixture. The
  * file closure is seeded with the states fixture and the source walk is not.
  * Dialog's fixture builds a form, the form's field mounts a ToastNotice, and
- * the Toaster behind that imports `@radix-ui/react-toast`. Packages read from
+ * the Toaster behind that imports `@radix-ui/react-visually-hidden`. Packages read from
  * the source walk would leave the install copying a file whose dependency it
  * never declared. The consumer's typecheck would then fail on a module that
  * this repository's hoisting always resolves. The `package.json` an install
