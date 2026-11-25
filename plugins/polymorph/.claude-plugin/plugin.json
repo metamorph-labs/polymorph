@@ -29,5 +29,8 @@
   "documentationUrl": "https://github.com/metamorph-labs/polymorph/blob/main/docs/harnesses.md",
   "supportUrl": "https://github.com/metamorph-labs/polymorph/issues",
   "privacyPolicyUrl": "https://github.com/metamorph-labs/polymorph/blob/main/PRIVACY.md",
-  "termsOfServiceUrl": "https://github.com/metamorph-labs/polymorph/blob/main/TERMS.md"
+  "termsOfServiceUrl": "https://github.com/metamorph-labs/polymorph/blob/main/TERMS.md",
+  "network": {
+    "hosts": ["registry.npmjs.org"]
+  }
 }

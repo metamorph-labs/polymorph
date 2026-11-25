@@ -224,9 +224,10 @@ describe('the portable manifest with OpenAI’s fields, and Codex’s marketplac
       expect(size?.width, key).toBe(size?.height)
       expect(size?.width ?? 0, key).toBeGreaterThanOrEqual(48)
     }
-    expect(readFileSync(resolve(ROOT, PLUGIN_DIR, PLUGIN_ICONS.svg), 'utf8')).toMatch(
-      /viewBox="0 0 (\d+) \1"/,
-    )
+    const svg = readFileSync(resolve(ROOT, PLUGIN_DIR, PLUGIN_ICONS.svg), 'utf8')
+    expect(svg).toMatch(/viewBox="0 0 (\d+) \1"/)
+    // Anthropic's directory refuses an icon that holds a style, a script or an animation.
+    expect(svg).not.toMatch(/<(style|script|foreignObject|animate)\b|\son\w+=/)
   })
 
   it('carries no hooks or app mappings, which a public listing cannot have', () => {

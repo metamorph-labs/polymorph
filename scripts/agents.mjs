@@ -11,7 +11,7 @@ import { pathToFileURL } from 'node:url'
  *   the marketplaces Claude Code and Codex add this repository as;
  * - `plugins/polymorph/`, the plugin both read: its two manifests, its two MCP
  *   configs, the skills `polymorph agents` writes into a project, a README, and
- *   the icon, copied from the site's favicon;
+ *   the icon, the site's favicon with one fill and no stylesheet;
  * - `packages/tools/server.json`, the published tools' entry in the MCP
  *   Registry.
  *
@@ -59,8 +59,27 @@ export async function pluginOutput(importModule) {
         : contents,
     )
   }
-  files.set(`${PLUGIN_DIR}/${PLUGIN_ICONS.svg}`, readFileSync(resolve(ROOT, FAVICON), 'utf8'))
+  files.set(
+    `${PLUGIN_DIR}/${PLUGIN_ICONS.svg}`,
+    plainIcon(readFileSync(resolve(ROOT, FAVICON), 'utf8')),
+  )
   return files
+}
+
+/**
+ * The favicon as a plugin directory accepts an icon: its shape with one fill
+ * and no stylesheet. The favicon takes its colour from a `<style>` block that
+ * follows the reader's colour scheme, and Anthropic's directory refuses an SVG
+ * that holds a style, a script or an animation.
+ */
+export function plainIcon(favicon) {
+  const plain = favicon
+    .replace(/\s*<style>[\s\S]*?<\/style>/, '')
+    .replace(/<path /g, '<path fill="#111" ')
+  if (/<(style|script|foreignObject|animate)\b/.test(plain) || !plain.includes('fill="#111"')) {
+    throw new Error(`agents: ${FAVICON} is no longer a shape the plugin's icon can be drawn from`)
+  }
+  return plain
 }
 
 /** The drawn icons, as `[path, size]` from the root. */

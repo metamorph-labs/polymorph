@@ -40,7 +40,7 @@ export const PLUGIN_DIR = 'plugins/polymorph'
 
 /** The images the plugin carries, drawn from the site's favicon by `pnpm agents --icons`. */
 export const PLUGIN_ICONS = {
-  /** The favicon itself, copied. */
+  /** The favicon's shape with one fill and no stylesheet, which a directory's icon check requires. */
   svg: 'assets/icon.svg',
   /** 512 by 512, on a light surface and on a dark one. */
   logo: 'assets/logo.png',
@@ -283,6 +283,9 @@ export function pluginFiles(registry: Registry): PluginFile[] {
         supportUrl: LISTING_URLS.support,
         privacyPolicyUrl: LISTING_URLS.privacy,
         termsOfServiceUrl: LISTING_URLS.terms,
+        // What the plugin's parts reach: `npx` downloads the tools from npm's
+        // registry the first time the server or a skill's command runs.
+        network: { hosts: ['registry.npmjs.org'] },
       }),
     },
     {

@@ -18,7 +18,7 @@ limits:
 | `plugins/polymorph/plugin.json` | Codex and OpenAI's directory: the portable manifest, with OpenAI's fields under `extensions.com.openai` |
 | `plugins/polymorph/.mcp.json`, `plugins/polymorph/mcp.json` | Claude Code, and Codex in the portable form |
 | `plugins/polymorph/skills/` | Every harness, and the `skills` CLI |
-| `plugins/polymorph/assets/` | The icon (the site's favicon) and PNGs drawn from it by `pnpm agents --icons` |
+| `plugins/polymorph/assets/` | The icon (the site's favicon with one fill and no stylesheet) and PNGs drawn from it by `pnpm agents --icons` |
 | `plugins/polymorph/README.md` | Anthropic's directory, as the listing's description |
 | `packages/tools/server.json` | The MCP Registry |
 | `PRIVACY.md`, `TERMS.md` | Every listing, by their URLs on `main` |
