@@ -13,8 +13,11 @@ import {
   afterRender,
   agentFill,
   agentMember,
+  composingKey,
   fitTextarea,
+  focusAfterRemoval,
   gateFiles,
+  holdFieldEscape,
   joinSlot,
   promptPick,
   promptToken,
@@ -223,6 +226,7 @@ let dismissed = $state(null as number | null)
 let highlight = $state({ key: '', index: 0 })
 let side = $state('top' as 'top' | 'bottom')
 let reported = $state(null as string | null)
+let pressed = $state(null as { id: string; at: number } | null)
 let chips = $state<HTMLElement | null>(null)
 let end = $state<HTMLElement | null>(null)
 let field = $state<HTMLElement | null>(null)
@@ -330,15 +334,6 @@ const pick = $derived((index: number) => {
   )
   by.onSelect?.(option)
 })
-const holdEscape = $derived((element: HTMLTextAreaElement) => {
-  const view = element.ownerDocument.defaultView
-  const hold = (event: KeyboardEvent) => {
-    if (event.key === 'Escape' && event.target === element && !event.isComposing)
-      event.preventDefault()
-  }
-  view?.addEventListener('keydown', hold, true)
-  return () => view?.removeEventListener('keydown', hold, true)
-})
 const listKeys = $derived((event: KeyboardEvent) => {
   const at = token
   if (!open || at === null) return false
@@ -392,7 +387,7 @@ watchEffect(effect2)
 let release3: (() => void) | undefined
 const effect3 = () => {
   release3?.()
-  const ran = open && field ? holdEscape(field as HTMLTextAreaElement) : () => {}
+  const ran = open && field ? holdFieldEscape(field) : () => {}
   release3 = () => {
     ran()
   }
@@ -400,16 +395,25 @@ const effect3 = () => {
 watchEffect(effect3, { watch: () => open })
 onDestroy(() => release3?.())
 const effect4 = () => {
+  pressed = focusAfterRemoval(
+    pressed,
+    attachments.map((attachment) => attachment.id),
+    (at) => chips?.children[at]?.querySelector<HTMLElement>('button'),
+    field,
+  )
+}
+watchEffect(effect4, { watch: () => attachments, mount: false })
+const effect5 = () => {
   sideKey !== null &&
     root &&
     ((box: DOMRect) => (side = box.top >= window.innerHeight - box.bottom ? 'top' : 'bottom'))(
       (root as HTMLElement).getBoundingClientRect(),
     )
 }
-watchEffect(effect4, { watch: () => sideKey })
-let release5: (() => void) | undefined
-const effect5 = () => {
-  release5?.()
+watchEffect(effect5, { watch: () => sideKey })
+let release6: (() => void) | undefined
+const effect6 = () => {
+  release6?.()
   const ran = agentMember({
     member: 'PromptInput',
     element: () => field,
@@ -445,12 +449,12 @@ const effect5 = () => {
       end?.lastElementChild,
     ],
   })
-  release5 = () => {
+  release6 = () => {
     ran()
   }
 }
-watchEffect(effect5)
-onDestroy(() => release5?.())
+watchEffect(effect6)
+onDestroy(() => release6?.())
 </script>
 
 {@render joined.start?.()
@@ -479,7 +483,7 @@ onDestroy(() => release5?.())
                 message={attachment.message}
                 removeLabel={messages.remove(attachment.name)}
                 uploadingLabel={messages.uploading(attachment.name)}
-                onRemove={() => { onRemoveAttachment?.(attachment.id) }}
+                onRemove={() => { ((pressed = { id: attachment.id, at: attachments.indexOf(attachment) }), onRemoveAttachment?.(attachment.id)) }}
             />{:else
               }<AttachmentChip
                 name={attachment.name}
@@ -507,7 +511,7 @@ onDestroy(() => release5?.())
         aria-controls={(open) ? listId : undefined}
         aria-activedescendant={(open && active !== -1) ? `${uid}-suggestion-${active}` : undefined}
         oninput={(event) => { (setText((event.target as HTMLTextAreaElement).value), track(event.target as HTMLTextAreaElement, (event.target as HTMLTextAreaElement).value)) }}
-        onkeydown={(event) => { if (!event.isComposing) !listKeys(event) && event.key === 'Enter' && !event.shiftKey && (event.preventDefault(), submit()) }}
+        onkeydown={(event) => { if (!composingKey(event)) !listKeys(event) && event.key === 'Enter' && !event.shiftKey && (event.preventDefault(), submit()) }}
         onkeyup={(event) => { track(event.currentTarget as HTMLTextAreaElement, text) }}
         onpointerup={(event) => { track(event.currentTarget as HTMLTextAreaElement, text) }}
         onfocus={(event) => { track(event.currentTarget as HTMLTextAreaElement, text) }}

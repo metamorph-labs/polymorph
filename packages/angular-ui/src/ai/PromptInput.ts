@@ -16,11 +16,14 @@ import {
   agentFill,
   agentMember,
   cell,
+  composingKey,
   derived,
   elementRef,
   fieldValue,
   fitTextarea,
+  focusAfterRemoval,
   gateFiles,
+  holdFieldEscape,
   mountEffect,
   presence,
   promptPick,
@@ -470,6 +473,7 @@ export class PromptInput {
   protected readonly highlight = cell(() => ({ key: '', index: 0 }))
   protected readonly side = cell(() => 'top' as 'top' | 'bottom')
   protected readonly reported = cell(() => null as string | null)
+  protected readonly pressed = cell(() => null as { id: string; at: number } | null)
   protected readonly chips = elementRef<HTMLElement>()
   protected readonly end = elementRef<HTMLElement>()
   protected readonly field = elementRef<HTMLElement>()
@@ -630,15 +634,6 @@ export class PromptInput {
     )
     by.onSelect?.(option)
   })
-  protected readonly holdEscape = derived(() => (element: HTMLTextAreaElement) => {
-    const view = element.ownerDocument.defaultView
-    const hold = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && event.target === element && !event.isComposing)
-        event.preventDefault()
-    }
-    view?.addEventListener('keydown', hold, true)
-    return () => view?.removeEventListener('keydown', hold, true)
-  })
   protected readonly listKeys = derived(() => (event: KeyboardEvent) => {
     const at = this.token.value
     if (!this.open.value || at === null) return false
@@ -678,7 +673,7 @@ export class PromptInput {
     return false
   })
   private release3: (() => void) | undefined
-  private release5: (() => void) | undefined
+  private release6: (() => void) | undefined
 
   constructor() {
     watchEffect(
@@ -694,12 +689,17 @@ export class PromptInput {
       true,
     )
     watchEffect(
-      () => this.sideKey.value,
+      () => this.$p.attachments,
       () => this.effect4(),
+      false,
+    )
+    watchEffect(
+      () => this.sideKey.value,
+      () => this.effect5(),
       true,
     )
-    inject(DestroyRef).onDestroy(() => this.release5?.())
-    mountEffect(() => this.effect5())
+    inject(DestroyRef).onDestroy(() => this.release6?.())
+    mountEffect(() => this.effect6())
   }
 
   protected e1() {
@@ -816,7 +816,8 @@ export class PromptInput {
     if (!(this.$p.attachments.length > 0)) return
     if (!(this.$.listening(this.onRemoveAttachment, 'onRemoveAttachment') && !this.$p.disabled))
       return
-    this.$.emit(this.onRemoveAttachment, 'onRemoveAttachment', attachment.id)
+    void ((this.pressed.value = { id: attachment.id, at: this.$p.attachments.indexOf(attachment) }),
+    this.$.emit(this.onRemoveAttachment, 'onRemoveAttachment', attachment.id))
   }
 
   protected e18(attachment: Each<ReturnType<PromptInput['e9']>>): AttachmentChipProps['name'] {
@@ -924,7 +925,7 @@ export class PromptInput {
   }
 
   protected h6($event: KeyboardEvent): void {
-    if (!$event.isComposing)
+    if (!composingKey($event))
       void (
         !this.listKeys.value($event) &&
         $event.key === 'Enter' &&
@@ -1275,16 +1276,22 @@ export class PromptInput {
 
   private effect3(): void {
     this.release3?.()
-    const ran =
-      this.open.value && this.field.value
-        ? this.holdEscape.value(this.field.value as HTMLTextAreaElement)
-        : () => {}
+    const ran = this.open.value && this.field.value ? holdFieldEscape(this.field.value) : () => {}
     this.release3 = () => {
       ran()
     }
   }
 
   private effect4(): void {
+    this.pressed.value = focusAfterRemoval(
+      this.pressed.value,
+      this.$p.attachments.map((attachment) => attachment.id),
+      (at) => this.chips.value?.children[at]?.querySelector<HTMLElement>('button'),
+      this.field.value,
+    )
+  }
+
+  private effect5(): void {
     void (
       this.sideKey.value !== null &&
       this.root.value &&
@@ -1295,8 +1302,8 @@ export class PromptInput {
     )
   }
 
-  private effect5(): void {
-    this.release5?.()
+  private effect6(): void {
+    this.release6?.()
     const ran = agentMember({
       member: 'PromptInput',
       element: () => this.field.value,
@@ -1340,7 +1347,7 @@ export class PromptInput {
         this.end.value?.lastElementChild,
       ],
     })
-    this.release5 = () => {
+    this.release6 = () => {
       ran()
     }
   }

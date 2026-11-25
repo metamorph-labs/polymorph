@@ -8,7 +8,7 @@
  */
 import { computed, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch } from 'vue'
 
-import { Icon, afterRender, agentMember } from '@polymorph/vue'
+import { Icon, afterRender, agentMember, composingKey, holdFieldEscape } from '@polymorph/vue'
 import styles from '@polymorph/recipes/controls/inline-edit.module.css'
 import Button from './Button.vue'
 import Input from './Input.vue'
@@ -131,16 +131,18 @@ const commit = computed(() => () => {
   if (props.editing === undefined) setOpen.value(false)
 })
 const onKey = computed(() => (event: KeyboardEvent) => {
+  if (composingKey(event)) return
   if (event.key === 'Escape') {
     event.preventDefault()
     cancel.value()
     return
   }
-  if (event.key === 'Enter' && event.target instanceof HTMLInputElement && !event.isComposing) {
+  if (event.key === 'Enter' && event.target instanceof HTMLInputElement) {
     event.preventDefault()
     commit.value()
   }
 })
+const cancellable = computed(() => current.value && !props.pending)
 const leave = computed(() => (event: FocusEvent) => {
   const next = event.relatedTarget
   if (next instanceof Node && !(root.value?.contains(next) ?? false)) within.value = false
@@ -157,7 +159,18 @@ const saveText = computed(() => (text: string) => {
   emit('commit', text)
   if (props.editing === undefined) setOpen.value(false)
 })
+let release1: (() => void) | undefined
 const effect1 = () => {
+  release1?.()
+  const ran = cancellable.value && root.value ? holdFieldEscape(root.value) : () => {}
+  release1 = () => {
+    ran()
+  }
+}
+onMounted(effect1)
+watch(() => cancellable.value, effect1, { flush: 'post' })
+onBeforeUnmount(() => release1?.())
+const effect2 = () => {
   current.value
     ? ((draft.value = props.value),
       afterRender(() => {
@@ -167,14 +180,14 @@ const effect1 = () => {
       }))
     : within.value && afterRender(() => root.value?.querySelector('button')?.focus())
 }
-watch(() => current.value, effect1, { flush: 'post' })
-const effect2 = () => {
+watch(() => current.value, effect2, { flush: 'post' })
+const effect3 = () => {
   !props.pending && current.value && within.value && root.value?.querySelector('input')?.focus()
 }
-watch(() => props.pending, effect2, { flush: 'post' })
-let release3: (() => void) | undefined
-const effect3 = () => {
-  release3?.()
+watch(() => props.pending, effect3, { flush: 'post' })
+let release4: (() => void) | undefined
+const effect4 = () => {
+  release4?.()
   const ran = agentMember({
     member: 'InlineEdit',
     element: () => root.value?.querySelector('input') ?? root.value?.querySelector('button'),
@@ -199,12 +212,12 @@ const effect3 = () => {
     },
     withholds: () => root.value,
   })
-  release3 = () => {
+  release4 = () => {
     ran()
   }
 }
-onMounted(effect3)
-onBeforeUnmount(() => release3?.())
+onMounted(effect4)
+onBeforeUnmount(() => release4?.())
 </script>
 
 <template>

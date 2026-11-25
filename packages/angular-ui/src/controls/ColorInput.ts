@@ -17,6 +17,7 @@ import {
   agentMember,
   borrowedHolder,
   cell,
+  composingKey,
   derived,
   elementRef,
   fieldValue,
@@ -670,7 +671,7 @@ export class ColorInput {
   }
 
   protected h5($event: KeyboardEvent): void {
-    if ($event.key === 'Enter') {
+    if ($event.key === 'Enter' && !composingKey($event)) {
       this.commitDraft.value()
     }
   }

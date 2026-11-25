@@ -12,6 +12,7 @@ import {
   afterRender,
   agentMember,
   commitPhone,
+  composingKey,
   devWarning,
   isPhoneValue,
   joinSlot,
@@ -306,7 +307,7 @@ onDestroy(() => release4?.())
     }</span
     ><span
       class={styles.number}
-      onkeydown={(event) => { if (event.key === 'Enter') commitDraft() }}
+      onkeydown={(event) => { if (event.key === 'Enter' && !composingKey(event)) commitDraft() }}
       onpaste={(event) => { pasteInto(event) }}
       oninput={(event) => { fitNumber(event) }}
       ><Input

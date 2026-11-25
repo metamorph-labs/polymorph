@@ -46,7 +46,9 @@ const control = { variant: lit('ghost'), tone: lit('neutral'), size: lit('sm'), 
  * it; `accept`, `multiple` and `maxSize` are the engine's `gateFiles`, applied
  * to the picker and a drop alike, and a refused file comes back through
  * `reject` with its reason. A removed row stays where it was while it plays
- * its exit.
+ * its exit. Once the app has removed the file of a row whose remove control
+ * was pressed, focus moves to the remove control of the row in its place, else
+ * of the row before it, else to the zone (`focusAfterRemoval`).
  */
 export default describeMember({
   member: 'FileUpload',
@@ -68,14 +70,31 @@ export default describeMember({
       "() => ({ retry: 'Retry', remove: (name: string) => `Remove ${name}`, progress: (name: string) => `${name} upload progress`, announcement: (file: FileUploadItem) => file.status === 'done' ? `${file.name} uploaded` : file.status === 'error' ? (file.message === undefined ? `${file.name} failed` : `${file.name} failed: ${file.message}`) : '', formatSize: formatBytes })",
   },
   statics: { controlKind: lit('group') },
-  state: { dragover: 'false' },
+  state: {
+    dragover: 'false',
+    // The row whose remove control was pressed, until the app has removed its file.
+    pressed: 'null as { id: string; at: number } | null',
+  },
   derived: {
     zoneState: "dragover ? 'dragover' : 'idle'",
     // The picker and a drop both end here, so the same three rules apply to both. No handler
     // receives an empty list: "some files arrived" and "none did" are different events.
+    // A row by its file's id, a leaving row included: the rows are drawn in the order of `rows`.
+    rowOf:
+      '(id: string | undefined) => (id === undefined ? null : (rowList?.children[rows.findIndex((row) => row.key === id)] ?? null))',
+    // A row's remove control, its last Button.
+    removeControl:
+      "(row: Element | null) => (row === null ? null : ([...row.querySelectorAll<HTMLElement>('button')].pop() ?? null))",
     add: "(list: FileList | null | undefined) => !disabled && list != null && list.length > 0 && ((gate) => (gate.accepted.length > 0 && emit('filesAdd', gate.accepted), gate.rejected.length > 0 && emit('reject', gate.rejected)))(gateFiles(Array.from(list), { accept, multiple, maxSize }))",
   },
   listPresence: { rows: { of: 'files', key: '(file: FileUploadItem) => file.id' } },
+  effects: [
+    {
+      watch: 'files',
+      mount: false,
+      run: 'pressed = focusAfterRemoval(pressed, files.map((file) => file.id), (at) => removeControl(rowOf(files[at]?.id)), zone, pressed === null ? null : rowOf(pressed.id))',
+    },
+  ],
   // The spec's `agent` fence. An agent reads the files the application lists, and removes or
   // retries one by its id, as the row's Buttons ask the application. It adds no file: a file is
   // on a person's disk. The rows' Buttons are the member's own parts, so it withholds them.
@@ -179,7 +198,7 @@ export default describeMember({
         },
       }),
       cond('files.length > 0', [
-        el('ul', { part: 'list', class: ['list'] }, [
+        el('ul', { part: 'list', class: ['list'], ref: 'rowList' }, [
           each('rows', 'row', 'row.key', [
             member(
               'FileUploadRow',
@@ -195,7 +214,9 @@ export default describeMember({
               {
                 on: {
                   retry: emit('retry', { args: ['row.item.id'] }),
-                  remove: emit('remove', { args: ['row.item.id'] }),
+                  remove: run(
+                    "((pressed = { id: row.item.id, at: files.findIndex((file) => file.id === row.item.id) }), emit('remove', row.item.id))",
+                  ),
                   done: run('row.done()'),
                 },
               },

@@ -14,6 +14,7 @@ import {
   Each,
   Icon,
   claimSlot,
+  composingKey,
   createCell,
   createDerived,
   mergeParts,
@@ -142,7 +143,7 @@ export default function CommandPanel(given: CommandPanelProps): JSX.Element {
               class: styles.input,
               'aria-label': props.placeholder,
               onkeydown: ($event: KeyboardEvent) =>
-                $event.key === 'Escape' && api.value.setInputValue(''),
+                $event.key === 'Escape' && !composingKey($event) && api.value.setInputValue(''),
             })}
           />
           <Kbd>{props.escapeHint}</Kbd>

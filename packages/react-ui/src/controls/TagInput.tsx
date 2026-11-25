@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  useEffect,
   useId,
   useRef,
   useState,
@@ -12,11 +13,14 @@ import {
 import { flushSync } from 'react-dom'
 
 import {
+  composingKey,
   type ControlKind,
   type ControlSize,
   dataAttrs,
   dataFlag,
+  holdFieldEscape,
   Icon,
+  lineStartKey,
   memberAttr,
   useAgentMember,
 } from '@polymorph/react'
@@ -131,6 +135,17 @@ export function TagInput({
     onChange?.(next)
   }
 
+  /*
+   * Escape clears uncommitted text, and that Escape is the field's: a Dialog around the field
+   * stays open (`holdFieldEscape`). With no text left, Escape is the Dialog's again.
+   */
+  const clearable = text !== ''
+  useEffect(() => {
+    const element = inputRef.current
+    if (!clearable || element === null) return
+    return holdFieldEscape(element)
+  }, [clearable])
+
   /** Adds what it can, and flags rejected entries and duplicates. */
   function add(raws: string[]): void {
     const next = [...values]
@@ -210,6 +225,9 @@ export function TagInput({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
+    // Every key an input method is handling is its own: the Enter that confirms a candidate
+    // commits no half-typed tag, and Backspace edits the composition, not the chips.
+    if (composingKey(event.nativeEvent)) return
     if (event.key === 'Enter' || event.key === ',') {
       event.preventDefault()
       add([text])
@@ -228,13 +246,22 @@ export function TagInput({
       if (last !== undefined) remove(last)
       return
     }
-    if (event.key === 'ArrowLeft' && inputRef.current?.selectionStart === 0) {
+    // The chips come before the field in reading order, so the key toward the line's start
+    // moves into them: ← left to right, → right to left.
+    if (
+      event.key === lineStartKey(event.currentTarget) &&
+      event.currentTarget.selectionStart === 0
+    ) {
       const last = values[values.length - 1]
       if (last !== undefined) removeRefs.current.get(last)?.focus()
     }
   }
 
-  /** Chip navigation: ←/→ between chips, and → past the last one returns to the field. */
+  /**
+   * Chip navigation: the key toward the line's start moves to the previous chip, the other to
+   * the next, and past the last one returns to the field. ← is toward the start left to right,
+   * and → right to left.
+   */
   function handleChipKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number): void {
     const tag = values[index]
     if (tag === undefined) return
@@ -246,7 +273,7 @@ export function TagInput({
     }
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault()
-      const step = event.key === 'ArrowLeft' ? -1 : 1
+      const step = event.key === lineStartKey(event.currentTarget) ? -1 : 1
       const neighbour = values[index + step]
       if (neighbour === undefined) {
         if (step === 1) inputRef.current?.focus()

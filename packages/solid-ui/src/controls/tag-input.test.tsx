@@ -1,10 +1,12 @@
 import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { createSignal } from 'solid-js'
 
 import { PASTE_IS_UNREADABLE } from '@polymorph/conformance/engines'
 import { installTestTheme } from '@polymorph/engine/testing'
 
 import { mount } from '../mount'
+import Dialog from '../overlays/Dialog'
 import TagInput from './TagInput'
 
 /**
@@ -325,5 +327,90 @@ describe('the maximum and the form', () => {
     field()?.focus()
     document.querySelector<HTMLElement>('button:not([aria-label])')?.focus()
     expect(onBlur).toHaveBeenCalledTimes(1)
+  })
+})
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * A key an input method is handling, dispatched on `target`: marked `isComposing`, or reported
+ * with key code 229 after the composition has ended, as Safari sends the Enter that confirms it.
+ */
+function inputMethodKey(
+  target: HTMLElement,
+  key: string,
+  how: 'composing' | 'processed',
+): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    bubbles: true,
+    cancelable: true,
+    isComposing: how === 'composing',
+  })
+  if (how === 'processed') Object.defineProperty(event, 'keyCode', { value: 229 })
+  target.dispatchEvent(event)
+  return event
+}
+
+describe('keys', () => {
+  it('keeps every key an input method is handling, so no half-typed text becomes a tag', async () => {
+    const onChange = vi.fn()
+    await mount(() => (
+      <TagInput defaultValue={['billing']} onChange={onChange} aria-label="Labels" />
+    ))
+    const input = field() as HTMLInputElement
+    await userEvent.click(input)
+    await userEvent.keyboard('にほ')
+    for (const how of ['composing', 'processed'] as const) {
+      for (const key of ['Enter', ',', 'Escape']) {
+        expect(inputMethodKey(input, key, how).defaultPrevented, `${how} ${key}`).toBe(false)
+      }
+    }
+    await sleep(30)
+    expect(input.value).toBe('にほ')
+    expect(onChange).not.toHaveBeenCalled()
+    await userEvent.keyboard('{Enter}')
+    expect(onChange).toHaveBeenLastCalledWith(['billing', 'にほ'])
+  })
+
+  it('clears uncommitted text on Escape inside a Dialog, which stays open until the next Escape', async () => {
+    const onOpenChange = vi.fn()
+    const [open, setOpen] = createSignal(true)
+    await mount(() => (
+      <Dialog
+        title="Labels"
+        open={open()}
+        onOpenChange={(next) => {
+          onOpenChange(next)
+          setOpen(next)
+        }}
+      >
+        <TagInput aria-label="Labels" />
+      </Dialog>
+    ))
+    await vi.waitFor(() => expect(field()).not.toBeNull())
+    await userEvent.click(field() as HTMLElement)
+    await userEvent.keyboard('regressio{Escape}')
+    await vi.waitFor(() => expect(field()?.value).toBe(''))
+    await sleep(60)
+    expect(onOpenChange).not.toHaveBeenCalled()
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+  })
+
+  it('follows a right-to-left line: → moves back into the chips and ← forward to the field', async () => {
+    const { host } = await mount(() => (
+      <TagInput defaultValue={['billing', 'regression']} aria-label="Labels" />
+    ))
+    host.dir = 'rtl'
+    await userEvent.click(field() as HTMLElement)
+    await userEvent.keyboard('{ArrowLeft}')
+    expect(document.activeElement).toBe(field())
+    await userEvent.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(removeButton('regression'))
+    await userEvent.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(removeButton('billing'))
+    await userEvent.keyboard('{ArrowLeft}{ArrowLeft}')
+    expect(document.activeElement).toBe(field())
   })
 })

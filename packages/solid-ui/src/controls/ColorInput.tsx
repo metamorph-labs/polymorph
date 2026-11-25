@@ -16,6 +16,7 @@ import {
   IDENTITY,
   agentMember,
   claimSlot,
+  composingKey,
   createCell,
   createDerived,
   elementRef,
@@ -378,7 +379,9 @@ export default function ColorInput(given: ColorInputProps): JSX.Element {
         </Popover>
         <span
           class={styles.field}
-          onkeydown={($event: KeyboardEvent) => $event.key === 'Enter' && commitDraft.value()}
+          onkeydown={($event: KeyboardEvent) =>
+            $event.key === 'Enter' && !composingKey($event) && commitDraft.value()
+          }
           ref={hexField.attach}
         >
           <Input

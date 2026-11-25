@@ -319,8 +319,14 @@ export default describeMember({
             class: ['input'],
             spread: ['api.getInputProps()'],
             attrs: { 'aria-label': 'placeholder' },
-            // The dialog held itself open for a query; Escape clears it here.
-            on: { keydown: run("api.setInputValue('')", "$event.key === 'Escape'") },
+            // The dialog held itself open for a query; Escape clears it here, unless an input
+            // method is handling the key (`composingKey`).
+            on: {
+              keydown: run(
+                "api.setInputValue('')",
+                "$event.key === 'Escape' && !composingKey($event)",
+              ),
+            },
           }),
           member('Kbd', {}, { slots: { default: [text('escapeHint')] } }),
         ]),

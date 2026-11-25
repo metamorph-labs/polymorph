@@ -107,10 +107,16 @@ export default describeMember({
       else field?.focus()
     }`,
     receive: '(event: Event) => { draft = (event.target as HTMLInputElement).value }',
-    // Enter and comma commit; Escape clears uncommitted text only, so inside a Dialog it
-    // closes the Dialog once there is no text left; Backspace in an empty field removes
-    // the last chip; ← at the start of the field moves into the chips.
+    // Uncommitted text Escape clears: while there is some, Escape is the field's and a Dialog
+    // around it stays open (`holdFieldEscape`).
+    clearable: "draft !== ''",
+    // Every key an input method is handling is its own (`composingKey`). Enter and comma
+    // commit; Escape clears uncommitted text only, so inside a Dialog it closes the Dialog
+    // once there is no text left; Backspace in an empty field removes the last chip; the key
+    // toward the line's start (← left to right, → right to left, read on the member as Tree
+    // reads it) at the start of the field moves into the chips.
     fieldKeyDown: `(event: KeyboardEvent) => {
+      if (composingKey(event)) return
       if (event.key === 'Enter' || event.key === ',') {
         event.preventDefault()
         add([draft])
@@ -127,12 +133,13 @@ export default describeMember({
         if (last !== undefined) remove(last)
         return
       }
-      if (event.key === 'ArrowLeft' && (event.target as HTMLInputElement).selectionStart === 0) {
+      const input = event.target as HTMLInputElement
+      if (event.key === lineStartKey(chipList ?? input) && input.selectionStart === 0) {
         removeButton(values.length - 1)?.focus()
       }
     }`,
-    // Chip navigation: ←/→ between chips, → past the last one returns to the field, and
-    // Backspace or Delete removes the chip.
+    // Chip navigation: the key toward the line's start moves to the previous chip and the other
+    // to the next, past the last one back to the field; Backspace or Delete removes the chip.
     chipKeyDown: `(event: KeyboardEvent, tag: string) => {
       const at = values.indexOf(tag)
       if (at === -1) return
@@ -143,7 +150,7 @@ export default describeMember({
       }
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         event.preventDefault()
-        const step = event.key === 'ArrowLeft' ? -1 : 1
+        const step = event.key === lineStartKey(chipList ?? (event.target as Element)) ? -1 : 1
         if (at + step === values.length) field?.focus()
         else if (at + step >= 0) removeButton(at + step)?.focus()
       }
@@ -193,7 +200,14 @@ export default describeMember({
     },
   },
   listPresence: { chips: { of: 'values', key: '(tag: string) => tag' } },
-  effects: [{ run: 'settled = true' }],
+  effects: [
+    { run: 'settled = true' },
+    {
+      watch: 'clearable',
+      run: 'clearable && field ? holdFieldEscape(field) : () => {}',
+      release: 'ran()',
+    },
+  ],
   template: el(
     'div',
     {

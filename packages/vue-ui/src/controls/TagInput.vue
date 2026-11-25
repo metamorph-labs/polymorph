@@ -17,7 +17,7 @@ import {
   watch,
 } from 'vue'
 
-import { agentMember } from '@polymorph/vue'
+import { agentMember, composingKey, holdFieldEscape, lineStartKey } from '@polymorph/vue'
 import styles from '@polymorph/recipes/controls/tag-input.module.css'
 import TagInputChip from './TagInputChip.vue'
 
@@ -127,7 +127,9 @@ const remove = computed(() => (tag: string) => {
 const receive = computed(() => (event: Event) => {
   draft.value = (event.target as HTMLInputElement).value
 })
+const clearable = computed(() => draft.value !== '')
 const fieldKeyDown = computed(() => (event: KeyboardEvent) => {
+  if (composingKey(event)) return
   if (event.key === 'Enter' || event.key === ',') {
     event.preventDefault()
     add.value([draft.value])
@@ -144,7 +146,8 @@ const fieldKeyDown = computed(() => (event: KeyboardEvent) => {
     if (last !== undefined) remove.value(last)
     return
   }
-  if (event.key === 'ArrowLeft' && (event.target as HTMLInputElement).selectionStart === 0) {
+  const input = event.target as HTMLInputElement
+  if (event.key === lineStartKey(chipList.value ?? input) && input.selectionStart === 0) {
     removeButton.value(values.value.length - 1)?.focus()
   }
 })
@@ -158,7 +161,7 @@ const chipKeyDown = computed(() => (event: KeyboardEvent, tag: string) => {
   }
   if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
     event.preventDefault()
-    const step = event.key === 'ArrowLeft' ? -1 : 1
+    const step = event.key === lineStartKey(chipList.value ?? (event.target as Element)) ? -1 : 1
     if (at + step === values.value.length) field.value?.focus()
     else if (at + step >= 0) removeButton.value(at + step)?.focus()
   }
@@ -223,6 +226,17 @@ onMounted(effect1)
 let release2: (() => void) | undefined
 const effect2 = () => {
   release2?.()
+  const ran = clearable.value && field.value ? holdFieldEscape(field.value) : () => {}
+  release2 = () => {
+    ran()
+  }
+}
+onMounted(effect2)
+watch(() => clearable.value, effect2, { flush: 'post' })
+onBeforeUnmount(() => release2?.())
+let release3: (() => void) | undefined
+const effect3 = () => {
+  release3?.()
   const ran = agentMember({
     member: 'TagInput',
     element: () => field.value,
@@ -248,12 +262,12 @@ const effect2 = () => {
         })(),
     },
   })
-  release2 = () => {
+  release3 = () => {
     ran()
   }
 }
-onMounted(effect2)
-onBeforeUnmount(() => release2?.())
+onMounted(effect3)
+onBeforeUnmount(() => release3?.())
 </script>
 
 <template>

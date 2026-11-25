@@ -15,6 +15,7 @@ import {
   COLOR_INPUT_REST,
   agentMember,
   attributes,
+  composingKey,
   joinSlot,
   mergeParts,
   normalizeProps,
@@ -343,7 +344,7 @@ onDestroy(() => release1?.())
     ><span
       bind:this={hexField}
       class={styles.field}
-      onkeydown={(event) => { if (event.key === 'Enter') commitDraft() }}
+      onkeydown={(event) => { if (event.key === 'Enter' && !composingKey(event)) commitDraft() }}
       ><Input
         value={draft ?? hex.replace(/^#/, '')}
         prefix="#"

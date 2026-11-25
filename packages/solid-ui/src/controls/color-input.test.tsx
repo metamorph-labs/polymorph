@@ -1,3 +1,4 @@
+import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { installTestTheme } from '@polymorph/engine/testing'
@@ -36,5 +37,45 @@ describe('ColorInput’s thumbs are pictures, not tab stops', () => {
       (input) => input.tabIndex >= 0,
     )
     expect(stops).toHaveLength(3)
+  })
+})
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * A key an input method is handling, dispatched on `target`: marked `isComposing`, or reported
+ * with key code 229 after the composition has ended, as Safari sends the Enter that confirms it.
+ */
+function inputMethodKey(
+  target: HTMLElement,
+  key: string,
+  how: 'composing' | 'processed',
+): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    bubbles: true,
+    cancelable: true,
+    isComposing: how === 'composing',
+  })
+  if (how === 'processed') Object.defineProperty(event, 'keyCode', { value: 229 })
+  target.dispatchEvent(event)
+  return event
+}
+
+describe('ColorInput and an input method', () => {
+  it('commits nothing on an Enter an input method is handling', async () => {
+    const onChange = vi.fn()
+    await mount(() => <ColorInput pickerLabel="Choose accent colour" onChange={onChange} />)
+    const field = document.querySelector<HTMLInputElement>(
+      '[data-member="color-input"] input[type="text"]',
+    ) as HTMLInputElement
+    await userEvent.tripleClick(field)
+    await userEvent.keyboard('0089EA')
+    inputMethodKey(field, 'Enter', 'composing')
+    inputMethodKey(field, 'Enter', 'processed')
+    await sleep(30)
+    expect(onChange).not.toHaveBeenCalled()
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(onChange).toHaveBeenLastCalledWith('#0089ea'))
   })
 })

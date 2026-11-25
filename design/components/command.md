@@ -114,7 +114,8 @@ field. `README-substrates.md` §4 allows
 exactly one focus manager, and it is Radix. Inside, the Combobox pattern applies verbatim:
 `role="combobox"` input, `aria-activedescendant`, `role="listbox"` with grouped
 `role="option"`s (`aria-labelledby` group headers). Escape clears the query if it is not empty,
-else closes (APG). Result counts announce politely, as in Combobox. The palette's own label is
+else closes (APG). An Escape an input method is handling clears nothing: it abandons the
+composition. Result counts announce politely, as in Combobox. The palette's own label is
 `aria-label="Command palette"` on the dialog.
 
 ```contract

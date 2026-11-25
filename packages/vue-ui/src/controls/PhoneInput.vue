@@ -12,6 +12,7 @@ import {
   afterRender,
   agentMember,
   commitPhone,
+  composingKey,
   devWarning,
   isPhoneValue,
   phoneCountries,
@@ -282,7 +283,7 @@ onBeforeUnmount(() => release4?.())
     <!-- number -->
     <span
       :class="styles.number"
-      @keydown="$event.key === 'Enter' && commitDraft()"
+      @keydown="$event.key === 'Enter' && !composingKey($event) && commitDraft()"
       @paste="pasteInto($event)"
       @input="fitNumber($event)"
     >

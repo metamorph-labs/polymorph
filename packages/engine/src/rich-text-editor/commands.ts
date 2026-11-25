@@ -20,6 +20,7 @@ import {
   type Mark,
   type MarkType,
   type Node as PMNode,
+  type NodeType,
   type Schema,
   Slice,
 } from 'prosemirror-model'
@@ -592,10 +593,26 @@ export function sinkCommand(schema: Schema): Command {
   return withinDepth(sinkListItem(item))
 }
 
+/**
+ * Lifts a nested list item out of the list it is nested in. An item of a
+ * top-level list is left where it is: lifting it would turn it into a
+ * paragraph, and Shift-Tab there is a person leaving the field.
+ */
 export function liftCommand(schema: Schema): Command {
   const item = listItemTypes(schema)
   if (!item) return () => false
-  return liftListItem(item)
+  const lift = liftListItem(item)
+  return (state, dispatch, view) => nestedItem(state, item) && lift(state, dispatch, view)
+}
+
+/** Whether the selection's list items are nested in another list item, as `liftListItem` finds them. */
+function nestedItem(state: EditorState, item: NodeType): boolean {
+  const { $from, $to } = state.selection
+  const range = $from.blockRange(
+    $to,
+    (node) => node.childCount > 0 && node.firstChild?.type === item,
+  )
+  return range !== null && range.depth > 0 && $from.node(range.depth - 1).type === item
 }
 
 /** The inline atoms that read as one unit: an entity and an unknown inline node. */

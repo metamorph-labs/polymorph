@@ -498,15 +498,57 @@ describe('lists', () => {
     await expect.poll(valueOf(m)).toEqual(doc(ul([p(t('one'))], [p(t('two'))]), p(t('after'))))
   })
 
-  it('sinks an item with Tab and lifts it with Shift-Tab', async () => {
+  it('sinks an item with Tab, lifts a nested one with Shift-Tab, and leaves Shift-Tab on a top-level item to the browser', async () => {
     const m = mount({ value: doc(ul([p(t('one'))], [p(t('two'))])) })
-    await focusEnd(m)
-    await userEvent.keyboard('{Tab}')
-    await expect.poll(valueOf(m)).toEqual(doc(ul([p(t('one')), ul([p(t('two'))])])))
-    await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
-    await expect.poll(valueOf(m)).toEqual(doc(ul([p(t('one'))], [p(t('two'))])))
-    await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
-    await expect.poll(valueOf(m)).toEqual(doc(ul([p(t('one'))]), p(t('two'))))
+    const prevented: boolean[] = []
+    const record = (event: KeyboardEvent) => {
+      if (event.key === 'Tab') prevented.push(event.defaultPrevented)
+    }
+    window.addEventListener('keydown', record)
+    try {
+      await focusEnd(m)
+      await userEvent.keyboard('{Tab}')
+      await expect.poll(valueOf(m)).toEqual(doc(ul([p(t('one')), ul([p(t('two'))])])))
+      await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+      await expect.poll(valueOf(m)).toEqual(doc(ul([p(t('one'))], [p(t('two'))])))
+      // The item is in a top-level list: Shift-Tab leaves the field and the text as it was.
+      await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+      await vi.waitFor(() => expect(prevented).toEqual([true, true, false]))
+      expect(m.editor.getValue()).toEqual(doc(ul([p(t('one'))], [p(t('two'))])))
+    } finally {
+      window.removeEventListener('keydown', record)
+    }
+  })
+
+  it('leaves the next Tab or Shift-Tab after Escape to the browser from any item, and changes nothing', async () => {
+    const value = doc(ul([p(t('one')), ul([p(t('two'))])], [p(t('three'))]))
+    const m = mount({ value })
+    const prevented: boolean[] = []
+    const record = (event: KeyboardEvent) => {
+      if (event.key === 'Tab') prevented.push(event.defaultPrevented)
+    }
+    window.addEventListener('keydown', record)
+    try {
+      // The caret is in "three", an item Tab would sink.
+      await focusEnd(m)
+      await userEvent.keyboard('{Escape}{Tab}')
+      await vi.waitFor(() => expect(prevented).toEqual([false]))
+      // The caret is in "two", a nested item Shift-Tab would lift.
+      await focusEnd(m)
+      await caretAfter(m, 'two')
+      await userEvent.keyboard('{Escape}{Shift>}{Tab}{/Shift}')
+      await vi.waitFor(() => expect(prevented).toEqual([false, false]))
+      expect(m.editor.getValue()).toEqual(value)
+      // Any other key takes Tab back.
+      await focusEnd(m)
+      await userEvent.keyboard('{Escape}{ArrowLeft}{Tab}')
+      await vi.waitFor(() => expect(prevented).toEqual([false, false, true]))
+      await expect
+        .poll(valueOf(m))
+        .toEqual(doc(ul([p(t('one')), ul([p(t('two'))], [p(t('three'))])])))
+    } finally {
+      window.removeEventListener('keydown', record)
+    }
   })
 
   it('leaves Tab to the browser outside a list and where an item cannot sink', async () => {

@@ -260,7 +260,8 @@ export default describeMember({
         {
           class: ['field'],
           ref: 'hexField',
-          on: { keydown: run('commitDraft()', "$event.key === 'Enter'") },
+          // The Enter that confirms an input method's candidate is the input method's.
+          on: { keydown: run('commitDraft()', "$event.key === 'Enter' && !composingKey($event)") },
         },
         [
           member(

@@ -12,6 +12,7 @@ import {
   agentMember,
   claimSlot,
   commitPhone,
+  composingKey,
   createCell,
   createDerived,
   devWarning,
@@ -303,7 +304,9 @@ export default function PhoneInput(given: PhoneInputProps): JSX.Element {
         {/* number */}
         <span
           class={styles.number}
-          onkeydown={($event: KeyboardEvent) => $event.key === 'Enter' && commitDraft.value()}
+          onkeydown={($event: KeyboardEvent) =>
+            $event.key === 'Enter' && !composingKey($event) && commitDraft.value()
+          }
           onpaste={($event: ClipboardEvent) => pasteInto.value($event)}
           oninput={($event: InputEvent) => fitNumber.value($event)}
         >
