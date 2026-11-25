@@ -2584,6 +2584,11 @@ data class PMFormPageProps(
     /** Cards of FormFields. */
     val children: PMContent,
     val description: String? = null,
+    /**
+     * One action at the start of the actions row, apart from `actions`, which stay at its end: a
+     * destructive tertiary action such as "Delete…", routed through ConfirmDialog.
+     */
+    val leadingAction: PMContent? = null,
     val onSubmit: (() -> Unit)? = null,
     val title: String,
 )

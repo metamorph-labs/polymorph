@@ -23,17 +23,33 @@ export interface FormPageProps {
    */
   children: Snippet
   description?: string
+  /**
+   * One action at the start of the actions row, apart from `actions`, which stay at its end: a
+   * destructive tertiary action such as "Delete…", routed through ConfirmDialog.
+   */
+  leadingAction?: Snippet
   onSubmit?: () => void
   title: string
 }
 </script>
 
 <script lang="ts">
-let { actions, children, description, onSubmit, title }: FormPageProps = $props()
+let { actions, children, description, leadingAction, onSubmit, title }: FormPageProps = $props()
 const joined = joinSlot(undefined, () => ({}))
 const listening = {
   get submit() {
     return onSubmit !== undefined
+  },
+}
+const slots = {
+  get actions() {
+    return actions
+  },
+  get default() {
+    return children
+  },
+  get leadingAction() {
+    return leadingAction
   },
 }
 let form = $state<HTMLElement | null>(null)
@@ -60,14 +76,32 @@ const submit = $derived((event: Event) => {
         onsubmit={(event) => { submit(event) }}
         >{@render children?.()
         }<div class={styles.actions}
-          ><Inline gap={3} justify="end" wrap={true}>{@render actions?.()}</Inline
-        ></div
+          >{#if slots.leadingAction
+            }<div class={styles.split}
+              >{@render leadingAction?.()
+              }<div class={styles.trailing}
+                ><Inline gap={3} justify="end" wrap={true}>{@render actions?.()}</Inline
+              ></div
+            ></div
+          >{:else
+            }<Inline gap={3} justify="end" wrap={true}>{@render actions?.()}</Inline
+          >{/if
+        }</div
       ></form
     >{:else
       }{@render children?.()
       }<div class={styles.actions}
-        ><Inline gap={3} justify="end" wrap={true}>{@render actions?.()}</Inline
-      ></div
+        >{#if slots.leadingAction
+          }<div class={styles.split}
+            >{@render leadingAction?.()
+            }<div class={styles.trailing}
+              ><Inline gap={3} justify="end" wrap={true}>{@render actions?.()}</Inline
+            ></div
+          ></div
+        >{:else
+          }<Inline gap={3} justify="end" wrap={true}>{@render actions?.()}</Inline
+        >{/if
+      }</div
     >{/if
   }</div
 >{/if

@@ -100,12 +100,12 @@ defaultValue="normal"
 @case (2) {<pm-form-page
 title="Edit ticket"
 [pmOverrides]="overrides()"
-><ng-container ngProjectAs="[slot=actions]"><pm-button
+><ng-container ngProjectAs="[slot=leadingAction]"><pm-button
 variant="ghost"
 tone="danger"
 label="Delete ticket…"
-></pm-button>
-<pm-button
+></pm-button></ng-container>
+<ng-container ngProjectAs="[slot=actions]"><pm-button
 variant="outline"
 tone="neutral"
 label="Cancel"

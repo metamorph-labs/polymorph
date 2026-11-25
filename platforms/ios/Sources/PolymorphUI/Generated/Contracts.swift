@@ -3741,6 +3741,9 @@ public struct PMFormPageProps {
   /// Cards of FormFields.
   public var children: PMContent
   public var description: String?
+  /// One action at the start of the actions row, apart from `actions`, which stay at its end: a
+  /// destructive tertiary action such as "Delete…", routed through ConfirmDialog.
+  public var leadingAction: PMContent?
   public var onSubmit: (@MainActor () -> Void)?
   public var title: String
 
@@ -3750,6 +3753,7 @@ public struct PMFormPageProps {
     actions: PMContent,
     children: PMContent,
     description: String? = nil,
+    leadingAction: PMContent? = nil,
     onSubmit: (@MainActor () -> Void)? = nil,
     title: String
   ) {
@@ -3758,6 +3762,7 @@ public struct PMFormPageProps {
     self.actions = actions
     self.children = children
     self.description = description
+    self.leadingAction = leadingAction
     self.onSubmit = onSubmit
     self.title = title
   }

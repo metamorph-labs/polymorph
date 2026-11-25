@@ -61,7 +61,7 @@ export const states: ComponentStates = {
     {
       name: 'with a destructive tertiary, leftmost and quiet',
       html: `<poly-form-page title="Edit ticket">
-  <poly-button slot="actions" variant="ghost" tone="danger" label="Delete ticket…"></poly-button>
+  <poly-button slot="leading-action" variant="ghost" tone="danger" label="Delete ticket…"></poly-button>
   <poly-button slot="actions" variant="outline" tone="neutral" label="Cancel"></poly-button>
   <poly-button slot="actions" label="Save changes" type="submit"></poly-button>
   <poly-card>

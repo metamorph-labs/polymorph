@@ -7,7 +7,7 @@
  */
 import { type JSX } from 'solid-js'
 
-import { claimSlot, createDerived, elementRef, scope } from '@polymorph/solid'
+import { claimSlot, createDerived, elementRef, resolveSlot, scope } from '@polymorph/solid'
 import styles from '@polymorph/recipes/archetypes/form-page.module.css'
 import Inline from '../layout/Inline'
 import PageHeader from '../structure/PageHeader'
@@ -22,6 +22,11 @@ export interface FormPageProps {
    */
   children: JSX.Element
   description?: string
+  /**
+   * One action at the start of the actions row, apart from `actions`, which stay at its end: a
+   * destructive tertiary action such as "Delete…", routed through ConfirmDialog.
+   */
+  leadingAction?: JSX.Element
   onSubmit?: () => void
   title: string
 }
@@ -31,6 +36,7 @@ export default function FormPage(given: FormPageProps): JSX.Element {
   const props = claimSlot(given)
   return scope(() => {
     const form = elementRef<HTMLElement>()
+    const leadingActionSlot = resolveSlot(() => props.leadingAction)
     const submit = createDerived(() => (event: Event) => {
       event.preventDefault()
       const invalid = form.value?.querySelector<HTMLElement>('[aria-invalid="true"]')
@@ -53,9 +59,21 @@ export default function FormPage(given: FormPageProps): JSX.Element {
             {props.children}
             {/* actions */}
             <div class={styles.actions}>
-              <Inline gap={3} justify="end" wrap={true}>
-                {props.actions}
-              </Inline>
+              {leadingActionSlot.filled() ? (
+                <div class={styles.split}>
+                  {leadingActionSlot()}
+                  {/* trailing */}
+                  <div class={styles.trailing}>
+                    <Inline gap={3} justify="end" wrap={true}>
+                      {props.actions}
+                    </Inline>
+                  </div>
+                </div>
+              ) : (
+                <Inline gap={3} justify="end" wrap={true}>
+                  {props.actions}
+                </Inline>
+              )}
             </div>
           </form>
         ) : (
@@ -63,9 +81,21 @@ export default function FormPage(given: FormPageProps): JSX.Element {
             {props.children}
             {/* actions */}
             <div class={styles.actions}>
-              <Inline gap={3} justify="end" wrap={true}>
-                {props.actions}
-              </Inline>
+              {leadingActionSlot.filled() ? (
+                <div class={styles.split}>
+                  {leadingActionSlot()}
+                  {/* trailing */}
+                  <div class={styles.trailing}>
+                    <Inline gap={3} justify="end" wrap={true}>
+                      {props.actions}
+                    </Inline>
+                  </div>
+                </div>
+              ) : (
+                <Inline gap={3} justify="end" wrap={true}>
+                  {props.actions}
+                </Inline>
+              )}
             </div>
           </>
         )}
