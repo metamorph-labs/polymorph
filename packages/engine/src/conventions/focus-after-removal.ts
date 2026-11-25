@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * Where focus goes when the element that holds it, or the element it should
  * return to, has left the page: one rule for every framework's members.
@@ -76,7 +78,7 @@ export function focusPlace(element: Element | null | undefined): FocusPlace | nu
  * drawn and outside an inert subtree. A control the reader opened an overlay
  * from passes, whether or not it is a tab stop.
  */
-function canTakeFocus(element: HTMLElement): boolean {
+export function canTakeFocus(element: HTMLElement): boolean {
   if (!element.isConnected) return false
   if (element.matches(':disabled')) return false
   if (element.closest('[inert]') !== null) return false
@@ -128,14 +130,23 @@ function follows(node: Node, gap: Gap): boolean {
 /**
  * The page's `main`, made focusable for the moment if it is not, because it is
  * where a reader who lost their place starts again. The `tabindex` it gains is
- * removed as focus leaves it.
+ * removed as focus leaves it, and also when focus has not landed on it by the
+ * end of the task that asked for it, so a caller that took the target and
+ * focused another element leaves `main` as it found it.
  */
 function pageMain(top: Document): HTMLElement | null {
   const main = top.querySelector<HTMLElement>('main, [role="main"]')
   if (main === null || !canTakeFocus(main)) return null
   if (!main.hasAttribute('tabindex')) {
     main.setAttribute('tabindex', '-1')
-    main.addEventListener('blur', () => main.removeAttribute('tabindex'), { once: true })
+    const restore = (): void => {
+      main.removeEventListener('blur', restore)
+      main.removeAttribute('tabindex')
+    }
+    main.addEventListener('blur', restore)
+    setTimeout(() => {
+      if (top.activeElement !== main) restore()
+    }, 0)
   }
   return main
 }
@@ -200,6 +211,13 @@ export function returnFocusTo(
  * it runs the returned function, and the browser drops focus to the body as it
  * does. Focus that left the region for another element, or for the body while
  * the region stayed, no longer counts.
+ *
+ * The returned function decides whether focus was in the region, and moves it
+ * a microtask later, once the region has left the page, and only if focus is
+ * then on the body. A framework that runs the function while the region stays
+ * moves nothing: React's StrictMode runs an effect's cleanup and the effect
+ * again on a region that stays mounted, and an element that took focus as it
+ * mounted keeps it.
  */
 export function focusAfterRemoval(region: Element | null | undefined): () => void {
   if (!region) return () => undefined
@@ -228,9 +246,10 @@ export function focusAfterRemoval(region: Element | null | undefined): () => voi
     const held = place
     place = null
     if (held === null) return
-    const active = top.activeElement
-    const lost =
-      active === null || active === top.body || (region.isConnected && region.contains(active))
-    if (lost) nearestFocusable(held, [region])?.focus()
+    queueMicrotask(() => {
+      if (region.isConnected) return
+      const active = top.activeElement
+      if (active === null || active === top.body) nearestFocusable(held, [region])?.focus()
+    })
   }
 }
