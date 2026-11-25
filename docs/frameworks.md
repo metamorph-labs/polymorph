@@ -496,7 +496,7 @@ The same app `init` writes for React ([tooling.md](tooling.md#init)), in Vue:
 | `vite.config.ts` | `@vitejs/plugin-vue` and the engine's theme plugin |
 | `polymorph.eslint.js` | the rules for `.ts` and `.vue` files, with `vue-eslint-parser` reading the templates (`installedEslintFragment(values, { framework: 'vue' })`) |
 | `polymorph/system-card.md` | the card rendered for Vue |
-| `AGENTS.md` | the agent notes, in Vue's terms |
+| `AGENTS.md`, the skills, the MCP entries | the agent files `polymorph agents` writes ([harnesses.md](harnesses.md)), with Vue's terms in the `AGENTS.md` block |
 | `src/screens/welcome.json` | the welcome spec: the React app's inputs and layout, with the title and the status line as `Heading` and `Text` |
 | `src/screens/Welcome.vue` | the emitter's output for it |
 | `src/App.vue` | the container that owns the state and renders the screen |
@@ -654,7 +654,7 @@ with each framework's values in `init-svelte.ts` and `init-solid.ts`):
 | `tsconfig.json` | includes `.svelte` files | `jsx: preserve`, `jsxImportSource: solid-js` |
 | `vite.config.ts` | `svelte()` and the engine's theme plugin | `solid()` and the engine's theme plugin |
 | `polymorph.eslint.js` | the rules for `.ts` and `.svelte` files, with `svelte-eslint-parser` reading the markup | the rules for TSX, with the Solid settings and the Solid fix of a raw control |
-| `polymorph/system-card.md`, `AGENTS.md` | the card and the agent notes for Svelte | for Solid |
+| `polymorph/system-card.md`, the agent files | the card and the agent files ([harnesses.md](harnesses.md)) for Svelte | for Solid |
 | `src/screens/Welcome.*` | `Welcome.svelte`, emitted | `Welcome.tsx`, emitted with `--framework solid` |
 | the container | `src/App.svelte`, its state a `$state` | `src/App.tsx`, its state a signal |
 
@@ -799,7 +799,7 @@ The same app as the Vue one, with Angular's values in `packages/cli/src/init-ang
 | `tsconfig.json` | `angularCompilerOptions.strictTemplates`, `vite/client` types for the stylesheet the entry imports, and an `outDir`, because the build emits through this program |
 | `vite.config.ts` | `angular({ tsconfig: './tsconfig.json', jit: false })`, which compiles ahead of time as the Angular CLI does, and the engine's theme plugin |
 | `polymorph.eslint.js` | the rules for `.ts` modules, read as Angular, with each component's inline template extracted by `@angular-eslint/eslint-plugin-template` and read, as an `.html` template is, by `@angular-eslint/template-parser` |
-| `polymorph/system-card.md`, `AGENTS.md` | the card and the agent notes for Angular |
+| `polymorph/system-card.md`, the agent files | the card and the agent files ([harnesses.md](harnesses.md)) for Angular |
 | `src/screens/welcome.ts` | the welcome screen, emitted |
 | the container | `src/app.ts`, the `app-root` component: its state a signal, the status line a `computed`, and `onStart` an arrow function |
 
@@ -878,7 +878,7 @@ directory (`public` by default):
 | `public/polymorph/theme.css` | the theme sheet, compiled by the engine from the system's and its palette's documents |
 | `public/index.html` | an example page: `<html data-system data-palette>`, the prepaint script first in `<head>`, the two stylesheets, the module script, and a few members with a `poly-click` listener |
 | `polymorph.json` | the install: every copied file with its source and the hash it was written with, the theme sheet as generated, the system and palette, and `"framework": "elements"` |
-| `polymorph/system-card.md`, `AGENTS.md`, `.mcp.json` | the elements card, the agent notes and the MCP config |
+| `polymorph/system-card.md`, the agent files | the elements card and the agent files `polymorph agents` writes ([harnesses.md](harnesses.md)): the `AGENTS.md` block, the skills and the MCP entries |
 
 It writes no `package.json`, lint config or build, and runs no package manager. The example page
 names members the elements map must mark native, and a member that is absent stops `init` with its

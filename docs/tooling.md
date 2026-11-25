@@ -377,9 +377,10 @@ allowed) and outside any checkout of polymorph. In order, it writes `package.jso
 that names `NODE_AUTH_TOKEN` and holds no token when the app installs from GitHub Packages, the
 Vite app with the theme plugin, the system
 and palette JSON under `src/theme/` (copied from the files the registry names), the two lint
-fragments and the configs that spread them, an `.mcp.json` that runs this checkout's MCP server
-against the app, the system card under `polymorph/`, an `AGENTS.md` (and a `CLAUDE.md` that
-includes it), and a first screen: `src/screens/welcome.json`, the `Welcome.tsx` the screen
+fragments and the configs that spread them, the agent files `polymorph agents` writes (an
+`AGENTS.md` block and a `CLAUDE.md` that includes it, the skills, the MCP entries with an
+`.mcp.json` that runs this checkout's MCP server against the app, and the system card under
+`polymorph/`), and a first screen: `src/screens/welcome.json`, the `Welcome.tsx` the screen
 emitter writes from it, and the `App.tsx` container that renders it. The emitter runs as a
 separate process in the new app, so the spec is validated against the registry and the output is
 formatted with the app's Prettier settings. [consuming.md](consuming.md#one-command) lists each
