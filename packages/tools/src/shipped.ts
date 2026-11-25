@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 
-import { TOOLS_NAME, type InitPrograms } from '@polymorph/cli'
+import { publishedTools, TOOLS_NAME, type InitPrograms } from '@polymorph/cli'
 import type { BrowserSetup, ToolContext } from '@polymorph/mcp'
 import type { Registry } from '@polymorph/registry'
 
@@ -39,7 +39,7 @@ export const SCREEN_PAGE = resolve(SOURCE, 'screen')
  * `init` runs, so it is this copy's, by its path.
  */
 export function shippedPrograms(registry: Registry): InitPrograms {
-  const polymorph = { command: 'npx', args: ['-y', `${TOOLS_NAME}@^${registry.version}`] }
+  const polymorph = publishedTools(registry)
   return {
     mcp: { command: polymorph.command, args: [...polymorph.args, 'mcp'] },
     emit: { command: process.execPath, args: [resolve(SOURCE, 'emit.js')] },

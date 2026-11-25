@@ -58,8 +58,9 @@ it, and every other tool works without it.
 
 ## Versions
 
-Each release of this package answers for the release of the vocabulary it was published with, and
-an app `init` writes pins that release. Node 24 or later.
+Each release of this package answers for the release of the vocabulary it was published with. An
+app `init` writes lists this package as a dev dependency at a caret range on that release
+(`^<version>`), so `npx` in the app runs the installed copy. Node 24 or later.
 
 The full documentation is in the repository: `docs/tooling.md` for the command line and the server,
 `docs/consuming.md` for using Polymorph from another repository. MIT licensed.

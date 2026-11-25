@@ -1,0 +1,37 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.metamorph-labs/polymorph",
+  "title": "Polymorph",
+  "description": "A design system for agents: its components, lint rules, screen specs and renderer.",
+  "websiteUrl": "https://github.com/metamorph-labs/polymorph",
+  "repository": {
+    "url": "https://github.com/metamorph-labs/polymorph",
+    "source": "github",
+    "subfolder": "packages/tools"
+  },
+  "version": "1.0.17",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/metamorph-labs/polymorph/main/plugins/polymorph/assets/logo.png",
+      "mimeType": "image/png",
+      "sizes": ["512x512"]
+    }
+  ],
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@metamorph-labs/polymorph",
+      "version": "1.0.17",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ]
+    }
+  ]
+}

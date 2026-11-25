@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "polymorph": {
+      "command": "npx",
+      "args": ["-y", "@metamorph-labs/polymorph@1.0.17", "mcp", "--read-only"]
+    }
+  }
+}

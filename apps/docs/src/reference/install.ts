@@ -505,12 +505,15 @@ export const THEME_STEPS: readonly Snippet[] = [
   },
 ]
 
-/** The mcpServers entry most clients read (`docs/tooling.md`), as `polymorph init` writes it. */
+/**
+ * The mcpServers entry most clients read (`docs/tooling.md`), as `polymorph init` and
+ * `polymorph agents` write it into `.mcp.json`. `install.test.ts` holds it to the CLI's own.
+ */
 export const MCP_CONFIG = `{
   "mcpServers": {
     "polymorph": {
       "command": "npx",
-      "args": ["-y", "${TOOLS_NAME}@^${RELEASE}", "mcp"]
+      "args": ["-y", "${TOOLS_NAME}@^${RELEASE}", "mcp", "--project", "."]
     }
   }
 }`

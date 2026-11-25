@@ -31,6 +31,7 @@ export {
   PACKAGE_REGISTRIES,
   packageManagerOf,
   planInit,
+  publishedTools,
   REACT_RANGE,
   refuseDirectory,
   TOOLS_NAME,
@@ -48,6 +49,23 @@ export type {
   PackageRegistry,
   Program,
 } from './init'
+
+/**
+ * The files a coding agent reads, as one plan (`planAgents`) that `init`, `polymorph agents`
+ * and the repository's plugin (`pluginFiles`) all write from.
+ */
+export {
+  AGENT_RECORD,
+  applyAgents,
+  commandLine,
+  DEFAULT_HARNESSES,
+  HARNESSES,
+  planAgents,
+  readAgentRecord,
+} from './agents'
+export type { AgentOptions, AgentPlan, AgentRecord, AgentStep, Harness } from './agents'
+export { pluginFiles } from './plugin'
+export { SKILL_NAMES, skillFiles } from './skills'
 
 export { main, run } from './cli'
 export type { Cli, Outcome } from './cli'

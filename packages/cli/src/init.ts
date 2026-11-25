@@ -25,6 +25,7 @@ import {
 
 import {
   AGENT_RECORD,
+  commandLine,
   DEFAULT_HARNESSES,
   freshRecord,
   planAgents,
@@ -1251,5 +1252,14 @@ function initElements(
       'fallback fonts.',
   )
   cli.out(AGENT_FILES_LINE)
+  if (origin === 'published') {
+    // A page has no package.json, so `npx` downloads the tools the first time a client starts
+    // the server, which can take longer than the client waits.
+    cli.out(
+      '  The page installs no tools, so the MCP server downloads them the first time it starts. ' +
+        'To have them ready before a client starts it, run once:',
+    )
+    cli.out(`  ${commandLine(toolsOf(programs, cli.registry))} --help`)
+  }
   return { code: 0 }
 }

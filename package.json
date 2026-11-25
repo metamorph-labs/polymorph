@@ -28,6 +28,7 @@
     "new:member": "node packages/react-ui/bin/new-member.mjs",
     "registry": "node packages/registry/bin/registry.js",
     "shells": "node packages/shells/bin/shells.js",
+    "agents": "node scripts/agents.mjs",
     "prepare": "node packages/registry/bin/registry.js",
     "proof": "node proof/run.mjs",
     "format": "prettier --write .",

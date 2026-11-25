@@ -1,0 +1,33 @@
+{
+  "name": "polymorph",
+  "displayName": "Polymorph",
+  "version": "1.0.17",
+  "description": "Build interfaces with the Polymorph design system: skills for screens, red-rule violations, setup and themes, and an MCP server that reads the vocabulary, checks code and screen specs against the red rules, and draws a screen at phone and desktop width.",
+  "author": {
+    "name": "Metamorph, Inc.",
+    "url": "https://github.com/metamorph-labs"
+  },
+  "homepage": "https://github.com/metamorph-labs/polymorph",
+  "repository": "https://github.com/metamorph-labs/polymorph",
+  "license": "MIT",
+  "keywords": [
+    "design-system",
+    "ui",
+    "components",
+    "react",
+    "vue",
+    "svelte",
+    "solid",
+    "angular",
+    "web-components",
+    "eslint",
+    "theming",
+    "mcp",
+    "agent-skills"
+  ],
+  "icon": "./assets/logo.png",
+  "documentationUrl": "https://github.com/metamorph-labs/polymorph/blob/main/docs/harnesses.md",
+  "supportUrl": "https://github.com/metamorph-labs/polymorph/issues",
+  "privacyPolicyUrl": "https://github.com/metamorph-labs/polymorph/blob/main/PRIVACY.md",
+  "termsOfServiceUrl": "https://github.com/metamorph-labs/polymorph/blob/main/TERMS.md"
+}

@@ -506,7 +506,14 @@ function serverSentence(options: AgentOptions, servers: string[]): string {
   const trust = servers.includes('.codex/config.toml')
     ? ' Codex reads `.codex/config.toml` only in a project it trusts.'
     : ''
-  return `${where}${trust}`
+  // The configs are committed and shared, so they name `npx` for every machine, and the one
+  // change a native Windows client may need is said instead of written.
+  const windows =
+    options.mcp.command === 'npx'
+      ? ' A client on native Windows that cannot start `npx` runs it as `cmd /c npx` with the ' +
+        'same arguments.'
+      : ''
+  return `${where}${trust}${windows}`
 }
 
 /* -------------------------------------------------------------------------- */

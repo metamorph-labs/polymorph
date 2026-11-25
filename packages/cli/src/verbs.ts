@@ -480,7 +480,8 @@ export const VERBS: readonly Verb[] = [
   {
     name: 'agents',
     group: 'agents',
-    summary: 'Write the files a coding agent reads: AGENTS.md, the skills, the MCP entries, the card.',
+    summary:
+      'Write the files a coding agent reads: AGENTS.md, the skills, the MCP entries, the card.',
     usage: 'polymorph agents [--harness <list>] [--framework <name>] [--force] [--dry-run]',
     flags: [
       {
