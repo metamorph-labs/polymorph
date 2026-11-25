@@ -170,12 +170,19 @@ const card = renderSystemCard(registry)
  * rich-text icon roles its toolbar draws. A model not told about RichTextInput
  * keeps a comment as Markdown in a Textarea, whose text the app cannot hold to
  * a field's formats, count as a server counts or anchor a comment thread to.
+ * It also includes the Button and icon usage section: ten lines that say, for
+ * each rule a screen's buttons and icons follow, whether the system holds it,
+ * a rule checks it or nothing does, with the three checked rules among the
+ * rules above it, the trailing icon roles and FormPage's `leadingAction`. A
+ * model not told draws two main Buttons in a Dialog, puts Delete before
+ * Cancel, and writes a check mark after a label, and the screen validation
+ * then refuses the screen for a rule the card never stated.
  *
  * `packages/mcp/src/tools.test.ts` and `packages/mcp/transcript.test.ts` check
  * the same number from the tool that serves the card, so the three move
  * together.
  */
-const BUDGET_CHARS = 39_213
+const BUDGET_CHARS = 40_870
 /**
  * A platform card says, for every adapted member, how it renders there, which
  * the web card never has to; those notes are the only thing that makes the
