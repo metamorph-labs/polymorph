@@ -8,9 +8,12 @@ import { noExternalDataviz } from './rules/no-external-dataviz'
 import { noExternalIcons } from './rules/no-external-icons'
 import { noExternalMotion } from './rules/no-external-motion'
 import { noRawInteractive } from './rules/no-raw-interactive'
+import { dangerLast } from './rules/danger-last'
 import { noRawStyles } from './rules/no-raw-styles'
+import { oneMainButton } from './rules/one-main-button'
 import { oneOpener } from './rules/one-opener'
 import { scopedTokenOwners } from './rules/scoped-token-owners'
+import { trailingIcon } from './rules/trailing-icon'
 import { vendorableImports } from './rules/vendorable-imports'
 
 /**
@@ -40,6 +43,9 @@ export const rules = {
   'no-external-dataviz': noExternalDataviz,
   'scoped-token-owners': scopedTokenOwners,
   'one-opener': oneOpener,
+  'one-main-button': oneMainButton,
+  'danger-last': dangerLast,
+  'trailing-icon': trailingIcon,
   'vendorable-imports': vendorableImports,
 } satisfies Record<string, Rule.RuleModule>
 
@@ -180,6 +186,15 @@ export const stageTwoRules: Linter.RulesRecord = {
   [q('no-external-dataviz')]: 'error',
   [q('scoped-token-owners')]: ['error', { owners }],
   [q('one-opener')]: 'error',
+  /**
+   * The usage rules (`docs/rules.md`): one main Button in a dialog or a
+   * section, a danger Button last in its row, and a trailing icon that is a
+   * direction or a disclosure. Like `one-opener`, they limit what a screen
+   * composes, and they need the vocabulary's Button and scopes to exist.
+   */
+  [q('one-main-button')]: 'error',
+  [q('danger-last')]: 'error',
+  [q('trailing-icon')]: 'error',
 }
 
 /**

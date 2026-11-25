@@ -10,6 +10,7 @@
     "./stylelint/emitted": "./src/stylelint/emitted.ts",
     "./ladder": "./src/ladder.ts",
     "./containment": "./src/containment.ts",
+    "./usage": "./src/usage.ts",
     "./inventory": "./src/inventory.js",
     "./spec-api": "./src/spec-api.ts",
     "./verify": "./src/verify.ts",
@@ -108,6 +109,10 @@
       "./containment": {
         "types": "./dist/types/containment.d.ts",
         "import": "./dist/containment.js"
+      },
+      "./usage": {
+        "types": "./dist/types/usage.d.ts",
+        "import": "./dist/usage.js"
       },
       "./inventory": {
         "types": "./dist/types/inventory.d.ts",

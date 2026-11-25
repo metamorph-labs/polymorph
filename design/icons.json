@@ -1,5 +1,6 @@
 {
   "set": "lucide",
+  "trailing": ["forward", "next", "expand", "collapse", "open-external"],
   "roles": {
     "add": {
       "glyph": "plus",

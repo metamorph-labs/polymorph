@@ -11,7 +11,9 @@ const entry = (path: string) => fileURLToPath(new URL(path, import.meta.url))
  * are the ESLint plugin, `stylelint` and `stylelint-emitted` the Stylelint side,
  * and the rest are the tools built on the rules: the ladder, the containment
  * paths, the inventory, the spec audit and `verify`. Every one of them runs in
- * node, inside a linter, a script or a server, and none in a browser.
+ * node, inside a linter, a script or a server. `usage` is the usage rules'
+ * data, which the screen spec's validator also reads; it imports nothing, so
+ * it runs in a browser too.
  *
  * Which dependencies are external and which are bundled:
  *
@@ -44,6 +46,7 @@ export default defineConfig({
         'stylelint-emitted': entry('./src/stylelint/emitted.ts'),
         ladder: entry('./src/ladder.ts'),
         containment: entry('./src/containment.ts'),
+        usage: entry('./src/usage.ts'),
         inventory: entry('./src/inventory.js'),
         'spec-api': entry('./src/spec-api.ts'),
         verify: entry('./src/verify.ts'),
