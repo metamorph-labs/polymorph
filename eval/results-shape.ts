@@ -180,10 +180,23 @@ const SUMMARY_FIELDS = {
   meanWallMs: nullable(
     count('Mean wall-clock time per run, in milliseconds, retry waits left out.'),
   ),
-  retries: count('Requests sent again after a transient failure, summed over every run.'),
-  backoffMs: count('Time spent waiting to send a request again, summed over every run.'),
-  discardedTokens: count(
-    'Tokens of attempts that broke off and were retried, summed over every run.',
+  retries: nullable(
+    count(
+      'Requests sent again after a transient failure, summed over the runs that report them. ' +
+        'Null when no run does: Codex reports none.',
+    ),
+  ),
+  backoffMs: nullable(
+    count(
+      'Time spent waiting to send a request again, summed over the runs that report it. Null ' +
+        'when no run does.',
+    ),
+  ),
+  discardedTokens: nullable(
+    count(
+      'Tokens of attempts that broke off and were retried, summed over the runs that report ' +
+        'them. Null when no run does.',
+    ),
   ),
 } satisfies Record<string, Shape>
 
@@ -263,16 +276,28 @@ const RECORD = obj(
       ),
     ),
     outputTokens: nullable(count('Every output token across the run, thinking included.')),
-    discardedTokens: count(
-      'Tokens of attempts that broke off mid-stream and were sent again, as far as their usage ' +
-        'was reported. Billed, but in neither `inputTokens` nor `outputTokens`.',
+    discardedTokens: nullable(
+      count(
+        'Tokens of attempts that broke off mid-stream and were sent again, as far as their ' +
+          'usage was reported. Billed, but in neither `inputTokens` nor `outputTokens`. Null ' +
+          'for the `codex` runner, because Codex does not report them.',
+      ),
     ),
     wallMs: count(
       'Wall-clock time from the first request to the end of the run, tools included and retry ' +
         'waits (`backoffMs`) left out.',
     ),
-    retries: count('Requests sent again after a transient failure.'),
-    backoffMs: count('Time spent waiting before those requests, in milliseconds.'),
+    retries: nullable(
+      count(
+        'Requests sent again after a transient failure. Null for the `codex` runner, because ' +
+          'Codex does not report them.',
+      ),
+    ),
+    backoffMs: nullable(
+      count(
+        'Time spent waiting before those requests, in milliseconds. Null for the `codex` runner.',
+      ),
+    ),
     turns: nullable(
       count(
         'Messages API requests the run made, retries not counted, through the `api` or the ' +
@@ -381,9 +406,13 @@ const EFFORT = str({
 })
 
 const CEILINGS = {
-  maxTokensPerRun: count(
-    'The token ceiling per run, counted as `inputTokens`, `outputTokens` and ' +
-      '`discardedTokens` together. No request starts once a run has reached it.',
+  maxTokensPerRun: nullable(
+    count(
+      'The token ceiling per run, counted as `inputTokens`, `outputTokens` and ' +
+        '`discardedTokens` together. No request starts once a run has reached it. Null for the ' +
+        '`codex` runner: Codex reports its tokens only when its turn completes, so no ceiling ' +
+        'per run can be held.',
+    ),
   ),
   maxTokensTotal: count('The same ceiling over the whole eval.'),
 }
@@ -597,9 +626,12 @@ const RUNTIME_RECORD = obj({
     count('The part of `inputTokens` read from the prompt cache (`cache_read_input_tokens`).'),
   ),
   outputTokens: nullable(count('Every output token of the answer, thinking included.')),
-  discardedTokens: count(
-    'Tokens of attempts that broke off mid-stream and were sent again, as far as their usage ' +
-      'was reported. Billed, but in neither `inputTokens` nor `outputTokens`.',
+  discardedTokens: nullable(
+    count(
+      'Tokens of attempts that broke off mid-stream and were sent again, as far as their usage ' +
+        'was reported. Billed, but in neither `inputTokens` nor `outputTokens`. Null for the ' +
+        '`codex` runner, because Codex does not report them.',
+    ),
   ),
   firstTokenMs: nullable(
     count(
@@ -613,8 +645,14 @@ const RUNTIME_RECORD = obj({
     'Milliseconds from the first request to the end of the answer, retry waits (`backoffMs`) ' +
       'left out; for the `cli` and `codex` runners, from the harness’s start-up report.',
   ),
-  retries: count('Requests sent again after a transient failure.'),
-  backoffMs: count('Time spent waiting before those requests, in milliseconds.'),
+  retries: nullable(
+    count('Requests sent again after a transient failure. Null for the `codex` runner.'),
+  ),
+  backoffMs: nullable(
+    count(
+      'Time spent waiting before those requests, in milliseconds. Null for the `codex` runner.',
+    ),
+  ),
 })
 
 const RUNTIME_RESULTS: Shape = obj(
@@ -753,7 +791,12 @@ const PROJECT_SUMMARY_FIELDS: Record<string, Shape> = {
   skills: rec(count('Runs that loaded it.'), {
     description: 'Every skill a harness loaded, by name, with the runs that loaded it.',
   }),
-  denied: count('Tool calls the harnesses refused, summed over the runs.'),
+  denied: nullable(
+    count(
+      'Tool calls the harnesses refused, summed over the runs that report them. Null when no ' +
+        'run does.',
+    ),
+  ),
   retries: SUMMARY_FIELDS.retries,
 }
 
@@ -850,11 +893,19 @@ const PROJECT_RECORD = obj({
       'The skills the harness loaded, by name: a Claude Code `Skill` call, or a `SKILL.md` ' +
       'the harness read.',
   }),
-  denied: count(
-    'Tool calls the harness refused: a permission Claude Code denied, a command Codex ' +
-      'declined, or an MCP call it denied.',
+  denied: nullable(
+    count(
+      'Tool calls the harness refused: a permission Claude Code denied, a command Codex ' +
+        'declined, or an MCP call it denied. Null when Claude Code was stopped before it ' +
+        'reported its result, which is where it reports what it refused.',
+    ),
   ),
-  retries: count('Requests the harness reported sending again after a transient failure.'),
+  retries: nullable(
+    count(
+      'Requests the harness reported sending again after a transient failure. Null for Codex, ' +
+        'which does not report them.',
+    ),
+  ),
 })
 
 const PROJECT_RESULTS: Shape = obj(

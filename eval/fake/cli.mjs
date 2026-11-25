@@ -46,7 +46,8 @@ import { scriptedTurns } from './script.mjs'
  * A script marked `project` is the project lane's (`eval/project.mjs`): the
  * CLI runs in an app with its own prompt and tools, the project's settings
  * and the servers of the project's `.mcp.json`, and nothing of the eval's.
- * The stand-in then checks the project lane's flags instead, and a turn's
+ * The stand-in then checks the project lane's flags instead, the sandbox its
+ * `--settings` must turn on among them, and a turn's
  * blocks are actions, played as Claude Code's tools: `write` as `Write`,
  * which writes the file in the project; `shell` as `Bash`, which reports the
  * output the script gives it and runs nothing; `mcp` as a call to a server
@@ -67,6 +68,8 @@ const VALUED = new Set([
   '--mcp-config',
   '--setting-sources',
   '--output-format',
+  '--settings',
+  '--permission-prompts',
 ])
 
 const FLAGS = new Set([
@@ -87,6 +90,41 @@ const PROJECT_REQUIRED = {
   '--strict-mcp-config': true,
   '--setting-sources': 'project',
   '--permission-mode': 'acceptEdits',
+  '--permission-prompts': 'none',
+}
+
+/**
+ * Whether the project lane's `--settings` confine the shell: the sandbox on,
+ * no way around it, writes only where the lane allows them and network only
+ * to the hosts it names, and the file tools held to the project. Returns what
+ * is missing, or null.
+ */
+function unconfined(text) {
+  let settings
+  try {
+    settings = JSON.parse(text)
+  } catch {
+    return '`--settings` is not JSON'
+  }
+  const sandbox = settings.sandbox ?? {}
+  const wanted = [
+    [sandbox.enabled === true, 'sandbox.enabled'],
+    [sandbox.failIfUnavailable === true, 'sandbox.failIfUnavailable'],
+    [sandbox.autoAllowBashIfSandboxed === true, 'sandbox.autoAllowBashIfSandboxed'],
+    [sandbox.allowUnsandboxedCommands === false, 'sandbox.allowUnsandboxedCommands false'],
+    [Array.isArray(sandbox.filesystem?.allowWrite), 'sandbox.filesystem.allowWrite'],
+    [Array.isArray(sandbox.filesystem?.denyWrite), 'sandbox.filesystem.denyWrite'],
+    [
+      Array.isArray(sandbox.network?.allowedDomains) && sandbox.network.allowedDomains.length > 0,
+      'sandbox.network.allowedDomains',
+    ],
+    [
+      settings.permissions?.blockWritesOutsideWorkingDirectories === true,
+      'permissions.blockWritesOutsideWorkingDirectories',
+    ],
+  ]
+  const missing = wanted.filter(([held]) => !held).map(([, key]) => key)
+  return missing.length === 0 ? null : `\`--settings\` lacks ${missing.join(', ')}`
 }
 
 /** What the runner must pass, as the flag and the value it must have, or `true` for a bare flag. */
@@ -131,6 +169,8 @@ function options(argv) {
     for (const flag of ['--system-prompt', '--tools', '--disable-slash-commands']) {
       if (chosen.has(flag)) refuse(`a project run gives the CLI nothing of the eval’s: \`${flag}\``)
     }
+    const fault = unconfined(chosen.get('--settings') ?? '')
+    if (fault !== null) refuse(`a project run confines the shell: ${fault}`)
   }
   return { chosen, project }
 }
@@ -165,8 +205,12 @@ if (servers.length > 0 && !chosen.has('--allowedTools')) {
 }
 const allowed = new Set((chosen.get('--allowedTools') ?? '').split(','))
 if (project) {
-  for (const tool of ['Bash', 'Skill', ...servers.map((server) => `mcp__${server}`)]) {
+  for (const tool of ['Skill', ...servers.map((server) => `mcp__${server}`)]) {
     if (!allowed.has(tool)) refuse(`a project run must allow \`${tool}\``)
+  }
+  // A sandboxed command runs without a permission; one given for `Bash` would outlast the sandbox.
+  if ([...allowed].some((tool) => tool === 'Bash' || tool.startsWith('Bash('))) {
+    refuse('a project run must not allow `Bash`: the sandbox lets its commands run')
   }
 }
 /** The journal the server writes, which a turn's `journal` appends to. */

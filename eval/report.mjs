@@ -438,6 +438,8 @@ function briefsCell(results) {
 }
 
 function retriesCell({ retries, backoffMs, discardedTokens }) {
+  // Codex reports no retry, so its runs have no count.
+  if (retries === null) return 'not reported'
   if (retries === 0) return '0'
   return `${retries} (${seconds(backoffMs)} waiting, ${thousands(discardedTokens)} tokens discarded)`
 }
@@ -852,7 +854,11 @@ const PROJECT_LANE = {
         `\`polymorph\` verbs ${tallyCell(overall.verbs)}; ${overall.shellCommands} shell ` +
         `command${overall.shellCommands === 1 ? '' : 's'}; ` +
         (skills.length === 0 ? 'no skill loaded' : `skills ${tallyCell(overall.skills)}`) +
-        (overall.denied === 0 ? '.' : `; ${overall.denied} tool calls refused.`),
+        (overall.denied === null
+          ? '; refused calls not reported.'
+          : overall.denied === 0
+            ? '.'
+            : `; ${overall.denied} tool calls refused.`),
       ...(misses.length === 0
         ? []
         : [

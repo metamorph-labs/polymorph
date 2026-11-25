@@ -27,8 +27,10 @@ import {
   codexHome,
   HarnessError as CliError,
   LIMIT_WORDS,
+  onInterrupt,
   override,
   tail,
+  track,
   versionOf,
 } from './harnesses.mjs'
 import {
@@ -362,6 +364,12 @@ function options(argv) {
   }
   if (chosen.given.has('--thinking') && chosen.runner === 'codex') {
     refuse('`--thinking` is what the API runner sends; Codex chooses its own reasoning')
+  }
+  if (chosen.given.has('--max-tokens-per-run') && chosen.runner === 'codex') {
+    refuse(
+      '`--max-tokens-per-run` cannot be held for Codex: it reports its tokens only when its ' +
+        'turn completes, so no run can be stopped at the ceiling',
+    )
   }
   // The committed results only ever hold real runs, so a fake run may not
   // write among them, wherever `--out` puts it.
@@ -1319,6 +1327,7 @@ async function runOnceCli({
     child.on('close', (code, signal) => done({ code, signal }))
     child.on('error', (error) => done({ code: null, signal: null, error }))
   })
+  track(() => child.kill('SIGKILL'), exited)
   child.stdin.on('error', () => {})
   child.stdin.end(opening)
   let stderr = ''
@@ -1602,12 +1611,17 @@ async function runOnceCli({
  * stops and says so.
  */
 
-/** Items that mean Codex used a tool of its own. */
+/**
+ * Items that mean Codex used a tool of its own. `todo_list` is its plan tool,
+ * which no setting turns off
+ * (https://learn.chatgpt.com/docs/config-file/config-reference lists none).
+ */
 const CODEX_OWN_TOOLS = new Set([
   'command_execution',
   'file_change',
   'web_search',
   'collab_tool_call',
+  'todo_list',
 ])
 
 /**
@@ -1727,6 +1741,7 @@ async function runOnceCodex({
     child.on('close', (code, signal) => done({ code, signal }))
     child.on('error', (error) => done({ code: null, signal: null, error }))
   })
+  track(() => child.kill('SIGKILL'), exited)
   child.stdin.on('error', () => {})
   child.stdin.end(opening)
   let stderr = ''
@@ -1817,8 +1832,6 @@ async function runOnceCodex({
       }
       case 'error':
         lastError = event.message ?? lastError
-        // Codex reports a stream it reconnects as an error and goes on.
-        if (/reconnect|retry/i.test(event.message ?? '')) meter.retries += 1
         break
       case 'turn.completed':
         meterCodexUsage(meter, event.usage)
@@ -1897,13 +1910,14 @@ async function runOnceCodex({
 }
 
 /**
- * A record with the token counts its harness did not report set to null:
- * every one when it reported none, and the cache writes when Codex reports
- * no such part.
+ * A Codex record with what Codex does not report set to null: the requests
+ * it sent again, the time it waited for them and the tokens of attempts that
+ * broke off, always; every token count when it reported none; and the cache
+ * writes when it reports no such part.
  */
 function unreported(record, meter) {
+  const none = { retries: null, backoffMs: null, discardedTokens: null }
   if (meter.reported === false) {
-    const none = {}
     for (const field of [
       'inputTokens',
       'uncachedInputTokens',
@@ -1913,9 +1927,8 @@ function unreported(record, meter) {
     ]) {
       if (Object.hasOwn(record, field)) none[field] = null
     }
-    return { ...record, ...none }
-  }
-  return meter.cacheWriteReported === false ? { ...record, cacheWriteTokens: null } : record
+  } else if (meter.cacheWriteReported === false) none.cacheWriteTokens = null
+  return { ...record, ...none }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2008,6 +2021,12 @@ function membersOf(asked, screen) {
 /* -------------------------------------------------------------------------- */
 
 const sum = (values) => values.reduce((total, value) => total + value, 0)
+
+/** A count summed over the runs that report it, or null when none does: Codex reports no retry. */
+const reportedSum = (records, field) => {
+  const values = records.map((record) => record[field]).filter((value) => value !== null)
+  return values.length === 0 && records.length > 0 ? null : sum(values)
+}
 const mean = (values) => sum(values) / values.length
 const rounded = (value, places) => Math.round(value * 10 ** places) / 10 ** places
 
@@ -2070,9 +2089,9 @@ function summarise(records, endings) {
     meanInputTokens: average('inputTokens'),
     meanOutputTokens: average('outputTokens'),
     meanWallMs: average('wallMs'),
-    retries: sum(records.map((record) => record.retries)),
-    backoffMs: sum(records.map((record) => record.backoffMs)),
-    discardedTokens: sum(records.map((record) => record.discardedTokens)),
+    retries: reportedSum(records, 'retries'),
+    backoffMs: reportedSum(records, 'backoffMs'),
+    discardedTokens: reportedSum(records, 'discardedTokens'),
   }
 }
 
@@ -2136,11 +2155,35 @@ function summariseRuntime(records, endings) {
     firstTokenRangeMs: range('firstTokenMs'),
     meanWallMs: meanOf('wallMs'),
     wallRangeMs: range('wallMs'),
-    retries: sum(records.map((record) => record.retries)),
-    backoffMs: sum(records.map((record) => record.backoffMs)),
-    discardedTokens: sum(records.map((record) => record.discardedTokens)),
+    retries: reportedSum(records, 'retries'),
+    backoffMs: reportedSum(records, 'backoffMs'),
+    discardedTokens: reportedSum(records, 'discardedTokens'),
   }
 }
+
+/**
+ * Throws when a finished run's tokens are unknown: a harness that reports its
+ * tokens only when it finishes (Codex, or Claude Code before its first
+ * response) was stopped before it did. What that run spent cannot be added to
+ * the total, so the total ceiling can no longer be held, and no further run
+ * starts. A run that is the eval's last stops nothing.
+ */
+function holdsTotalCeiling(records) {
+  const unknown = records.find((record) => record.inputTokens === null)
+  if (unknown === undefined) return
+  throw new CeilingError(
+    'tokens-total',
+    `${unknown.brief} #${unknown.run} ended before its harness reported its tokens, so the total ` +
+      `token ceiling (${settings.maxTokensTotal}) can no longer be held`,
+  )
+}
+
+/**
+ * The per-run ceiling the runs are held to. Codex reports its tokens only
+ * when its turn completes, so no ceiling stops a Codex run part-way, and the
+ * results record none.
+ */
+const perRunCeiling = () => (settings.runner === 'codex' ? Infinity : settings.maxTokensPerRun)
 
 /** What a finished run spent, as the ceilings count it. A count its harness did not report adds nothing. */
 const recordTokens = (record) =>
@@ -2197,6 +2240,21 @@ const shown = (path) =>
 /* -------------------------------------------------------------------------- */
 
 const settings = options(process.argv.slice(2))
+
+/**
+ * The scratch directories the eval makes: removed when it ends, when it
+ * stops early, and when a signal stops it (`onInterrupt`, which also stops
+ * every harness still running).
+ */
+const scratches = new Set()
+const scratchDirectory = (prefix) => {
+  const directory = mkdtempSync(resolve(tmpdir(), prefix))
+  scratches.add(directory)
+  return directory
+}
+onInterrupt(() => {
+  for (const directory of scratches) rmSync(directory, { recursive: true, force: true })
+})
 
 const apiKey = process.env.ANTHROPIC_API_KEY
 if (settings.runner === 'api' && !settings.fake && !apiKey) {
@@ -2266,8 +2324,6 @@ const everyBrief = readdirSync(BRIEFS)
  */
 const card = settings.mode === RUNTIME ? await cardFor(settings) : null
 
-const out =
-  settings.out ?? (settings.fake ? mkdtempSync(resolve(tmpdir(), 'polymorph-eval-')) : RESULTS)
 const at = new Date().toISOString()
 const toolbox = await loadToolbox()
 const project = settings.mode === PROJECT
@@ -2301,7 +2357,7 @@ if (unjudged.length > 0) {
  */
 let cli = null
 if (launcher !== null && !project) {
-  const scratch = mkdtempSync(resolve(tmpdir(), `polymorph-eval-${settings.runner}-`))
+  const scratch = scratchDirectory(`polymorph-eval-${settings.runner}-`)
   cli = {
     ...launcher,
     scratch,
@@ -2324,7 +2380,7 @@ if (launcher !== null && !project) {
  */
 let lane = null
 if (project) {
-  const scratch = mkdtempSync(resolve(tmpdir(), 'polymorph-eval-project-'))
+  const scratch = scratchDirectory('polymorph-eval-project-')
   try {
     const projectTools = resolveTools(settings.tools, { scratch })
     console.error(
@@ -2358,6 +2414,9 @@ const removeScratch = () => {
   if (lane !== null) rmSync(lane.scratch, { recursive: true, force: true })
 }
 
+// Made once the eval has set up everything it refuses on, so a refusal leaves no directory.
+const out =
+  settings.out ?? (settings.fake ? mkdtempSync(resolve(tmpdir(), 'polymorph-eval-')) : RESULTS)
 mkdirSync(out, { recursive: true })
 const stem = freeStem(out, at, settings.model, settings.mode, settings.runner)
 const resultsFile = resolve(out, `${stem}.json`)
@@ -2377,7 +2436,7 @@ const recordedSettings = () =>
         maxTurns: settings.maxTurns,
         maxMinutes: settings.maxMinutes,
         effort: settings.effort,
-        maxTokensPerRun: settings.maxTokensPerRun,
+        maxTokensPerRun: settings.runner === 'codex' ? null : settings.maxTokensPerRun,
         maxTokensTotal: settings.maxTokensTotal,
       }
     : card === null
@@ -2388,7 +2447,7 @@ const recordedSettings = () =>
           maxTurns: MAX_TURNS,
           maxTokens: MAX_TOKENS,
           effort: settings.effort,
-          maxTokensPerRun: settings.maxTokensPerRun,
+          maxTokensPerRun: settings.runner === 'codex' ? null : settings.maxTokensPerRun,
           maxTokensTotal: settings.maxTokensTotal,
         }
       : {
@@ -2397,7 +2456,7 @@ const recordedSettings = () =>
           maxTokens: MAX_TOKENS,
           effort: settings.effort,
           thinking: settings.runner === 'api' ? settings.thinking : null,
-          maxTokensPerRun: settings.maxTokensPerRun,
+          maxTokensPerRun: settings.runner === 'codex' ? null : settings.maxTokensPerRun,
           maxTokensTotal: settings.maxTokensTotal,
         }
 
@@ -2544,12 +2603,13 @@ for (const brief of briefs) {
   for (let run = 1; run <= settings.runs; run += 1) {
     const meter = newMeter()
     const limits = {
-      perRun: settings.maxTokensPerRun,
+      perRun: perRunCeiling(),
       total: settings.maxTokensTotal,
       before: sum(records.map(recordTokens)),
     }
     let measured
     try {
+      holdsTotalCeiling(records)
       if (lane !== null) {
         checkCeilings(meter, limits)
         measured = await runOnceProject({

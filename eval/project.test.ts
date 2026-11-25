@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import {
   existsSync,
   mkdirSync,
@@ -10,7 +10,6 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
-import { promisify } from 'node:util'
 
 import { validate } from '@polymorph/registry/shape'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -24,13 +23,16 @@ import {
   resolveTools,
   screenOf,
   SetupError,
+  snapshot,
   skillOfPath,
   skillsIn,
   verbsIn,
+  writtenSince,
 } from './project.mjs'
 import { readResults, renderReport } from './report.mjs'
 import { loadRequirements } from './requirements.mjs'
 import { RESULTS_SHAPE } from './results-shape'
+import { evalRunner } from './running'
 import { loadToolbox } from './toolbox.mjs'
 
 /**
@@ -58,7 +60,8 @@ const SETTINGS = ['--briefs', 'eval/briefs/settings-workspace.md']
 const CHECKOUT_BIN = resolve(ROOT, 'packages/cli/bin/polymorph.js')
 const SERVER_BIN = resolve(ROOT, 'packages/mcp/bin/polymorph-mcp.js')
 
-const execute = promisify(execFile)
+/** Every eval this file starts, a few at a time; any still running when the file ends is stopped. */
+const runner = evalRunner(ROOT)
 
 interface ProjectRecord {
   brief: string
@@ -83,8 +86,8 @@ interface ProjectRecord {
   verbs: Record<string, number>
   shellCommands: number
   skills: string[]
-  denied: number
-  retries: number
+  denied: number | null
+  retries: number | null
 }
 
 interface ProjectResults {
@@ -128,13 +131,7 @@ interface Evaluation {
 /** One `eval/run.mjs` run into its own scratch directory, and what it wrote. */
 async function evaluate(name: string, args: string[], env: NodeJS.ProcessEnv = {}) {
   const directory = resolve(SCRATCH, name)
-  const { code, stderr } = await execute('node', ['eval/run.mjs', ...args, '--out', directory], {
-    cwd: ROOT,
-    env: { ...process.env, ...env },
-  }).then(
-    ({ stderr: printed }) => ({ code: 0, stderr: printed }),
-    (error: { code: number; stderr: string }) => ({ code: error.code, stderr: error.stderr }),
-  )
+  const { code, stderr } = await runner.run([...args, '--out', directory], env)
   const file = readdirSync(directory).find(
     (entry) => entry.endsWith('.json') && !entry.endsWith('.outputs.json'),
   )
@@ -152,9 +149,10 @@ async function evaluate(name: string, args: string[], env: NodeJS.ProcessEnv = {
 }
 
 /**
- * A tools directory whose `polymorph` has the `agents` verb, as the tools
- * package will: it writes each harness's MCP entry and a skill, and hands
- * every other verb to this checkout's bin.
+ * A tools directory whose `polymorph` has the `agents` verb: it writes each
+ * harness's MCP entry and a skill, and hands every other verb to this
+ * checkout's bin. The lane runs the verb when the tools have it and goes on
+ * without it when they do not; this fixture is the first case.
  */
 function toolsWithAgents() {
   const directory = resolve(SCRATCH, 'tools-with-agents')
@@ -221,28 +219,21 @@ function standIn(script: object) {
 }
 
 const runs: Record<string, Evaluation> = {}
+const LANE = ['--fake', '--mode', 'project', ...SETTINGS]
 
+// The four runs through each stand-in. The evals of the later sections have setups of their own.
 beforeAll(async () => {
-  const lane = ['--fake', '--mode', 'project', ...SETTINGS]
-  const [cli, codex, codexTools, timed] = await Promise.all([
-    evaluate('cli', [...lane, '--runner', 'cli', '--runs', '4', '--max-turns', '8']),
-    evaluate('codex', [...lane, '--runner', 'codex', '--runs', '4', '--max-turns', '8']),
-    evaluate('codex-tools', [...lane, '--runner', 'codex', '--tools', toolsWithAgents()]),
-    // A harness that is still connecting when its time runs out.
-    evaluate(
-      'timed',
-      [
-        ...['--runner', 'cli', '--claude', standIn({ project: true, turns: [{ delay: 60_000 }] })],
-        ...['--mode', 'project', '--no-install', '--max-minutes', '0.02', ...SETTINGS],
-        ...['--model', 'local-model', '--effort', 'high'],
-      ],
-      { ANTHROPIC_API_KEY: '' },
-    ),
+  const [cli, codex] = await Promise.all([
+    evaluate('cli', [...LANE, '--runner', 'cli', '--runs', '4', '--max-turns', '8']),
+    evaluate('codex', [...LANE, '--runner', 'codex', '--runs', '4', '--max-turns', '8']),
   ])
-  Object.assign(runs, { cli, codex, codexTools, timed })
-}, 300_000)
+  Object.assign(runs, { cli, codex })
+}, 120_000)
 
-afterAll(() => rmSync(SCRATCH, { recursive: true, force: true }))
+afterAll(() => {
+  runner.stopAll()
+  rmSync(SCRATCH, { recursive: true, force: true })
+})
 
 const record = (evaluation: Evaluation, run: number) =>
   evaluation.results.records.find((entry) => entry.run === run) as ProjectRecord
@@ -291,6 +282,8 @@ describe('the project lane, with the scripted harnesses', () => {
         // The app has no skill: the tools that set it up have no `agents` verb.
         expect(lawful.skills).toEqual([])
         expect(lawful.turns).toBe(harness === 'cli' ? 6 : null)
+        // Claude Code reports its retries; Codex reports none.
+        expect(lawful.retries).toBe(harness === 'cli' ? 0 : null)
         // Claude Code has the project's MCP server and emits the screen; Codex has none.
         expect(lawful.written).toEqual(
           harness === 'cli'
@@ -330,7 +323,13 @@ describe('the project lane, with the scripted harnesses', () => {
         const stopped = record(evaluation(), 4)
         expect(stopped).toMatchObject({ ended: 'turns', lawful: true, written: [] })
         if (harness === 'cli') {
-          expect(stopped).toMatchObject({ turns: 8, inputTokens: 8_000, shellCommands: 8 })
+          // Claude Code reports what it refused in its result, which a stopped run never reaches.
+          expect(stopped).toMatchObject({
+            turns: 8,
+            inputTokens: 8_000,
+            shellCommands: 8,
+            denied: null,
+          })
         } else {
           // Codex reports its tokens when its turn ends, and the budget stopped it first.
           expect(stopped).toMatchObject({ turns: null, inputTokens: null, outputTokens: null })
@@ -398,6 +397,13 @@ describe('the project lane, with the scripted harnesses', () => {
 })
 
 describe('the project lane, with tools that have the `agents` verb', () => {
+  beforeAll(async () => {
+    runs.codexTools = await evaluate('codex-tools', [
+      ...LANE,
+      ...['--runner', 'codex', '--tools', toolsWithAgents()],
+    ])
+  }, 90_000)
+
   it('runs the verb, and the harness finds the MCP server and the skill it wrote', () => {
     const { results } = runs.codexTools as Evaluation
     expect(results.project).toMatchObject({
@@ -418,6 +424,19 @@ describe('the project lane, with tools that have the `agents` verb', () => {
 })
 
 describe('the project lane, through a stand-in for the owner’s Claude Code', () => {
+  // A harness that is still connecting when its time runs out.
+  beforeAll(async () => {
+    runs.timed = await evaluate(
+      'timed',
+      [
+        ...['--runner', 'cli', '--claude', standIn({ project: true, turns: [{ delay: 60_000 }] })],
+        ...['--mode', 'project', '--no-install', '--max-minutes', '0.02', ...SETTINGS],
+        ...['--model', 'local-model', '--effort', 'high'],
+      ],
+      { ANTHROPIC_API_KEY: '' },
+    )
+  }, 90_000)
+
   it('stops a harness at its time budget, and judges what it left', () => {
     const { results, code } = runs.timed as Evaluation
     expect(code).toBe(0)
@@ -433,8 +452,41 @@ describe('the project lane, through a stand-in for the owner’s Claude Code', (
     expect(after('--effort')).toBe('high')
     expect(after('--setting-sources')).toBe('project')
     expect(after('--permission-mode')).toBe('acceptEdits')
-    expect(after('--allowedTools')).toBe('Bash,Skill,mcp__polymorph')
+    expect(after('--permission-prompts')).toBe('none')
+    // No `Bash` permission: the sandbox lets its commands run, and nothing outside it.
+    expect(after('--allowedTools')).toBe('Skill,mcp__polymorph')
     expect(after('--mcp-config')).toMatch(/\/app\/\.mcp\.json$/)
+    const settings = JSON.parse(after('--settings') ?? '') as {
+      sandbox: {
+        enabled: boolean
+        failIfUnavailable: boolean
+        allowUnsandboxedCommands: boolean
+        filesystem: { allowWrite: string[]; denyWrite: string[] }
+        network: { allowedDomains: string[] }
+      }
+      permissions: { blockWritesOutsideWorkingDirectories: boolean }
+    }
+    expect(settings.sandbox).toMatchObject({
+      enabled: true,
+      failIfUnavailable: true,
+      allowUnsandboxedCommands: false,
+      network: {
+        allowedDomains: [
+          'registry.npmjs.org',
+          'npm.pkg.github.com',
+          'pkg-npm.githubusercontent.com',
+        ],
+      },
+    })
+    // The eval's npm cache and pnpm store may be written, and the template every run copies may not.
+    expect(settings.sandbox.filesystem.allowWrite.map((path) => path.split('/').at(-1))).toEqual([
+      'npm-cache',
+      'pnpm-store',
+    ])
+    expect(settings.sandbox.filesystem.denyWrite).toEqual([
+      expect.stringMatching(/polymorph-eval-project-[^/]+\/template$/),
+    ])
+    expect(settings.permissions.blockWritesOutsideWorkingDirectories).toBe(true)
     for (const flag of ['--system-prompt', '--tools', '--disable-slash-commands']) {
       expect(args).not.toContain(flag)
     }
@@ -451,11 +503,7 @@ describe('the project lane, through a stand-in for the owner’s Claude Code', (
 /* -------------------------------------------------------------------------- */
 
 describe('the project lane refuses to start', () => {
-  const refusal = (args: string[]) =>
-    execute('node', ['eval/run.mjs', ...args], { cwd: ROOT }).then(
-      () => null,
-      (error: { code: number; stderr: string }) => error,
-    )
+  const refusal = (args: string[]) => runner.run(args).then((ran) => (ran.code === 0 ? null : ran))
 
   it('with the `api` runner, or a flag that bounds the eval’s own tools', async () => {
     expect((await refusal(['--fake', '--mode', 'project']))?.stderr).toContain(
@@ -568,20 +616,64 @@ describe('reading what a harness called', () => {
 })
 
 describe('choosing what is judged', () => {
+  /** The text each written file holds, for the files whose text decides. */
+  const texts: Record<string, string> = {
+    'src/app/settings.component.ts': "@Component({ selector: 'app-settings', template: '' })",
+    'src/lib/format.ts': 'export const format = (value: number) => `${value}`',
+    'public/settings.html': '<poly-page><poly-heading>Settings</poly-heading></poly-page>',
+    'public/notes.html': '<p>Notes</p>',
+  }
+  const read = (path: string) => texts[path] ?? ''
+
   it('judges the specs a harness wrote, or else its modules, or else says it cannot', () => {
-    expect(screenOf(['src/screens/a.json', 'src/screens/A.tsx', 'src/App.tsx'])).toEqual({
+    expect(screenOf(['src/screens/a.json', 'src/screens/A.tsx', 'src/App.tsx'], read)).toEqual({
       kind: 'spec',
       files: ['src/screens/a.json'],
     })
-    expect(screenOf(['src/App.tsx', 'src/screens/A.tsx', 'src/vite-env.d.ts'])).toEqual({
+    expect(screenOf(['src/App.tsx', 'src/screens/A.tsx', 'src/vite-env.d.ts'], read)).toEqual({
       kind: 'tsx',
       files: ['src/App.tsx', 'src/screens/A.tsx'],
     })
-    expect(screenOf(['src/screens/A.vue'])).toEqual({
+    expect(screenOf(['src/screens/A.vue'], read)).toEqual({
       kind: 'unread',
       files: ['src/screens/A.vue'],
     })
-    expect(screenOf(['AGENTS.md', '.claude/settings.json'])).toBeNull()
+    expect(screenOf(['src/app/settings.component.ts', 'src/lib/format.ts'], read)).toEqual({
+      kind: 'unread',
+      files: ['src/app/settings.component.ts'],
+    })
+    expect(screenOf(['public/settings.html', 'public/notes.html'], read)).toEqual({
+      kind: 'unread',
+      files: ['public/settings.html'],
+    })
+  })
+
+  it('finds no screen in files that hold none, so the brief is not met', () => {
+    expect(screenOf(['AGENTS.md', '.claude/settings.json'], read)).toBeNull()
+    // A helper module in a React app is no screen the requirements cannot read: it is no screen.
+    expect(screenOf(['src/lib/format.ts', 'public/notes.html'], read)).toBeNull()
+  })
+
+  it('leaves out the caches and output a build writes', () => {
+    const dir = resolve(SCRATCH, 'caches')
+    const write = (path: string) => {
+      mkdirSync(resolve(dir, path, '..'), { recursive: true })
+      writeFileSync(resolve(dir, path), 'x')
+    }
+    write('src/App.tsx')
+    const before = snapshot(dir)
+    for (const path of [
+      'dist/index.html',
+      '.angular/cache/a.json',
+      'node_modules/.vite/deps/a.js',
+      'build/out.js',
+      'tsconfig.tsbuildinfo',
+      '.eslintcache',
+      'src/screens/settings.json',
+    ]) {
+      write(path)
+    }
+    expect(writtenSince(before, dir)).toEqual(['src/screens/settings.json'])
   })
 })
 
@@ -612,11 +704,28 @@ describe('the arguments a harness is started with in a project', () => {
   const settings = { fake: false, model: 'local-model', effort: 'high' }
 
   it('give Claude Code the project’s servers and settings, and none of the owner’s', () => {
-    const args = claudeProjectArguments({ settings, config: '/app/.mcp.json', servers: ['a', 'b'] })
+    const args = claudeProjectArguments({
+      settings,
+      config: '/app/.mcp.json',
+      servers: ['a', 'b'],
+      sandbox: { allowWrite: ['/scratch/npm-cache'], denyWrite: ['/scratch/template'] },
+    })
     expect(args).toEqual(
-      expect.arrayContaining(['--setting-sources', 'project', '--strict-mcp-config']),
+      expect.arrayContaining([
+        '--setting-sources',
+        'project',
+        '--strict-mcp-config',
+        '--permission-prompts',
+        'none',
+      ]),
     )
-    expect(args[args.indexOf('--allowedTools') + 1]).toBe('Bash,Skill,mcp__a,mcp__b')
+    expect(args[args.indexOf('--allowedTools') + 1]).toBe('Skill,mcp__a,mcp__b')
+    expect(JSON.parse(args[args.indexOf('--settings') + 1] ?? '')).toMatchObject({
+      sandbox: {
+        enabled: true,
+        filesystem: { allowWrite: ['/scratch/npm-cache'], denyWrite: ['/scratch/template'] },
+      },
+    })
   })
 
   it('trust the project for Codex, approve its servers and turn the owner’s skills off', () => {
@@ -686,6 +795,94 @@ describe('the judge', () => {
 
     const uninstalled = await judge(fixture('uninstalled', 'node -e "process.exit(1)"'), false)
     expect(uninstalled).toMatchObject({ builds: null, buildFault: null })
+
+    // A `package.json` the harness broke is its work: the run counts, unlawful and unbuilt.
+    const unreadable = fixture('unreadable', 'node -e "process.exit(0)"')
+    writeFileSync(resolve(unreadable, 'package.json'), '{ "name": "unreadable", ')
+    const judged = await judge(unreadable, true)
+    expect(judged).toMatchObject({ lawful: false, builds: false, meetsBrief: true })
+    expect(judged.buildFault).toContain('`package.json` cannot be read')
+    expect(judged.violations).toEqual([expect.stringContaining('package.json: it cannot be read')])
+  }, 120_000)
+})
+
+/* -------------------------------------------------------------------------- */
+/* A signal                                                                   */
+/* -------------------------------------------------------------------------- */
+
+describe('a signal to the eval', () => {
+  /** Whether a process is still running. */
+  const running = (pid: number) => {
+    try {
+      process.kill(pid, 0)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  /** What `read` gives once it gives something, checked every tenth of a second. */
+  async function until<T>(read: () => T | undefined, ms: number): Promise<T> {
+    for (const ends = Date.now() + ms; Date.now() < ends;) {
+      const value = read()
+      if (value !== undefined) return value
+      await new Promise((done) => setTimeout(done, 100))
+    }
+    throw new Error('it never came')
+  }
+
+  it('stops the harness group, removes the template and the run, and exits non-zero', async () => {
+    const directory = resolve(SCRATCH, 'signalled')
+    // The eval's scratch directories go where `TMPDIR` says, so the test can see they are gone.
+    const temporary = resolve(directory, 'tmp')
+    const files = resolve(directory, 'harness-files')
+    mkdirSync(temporary, { recursive: true })
+    mkdirSync(files, { recursive: true })
+    const harness = resolve(files, 'claude')
+    writeFileSync(
+      harness,
+      [
+        '#!/bin/sh',
+        `if [ "$1" = "--version" ]; then echo '9.9.9 (Claude Code)'; exit 0; fi`,
+        `echo $$ > '${files}/pid'`,
+        // A command of the harness's own, in its group, which must stop with it.
+        `sleep 60 & echo $! > '${files}/child'`,
+        'exec sleep 60',
+      ].join('\n') + '\n',
+      { mode: 0o755 },
+    )
+    const child = spawn(
+      process.execPath,
+      [
+        ...['eval/run.mjs', '--mode', 'project', '--runner', 'cli', '--claude', harness],
+        ...['--model', 'local-model', '--no-install', ...SETTINGS],
+        ...['--out', resolve(directory, 'out')],
+      ],
+      {
+        cwd: ROOT,
+        env: { ...process.env, TMPDIR: temporary, ANTHROPIC_API_KEY: '' },
+        stdio: 'ignore',
+      },
+    )
+    const exited = new Promise<number | null>((done) => child.on('close', (code) => done(code)))
+    try {
+      const pidOf = (name: string) => {
+        const file = resolve(files, name)
+        return existsSync(file) ? Number(readFileSync(file, 'utf8')) || undefined : undefined
+      }
+      // `init` sets the template up first, which takes a while.
+      const pid = await until(() => pidOf('pid'), 90_000)
+      const left = await until(() => pidOf('child'), 5_000)
+      expect(running(pid)).toBe(true)
+      child.kill('SIGINT')
+      expect(await exited).toBe(130)
+      await until(() => (running(pid) || running(left) ? undefined : true), 5_000)
+      expect(readdirSync(temporary).filter((entry) => entry.startsWith('polymorph-eval-'))).toEqual(
+        [],
+      )
+    } finally {
+      child.kill('SIGKILL')
+    }
   }, 120_000)
 })
 

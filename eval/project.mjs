@@ -23,6 +23,7 @@ import {
   LIMIT_WORDS,
   override,
   tail,
+  track,
 } from './harnesses.mjs'
 import { unmetAcross } from './requirements.mjs'
 import { interval } from './spread.mjs'
@@ -43,8 +44,27 @@ import { messageOf, ROOT } from './toolbox.mjs'
  * wrote, the app's typecheck and build, and the brief's requirements.
  */
 
-/** The directories a project's snapshot leaves out: installed packages, a build's output, history. */
-const UNWATCHED = new Set(['node_modules', 'dist', '.git', '.vite'])
+/**
+ * The directories a project's snapshot leaves out: installed packages, a
+ * build's output, the caches the frameworks' tools write, and history. A
+ * harness that builds the app writes them, and they hold no screen.
+ */
+const UNWATCHED = new Set([
+  'node_modules',
+  'dist',
+  'build',
+  'out',
+  'coverage',
+  '.git',
+  '.vite',
+  '.angular',
+  '.svelte-kit',
+  '.cache',
+  '.turbo',
+])
+
+/** Files a tool writes as a cache, which the snapshot leaves out wherever they are. */
+const CACHE_FILE = /(?:\.tsbuildinfo|^\.eslintcache|^\.stylelintcache)$/
 
 /** Each judged file's text is kept in the outputs file up to this many characters. */
 const KEPT_CHARACTERS = 200_000
@@ -153,11 +173,32 @@ function installTarball(tarball, scratch) {
   }
 }
 
+/**
+ * Where npm and pnpm keep what they fetch: inside the eval's scratch
+ * directory, for the template's install, every harness and the judge's
+ * scripts. Both harnesses' sandboxes let a command write there, so a harness
+ * can install a package, and the owner's own cache and store are never
+ * written. pnpm takes its store from `npm_config_store_dir`, as it takes
+ * any setting from an `npm_config_` variable, and `pnpm_config_store_dir`
+ * names it for a pnpm that reads only its own prefix. The template is
+ * installed into this store, so a copy's `node_modules` and the store a
+ * harness's pnpm finds agree.
+ */
+export function packageStores(scratch) {
+  const store = resolve(scratch, 'pnpm-store')
+  return {
+    npm_config_cache: resolve(scratch, 'npm-cache'),
+    npm_config_store_dir: store,
+    pnpm_config_store_dir: store,
+  }
+}
+
 /** The tools' `polymorph` with `args`, run in `cwd`: its exit code and everything it printed. */
-export function polymorph(tools, args, { cwd, timeout = 600_000 }) {
+export function polymorph(tools, args, { cwd, env = process.env, timeout = 600_000 }) {
   const [command, ...prefix] = tools.command
   const result = spawnSync(command, [...prefix, ...args], {
     cwd,
+    env,
     encoding: 'utf8',
     timeout,
     maxBuffer: 64 * 1024 * 1024,
@@ -188,16 +229,17 @@ export function polymorph(tools, args, { cwd, timeout = 600_000 }) {
  */
 export function makeTemplate({ tools, framework, harness, scratch, install }) {
   const dir = resolve(scratch, 'template')
+  const env = { ...process.env, ...packageStores(scratch) }
   const init = polymorph(
     tools,
     ['init', dir, '--framework', framework, ...(install ? [] : ['--no-install'])],
-    { cwd: scratch },
+    { cwd: scratch, env },
   )
   if (init.code !== 0) {
     throw new SetupError(`\`polymorph init\` did not set the app up${tail(init.output)}`)
   }
   const named = harness === 'codex' ? 'codex' : 'claude'
-  const agents = polymorph(tools, ['agents', '--harness', named], { cwd: dir })
+  const agents = polymorph(tools, ['agents', '--harness', named], { cwd: dir, env })
   let ran
   if (agents.code === 0) ran = true
   else if (/no such command/i.test(agents.output)) ran = false
@@ -212,6 +254,8 @@ export function makeTemplate({ tools, framework, harness, scratch, install }) {
     installed: install,
     agents: { ran, said: clip(said) },
     mcpServers: mcpServersOf(dir, harness),
+    // What it holds, so a run that writes into it is caught.
+    files: snapshot(dir),
   }
 }
 
@@ -261,7 +305,7 @@ export function snapshot(dir) {
       const path = resolve(directory, entry.name)
       if (entry.isDirectory()) {
         if (!UNWATCHED.has(entry.name)) walk(path)
-      } else if (entry.isFile()) {
+      } else if (entry.isFile() && !CACHE_FILE.test(entry.name)) {
         const key = relative(dir, path).split(sep).join('/')
         files.set(key, createHash('sha256').update(readFileSync(path)).digest('hex'))
       }
@@ -287,30 +331,57 @@ export function writtenSince(before, dir) {
 /** Modules the requirements read as TSX: React's and Solid's, which name the same members. */
 const MODULES = new Set(['.tsx', '.jsx'])
 
-/** Files that hold a screen the requirements cannot read. */
-const UNREAD = new Set(['.vue', '.svelte', '.ts', '.html'])
+/**
+ * Whether a file the harness wrote holds a screen the requirements cannot
+ * read: a Vue or Svelte single-file component, an Angular component (a `.ts`
+ * module that declares one), or a page that uses the elements. A plain `.ts`
+ * module, such as a helper or a store, holds no screen.
+ */
+function unreadScreen(path, read) {
+  const extension = extname(path)
+  if (extension === '.vue' || extension === '.svelte') return path.startsWith('src/')
+  if (extension === '.html') return /<poly-[a-z]/.test(read(path))
+  if (extension === '.ts' && path.startsWith('src/') && !path.endsWith('.d.ts')) {
+    return /@Component\s*\(/.test(read(path))
+  }
+  return false
+}
 
 /**
  * What the brief is judged on: the specs the harness wrote under
  * `src/screens/`, read together; or, when it wrote none, the React or Solid
  * modules it wrote under `src/`, read together; or, when it wrote neither,
- * a screen in a form the requirements cannot read (a single-file component,
- * an Angular module, an elements page), which is not judged.
+ * a screen in a form the requirements cannot read (`unreadScreen`), which is
+ * not judged. Null when the harness wrote no screen at all, which meets no
+ * requirement. `read` gives a written file's text.
  */
-export function screenOf(written) {
+export function screenOf(written, read) {
   const specs = written.filter((path) => /^src\/screens\/[^/]+\.json$/.test(path))
   if (specs.length > 0) return { kind: 'spec', files: specs }
   const modules = written.filter(
     (path) => path.startsWith('src/') && MODULES.has(extname(path)) && !path.endsWith('.d.ts'),
   )
   if (modules.length > 0) return { kind: 'tsx', files: modules }
-  const unread = written.filter(
-    (path) =>
-      (path.startsWith('src/') || path.startsWith('public/')) &&
-      UNREAD.has(extname(path)) &&
-      !path.endsWith('.d.ts'),
-  )
+  const unread = written.filter((path) => unreadScreen(path, read))
   return unread.length > 0 ? { kind: 'unread', files: unread } : null
+}
+
+/**
+ * Why the project's `package.json` cannot be read, or null. A harness that
+ * leaves it unreadable leaves an app that neither builds nor passes the red
+ * rules, which read it to tell which vocabulary a file uses.
+ */
+function brokenManifest(dir) {
+  const manifest = resolve(dir, 'package.json')
+  if (!existsSync(manifest)) return null
+  try {
+    const parsed = JSON.parse(readFileSync(manifest, 'utf8'))
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? null
+      : 'it is JSON, and not an object'
+  } catch (error) {
+    return messageOf(error)
+  }
 }
 
 /** The `check --json` report in what the tools printed: the first line that opens an object, to the end. */
@@ -324,14 +395,18 @@ function reportIn(stdout) {
   }
 }
 
-/** One of the app's scripts, run with pnpm: null when the app has no such script. */
-function script(dir, name) {
+/**
+ * One of the app's scripts, run with pnpm in `env`: null when the app has no
+ * such script. The caller has checked that `package.json` can be read.
+ */
+function script(dir, name, env) {
   const manifest = resolve(dir, 'package.json')
   if (!existsSync(manifest)) return null
-  const { scripts = {} } = JSON.parse(readFileSync(manifest, 'utf8'))
+  const scripts = JSON.parse(readFileSync(manifest, 'utf8')).scripts ?? {}
   if (typeof scripts[name] !== 'string') return null
   const result = spawnSync('pnpm', ['run', name], {
     cwd: dir,
+    env,
     encoding: 'utf8',
     timeout: 600_000,
     maxBuffer: 64 * 1024 * 1024,
@@ -355,20 +430,40 @@ function script(dir, name) {
  *   that wrote no screen meets none; a screen the requirements cannot read is
  *   not judged, and is null.
  *
- * A check that cannot run throws, which ends the run as the harness's fault.
+ * A `package.json` the harness left unreadable is the harness's work: the
+ * project is not lawful, and an installed one does not build. A check that
+ * cannot run on a readable project throws, which ends the run as the eval's
+ * own fault. `env` is what the scripts run in.
  */
-export async function judgeProject({ dir, tools, toolbox, requirements, written, installed }) {
-  const checked = polymorph(tools, ['check', '--json'], { cwd: dir })
-  const report = reportIn(checked.stdout)
-  if (report === null) {
-    throw new Error(`\`polymorph check --json\` printed no report${tail(checked.output)}`)
+export async function judgeProject({
+  dir,
+  tools,
+  toolbox,
+  requirements,
+  written,
+  installed,
+  env = process.env,
+}) {
+  const broken = brokenManifest(dir)
+  let report
+  if (broken === null) {
+    const checked = polymorph(tools, ['check', '--json'], { cwd: dir })
+    report = reportIn(checked.stdout)
+    if (report === null) {
+      throw new Error(`\`polymorph check --json\` printed no report${tail(checked.output)}`)
+    }
+  } else {
+    report = {
+      ok: false,
+      files: [{ path: 'package.json', fatal: `it cannot be read: ${broken}`, violations: [] }],
+    }
   }
   const violations = report.files.flatMap((file) => [
     ...(file.fatal === null ? [] : [`${file.path}: ${file.fatal}`]),
     ...file.violations.map((violation) => `${file.path}: ${violation.rule}: ${violation.message}`),
   ])
 
-  const screen = screenOf(written)
+  const screen = screenOf(written, (path) => readFileSync(resolve(dir, path), 'utf8'))
   const specs = screen?.kind === 'spec' ? screen.files : []
   let specsLawful = true
   for (const path of specs) {
@@ -388,9 +483,12 @@ export async function judgeProject({ dir, tools, toolbox, requirements, written,
 
   let builds = null
   let buildFault = null
-  if (installed) {
+  if (installed && broken !== null) {
+    builds = false
+    buildFault = clip(`\`package.json\` cannot be read: ${broken}`)
+  } else if (installed) {
     for (const name of ['typecheck', 'build']) {
-      const result = script(dir, name)
+      const result = script(dir, name, env)
       if (result === null) continue
       builds = result.ok
       if (!result.ok) {
@@ -490,9 +588,13 @@ export function skillsIn(command) {
   return [...command.matchAll(/([^\s'"`/]+)\/SKILL\.md\b/g)].map((match) => match[1])
 }
 
-/** What a run's harness called, counted as it streams. */
-function newCalls() {
-  return { mcp: {}, verbs: {}, shell: 0, skills: new Set(), denied: 0 }
+/**
+ * What a run's harness called, counted as it streams. `denied` starts as
+ * `denied`: zero where the harness reports each refusal as it happens, and
+ * null where it reports them only at the end, until it does.
+ */
+function newCalls(denied) {
+  return { mcp: {}, verbs: {}, shell: 0, skills: new Set(), denied }
 }
 
 const bump = (record, key) => {
@@ -513,34 +615,85 @@ export const projectRequest = (brief) =>
   `${brief.trim()}\n\nBuild the screen the brief describes, in this app.`
 
 /**
+ * The hosts a harness's shell commands may reach in a project: npm's
+ * registry and GitHub Packages, where the app's packages and the published
+ * tools come from.
+ */
+export const REGISTRY_HOSTS = [
+  'registry.npmjs.org',
+  'npm.pkg.github.com',
+  'pkg-npm.githubusercontent.com',
+]
+
+/**
+ * The settings `claude -p` is given in a project, which confine its shell as
+ * Codex's sandbox confines Codex's
+ * (https://code.claude.com/docs/en/sandboxing.md,
+ * https://code.claude.com/docs/en/settings.md):
+ *
+ * - `sandbox.enabled`, with `failIfUnavailable` so Claude Code refuses to
+ *   start rather than run commands unsandboxed, and `allowUnsandboxedCommands`
+ *   false so a blocked command cannot be retried outside the sandbox. A
+ *   sandboxed command writes only in the working directory and the per-user
+ *   temporary directory. `filesystem.allowWrite` adds npm's cache and pnpm's
+ *   store (`packageStores`), and `filesystem.denyWrite` takes the template
+ *   every run copies away.
+ * - `autoAllowBashIfSandboxed`: a sandboxed command runs with no prompt, so
+ *   no `Bash` permission is given.
+ * - `network.allowedDomains`: the package registries (`REGISTRY_HOSTS`) and
+ *   no other host.
+ * - `permissions.blockWritesOutsideWorkingDirectories`: the file tools refuse
+ *   a path outside the project.
+ */
+export function claudeSandbox({ allowWrite, denyWrite }) {
+  return {
+    sandbox: {
+      enabled: true,
+      failIfUnavailable: true,
+      autoAllowBashIfSandboxed: true,
+      allowUnsandboxedCommands: false,
+      filesystem: { allowWrite, denyWrite },
+      network: { allowedDomains: REGISTRY_HOSTS },
+    },
+    permissions: { blockWritesOutsideWorkingDirectories: true },
+  }
+}
+
+/**
  * The flags `claude -p` is started with in a project. Each is load-bearing,
- * and `eval/fake/cli.mjs` checks them.
+ * and `eval/fake/cli.mjs` checks them
+ * (https://code.claude.com/docs/en/cli-reference.md).
  *
  * - No `--system-prompt` and no `--tools`: Claude Code's own prompt and
  *   tools, as a person runs it.
  * - `--setting-sources project`: the project's settings, skills and
  *   `CLAUDE.md`, and none of the owner's.
+ * - `--settings`: the sandbox (`claudeSandbox`), above the project's settings.
  * - `--mcp-config <project>/.mcp.json --strict-mcp-config`: the servers the
  *   project configures and no other.
- * - `--permission-mode acceptEdits` and `--allowedTools`: edits inside the
- *   project, shell commands, skills and the project's MCP tools need no
- *   person; anything else is refused, as `-p` refuses what it would have to
- *   ask about.
+ * - `--permission-mode acceptEdits`, `--allowedTools` and
+ *   `--permission-prompts none`: edits inside the project, skills and the
+ *   project's MCP tools need no person, sandboxed commands run, and anything
+ *   that would wait on a prompt is refused.
  */
-export function claudeProjectArguments({ settings, config, servers }) {
+export function claudeProjectArguments({ settings, config, servers, sandbox }) {
   return [
     '-p',
     ...(settings.fake ? [] : ['--model', settings.model]),
     ...(settings.effort === 'default' ? [] : ['--effort', settings.effort]),
     '--setting-sources',
     'project',
+    '--settings',
+    JSON.stringify(claudeSandbox(sandbox)),
     '--strict-mcp-config',
     '--mcp-config',
     config,
     '--permission-mode',
     'acceptEdits',
+    '--permission-prompts',
+    'none',
     '--allowedTools',
-    ['Bash', 'Skill', ...servers.map((server) => `mcp__${server}`)].join(','),
+    ['Skill', ...servers.map((server) => `mcp__${server}`)].join(','),
     '--no-session-persistence',
     '--output-format',
     'stream-json',
@@ -581,8 +734,10 @@ export function ownSkills(home = homedir()) {
  *   their own project (https://learn.chatgpt.com/docs/developer-commands). It
  *   saves the trust in the run's own Codex home.
  * - `--sandbox workspace-write` with `sandbox_workspace_write.network_access`:
- *   commands write inside the project and reach the network, so `npx` and
- *   pnpm can fetch (https://learn.chatgpt.com/docs/config-file/config-reference).
+ *   commands write inside the project and the temporary directory, which
+ *   holds the eval's npm cache and pnpm store, and reach the network, any
+ *   host, so `npx` and pnpm can fetch
+ *   (https://learn.chatgpt.com/docs/config-file/config-reference).
  * - `approval_policy = "never"`: nothing waits for a person. Codex then denies
  *   an MCP call that needs approval, so every tool of each server the project
  *   configures is approved (`default_tools_approval_mode = "approve"`), as a
@@ -636,6 +791,14 @@ function startHarness(launcher, args, { cwd, env, request }) {
     child.on('close', (code, signal) => done({ code, signal }))
     child.on('error', (error) => done({ code: null, signal: null, error }))
   })
+  // A signal to the eval reaches its own group, not this one, so it is stopped by hand.
+  track(() => {
+    try {
+      process.kill(-child.pid, 'SIGKILL')
+    } catch {
+      // The group has ended.
+    }
+  }, exited)
   child.stdin.on('error', () => {})
   child.stdin.end(request)
   let stderr = ''
@@ -710,7 +873,8 @@ const claudeReader = ({ maxTurns, meter, ceilings }) => ({
   start: ({ halt, started }) => ({
     halt,
     startedAt: started,
-    calls: newCalls(),
+    // Claude Code reports the calls it refused in its result, which a stopped run never reaches.
+    calls: newCalls(null),
     turns: 0,
     open: null,
     pending: new Set(),
@@ -835,8 +999,9 @@ const claudeReader = ({ maxTurns, meter, ceilings }) => ({
  * the uncached part. Codex's `input_tokens` counts every input token, cached
  * ones included (`non_cached_input` in `codex-rs/protocol/src/protocol.rs`
  * subtracts `cached_input_tokens` from it), and is taken to include the
- * cache writes too. `cache_write_input_tokens` is new in Codex's events;
- * where it is absent, `cacheWriteReported` stays false. A `usage` with no
+ * cache writes too. Some versions of Codex report no
+ * `cache_write_input_tokens`; where it is absent, `cacheWriteReported` stays
+ * false. A `usage` with no
  * `input_tokens` reports nothing.
  */
 export function meterCodexUsage(meter, usage = {}) {
@@ -867,12 +1032,11 @@ const codexReader = ({ maxTurns, meter }) => ({
   start: ({ halt, started }) => ({
     halt,
     startedAt: started,
-    calls: newCalls(),
+    calls: newCalls(0),
     steps: new Set(),
     completed: false,
     failed: null,
     lastError: null,
-    retries: 0,
     texts: [],
   }),
   event(state, event) {
@@ -908,7 +1072,6 @@ const codexReader = ({ maxTurns, meter }) => ({
       }
       case 'error':
         state.lastError = event.message ?? null
-        if (/reconnect|retry/i.test(event.message ?? '')) state.retries += 1
         break
       case 'turn.completed':
         meterCodexUsage(meter, event.usage)
@@ -934,10 +1097,11 @@ const codexReader = ({ maxTurns, meter }) => ({
     }
     return 'answered'
   },
+  // Codex reports neither its requests nor the ones it sent again.
   report: (state) => ({
     turns: null,
     calls: state.calls,
-    retries: state.retries,
+    retries: null,
     answer: state.texts.at(-1) ?? null,
   }),
 })
@@ -968,22 +1132,26 @@ export async function runOnceProject({
 
   const script = settings.fake ? ['--script', lane.scriptFor(brief, run)] : []
   const servers = lane.template.mcpServers
+  const stores = packageStores(lane.scratch)
   let args
   let env
   let read
   if (lane.harness === 'codex') {
     const home = codexHome(resolve(directory, 'codex-home'))
     args = [...script, ...codexProjectArguments({ settings, servers, skills: ownSkills() })]
-    // npm's cache inside the run's directory, which the sandbox lets commands write.
-    env = codexEnvironment(home, { npm_config_cache: resolve(directory, 'npm-cache') })
+    env = codexEnvironment(home, stores)
     read = codexReader({ maxTurns: settings.maxTurns, meter })
   } else {
     const config = existsSync(resolve(dir, '.mcp.json'))
       ? resolve(dir, '.mcp.json')
       : resolve(directory, 'no-servers.json')
     if (!existsSync(config)) writeFileSync(config, '{ "mcpServers": {} }\n')
-    args = [...script, ...claudeProjectArguments({ settings, config, servers })]
-    env = claudeEnvironment()
+    const sandbox = {
+      allowWrite: [stores.npm_config_cache, stores.npm_config_store_dir],
+      denyWrite: [lane.template.dir],
+    }
+    args = [...script, ...claudeProjectArguments({ settings, config, servers, sandbox })]
+    env = claudeEnvironment(stores)
     read = claudeReader({ maxTurns: settings.maxTurns, meter, ceilings })
   }
 
@@ -998,6 +1166,15 @@ export async function runOnceProject({
   })
 
   const written = writtenSince(before, dir)
+  // Both sandboxes let a command write in the temporary directory, where the template is.
+  const touched = writtenSince(lane.template.files, lane.template.dir)
+  if (touched.length > 0) {
+    throw new HarnessError(
+      'cli',
+      `the harness wrote into the template every run copies (${touched.slice(0, 5).join(', ')}), ` +
+        'so the runs after this one would not start from the same app',
+    )
+  }
   let judged
   let ended = driven.ended
   let harnessFault = null
@@ -1009,6 +1186,7 @@ export async function runOnceProject({
       requirements,
       written,
       installed: lane.template.installed,
+      env: { ...process.env, ...stores },
     })
   } catch (error) {
     ended = 'harness'
@@ -1064,6 +1242,14 @@ const sorted = (record) =>
 /* -------------------------------------------------------------------------- */
 
 const rounded = (value, places) => Math.round(value * 10 ** places) / 10 ** places
+
+/** A count summed over the runs that report it, or null when runs ran and none reports it. */
+const reportedSum = (records, field) => {
+  const values = records.map((record) => record[field]).filter((value) => value !== null)
+  return values.length === 0 && records.length > 0
+    ? null
+    : values.reduce((total, value) => total + value, 0)
+}
 const mean = (values) => values.reduce((total, value) => total + value, 0) / values.length
 
 /**
@@ -1140,7 +1326,7 @@ export function summariseProject(records, endings) {
     verbs: total('verbs'),
     shellCommands: measured.reduce((sum, record) => sum + record.shellCommands, 0),
     skills: sorted(skills),
-    denied: measured.reduce((sum, record) => sum + record.denied, 0),
-    retries: records.reduce((sum, record) => sum + record.retries, 0),
+    denied: reportedSum(measured, 'denied'),
+    retries: reportedSum(records, 'retries'),
   }
 }

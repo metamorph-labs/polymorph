@@ -43,6 +43,9 @@ import { scriptedTurns } from './script.mjs'
  *   (nothing is run), `mcp` calls a server of the project's, `skill` reads a
  *   skill's `SKILL.md`, and `text` is a message.
  *
+ * A `plan` block, in either set, plays Codex's plan tool: a `todo_list` item
+ * holding the block's `items`.
+ *
  * A turn written `{ "codex": { "failed": … } }` plays Codex failing: an
  * `error` event, then `turn.failed`. `delay` waits that many milliseconds
  * before the turn is played, as a model takes time to answer.
@@ -327,6 +330,9 @@ for (;;) {
     } else if (block.type === 'shell') {
       acted = true
       command(block.command, block.output, block.exitCode)
+    } else if (block.type === 'plan') {
+      const items = (block.items ?? []).map((text) => ({ text, completed: false }))
+      emit({ type: 'item.started', item: { id: nextId(), type: 'todo_list', items } })
     } else if (block.type === 'skill') {
       acted = true
       const file = `.agents/skills/${block.name}/SKILL.md`
