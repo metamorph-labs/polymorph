@@ -48,7 +48,9 @@ import { TOOLTIP_DELAY_MS, TOOLTIP_SKIP_DELAY_MS } from './tooltip'
  *   bubble does.
  *
  * Nothing runs on a server, and no element exists until a tip first opens.
- * The page shares one bubble, which leaves the document when its tip closes.
+ * The page shares one bubble, which leaves the document when its tip closes,
+ * and one set of listeners on the window, added when the first button takes a
+ * tip.
  */
 
 /** The page's one bubble, made when a tip first opens. */
@@ -59,12 +61,10 @@ let owner: Element | undefined
 let held = false
 /** When the last tip closed, for the skip delay. */
 let closedAt = Number.NEGATIVE_INFINITY
-/** The page listeners an open tip holds. */
-let page: AbortController | undefined
 /** True while the last key pressed moves focus (Tab, an arrow key, Home, End), and no press came since. */
 let moving = false
-/** True once the window records the keys, from the first tip on. */
-let tracking = false
+/** True once the window's listeners are added, with the first tip. */
+let listening = false
 
 /** Adds each of `handlers` to `target` until `signal` aborts. */
 function listen(
@@ -97,7 +97,6 @@ function close(): void {
   if (owner === undefined) return
   owner = undefined
   closedAt = Date.now()
-  page?.abort()
   bubble?.remove()
 }
 
@@ -144,29 +143,6 @@ function open(
   if (owner === undefined) {
     document.body.append(bubble)
     bubble.showPopover?.()
-    page = new AbortController()
-    // Captured on the window, so Escape is read before any listener of the page's.
-    listen(
-      window,
-      {
-        keydown(event) {
-          const key = event as KeyboardEvent
-          if (key.key !== 'Escape' || key.isComposing) return
-          key.preventDefault()
-          key.stopPropagation()
-          close()
-        },
-        pointerdown: close,
-        pointermove(event) {
-          if (held && !over(event as PointerEvent)) close()
-        },
-        scroll(event) {
-          if ((event.target as Node).contains(owner as Element)) close()
-        },
-      },
-      page.signal,
-      true,
-    )
   }
   owner = button
   held = pointer
@@ -185,17 +161,29 @@ export function nameTip(
   className: string | undefined,
 ): () => void {
   if (!control || !label) return () => {}
-  if (!tracking) {
-    // The first tip: from now on the window records whether the person is moving focus.
-    tracking = true
+  if (!listening) {
+    // Captured on the window, so Escape is read before any listener of the page's.
+    listening = true
     listen(
       window,
       {
         keydown(event) {
-          moving = /^(Tab|Arrow|Home|End)/.test((event as KeyboardEvent).key)
+          const key = event as KeyboardEvent
+          moving = /^(Tab|Arrow|Home|End)/.test(key.key)
+          if (owner === undefined || key.key !== 'Escape' || key.isComposing) return
+          key.preventDefault()
+          key.stopPropagation()
+          close()
         },
         pointerdown() {
           moving = false
+          close()
+        },
+        pointermove(event) {
+          if (owner && held && !over(event as PointerEvent)) close()
+        },
+        scroll(event) {
+          if (owner && (event.target as Node).contains(owner)) close()
         },
       },
       undefined,
