@@ -348,16 +348,43 @@ public struct PMFont: Sendable, Hashable {
   }
 }
 
-/// `font-variant-numeric` as two switches.
+/// `font-variant-numeric` as two switches, and the side of its column a
+/// numeric column's figures sit on.
 public struct PMNumeric: Sendable, Hashable {
   /// Tabular figures (`tnum`): `Font.monospacedDigit()`.
   public let tabular: Bool
   /// A slashed zero (`zero`).
   public let slashedZero: Bool
+  /// The side of its column a numeric column's figures sit on (`numeric.align`),
+  /// which Table's and DataTable's numeric headers and cells read.
+  public let align: PMNumericAlign
 
-  public init(tabular: Bool, slashedZero: Bool) {
+  public init(tabular: Bool, slashedZero: Bool, align: PMNumericAlign = .end) {
     self.tabular = tabular
     self.slashedZero = slashedZero
+    self.align = align
+  }
+}
+
+/// The side of its column a numeric column's figures sit on: `end`, the
+/// default, or `start`. Both keep tabular figures.
+public enum PMNumericAlign: String, Sendable, Hashable, CaseIterable {
+  case end, start
+
+  /// Where a cell's frame places its content.
+  public var alignment: Alignment {
+    switch self {
+    case .end: .trailing
+    case .start: .leading
+    }
+  }
+
+  /// How a cell's lines of text align.
+  public var textAlignment: TextAlignment {
+    switch self {
+    case .end: .trailing
+    case .start: .leading
+    }
   }
 }
 

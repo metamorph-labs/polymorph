@@ -361,6 +361,8 @@ export function emitThemeCSS(theme: ResolvedTheme, options: EmitThemeOptions = {
       displayDeclarations(step, theme.tokens.display[step]),
     ),
     declare('font.numeric', theme.tokens.numeric),
+    // A system choice that is a value: a numeric column's `text-align`.
+    declare('numeric.align', theme.tokens.numericAlign),
     ...RADIUS_STEPS.map((step) => declare(`radius.${step}`, theme.tokens.radius[step])),
     // The assignment classes, as references after the steps they point to.
     ...RADIUS_ASSIGNMENT_CLASSES.map((cls) =>

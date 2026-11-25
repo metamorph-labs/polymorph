@@ -5,8 +5,9 @@
 //
 // - **The table** (a regular width class, and macOS): each row's cells share
 //   the width equally, header cells in the overline style over a stronger rule,
-//   body cells in `text.sm` over a subtle one; numeric cells end-aligned with
-//   tabular figures.
+//   body cells in `text.sm` over a subtle one; numeric cells take tabular
+//   figures, at the side of the column the system chooses
+//   (`theme.numeric.align`, the end unless the system file says start).
 // - **The list** (a compact width class): a body row's cells stack, the first
 //   as the row's title, so a narrow screen drops no column; the header row
 //   becomes a wrapping row of its headers, where the sortable ones stay buttons.
@@ -174,7 +175,7 @@ extension PMTable {
       .frame(
         maxWidth: layout == .list ? nil : .infinity,
         maxHeight: layout == .list ? nil : .infinity,
-        alignment: props.numeric == true ? .trailing : .leading
+        alignment: props.numeric == true ? theme.numeric.align.alignment : .leading
       )
       .frame(minHeight: layout == .list ? theme.defaultDensity.hitTarget : nil)
       .background(alignment: .bottom) {
@@ -187,8 +188,8 @@ extension PMTable {
     }
   }
 
-  /// A body cell: the app's view, in `text.sm`; end-aligned with tabular
-  /// figures when numeric.
+  /// A body cell: the app's view, in `text.sm`; with tabular figures at the
+  /// system's side of the column when numeric.
   public struct Cell: View {
     @Environment(\.pmTheme) private var theme
     @Environment(\.pmTableLayout) private var layout
@@ -202,15 +203,16 @@ extension PMTable {
       let space = theme.defaultDensity.space
       let numeric = props.numeric == true
       let list = layout == .list
+      let aligned = numeric && !list
       (props.children ?? AnyView(EmptyView()))
         .pmTextStyle(theme.text.sm)
         .foregroundStyle(theme.colors.textPrimary.color)
-        .multilineTextAlignment(numeric && !list ? .trailing : .leading)
+        .multilineTextAlignment(aligned ? theme.numeric.align.textAlignment : .leading)
         .pmTabularFigures(numeric && theme.numeric.tabular)
         .fixedSize(horizontal: false, vertical: true)
         .padding(.vertical, list ? 0 : space.s3)
         .padding(.horizontal, space.s4)
-        .frame(maxWidth: .infinity, alignment: numeric && !list ? .trailing : .leading)
+        .frame(maxWidth: .infinity, alignment: aligned ? theme.numeric.align.alignment : .leading)
     }
   }
 }

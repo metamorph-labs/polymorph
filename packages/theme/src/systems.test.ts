@@ -592,6 +592,24 @@ describe('the system choices, and the base', () => {
     }
   })
 
+  it('accepts the numeric column alignment, end or start, and no other value', () => {
+    const chosen = parseSystem({
+      ...exampleQuietSystem,
+      overrides: { numeric: { align: 'start' } },
+    })
+    expect(chosen.overrides?.numeric?.align).toBe('start')
+    expect(
+      systemSchema.safeParse({ ...exampleQuietSystem, overrides: { numeric: { align: 'end' } } })
+        .success,
+    ).toBe(true)
+    for (const numeric of [{ align: 'right' }, { align: 'center' }, { tabular: false }]) {
+      expect(
+        systemSchema.safeParse({ ...exampleQuietSystem, overrides: { numeric } }).success,
+        JSON.stringify(numeric),
+      ).toBe(false)
+    }
+  })
+
   it('accepts a base between 12 and 20px on the half-pixel grid', () => {
     expect(
       systemSchema.safeParse({ ...exampleQuietSystem, overrides: { type: { base: 13 } } }).success,

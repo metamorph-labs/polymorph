@@ -10,8 +10,9 @@
 //   on a narrow screen ("never hidden data"). Sortable columns are a bar of
 //   header buttons above the rows, each acting as the table's header does.
 // - **The table** (a medium or expanded window): a header row, then one row
-//   per record, the columns sharing the width equally. Numeric columns are
-//   end-aligned with tabular figures.
+//   per record, the columns sharing the width equally. Numeric columns take
+//   tabular figures, at the side of the column the system chooses
+//   (`theme.numericAlign`, the end unless the system file says start).
 //
 // Both are drawn as columns of rows rather than a lazy list: a DataTable sits
 // inside the page archetype's own scroll container, as the web's sits in
@@ -274,7 +275,7 @@ object PMDataTable : PMDataTableRendering {
                     for (column in props.columns) {
                         Box(
                             Modifier.weight(1f).padding(horizontal = space.s4, vertical = space.s3),
-                            contentAlignment = if (column.numeric == true) Alignment.CenterEnd else Alignment.CenterStart,
+                            contentAlignment = if (column.numeric == true && theme.numericAtEnd) Alignment.CenterEnd else Alignment.CenterStart,
                         ) { Header(column) }
                     }
                 }
@@ -321,7 +322,7 @@ object PMDataTable : PMDataTableRendering {
                                             for (column in props.columns) {
                                                 Box(
                                                     Modifier.weight(1f).padding(horizontal = space.s4, vertical = space.s3),
-                                                    contentAlignment = if (column.numeric == true) Alignment.TopEnd else Alignment.TopStart,
+                                                    contentAlignment = if (column.numeric == true && theme.numericAtEnd) Alignment.TopEnd else Alignment.TopStart,
                                                 ) { Cell(column, row) }
                                             }
                                         }
@@ -677,7 +678,7 @@ object PMDataTable : PMDataTableRendering {
                 text = column.value(row),
                 style = theme.text.sm.textStyle.tabular(theme, numeric),
                 color = theme.colors.textPrimary.color,
-                textAlign = if (numeric) TextAlign.End else TextAlign.Start,
+                textAlign = if (numeric && theme.numericAtEnd) TextAlign.End else TextAlign.Start,
             )
         }
 

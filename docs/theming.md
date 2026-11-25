@@ -123,7 +123,7 @@ can require a structurally different recipe, not only a different value:
 }
 ```
 
-The other five axes affect token values only. `laws.test.ts` asserts this list. The two system
+The other five axes affect token values only. `laws.test.ts` asserts this list. The two drawing
 choices in `overrides` (`--pm-focus-field`, `--pm-hover-unfilled`) and where the focus ring sits
 (`--pm-focus-place`, read from the offset) are flags of the same kind, each read by the one
 convention it belongs to.
@@ -163,6 +163,7 @@ scale's law is checked against the merged result.
 | `type.sm`, `type.xs` | 10–20 px, on the half-pixel grid | xs ≤ sm ≤ base on the merged ladder, xs never under 10px, and each step's line box fits its control at compact density (xs in sm, sm in md, the base in lg); an unset step is judged at the size the ratio derives from the base |
 | `type.titleWeight`, `type.displayWeight` | 300–700, in hundreds | each heading step's weight reads at Lc 75 at the size the merged ladder gives it; in this repository, the family that draws the weight ships it, below |
 | `hover` | `unfilled`: `wash` or `none` | a press and a toggle that is on keep their wash |
+| `numeric` | `align`: `end` or `start` | numeric columns keep tabular figures either way |
 | `assign` | radius classes `control`/`detail`/`surface`, shadow classes `seat`/`resting`/`transient`, inset classes `surface`/`pane`/`list` | each class points at an existing step |
 | `exceptions` | one member re-points one class token to one step, with a `because` | one entry per member × family × class |
 
@@ -241,6 +242,19 @@ document carries both as `invariant` entries, with `focus.place`. The SwiftUI an
 do not read them: their fields draw the ring at the system's offset and their Buttons wash on hover
 whatever the system chooses, because no native theme has a field for either choice, and they read
 where the ring sits from `focus.offset` itself ([native.md](native.md)).
+
+**Numeric columns.** `numeric.align` chooses which side of its column a numeric column's figures
+sit on: `end`, the default, so the ones, tens and hundreds line up, or `start`, where the column's
+label begins. It applies to every `numeric` header, body cell and total in Table, to DataTable's
+`numeric` columns, and so to a Markdown table's column whose delimiter ends in `:`, which Markdown
+draws as a `numeric` column. Tabular figures (`--pm-font-numeric`) stay in both. Other members that
+show figures, such as Stat, Meter, NumberInput and a chart's axis, are not columns and keep their
+own alignment. The choice is a keyword, not a role, so it is a value token: the emitter writes
+`--pm-numeric-align` (`end` or `start`) in every pairing, and `table.module.css` sets it as the
+cells' `text-align`, so every web framework and the elements follow it with no member change. The
+token document carries it as the `invariant` entry `numeric.align`. SwiftUI reads it as
+`theme.numeric.align` (`PMNumericAlign`), and Compose and Dart as `theme.numericAlign`; the native
+Table and DataTable place their numeric headers and cells by it.
 
 ## The palette document
 
@@ -1032,6 +1046,7 @@ package is shaped for SwiftUI, and the same document path reaches a different pl
 | `text.md.tracking` | points (em × size) | em |
 | `space.4` | `density.space.s4` (`density.space[4]` reads the same) | `density.space[4]`, a list |
 | `font.numeric` | `theme.numeric`, a `PMNumeric` (`tabular`, `slashedZero`) | `theme.numeric`, a list of feature tags (`["tnum"]`) |
+| `numeric.align` | `theme.numeric.align`, a `PMNumericAlign` (`.end`, `.start`) | `theme.numericAlign`, a `String` (`"end"`) |
 | `glow.focus`, `accent.gradient` | one geometry with a dynamic colour per layer or stop | a light and a dark value (`PMDynamicShadow`, `PMDynamicGradient`) |
 | `motion.duration.*`, `motion.ambient.*`, `motion.stagger.*` | seconds | whole milliseconds |
 | `floor` | not emitted | `theme.floor` |

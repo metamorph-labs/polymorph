@@ -99,8 +99,8 @@ export const exampleInkTheme: Theme = composeTheme(exampleQuietSystem, exampleIn
 /**
  * The probe: one pairing that holds every kind of value the native emitters
  * write and no house pairing does. A tenant, an italic display face, glass, a
- * grid texture, a gradient partner, and a member exception of each family
- * (radius, shadow, inset). The Swift, Kotlin and Dart emitters' tests, the
+ * grid texture, a gradient partner, numeric columns aligned to the start, and
+ * a member exception of each family (radius, shadow, inset). The Swift, Kotlin and Dart emitters' tests, the
  * native tree's test and the iOS loader's fixtures
  * (`platforms/ios/Tests/fixtures/token-documents.mjs`) all read this one, so a
  * value one of them covers, all of them cover.
@@ -119,6 +119,7 @@ export const exampleProbeSystem: System = {
     mono: { family: 'IBM Plex Mono' },
   },
   overrides: {
+    numeric: { align: 'start' },
     exceptions: [
       { component: 'button', family: 'radius', class: 'control', step: 'sm', because: 'A probe.' },
       {

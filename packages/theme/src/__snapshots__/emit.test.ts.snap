@@ -67,6 +67,7 @@ exports[`emitThemeCSS > matches its snapshot 1`] = `
   --pm-display-lg-opsz: 76.5;
   --pm-display-lg-style: normal;
   --pm-font-numeric: tabular-nums;
+  --pm-numeric-align: end;
   --pm-radius-none: 0;
   --pm-radius-sm: 4px;
   --pm-radius-md: 8px;

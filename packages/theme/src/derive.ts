@@ -1152,6 +1152,9 @@ export function deriveNonColorTokens(
     textureSpec: deriveTextureSpec(axes.ornament),
     numeric: numericVariants.join(' '),
     numericVariants,
+    // A choice, like the hover and field focus choices. `end` is the default,
+    // because figures that share their ones column read as one column.
+    numericAlign: overrides.numeric?.align ?? 'end',
     shell: asVars(shellRef),
     shellRef,
     focus: {

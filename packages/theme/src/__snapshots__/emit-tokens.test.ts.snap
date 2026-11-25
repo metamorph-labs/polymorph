@@ -72,6 +72,7 @@ exports[`the quiet example > matches its snapshot 1`] = `
         "tnum"
       ]
     },
+    "numeric.align": "end",
     "text.xs.size": {
       "value": 0.78125,
       "unit": "rem",

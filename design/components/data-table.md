@@ -14,7 +14,7 @@ interface Column<Row> {
   header: string
   cell?: (row: Row) => ReactNode        // default: String(row[key])
   sortable?: boolean
-  numeric?: boolean
+  numeric?: boolean                     // Table's `numeric`: tabular figures, at the system's side of the column
 }
 
 interface DataTableRowDetail<Row> {     // what `rowDetail` is called with

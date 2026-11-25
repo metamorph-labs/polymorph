@@ -284,6 +284,21 @@ describe('the system choices', () => {
     expect(section(chosen, `${pair(quiet)} {`)).toContain('--pm-hover-unfilled: none;')
   })
 
+  it('writes the numeric column alignment as a value a recipe sets, the end by default', () => {
+    expect(css).toContain('--pm-numeric-align: end;')
+    const start = emitThemeCSS(
+      resolveTheme(
+        composeTheme(
+          { ...exampleQuietSystem, overrides: { numeric: { align: 'start' } } },
+          exampleVioletPalette,
+        ),
+      ),
+    )
+    expect(section(start, `${pair(quiet)} {`)).toContain('--pm-numeric-align: start;')
+    // Tabular figures stay whichever side the figures sit on.
+    expect(section(start, `${pair(quiet)} {`)).toContain('--pm-font-numeric: tabular-nums;')
+  })
+
   it('writes where the focus mark sits as a flag read from the offset, inside by default', () => {
     // The derived offset is minus the width, so the mark is inside the edge. An offset of 0 or
     // more moves it outside, and the flag follows, because the focus convention branches on it.

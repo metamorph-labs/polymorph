@@ -50,6 +50,7 @@ internal object Flint_Cobalt {
             ),
         ),
         numeric = listOf("tnum"),
+        numericAlign = "end",
         floor = PMFloor(
             controlHeight = 24f,
             hitTarget = 48f,

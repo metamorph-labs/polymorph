@@ -40,6 +40,7 @@ import {
   GLOW_STEPS,
   ICON_SIZES,
   INSET_ASSIGNMENT_CLASSES,
+  NUMERIC_ALIGNS,
   RADIUS_ASSIGNMENT_CLASSES,
   RADIUS_STEPS,
   SHADOW_ASSIGNMENT_CLASSES,
@@ -59,6 +60,7 @@ import {
   type GlowStep,
   type IconSize,
   type InsetAssignmentClass,
+  type NumericAlign,
   type RadiusAssignmentClass,
   type RadiusStep,
   type ShadowAssignmentClass,
@@ -234,10 +236,10 @@ export interface TokenFont {
 
 type TypeKey = `text.${TextStep}` | `display.${DisplayStep}`
 
-export type InvariantTokens = { 'font.numeric': TokenNumeric } & Record<
-  `text.${TextStep}.size` | `display.${DisplayStep}.size`,
-  TokenRem
-> &
+export type InvariantTokens = {
+  'font.numeric': TokenNumeric
+  'numeric.align': NumericAlign
+} & Record<`text.${TextStep}.size` | `display.${DisplayStep}.size`, TokenRem> &
   Record<`${TypeKey}.lineHeight` | `${TypeKey}.weight` | `display.${DisplayStep}.opsz`, number> &
   Record<`${TypeKey}.family`, TokenFamilyRef> &
   Record<`${TypeKey}.tracking`, TokenEm> &
@@ -531,6 +533,8 @@ export function emitTokenDocument(
       'font.numeric',
       { features: tokens.numericVariants.map((variant) => NUMERIC_FEATURES[variant]) },
     ],
+    // A choice every platform's tables read: which side a numeric column's figures sit on.
+    ['numeric.align', tokens.numericAlign],
     ...TEXT_STEPS.flatMap((step) => typeEntries(`text.${step}`, tokens.text[step])),
     ...DISPLAY_STEPS.flatMap((step) => [
       ...typeEntries(`display.${step}`, tokens.display[step]),
@@ -862,6 +866,7 @@ function buildSchema() {
 
   const invariant = exact([
     ['font.numeric', z.strictObject({ features: z.array(z.enum(['tnum', 'zero'])) })],
+    ['numeric.align', z.enum(NUMERIC_ALIGNS)],
     ...TEXT_STEPS.flatMap((step) => typeSchema(`text.${step}`)),
     ...DISPLAY_STEPS.flatMap((step) => [
       ...typeSchema(`display.${step}`),

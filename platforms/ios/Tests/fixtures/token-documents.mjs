@@ -57,8 +57,8 @@ async function engine(importModule) {
  * probe (`exampleProbeSystem` with `exampleDuskPalette` in
  * `packages/theme/src/examples.ts`), which writes every kind of value the
  * catalogue does not: a tenant, an italic display face, glass, a grid texture,
- * a gradient partner and an exception of each family. The emitters' tests
- * read the same probe.
+ * a gradient partner, numeric columns aligned to the start and an exception of
+ * each family. The emitters' tests read the same probe.
  */
 function examples(theme) {
   const quiet = { system: theme.exampleQuietSystem, palette: theme.exampleVioletPalette }

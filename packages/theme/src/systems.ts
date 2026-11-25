@@ -28,6 +28,7 @@ import { modePreferenceSchema, THEME_KINDS, type Theme } from './theme'
 import {
   FIELD_FOCUS_STYLES,
   INSET_ASSIGNMENT_CLASSES,
+  NUMERIC_ALIGNS,
   RADIUS_ASSIGNMENT_CLASSES,
   RADIUS_STEPS,
   SHADOW_ASSIGNMENT_CLASSES,
@@ -184,6 +185,10 @@ export const assignOverrideSchema = z.strictObject({
  * - **`hover.unfilled`** chooses whether an outline or ghost Button washes
  *   under the pointer. The press and an on toggle keep their wash either way,
  *   because a control must answer the click and an on toggle must look on.
+ * - **`numeric.align`** chooses which side of its column a numeric column's
+ *   figures sit on, the end or the start. Tabular figures stay either way,
+ *   because the choice is where the column's figures sit, not how they are
+ *   drawn.
  */
 export const shadowOverrideSchema = z.strictObject({
   throw: z
@@ -321,6 +326,11 @@ export const hoverOverrideSchema = z.strictObject({
   unfilled: z.enum(UNFILLED_HOVERS).optional(),
 })
 
+/** See `NUMERIC_ALIGNS`. */
+export const numericOverrideSchema = z.strictObject({
+  align: z.enum(NUMERIC_ALIGNS).optional(),
+})
+
 /**
  * Component exceptions: a rung of the exception ladder (`docs/rules.md`), as
  * data in the system file. One named member points one class token at one
@@ -386,6 +396,7 @@ export const systemOverridesSchema = z.strictObject({
   focus: focusOverrideSchema.optional(),
   type: typeOverrideSchema.optional(),
   hover: hoverOverrideSchema.optional(),
+  numeric: numericOverrideSchema.optional(),
   assign: assignOverrideSchema.optional(),
   exceptions: z.array(componentExceptionSchema).optional(),
 })

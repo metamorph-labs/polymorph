@@ -48,7 +48,7 @@ extension PMTheme {
         opsz: []
       )
     ),
-    numeric: PMNumeric(tabular: true, slashedZero: true),
+    numeric: PMNumeric(tabular: true, slashedZero: true, align: .start),
     text: PMTextStyles(
       xs: PMTextStyle(
         size: 12.5,

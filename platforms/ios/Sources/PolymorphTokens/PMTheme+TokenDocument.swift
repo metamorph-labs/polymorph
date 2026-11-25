@@ -357,7 +357,7 @@ private struct TokenDocumentReader {
       defaultMode: pairing["defaultMode"].oneOf(),
       chartCap: pairing["chartCap"].int(),
       fonts: PMFonts(body: font("body"), display: font("display"), mono: font("mono")),
-      numeric: numeric(invariant["font.numeric"]),
+      numeric: numeric(invariant["font.numeric"], align: invariant["numeric.align"]),
       text: PMTextStyles(
         xs: textStyle("text.xs"),
         sm: textStyle("text.sm"),
@@ -446,9 +446,11 @@ private struct TokenDocumentReader {
     )
   }
 
-  func numeric(_ node: TokenNode) throws -> PMNumeric {
+  func numeric(_ node: TokenNode, align: TokenNode) throws -> PMNumeric {
     let features = try node["features"].items().map { try $0.string() }
-    return PMNumeric(tabular: features.contains("tnum"), slashedZero: features.contains("zero"))
+    return try PMNumeric(
+      tabular: features.contains("tnum"), slashedZero: features.contains("zero"),
+      align: align.oneOf())
   }
 
   /// A type step. Tracking is the em value × the step's unrounded size, then rounded.

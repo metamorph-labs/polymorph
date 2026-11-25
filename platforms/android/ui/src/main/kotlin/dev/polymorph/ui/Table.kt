@@ -7,7 +7,8 @@
 //   width equally and are as tall as the row's tallest, header cells in
 //   `text.xs`, secondary, over a `border.default` rule, body cells in `text.sm`
 //   over a `border.subtle` one, `space.3` and `space.4` inside; numeric cells
-//   end-aligned with tabular figures.
+//   take tabular figures, at the side of the column the system chooses
+//   (`theme.numericAlign`, the end unless the system file says start).
 // - **The list** (a compact window, narrower than `PMGeometry.compactWidth`):
 //   a body row's cells stack, the first as the row's title, `space.1` apart and
 //   `space.2` above and below, so a narrow screen drops no column; the header
@@ -256,10 +257,11 @@ object PMTable : PMTableRendering {
         val space = theme.defaultDensity.spacing
         val list = LocalTableForm.current == PMTableLayout.List
         val numeric = props.numeric == true
+        val end = numeric && !list && theme.numericAtEnd
         val direction = props.sortDirection
         val rule = colors.borderDefault.color
         val sort = props.onSort
-        val style = theme.text.xs.textStyle.tabular(theme, numeric).copy(textAlign = if (numeric && !list) TextAlign.End else TextAlign.Start)
+        val style = theme.text.xs.textStyle.tabular(theme, numeric).copy(textAlign = if (end) TextAlign.End else TextAlign.Start)
 
         Box(
             Modifier
@@ -273,7 +275,7 @@ object PMTable : PMTableRendering {
                     }
                 }
                 .padding(horizontal = space.s4, vertical = if (list) 0.dp else space.s3),
-            contentAlignment = if (numeric && !list) Alignment.CenterEnd else Alignment.CenterStart,
+            contentAlignment = if (end) Alignment.CenterEnd else Alignment.CenterStart,
         ) {
             if (props.sortable == true) {
                 val interaction = remember { MutableInteractionSource() }
@@ -311,13 +313,13 @@ object PMTable : PMTableRendering {
         }
     }
 
-    /** A body cell: the app's content in `text.sm`, end-aligned with tabular figures when numeric. */
+    /** A body cell: the app's content in `text.sm`, with tabular figures at the system's side of the column when numeric. */
     @Composable
     override fun RenderCell(props: PMTableCellProps) {
         val theme = PM.theme
         val space = theme.defaultDensity.spacing
         val list = LocalTableForm.current == PMTableLayout.List
-        val end = props.numeric == true && !list
+        val end = props.numeric == true && !list && theme.numericAtEnd
         val style = theme.text.sm.textStyle.tabular(theme, props.numeric == true).copy(textAlign = if (end) TextAlign.End else TextAlign.Start)
         Box(
             Modifier.padding(horizontal = space.s4, vertical = if (list) 0.dp else space.s3),
