@@ -1,3 +1,5 @@
+'use client'
+
 import { TOOLTIP_DELAY_MS, TOOLTIP_SKIP_DELAY_MS } from './tooltip'
 
 /**

@@ -13,6 +13,13 @@ Radix `@radix-ui/react-tooltip`.
 [content bubble]  — text only, no arrow
 ```
 
+The trigger is an anchor around the child, which carries `data-tooltip-part="trigger"`.
+
+An icon-only Button needs no Tooltip for its own name: it shows its label as a name tip on hover
+and keyboard focus (`button.md`, Name tip), in this bubble's recipe. A Tooltip around an icon-only
+Button is for a hint that says more than the label. While it wraps one, the Button finds the
+anchor by its part and shows the Tooltip and no tip, so the two never show at once.
+
 No arrow, on purpose: an arrow is ornament that does not suit sharp systems, and the
 offset and origin-aware motion already connect the bubble to its trigger.
 

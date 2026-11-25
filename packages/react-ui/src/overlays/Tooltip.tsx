@@ -27,6 +27,12 @@ import styles from '@polymorph/recipes/overlays/tooltip.module.css'
  * the control itself, is copied across by hand below. Removing the span would
  * need either a slot contract on controls or a tooltip prop on the control it
  * describes.
+ *
+ * An icon-only Button's own name needs neither: the Button shows its label as
+ * a name tip on hover and keyboard focus (`nameTip`), so a Tooltip around one
+ * is for a hint that says more than the label. The span carries
+ * `data-tooltip-part="trigger"`, by which such a Button finds it and shows this
+ * Tooltip instead of its tip.
  */
 
 export type TooltipSide = 'top' | 'right' | 'bottom' | 'left'

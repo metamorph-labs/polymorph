@@ -87,6 +87,11 @@ announced as a different button mid-task. The confirmation goes through a visual
 `aria-pressed`, because copying is an action, not a toggle, and a pressed state would say the
 button is still "on". Hit area per conventions §2 at both sizes.
 
+The glyph is all it draws, so `label` shows as a name tip on hover and keyboard focus, as on an
+icon-only Button (`button.md`, Name tip), and the tip is `aria-hidden`. While the confirmation
+shows there is no tip: the press closed it, and a tip that named the copy beside the confirming
+glyph would say two things at once. It is back when the confirmation reverts.
+
 ```contract
 role root button
 name root from label

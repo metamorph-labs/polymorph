@@ -463,7 +463,11 @@ pnpm exec vitest run src/conformance.test -t "agent"                    # the ag
 ## What it does not check
 
 - **Pointer gestures other than a click.** A right-click, a long press, a drag or a hover is not
-  a statement.
+  a statement. The name tip an icon-only Button shows after the pointer rests on it, and on
+  keyboard focus, is held by `nameTipLaw` (`packages/conformance/src/name-tip.ts`), which every
+  shell's `controls/name-tip.test` calls with its adapter: the delay, keyboard focus, none on a
+  labelled Button, only the Tooltip inside one, the members that draw Button's icon-only box, and
+  the tip over a modal Dialog with both of Escape's outcomes.
   ContextMenu's contract covers its paired visible control, which is its keyboard path, and the
   member's own tests cover the right-click.
 - **Typeahead and focus traps.** They are not in the grammar. The overlay tests cover the trap
