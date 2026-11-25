@@ -44,7 +44,7 @@ const script = (await import(
 const importModule: ImportModule = (path) =>
   import(/* @vite-ignore */ path) as Promise<Record<string, unknown>>
 
-const readJson = (path: string) => JSON.parse(readFileSync(resolve(ROOT, path), 'utf8')) as never
+const readJson = <T>(path: string): T => JSON.parse(readFileSync(resolve(ROOT, path), 'utf8')) as T
 const inPlugin = (path: string) => join(PLUGIN_DIR, path)
 
 /** Every file below the plugin directory, relative to it. */
