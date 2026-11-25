@@ -249,6 +249,21 @@ describe('structured values', () => {
     }
   })
 
+  it('carries the numeric column alignment beside the figures, the end by default', () => {
+    const quiet = emitTokenDocument(resolveTheme(exampleQuietTheme)).invariant
+    expect(quiet['numeric.align']).toBe('end')
+    const start = emitTokenDocument(
+      resolveTheme(
+        composeTheme(
+          { ...exampleQuietSystem, overrides: { numeric: { align: 'start' } } },
+          exampleVioletPalette,
+        ),
+      ),
+    ).invariant
+    expect(start['numeric.align']).toBe('start')
+    expect(start['font.numeric']).toEqual(quiet['font.numeric'])
+  })
+
   it('gives a gradient its angle and stops, and a solid two equal stops', () => {
     for (const mode of MODES) {
       const gradient = doc.mode[mode].gradient['accent.gradient']

@@ -139,6 +139,7 @@ export {
   GLOW_STEPS,
   ICON_SIZES,
   INSET_ASSIGNMENT_CLASSES,
+  NUMERIC_ALIGNS,
   RADIUS_ASSIGNMENT_CLASSES,
   RADIUS_STEPS,
   SHADOW_ASSIGNMENT_CLASSES,
@@ -164,6 +165,7 @@ export type {
   InsetAssignmentClass,
   MotionTokens,
   NonColorTokens,
+  NumericAlign,
   NumericVariant,
   RadiusAssignmentClass,
   RadiusStep,
@@ -181,6 +183,7 @@ export type {
 } from './tokens'
 
 export {
+  BODY_TEXT_MIN_SIZE_PX,
   DELINEATION_MIN_DELTA_L,
   FOCUS_MIN_DELTA_L,
   FOCUS_MIN_RATIO,
@@ -191,6 +194,7 @@ export {
   LAWFUL_GRADIENT_PAIRINGS,
   LAWFUL_PAIRINGS,
   LC_FLOORS,
+  minSizeForWeight,
   PAIRING_EXEMPTIONS,
   pairingId,
   pairingMeasure,
@@ -244,6 +248,7 @@ export {
   fontFallbackClass,
   GEOMETRY_RADII,
   GLASS_SURFACE_MIX,
+  HEADING_WEIGHT_RANGE,
   INSET_ASSIGNMENT_DEFAULT,
   MOTION_SCALE,
   RADIUS_ASSIGNMENT_DEFAULT,

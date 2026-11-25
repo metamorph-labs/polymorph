@@ -50,6 +50,7 @@ internal object Harbor_Ember {
             ),
         ),
         numeric = listOf("tnum", "zero"),
+        numericAlign = "end",
         floor = PMFloor(
             controlHeight = 24f,
             hitTarget = 48f,

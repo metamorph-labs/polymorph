@@ -563,6 +563,7 @@ export function swiftDocumentExpression(doc: TokenDocument): SwiftExpr {
       init('PMNumeric', [
         ['tabular', bool(invariant['font.numeric'].features.includes('tnum'))],
         ['slashedZero', bool(invariant['font.numeric'].features.includes('zero'))],
+        ['align', enumCase(invariant['numeric.align'])],
       ]),
     ],
     ['text', steps('PMTextStyles', 'text', TEXT_STEPS, (step) => typeStyle(`text.${step}`, false))],

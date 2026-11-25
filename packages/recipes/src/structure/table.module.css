@@ -172,14 +172,18 @@
   opacity: 1;
 }
 
-/* numeric — right-aligned, figures that line up in a column ------------------
+/* numeric — figures that line up in a column ---------------------------------
    Tabular figures from the numeric token, in the column's own font. A mono
-   family would change every figure column regardless of the theme. */
+   family would change every figure column regardless of the theme. The side of
+   the column the figures sit on is the system's choice
+   (`overrides.numeric.align`): `end` by default, so the ones line up, or
+   `start`, where the column's label begins. Header, body and foot cells read
+   the same token, so a total stays under its column's figures. */
 
 .header[data-numeric],
 .cell[data-numeric] {
   font-variant-numeric: var(--pm-font-numeric);
-  text-align: end;
+  text-align: var(--pm-numeric-align);
 }
 
 /* states -------------------------------------------------------------------- */

@@ -120,6 +120,17 @@ interface PersonalityType {
  */
 const XL_WEIGHT = 500
 
+/**
+ * The weights a system file may give the heading steps
+ * (`overrides.type.titleWeight`, `overrides.type.displayWeight`), in hundreds.
+ * 700 is the heaviest weight a personality sets. 300 is the lightest at which
+ * the smallest title step, `text.2xl`, can still read at the body-text
+ * contrast floor at the size the standard ratio gives it (`systemSchema` holds
+ * each step to `minSizeForWeight`). The display steps never go under 300
+ * either, so `DISPLAY_WEIGHT_DELTA` cannot take one there.
+ */
+export const HEADING_WEIGHT_RANGE = { min: 300, max: 700 } as const
+
 /** TUNED-IN */
 const PERSONALITY: Record<TypePersonality, PersonalityType> = {
   grotesque: {
@@ -195,13 +206,15 @@ function deriveTextScale(
   // the density axis's ratio (`overrides.type.ratio`), which spreads the
   // ladder around the base. It may also set the two steps under the base
   // (`overrides.type.sm`, `overrides.type.xs`); every other step derives.
+  // `overrides.type.titleWeight` replaces the personality's title weight on
+  // the two steps it governs; body, the working sizes and `xl` keep theirs.
   const base = override?.base ?? TYPE_BASE_PX
   const ratio = override?.ratio ?? TYPE_RATIO[axes.density]
   const personality = PERSONALITY[axes.typePersonality]
   const baseIndex = TEXT_STEPS.indexOf('md')
 
   const weightFor = (step: TextStep): number => {
-    if (step === '2xl' || step === '3xl') return personality.titleWeight
+    if (step === '2xl' || step === '3xl') return override?.titleWeight ?? personality.titleWeight
     if (step === 'xl') return XL_WEIGHT
     return personality.bodyWeight
   }
@@ -242,6 +255,9 @@ const DISPLAY_TRACKING_STEP_EM = 0.005
 /**
  * Weight decreases as size increases, because the stroke grows with the size.
  * A constant weight would make the largest step the boldest text on the page.
+ * It applies to a display weight a system file sets as to the personality's,
+ * and stops at `HEADING_WEIGHT_RANGE.min`: a display weight of 300 keeps 300
+ * at `lg`, because no font is checked for a lighter one.
  */
 const DISPLAY_WEIGHT_DELTA: Record<DisplayStep, number> = { sm: 0, md: 0, lg: -50 }
 
@@ -261,6 +277,7 @@ function deriveDisplayScale(
   const base = override?.base ?? TYPE_BASE_PX
   const ratio = Math.max(override?.ratio ?? TYPE_RATIO[axes.density], DISPLAY_RATIO_FLOOR)
   const personality = PERSONALITY[axes.typePersonality]
+  const displayWeight = override?.displayWeight ?? personality.displayWeight
   // Display continues the same ratio past the last text step.
   const firstDisplayIndex = TEXT_STEPS.length - TEXT_STEPS.indexOf('md')
 
@@ -269,7 +286,7 @@ function deriveDisplayScale(
     const style: DisplayStyle = {
       size: rem(px),
       lineHeight: DISPLAY_LINE_HEIGHTS[step],
-      weight: Math.max(1, personality.displayWeight + DISPLAY_WEIGHT_DELTA[step]),
+      weight: Math.max(HEADING_WEIGHT_RANGE.min, displayWeight + DISPLAY_WEIGHT_DELTA[step]),
       family: 'display',
       tracking: tightenEm(personality.tightTracking, index * DISPLAY_TRACKING_STEP_EM),
       // For families with an optical-size axis. Others ignore it.
@@ -282,6 +299,43 @@ function deriveDisplayScale(
   })
 
   return Object.fromEntries(entries) as Record<DisplayStep, DisplayStyle>
+}
+
+/** A heading step as the derivation sets it: its size in px and its weight. */
+export interface HeadingStep {
+  step: `text.${'2xl' | '3xl'}` | `display.${DisplayStep}`
+  /** The `overrides.type` key that sets this step's weight. */
+  key: 'titleWeight' | 'displayWeight'
+  px: number
+  weight: number
+}
+
+/**
+ * The steps the title and display weights govern, from the same derivation
+ * the tokens come from, so `systemSchema` measures the weight and size that
+ * ship, the system file's weight where it sets one.
+ */
+export function deriveHeadingSteps(
+  axes: Axes,
+  override: SystemOverrides['type'] = undefined,
+): HeadingStep[] {
+  const text = deriveTextScale(axes, override)
+  const display = deriveDisplayScale(axes, 'normal', override)
+  const remPx = (size: string) => parseFloat(size) * TYPE_BASE_PX
+  return [
+    ...(['2xl', '3xl'] as const).map((step): HeadingStep => ({
+      step: `text.${step}`,
+      key: 'titleWeight',
+      px: remPx(text[step].size),
+      weight: text[step].weight,
+    })),
+    ...DISPLAY_STEPS.map((step): HeadingStep => ({
+      step: `display.${step}`,
+      key: 'displayWeight',
+      px: remPx(display[step].size),
+      weight: display[step].weight,
+    })),
+  ]
 }
 
 /**
@@ -1098,6 +1152,9 @@ export function deriveNonColorTokens(
     textureSpec: deriveTextureSpec(axes.ornament),
     numeric: numericVariants.join(' '),
     numericVariants,
+    // A choice, like the hover and field focus choices. `end` is the default,
+    // because figures that share their ones column read as one column.
+    numericAlign: overrides.numeric?.align ?? 'end',
     shell: asVars(shellRef),
     shellRef,
     focus: {

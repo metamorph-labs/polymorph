@@ -50,6 +50,7 @@ const PMTheme theme = PMTheme(
     ),
   ),
   numeric: ['tnum'],
+  numericAlign: 'end',
   floor: PMFloor(
     controlHeight: 24.0,
     hitTarget: 48.0,

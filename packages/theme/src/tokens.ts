@@ -151,6 +151,19 @@ export type UnfilledHover = (typeof UNFILLED_HOVERS)[number]
 /** The `font-variant-numeric` keywords the derivation uses. */
 export type NumericVariant = 'tabular-nums' | 'slashed-zero'
 
+/**
+ * Which side of its column a numeric column's figures sit on: Table's
+ * `numeric` headers, cells and totals, and DataTable's `numeric` columns. `end`
+ * is the default, so the ones, tens and hundreds of a column's figures line up.
+ * `start` puts them at the column's start edge, where its label begins. Both
+ * keep tabular figures. A system chooses it (`overrides.numeric.align`), and
+ * the emitter writes it as `--pm-numeric-align`, a value `table.module.css`
+ * sets as the cell's `text-align`. It is a keyword, not a role, so a value
+ * token carries it and no recipe branches on it.
+ */
+export const NUMERIC_ALIGNS = ['end', 'start'] as const
+export type NumericAlign = (typeof NUMERIC_ALIGNS)[number]
+
 export const ICON_SIZES = ['sm', 'md', 'lg'] as const
 export type IconSize = (typeof ICON_SIZES)[number]
 
@@ -347,6 +360,8 @@ export interface NonColorTokens {
   numeric: string
   /** The keywords `numeric` joins. */
   numericVariants: readonly NumericVariant[]
+  /** Which side of its column a numeric column's figures sit on (see `NUMERIC_ALIGNS`). */
+  numericAlign: NumericAlign
   /**
    * The shell's region surfaces, pattern-scoped under `--pm-shell-*`.
    *

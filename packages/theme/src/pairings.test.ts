@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { contrast, deltaL } from './color/contrast'
 import {
+  BODY_TEXT_MIN_SIZE_PX,
   DELINEATION_MIN_DELTA_L,
   FOCUS_MIN_DELTA_L,
   FOCUS_MIN_RATIO,
@@ -11,6 +12,7 @@ import {
   isExemptFromContrast,
   LAWFUL_PAIRINGS,
   LC_FLOORS,
+  minSizeForWeight,
   PAIRING_EXEMPTIONS,
   pairingId,
   pairingsInvolving,
@@ -218,5 +220,25 @@ describe('pairingsInvolving', () => {
     )
     expect(pairingsInvolving('bg.surface').length).toBeGreaterThan(1)
     expect(pairingsInvolving('bg.scrim')).toHaveLength(0)
+  })
+})
+
+describe('the size a weight needs at the body-text floor', () => {
+  it('asks a lighter weight for a larger size, never the reverse', () => {
+    const sizes = Object.entries(BODY_TEXT_MIN_SIZE_PX)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([, px]) => px)
+    for (let i = 1; i < sizes.length; i += 1) {
+      expect(sizes[i], `row ${i}`).toBeLessThanOrEqual(sizes[i - 1] ?? 0)
+    }
+  })
+
+  it('judges a weight between two rows by the lighter one', () => {
+    expect(minSizeForWeight(300)).toBe(24)
+    expect(minSizeForWeight(350)).toBe(24)
+    expect(minSizeForWeight(450)).toBe(18)
+    expect(minSizeForWeight(650)).toBe(15)
+    expect(minSizeForWeight(900)).toBe(14)
+    expect(minSizeForWeight(250)).toBeUndefined()
   })
 })

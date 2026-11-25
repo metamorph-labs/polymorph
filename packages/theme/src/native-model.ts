@@ -423,6 +423,7 @@ export function nativeTheme(doc: TokenDocument): NativeObject {
       })
     }),
     numeric: list(invariant['font.numeric'].features.map(string)),
+    numericAlign: string(invariant['numeric.align']),
     floor: object('PMFloor', {
       controlHeight: float(doc.floor.controlHeight),
       hitTarget: float(doc.floor.hitTarget),

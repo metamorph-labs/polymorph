@@ -31,7 +31,7 @@ columns; no props, like Head and Body).
 | `Table.Header` | `sortable` | `boolean` | `false` | shows sort affordance |
 | | `sortDirection` | `'asc' \| 'desc' \| undefined` | — | controlled by caller |
 | | `onSort` | `() => void` | — | |
-| | `numeric` | `boolean` | `false` | right-align + tabular figures |
+| | `numeric` | `boolean` | `false` | tabular figures, at the side of the column the system chooses: the end, or the start under `overrides.numeric.align: start` |
 | `Table.Row` | `interactive` | `boolean` | `false` | hover + cursor; row-level `onClick` |
 | | `selected` | `boolean` | `false` | |
 | `Table.Cell` | `numeric` | `boolean` | `false` | |
@@ -48,7 +48,7 @@ Attributes: rows `data-interactive?`, `data-selected?`; headers `data-sortable?`
 | header cell | `text.xs` quartet + `text-transform: uppercase` · `--pm-text-secondary` · padding `--pm-space-3` `--pm-space-4` · border-bottom `1px solid --pm-border-default` · bg `--pm-bg-surface` when sticky (opaque over scroll), else transparent |
 | sortable header | hover `--pm-text-primary` · sort icon `--pm-icon-size-sm`, gap `--pm-space-1`: unsorted `sort` at `--pm-text-muted`, active `sort-asc`/`sort-desc` at `--pm-accent-text` · icon `opacity: 0` at rest, `1` on header hover, sort-button `:focus-visible`, or `[data-active]`, so arrows appear on approach instead of showing permanently in every header · the sort button's focus ring goes around it with a `--pm-space-1` gap (conventions §4, around), because its label reaches its edge; the header cell's padding holds the ring's reach |
 | body cell | `text.sm` quartet · `--pm-text-primary` · padding `--pm-space-3` `--pm-space-4` · border-bottom `1px solid --pm-border-subtle` |
-| numeric cell/header | right-aligned · `font-variant-numeric: var(--pm-font-numeric)` *(figures align in the column's own font; a mono-personality theme gets `slashed-zero` from the token)* |
+| numeric cell/header | `text-align: var(--pm-numeric-align)` · `font-variant-numeric: var(--pm-font-numeric)` *(figures align in the column's own font; a mono-personality theme gets `slashed-zero` from the token. The side is the system's choice, `overrides.numeric.align`: `end` by default, so the ones line up, or `start`, where the column's label begins. Tabular figures stay either way)* |
 | foot cell | the header cell's recipe (`text.xs` quartet + `text-transform: uppercase` · `--pm-text-secondary` · padding `--pm-space-3` `--pm-space-4`) with the border mirrored: border-**top** `1px solid --pm-border-default`, no border-bottom · `numeric` applies as in the body, because a total uses the column's figures *(totals for numeric columns)* |
 | interactive row hover | bg `--pm-bg-subtle` · `cursor: pointer` |
 | selected row | bg `--pm-selection-surface`; selected + hover `--pm-selection-surface-hover` *(selection is its own colour family, not the hover wash; it overrides plain hover. With a hue it has its own hover step. An achromatic system has none: its two selected surfaces are one colour, so a selected row looks the same under the pointer. The fill is the selected surface, not `--pm-selection-bg`: a row's cells hold text in every role, and controls, and the contrast law holds every text role on the selected surface. An achromatic system draws `--pm-selection-bg` as its ink, the colour of primary text)* |

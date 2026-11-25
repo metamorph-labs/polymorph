@@ -416,6 +416,13 @@ A server that admits a palette naming a partner passes the partner too
 (`admitTheme({ system, palette, moreContrast })`), because admission refuses the palette without
 it. The document it emits still holds the one pairing.
 
+A system's numeric column alignment, `overrides.numeric.align` ([theming.md](theming.md)), reaches
+every platform. The token document carries it as the `invariant` entry `numeric.align`; SwiftUI
+reads it as `theme.numeric.align` and Compose as `theme.numericAlign`. `Table.swift`,
+`DataTable.swift`, `Table.kt` and `DataTable.kt` place a numeric header and cell at the end of the
+column unless the system chooses `start`, with tabular figures either way. The list form on a
+phone stacks a row's cells under its title, as it does for every system.
+
 A system's two drawing choices, `overrides.focus.field` and `overrides.hover.unfilled`
 ([theming.md](theming.md)), reach the web only. The token document carries both as `invariant`
 entries, and neither `PMTheme` nor the Compose theme has a field for them (`emit-swift.test.ts` and
@@ -437,9 +444,9 @@ checks:
 - every catalogue pairing's document decodes to its static in `Generated/`;
 - the engine's quiet example and its probe (`exampleProbeSystem` with `exampleDuskPalette` in
   `packages/theme/src/examples.ts`, the pairing the emitters' tests read too), which holds a
-  tenant, an italic display face, glass, a gradient partner and an exception of each family,
-  decode to their statics. These two are not in the catalogue, so their statics are test sources
-  in `Tests/PolymorphTokensTests/Examples/`, written by
+  tenant, an italic display face, glass, a gradient partner, numeric columns aligned to the start
+  and an exception of each family, decode to their statics. These two are not in the catalogue, so
+  their statics are test sources in `Tests/PolymorphTokensTests/Examples/`, written by
   `node platforms/ios/Tests/fixtures/token-documents.mjs --write-statics`. The test fails,
   naming that command, when they differ from what the emitter writes;
 - the loader rounds as the emitter does, over several hundred numbers the script rounds with the

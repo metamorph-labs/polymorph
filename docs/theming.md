@@ -123,7 +123,7 @@ can require a structurally different recipe, not only a different value:
 }
 ```
 
-The other five axes affect token values only. `laws.test.ts` asserts this list. The two system
+The other five axes affect token values only. `laws.test.ts` asserts this list. The two drawing
 choices in `overrides` (`--pm-focus-field`, `--pm-hover-unfilled`) and where the focus ring sits
 (`--pm-focus-place`, read from the offset) are flags of the same kind, each read by the one
 convention it belongs to.
@@ -161,7 +161,9 @@ scale's law is checked against the merged result.
 | `type.base` | 12–20 px, on the half-pixel grid | the text-entry floor stays at 16px or the base, whichever is larger |
 | `type.ratio` | 1.125–1.4 | derives every step that is not set; the base never moves with it |
 | `type.sm`, `type.xs` | 10–20 px, on the half-pixel grid | xs ≤ sm ≤ base on the merged ladder, xs never under 10px, and each step's line box fits its control at compact density (xs in sm, sm in md, the base in lg); an unset step is judged at the size the ratio derives from the base |
+| `type.titleWeight`, `type.displayWeight` | 300–700, in hundreds | each heading step's weight reads at Lc 75 at the size the merged ladder gives it; in this repository, the family that draws the weight ships it, below |
 | `hover` | `unfilled`: `wash` or `none` | a press and a toggle that is on keep their wash |
+| `numeric` | `align`: `end` or `start` | numeric columns keep tabular figures either way |
 | `assign` | radius classes `control`/`detail`/`surface`, shadow classes `seat`/`resting`/`transient`, inset classes `surface`/`pane`/`list` | each class points at an existing step |
 | `exceptions` | one member re-points one class token to one step, with a `because` | one entry per member × family × class |
 
@@ -169,6 +171,37 @@ Exceptions are emitted inside an `@scope` block that stops at any nested pairing
 exception does not apply inside a preview of another pairing.
 [rules.md](rules.md#per-member-exceptions-in-a-system-file) explains how they relate to the other
 ways to deviate.
+
+**Heading weights.** The type personality sets two heading weights: a title weight for `text.2xl`
+and `text.3xl`, and a display weight for the display steps, between 500 and 700.
+`type.titleWeight` and `type.displayWeight` replace them, from 300 to 700 in hundreds. They change
+only those steps: body text, the working sizes and `text.xl` (500) keep their weights, and no size
+moves. The display steps still take 50 off the display weight at `display.lg`, so the largest
+step is not the boldest, and never go under 300.
+
+A lighter stroke needs a larger size to read at the same contrast. Every heading step is drawn in
+`text.primary`, which every palette holds to Lc 75, so the schema holds each heading step's weight
+to the size APCA's font lookup table gives that weight at Lc 75 (`BODY_TEXT_MIN_SIZE_PX` in
+`packages/theme/src/pairings.ts`: 24px at 300, 18px at 400, 16px at 500), at the size the step
+derives from the merged base and ratio. At the default base and each density's own ratio,
+`text.2xl` is 27.5px or larger, so 300 is lawful there. A smaller base or a flatter ratio shrinks
+the title steps: a 12px base at the standard ratio puts `text.2xl` at 23.5px, so a title weight of
+300 is refused there, with a message that names the step, its size and the size the weight needs.
+The personalities' own weights pass at every base and ratio the schema allows.
+
+A font must ship the weight. In this repository, `pnpm registry` checks each weight against the
+family that draws it, the body family for `titleWeight` and the display family for
+`displayWeight`, in the package each app installs. A static family's loader imports the weight's
+file beside the three it always loads (400, 500, 600), and generation fails when the package has
+no such file. A variable family's weight must lie inside the weight axis its package's
+`metadata.json` declares, so Lora (400–700) cannot draw a display weight of 300. `display.lg`'s
+lighter weight is not checked: a family that does not reach it draws the nearest weight it ships.
+The check applies to committed systems only. A guest system admitted through `./admit` loads its
+own fonts, and its application must load every heading weight the file sets.
+
+On native platforms the weights arrive as numbers in each step's `weight` (`wght` in Swift):
+SwiftUI reads 300 as `Font.Weight.light`, Compose as `FontWeight(300)`, and a Dart app passes it
+to `FontWeight.w300`.
 
 **Where the focus ring sits.** The ring is an outline at `focus.width`. The derived offset is
 minus the width, so the ring lies inside the part's edge, over its border, and nothing is drawn
@@ -209,6 +242,19 @@ document carries both as `invariant` entries, with `focus.place`. The SwiftUI an
 do not read them: their fields draw the ring at the system's offset and their Buttons wash on hover
 whatever the system chooses, because no native theme has a field for either choice, and they read
 where the ring sits from `focus.offset` itself ([native.md](native.md)).
+
+**Numeric columns.** `numeric.align` chooses which side of its column a numeric column's figures
+sit on: `end`, the default, so the ones, tens and hundreds line up, or `start`, where the column's
+label begins. It applies to every `numeric` header, body cell and total in Table, to DataTable's
+`numeric` columns, and so to a Markdown table's column whose delimiter ends in `:`, which Markdown
+draws as a `numeric` column. Tabular figures (`--pm-font-numeric`) stay in both. Other members that
+show figures, such as Stat, Meter, NumberInput and a chart's axis, are not columns and keep their
+own alignment. The choice is a keyword, not a role, so it is a value token: the emitter writes
+`--pm-numeric-align` (`end` or `start`) in every pairing, and `table.module.css` sets it as the
+cells' `text-align`, so every web framework and the elements follow it with no member change. The
+token document carries it as the `invariant` entry `numeric.align`. SwiftUI reads it as
+`theme.numeric.align` (`PMNumericAlign`), and Compose and Dart as `theme.numericAlign`; the native
+Table and DataTable place their numeric headers and cells by it.
 
 ## The palette document
 
@@ -1047,6 +1093,7 @@ package is shaped for SwiftUI, and the same document path reaches a different pl
 | `text.md.tracking` | points (em × size) | em |
 | `space.4` | `density.space.s4` (`density.space[4]` reads the same) | `density.space[4]`, a list |
 | `font.numeric` | `theme.numeric`, a `PMNumeric` (`tabular`, `slashedZero`) | `theme.numeric`, a list of feature tags (`["tnum"]`) |
+| `numeric.align` | `theme.numeric.align`, a `PMNumericAlign` (`.end`, `.start`) | `theme.numericAlign`, a `String` (`"end"`) |
 | `glow.focus`, `accent.gradient` | one geometry with a dynamic colour per layer or stop | a light and a dark value (`PMDynamicShadow`, `PMDynamicGradient`) |
 | `motion.duration.*`, `motion.ambient.*`, `motion.stagger.*` | seconds | whole milliseconds |
 | `floor` | not emitted | `theme.floor` |
@@ -1197,8 +1244,10 @@ file, with no change in `apps/`.
 `defaultPalette` that exists; `defaultMode`; `kind`; a `register` paragraph) and, by convention, a
 `design/systems/<name>.md` rationale. If the apps do not load a font family, add its
 Fontsource package to `apps/workbench` and `apps/docs`, then run `pnpm registry` to regenerate the
-loader maps. If a package is missing, generation stops and prints the install command. Nothing else
-is needed: the apps, the registry and every law find the file themselves.
+loader maps. If a package is missing, generation stops and prints the install command. If the file
+sets a heading weight the family does not ship, generation stops and names the system, the weight
+and what the family ships. Nothing else is needed: the apps, the registry and every law find the
+file themselves.
 
 **A palette:** add `design/palettes/<name>.json` with a pigment name. Leave `chartCaps` out: the
 chart law then fails and prints the measured record to copy in.
@@ -1211,6 +1260,7 @@ These laws check the new file. All of them read the directories rather than a li
 | `packages/theme/src/laws.test.ts` | file name = `name`; every `defaultPalette` and `moreContrast` exists; designed systems have a register; contrast, gradient, glass and scrim laws over every system × palette × mode; the WCAG 2.1 divergence list; each system resolves with no coherence violation, and the whole axis space is coherent; designed systems ≥ 3 axes apart (≥ 1 for the four reference-calibrated systems); palettes ≥ 20° apart in accent hue (achromatic palettes exempt; three named reference pairs may sit closer but never on the same hue); the tenant's axes equal terminal's; each eager block ≤ 28,000 bytes |
 | `packages/theme/src/chart-laws.test.ts` | the chart palette laws over every pairing; each palette's `chartCaps` equals the measured cap |
 | `apps/workbench/src/fonts.test.ts`, `apps/docs/src/fonts.test.ts` | every family a system names has a loader |
+| `packages/registry/src/fonts-gen.test.ts` | a static family's loader imports each heading weight a system sets; a missing weight file and a weight outside a variable family's axis are refused |
 
 ```sh
 pnpm exec vitest run packages/theme/src/laws.test.ts packages/theme/src/chart-laws.test.ts

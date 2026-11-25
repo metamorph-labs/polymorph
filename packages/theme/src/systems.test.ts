@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { TYPE_PERSONALITIES } from './axes'
 import {
   EXAMPLE_PALETTES,
   EXAMPLE_SYSTEMS,
@@ -591,6 +592,24 @@ describe('the system choices, and the base', () => {
     }
   })
 
+  it('accepts the numeric column alignment, end or start, and no other value', () => {
+    const chosen = parseSystem({
+      ...exampleQuietSystem,
+      overrides: { numeric: { align: 'start' } },
+    })
+    expect(chosen.overrides?.numeric?.align).toBe('start')
+    expect(
+      systemSchema.safeParse({ ...exampleQuietSystem, overrides: { numeric: { align: 'end' } } })
+        .success,
+    ).toBe(true)
+    for (const numeric of [{ align: 'right' }, { align: 'center' }, { tabular: false }]) {
+      expect(
+        systemSchema.safeParse({ ...exampleQuietSystem, overrides: { numeric } }).success,
+        JSON.stringify(numeric),
+      ).toBe(false)
+    }
+  })
+
   it('accepts a base between 12 and 20px on the half-pixel grid', () => {
     expect(
       systemSchema.safeParse({ ...exampleQuietSystem, overrides: { type: { base: 13 } } }).success,
@@ -648,6 +667,110 @@ describe('the system choices, and the base', () => {
         overrides: { type: { base: 13, sm: 13, xs: 12 } },
       }).success,
     ).toBe(true)
+  })
+})
+
+describe('the heading weights', () => {
+  // A guest system that sets both: the quiet example is at standard density,
+  // so `text.2xl` is 25px, over the 24px weight 300 needs at Lc 75.
+  const light = {
+    ...exampleQuietSystem,
+    name: 'light-headings',
+    overrides: { type: { titleWeight: 300, displayWeight: 300 } },
+  }
+
+  it('accepts a title and a display weight from 300 to 700 in hundreds', () => {
+    const parsed = parseSystem(light)
+    expect(parsed.overrides?.type?.titleWeight).toBe(300)
+    expect(parsed.overrides?.type?.displayWeight).toBe(300)
+    for (const weight of [400, 500, 600, 700]) {
+      const type = { titleWeight: weight, displayWeight: weight }
+      expect(
+        systemSchema.safeParse({ ...exampleQuietSystem, overrides: { type } }).success,
+        String(weight),
+      ).toBe(true)
+    }
+  })
+
+  it('refuses a weight off the hundreds, under 300 or over 700, for either key', () => {
+    const cases: [number, string][] = [
+      [350, 'a heading weight is a hundred'],
+      [200, 'stays at or above 300'],
+      [800, 'stays at or under 700'],
+    ]
+    for (const key of ['titleWeight', 'displayWeight'] as const) {
+      for (const [weight, message] of cases) {
+        const result = systemSchema.safeParse({
+          ...exampleQuietSystem,
+          overrides: { type: { [key]: weight } },
+        })
+        expect(result.success, `${key} ${weight}`).toBe(false)
+        expect(result.error?.issues[0]?.path).toEqual(['overrides', 'type', key])
+        expect(result.error?.issues[0]?.message).toContain(message)
+      }
+    }
+  })
+
+  it('refuses a title weight the smallest title step is too small to read at', () => {
+    // A 12px base at the standard ratio puts `text.2xl` at 23.5px, and weight
+    // 300 reads at Lc 75 only from 24px.
+    const small = { base: 12, sm: 11, xs: 10 }
+    const refused = systemSchema.safeParse({
+      ...exampleQuietSystem,
+      overrides: { type: { ...small, titleWeight: 300 } },
+    })
+    expect(refused.success).toBe(false)
+    expect(refused.error?.issues[0]?.path).toEqual(['overrides', 'type', 'titleWeight'])
+    expect(refused.error?.issues[0]?.message).toBe(
+      'text.2xl is 23.5px at weight 300, and at Lc 75, the floor text.primary is held to, ' +
+        'weight 300 reads from 24px — set a heavier titleWeight, or raise type.base or type.ratio',
+    )
+    // A steeper ratio or a larger base gives the step its 24px, and 400 needs only 18px.
+    for (const type of [
+      { ...small, titleWeight: 300, ratio: 1.3 },
+      { base: 13, titleWeight: 300 },
+      { ...small, titleWeight: 400 },
+    ]) {
+      expect(
+        systemSchema.safeParse({ ...exampleQuietSystem, overrides: { type } }).success,
+        JSON.stringify(type),
+      ).toBe(true)
+    }
+    // At the default base every density's `text.2xl` is past 24px, so 300 is lawful there.
+    expect(
+      systemSchema.safeParse({ ...exampleStarkSystem, overrides: { type: { titleWeight: 300 } } })
+        .success,
+    ).toBe(true)
+  })
+
+  it('judges the title weight on the merged ladder, base and ratio included', () => {
+    // A 12px base at the flattest ratio puts `text.2xl` at 17px: under the
+    // 18px weight 400 needs, over the 16px weight 500 needs.
+    const small = { base: 12, ratio: 1.125, sm: 11, xs: 10 }
+    expect(
+      systemSchema.safeParse({
+        ...exampleQuietSystem,
+        overrides: { type: { ...small, titleWeight: 400 } },
+      }).success,
+    ).toBe(false)
+    expect(
+      systemSchema.safeParse({
+        ...exampleQuietSystem,
+        overrides: { type: { ...small, titleWeight: 500 } },
+      }).success,
+    ).toBe(true)
+  })
+
+  it('leaves every personality lawful at the smallest ladder the schema allows', () => {
+    const small = { base: 12, ratio: 1.125, sm: 11, xs: 10 }
+    for (const typePersonality of TYPE_PERSONALITIES) {
+      const system = {
+        ...exampleQuietSystem,
+        axes: { ...exampleQuietSystem.axes, typePersonality, density: 'compact' as const },
+        overrides: { type: small },
+      }
+      expect(systemSchema.safeParse(system).success, typePersonality).toBe(true)
+    }
   })
 })
 

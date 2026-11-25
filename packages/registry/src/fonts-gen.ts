@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 
-import type { Registry } from './build'
+import { FONT_ROLES, fontPackage, type FontRole, type System } from '@polymorph/theme'
 
 /**
  * The apps' font-loader maps, generated instead of maintained by hand.
@@ -11,45 +11,93 @@ import type { Registry } from './build'
  * mean the same nine lines written twice for every new face, plus a coverage
  * test whose only job is to catch a forgotten entry. The map holds no decision.
  * The engine owns the family → package derivation (`fontPackage`, static-only
- * faces included), and this registry already publishes it per system. So the
- * run that generates the registry also generates the map from the catalogue,
- * and adding a theme whose faces are already installed needs no code change.
+ * faces included), and the system files name every family and every heading
+ * weight a system sets. So the run that generates the registry also generates
+ * the map from the same system files, and adding a theme whose faces are
+ * already installed needs no code change.
  *
  * A new face still needs its packages: `pnpm add` in each app that renders
  * every system, because a webfont is an asset and an asset is a dependency.
  * Generation checks this. It resolves every specifier it is about to emit from
  * each app's own dependencies. An uninstalled package fails generation with the
  * exact command to run, instead of parsing fine and silently rendering a
- * fallback font.
+ * fallback font. A heading weight a system file sets is checked the same way:
+ * generation fails when the family that draws it does not ship it.
  */
 
 /**
  * A family whose name has no `Variable` suffix ships no variable cut (IBM Plex
  * Mono is one). Its generated loader imports it as one face in three files, one
- * for each weight the type scale uses.
+ * for each weight the type scale uses, and one more for each heading weight a
+ * system file sets for it.
  */
 const STATIC_WEIGHTS = [400, 500, 600] as const
 
-interface Loader {
-  family: string
-  specifiers: string[]
+/**
+ * The font slot each heading weight is drawn in. The title steps are text
+ * steps, which every recipe sets in the body family, and the display steps are
+ * set in the display family.
+ */
+const HEADING_SLOTS = {
+  titleWeight: 'body',
+  displayWeight: 'display',
+} as const satisfies Record<string, FontRole>
+
+type HeadingKey = keyof typeof HEADING_SLOTS
+
+/** A heading weight a system file sets, which the family that draws it must ship. */
+export interface WeightDemand {
+  weight: number
+  system: string
+  key: HeadingKey
 }
 
-/** Every family the catalogue names, with the specifiers its loader imports. */
-export function fontLoaders(registry: Registry): Loader[] {
-  const byFamily = new Map<string, string>()
-  for (const system of registry.theme.systems) {
-    for (const font of system.fonts) byFamily.set(font.family, font.package)
+export interface Loader {
+  family: string
+  /** The fontsource package, `fontPackage(family)`. */
+  package: string
+  /** Whether the family is the variable cut, named with the `Variable` suffix. */
+  variable: boolean
+  specifiers: string[]
+  /** The heading weights system files set for steps this family draws. */
+  demands: WeightDemand[]
+}
+
+/** Every family the system files name, with the specifiers its loader imports. */
+export function fontLoaders(systems: readonly System[]): Loader[] {
+  const byFamily = new Map<string, WeightDemand[]>()
+  for (const system of systems) {
+    for (const role of FONT_ROLES) {
+      const family = system.fonts[role].family
+      if (!byFamily.has(family)) byFamily.set(family, [])
+    }
+    for (const key of Object.keys(HEADING_SLOTS) as HeadingKey[]) {
+      const weight = system.overrides?.type?.[key]
+      if (weight === undefined) continue
+      byFamily.get(system.fonts[HEADING_SLOTS[key]].family)?.push({
+        weight,
+        system: system.name,
+        key,
+      })
+    }
   }
 
   return [...byFamily.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([family, pkg]) => ({
-      family,
-      specifiers: family.endsWith(' Variable')
-        ? [pkg]
-        : STATIC_WEIGHTS.map((weight) => `${pkg}/${weight}.css`),
-    }))
+    .map(([family, demands]) => {
+      const pkg = fontPackage(family)
+      const variable = family.endsWith(' Variable')
+      const weights = [...new Set([...STATIC_WEIGHTS, ...demands.map((demand) => demand.weight)])]
+      return {
+        family,
+        package: pkg,
+        variable,
+        specifiers: variable
+          ? [pkg]
+          : weights.sort((a, b) => a - b).map((weight) => `${pkg}/${weight}.css`),
+        demands,
+      }
+    })
 }
 
 /** Renders the generated module, formatted the way the repo's prettier formats it. */
@@ -64,9 +112,9 @@ export function renderFontLoaders(loaders: Loader[]): string {
     '/* Generated by `pnpm registry` from the systems in `design/systems/` — do not',
     ' * edit. One loader per family the catalogue names: a variable face imports its',
     ' * fontsource package whole, a static face imports the three weights the',
-    ' * vocabulary speaks. A new face lands here when its packages are installed and',
-    ' * the registry regenerates (`prepare` runs it on every install); see',
-    ' * `packages/registry/src/fonts-gen.ts`. */',
+    ' * vocabulary speaks and any heading weight a system sets for it. A new face',
+    ' * lands here when its packages are installed and the registry regenerates',
+    ' * (`prepare` runs it on every install); see `packages/registry/src/fonts-gen.ts`. */',
     'export const FAMILY_LOADERS: Record<string, () => Promise<unknown>> = {',
     ...entries,
     '}',
@@ -93,5 +141,83 @@ export function assertResolvable(appDir: string, appName: string, loaders: Loade
         )
       }
     }
+  }
+}
+
+/** What a fontsource package's `metadata.json` says about the weights it ships. */
+export interface FontMetadata {
+  /** The weights the package has files for. */
+  weights?: number[]
+  /** A variable package's axes, each range as strings (`{ min: '100', max: '900' }`). */
+  variable?: false | { wght?: { min: string; max: string } }
+}
+
+/**
+ * Why a family cannot draw the heading weights system files set for it, one
+ * line per weight. A static family needs a file for the weight, and `hasFile`
+ * says whether a specifier resolves. A variable family needs the weight inside
+ * its weight axis, read from `metadata`, which is `undefined` when the package
+ * has none.
+ *
+ * Only the weight a file sets is checked. The display delta lightens
+ * `display.lg` by 50 from the display weight (never under 300), and a font that
+ * does not reach that weight draws the nearest one it ships, as CSS font
+ * matching and a variable axis's own range choose.
+ */
+export function weightFaults(
+  loader: Loader,
+  metadata: FontMetadata | undefined,
+  hasFile: (specifier: string) => boolean,
+): string[] {
+  return loader.demands.flatMap((demand) => {
+    const sets = `system "${demand.system}" sets overrides.type.${demand.key} ${demand.weight}`
+    if (loader.variable) {
+      const axis = metadata?.variable === false ? undefined : metadata?.variable?.wght
+      if (axis === undefined) {
+        return [`${sets}, and ${loader.package} has no weight axis to draw it with`]
+      }
+      const [min, max] = [Number(axis.min), Number(axis.max)]
+      return demand.weight < min || demand.weight > max
+        ? [`${sets}, and "${loader.family}" draws weights ${min}–${max} only`]
+        : []
+    }
+    if (hasFile(`${loader.package}/${demand.weight}.css`)) return []
+    const ships =
+      metadata?.weights === undefined ? '' : ` (it ships ${metadata.weights.join(', ')})`
+    return [`${sets}, and ${loader.package} has no ${demand.weight} file${ships}`]
+  })
+}
+
+/**
+ * Checks that each family ships the heading weights system files set for it,
+ * from the package the app installs. A package that is not installed is left to
+ * `assertResolvable`, which names the install; this check runs first, so a
+ * missing weight file is named as a missing weight, not a missing package.
+ */
+export function assertWeightsShipped(appDir: string, appName: string, loaders: Loader[]): void {
+  const require = createRequire(resolve(appDir, 'package.json'))
+  const resolves = (specifier: string) => {
+    try {
+      require.resolve(specifier)
+      return true
+    } catch {
+      return false
+    }
+  }
+  const faults = loaders.flatMap((loader) => {
+    if (loader.demands.length === 0 || !resolves(`${loader.package}/package.json`)) return []
+    let metadata: FontMetadata | undefined
+    try {
+      metadata = require(`${loader.package}/metadata.json`) as FontMetadata
+    } catch {
+      metadata = undefined
+    }
+    return weightFaults(loader, metadata, resolves)
+  })
+  if (faults.length > 0) {
+    throw new Error(
+      `registry: ${appName} cannot draw a heading weight a system file sets:\n` +
+        faults.map((fault) => `  ${fault}`).join('\n'),
+    )
   }
 }

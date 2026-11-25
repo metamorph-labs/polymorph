@@ -24,6 +24,8 @@ data class PMTheme(
     val fonts: PMFonts,
     /** OpenType feature tags every numeral should set (`tnum`, `zero`). */
     val numeric: List<String>,
+    /** The side of its column a numeric column's figures sit on: `end` or `start` (`numeric.align`). */
+    val numericAlign: String,
     val floor: PMFloor,
     val text: PMTextScale,
     val display: PMDisplayScale,

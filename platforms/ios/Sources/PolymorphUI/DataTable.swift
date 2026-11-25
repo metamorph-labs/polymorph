@@ -10,8 +10,9 @@
 //   Sortable columns are a bar of header buttons above the rows, each acting as
 //   the table's header does.
 // - **The table** (a regular width class, and macOS): a header row, then one
-//   row per record, the columns sharing the width equally. Numeric columns are
-//   end-aligned with tabular figures.
+//   row per record, the columns sharing the width equally. Numeric columns
+//   take tabular figures, at the side of the column the system chooses
+//   (`theme.numeric.align`, the end unless the system file says start).
 //
 // Both are drawn with SwiftUI stacks rather than `List` and `Table`: those are
 // scroll containers, and a DataTable sits inside the page archetype's own
@@ -240,7 +241,9 @@ public struct PMDataTable<Row>: PMDataTableRendering {
           header(column)
             .padding(.vertical, space.s3)
             .padding(.horizontal, space.s4)
-            .frame(maxWidth: .infinity, alignment: column.numeric == true ? .trailing : .leading)
+            .frame(
+              maxWidth: .infinity,
+              alignment: column.numeric == true ? theme.numeric.align.alignment : .leading)
         }
       }
       .background(alignment: .bottom) { PMRule(colors.borderDefault) }
@@ -293,7 +296,9 @@ public struct PMDataTable<Row>: PMDataTableRendering {
             cell(column, row)
               .padding(.vertical, space.s3)
               .padding(.horizontal, space.s4)
-              .frame(maxWidth: .infinity, alignment: column.numeric == true ? .trailing : .leading)
+              .frame(
+                maxWidth: .infinity,
+                alignment: column.numeric == true ? theme.numeric.align.alignment : .leading)
           }
         }
       }
@@ -461,7 +466,8 @@ public struct PMDataTable<Row>: PMDataTableRendering {
       Text(column.value(row))
         .pmTextStyle(theme.text.sm)
         .foregroundStyle(theme.colors.textPrimary.color)
-        .multilineTextAlignment(column.numeric == true ? .trailing : .leading)
+        .multilineTextAlignment(
+          column.numeric == true ? theme.numeric.align.textAlignment : .leading)
         .pmTabularFigures(column.numeric == true && theme.numeric.tabular)
         .fixedSize(horizontal: false, vertical: true)
     }

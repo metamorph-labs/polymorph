@@ -140,6 +140,16 @@ describe('emitThemeCSS', () => {
     expect(css).toContain('--pm-display-md-family: var(--pm-font-display);')
   })
 
+  it('writes a display stack equal to the body stack as a reference to it', () => {
+    const fonts = { ...quiet.fonts, display: quiet.fonts.body }
+    const shared = emitThemeCSS({ ...quiet, fonts })
+    expect(shared).toContain(`--pm-font-body: ${quiet.fonts.body};`)
+    expect(shared).toContain('--pm-font-display: var(--pm-font-body);')
+
+    const apart = emitThemeCSS({ ...quiet, fonts: { ...fonts, display: `"Other", serif` } })
+    expect(apart).toContain('--pm-font-display: "Other", serif;')
+  })
+
   it('borrows the opposite mode for inverse tone, and only where it differs', () => {
     const inverse = section(css, `${pair(quiet)}[data-mode="light"] [data-tone="inverse"],`)
     expect(inverse).toContain(`--pm-bg-app: ${quiet.color.dark['bg.app']};`)
@@ -282,6 +292,21 @@ describe('the system choices', () => {
     )
     expect(section(chosen, `${pair(quiet)} {`)).toContain('--pm-focus-field: border;')
     expect(section(chosen, `${pair(quiet)} {`)).toContain('--pm-hover-unfilled: none;')
+  })
+
+  it('writes the numeric column alignment as a value a recipe sets, the end by default', () => {
+    expect(css).toContain('--pm-numeric-align: end;')
+    const start = emitThemeCSS(
+      resolveTheme(
+        composeTheme(
+          { ...exampleQuietSystem, overrides: { numeric: { align: 'start' } } },
+          exampleVioletPalette,
+        ),
+      ),
+    )
+    expect(section(start, `${pair(quiet)} {`)).toContain('--pm-numeric-align: start;')
+    // Tabular figures stay whichever side the figures sit on.
+    expect(section(start, `${pair(quiet)} {`)).toContain('--pm-font-numeric: tabular-nums;')
   })
 
   it('writes where the focus mark sits as a flag read from the offset, inside by default', () => {

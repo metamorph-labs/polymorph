@@ -346,6 +346,15 @@ fun PMTextStyle.mono(theme: PMTheme): PMTextStyle = copy(family = theme.fonts.mo
 fun TextStyle.tabular(theme: PMTheme, on: Boolean = true): TextStyle =
     if (on && theme.numeric.isNotEmpty()) copy(fontFeatureSettings = theme.numeric.joinToString(", ") { "\"$it\"" }) else this
 
+/**
+ * Whether a numeric column's figures sit at the column's end, the default, or
+ * at its start, where the column's label begins: the system's choice
+ * (`theme.numericAlign`). Table's and DataTable's numeric headers and cells
+ * read it; the figures stay tabular either way.
+ */
+val PMTheme.numericAtEnd: Boolean
+    get() = numericAlign != "start"
+
 /* Gradients ---------------------------------------------------------------- */
 
 /**

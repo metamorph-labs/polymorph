@@ -4,6 +4,14 @@ import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { assertGoverned } from '@polymorph/react'
+import {
+  appendThemeCSS,
+  composeTheme,
+  emitThemeCSS,
+  exampleQuietSystem,
+  exampleVioletPalette,
+  resolveTheme,
+} from '@polymorph/engine'
 import { createAgentBridge } from '@polymorph/engine/agent'
 import { Checkbox } from '../controls/Checkbox'
 import { tokenColor } from '../controls/token-probe'
@@ -247,11 +255,15 @@ describe('rows', () => {
 })
 
 describe('numeric columns', () => {
-  it('right-aligns and uses tabular figures in the column’s own font', () => {
+  it('aligns to the end and uses tabular figures in the column’s own font', () => {
     render(<Basic />)
     const style = getComputedStyle(screen.getAllByRole('cell')[1] as HTMLElement)
     const root = getComputedStyle(document.documentElement)
+    expect(root.getPropertyValue('--pm-numeric-align').trim()).toBe('end')
     expect(style.textAlign).toBe('end')
+    expect(getComputedStyle(screen.getAllByRole('columnheader')[1] as HTMLElement).textAlign).toBe(
+      'end',
+    )
     // Figures come from the numeric token…
     expect(style.fontVariantNumeric).toBe(root.getPropertyValue('--pm-font-numeric').trim())
     // …and the column keeps the body font rather than switching to mono.
@@ -261,6 +273,82 @@ describe('numeric columns', () => {
     expect(families(style.fontFamily)).toBe(
       families(root.getPropertyValue('--pm-font-body').trim()),
     )
+  })
+})
+
+describe('a system that aligns numeric columns to the start', () => {
+  /** A host wearing the quiet example with `overrides.numeric.align: start`. */
+  function startHost(): HTMLElement {
+    const theme = resolveTheme(
+      composeTheme(
+        {
+          ...exampleQuietSystem,
+          name: 'example-numeric-start',
+          overrides: { numeric: { align: 'start' } },
+        },
+        exampleVioletPalette,
+      ),
+    )
+    appendThemeCSS(emitThemeCSS(theme), theme.name)
+    const host = document.createElement('div')
+    host.setAttribute('data-system', theme.system)
+    host.setAttribute('data-palette', theme.palette)
+    host.setAttribute('data-mode', 'light')
+    document.body.append(host)
+    return host
+  }
+
+  it('sets header, body and foot cells at the start, with tabular figures still on', () => {
+    const host = startHost()
+    const { container } = render(
+      <Table>
+        <Table.Head>
+          <Table.Row>
+            <Table.Header>Ticket</Table.Header>
+            <Table.Header numeric sortable>
+              Replies
+            </Table.Header>
+          </Table.Row>
+        </Table.Head>
+        <Table.Body>
+          <Table.Row>
+            <Table.Cell>T-1041</Table.Cell>
+            <Table.Cell numeric>4</Table.Cell>
+          </Table.Row>
+        </Table.Body>
+        <Table.Foot>
+          <Table.Row>
+            <Table.Cell>Total</Table.Cell>
+            <Table.Cell numeric>4</Table.Cell>
+          </Table.Row>
+        </Table.Foot>
+      </Table>,
+      { container: host.appendChild(document.createElement('div')) },
+    )
+    const numeric = [...container.querySelectorAll('[data-numeric]')] as HTMLElement[]
+    expect(numeric.map((cell) => cell.tagName)).toEqual(['TH', 'TD', 'TD'])
+    const variants = getComputedStyle(host).getPropertyValue('--pm-font-numeric').trim()
+    expect(variants).toContain('tabular-nums')
+    for (const cell of numeric) {
+      const style = getComputedStyle(cell)
+      expect(style.textAlign, cell.textContent ?? '').toBe('start')
+      expect(style.fontVariantNumeric, cell.textContent ?? '').toBe(variants)
+    }
+    // The figures sit at the cell's start edge, where a text column's label begins.
+    const [header, body] = numeric as [HTMLElement, HTMLElement]
+    const button = header.querySelector('button') as HTMLElement
+    const range = document.createRange()
+    range.selectNodeContents(body)
+    const padding = parseFloat(getComputedStyle(body).paddingLeft)
+    expect(range.getBoundingClientRect().left - body.getBoundingClientRect().left).toBeCloseTo(
+      padding,
+      0,
+    )
+    expect(button.getBoundingClientRect().left - header.getBoundingClientRect().left).toBeCloseTo(
+      parseFloat(getComputedStyle(header).paddingLeft),
+      0,
+    )
+    host.remove()
   })
 })
 

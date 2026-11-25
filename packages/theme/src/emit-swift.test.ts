@@ -23,7 +23,14 @@ import { resolveTheme } from './resolve-theme'
 import { CHART_ROLES, COLOR_ROLES, GRADIENT_ROLES } from './roles'
 import { FALLBACK_CLASSES } from './seeds'
 import { MODE_PREFERENCES, MODES, THEME_KINDS } from './theme'
-import { DURATION_ROLES, GLOW_STEPS, SPACE_STEPS, SPRING_ROLES, TEXT_STEPS } from './tokens'
+import {
+  DURATION_ROLES,
+  GLOW_STEPS,
+  NUMERIC_ALIGNS,
+  SPACE_STEPS,
+  SPRING_ROLES,
+  TEXT_STEPS,
+} from './tokens'
 
 const quiet = resolveTheme(exampleQuietTheme)
 const examples = EXAMPLE_THEMES.map(resolveTheme)
@@ -472,6 +479,7 @@ describe('the type file', () => {
     expect(declaredEnum(source, 'PMDensityName')).toEqual([...DENSITIES])
     expect(declaredEnum(source, 'PMMotionTemperament')).toEqual([...MOTION_TEMPERAMENTS])
     expect(declaredEnum(source, 'PMFontFallback')).toEqual([...FALLBACK_CLASSES])
+    expect(declaredEnum(source, 'PMNumericAlign')).toEqual([...NUMERIC_ALIGNS])
   })
 })
 

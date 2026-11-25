@@ -20,6 +20,7 @@ final class PMTheme {
     required this.pairing,
     required this.fonts,
     required this.numeric,
+    required this.numericAlign,
     required this.floor,
     required this.text,
     required this.display,
@@ -45,6 +46,10 @@ final class PMTheme {
 
   /// OpenType feature tags every numeral should set (`tnum`, `zero`).
   final List<String> numeric;
+
+  /// The side of its column a numeric column's figures sit on: `end` or
+  /// `start` (`numeric.align`).
+  final String numericAlign;
   final PMFloor floor;
   final PMTextScale text;
   final PMDisplayScale display;
