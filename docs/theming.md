@@ -174,9 +174,11 @@ ways to deviate.
 
 **Heading weights.** The type personality sets two heading weights: a title weight for `text.2xl`
 and `text.3xl`, and a display weight for the display steps, between 500 and 700.
-`type.titleWeight` and `type.displayWeight` replace them, from 300 to 700 in hundreds. They change
-only those steps: body text, the working sizes and `text.xl` (500) keep their weights, and no size
-moves. The display steps still take 50 off the display weight at `display.lg`, so the largest
+`type.titleWeight` and `type.displayWeight` replace them, from 300 to 700 in hundreds. Body text and
+the working sizes keep their weights, and no size moves. `text.xl` is 500 under every personality.
+A title weight under 500 lightens it too, so a subheading is not heavier than the titles above it:
+`text.xl` takes the title weight where its size reads at that weight, and otherwise the lightest
+hundred above it that does (400 from 18px, 300 from 24px). The display steps still take 50 off the display weight at `display.lg`, so the largest
 step is not the boldest, and never go under 300.
 
 A lighter stroke needs a larger size to read at the same contrast. Every heading step is drawn in

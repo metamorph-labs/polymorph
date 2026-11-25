@@ -11,6 +11,7 @@ import type {
 } from './axes'
 import { DENSITIES, hasTexture, MOTION_TEMPERAMENTS } from './axes'
 import { cssVar } from './css-vars'
+import { minSizeForWeight } from './pairings'
 import { PLATFORM_FLOORS } from './platforms'
 import type { ColorRole } from './roles'
 import type { FallbackClass, FontRole, Seeds } from './seeds'
@@ -121,6 +122,22 @@ interface PersonalityType {
 const XL_WEIGHT = 500
 
 /**
+ * The weight of `text.xl` under a title weight a system file sets below 500.
+ * A subheading heavier than the titles above it reads as the larger heading,
+ * so `xl` takes the title weight where its size reads at that weight at the
+ * body-text floor (`minSizeForWeight`), and otherwise the lightest hundred
+ * above it that does. At 500 and over it keeps `XL_WEIGHT`, so every
+ * personality's own scale is unchanged.
+ */
+function xlWeight(px: number, titleWeight: number): number {
+  for (let weight = titleWeight; weight < XL_WEIGHT; weight += 100) {
+    const needs = minSizeForWeight(weight)
+    if (needs !== undefined && px >= needs) return weight
+  }
+  return XL_WEIGHT
+}
+
+/**
  * The weights a system file may give the heading steps
  * (`overrides.type.titleWeight`, `overrides.type.displayWeight`), in hundreds.
  * 700 is the heaviest weight a personality sets. 300 is the lightest at which
@@ -207,15 +224,17 @@ function deriveTextScale(
   // ladder around the base. It may also set the two steps under the base
   // (`overrides.type.sm`, `overrides.type.xs`); every other step derives.
   // `overrides.type.titleWeight` replaces the personality's title weight on
-  // the two steps it governs; body, the working sizes and `xl` keep theirs.
+  // the two steps it governs, and under 500 it lightens `xl` as far as that
+  // step's size allows (`xlWeight`); body and the working sizes keep theirs.
   const base = override?.base ?? TYPE_BASE_PX
   const ratio = override?.ratio ?? TYPE_RATIO[axes.density]
   const personality = PERSONALITY[axes.typePersonality]
   const baseIndex = TEXT_STEPS.indexOf('md')
 
-  const weightFor = (step: TextStep): number => {
-    if (step === '2xl' || step === '3xl') return override?.titleWeight ?? personality.titleWeight
-    if (step === 'xl') return XL_WEIGHT
+  const titleWeight = override?.titleWeight ?? personality.titleWeight
+  const weightFor = (step: TextStep, px: number): number => {
+    if (step === '2xl' || step === '3xl') return titleWeight
+    if (step === 'xl') return xlWeight(px, titleWeight)
     return personality.bodyWeight
   }
 
@@ -225,7 +244,7 @@ function deriveTextScale(
     const style: TypeStyle = {
       size: rem(px),
       lineHeight: LINE_HEIGHTS[step],
-      weight: weightFor(step),
+      weight: weightFor(step, px),
       family: 'body',
       tracking: trackingFor(px, personality),
     }

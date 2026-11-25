@@ -583,13 +583,32 @@ describe('system-file overrides: shadow throw, focus ring, type ratio, heading w
     expect([light.display.sm.weight, light.display.md.weight, light.display.lg.weight]).toEqual([
       400, 400, 350,
     ])
-    // Body, the working sizes and `xl` keep the personality's weights, and no size moves.
-    for (const step of ['xs', 'sm', 'md', 'lg', 'xl'] as const) {
+    // Body and the working sizes keep the personality's weights, and no size moves.
+    for (const step of ['xs', 'sm', 'md', 'lg'] as const) {
       expect(light.text[step], step).toEqual(plain.text[step])
     }
     for (const step of TEXT_STEPS) expect(light.text[step].size).toBe(plain.text[step].size)
     for (const step of DISPLAY_STEPS)
       expect(light.display[step].size).toBe(plain.display[step].size)
+  })
+
+  it('lightens `xl` under a title weight below 500, as far as its size reads', () => {
+    // A subheading heavier than the titles above it would read as the larger heading.
+    const weightAt = (type: { titleWeight: number; ratio?: number }) => {
+      const { xl } = deriveNonColorTokens(base, 'normal', { type }).text
+      return { px: remPx(xl.size), weight: xl.weight }
+    }
+    // Weight 300 reads from 24px and 400 from 18px (`minSizeForWeight`).
+    const flat = weightAt({ titleWeight: 300, ratio: 1.125 })
+    expect(flat.px).toBeLessThan(24)
+    expect(flat.weight).toBe(400)
+    const steep = weightAt({ titleWeight: 300, ratio: 1.4 })
+    expect(steep.px).toBeGreaterThanOrEqual(24)
+    expect(steep.weight).toBe(300)
+    expect(weightAt({ titleWeight: 400 }).weight).toBe(400)
+    // At 500 and over `xl` keeps its own weight, as under every personality.
+    for (const titleWeight of [500, 600, 700]) expect(weightAt({ titleWeight }).weight).toBe(500)
+    expect(deriveNonColorTokens(base).text.xl.weight).toBe(500)
   })
 
   it('stops the display delta at 300, the lightest heading weight', () => {

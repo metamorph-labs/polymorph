@@ -5,9 +5,11 @@
 
 **A system file can set its heading weights.** `overrides.type.titleWeight` replaces the type
 personality's title weight on `text.2xl` and `text.3xl`, and `overrides.type.displayWeight` its
-display weight on the display steps. Each takes 300 to 700 in hundreds. Body text, the working
-sizes and `text.xl` keep their weights, and no size changes. `display.lg` still takes 50 off the
-display weight, and never goes under 300.
+display weight on the display steps. Each takes 300 to 700 in hundreds. Body text and the
+working sizes keep their weights, and no size changes. A title weight under 500 also lightens
+`text.xl`, which is 500 otherwise, as far as its size reads at the lighter weight, so a subheading
+is not heavier than the titles above it. `display.lg` still takes 50 off the display weight, and
+never goes under 300.
 
 ```json
 { "overrides": { "type": { "titleWeight": 300, "displayWeight": 300 } } }

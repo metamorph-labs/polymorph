@@ -179,8 +179,9 @@ export const assignOverrideSchema = z.strictObject({
  *   hand-written token sheet the axes replace.
  * - **`type.titleWeight`** and **`type.displayWeight`** replace the type
  *   personality's two heading weights, on the steps each already governs:
- *   `text.2xl` and `text.3xl`, and the display steps. Body, the working sizes
- *   and `xl` keep theirs. Each is a hundred from 300 to 700
+ *   `text.2xl` and `text.3xl`, and the display steps. Body and the working
+ *   sizes keep theirs, and a title weight under 500 lightens `xl` as far as
+ *   its size reads (`xlWeight`). Each is a hundred from 300 to 700
  *   (`HEADING_WEIGHT_RANGE`), and `systemSchema` holds each step's weight to
  *   the size it needs at the body-text contrast floor.
  * - **`hover.unfilled`** chooses whether an outline or ghost Button washes
