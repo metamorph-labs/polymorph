@@ -350,7 +350,17 @@ export function emitThemeCSS(theme: ResolvedTheme, options: EmitThemeOptions = {
   const base = [
     // Axis flags first, because recipes' style queries read them.
     ...EXPOSED_AXES.map((axis) => declare(`axis.${axis}`, theme.axes[axis])),
-    ...FONT_ROLES.map((role) => declare(`font.${role}`, theme.fonts[role])),
+    // A display stack equal to the body stack is written as a reference to it.
+    // A stack is the sheet's longest value, and a system with one family for
+    // both roles would otherwise write it twice.
+    ...FONT_ROLES.map((role) =>
+      declare(
+        `font.${role}`,
+        role === 'display' && theme.fonts.display === theme.fonts.body
+          ? `var(${cssVarName('font.body')})`
+          : theme.fonts[role],
+      ),
+    ),
     ...TEXT_STEPS.flatMap((step: TextStep) =>
       typeDeclarations('text', step, theme.tokens.text[step]),
     ),
