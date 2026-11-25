@@ -5,7 +5,7 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { createMemo, createUniqueId, mergeProps, onCleanup, type JSX } from 'solid-js'
+import { createMemo, createUniqueId, mergeProps, onCleanup, onMount, type JSX } from 'solid-js'
 import { Portal } from 'solid-js/web'
 
 import * as zag from '@zag-js/tooltip'
@@ -20,6 +20,7 @@ import {
   closeTooltipOnScroll,
   createDerived,
   elementRef,
+  holdTooltipFromPointer,
   mergeParts,
   scope,
   syncTriggerAnchor,
@@ -114,6 +115,16 @@ export default function Tooltip(given: TooltipProps): JSX.Element {
       true,
     )
     onCleanup(() => release2?.())
+    let release3: (() => void) | undefined
+    const effect3 = () => {
+      release3?.()
+      const ran = holdTooltipFromPointer(anchor.value)
+      release3 = () => {
+        ran()
+      }
+    }
+    onMount(effect3)
+    onCleanup(() => release3?.())
     return (
       <>
         {/* trigger */}

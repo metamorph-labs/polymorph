@@ -1,4 +1,13 @@
-import { createSignal, getOwner, onCleanup, onMount, sharedConfig, type Accessor } from 'solid-js'
+import {
+  createEffect,
+  createSignal,
+  getOwner,
+  on,
+  onCleanup,
+  onMount,
+  sharedConfig,
+  type Accessor,
+} from 'solid-js'
 
 import { readDirection, watchDirection, type ReadingDirection } from '@polymorph/engine'
 
@@ -11,7 +20,8 @@ import { readDirection, watchDirection, type ReadingDirection } from '@polymorph
  * `ltr` on a server render and while the member is being hydrated
  * (`sharedConfig.context` is set), so a hydrated member's first render is the
  * server's; it reads its place once the member has mounted and follows it
- * after.
+ * after. A place drawn in a branch that appears later (Menubar's bar, which
+ * the phone form does not draw) is read when it appears.
  */
 export function useDirection(
   within?: () => Element | null | undefined,
@@ -25,6 +35,9 @@ export function useDirection(
     update()
     release = watchDirection(update, within !== undefined)
   })
-  if (getOwner() !== null) onCleanup(() => release?.())
+  if (getOwner() !== null) {
+    onCleanup(() => release?.())
+    if (within !== undefined) createEffect(on(within, update, { defer: true }))
+  }
   return direction
 }

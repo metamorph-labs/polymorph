@@ -514,6 +514,7 @@ export function MultiSelect({
     }
     // The key toward the line's start moves into the chips, as in TagInput.
     if (
+      (event.key === 'ArrowLeft' || event.key === 'ArrowRight') &&
       event.key === lineStartKey(event.currentTarget) &&
       event.currentTarget.selectionStart === 0
     ) {

@@ -20,6 +20,7 @@ import {
   createKept,
   currentRailDestination,
   elementRef,
+  focusFromScript,
   goToRailDestination,
   ownerContext,
   provide,
@@ -138,7 +139,6 @@ export default function AppShell(given: AppShellProps): JSX.Element {
     const sidebarFooterSlot = resolveSlot(() => props.sidebarFooter)
     const uncontrolled = createCell(props.defaultCollapsed ?? false)
     const drawer = createCell(false)
-    const arrived = createCell(props.transitionKey)
     const held = createDerived(() => props.collapsed ?? uncontrolled.value)
     const isCollapsed = createDerived(() => props.navigation === 'rail' && held.value)
     const say = createDerived(
@@ -212,31 +212,28 @@ export default function AppShell(given: AppShellProps): JSX.Element {
       effect4,
       false,
     )
+    let release5: (() => void) | undefined
     const effect5 = () => {
-      arrived.value = props.transitionKey
-    }
-    onMount(effect5)
-    let release6: (() => void) | undefined
-    const effect6 = () => {
-      release6?.()
-      const ran =
-        props.pending || props.transitionKey === arrived.value
-          ? () => {}
-          : ((arrived.value = props.transitionKey),
-            arriveAtPage(frame.value?.querySelector<HTMLElement>(':scope > main'), announcer.value))
-      release6 = () => {
+      release5?.()
+      const ran = arriveAtPage(
+        frame.value?.querySelector<HTMLElement>(':scope > main'),
+        announcer.value,
+        props.transitionKey,
+        props.pending,
+      )
+      release5 = () => {
         ran()
       }
     }
     watchEffect(
-      createMemo(() => (props.pending ? undefined : props.transitionKey)),
-      effect6,
-      false,
+      createMemo(() => [props.transitionKey, props.pending]),
+      effect5,
+      true,
     )
-    onCleanup(() => release6?.())
-    let release7: (() => void) | undefined
-    const effect7 = () => {
-      release7?.()
+    onCleanup(() => release5?.())
+    let release6: (() => void) | undefined
+    const effect6 = () => {
+      release6?.()
       const ran = agentMember({
         member: 'AppShell',
         element: () => rail.value,
@@ -303,12 +300,12 @@ export default function AppShell(given: AppShellProps): JSX.Element {
         },
         withholds: () => [railToggle.value, drawerToggle.value],
       })
-      release7 = () => {
+      release6 = () => {
         ran()
       }
     }
-    onMount(effect7)
-    onCleanup(() => release7?.())
+    onMount(effect6)
+    onCleanup(() => release6?.())
     return (
       <div
         class={styles.shell}
@@ -319,7 +316,12 @@ export default function AppShell(given: AppShellProps): JSX.Element {
         ref={frame.attach}
       >
         {/* skip */}
-        <a class={styles.skip} href="#content" inert={drawer.value}>
+        <a
+          class={styles.skip}
+          href="#content"
+          inert={drawer.value}
+          onclick={() => focusFromScript(frame.value?.querySelector<HTMLElement>(':scope > main'))}
+        >
           {say.value.skipToContent ?? 'Skip to content'}
         </a>
         {bannerSlot.filled() ? (
@@ -399,7 +401,6 @@ export default function AppShell(given: AppShellProps): JSX.Element {
           )}
           as="main"
           id="content"
-          tabindex="-1"
           inert={drawer.value}
           transitionKey={props.transitionKey}
           pending={props.pending}

@@ -8,6 +8,7 @@ import {
   memberAttr,
   TOOLTIP_DELAY_MS,
   TOOLTIP_SKIP_DELAY_MS,
+  trackFocusOrigin,
 } from '@polymorph/react'
 import { MotionPresence, MotionSurface } from '@polymorph/react/motion'
 import styles from '@polymorph/recipes/overlays/tooltip.module.css'
@@ -98,8 +99,11 @@ export function Tooltip({
    * themselves before Radix requests them: Escape, a press on the control or
    * outside it, a click on the control (Enter on a button), focus leaving, and
    * another tooltip opening. Any other close is refused while the control has
-   * focus and matches `:focus-visible`.
+   * focus the keyboard gave it (`keyboardHolds`). A field focused by a click
+   * matches `:focus-visible` too, so the engine notes where each focus came
+   * from while a tooltip is mounted (`trackFocusOrigin`).
    */
+  useEffect(() => trackFocusOrigin(), [])
   const asked = useRef(false)
   const ask = () => {
     asked.current = true

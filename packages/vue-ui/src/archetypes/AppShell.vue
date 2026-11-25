@@ -24,6 +24,7 @@ import {
   anchorFocusReturns,
   arriveAtPage,
   currentRailDestination,
+  focusFromScript,
   goToRailDestination,
   railDestinations,
 } from '@polymorph/vue'
@@ -100,7 +101,6 @@ defineSlots<{
 const uid = useId()
 const uncontrolled = ref(props.defaultCollapsed ?? false)
 const drawer = ref(false)
-const arrived = ref(props.transitionKey)
 const announcer = useTemplateRef<HTMLElement>('announcer')
 const drawerToggle = useTemplateRef<HTMLElement>('drawerToggle')
 const frame = useTemplateRef<HTMLElement>('frame')
@@ -169,27 +169,25 @@ const effect4 = () => {
   drawer.value = false
 }
 watch(() => props.transitionKey, effect4, { flush: 'post' })
+let release5: (() => void) | undefined
 const effect5 = () => {
-  arrived.value = props.transitionKey
-}
-onMounted(effect5)
-let release6: (() => void) | undefined
-const effect6 = () => {
-  release6?.()
-  const ran =
-    props.pending || props.transitionKey === arrived.value
-      ? () => {}
-      : ((arrived.value = props.transitionKey),
-        arriveAtPage(frame.value?.querySelector<HTMLElement>(':scope > main'), announcer.value))
-  release6 = () => {
+  release5?.()
+  const ran = arriveAtPage(
+    frame.value?.querySelector<HTMLElement>(':scope > main'),
+    announcer.value,
+    props.transitionKey,
+    props.pending,
+  )
+  release5 = () => {
     ran()
   }
 }
-watch(() => (props.pending ? undefined : props.transitionKey), effect6, { flush: 'post' })
-onBeforeUnmount(() => release6?.())
-let release7: (() => void) | undefined
-const effect7 = () => {
-  release7?.()
+onMounted(effect5)
+watch(() => [props.transitionKey, props.pending], effect5, { flush: 'post' })
+onBeforeUnmount(() => release5?.())
+let release6: (() => void) | undefined
+const effect6 = () => {
+  release6?.()
   const ran = agentMember({
     member: 'AppShell',
     element: () => rail.value,
@@ -240,12 +238,12 @@ const effect7 = () => {
     },
     withholds: () => [railToggle.value, drawerToggle.value],
   })
-  release7 = () => {
+  release6 = () => {
     ran()
   }
 }
-onMounted(effect7)
-onBeforeUnmount(() => release7?.())
+onMounted(effect6)
+onBeforeUnmount(() => release6?.())
 </script>
 
 <template>
@@ -258,7 +256,12 @@ onBeforeUnmount(() => release7?.())
     data-member="app-shell"
   >
     <!-- skip -->
-    <a :class="styles.skip" href="#content" :inert="drawer">
+    <a
+      :class="styles.skip"
+      href="#content"
+      :inert="drawer"
+      @click="focusFromScript(frame?.querySelector<HTMLElement>(':scope > main'))"
+    >
       {{ say.skipToContent ?? 'Skip to content' }}
     </a>
     <!-- banner -->
@@ -344,7 +347,6 @@ onBeforeUnmount(() => release7?.())
       :class="[styles.content, transitionKey !== undefined ? transitions.page : undefined]"
       as="main"
       id="content"
-      tabindex="-1"
       :inert="drawer"
       :transitionKey="transitionKey"
       :pending="pending"

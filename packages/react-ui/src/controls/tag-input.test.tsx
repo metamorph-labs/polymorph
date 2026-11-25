@@ -279,6 +279,18 @@ describe('removing', () => {
     expect(document.activeElement).toBe(field())
   })
 
+  it('reads the writing direction for an arrow only, and not for each typed character', async () => {
+    mount(<TagInput defaultValue={['billing']} aria-label="Labels" />)
+    await userEvent.click(field())
+    const read = vi.spyOn(window, 'getComputedStyle')
+    try {
+      await userEvent.keyboard('abc')
+      expect(read.mock.calls.filter(([element]) => element === field())).toEqual([])
+    } finally {
+      read.mockRestore()
+    }
+  })
+
   it('follows a right-to-left line: → moves back into the chips and ← forward to the field', async () => {
     render(
       <div dir="rtl">

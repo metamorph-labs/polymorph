@@ -211,7 +211,7 @@ them.
 | rail head | min-height `--pm-shell-topbar-height` · align center · gap `--pm-space-2` · holds the brand slot (`flex: 1`) and the collapse toggle · **collapsed:** stacks to a column |
 | brand row | inside the head · `flex: 1` · align center · padding-x `--pm-space-3` · **collapsed:** centred, no inset |
 | topbar | height `--pm-shell-topbar-height` · bg `--pm-shell-topbar-bg` · border-bottom `1px solid --pm-shell-topbar-border` · shadow `--pm-shadow-raised` · padding-x `--pm-space-6` (shell scope — never `--pm-page-*`, which belongs to page archetypes) · slots split `justify: between` |
-| content | `<main>` · `tabindex="-1"`, so the skip link and a page change move focus into it, and no ring when it has that focus (a ring around the whole region adds no information; the page's heading, focused the same way, has none either) · bg `var(--pm-texture-page) var(--pm-bg-app)` · scroll container (`overflow-y: auto`); default attachment keeps the texture still while the page scrolls · `position: relative` *(the region is the containing block of what it scrolls, so an absolutely positioned box in a long page, such as text a member hides from the eye, scrolls with the region and never makes the document scroll under the frame)* · `container-type: size` *(container-first responsiveness, `docs/layout.md`: this is the region the page archetypes measure. It has to be an ancestor of the page, because the nearest ancestor container answers a container query, and a page cannot query its own width. The shell knows how much room is left after the rail. Below the drawer breakpoint, with the rail gone, that is the whole window. See `list-page.md` §In a narrow region. It contains both axes, so a page reads the region's visible height as `100cqb`: DetailPage's aside that stays in view is never taller than it (`detail-page.md`). The region's height is its grid row's, never its content's, so containing its block size changes nothing it draws)* |
+| content | `<main>` · `tabindex="-1"` only while it holds the focus the skip link or a page change moves into it, so a click on the page's empty space leaves focus on the document, and no ring when it has that focus (a ring around the whole region adds no information; the page's heading, focused the same way, has none either) · bg `var(--pm-texture-page) var(--pm-bg-app)` · scroll container (`overflow-y: auto`); default attachment keeps the texture still while the page scrolls · `position: relative` *(the region is the containing block of what it scrolls, so an absolutely positioned box in a long page, such as text a member hides from the eye, scrolls with the region and never makes the document scroll under the frame)* · `container-type: size` *(container-first responsiveness, `docs/layout.md`: this is the region the page archetypes measure. It has to be an ancestor of the page, because the nearest ancestor container answers a container query, and a page cannot query its own width. The shell knows how much room is left after the rail. Below the drawer breakpoint, with the rail gone, that is the whole window. See `list-page.md` §In a narrow region. It contains both axes, so a page reads the region's visible height as `100cqb`: DetailPage's aside that stays in view is never taller than it (`detail-page.md`). The region's height is its grid row's, never its content's, so containing its block size changes nothing it draws)* |
 | collapse toggle | Button `ghost/neutral/sm iconOnly` `icon="previous"`/`"next"` (by state) `label="Collapse sidebar"/"Expand sidebar"` — **the rail head, beside the brand** *(the foot is where the account lives, and a control that resizes the rail belongs beside the mark it resizes. It renders with or without a brand, because the rail can always be narrowed, so the control is anatomy, not content. Below the drawer breakpoint it is `display: none`, because a rail shown as a sheet has nothing to collapse.)* |
 | banner | a grid row of its own (`auto`) above the rail and the topbar, spanning both columns. It is in the grid and not over it, so the rail and the content region keep the whole of what is left and nothing scrolls under it. Without a banner the row has no height. The small-viewport drawer opens over it, as it does over the topbar. In SwiftUI and Compose the row is the frame's first, above the platform's navigation and inside the top safe area |
 | dock | shares the content cell (`grid-area: content`) · `align-self: end` · centred · padding `0 --pm-space-6 --pm-space-5` · `z-index --pm-z-raise` · `pointer-events: none`, children `auto` *(It shares the cell instead of taking its own row, so the page keeps its height, the layer floats over it, and a collapsing rail re-centres it automatically. It is not a child of `<main>`, because an absolutely positioned child of a scroll container scrolls with it, and a dock must not scroll away.)* |
@@ -408,8 +408,10 @@ gains a `menu` button to open it; a new `transitionKey` closes it, §Routing).
 ## A11y
 
 Landmarks: `<nav aria-label="Primary">`, `<header>`, `<main id="content">`. Skip link
-first in DOM. `<main>` takes `tabindex="-1"`, so the skip link moves focus into the region
-and not only the scroll position. Collapse toggle is a real button with a state-dependent label. NavItem
+first in DOM. The skip link moves focus into `<main>` and not only the scroll position: the
+region takes `tabindex="-1"` for the move and gives it back when focus leaves it
+(`focusFromScript` in the engine), so it is never a tab stop, and a click on the page's empty space
+leaves focus on the document, where a page's own keys expect it. Collapse toggle is a real button with a state-dependent label. NavItem
 carries `aria-current="page"` when current, and its visually-hidden label keeps the
 accessible name in collapsed mode (the collapsed tooltip is for sighted pointer users,
 not a second name).
@@ -430,9 +432,14 @@ region is the frame's only scroll container, and the scrim covers it.
 does not land on a heading, the polite `role="status"` region says the page's title instead: the
 heading's text, or the document's title when there is no heading. Saying the title as well as
 focusing the heading would read it twice. Focus stays where it is when it is already inside the
-new page, because the page put it there or the reader's control is still on the page. The heading takes `tabindex="-1"` for the move and gives it back when focus leaves it.
-The arrival waits a frame, so the page is drawn and a drawer that closed for it has made the page
-reachable. The first page is not an arrival (`arriveAtPage` in the engine).
+new page, because the page put it there or the reader's control is still on the page. It also
+stays where the reader moved it while a `pending` page loaded: focus moves only when it is still
+where it was when the page changed, or has fallen to the document. The heading and the region
+take `tabindex="-1"` for the move and give it back when focus leaves them. The arrival waits a
+frame, so the page is drawn and a drawer that closed for it has made the page reachable. The
+first page is not an arrival, and a page counts as arrived only once its arrival has run, so a
+page that starts loading in the frame after it changed still arrives when it is drawn
+(`arriveAtPage` in the engine).
 
 ## Agent
 

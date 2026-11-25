@@ -313,6 +313,20 @@ describe('Backspace and chip navigation (as in TagInput)', () => {
     expect(document.activeElement).toBe(input(field))
   })
 
+  it('reads the writing direction for an arrow only, and not for each typed character', async () => {
+    const field = mount(
+      <MultiSelect options={ASSIGNEES} defaultValue={['ada']} aria-label="Assignees" />,
+    )
+    await userEvent.click(input(field))
+    const read = vi.spyOn(window, 'getComputedStyle')
+    try {
+      await userEvent.keyboard('gr')
+      expect(read.mock.calls.filter(([element]) => element === input(field))).toEqual([])
+    } finally {
+      read.mockRestore()
+    }
+  })
+
   it('follows a right-to-left line: → moves back into the chips and ← forward to the input', async () => {
     const field = mount(
       <div dir="rtl">

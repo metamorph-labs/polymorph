@@ -293,7 +293,7 @@ export type {
 export { anchorFocusReturns, anchorProps, syncTriggerAnchor } from './conventions/trigger-anchor'
 export type { FocusHandlerNames } from './conventions/trigger-anchor'
 
-export { arriveAtPage } from './conventions/page-arrival'
+export { arriveAtPage, focusFromScript } from './conventions/page-arrival'
 
 export { DIFF_LINES_LIMIT, diffLines, diffRuns } from './conventions/diff'
 export type { DiffRow, DiffRowKind, DiffRun } from './conventions/diff'
@@ -364,7 +364,12 @@ export { spacingAttrs } from './conventions/spacing'
 export type { LayoutPatch, SpacingProps } from './conventions/spacing'
 
 export { TOOLTIP_DELAY_MS, TOOLTIP_SKIP_DELAY_MS } from './conventions/tooltip'
-export { closeTooltipOnScroll, keyboardHolds } from './conventions/tooltip-hold'
+export {
+  closeTooltipOnScroll,
+  holdTooltipFromPointer,
+  keyboardHolds,
+  trackFocusOrigin,
+} from './conventions/tooltip-hold'
 
 export {
   revealTourTarget,

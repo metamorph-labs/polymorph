@@ -246,8 +246,6 @@ export default describeMember({
     uncontrolled: 'defaultCollapsed ?? false',
     // The small viewport's drawer, which no prop reaches: the viewport decides it.
     drawer: 'false',
-    // The page the reader has arrived at: a page that loads arrives once it is drawn.
-    arrived: 'transitionKey',
   },
   derived: {
     held: 'collapsed ?? uncontrolled',
@@ -279,14 +277,12 @@ export default describeMember({
     },
     // A new page closes the drawer, as on iOS and Android.
     { watch: 'transitionKey', mount: false, run: 'drawer = false' },
-    // The first page is no arrival: the browser loaded it. Read once mounted, when every renderer
-    // has its props.
-    { run: 'arrived = transitionKey' },
-    // A new page takes focus and says its title, once it is drawn.
+    // A new page takes focus and says its title, once it is drawn. The engine follows the pages
+    // from these calls: the one on mount, once every renderer has its props, names the page the
+    // browser loaded, which is no arrival, and a page that loads arrives once it is drawn.
     {
-      watch: 'pending ? undefined : transitionKey',
-      mount: false,
-      run: "pending || transitionKey === arrived ? () => {} : ((arrived = transitionKey), arriveAtPage(frame?.querySelector<HTMLElement>(':scope > main'), announcer))",
+      watch: '[transitionKey, pending]',
+      run: "arriveAtPage(frame?.querySelector<HTMLElement>(':scope > main'), announcer, transitionKey, pending)",
       release: 'ran()',
     },
   ],
@@ -352,7 +348,13 @@ export default describeMember({
       // rail and the scrim is inert while the drawer is open.
       el(
         'a',
-        { part: 'skip', class: ['skip'], attrs: { href: lit('#content'), inert: 'drawer' } },
+        {
+          part: 'skip',
+          class: ['skip'],
+          attrs: { href: lit('#content'), inert: 'drawer' },
+          // The region takes `tabindex="-1"` only while it holds the focus this moves into it.
+          on: { click: run("focusFromScript(frame?.querySelector<HTMLElement>(':scope > main'))") },
+        },
         [text("say.skipToContent ?? 'Skip to content'")],
       ),
       // Before the rail in the document, so it is read first on every page.
@@ -438,8 +440,9 @@ export default describeMember({
           attrs: {
             as: lit('main'),
             id: lit('content'),
-            // Focusable from script, so the skip link and a new page move focus into it.
-            tabindex: lit('-1'),
+            // No `tabindex`: the skip link and a new page give it one while it holds the focus
+            // they move into it (`focusFromScript`), so a click on the page's empty space does not
+            // focus it.
             inert: 'drawer',
             transitionKey: 'transitionKey',
             pending: 'pending',

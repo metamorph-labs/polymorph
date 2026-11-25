@@ -842,7 +842,9 @@ export function TicketLink({ href, subject }: { href: string; subject: string })
 ```
 
 A Link without `onNavigate` is a plain `<a href>`, which a server component can render, and a
-click on it loads a new document.
+click on it loads a new document. The App Router's own route announcer also says the new page's
+title on a page change, besides AppShell's move of focus to the page
+([app-shell.md](../design/archetypes/app-shell.md#a11y)).
 
 **The red rules.** `polymorph add` links `polymorph.eslint.js` into the flat config the
 application has (`eslint.config.mjs` from `create-next-app`, or `eslint.config.js`), and its

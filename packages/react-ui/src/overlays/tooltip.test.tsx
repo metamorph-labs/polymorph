@@ -150,6 +150,43 @@ describe('while the keyboard holds its control', () => {
     await vi.waitFor(() => expect(bubbles()).toHaveLength(0))
   })
 
+  it('stays open when the pointer passes over its control and leaves', async () => {
+    const { below, after } = await tabBelow()
+    await userEvent.hover(below)
+    await userEvent.hover(after)
+    await userEvent.hover(after, { position: { x: 4, y: 4 } })
+    await new Promise((settle) => setTimeout(settle, 300))
+    expect(bubble()).not.toBeNull()
+  })
+
+  it('closes when the pointer leaves a field the pointer focused', async () => {
+    // A text field matches `:focus-visible` after a click too, so the hold asks what came before
+    // the focus: a press of the pointer here.
+    mount(
+      <div>
+        <div style={{ blockSize: '10vh' }} />
+        <Button label="Elsewhere" />
+        <Button label="Further" />
+        <div style={{ blockSize: '40vh' }} />
+        <Tooltip content="Archive this ticket">
+          <Input aria-label="Field" />
+        </Tooltip>
+      </div>,
+    )
+    const field = screen.getByRole('textbox', { name: 'Field' })
+    const elsewhere = screen.getByRole('button', { name: 'Elsewhere' })
+    await userEvent.click(field)
+    expect(document.activeElement).toBe(field)
+    await userEvent.hover(elsewhere)
+    await userEvent.hover(field)
+    await vi.waitFor(() => expect(bubble()).not.toBeNull(), { timeout: TOOLTIP_DELAY_MS + 1000 })
+    // Radix closes once the pointer moves outside the way from the control to the bubble, so the
+    // pointer moves twice past it.
+    await userEvent.hover(elsewhere)
+    await userEvent.hover(screen.getByRole('button', { name: 'Further' }))
+    await vi.waitFor(() => expect(bubbles()).toHaveLength(0))
+  })
+
   it('still closes when another tooltip opens', async () => {
     const { below } = await tabBelow()
     expect(document.activeElement).toBe(below)

@@ -208,4 +208,29 @@ describe('Tooltip while the keyboard holds its control', () => {
     await userEvent.click(below)
     await vi.waitFor(() => expect(bubble('Archive this ticket')).toBeUndefined())
   })
+
+  it('stays open when the pointer passes over its control and leaves', async () => {
+    const { below, after } = await tabBelow()
+    await userEvent.hover(below)
+    await userEvent.hover(after)
+    await new Promise((settle) => setTimeout(settle, TOOLTIP_SKIP_DELAY_MS + 300))
+    expect(bubble('Archive this ticket')).toBeDefined()
+    await userEvent.tab()
+    await vi.waitFor(() => expect(bubble('Archive this ticket')).toBeUndefined())
+  })
+
+  it('closes when the pointer leaves a field the pointer focused', async () => {
+    // A text field matches `:focus-visible` after a click too, so the hold asks what came before
+    // the focus: a press of the pointer here.
+    const { below, after } = await tabBelow()
+    await userEvent.click(below)
+    await vi.waitFor(() => expect(bubble('Archive this ticket')).toBeUndefined())
+    await userEvent.hover(after)
+    await userEvent.hover(below)
+    await vi.waitFor(() => expect(bubble('Archive this ticket')).toBeDefined(), {
+      timeout: TOOLTIP_DELAY_MS + 1000,
+    })
+    await userEvent.hover(after)
+    await vi.waitFor(() => expect(bubble('Archive this ticket')).toBeUndefined())
+  })
 })

@@ -18,6 +18,7 @@ import {
   anchorProps,
   attributes,
   closeTooltipOnScroll,
+  holdTooltipFromPointer,
   joinSlot,
   normalizeProps,
   syncTriggerAnchor,
@@ -94,6 +95,16 @@ const effect2 = () => {
 }
 watchEffect(effect2, { watch: () => api.open })
 onDestroy(() => release2?.())
+let release3: (() => void) | undefined
+const effect3 = () => {
+  release3?.()
+  const ran = holdTooltipFromPointer(anchor)
+  release3 = () => {
+    ran()
+  }
+}
+watchEffect(effect3)
+onDestroy(() => release3?.())
 </script>
 
 {@render joined.start?.()

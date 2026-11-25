@@ -22,7 +22,9 @@ import {
   closeTooltipOnScroll,
   derived,
   elementRef,
+  holdTooltipFromPointer,
   mergeParts,
+  mountEffect,
   normalizeProps,
   setup,
   syncTriggerAnchor,
@@ -130,6 +132,7 @@ export class Tooltip {
     ),
   )
   private release2: (() => void) | undefined
+  private release3: (() => void) | undefined
 
   constructor() {
     watchEffect(
@@ -143,6 +146,8 @@ export class Tooltip {
       () => this.effect2(),
       true,
     )
+    inject(DestroyRef).onDestroy(() => this.release3?.())
+    mountEffect(() => this.effect3())
   }
 
   protected e1() {
@@ -189,6 +194,14 @@ export class Tooltip {
       this.api.value.setOpen(false),
     )
     this.release2 = () => {
+      ran()
+    }
+  }
+
+  private effect3(): void {
+    this.release3?.()
+    const ran = holdTooltipFromPointer(this.anchor.value)
+    this.release3 = () => {
       ran()
     }
   }

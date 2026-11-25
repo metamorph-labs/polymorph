@@ -99,13 +99,22 @@ describe('AppShell — the drawer, from the keyboard (Svelte)', () => {
     }
   })
 
-  it('is a region the skip link can move focus into', async () => {
+  it('is a region the skip link moves focus into, which is a stop only while it holds that focus', async () => {
     const mounted = await svelteAdapter.mount('AppShell', { state: CLOSED })
+    const address = location.href
     try {
       const main = mounted.root.querySelector('main') as HTMLElement
       expect(main.id).toBe('content')
+      expect(main.hasAttribute('tabindex')).toBe(false)
+      const skip = mounted.root.querySelector('a[href="#content"]') as HTMLElement
+      skip.focus()
+      await userEvent.keyboard('{Enter}')
+      await vi.waitFor(() => expect(document.activeElement).toBe(main))
       expect(main.getAttribute('tabindex')).toBe('-1')
+      skip.focus()
+      expect(main.hasAttribute('tabindex')).toBe(false)
     } finally {
+      history.replaceState(null, '', address)
       mounted.unmount()
     }
   })
@@ -146,6 +155,32 @@ describe('AppShell — a new page (Svelte)', () => {
     expect(document.activeElement).toBe(link())
     await shell.set({ pending: false })
     await vi.waitFor(() => expect(document.activeElement).toBe(heading()))
+    shell.unmount()
+  })
+
+  it('arrives at a page that starts loading just after it changed', async () => {
+    const shell = await mountPages()
+    link().focus()
+    await shell.set({ transitionKey: '/settings' })
+    await shell.set({ pending: true })
+    await new Promise((settle) => setTimeout(settle, 100))
+    expect(document.activeElement).toBe(link())
+    await shell.set({ pending: false })
+    await vi.waitFor(() => expect(document.activeElement).toBe(heading()))
+    shell.unmount()
+  })
+
+  it('leaves focus where the reader moved it while the page loaded, and says the title', async () => {
+    const shell = await mountPages()
+    link().focus()
+    await shell.set({ transitionKey: '/settings', pending: true })
+    await new Promise((settle) => setTimeout(settle, 100))
+    const frame = document.querySelector('[data-member="app-shell"]') as HTMLElement
+    const toggle = getByRole(frame, 'button', { name: 'Collapse sidebar' })
+    toggle.focus()
+    await shell.set({ pending: false })
+    await vi.waitFor(() => expect(announcer()?.textContent).toBe('Settings'))
+    expect(document.activeElement).toBe(toggle)
     shell.unmount()
   })
 })

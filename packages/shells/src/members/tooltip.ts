@@ -16,7 +16,10 @@ const SIDES = ['top', 'right', 'bottom', 'left'] as const
  * a Tab to a control below the fold scrolls the page a frame after the focus
  * that opened it. So the machine's own close on scroll is off, and the
  * engine's `closeTooltipOnScroll` closes the bubble on a scroll only while the
- * keyboard does not hold the control.
+ * keyboard does not hold the control. Zag also closes a tooltip when the
+ * pointer leaves its trigger, so the engine's `holdTooltipFromPointer` keeps
+ * that leave from the machine while the keyboard holds the control, as the
+ * React member refuses the close.
  */
 export default describeMember({
   member: 'Tooltip',
@@ -60,6 +63,8 @@ export default describeMember({
       run: 'closeTooltipOnScroll(api.open ? anchor : null, () => api.setOpen(false))',
       release: 'ran()',
     },
+    // The pointer leaving the control does not close a bubble the keyboard holds.
+    { run: 'holdTooltipFromPointer(anchor)', release: 'ran()' },
   ],
   template: [
     el(
