@@ -23,8 +23,10 @@ import {
 } from '@polymorph/cli'
 import {
   DEFAULT_PATHS,
+  errorsOf,
   fix as applyFixes,
   isStylesheet,
+  warningsOf,
   type Diagnostic,
   type Surface,
 } from '@polymorph/rules/verify'
@@ -254,6 +256,11 @@ export interface EmitScreenAnswer {
    * is non-empty either.
    */
   violations?: Diagnostic[]
+  /**
+   * Reports in what the spec emitted of rules the groups report as warnings.
+   * They do not stop the write.
+   */
+  warnings?: Diagnostic[]
   /** Set when nothing could be written for a reason other than a fault. */
   fatal: string | null
   path?: string
@@ -403,7 +410,7 @@ export async function emitScreen(
   }
 
   const spec = document as ScreenSpec
-  const { code, violations, fatal } = await emitCheckedScreen(spec, {
+  const { code, violations, warnings, fatal } = await emitCheckedScreen(spec, {
     filepath: full,
     framework,
     registry: context.registry,
@@ -470,6 +477,7 @@ export async function emitScreen(
     ok: true,
     faults: [],
     fatal: null,
+    ...(warnings.length === 0 ? {} : { warnings }),
     path: args.path,
     component: spec.name,
     language,
@@ -1053,6 +1061,8 @@ export interface FixFileAnswer {
   fixed: Record<string, number>
   /** What no fix could answer: these are decisions, each with its rungs. */
   violations: Violation[]
+  /** Reports of rules the groups report as warnings, which do not make `ok` false. */
+  warnings: Violation[]
   /** Set when the file could not be parsed, in which case it was not touched. */
   fatal: string | null
   notes: string[]
@@ -1130,13 +1140,15 @@ export async function fixFile(context: WriteContext, args: FixFileArgs): Promise
   const result = await applyFixes(source, { surface, filename, framework, vocabulary })
   if (result.output !== source) land(project, args.path, result.output)
 
-  const violations = withClimb(context.registry, result.diagnostics)
+  const reports = withClimb(context.registry, result.diagnostics)
+  const violations = errorsOf(reports)
   return {
     ok: result.fatal === null && violations.length === 0,
     path: args.path,
     changed: result.output !== source,
     fixed: result.fixed,
     violations,
+    warnings: warningsOf(reports),
     fatal: result.fatal,
     notes:
       vocabulary === null

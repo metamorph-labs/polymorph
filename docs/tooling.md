@@ -603,15 +603,18 @@ application code, through `verify` from `@polymorph/rules/verify`, the function 
   the Solid vocabulary and not the React one. A package uses a vocabulary when its nearest
   `package.json` depends on it or `polymorph.json` records that framework, so a page with no
   `package.json` is answered by its manifest. `--framework` sets it for every file.
-- **What it prints.** Each file with a violation, then each rule it breaks with the rungs of the
-  exception ladder that answer that rule (from the registry's law catalogue), then each report at
-  its line and column. A file that does not parse is listed as not read. The last line counts
-  the violations.
+- **What it prints.** Each file with a violation or a warning, then each rule it breaks with the
+  rungs of the exception ladder that answer that rule (from the registry's law catalogue), then
+  each report at its line and column. A rule the groups report as a warning (the usage rules,
+  [rules.md](rules.md#the-usage-rules)) is marked `(warning)`. A file that does not parse is
+  listed as not read. The last line counts the violations, then the warnings.
 - **`--json`** prints `{ ok, dir, checked, files, notes }`. Each file has its `path`, the
-  `framework` it was read in, `fatal` and `violations`; each violation is a `verify` diagnostic
-  (`rule`, `message`, `line`, `column`, `fix`, `alternatives`) with the rule's `rungs`.
+  `framework` it was read in, `fatal`, `violations` and `warnings`; each is a `verify` diagnostic
+  (`rule`, `message`, `line`, `column`, `fix`, `alternatives`, `severity`) with the rule's
+  `rungs`.
 - **Exit code.** 1 on any violation or unread file, and on a usage error (a directory outside the
-  repository or missing, an unknown framework, an unreadable `polymorph.json`); 0 otherwise.
+  repository or missing, an unknown framework, an unreadable `polymorph.json`); 0 otherwise. A
+  warning does not change it, as it does not change ESLint's.
 
 ## The MCP server
 
@@ -639,6 +642,12 @@ Marked `readOnlyHint`. None writes a file.
 | `fix` | Submit `code` (TSX, a Vue or Svelte component, an Angular module or template, or CSS, with the same optional `filename`, `surface` and `framework` as `validate`, read the same way) and get it back with every violation that has exactly one lawful rewrite already rewritten. Without `framework`, TSX is Solid's in a project whose package depends on `@polymorph/solid-ui` and not `@polymorph/react-ui`, and React's otherwise. These are the rules' own fixes, the ones `eslint --fix` applies ([rules.md](rules.md#what-the-rules-fix) lists them). Whether the `<button>` fix applies is decided by the project rather than by a lint config (below). The answer contains the fixed `code`, `changed`, `fixed` (rule → how many of its reports the fixes resolved) and the remaining `violations`, which need a decision, each with its ladder rungs. A stylesheet comes back unchanged, because no CSS rule has a fix. Writes nothing. |
 | `propose_theme` | Turns an `intent` in plain words ("calmer, more editorial, warmer paper") into a complete candidate system and palette, resolved through the real engine, with a verdict (`lawful`, `faults`), a `rationale` per recognised word, and the words it did not recognise in `unmapped`. Optional `basedOn: { system, palette }`. The recognised words are listed in the tool's description (`packages/mcp/src/propose.ts`). |
 | `render_screen` | Draws a screen `spec` in a real browser under a `system` (and optional `palette` and `mode`), at a phone and a desktop width, and returns the layout faults measured in the page as data, followed by one PNG for each view. `data` and `empty` fill the spec's inputs. Needs Playwright's Chromium. Writes nothing. [Seeing a screen](#seeing-a-screen-render_screen) covers it. |
+
+`validate`, `fix` and `fix_file` return a rule the groups report as a warning (the usage rules,
+[rules.md](rules.md#the-usage-rules)) in `warnings`, apart from `violations`, and `ok` reads the
+violations alone, so a source with only warnings is lawful. `emit_screen` writes a screen whose
+emitted code has only warnings and returns them in `warnings`. Each diagnostic carries its
+`severity`, `error` or `warning`, as ESLint's result gives it.
 
 Each violation `validate` and `fix` return carries its answer as data, beside the `message`, the
 `law` and the `climb` (the ladder rungs that answer the rule). `fix` is the rule's own rewrite
@@ -1012,8 +1021,9 @@ screen contract's law (below). A file that breaks one is not written or
 printed (`emitCheckedScreen`, `packages/spec/src/lawful.ts`). The format has no field for a style
 or a raw control, and validation leaves no other field to write one in. A lawful spec can still
 hold a value that *is* a design value, such as a label whose text is `#7c3aed`, and this check
-catches it. The command exits non-zero and lists the violations. It checks the red rules only, not
-anything else in a repository's lint config.
+catches it. The command exits non-zero and lists the violations. A warning (a usage rule) is
+printed and does not stop the write. It checks the red rules only, not anything else in a
+repository's lint config.
 
 Text is emitted so that the file says exactly what the spec says:
 

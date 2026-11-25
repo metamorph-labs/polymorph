@@ -18,6 +18,8 @@ import {
   BUTTON,
   dangerBeforeOthers,
   extraMainButtons,
+  GROUP_DIVIDER,
+  groupsOf,
   isMainButton,
   isTrailingRole,
   type ActionScope,
@@ -1488,8 +1490,10 @@ interface UsageScope {
  *   counted outside. Props are read before children, as the rule reads a
  *   member's props before its content, so a Dialog's `footer` keeps its main
  *   action. A spec has no conditional, so every Button in a scope renders.
- * - A danger Button comes last among the Buttons of one list: an element's
- *   children, or a prop that holds several.
+ * - Within one group of Buttons placed together, a danger Button comes last,
+ *   and one in a group of its own may come first (`DANGER_ORDER`). A group is
+ *   one list, an element's children or a prop that holds several, up to a
+ *   `Separator`.
  * - A trailing icon is one of the roles the vocabulary lists in `icons.trailing`.
  *
  * A value bound to an input is computed, and none of them reads it. A
@@ -1502,20 +1506,29 @@ function checkUsage(
 ): void {
   const scopes: UsageScope[] = []
 
-  /** A list of siblings: a danger Button before a Button that is surely not one. */
+  /**
+   * A list of siblings, divided into its groups at each `Separator`: in a group, a danger
+   * Button before a Button that is surely not one. A Button an element wraps apart from the
+   * others is in that element's list, a group of its own.
+   */
   const row = (items: readonly SpecValue[], path: string): void => {
-    const places = items.flatMap((item, index) =>
-      isElement(item) && item.component === BUTTON
-        ? [{ tone: writtenOf(item.props?.['tone']), at: `${path}[${index}]` }]
-        : [],
-    )
-    for (const index of dangerBeforeOthers(places.map(({ tone }) => [tone]))) {
-      faults.push({
-        path: places[index]?.at ?? path,
-        message:
-          'a danger Button before another Button in its row — the destructive action comes last, ' +
-          'so a reader meets the safe one first; move it after the others',
-      })
+    const indexed = items.map((item, index) => ({ item, at: `${path}[${index}]` }))
+    const divider = ({ item }: { item: SpecValue }) =>
+      isElement(item) && item.component === GROUP_DIVIDER
+    for (const group of groupsOf(indexed, divider)) {
+      const places = group.flatMap(({ item, at }) =>
+        isElement(item) && item.component === BUTTON
+          ? [{ tone: writtenOf(item.props?.['tone']), at }]
+          : [],
+      )
+      for (const index of dangerBeforeOthers(places.map(({ tone }) => [tone]))) {
+        faults.push({
+          path: places[index]?.at ?? path,
+          message:
+            'a danger Button before another Button in its group — the destructive one comes ' +
+            'last, so the safe one is met first; move it last, or into a group of its own',
+        })
+      }
     }
   }
 

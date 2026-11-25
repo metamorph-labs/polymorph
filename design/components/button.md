@@ -116,9 +116,10 @@ the validation a screen spec gets (`docs/rules.md`, the usage rules):
   (`Dialog`, `Drawer`, `Popover`) or a section (`Card`, `Dashboard.Panel`), and each holds one.
   Another action there is `outline`/`neutral`, or `ghost`. A dialog's trigger is on the page,
   not in the dialog (`polymorph/one-main-button`).
-- **A destructive Button comes last.** Among sibling Buttons, a `tone="danger"` one has no
-  other Button after it (`polymorph/danger-last`). It never has focus when a dialog or drawer
-  opens (`dialog.md`), and Button takes no `autoFocus`.
+- **A destructive Button comes last.** Within one group of Buttons placed together, a danger
+  Button comes last. A destructive action in a group of its own, apart from the group that holds
+  the main Button, may come first (`polymorph/danger-last`). It never has focus when a dialog or
+  drawer opens (`dialog.md`), and Button takes no `autoFocus`.
 - **A trailing icon points onward or opens.** `trailingIcon` takes a role marked `trailing` in
   `design/icons.json`. Every other icon leads its label, in `icon`
   (`polymorph/trailing-icon`).

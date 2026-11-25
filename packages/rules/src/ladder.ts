@@ -84,7 +84,7 @@ export const RULE_CLIMB: Record<string, number[]> = {
 
   /*
    * The usage rules: one main Button in a dialog or a section, a danger Button
-   * last in its row, and a trailing icon that is a direction or a disclosure.
+   * last in its group of Buttons, and a trailing icon that is a direction or a disclosure.
    * Each is answered by the vocabulary as it is: a Button's `variant`, its
    * place in the row, its `icon` prop (1). A one-off composition that needs
    * otherwise is a declared zone (4), which lifts them as it lifts the

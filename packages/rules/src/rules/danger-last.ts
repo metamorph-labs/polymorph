@@ -1,6 +1,6 @@
 import type { Rule } from 'eslint'
 
-import { BUTTON, dangerBeforeOthers, type RowPlace } from '../usage'
+import { BUTTON, dangerBeforeOthers, GROUP_DIVIDER, groupsOf, type RowPlace } from '../usage'
 import { angularSelector, isAngularTemplate } from './angular'
 import {
   composedTrees,
@@ -12,13 +12,20 @@ import {
 import { reporterFor } from './vue'
 
 /**
- * Stage 2: a destructive Button comes last in its row.
+ * Stage 2: within one group of Buttons placed together, a danger Button comes
+ * last. A destructive action in a group of its own, apart from the group that
+ * holds the main Button, may come first (`DANGER_ORDER` in `../usage`).
  *
- * In one row of sibling Buttons (the content of one element, or of one prop
- * that holds several), a Button with `tone="danger"` has no Button without
- * that tone after it. A reader meets the safe choice first, and the
- * destructive one sits where a hasty press does not land on it. ConfirmDialog
- * draws its own two Buttons in this order by construction.
+ * A group is the Buttons one element holds side by side, in its content or in
+ * one prop that holds several, up to a `Separator` between them. In a group, a
+ * Button with `tone="danger"` has no Button without that tone after it: a
+ * reader meets the safe choice first, and the destructive one sits where a
+ * hasty press does not land on it. ConfirmDialog draws its own two Buttons in
+ * this order by construction. A danger Button that an `Inline` or another
+ * member wraps apart from the others, as a page's tertiary action at the start
+ * of its actions is, is a group of its own, and the rule says nothing about
+ * where that group stands. A danger Button that is only first among one
+ * element's Buttons is in their group, and is reported.
  *
  * The other half of the designer's rule, that a destructive Button never
  * takes focus first, is the vocabulary's: no member takes initial focus on a
@@ -36,11 +43,14 @@ import { reporterFor } from './vue'
 export const dangerLast: Rule.RuleModule = {
   meta: {
     type: 'problem',
-    docs: { description: 'A danger Button comes last among the Buttons beside it.' },
+    docs: {
+      description:
+        'A danger Button comes last in its group of Buttons, or stands in a group of its own.',
+    },
     schema: [],
     messages: {
       dangerFirst:
-        'Unexpected {{button}} before another Button in its row: the destructive action comes last, so a reader meets the safe one first. {{advice}}',
+        'Unexpected {{button}} before another Button in its group: the destructive one comes last, so the safe one is met first. {{advice}}',
     },
   },
 
@@ -69,10 +79,15 @@ export const dangerLast: Rule.RuleModule = {
       return places
     }
 
-    /** Every row the trees hold: each element's content, each slot's, and each branch's. */
+    /**
+     * Every group the trees hold: each element's content, each slot's and each branch's,
+     * divided at each `Separator`.
+     */
     const rows: (readonly Composed[])[] = []
     const collect = (content: readonly Composed[]) => {
-      rows.push(content)
+      rows.push(
+        ...groupsOf(content, (item) => item.type === 'element' && item.name === GROUP_DIVIDER),
+      )
       for (const item of content) {
         if (item.type === 'branch') item.branches.forEach(collect)
       }
@@ -96,7 +111,10 @@ export const dangerLast: Rule.RuleModule = {
               report({
                 ...danger.at,
                 messageId: 'dangerFirst',
-                data: { button, advice: 'Move it after the others (rung 1).' },
+                data: {
+                  button,
+                  advice: 'Move it last, or into a group of its own (rung 1).',
+                },
               })
             }
           }

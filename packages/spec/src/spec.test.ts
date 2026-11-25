@@ -421,16 +421,25 @@ describe('the usage rules, told to a spec as the red rules tell code', () => {
     ).toEqual([])
   })
 
-  it('reports a danger Button before a safe one in the same list', () => {
-    const faults = faultsOf({
+  it('reports a danger Button first in its group, and not last, nor alone in a group of its own', () => {
+    const danger = button({ variant: 'ghost', tone: 'danger', label: 'Delete' })
+    const cancel = button({ variant: 'outline', tone: 'neutral', label: 'Cancel' })
+    const first = faultsOf({
       component: 'Inline',
-      children: [
-        button({ tone: 'danger', label: 'Delete' }),
-        button({ variant: 'outline', tone: 'neutral' }),
-      ],
+      children: [danger, cancel],
     } as ScreenSpec['root'])
-    expect(faults.map(({ path }) => path)).toEqual(['$.root.children[0]'])
-    expect(faults[0]?.message).toContain('the destructive action comes last')
+    expect(first.map(({ path }) => path)).toEqual(['$.root.children[0]'])
+    expect(first[0]?.message).toContain('the destructive one comes last')
+    expect(
+      faultsOf({ component: 'Inline', children: [cancel, danger] } as ScreenSpec['root']),
+    ).toEqual([])
+    expect(
+      faultsOf({
+        component: 'Inline',
+        props: { justify: 'between' },
+        children: [danger, { component: 'Inline', children: [cancel, button()] }],
+      } as ScreenSpec['root']),
+    ).toEqual([])
   })
 
   it('reports a trailing icon that neither points nor opens, and names the roles that may', () => {

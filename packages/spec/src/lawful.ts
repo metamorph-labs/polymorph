@@ -1,4 +1,10 @@
-import { DEFAULT_PATHS, verify, type Diagnostic } from '@polymorph/rules/verify'
+import {
+  DEFAULT_PATHS,
+  errorsOf,
+  verify,
+  warningsOf,
+  type Diagnostic,
+} from '@polymorph/rules/verify'
 import type { Registry } from '@polymorph/registry'
 import { FRAMEWORK_EXTENSIONS } from '@polymorph/registry/frameworks'
 
@@ -89,6 +95,12 @@ export interface CheckedScreen {
   code: string
   /** Red-rule violations in `code`. Empty, with `fatal` null, means it may be written. */
   violations: Diagnostic[]
+  /**
+   * Reports in `code` of rules the groups report as warnings (the usage rules,
+   * `docs/rules.md`). They do not stop the write. The spec's own validation
+   * reports the same three as faults first, so a lawful spec emits none.
+   */
+  warnings: Diagnostic[]
   /** Set when the rules could not read the emitted code at all. */
   fatal: string | null
 }
@@ -110,7 +122,7 @@ export async function emitCheckedScreen(
       error instanceof KotlinPackageError ||
       error instanceof UnemittedFrameworkError
     )
-      return { code: '', violations: [], fatal: error.message }
+      return { code: '', violations: [], warnings: [], fatal: error.message }
     throw error
   }
   // The red rules read TSX, Vue, Svelte and Angular. A native view is held to the native
@@ -122,6 +134,7 @@ export async function emitCheckedScreen(
     return {
       code,
       violations: [],
+      warnings: [],
       fatal:
         broken.length === 0
           ? null
@@ -134,5 +147,5 @@ export async function emitCheckedScreen(
   const framework = options.framework ?? 'react'
   const filename = DEFAULT_PATHS.application.code.replace(/\.tsx$/, FRAMEWORK_EXTENSIONS[framework])
   const { diagnostics, fatal } = await verify(code, { filename, framework })
-  return { code, violations: diagnostics, fatal }
+  return { code, violations: errorsOf(diagnostics), warnings: warningsOf(diagnostics), fatal }
 }

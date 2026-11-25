@@ -205,7 +205,7 @@ export const stageTwoRules: Linter.RulesRecord = {
   [q('one-opener')]: 'error',
   /**
    * The usage rules (`docs/rules.md`): one main Button in a dialog or a
-   * section, a danger Button last in its row, and a trailing icon that is a
+   * section, a danger Button last in its group of Buttons, and a trailing icon that is a
    * direction or a disclosure. Like `one-opener`, they limit what a screen
    * composes, and they need the vocabulary's Button and scopes to exist.
    *

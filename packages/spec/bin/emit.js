@@ -130,7 +130,7 @@ if (!ok) {
 }
 
 const target = output ? resolve(process.cwd(), output) : undefined
-const { code, violations, fatal } = await emitCheckedScreen(spec, {
+const { code, violations, warnings, fatal } = await emitCheckedScreen(spec, {
   framework,
   registry,
   ...(native ? { native } : {}),
@@ -147,6 +147,13 @@ if (fatal !== null || violations.length > 0) {
     )
   }
   process.exit(1)
+}
+
+// A warning does not stop the write: the rule groups report the usage rules as warnings.
+for (const warning of warnings) {
+  console.error(
+    `warning ${warning.line}:${warning.column}  ${warning.rule}\n    ${warning.message}`,
+  )
 }
 
 if (target) {

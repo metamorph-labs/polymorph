@@ -130,15 +130,43 @@ export function extraMainButtons(buttons: readonly Branches[]): number[] {
 }
 
 /**
- * One place in a row of sibling Buttons: the tone each Button that can stand
+ * The rule for a destructive Button, in the words every place that states it
+ * uses (the rule's docs, the system card, `button.md`, `form-page.md`).
+ */
+export const DANGER_ORDER =
+  'Within one group of Buttons placed together, a danger Button comes last. A destructive ' +
+  'action in a group of its own, apart from the group that holds the main Button, may come first.'
+
+/**
+ * The member that divides one element's content into two groups of Buttons.
+ * Content is grouped by what holds it: the Buttons one element holds side by
+ * side, in its content or in one prop, are one group, and a Button that an
+ * `Inline` or another member wraps apart from them is a group of its own. A
+ * `Separator` between Buttons of one element also starts a new group, because
+ * it draws the line between them.
+ */
+export const GROUP_DIVIDER = 'Separator'
+
+/** One element's content, divided into its groups at each `GROUP_DIVIDER`. */
+export function groupsOf<T>(items: readonly T[], isDivider: (item: T) => boolean): T[][] {
+  const groups: T[][] = [[]]
+  for (const item of items) {
+    if (isDivider(item)) groups.push([])
+    else groups[groups.length - 1]?.push(item)
+  }
+  return groups.filter((group) => group.length > 0)
+}
+
+/**
+ * One place in a group of sibling Buttons: the tone each Button that can stand
  * there writes. A place holds more than one where a conditional picks between
  * Buttons.
  */
 export type RowPlace = readonly Written[]
 
 /**
- * The places in one row whose Button is destructive while a Button that is
- * surely not destructive comes after it. A computed tone is neither, so the
+ * The places in one group whose Button is destructive while a Button that is
+ * surely not destructive comes after it in the same group. A computed tone is neither, so the
  * rule says nothing about it.
  */
 export function dangerBeforeOthers(row: readonly RowPlace[]): number[] {

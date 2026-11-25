@@ -61,7 +61,7 @@ type checker. Solid TSX is TSX ([below](#in-solid-tsx)).
 | `polymorph/scoped-token-owners` | naming a pattern-scoped token (`--pm-shell-*`, `--pm-page-*`, `--pm-chart-height-*`) in a file that does not own the pattern | application | none |
 | `polymorph/one-opener` | one module that renders both `<PageHeader>` and `<Hero>` — each renders the page's `<h1>`, so the pair puts two on the page | application | 1 |
 | `polymorph/one-main-button` | a second main Button (`variant="solid"`, `tone="accent"`, which are Button's defaults) in one dialog (`Dialog`, `Drawer`, `Popover`) or one section (`Card`, `Dashboard.Panel`) | application | 1, 4 |
-| `polymorph/danger-last` | a Button with `tone="danger"` before a Button without it, in one row of siblings | application | 1, 4 |
+| `polymorph/danger-last` | a Button with `tone="danger"` before a Button without it, within one group of Buttons placed together; a destructive action in a group of its own may come first | application | 1, 4 |
 | `polymorph/trailing-icon` | a Button's `trailingIcon` that is not a direction or a disclosure: any role but the ones `design/icons.json` marks `trailing` | application | 1, 4 |
 | `polymorph/vendorable-imports` | in vendored component source: a relative import that leaves the vendored tree, a deep `@polymorph/<pkg>/src/…` import, or an import of `@polymorph/theme`, `@polymorph/rules`, `@polymorph/registry`, `@polymorph/react-ui`, `@polymorph/spec`, `@polymorph/cli` or `@polymorph/mcp` (another member is imported by relative path). The published surfaces of `@polymorph/engine` and `@polymorph/react` are allowed, because a consumer installs them | vocabulary | none |
 
@@ -88,11 +88,14 @@ the validation a screen spec gets reads too ([tooling.md](tooling.md)).
   is counted apart, and a page is not a scope. The report is on each main Button after the
   first, reading a member's props before its content, so a Dialog's `footer` keeps its main
   action.
-- **`danger-last`.** In one row of sibling Buttons (an element's content, or a prop that holds
-  several), a Button with `tone="danger"` has no Button without that tone after it. The other
-  half of the rule, that a destructive Button never takes focus first, is the vocabulary's:
-  the engine's `modalFocusTarget` passes over a danger Button in every renderer's modal
-  surfaces, and Button takes no `autoFocus`, so no call site can ask for it.
+- **`danger-last`.** Within one group of Buttons placed together, a danger Button comes last. A
+  destructive action in a group of its own, apart from the group that holds the main Button, may
+  come first. A group is the Buttons one element holds side by side, in its content or in one prop
+  that holds several, up to a `Separator` between them: a Button an `Inline` or another member
+  wraps apart from the others is a group of its own. The other half of the rule, that a
+  destructive Button never takes focus first, is the vocabulary's: the engine's
+  `modalFocusTarget` passes over a danger Button in every renderer's modal surfaces, and Button
+  takes no `autoFocus`, so no call site can ask for it.
 - **`trailing-icon`.** An icon leads its text. The roles that may trail it point onward or
   show a disclosure, the roles `design/icons.json` marks `trailing` (`collapse`, `down`, `expand`,
   `forward`, `next`, `open-external`). A back arrow leads.
@@ -222,7 +225,7 @@ A rule's fixed sentence is written once, as JSX, as it is for a Vue template.
 | `no-external-dataviz` | an import of `ng2-charts`, `ngx-echarts`, `@swimlane/ngx-charts`, `ng-apexcharts`, `highcharts-angular`, `angular-highcharts`, `ag-charts-angular` or any `@unovis/*` package | ``Unexpected charting import `ng2-charts`. …`` |
 | `scoped-token-owners` | a pattern-scoped token in a static attribute or a bound string of a template, and in a module's strings but its inline template | ``"--pm-shell-*" belongs to app-shell.module.css and 1 more, not this file (…).`` |
 | `one-opener` | `<pm-page-header>` and `<pm-hero>` in one template | ``Unexpected <pm-page-header> beside <pm-hero>: …`` |
-| `one-main-button`, `danger-last`, `trailing-icon` | members by their selectors, a prop static or bound to a string (`[variant]="'solid'"`), a named slot as a child with `slot="footer"`, `@if`/`@else` and `@switch` as one conditional each, and `*ngIf` as its content. `@for`, `*ngFor` and a bare `<ng-template>` are not read. `trailing-icon` renames `trailingIcon` or `[trailingIcon]` to `icon` | ``Unexpected <pm-button tone="danger"> before another Button in its row: …`` |
+| `one-main-button`, `danger-last`, `trailing-icon` | members by their selectors, a prop static or bound to a string (`[variant]="'solid'"`), a named slot as a child with `slot="footer"`, `@if`/`@else` and `@switch` as one conditional each, and `*ngIf` as its content. `@for`, `*ngFor` and a bare `<ng-template>` are not read. `trailing-icon` renames `trailingIcon` or `[trailingIcon]` to `icon` | ``Unexpected <pm-button tone="danger"> before another Button in its group: …`` |
 
 A template never sees its module's imports, so a tag is read as Angular's compiler matches it, by
 the vocabulary's selectors: `<pm-button>` is the member `Button`, `<pm-tabs-content>` the part
@@ -367,7 +370,7 @@ theme.
 | `no-external-dataviz` | the chart member for the library's own call (`BarChart`, `ResponsivePie`, `type: 'line'`); otherwise the zone. A re-export is answered the same way, from the names it hands out | ``Unexpected charting import `recharts`. `BarChart` is `<BarChart data={…} series={…}>` (rung 1).`` |
 | `one-opener` | which opener to keep: the archetype's own title when the module renders one, otherwise `PageHeader` on a working screen and `Hero` on an opening page | ``<ListPage> renders its PageHeader from `<ListPage title="…">`: keep that and drop both here (rung 1).`` |
 | `one-main-button` | the scope, and the lesser variant | ``Unexpected second main Button in <Card>: a section has one solid accent Button, which marks its next step. Make this one `<Button variant="outline" tone="neutral">` (rung 1).`` |
-| `danger-last` | where the destructive Button goes | ``Unexpected <Button tone="danger"> before another Button in its row: the destructive action comes last, so a reader meets the safe one first. Move it after the others (rung 1).`` |
+| `danger-last` | where the destructive Button goes | ``Unexpected <Button tone="danger"> before another Button in its group: the destructive one comes last, so the safe one is met first. Move it last, or into a group of its own (rung 1).`` |
 | `trailing-icon` | the roles that may trail, and `icon` | ``Unexpected trailing icon "delete" on <Button>: an icon leads its label. Use `icon="delete"` (rung 1). Only collapse, down, expand, forward, next and open-external follow it.`` |
 | `scoped-token-owners` | the file that owns the pattern | ``"--pm-shell-*" belongs to app-shell.module.css and 1 more, not this file (…).`` |
 | `vendorable-imports` | the published import that replaces the path: `@polymorph/react` for the engine, the theme or the role data, a member's relative path, or no import at all for a dev-time tool | ``Import `@polymorph/theme` is not in the boundary a consumer installs. Import it from `@polymorph/react`, which re-exports the engine and the theme.`` |
@@ -514,10 +517,12 @@ linter.
 Every rule in the groups is an error except the three usage rules, which the groups report as
 warnings. A screen written before them can break them, and none of what they report stops a
 screen working, so an app that upgrades sees the reports and keeps building. It opts in to
-errors with `usageRulesAsErrors` once its screens hold to them. `verify`, and so
-`polymorph check`, the MCP server's `validate` and the screen emitter's check, report a warning
-as they report an error, because a diagnostic carries no severity. The validation of a screen
-spec reports the same three as faults.
+errors with `usageRulesAsErrors` once its screens hold to them. A warning stays a warning past
+ESLint: `verify` gives each diagnostic its `severity`, `polymorph check` exits 1 on errors only,
+and the MCP server's `validate`, `fix`, `fix_file` and `emit_screen` and the screen emitter
+report warnings apart from violations and call a source with only warnings lawful. The
+validation of a screen spec reports the same three as faults, because a screen a model writes
+has no earlier screens to keep building.
 
 ### In this repository
 

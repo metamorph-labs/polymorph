@@ -244,6 +244,14 @@ describe('it is the whole vocabulary, compressed', () => {
     }
   })
 
+  it('states the destructive order in the words the rule and the specs use', () => {
+    const flat = card.replace(/\s+/g, ' ')
+    expect(flat).toContain(
+      'within one group of Buttons placed together, a danger Button comes last. A destructive ' +
+        'action in a group of its own, apart from the group that holds the main Button, may come first.',
+    )
+  })
+
   it('publishes the lawful cells, which are the ones a call site may write', () => {
     expect(card).toContain('solid(accent|danger)')
     expect(card).toContain('ghost(neutral|accent|danger)')

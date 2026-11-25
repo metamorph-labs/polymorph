@@ -49,6 +49,12 @@ const LAWFUL_SCREEN =
   "import { Stack, Text } from '@polymorph/react-ui'\n\n" +
   'export const Home = () => (\n  <Stack gap={4}>\n    <Text>Welcome</Text>\n  </Stack>\n)\n'
 
+/** A row with its destructive Button first, which a usage rule reports as a warning. */
+const DANGER_FIRST =
+  "import { Button, Inline } from '@polymorph/react-ui'\n\n" +
+  'export const Row = () => (\n  <Inline>\n    <Button tone="danger" label="Delete" />\n' +
+  '    <Button variant="outline" tone="neutral" label="Keep" />\n  </Inline>\n)\n'
+
 const rulesIn = (report: CheckReport, path: string): string[] => [
   ...new Set(report.files.find((file) => file.path === path)?.violations.map((v) => v.rule)),
 ]
@@ -315,6 +321,33 @@ describe('the command', () => {
     const { code, text } = await polymorph(root, [])
     expect(code).toBe(0)
     expect(text.endsWith('No violations.')).toBe(true)
+  })
+
+  it('prints a warning marked as one, and exits 0 when the reports are warnings alone', async () => {
+    const root = app({ 'package.json': REACT, 'src/Row.tsx': DANGER_FIRST })
+    const { code, text } = await polymorph(root, [])
+    expect(code).toBe(0)
+    expect(text).toContain(
+      '\nsrc/Row.tsx\n  polymorph/danger-last (warning) — rung 1 variant selection',
+    )
+    expect(text.endsWith('No violations. 1 warning in 1 file.')).toBe(true)
+    const report = await check(root, registry, verify)
+    expect(report.ok).toBe(true)
+    expect(report.files[0]?.violations).toEqual([])
+    expect(report.files[0]?.warnings.map((warning) => warning.rule)).toEqual([
+      'polymorph/danger-last',
+    ])
+  })
+
+  it('counts errors and warnings apart, and exits 1 on the errors', async () => {
+    const root = app({
+      'package.json': REACT,
+      'src/register.css': REGISTER,
+      'src/Row.tsx': DANGER_FIRST,
+    })
+    const { code, text } = await polymorph(root, [])
+    expect(code).toBe(1)
+    expect(text.endsWith('4 violations in 1 file. 1 warning in 1 file.')).toBe(true)
   })
 
   it('prints the report as JSON with --json', async () => {

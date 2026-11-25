@@ -361,7 +361,7 @@ tester.run('danger-last in an Angular template', dangerLast, {
       errors: [
         {
           message:
-            'Unexpected <pm-button tone="danger"> before another Button in its row: the destructive action comes last, so a reader meets the safe one first. Move it after the others (rung 1).',
+            'Unexpected <pm-button tone="danger"> before another Button in its group: the destructive one comes last, so the safe one is met first. Move it last, or into a group of its own (rung 1).',
         },
       ],
     },

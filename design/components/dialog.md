@@ -136,7 +136,7 @@ sits rightmost.
 | described | trigger only; a title, a description and a body | — |
 | open md | `defaultOpen`, with a footer | panel `data-state="open"`, `role="dialog"`, `aria-modal` |
 | sizes | sm / md / lg triggers | `data-size` |
-| with a footer | footer actions, the primary rightmost | opening focuses the primary |
+| with a footer | footer actions, the primary rightmost | opening focuses the dismiss, because the primary is destructive |
 | with a form | a field in the body | opening focuses the field |
 | non-dismissible | `dismissible={false}` | no close button |
 | scrolling body | long content | body scrollable, header/footer pinned |

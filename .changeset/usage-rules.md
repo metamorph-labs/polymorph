@@ -5,6 +5,8 @@
 '@polymorph/screen': patch
 '@polymorph/spec': patch
 '@polymorph/registry': patch
+'@polymorph/cli': patch
+'@polymorph/mcp': patch
 ---
 
 **Three usage rules for Button, and a destructive Button never takes focus first.**
@@ -13,14 +15,25 @@
   `polymorph add` applies. An app that upgrades may see new reports from them:
   - `polymorph/one-main-button`: a second main Button (`solid`/`accent`, the defaults) in one
     Dialog, Drawer, Popover, Card or `Dashboard.Panel`.
-  - `polymorph/danger-last`: a Button with `tone="danger"` before another Button in its row.
+  - `polymorph/danger-last`: within one group of Buttons placed together, a danger Button
+    before another Button.
   - `polymorph/trailing-icon`: a `trailingIcon` that is not a direction or a disclosure. The fix
     moves the role to `icon` when the Button has none.
 
   The groups report them as warnings, so a build that passed still passes. Spread the new
-  `usageRulesAsErrors` after the groups to make them errors. `polymorph check`, the MCP server's
-  `validate` and the screen emitter's check list a warning as they list an error. The rules read
-  TSX, Vue, Svelte, Solid and Angular. `@polymorph/rules/usage` holds what they count.
+  `usageRulesAsErrors` after the groups to make them errors. The rules read TSX, Vue, Svelte,
+  Solid and Angular. `@polymorph/rules/usage` holds what they count.
+- A warning stays a warning past ESLint. `verify`'s `Diagnostic` gains an optional `severity`
+  (`error` or `warning`), which `verify` always writes from the linter's result, with
+  `isWarning`, `errorsOf` and `warningsOf` beside it. `polymorph check` marks a warning, counts it
+  apart and exits 1 on errors only. The MCP server's `validate`, `fix` and `fix_file` return
+  warnings in `warnings`, apart from `violations`, and `ok` reads the violations alone.
+  `emitCheckedScreen` returns `warnings` beside `violations`, and `emit_screen`, `pnpm emit` and
+  the screen scripts write a screen whose code has only warnings. Every existing rule is an
+  error, so nothing else changes.
+- `danger-last` reads the Buttons one element holds side by side, up to a `Separator`, as one
+  group. A destructive action in a group of its own, apart from the group that holds the main
+  Button, may come first.
 - `design/icons.json` marks the roles a trailing icon may take `trailing`: `collapse`, `down`,
   `expand`, `forward`, `next` and `open-external`. The registry publishes it as `icons.trailing`.
 - The validation of a screen spec (`@polymorph/spec/validate`, and `checkScreen` in
