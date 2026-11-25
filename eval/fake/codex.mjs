@@ -36,7 +36,7 @@ import { scriptedTurns } from './script.mjs'
  *   `model_instructions_file`, its MCP server and no other, every tool of
  *   Codex's own turned off.
  * - **A project** (`--sandbox workspace-write`, a script marked `project`):
- *   no prompt and no server of the eval's, the project trusted, the network
+ *   no prompt and no server of the eval's, the project trusted in the home, the network
  *   on, every MCP server the project configures in `.codex/config.toml`
  *   approved. A turn's blocks are actions: `write` writes a file in the
  *   project, `shell` reports a command and the output the script gives it
@@ -52,7 +52,7 @@ import { scriptedTurns } from './script.mjs'
  */
 
 const VALUED = new Set(['--script', '--sandbox', '--model', '--color', '-c'])
-const FLAGS = new Set(['exec', '--json', '--skip-git-repo-check', '--ephemeral', '--trust', '-'])
+const FLAGS = new Set(['exec', '--json', '--skip-git-repo-check', '--ephemeral', '-'])
 
 /** The `CODEX*` variables the runner keeps, besides `CODEX_HOME`. */
 const KEPT = new Set(['CODEX_API_KEY', 'CODEX_ACCESS_TOKEN', 'CODEX_CA_CERTIFICATE', 'CODEX_HOME'])
@@ -124,6 +124,21 @@ function checkHome() {
 }
 
 /**
+ * Whether the home trusts `project`, as Codex reads it: `trust_level =
+ * "trusted"` in the table `[projects."<path>"]` of the home's `config.toml`,
+ * the path with its links resolved. Codex takes no `--trust` flag, so the
+ * stand-in refuses one as an unknown argument.
+ */
+function trusted(project) {
+  const file = resolve(process.env.CODEX_HOME, 'config.toml')
+  if (!existsSync(file)) return false
+  const header = `[projects.${JSON.stringify(realpathSync(project))}]`
+  const lines = readFileSync(file, 'utf8').split('\n')
+  const at = lines.indexOf(header)
+  return at >= 0 && lines[at + 1] === 'trust_level = "trusted"'
+}
+
+/**
  * The `[mcp_servers.<name>]` tables of a project's `.codex/config.toml`, each
  * with the `command`, `args` and `cwd` it sets. Only what a server needs to
  * start is read.
@@ -165,7 +180,11 @@ const sandbox = chosen.get('--sandbox')
 let servers = {}
 if (project) {
   if (sandbox !== 'workspace-write') refuse('a project run needs `--sandbox workspace-write`')
-  if (!chosen.has('--trust')) refuse('a project run needs `--trust`, so its configuration loads')
+  if (!trusted(process.cwd())) {
+    refuse(
+      'a project run needs the project trusted in `CODEX_HOME`’s config.toml, so its configuration loads',
+    )
+  }
   requireOverrides(overrides, { 'sandbox_workspace_write.network_access': true })
   for (const key of ['model_instructions_file', 'mcp_servers']) {
     if (overrides.has(key))
@@ -187,6 +206,11 @@ if (project) {
     'skills.include_instructions': false,
     'skills.bundled.enabled': false,
   })
+  if (typeof overrides.get('tool_output_token_limit') !== 'number') {
+    refuse(
+      'the runner must pass `-c tool_output_token_limit=<tokens>`, so an answer comes back whole',
+    )
+  }
   const instructions = overrides.get('model_instructions_file')
   if (typeof instructions !== 'string' || readFileSync(instructions, 'utf8').trim() === '') {
     refuse('the runner must pass the system prompt as `-c model_instructions_file=<file>`')

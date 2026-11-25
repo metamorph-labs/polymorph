@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, symlinkSync } from 'node:fs'
+import { existsSync, mkdirSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { resolve } from 'node:path'
 
@@ -134,6 +134,24 @@ export function codexHome(directory, env = process.env) {
     symlinkSync(auth, resolve(directory, 'auth.json'))
   }
   return directory
+}
+
+/**
+ * Trusts `project` in a Codex home of the run's own, so Codex loads the
+ * project's `.codex/config.toml` and the MCP servers it configures, as it does
+ * for a person who trusted their project. Codex keeps the trust in its home's
+ * `config.toml`, as `trust_level = "trusted"` in the table
+ * `[projects."<path>"]`, and looks the project up by its path with every link
+ * resolved, which a temporary directory's path on macOS is not. `codex exec`
+ * takes no flag for it, and a `-c` override of the same key trusts nothing:
+ * Codex CLI 0.146 refuses `--trust` as an unknown argument and lists no
+ * server of an untrusted project either way.
+ */
+export function trustProject(home, project) {
+  writeFileSync(
+    resolve(home, 'config.toml'),
+    `[projects.${JSON.stringify(realpathSync(project))}]\ntrust_level = "trusted"\n`,
+  )
 }
 
 /** The environment Codex runs in: the eval's own, without the `CODEX*` variables it does not keep, and `home` as its home. */

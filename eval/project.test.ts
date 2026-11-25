@@ -5,6 +5,7 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
@@ -14,6 +15,7 @@ import { resolve } from 'node:path'
 import { validate } from '@polymorph/registry/shape'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
+import { trustProject } from './harnesses.mjs'
 import {
   claudeProjectArguments,
   codexProjectArguments,
@@ -794,7 +796,20 @@ describe('the arguments a harness is started with in a project', () => {
       servers: ['polymorph'],
       skills: ['/home/me/.agents/skills/mine/SKILL.md'],
     })
-    expect(args).toEqual(expect.arrayContaining(['--trust', '--sandbox', 'workspace-write']))
+    expect(args).toEqual(expect.arrayContaining(['--sandbox', 'workspace-write']))
+    // Codex takes no flag that trusts a project: its home's config.toml does.
+    expect(args).not.toContain('--trust')
+    const home = mkdtempSync(resolve(tmpdir(), 'polymorph-eval-home-'))
+    const app = mkdtempSync(resolve(tmpdir(), 'polymorph-eval-app-'))
+    try {
+      trustProject(home, app)
+      expect(readFileSync(resolve(home, 'config.toml'), 'utf8')).toBe(
+        `[projects.${JSON.stringify(realpathSync(app))}]\ntrust_level = "trusted"\n`,
+      )
+    } finally {
+      rmSync(home, { recursive: true, force: true })
+      rmSync(app, { recursive: true, force: true })
+    }
     expect(args).toContain('mcp_servers.polymorph.default_tools_approval_mode="approve"')
     expect(args).toContain(
       'skills.config=[{ path = "/home/me/.agents/skills/mine/SKILL.md", enabled = false }]',

@@ -1647,6 +1647,9 @@ const CODEX_OWN_TOOLS = new Set([
  *   `requires_mcp_tool_approval` in `codex-rs/core/src/mcp_tool_call.rs` of
  *   https://github.com/openai/codex), and each tool's output limit raised so
  *   every answer comes back whole.
+ * - `tool_output_token_limit`: the same limit for every tool's output, the
+ *   key Codex CLI 0.146 knows. That version does not know the limit written
+ *   for each tool of a server and passes over it, so both are given.
  * - `features.*`, `web_search`, `skills.*`: Codex's own tools, its skills and
  *   their catalogue turned off, so the four tools are all the model is offered
  *   (https://learn.chatgpt.com/docs/config-file/config-reference).
@@ -1668,6 +1671,7 @@ function codexArguments({ settings, instructions, server }) {
     ...(settings.effort === 'default' ? [] : override('model_reasoning_effort', settings.effort)),
     ...override('model_instructions_file', instructions),
     ...override('mcp_servers', server === null ? {} : { polymorph: server }),
+    ...override('tool_output_token_limit', MCP_OUTPUT_TOKENS),
     ...override('features.shell_tool', false),
     ...override('features.unified_exec', false),
     ...override('features.view_image', false),

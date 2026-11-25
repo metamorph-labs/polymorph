@@ -1210,8 +1210,10 @@ that finished are kept, marked partial, and a partial file is never the number.
 `--runner codex` starts `codex exec` once per run, the owner's own Codex. It needs `--model`,
 because Codex names no model in what it reports and the results must name the model they
 measured. `--codex <path>` runs a Codex other than the `codex` on the `PATH`. The runner has not
-been run against a real Codex. What it does rests on Codex's documentation and source, and the
-list at the end of this section says what a first real run has to confirm.
+run a model through a real Codex. Its arguments have been given to one that was not signed in
+(Codex CLI 0.146), which reads them, starts its MCP servers and stops at the first request. What
+the runner does with a run rests on Codex's documentation and source, and the list at the end of
+this section says what a first real run has to confirm.
 
 It gives Codex what the CLI runner gives Claude Code, in Codex's terms (`eval/run.mjs` names the
 page each one rests on beside it):
@@ -1260,11 +1262,25 @@ level refuses it, and the eval stops with Codex's error. It also stops when Code
 without having listed the eval's tools, reports `turn.failed` (with `stopped.reason` `usage-limit`
 when it words a usage limit), or exits before its turn ends.
 
+What the Codex that was not signed in settled:
+
+- `codex exec` takes every flag both lanes pass, and `codex --version` prints a number the runner
+  reads.
+- With `--strict-config`, which refuses a key Codex does not know, it takes each `-c` override as
+  written, the inline tables for `mcp_servers` and `skills.config` included, but two. It does not
+  know `features.view_image`, so that version keeps its image tool. It does not know the output
+  limit written for each tool of a server, so the runner also passes `tool_output_token_limit`,
+  which it does know. Without `--strict-config`, as the runner starts it, it passes over both.
+- A `required` server that does not start fails the run before any request.
+- A project's `.codex/config.toml` loads only when the home's `config.toml` trusts the project by
+  its path with every link resolved. `codex exec` refuses `--trust`, and a `-c` override trusts
+  nothing.
+- The stream opens with `thread.started` and `turn.started`, and a request that fails is an
+  `error` event with a `message`.
+
 What only a real run can confirm:
 
-1. That the `-c` overrides parse and apply as written, the inline tables for `mcp_servers` and
-   `skills.config` included, and that a key an older Codex does not know is ignored rather than
-   refused.
+1. That each override does what its name says once a model runs, beyond being read.
 2. That the feature switches take Codex's own tools away, so the four tools are all the model is
    offered. The runner stops the eval if one is still used.
 3. That `model_instructions_file` replaces the built-in instructions in `codex exec`, and what
@@ -1279,11 +1295,10 @@ What only a real run can confirm:
    a reconnect or a retry, is a retry.
 6. That a linked `auth.json` signs Codex in from another home, and the words Codex uses for a
    usage limit.
-7. That `codex --version` prints a version number the runner can read.
 
 The stand-in (`eval/fake/codex.mjs`) speaks the event format as that source defines it, checks
 every argument the runner passes and the environment it gets, and calls the eval's MCP server for
-real. It has never been compared with a real Codex's output.
+real. Its events have never been compared with those of a real Codex's run.
 
 ### The token ceilings
 
@@ -1457,8 +1472,9 @@ configuration is kept out, as in the other runners, and the project's is left in
   Keychain or in `.credentials.json`, so another directory would not be signed in
   ([authentication](https://code.claude.com/docs/en/authentication.md)). The results say which
   (`project.harnessHome`).
-- **Codex**: a home of the run's own, as in the Codex runner; `--trust`, so the project's
-  `.codex/` configuration and MCP servers load; `approval_policy = "never"` with every tool of
+- **Codex**: a home of the run's own, as in the Codex runner, whose `config.toml` trusts the
+  project, so the project's `.codex/` configuration and MCP servers load (`codex exec` takes no
+  flag that trusts a project); `approval_policy = "never"` with every tool of
   each server the project configures approved, as a person at the prompt would approve it; and
   the owner's own skills (`~/.agents/skills`, `/etc/codex/skills`) turned off by path.
 
@@ -1558,9 +1574,8 @@ What only a real run can confirm, besides the Codex runner's list:
    version run (the documentation names the first in 2.1.314 and the second in 2.1.259).
 4. That pnpm takes its store from `npm_config_store_dir`, so an install inside either sandbox
    writes the eval's store and not the owner's.
-5. That `--trust` makes Codex load the project's `.codex/config.toml` for the run, that the
-   approval overrides merge onto the servers it defines, and that `skills.config` turns the owner's
-   skills off.
+5. That the approval overrides merge onto the servers the project's `.codex/config.toml` defines,
+   and that `skills.config` turns the owner's skills off.
 6. That Codex reads a skill by running a command that names its `SKILL.md`.
 7. How long a real app's copy, `polymorph check`, typecheck and build take, against which the
    budget's defaults are set.

@@ -25,6 +25,7 @@ import {
   override,
   tail,
   track,
+  trustProject,
 } from './harnesses.mjs'
 import { unmetAcross } from './requirements.mjs'
 import { interval } from './spread.mjs'
@@ -780,10 +781,9 @@ export function ownSkills(home = homedir()) {
  *   (https://learn.chatgpt.com/docs/non-interactive-mode).
  * - `--skip-git-repo-check`: the app is not a Git repository.
  * - `--ephemeral`: no session is saved.
- * - `--trust`: the project is trusted for this run, so its `.codex/`
- *   configuration and MCP servers load, as they do for a person who trusts
- *   their own project (https://learn.chatgpt.com/docs/developer-commands). It
- *   saves the trust in the run's own Codex home.
+ * - No flag trusts the project: the run's own Codex home does, which
+ *   `trustProject` writes before Codex starts, so the project's `.codex/`
+ *   configuration and MCP servers load.
  * - `--sandbox workspace-write` with `sandbox_workspace_write.network_access`:
  *   commands write inside the project and the temporary directory, which
  *   holds the eval's npm cache and pnpm store, and reach the network, any
@@ -803,7 +803,6 @@ export function codexProjectArguments({ settings, servers, skills }) {
     '--json',
     '--skip-git-repo-check',
     '--ephemeral',
-    '--trust',
     '--color',
     'never',
     '--sandbox',
@@ -1189,6 +1188,7 @@ export async function runOnceProject({
   let read
   if (lane.harness === 'codex') {
     const home = codexHome(resolve(directory, 'codex-home'))
+    trustProject(home, dir)
     args = [...script, ...codexProjectArguments({ settings, servers, skills: ownSkills() })]
     env = codexEnvironment(home, stores)
     read = codexReader({ maxTurns: settings.maxTurns, meter })
