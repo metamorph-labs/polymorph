@@ -105,7 +105,7 @@ const TEXT = {
       'for React, Vue, Svelte, Solid, Angular and plain HTML, a theme engine, and lint rules ' +
       '(the red rules) that keep design decisions out of application code.',
     'This plugin gives a coding agent the procedures and the tools to work in an app built ' +
-      'with it. Four skills cover building a screen, answering a red-rule violation by the ' +
+      'with it. Its skills cover building a screen, answering a red-rule violation by the ' +
       'exception ladder, adding polymorph to a project, and changing the theme. The MCP server ' +
       'returns the system card, finds members and reads their props, validates code and screen ' +
       'specs against the red rules with the lawful fix for each violation, draws a screen spec ' +
@@ -386,7 +386,7 @@ function readme(registry: Registry, run: string, server: string): string {
 Polymorph is an open-source design system: one closed vocabulary of interface components for
 React, Vue, Svelte, Solid, Angular and plain HTML, a theme engine, and lint rules (the red rules)
 that keep design decisions out of application code. This plugin gives Claude Code and Codex what
-they need to build with it in your app: four skills and an MCP server.
+they need to build with it in your app: skills and an MCP server.
 
 <!-- Every file in this directory is written by \`pnpm agents\` from packages/cli/src/plugin.ts and
      packages/cli/src/skills.ts in the polymorph repository. Edit those, not these. -->
@@ -404,7 +404,7 @@ The skills and the server run the published tools of release ${registry.version}
 \`${TOOLS_NAME}\`:
 
 \`\`\`sh
-${run} card
+${run} card --framework react
 ${server}
 \`\`\`
 

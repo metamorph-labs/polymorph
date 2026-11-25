@@ -6,18 +6,19 @@ description: Resolve a polymorph red-rule violation, a lint error whose rule sta
 # Answer a red rule
 
 The red rules are lint rules that keep design decisions out of application code. Exceptions are
-allowed when they are declared: a declared exception names its reason, and the project can list
-every one. A silenced rule is not allowed. Never add `eslint-disable`, `eslint-disable-next-line`
+allowed when they are declared: a declared exception names its reason, where a reviewer can read
+it. A silenced rule is not allowed. Never add `eslint-disable`, `eslint-disable-next-line`
 or `stylelint-disable` for a polymorph rule, and never change a lint config to turn one off.
 
-Every command in this skill starts with the same words, the polymorph tools run from a shell. An
-MCP server named `polymorph` gives the same answers through `validate`, `fix` and
-`get_component`.
+Every command in this skill starts with the same words, the polymorph tools run from a shell.
+`<framework>` is the app's: the `polymorph-screen` skill says how to tell it. An MCP server
+named `polymorph` does the same jobs through `validate`, `fix` and `get_component`, given
+the framework as `framework`.
 
 ## 1. Read what the rule says
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 validate src/App.tsx
+npx -y @metamorph-labs/polymorph@1.0.17 validate src/App.tsx --framework <framework>
 ```
 
 Each violation is a line with the file, the position, the rule and its message. Under it:
@@ -29,8 +30,8 @@ Each violation is a line with the file, the position, the rule and its message. 
 ## 2. Take the rewrite when there is one
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 fix src/App.tsx --dry-run
-npx -y @metamorph-labs/polymorph@1.0.17 fix src/App.tsx
+npx -y @metamorph-labs/polymorph@1.0.17 fix src/App.tsx --dry-run --framework <framework>
+npx -y @metamorph-labs/polymorph@1.0.17 fix src/App.tsx --framework <framework>
 ```
 
 The first prints the fixed code, and the second writes it. The project's own `eslint --fix`
@@ -68,19 +69,23 @@ Take the first rung that works. Each rung is more governed than the next.
 
 Common cases:
 
-- A colour, length or style on a member: find the prop that decides it (`tone`, `variant`,
-  `size`, `gap`) with `component <Name>`. A spacing the scale lacks for one instance is a
+- A colour, length or style on a member: find the prop that decides it with `component <Name>`,
+  such as `Button`'s `variant` and `tone` or
+  `Stack`'s `gap`. A spacing the scale lacks for one instance is a
   `patch` (rung 3). A one-off illustration is a `Bespoke` zone (rung 4).
-- A raw control, or a click handler on a plain element: the member that is that control (`Button`,
-  `Checkbox`, `Select`, `TextField`). `search` finds it by what it does.
-- An icon set or an inline `<svg>`: `Icon` with a role from the card. A glyph no role names is a
-  `Bespoke` zone until the vocabulary adds a role.
+- A raw control, or a click handler on a plain element: the member that is that control, such as
+  `Button`, `Checkbox`, `Select`, `Input` and `Textarea`.
+  `search` finds it by what it does.
+- An icon set or an inline `<svg>`: `Icon` with a role from the card as its
+  `name`. A glyph no role names is a `Bespoke` zone until the vocabulary adds
+  a role.
 - A chart library: the chart members. A chart they cannot draw goes in a `Bespoke` zone.
 - A motion library: members animate their own states. Motion the vocabulary has no member for goes
   in a `Bespoke` zone.
 - A stylesheet import: delete it. Another library's own stylesheet is imported in the file that
   hosts the library inside `ThirdParty`.
-- Another library's component, such as a map, an editor or a data grid: `ThirdParty` (rung 4).
+- Another library's component, such as a map, an editor or a data grid: `ThirdParty`
+  (rung 4).
 
 ## 5. When the same exception keeps coming back
 

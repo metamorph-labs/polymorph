@@ -5,7 +5,7 @@
 
 **`polymorph agents` writes the files a coding agent reads in a project, and `init` writes the
 same ones.** A marked block in `AGENTS.md` (created when absent, and the rest of an existing file
-kept), a `CLAUDE.md` that includes it, four skills in the Agent Skills format
+kept), a `CLAUDE.md` that includes it, the polymorph skills in the Agent Skills format
 (`polymorph-screen`, `polymorph-rules`, `polymorph-setup`, `polymorph-theme`) in
 `.claude/skills/` and `.agents/skills/`, the MCP server's entry for Claude Code (`.mcp.json`,
 merged with the servers already there), Cursor (`.cursor/mcp.json`) and Codex
@@ -16,7 +16,10 @@ or the ones it wrote before.
 
 `polymorph/agents.json` records what it wrote. Run it again after an upgrade: a file nobody edited
 is brought up to the new release, an edited one is kept and named, `--force` replaces it, and
-`--dry-run` writes nothing. Every command the texts name is the tools' own, at the release that
+`--dry-run` writes nothing. `--remove <harness>` stops writing for a harness and removes the files
+only it reads. A file with CRLF line endings compares as the text it holds, and an older release
+refuses to write over files a newer one wrote. The texts say the project's lint runs the red
+rules only when its ESLint config loads them, and give `check src` either way. Every command the texts name is the tools' own, at the release that
 wrote them: `npx -y @metamorph-labs/polymorph@^<version> <verb>` from the published tools, the
 checkout's bin from a checkout.
 

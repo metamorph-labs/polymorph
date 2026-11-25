@@ -356,10 +356,11 @@ the same job. `polymorph <verb> --help` prints one verb's usage and flags.
 | `--save`, `--overwrite` | `theme propose` | Save the proposal; replace files already saved under its names |
 | `--project <path>`, `--read-only` | `mcp` | As for `polymorph-mcp`: the project the write tools write into, or none |
 | `--harness <list>` | `agents` | `claude`, `codex`, `cursor`, `generic` or `all`, comma-separated, added to the harnesses written before; with none and none written before, `claude,codex,cursor` |
+| `--remove <list>` | `agents` | Harnesses to stop writing for: the files only they read are removed where nobody edited them |
 | `--framework <name>` | `agents` | The framework the agent texts and the card are for; omitted, the one written before, else the project's |
 | `--json` | `check` and every verb that asks a tool | Print the report, or the tool's answer, as JSON |
 | `--no-install` | `init` | Write the app and do not install it |
-| `--force` | `add`, `update`, `agents` | Overwrite files you have edited |
+| `--force` | `add`, `update`, `agents` | Overwrite files you have edited; for `agents`, also files a newer release wrote |
 | `--dry-run` | `add`, `init`, `agents` | Print the plan and write nothing |
 | `--dry-run` | `fix` | Print the fixed code and write nothing |
 
@@ -835,15 +836,17 @@ It exits 1 when the proposal is not lawful or the save wrote nothing.
 
 ### Agents: `mcp` and `agents`
 
-`polymorph agents [--harness <list>] [--framework <name>] [--force] [--dry-run]` writes the files a
+`polymorph agents [--harness <list>] [--remove <list>] [--framework <name>] [--force] [--dry-run]`
+writes the files a
 coding agent reads into the project it runs in: a marked block in `AGENTS.md`, a `CLAUDE.md` that
-includes it, the four skills in `.claude/skills/` and `.agents/skills/`, the MCP server's entry for
+includes it, the skills in `.claude/skills/` and `.agents/skills/`, the MCP server's entry for
 Claude Code (`.mcp.json`), Cursor (`.cursor/mcp.json`) and Codex (`.codex/config.toml`), and the
 system card. `planAgents` (`packages/cli/src/agents.ts`) returns them as data, from the registry and
 the verb list, and `init` writes the same plan into a new app. `polymorph/agents.json` records the
 hash of each part written, so a rerun brings an unedited part up to date, keeps an edited one and
-names it, and removes one a release no longer writes; `--force` overwrites, and `--dry-run` reports
-and writes nothing. Like `add`, it refuses a checkout of polymorph and writes nothing outside the
+names it, and removes one a release no longer writes; `--remove` stops writing for a harness,
+`--force` overwrites, and `--dry-run` reports and writes nothing. It refuses to write an older
+release's files over a newer one's. Like `add`, it refuses a checkout of polymorph and writes nothing outside the
 project. [harnesses.md](harnesses.md) lists every file, who reads it, and how a rerun treats it.
 
 `polymorph mcp [--project <path>] [--read-only]` starts the MCP server over stdio, with the flags

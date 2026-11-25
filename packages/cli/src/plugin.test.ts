@@ -168,6 +168,19 @@ describe('the portable manifest with OpenAI’s fields, and Codex’s marketplac
   const openai = (manifest['extensions'] as Record<string, Record<string, unknown>>)['com.openai']
   const face = openai?.['interface'] as Record<string, unknown>
 
+  /**
+   * The portable manifest names no `skills` and no `mcpServers`, and Codex still finds both:
+   *
+   * - developers.openai.com/plugins/build/plugins.md: "Portable packages discover skills from the
+   *   root `skills/` directory, so the manifest doesn't need a `skills` field", and "Fixed package
+   *   paths identify its portable components: `skills/` contains skills, and `mcp.json` configures
+   *   MCP servers."
+   * - developers.openai.com/plugins/deploy/submission.md, in its field table: `skills` and
+   *   `mcpServers` are "Codex only", and "Portable packages always discover skills in `skills/`
+   *   and MCP servers in `mcp.json`."
+   * - agent-plugins.org/schemas/1.0.0/plugin.schema.json sets `additionalProperties: false` and
+   *   lists neither key, so the portable manifest may not carry them.
+   */
   it('has only the keys the Agent Plugins schema allows', () => {
     expect(manifest['$schema']).toBe('https://agent-plugins.org/schemas/1.0.0/plugin.schema.json')
     const allowed = [

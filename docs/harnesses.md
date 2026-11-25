@@ -26,8 +26,8 @@ npx -y @metamorph-labs/polymorph@latest agents --harness claude,codex --dry-run
 | --- | --- | --- |
 | `AGENTS.md` | Codex, Cursor and most other harnesses; Claude Code through `CLAUDE.md` | A block between `<!-- polymorph:start: … -->` and `<!-- polymorph:end -->`: what the app is built with, what application code may not contain, the ladder, the commands for the card, a member, `validate` and `render`, and where the skills are. The rest of the file is the project's |
 | `CLAUDE.md` | Claude Code | The line `@AGENTS.md`. A `CLAUDE.md` that exists keeps its text, and the line is added at its end |
-| `.claude/skills/<skill>/` | Claude Code | The four skills |
-| `.agents/skills/<skill>/` | Codex, Cursor and the other harnesses of the shared format | The same four skills |
+| `.claude/skills/<skill>/` | Claude Code | The skills |
+| `.agents/skills/<skill>/` | Codex, Cursor and the other harnesses of the shared format | The same skills |
 | `.mcp.json` | Claude Code | The `polymorph` server, run with `--project .`, beside the servers already there |
 | `.cursor/mcp.json` | Cursor | The `polymorph` server as a `stdio` entry, run with `--project ${workspaceFolder}` |
 | `.codex/config.toml` | Codex, in a project it trusts | A block holding `[mcp_servers.polymorph]` |
@@ -44,11 +44,23 @@ command names, and a copy in a skill would fall behind the release a project ins
 
 `--harness` takes `claude`, `codex`, `cursor`, `generic` or `all`, comma-separated. With none, a
 project gets `claude`, `codex` and `cursor`, or the ones it was set up for before. A harness named
-is added to the ones written before, so a rerun never drops a harness's files. `--framework` names
-the framework the texts and the card are for. Without it, it is the one written before, else the
-one `polymorph.json` records, else the first whose vocabulary `package.json` depends on, else
-React. The always-loaded text names the project's lint command when `package.json` has a `lint`
-script, run by the package manager its lockfile names.
+is added to the ones written before, so a rerun never drops a harness's files. `--remove` takes the
+same names and stops writing for them: the files only those harnesses read are removed where
+nobody edited them, and a file another harness still reads stays (Codex and Cursor both read
+`.agents/skills/`). The `@AGENTS.md` line in `CLAUDE.md` stays. `--framework` names the framework
+the texts and the card are for. Without it, it is the one written before, else the one
+`polymorph.json` records, else the first whose vocabulary `package.json` depends on, else React.
+
+Every command the texts name whose answer depends on the framework (`card`, `search`,
+`component`, `plan`, `validate`, `fix`, `emit`) names it, and the skills tell an agent to pass
+`framework` to each MCP tool that takes one. A server the plugin starts has no project to read the
+framework from, so without that argument it reads code as React's.
+
+The always-loaded text gives `check src` as the command that runs the red rules, since it runs them
+whatever the project's lint config holds. It says the project's lint (`npm run lint`, in the
+package manager its lockfile names) runs the same rules only when its ESLint config shows it: the
+config imports `@polymorph/rules` or spreads the fragment `polymorph.eslint.js` that `init` and
+`add` write. Otherwise it calls the lint the project's own.
 
 Every command the texts name runs the tools that wrote them: from the published tools,
 `npx -y @metamorph-labs/polymorph@^<version> <verb>`, which resolves the copy a project lists as a
@@ -66,6 +78,13 @@ tools. `polymorph update` copies vendored members and leaves the agent files alo
   `--force` replaces it. A part is a whole skill file, the block in `AGENTS.md` or
   `.codex/config.toml`, the `polymorph` entry of an MCP config, or the line in `CLAUDE.md`.
 - A file a release no longer writes is removed if nobody edited it, with its empty directories.
+- A file the record lists that was deleted is written again. `--remove` is the way to stop writing
+  a harness's files.
+- A file whose lines end in CRLF, as Git's `core.autocrlf` checks text out on Windows, is compared
+  as the LF text it holds, so it is not taken for an edit. A part written into it keeps its CRLF
+  endings.
+- Files a newer release wrote are not replaced by an older one: `agents` refuses, naming both
+  releases, and `--force` writes the older release's files over them.
 - `--dry-run` prints the same report and writes nothing.
 
 An app written by an earlier `polymorph init` has an `AGENTS.md` with no block, a card and an
@@ -73,8 +92,11 @@ An app written by an earlier `polymorph init` has an `AGENTS.md` with no block, 
 can then be deleted, and keeps the card and the server entry as not its own. Running
 `polymorph agents --force` once replaces those two.
 
-`agents` writes nothing outside the project: a path a link carries out of it is refused, and so is
-a record that names one. Like `add`, it refuses to write inside a checkout of polymorph, and plans
+`agents` writes nothing outside the project: a path a link carries out of it is refused, the record
+`polymorph/agents.json` included, and so is a record that names one. A `.codex/config.toml` that
+already declares the polymorph server in any form (a `[mcp_servers.polymorph]` table, a key under
+`[mcp_servers]`, a dotted key) or holds `mcp_servers` as an inline table is kept as it is, because
+TOML would refuse a second declaration. Like `add`, it refuses to write inside a checkout of polymorph, and plans
 there with `--dry-run`.
 
 ## Claude Code
@@ -94,11 +116,16 @@ claude plugin install polymorph@metamorph-labs
 
 The plugin's skills run as `/polymorph:polymorph-screen` and the others. Its server starts with
 `--read-only`, because a plugin's server is not started in a known project: it reads the
-vocabulary, validates, draws screens and proposes themes, and the skills write through the CLI.
+vocabulary, validates, draws screens and proposes themes, and the skills write through the CLI,
+which runs in the project. With no project it cannot read the app's framework, so the skills pass
+`framework` to every tool that takes one. Passing the project to the server instead was not
+chosen: the variable Claude Code offers for it (`${CLAUDE_PROJECT_DIR}`) is one Anthropic's
+directory checklist refuses in a server's command other than `${CLAUDE_PLUGIN_ROOT}`, and Codex
+offers a plugin's server no project path at all.
 The plugin's manifest carries the fields Anthropic's directory lists it with (`displayName`, `icon`
-and the four links). Claude Code accepts them from v2.1.281 on. An earlier release warns about each
-one, and an early one such as v2.1.92 refuses the manifest, so the plugin needs a current Claude
-Code. A project set up with
+and the links) and `network`, which declares the host its server reaches. Claude Code reads the
+listing fields from v2.1.281 on and `network` from v2.1.328 on; an earlier release warns about or
+refuses fields it does not know, so the plugin needs a current Claude Code. A project set up with
 `agents` and the plugin installed has each skill twice, once by its own name and once under
 `polymorph:`.
 
@@ -135,7 +162,7 @@ generic` writes the block and the skills in `.agents/skills/`, which the harness
 format read. A client that takes an MCP server runs `npx -y @metamorph-labs/polymorph@^<version>
 mcp --project <the project's path>`.
 
-The open `skills` CLI installs the four skills into any of the harnesses it knows:
+The open `skills` CLI installs the skills into any of the harnesses it knows:
 
 ```sh
 npx skills add metamorph-labs/polymorph

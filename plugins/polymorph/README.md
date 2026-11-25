@@ -3,7 +3,7 @@
 Polymorph is an open-source design system: one closed vocabulary of interface components for
 React, Vue, Svelte, Solid, Angular and plain HTML, a theme engine, and lint rules (the red rules)
 that keep design decisions out of application code. This plugin gives Claude Code and Codex what
-they need to build with it in your app: four skills and an MCP server.
+they need to build with it in your app: skills and an MCP server.
 
 <!-- Every file in this directory is written by `pnpm agents` from packages/cli/src/plugin.ts and
      packages/cli/src/skills.ts in the polymorph repository. Edit those, not these. -->
@@ -24,7 +24,7 @@ The skills and the server run the published tools of release 1.0.17, the npm pac
 `@metamorph-labs/polymorph`:
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 card
+npx -y @metamorph-labs/polymorph@1.0.17 card --framework react
 npx -y @metamorph-labs/polymorph@1.0.17 mcp --read-only
 ```
 

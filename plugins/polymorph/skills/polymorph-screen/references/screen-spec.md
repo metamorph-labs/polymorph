@@ -43,7 +43,8 @@ framework.
 ## Elements and values
 
 An element is `{ "component", "props"?, "children"?, "exception"? }`. `component` is a member or
-one of its parts (`Card.Header`), as the card lists them for the app's framework.
+one of its parts (such as `Table.Row`), as the card lists them for the
+app's framework.
 
 A value, as a prop or a child, is a string, a number, a boolean, `null`, an element, a list, a
 binding `{ "$": "inputName" }`, or a structured object `{ "$object": { … } }` for data a prop

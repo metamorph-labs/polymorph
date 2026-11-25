@@ -91,7 +91,7 @@ export function llmsTxt(registry: Registry, origin = ''): string {
       'client: `card`, `validate`, `emit`, `render` and the rest. `--help` lists them, and ' +
       '`--json` prints the tool’s answer.',
     `- A coding agent's files in an app that exists: \`${toolsCommand(registry)} agents\`. It ` +
-      'writes a block in `AGENTS.md`, four skills (`polymorph-screen`, `polymorph-rules`, ' +
+      'writes a block in `AGENTS.md`, the skills (`polymorph-screen`, `polymorph-rules`, ' +
       '`polymorph-setup`, `polymorph-theme`) and the MCP server for Claude Code, Codex and Cursor. ' +
       `Claude Code and Codex can install the same skills and server as a plugin from the ` +
       `repository's marketplace instead: \`claude plugin marketplace add metamorph-labs/polymorph\`.`,

@@ -482,7 +482,9 @@ export const VERBS: readonly Verb[] = [
     group: 'agents',
     summary:
       'Write the files a coding agent reads: AGENTS.md, the skills, the MCP entries, the card.',
-    usage: 'polymorph agents [--harness <list>] [--framework <name>] [--force] [--dry-run]',
+    usage:
+      'polymorph agents [--harness <list>] [--remove <list>] [--framework <name>] [--force] ' +
+      '[--dry-run]',
     flags: [
       {
         name: 'harness',
@@ -492,13 +494,23 @@ export const VERBS: readonly Verb[] = [
           'written before, or `claude,codex,cursor`',
       },
       {
+        name: 'remove',
+        value: 'list',
+        summary:
+          'stop writing for these harnesses, and remove the files they alone read that nobody ' +
+          'edited',
+      },
+      {
         name: 'framework',
         value: 'name',
         summary:
           'the framework the texts and the card are for; omitted, the one written before, or the ' +
           'project’s',
       },
-      { name: 'force', summary: 'overwrite agent files you have edited' },
+      {
+        name: 'force',
+        summary: 'overwrite agent files you have edited, and files a newer release wrote',
+      },
       { name: 'dry-run', summary: 'print what would be written and write nothing' },
     ],
     tools: [],
