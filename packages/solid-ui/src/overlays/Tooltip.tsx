@@ -100,7 +100,10 @@ export default function Tooltip(given: TooltipProps): JSX.Element {
       <>
         {/* trigger */}
         <span
-          {...mergeParts(anchorProps(api.value.getTriggerProps()), { class: styles.anchor })}
+          {...mergeParts(anchorProps(api.value.getTriggerProps()), {
+            class: styles.anchor,
+            'data-tooltip-part': 'trigger',
+          })}
           ref={anchor.attach}
         >
           {props.children}

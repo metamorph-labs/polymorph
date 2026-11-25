@@ -70,6 +70,23 @@
   pointer-events: none;
 }
 
+/* The name tip: an icon-only button's label, which the engine's `nameTip` shows on hover and
+   keyboard focus. It is the Tooltip's bubble, composed, so the two read their values from one
+   place. The engine shows it as a manual popover in the top layer, and the browser gives every
+   popover an inset, a border and a margin on each edge, which these rules take away. The
+   bubble's margin on the edge that faces the button is the Tooltip's gap, and its selector is
+   more specific than this rule's. It takes no pointer events, so a click reaches what is under
+   it. It arrives with the motion conventions' fade and leaves at once. */
+.tip {
+  composes: bubble from '../overlays/tooltip.module.css';
+  composes: fadeIn from '../conventions/motion.module.css';
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  pointer-events: none;
+  border: 0;
+}
+
 /* sizes — the conventions' size system -------------------------------------- */
 
 .button[data-size='sm'] {

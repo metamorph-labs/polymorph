@@ -90,6 +90,7 @@ watchEffect(effect1, { watch: () => api.open })
     bind:this={anchor}
     {...attributes(anchorProps(api.getTriggerProps()))}
     class={styles.anchor}
+    data-tooltip-part="trigger"
     >{@render children?.()
   }</span
   ><Portal

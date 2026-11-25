@@ -205,6 +205,8 @@ export const ENGINE_HELPERS: readonly string[] = [
   'PAGINATION_ELLIPSIS',
   'TOOLTIP_DELAY_MS',
   'TOOLTIP_SKIP_DELAY_MS',
+  // An icon-only Button's label, shown on hover and keyboard focus.
+  'nameTip',
   'formatBytes',
   'gateFiles',
   'promptToken',

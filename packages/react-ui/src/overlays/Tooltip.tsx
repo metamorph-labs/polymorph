@@ -100,7 +100,9 @@ export function Tooltip({
   return (
     <TooltipPrimitive.Root open={open} onOpenChange={setOpen}>
       <TooltipPrimitive.Trigger asChild>
-        <span ref={anchor} className={styles.anchor}>
+        {/* An icon-only Button inside finds the anchor by its part, and shows this bubble
+            instead of its name tip. */}
+        <span ref={anchor} className={styles.anchor} data-tooltip-part="trigger">
           {children}
         </span>
       </TooltipPrimitive.Trigger>

@@ -16,8 +16,10 @@ import {
   derived,
   elementRef,
   mountEffect,
+  nameTip,
   presence,
   useMember,
+  watchEffect,
   type IconProps,
   type IconRole,
   type LawfulVariants,
@@ -292,10 +294,17 @@ export class Button {
   )
   protected readonly counted = derived(() => this.$p.count !== undefined && this.$p.count.value > 0)
   private release1: (() => void) | undefined
+  private release2: (() => void) | undefined
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.release1?.())
-    mountEffect(() => this.effect1())
+    watchEffect(
+      () => [this.$p.iconOnly, this.$p.disabled, this.$p.label],
+      () => this.effect1(),
+      true,
+    )
+    inject(DestroyRef).onDestroy(() => this.release2?.())
+    mountEffect(() => this.effect2())
   }
 
   protected e1() {
@@ -461,6 +470,18 @@ export class Button {
 
   private effect1(): void {
     this.release1?.()
+    const ran = nameTip(
+      this.control.value,
+      this.$p.iconOnly && !this.$p.disabled ? this.$p.label : undefined,
+      styles.tip,
+    )
+    this.release1 = () => {
+      ran()
+    }
+  }
+
+  private effect2(): void {
+    this.release2?.()
     const ran = agentMember({
       member: 'Button',
       element: () => this.control.value,
@@ -473,7 +494,7 @@ export class Button {
       actions: { press: () => agentPress(this.control.value) },
       destructive: () => Boolean(this.$p.tone === 'danger'),
     })
-    this.release1 = () => {
+    this.release2 = () => {
       ran()
     }
   }

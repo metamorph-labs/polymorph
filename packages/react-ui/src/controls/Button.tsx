@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, type MouseEvent } from 'react'
+import { useEffect, useRef, type MouseEvent } from 'react'
 
 import {
   agentPress,
@@ -11,6 +11,7 @@ import {
   type IconRole,
   type LawfulVariants,
   memberAttr,
+  nameTip,
   useAgentMember,
 } from '@polymorph/react'
 import styles from '@polymorph/recipes/controls/button.module.css'
@@ -151,6 +152,13 @@ export function Button({
     actions: { press: () => agentPress(ref.current) },
     destructive: () => tone === 'danger',
   })
+
+  // An icon-only button shows its label on hover and keyboard focus, in the Tooltip's bubble
+  // (`nameTip`). A disabled one takes neither, so it shows nothing.
+  useEffect(
+    () => nameTip(ref.current, iconOnly && !disabled ? label : undefined, styles.tip),
+    [iconOnly, disabled, label],
+  )
 
   return (
     <button
