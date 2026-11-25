@@ -426,10 +426,11 @@ its box says which side of the breakpoint the window is on. There is no scroll l
 region is the frame's only scroll container, and the scrim covers it.
 
 **A new page.** A new `transitionKey` (§Routing) moves focus to the new page's `<h1>`, or to
-`<main>` when the page has none, and the polite `role="status"` region says the page's title: the
-heading's text, or the document's title when there is no heading. Focus stays where it is when it
-is already inside the new page, because the page put it there or the reader's control is still on
-the page. The heading takes `tabindex="-1"` for the move and gives it back when focus leaves it.
+`<main>` when the page has none. A screen reader reads the heading that takes focus. When focus
+does not land on a heading, the polite `role="status"` region says the page's title instead: the
+heading's text, or the document's title when there is no heading. Saying the title as well as
+focusing the heading would read it twice. Focus stays where it is when it is already inside the
+new page, because the page put it there or the reader's control is still on the page. The heading takes `tabindex="-1"` for the move and gives it back when focus leaves it.
 The arrival waits a frame, so the page is drawn and a drawer that closed for it has made the page
 reachable. The first page is not an arrival (`arriveAtPage` in the engine).
 

@@ -108,8 +108,8 @@ describe('AppShell — the drawer, from the keyboard (Elements)', () => {
 
 /**
  * A page change under the app's router (`design/archetypes/app-shell.md`, Routing): the shell
- * moves focus to the new page's heading and says its title, and does neither for the first page
- * or while the page is loading. The page here is one heading, `Settings`, and the key changes
+ * moves focus to the new page's heading, which a screen reader reads, and does nothing for the
+ * first page or while the page is loading. The page here is one heading, `Settings`, and the key changes
  * under it.
  */
 describe('AppShell — a new page (Elements)', () => {
@@ -128,7 +128,8 @@ describe('AppShell — a new page (Elements)', () => {
 
     await shell.set({ transitionKey: '/settings' })
     await vi.waitFor(() => expect(document.activeElement).toBe(heading()))
-    expect(announcer()?.textContent).toBe('Settings')
+    // A screen reader reads the focused heading, so the region stays quiet.
+    expect(announcer()?.textContent).toBe('')
     shell.unmount()
   })
 

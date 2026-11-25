@@ -1297,13 +1297,14 @@ describe('AppShell — a new page', () => {
     expect(announcer().textContent).toBe('')
   })
 
-  it("moves focus to the new page's heading and says its title", async () => {
+  it("moves focus to the new page's heading, which says the title on its own", async () => {
     const view = render(frame('/tickets', <h1>Tickets</h1>))
     screen.getByRole('link', { name: 'Inbox' }).focus()
     view.rerender(frame('/settings', <h1>Settings</h1>))
     const heading = screen.getByRole('heading', { name: 'Settings' })
     await vi.waitFor(() => expect(document.activeElement).toBe(heading))
-    expect(announcer().textContent).toBe('Settings')
+    // A screen reader reads the focused heading, so the region stays quiet.
+    expect(announcer().textContent).toBe('')
     expect(announcer().getAttribute('role')).toBe('status')
     // The heading is a stop for this move only.
     expect(heading.getAttribute('tabindex')).toBe('-1')

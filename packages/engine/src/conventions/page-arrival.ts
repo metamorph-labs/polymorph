@@ -15,8 +15,10 @@
  * `tabindex="-1"` for the move and gives it back when focus leaves it.
  *
  * The title is the heading's text, or the document's title when the page has
- * no heading. A polite live region says it, because a reader whose focus does
- * not move hears nothing else.
+ * no heading. A polite live region says it only when focus does not land on
+ * the heading: a screen reader reads a heading that takes focus, and saying
+ * the title as well would read it twice. A reader whose focus stays where it
+ * was, or moves to the content region, hears the title from the region.
  *
  * The arrival waits for the next frame. The page is drawn by then, and so is
  * every change the frame makes in the same update: a drawer that closes for
@@ -41,12 +43,18 @@ function arrive(content: HTMLElement, region: HTMLElement | null): void {
   if (!content.isConnected) return
   const heading = content.querySelector('h1')
   const title = (heading?.textContent ?? '').trim() || document.title.trim()
-  if (region !== null && title !== '') say(region, title)
+  const announce = () => {
+    if (region !== null && title !== '') say(region, title)
+  }
 
   const focused = document.activeElement
-  if (focused !== null && focused !== content && content.contains(focused)) return
+  if (focused !== null && focused !== content && content.contains(focused)) {
+    announce()
+    return
+  }
   if (heading === null) {
     content.focus()
+    announce()
     return
   }
   if (!heading.hasAttribute('tabindex')) {
