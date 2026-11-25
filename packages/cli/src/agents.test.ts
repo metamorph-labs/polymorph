@@ -260,7 +260,9 @@ describe('every command a text names', () => {
     const rules = new Set(registry.laws.map((law) => law.name))
     const tools = new Set(VERBS.flatMap((verb) => verb.tools))
     for (const { where, text } of all) {
-      for (const [rule] of text.matchAll(/(?<![@\w/.-])polymorph\/[a-z]+(?:-[a-z]+)+(?![\w./-])/g)) {
+      for (const [rule] of text.matchAll(
+        /(?<![@\w/.-])polymorph\/[a-z]+(?:-[a-z]+)+(?![\w./-])/g,
+      )) {
         expect(rules, `${where}: ${rule}`).toContain(rule)
       }
       for (const [, tool] of text.matchAll(/`([a-z]+(?:_[a-z]+)+)`/g)) {
