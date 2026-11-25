@@ -250,7 +250,8 @@ object PMStepper : PMStepperRendering {
                 .semantics { role = Role.Button }
                 .widthIn(min = target)
                 .heightIn(min = target)
-                .pmFocusRing(focused, theme.radius.sm.dp),
+                // Around the step: its marker and label reach its edge.
+                .pmFocusRing(focused, theme.radius.sm.dp, around = true),
         ) {
             CompositionLocalProvider(LocalStepActive provides (hovered || pressed)) { content() }
         }

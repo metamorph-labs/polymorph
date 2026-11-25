@@ -13,7 +13,7 @@
    `align-self` keeps the trigger at content width while the region is full
    width, so a wide paragraph never widens the button. */
 .trigger {
-  composes: focusRing from '../conventions/focus.module.css';
+  composes: focusAround from '../conventions/focus.module.css';
   composes: stateFeedback from '../conventions/motion.module.css';
   display: inline-flex;
   align-self: start;
@@ -68,9 +68,21 @@
  * `collapsible.content`: `collapse`, persistent mode, `surface` class, the same
  * binding as `accordion.content` (`design/motion/motion.md`), driven by Radix's
  * measured height. `overflow: hidden` is what the interruption law requires of
- * any box whose size animates. */
+ * any box whose size animates.
+ *
+ * A box that clips cuts what is drawn outside its content at its padding edge:
+ * the seat shadow of a field or a Button against the region's side, and a
+ * control's focus mark, drawn a `space-1` gap outside it. So the region is
+ * wider than its content by `space-2` on each side, and its margins take that
+ * back, so the content stays flush with the trigger. The room is on the inline
+ * axis only, because room on the block axis would change the height Radix
+ * measures and the animation runs to. */
 
 .content {
+  --pm-collapsible-reach: var(--pm-space-2);
+
+  margin-inline: calc(var(--pm-collapsible-reach) * -1);
+  padding-inline: var(--pm-collapsible-reach);
   overflow: hidden;
 }
 

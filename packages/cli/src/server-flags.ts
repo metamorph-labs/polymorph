@@ -1,10 +1,12 @@
 /**
- * The server's command line: `[--project <path>] [--read-only]`.
+ * The MCP server's command line: `[--project <path>] [--read-only]`.
  *
- * Every entry point that starts the server reads its arguments here: the
- * checkout's `bin/polymorph-mcp.js`, and the published tools' `polymorph-mcp`
- * and `polymorph mcp`. So one command line starts the same server however it
- * is run.
+ * Everything that starts the server reads its arguments here: `polymorph mcp`
+ * (`tool-verbs.ts`), the checkout's `packages/mcp/bin/polymorph-mcp.js` and the
+ * published tools' `polymorph-mcp`. So one command line starts the same server
+ * however it is run. It lives in this package, which the server's package
+ * depends on, so the CLI's verb can read it too; `@polymorph/mcp` re-exports
+ * it.
  *
  * The arguments are parsed strictly. An unknown flag stops the server instead
  * of being ignored. Otherwise a mistyped `--readonly` would be ignored, and

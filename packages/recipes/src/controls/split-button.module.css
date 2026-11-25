@@ -33,9 +33,10 @@
   border-inline-start-width: 0;
 }
 
-/* Two tab stops, each with the focus ring. The focused half is raised above the other so
-   the ring is not clipped at the seam. `raise` is the stacking scale's step for layers
-   within one member. */
+/* Two tab stops, each with the focus mark. The mark lies inside each half's edge, so the
+   halves do not cover it. The focused half is still raised above the other, because a
+   system that moves the mark outside draws it over the seam and the neighbouring half.
+   `raise` is the stacking scale's step for layers within one member. */
 .primary:focus-visible {
   z-index: var(--pm-z-raise);
 }

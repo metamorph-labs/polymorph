@@ -33,10 +33,20 @@
  * assumes a transport, so a hosted HTTP variant would need no change to them.
  */
 
-export { createServer, READ_TOOL_NAMES, TOOL_NAMES, WRITE_TOOL_NAMES } from './server'
-export { SERVER_FLAGS, serverFlags, ServerFlagsError } from './flags'
-export type { ServerFlags } from './flags'
+export { createServer, READ_TOOL_NAMES, TOOL_NAMES, TOOLS, WRITE_TOOL_NAMES } from './server'
+export type { ToolEntry } from './server'
+
+/**
+ * The same tools outside the protocol: `toolCaller` calls one by name in this
+ * process, for the CLI's verbs, and `serveStdio` runs the server over stdio
+ * until the client has gone, for `polymorph mcp` and `bin/polymorph-mcp.js`.
+ * An entry point builds both from the context it builds the server from, and
+ * reads the server's command line with `serverFlags`.
+ */
+export { toolCaller } from './oneshot'
 export { serveStdio } from './stdio'
+export { SERVER_FLAGS, serverFlags, ServerFlagsError } from '@polymorph/cli'
+export type { ServerFlags, ToolAnswer, ToolCaller, ToolImage } from '@polymorph/cli'
 
 export {
   browserAdvice,

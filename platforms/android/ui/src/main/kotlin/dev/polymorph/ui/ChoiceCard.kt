@@ -169,7 +169,8 @@ object PMChoiceCard : PMChoiceCardRendering {
         Box(
             Modifier
                 .then(choosing)
-                // Outside the clip, so the ring draws beyond the card's edge.
+                // Outside the clip, so a mark a system draws outside the edge is
+                // not cut.
                 .pmFocusRing(focused && !disabled, theme.radius.lg.dp)
                 .clip(shape)
                 .background(fill)

@@ -369,6 +369,15 @@
   background: var(--pm-selection-bg-hover);
 }
 
+/* An endpoint is a solid fill, so the focus mark lies inside the fill with a gap, in its text
+   colour, as on Calendar's selected day (`conventions/focus.module.css`). An in-range day is the
+   accent wash, where the focus colour is held, so it keeps the shared mark. */
+.day[data-range-start]:focus-visible,
+.day[data-range-end]:focus-visible {
+  --pm-focus-mark: currentcolor;
+  --pm-focus-inset: var(--pm-focus-width);
+}
+
 /* month change — `calendar.md` unchanged ------------------------------------- */
 
 .grid[data-travel='next'] {

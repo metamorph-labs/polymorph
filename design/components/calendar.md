@@ -67,7 +67,7 @@ leaves.
 | unavailable | text `--pm-text-disabled` · `line-through` · no hover |
 | outside month | not rendered (empty cells). A 4-row month shows 4 rows, and days from other months would invite mis-clicks |
 | grid disabled | all days `--pm-text-disabled`, no interaction |
-| focus | the shared focus ring (conventions §4) on the focused day (roving focus, one tab stop) |
+| focus | the shared focus ring (conventions §4) on the focused day (roving focus, one tab stop); on a selected day it lies inside the fill with a gap, in `--pm-selection-text`, inside the selection border (conventions §4, inside a fill) |
 
 ## States
 

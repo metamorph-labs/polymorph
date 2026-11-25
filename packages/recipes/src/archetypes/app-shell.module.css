@@ -266,6 +266,13 @@
   color: var(--pm-text-secondary);
 }
 
+/* The current item is the selection fill, so the focus mark lies inside the fill with a gap, in
+   its text colour, the one the contrast law holds on that fill (`conventions/focus.module.css`). */
+.navItem[data-current]:focus-visible {
+  --pm-focus-mark: currentcolor;
+  --pm-focus-inset: var(--pm-focus-width);
+}
+
 .toggle {
   display: flex;
   flex: none;
@@ -627,7 +634,8 @@
 
   /* The topbar's surface and lower edge, so the nav and the topbar read as one
      bar. `overflow` is visible because the row ends at the last item, and a
-     clipped box would cut that item's focus ring. */
+     clipped box would cut that item's focus mark where a system draws the mark
+     outside the edge. */
   .shell[data-navigation='top'] .sidebar {
     flex-direction: row;
     align-items: center;
@@ -656,7 +664,8 @@
   }
 
   /* The items in a row. It is not a scroll container, because a scroll
-     container clips the focus ring of an item at its edge. */
+     container clips an item's focus mark at its edge where a system draws the
+     mark outside the item. */
   .shell[data-navigation='top'] .nav {
     flex-flow: row wrap;
     align-items: center;

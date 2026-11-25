@@ -86,8 +86,9 @@ exports[`emitThemeCSS > matches its snapshot 1`] = `
   --pm-material-saturate: 1;
   --pm-material-surface: #ffffff;
   --pm-texture-page: none;
-  --pm-focus-width: 3px;
-  --pm-focus-offset: 0px;
+  --pm-focus-width: 2px;
+  --pm-focus-offset: -2px;
+  --pm-focus-place: inside;
   --pm-focus-field: ring;
   --pm-hover-unfilled: wash;
   --pm-hit-target: 24px;

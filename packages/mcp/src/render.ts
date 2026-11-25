@@ -96,7 +96,7 @@ export interface InputFill {
 }
 
 export interface LayoutFault {
-  kind: 'sideways-scroll' | 'clipped-text' | 'small-target' | 'cut-off'
+  kind: 'sideways-scroll' | 'clipped-text' | 'small-target' | 'cut-off' | 'no-gap' | 'unseen-focus'
   element: string
   message: string
 }
@@ -368,11 +368,11 @@ interface ScreenPage {
     fills: InputFill[]
     failures: ScreenView['failed']
   }>
-  measure: () => {
+  measure: () => Promise<{
     faults: LayoutFault[]
     truncated: string[]
     page: { width: number; height: number; scrollHeight: number }
-  }
+  }>
 }
 
 /**
@@ -454,7 +454,7 @@ async function drawState(page: Page, viewport: Viewport, request: unknown): Prom
   )
   const imageHeight = Math.min(Math.max(pageHeight, height), PICTURED_WINDOWS * height)
   // The picture is taken before the measure, which scrolls controls into the window to ask
-  // what a touch on them lands on.
+  // what a touch on them lands on, and moves keyboard focus through them.
   const png = await page.screenshot({
     type: 'png',
     fullPage: true,

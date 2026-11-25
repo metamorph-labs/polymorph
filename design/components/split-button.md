@@ -104,7 +104,7 @@ solid's gradient and seat and the wash ladders. The halves hover and press
 **independently**. Only the half under the pointer responds, and the seam and the other
 half stay unchanged. The group offers two actions, so the styling must show which one a
 press triggers. Focus: two tab stops, each with the shared focus ring (conventions §4).
-The focused half sits above the other (`z-index`) so the ring is not clipped at the seam.
+The ring lies inside each half's edge. The focused half still sits above the other (`z-index`), so a ring a system draws outside the edge is not covered at the seam.
 The chevron's glyph: Icon `expand` at §2's size for the control, `currentColor` from its
 half's recipe.
 

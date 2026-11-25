@@ -46,9 +46,17 @@ const PHONE = 320
 
 const px = (value: string) => Number.parseFloat(value)
 
-/** The width of the edge fade, and how far a focus ring reaches past its tab. */
+/** The width of the edge fade. */
 const fade = () => px(tokenLength('--pm-space-6'))
-const reach = () => px(tokenLength('--pm-focus-offset')) + px(tokenLength('--pm-focus-width'))
+
+/**
+ * How far a focused tab's mark reaches past its box: the outline's offset plus its width, read
+ * from the tab, and 0 where the mark lies inside the edge.
+ */
+function reach(focused: Element): number {
+  const style = getComputedStyle(focused)
+  return Math.max(0, px(style.outlineOffset) + px(style.outlineWidth))
+}
 
 function Strip({ width = PHONE, ...props }: Partial<TabsProps> & { width?: number }) {
   return (
@@ -250,7 +258,7 @@ describe('Tabs wider than its container — the keyboard', () => {
     }
   })
 
-  it('keeps the whole focus ring inside the list, at both ends of the strip', async () => {
+  it('keeps the whole focus mark inside the list, at both ends of the strip', async () => {
     render(<Strip />)
     await placed()
     const first = tab(/Overview/)
@@ -258,8 +266,8 @@ describe('Tabs wider than its container — the keyboard', () => {
     expect(getComputedStyle(first).outlineStyle).toBe('solid')
 
     // A scroll container clips at its padding edge, which is its box here: the
-    // list has no border. The ring must end inside it on every side.
-    const ring = reach()
+    // list has no border. The mark must end inside it on every side.
+    const ring = reach(first)
     expect(box(first).left - ring).toBeGreaterThanOrEqual(box(list()).left)
     expect(box(first).top - ring).toBeGreaterThanOrEqual(box(list()).top)
     expect(box(first).bottom + ring).toBeLessThanOrEqual(box(list()).bottom)
@@ -268,11 +276,11 @@ describe('Tabs wider than its container — the keyboard', () => {
     const last = tab(/Settings/)
     await vi.waitFor(() => expect(document.activeElement).toBe(last))
     await settled()
-    expect(box(last).right + ring).toBeLessThanOrEqual(box(list()).right)
+    expect(box(last).right + reach(last)).toBeLessThanOrEqual(box(list()).right)
   })
 
   it('keeps the triggers where a strip that fits has them', () => {
-    // The room for the ring is padding the list takes back with margins, so the
+    // The room for the mark is padding the list takes back with margins, so the
     // first tab starts at the container's edge and the panel follows the rule.
     render(<Strip width={900} />)
     const container = screen.getByTestId('container')

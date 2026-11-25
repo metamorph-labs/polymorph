@@ -27,7 +27,7 @@ material belong to the system.
 | typePersonality | `grotesque` | The material is the feature, so the type stays neutral. A grotesque reads as chrome on glass. |
 | colorStrategy | `tinted` | Glass takes colour from what is behind it. A tinted wash on resting surfaces gives the blur palette colour to saturate, where `quiet` would leave it nothing. This is flint's tinted-material argument, applied to a material that really blurs. |
 | motionTemperament | `expressive` | Floating panes move like objects: springs, slight overshoot, a press that gives. Linear easing would make the glass look printed. This also separates it from desktop, whose motion only confirms. |
-| ornament | `minimal` | Hover lift and focus halo only. The specular top edge (`insetTop` at its brightest, 20% white) is part of the depth derivation, not ornament. Grain over glass would be two competing textures. |
+| ornament | `minimal` | Hover lift and the pending drop's halo only. The specular top edge (`insetTop` at its brightest, 20% white) is part of the depth derivation, not ornament. Grain over glass would be two competing textures. |
 
 Divergence: 3 from pop (depth, density, temperament; the closest neighbour,
 since pop is the consumer register on elevation and this is the material

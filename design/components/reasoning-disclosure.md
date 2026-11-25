@@ -50,7 +50,7 @@ Collapsible's trigger, unchanged, with a mark before the label.
 | mark | Icon `reasoning` `sm` · `--pm-text-muted`; while streaming Icon `loading` on the `spin` loop (`button.spinner`'s binding, composed from the motion module) |
 | chevron | Icon `down` `sm` · `--pm-text-muted` · rotates 180° when open |
 | trigger hover | label `--pm-accent-text`, chevron `--pm-text-secondary`; Collapsible's colour-only hover |
-| focus | the shared focus ring (conventions §4) |
+| focus | the shared focus ring around the trigger with a `--pm-space-1` gap (conventions §4, around), as Collapsible's |
 | inner | `margin-block-start --pm-space-3` (inside the animated region) · `margin-inline-start --pm-space-2` · `padding-inline-start --pm-space-4` · `border-inline-start 2px solid --pm-border-strong`; Markdown's quote rule, so quoting and thinking share one quieter style |
 
 ## States

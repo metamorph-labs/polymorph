@@ -185,7 +185,7 @@ dismiss both when suggesting
 | Part | Tokens |
 | --- | --- |
 | frame | column · gap `--pm-space-2` · padding `--pm-space-3` · bg `--pm-bg-surface` · border `1px solid --pm-border-field` · radius `--pm-radius-surface` (the page's largest control uses a surface's corner radius) · shadow `--pm-shadow-seat` · `stateFeedback` |
-| frame, field focused | the composite-field focus convention (conventions §4) via `:has(> textarea:focus-visible)`: border `--pm-border-focus-solid`, the ring, `--pm-glow-focus` |
+| frame, field focused | the composite-field focus convention (conventions §4) via `:has(> textarea:focus-visible)`: border `--pm-border-focus-solid`, the ring inside the frame's edge, in `--pm-border-focus-solid`; under `--pm-focus-field: border` the ring lies inside the edge whatever the system's offset |
 | frame hover | border `--pm-border-strong` (as Input; not applied when disabled or during dragover) |
 | frame dragover | FileUpload's zone: bg `--pm-accent-subtle` · border `--pm-accent-bg` · shadow `--pm-glow-focus` |
 | frame disabled | bg `--pm-bg-subtle` · border `--pm-border-subtle` · no seat · `cursor: not-allowed` |
@@ -250,7 +250,7 @@ The field is a real `<textarea>` named by `label`, because a composer has no vis
 still needs a name. Every control is a real Button labelled with the app's text: `messages`, whose
 English defaults name the controls "Send", "Stop" and "Attach". The hidden
 picker is outside the tab order and the accessibility tree; the attach Button stands in for it in
-both. The frame's ring is the focus convention drawn around the whole composer. The field's own
+both. The frame's ring is the focus convention drawn on the whole composer's edge. The field's own
 outline is suppressed so there is one ring, not two. `data-state="streaming"` is the only new
 state on the root, and the stop control's name states it in words.
 

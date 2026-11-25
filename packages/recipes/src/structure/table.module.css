@@ -132,7 +132,7 @@
 
 /* The whole header is the target, and it is a real button. */
 .sortButton {
-  composes: focusRing from '../conventions/focus.module.css';
+  composes: focusAround from '../conventions/focus.module.css';
   composes: stateFeedback from '../conventions/motion.module.css';
   display: inline-flex;
   gap: var(--pm-space-1);

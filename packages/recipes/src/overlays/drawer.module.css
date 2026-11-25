@@ -189,11 +189,30 @@
 /* The only scrolling region. This is Dialog's rule, and it matters more here: a
    drawer is the tallest surface in the vocabulary, and a header that scrolled
    away would take the ✕ with it. `min-block-size: 0` lets it shrink inside the
-   flex column instead of pushing the panel past the viewport. */
+   flex column instead of pushing the panel past the viewport.
+
+   A scroll container cuts what it holds at its padding edge, on both axes. The
+   inline padding gives a field's seat shadow room at the sides. At the top the
+   body is larger than its content by Dialog's reach, `space-2`, inside the
+   header's bottom padding, and its margin takes the reach back, so the content
+   stays where it is. */
 .body {
+  --pm-drawer-reach: var(--pm-space-2);
+
   min-block-size: 0;
+  margin-block-start: calc(var(--pm-drawer-reach) * -1);
+  padding-block-start: var(--pm-drawer-reach);
   padding-inline: var(--pm-space-5);
   overflow-y: auto;
+}
+
+/* The same room at the end, inside the footer's top padding, when a footer
+   follows. Without one the body's end is the panel's: taken back by a margin,
+   the room would make a long drawer's panel scroll by the reach, and kept, it
+   would make a bottom drawer taller by it. */
+.body:not(:last-child) {
+  margin-block-end: calc(var(--pm-drawer-reach) * -1);
+  padding-block-end: var(--pm-drawer-reach);
 }
 
 .footer {

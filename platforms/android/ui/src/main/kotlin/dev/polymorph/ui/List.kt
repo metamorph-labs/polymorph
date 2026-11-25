@@ -169,7 +169,9 @@ object PMList : PMListRendering {
             if (current) put("current", "true")
         }
         val least = if (open != null) maxOf(density.controlHeight.lg, density.hitTarget) else density.controlHeight.lg
-        // The ring's stroke inside the item's edge: its offset and its width in.
+        // The mark inside the item's edge at every system's offset: the box it
+        // is drawn on is inset by the offset and the width, which is 0 where
+        // the mark already lies inside.
         val ring = (theme.focus.offset + theme.focus.width).dp
 
         Column(

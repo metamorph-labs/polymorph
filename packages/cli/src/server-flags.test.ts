@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { serverFlags, ServerFlagsError } from './flags'
+import { serverFlags, ServerFlagsError } from './server-flags'
 
 /**
- * The server's command line, which every entry point reads with this parser:
- * the checkout's `bin/polymorph-mcp.js` and the published tools' two bins.
+ * The MCP server's command line, which everything that starts the server
+ * reads with this parser: `polymorph mcp`, the checkout's `polymorph-mcp` and
+ * the published tools' bins.
  */
 describe('the server’s flags', () => {
   it('reads a project, in either spelling, and a read-only server', () => {

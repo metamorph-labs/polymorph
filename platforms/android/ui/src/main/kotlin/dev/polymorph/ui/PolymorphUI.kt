@@ -814,24 +814,59 @@ fun Modifier.pmHitTarget(
 /* Focus ring --------------------------------------------------------------- */
 
 /**
- * The focus ring (`design/components/README.md`, "Focus ring"): an outline of
- * `focus.width` in `border.focus`, `focus.offset` outside the part's own
- * shape. The outline is the accessibility surface; the web's decorative glow
- * under it is not drawn. A part that takes keyboard or text focus draws it
- * while focused, the web's `:focus-visible`: Button, Checkbox's box, Switch's
- * track, Card's link, Input and Select's field, and DataTable's rows and sort
- * headers. Put it outside any clip of the part, so the ring draws beyond it.
+ * The focus mark (`design/components/README.md`, "Focus ring"): an outline of
+ * `focus.width` in `border.focusSolid`, at `focus.offset` from the part's own
+ * shape. The derived offset is minus the width, so the line lies inside the
+ * part's edge and covers its border; a system's offset of 0 or more draws it
+ * outside. The part's shape chooses one of the web's three placements:
+ *
+ * - inside the edge, the default, for a part with padding around its content;
+ *   a part whose border carries state (an invalid field, a selected day)
+ *   passes `stateBorder`, and the line moves in past that hairline;
+ * - inside a fill with a gap: a part with a solid fill passes `onFill`, the
+ *   colour the label laws hold on that fill, and the line takes it and moves
+ *   in by one more width, so the fill shows on both sides of it;
+ * - around with a gap: a part that cannot hold the line inside it passes
+ *   `around`, and the line lies `spacing.s1` outside it in the focus colour, in
+ *   every state. That is a control too small for the line, and a part whose
+ *   box is its text, where a line inside would cross the first and last
+ *   letters and a line on the edge would touch them.
+ *
+ * The fill and the state border apply only while the mark lies inside the
+ * edge; outside it the line is the focus colour at the system's offset.
+ * The outline is the accessibility surface; the web's decorative glow is not
+ * drawn. A part that takes keyboard or text focus draws it while focused, the
+ * web's `:focus-visible`: Button, Checkbox's box, Switch's track, Card's link,
+ * Input and Select's field, and DataTable's rows and sort headers. Put it
+ * outside any clip of the part, so a mark a system draws outside the edge is
+ * not cut.
  */
 @Composable
-fun Modifier.pmFocusRing(visible: Boolean, cornerRadius: Dp): Modifier {
+fun Modifier.pmFocusRing(
+    visible: Boolean,
+    cornerRadius: Dp,
+    onFill: Color? = null,
+    stateBorder: Boolean = false,
+    around: Boolean = false,
+): Modifier {
     val theme = PM.theme
-    val color = theme.colors.borderFocus.color
+    val offsetDp = theme.focus.offset.dp
+    val inside = theme.focus.offset < 0f
+    val fill = onFill.takeIf { inside && !around }
+    val color = fill ?: theme.colors.borderFocusSolid.color
     val width = theme.focus.width.dp
-    val outset = (theme.focus.offset + theme.focus.width / 2).dp
+    val offset = when {
+        around -> maxOf(theme.defaultDensity.spacing.s1, offsetDp)
+        !inside -> offsetDp
+        else -> offsetDp - (if (fill != null) width else 0.dp) - (if (stateBorder) PMGeometry.hairline else 0.dp)
+    }
+    // The stroke is centred on its path, so the path lies half the width out
+    // from the offset.
+    val outset = offset + width / 2
     return if (!visible) this else drawWithContent {
         drawContent()
         val grow = outset.toPx()
-        val radius = (cornerRadius + outset).toPx()
+        val radius = (cornerRadius + outset).coerceAtLeast(0.dp).toPx()
         drawRoundRect(
             color = color,
             topLeft = Offset(-grow, -grow),

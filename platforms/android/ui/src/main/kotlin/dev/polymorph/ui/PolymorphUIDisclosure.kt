@@ -116,7 +116,9 @@ fun PMDisclosureTrigger(
                 if (!disabled) pmDisclosure(open, strings, onToggle)
             }
             .pmHitTarget()
-            .pmFocusRing(focused && !disabled, theme.radius.sm.dp)
+            // Around the trigger: it has no inline padding, so a line inside it
+            // would cross the label.
+            .pmFocusRing(focused && !disabled, theme.radius.sm.dp, around = true)
             .heightIn(min = recipe.minHeight)
             .padding(vertical = recipe.paddingY),
         horizontalArrangement = Arrangement.spacedBy(recipe.gap),

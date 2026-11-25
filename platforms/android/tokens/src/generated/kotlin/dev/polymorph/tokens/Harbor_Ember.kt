@@ -198,7 +198,7 @@ internal object Harbor_Ember {
                 dark = PMRgba(30, 21, 19, 1f),
             ),
         ),
-        focus = PMFocus(width = 4f, offset = 0f),
+        focus = PMFocus(width = 3f, offset = -3f),
         icon = PMIcons(
             sm = PMIconScale(size = 14f, stroke = 2f),
             md = PMIconScale(size = 16f, stroke = 1.75f),

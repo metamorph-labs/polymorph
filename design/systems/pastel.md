@@ -22,7 +22,7 @@ uncontained tables, a loose rhythm.
 | typePersonality | `humanist` | The theme's main voice. Gentle tracking, 600 display weight. |
 | colorStrategy | `tinted` | A low-chroma violet wash on surfaces (`tinted` ramp), so empty screens are not bare. It starts one step down the ladder, where sRGB can hold it. |
 | motionTemperament | `standard` | Warm motion without theatrics. `expressive` suits a demo, not daily work. |
-| ornament | `minimal` | Hover lift, focus halo and the violet glow. Other decoration goes into the tinted washes and the gradient where the vocabulary offers them. No texture. |
+| ornament | `minimal` | Hover lift, the pending drop's halo and the violet glow. Other decoration goes into the tinted washes and the gradient where the vocabulary offers them. No texture. |
 
 Divergence: 8 axes from terminal (the two founding systems, held at least five apart by law
 and placed at opposite corners of the axis space on purpose), 6 from journal, 5 from dew,

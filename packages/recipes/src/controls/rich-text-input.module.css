@@ -442,31 +442,41 @@
   border-color: var(--pm-border-strong);
 }
 
-/* The ring on the frame while the surface inside it has focus: the
+/* The focus mark on the frame while the surface inside it has focus: the
    composite-field convention (`focus.module.css`), restated because the
    convention's selector reaches a native `<input>` child only. A focused
    contenteditable matches `:focus-visible` from the pointer too, as a text
-   field does. The recolour yields to the invalid border, which must survive
-   focus; the ring never does. */
+   field does. The outline is at the system's offset, inside the frame's edge
+   by default. The recolour yields to the invalid border, which must survive
+   focus; the mark never does. */
 .root .frame:has(.surface:focus-visible) {
-  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline: var(--pm-focus-width) solid var(--pm-border-focus-solid);
   outline-offset: var(--pm-focus-offset);
-  box-shadow: var(--pm-glow-focus);
 }
 
 .root:not([data-invalid]) .frame:has(.surface:focus-visible) {
   border-color: var(--pm-border-focus-solid);
 }
 
+/* An invalid frame keeps its danger border visible: inside the edge, the mark
+   moves in past the border, as the convention moves it on an invalid field. */
+@container style(--pm-focus-place: inside) {
+  .root[data-invalid] .frame:has(.surface:focus-visible) {
+    outline-offset: calc(var(--pm-focus-offset) - 1px);
+  }
+}
+
 /* The field style, where the system chooses it (`overrides.focus.field: border`,
-   the flag `--pm-focus-field`): the outline moves inside the frame's edge and
-   takes the solid focus colour, and the frame keeps its seat. An invalid field
-   keeps the ring, so the danger border stays visible. */
+   the flag `--pm-focus-field`): the outline lies inside the frame's edge by its
+   width whatever the system's offset, and inside the danger border when the
+   field is invalid. */
 @container style(--pm-focus-field: border) {
-  .root:not([data-invalid]) .frame:has(.surface:focus-visible) {
-    outline-color: var(--pm-border-focus-solid);
+  .root .frame:has(.surface:focus-visible) {
     outline-offset: calc(var(--pm-focus-width) * -1);
-    box-shadow: var(--pm-shadow-seat);
+  }
+
+  .root[data-invalid] .frame:has(.surface:focus-visible) {
+    outline-offset: calc(var(--pm-focus-width) * -1 - 1px);
   }
 }
 

@@ -104,41 +104,91 @@ recipe and stay outside the map.
 
 ## 4. Focus ring
 
-Every focusable part composes one shared CSS module
-(`packages/recipes/src/conventions/focus.module.css`):
+Every focusable part composes one class of one shared CSS module
+(`packages/recipes/src/conventions/focus.module.css`), chosen by the part's shape:
 
 ```css
 .focusRing:focus-visible {
-  outline: var(--pm-focus-width) solid var(--pm-border-focus);
-  outline-offset: var(--pm-focus-offset);
-  box-shadow: var(--pm-glow-focus);
+  outline: var(--pm-focus-width) solid var(--pm-focus-mark, var(--pm-border-focus-solid));
+  outline-offset: calc(var(--pm-focus-offset) - var(--pm-focus-inset));
 }
 ```
 
 Never use `:focus`, because it fires on mouse press and teaches people to ignore the ring.
-Never write per-component ring styles. Composite fields (Input) put the same class on
-their styled container, which shows the ring when its direct native-field child is
-focused.
+Never write per-component ring styles: a part picks its placement by composing a class or
+setting the module's hooks, and the module draws the ring. Composite fields (Input) put
+the class on their styled container, which shows the ring when its direct native-field
+child is focused.
 
-The **outline is the accessibility surface**. It appears alone wherever a theme derives no
-glow. The `--pm-glow-focus` halo under it is decorative. When a recipe's rest state sets
-its own `box-shadow` (Button's solid), the halo loses that cascade and the recipe does not
-restate it. A bordered part also recolours its border to `--pm-border-focus-solid` while
-focused. The exception is a border that carries state (`data-invalid`, a selected or
-range-endpoint cell), where the state colour wins over the focus recolour. Nothing
-overrides the ring itself. Ring width and offset are tokens derived from the axes: width
-from contrast temperament, offset from geometry (a hugging ring everywhere except
-`round`). A system file may re-value them. No component tunes its own.
+The ring is an outline at `--pm-focus-width`: 2px at the `soft` and `standard`
+temperaments and 3px at `stark`. It is a thin line, so its colour carries it:
+`--pm-border-focus-solid`, which the contrast law holds to 3:1 by the WCAG ratio on every
+background and wash a part is drawn on, in both modes (`docs/theming.md`). There is no
+halo: the **outline is the accessibility surface**, and forced colours keep it.
 
-A system may also choose where a focused field draws the outline (`overrides.focus.field`,
+**Three placements, by the part's shape.**
+
+| Placement | Shape | How | Parts |
+| --- | --- | --- | --- |
+| inside the edge | padding around the content | `focusRing`: offset `--pm-focus-offset`, which the theme derives as minus the width, so the line covers the border and the pixels inside it | fields, unfilled Buttons, rows, cards, panels, triggers with padding, and every part not listed below |
+| inside a fill, with a gap | a solid fill with room for the line | `focusRing` with both hooks set on the part's own `:focus-visible` state: `--pm-focus-mark: currentcolor` and `--pm-focus-inset: var(--pm-focus-width)`. The line takes the part's label colour, which the label laws hold on the fill, and moves in by one more width, so the fill shows on both sides of it | Button's `solid` tones (and every member that composes Button), Calendar's selected day, DateRangePicker's endpoints, the current item of SectionNav, TableOfContents and AppShell's navigation |
+| around, with a gap | a control too small to hold the line, or a box that is its text, with no padding | `focusAround`: offset `--pm-space-1`, or the system's own where it is larger, in the focus colour in every state | Checkbox's box, Radio's circle, Switch's track, Slider's thumb, ColorInput's thumbs, Carousel's dots; Link's `inline` and `standalone`, Tabs' trigger, Accordion's, Collapsible's and ReasoningDisclosure's triggers, Stepper's step button, Table's sort button, the chart legend's key, JsonTree's toggle, a Breadcrumbs crumb, an ErrorSummary link, a SourceList title |
+
+Inside the edge, nothing is drawn outside the part, so a container that clips its content
+(a scroll area, a pane, a table's wrapper) does not cut the ring and no member leaves room
+around a part for it. A field's border reads as taking the focus colour and thickening
+inward, and a button, row or card gets the line just inside its edge.
+
+Inside a fill, the label colour is held on the fill and not on the page. At the fill's
+edge the line would sit against the page, and a dark label on a dark page, or a white one
+on a white page, would show nothing, so the gap keeps the fill on both sides of the line.
+A recipe sets the hooks only on the focused state, never at rest, because a custom
+property inherits, and the module gives every part their rest values, so no part takes
+them from a part around it.
+
+Around is the one placement that draws outside the part, and it takes two shapes that
+cannot hold the line. A checkbox, a radio, a switch, a slider's thumb and a carousel dot
+are too small for a 2px line and a gap inside them to sit clear of their glyph or their
+thumb. A part whose box is its text, with no padding, has its first and last letters at
+its edge: a line inside the box would cross them, and a line on the edge would touch
+them, so the line stands `--pm-space-1` clear of the text. A part whose text reaches its
+edge takes this placement even if it is not a link. The line is the focus colour in every
+state, so a checked control draws focus exactly as an unchecked one does, and it leaves
+the control's border, which carries the checked or invalid state, uncovered. A container
+that clips such a part leaves room for the ring's reach, `--pm-space-1` plus the width,
+as Tabs' list does. The list stays short: a part joins it only when it cannot hold the
+line.
+
+**A border that carries state** stays visible: an invalid field (`data-invalid`,
+`aria-invalid="true"`) and a selected or range-endpoint cell draw the ring inside that
+border, 1px further in, after any fill gap, so the state and the ring both show. Around
+the part the ring covers no border and keeps its place.
+
+**A row that shares its edges** (List's item, Tree's row, MasterDetailPage's list pane)
+restates the ring with `outline-offset: calc(var(--pm-focus-width) * -1)`, so it stays
+inside the edge even where a system moves every other ring outside.
+
+Ring width and offset are tokens: width from contrast temperament, offset derived from the
+width. A system file may re-value them: an offset of minus the width states the default,
+and 0 to 4px moves the ring outside the part, with that much air (`docs/theming.md`). The
+theme writes where the ring sits as the flag `--pm-focus-place`, and the shared module
+branches on it. Outside the edge, neither fill hook applies, because the ring is drawn on
+the surface behind the part, in the focus colour; a state border is not covered, so the
+ring keeps the system's offset; and a bordered part recolours its border to
+`--pm-border-focus-solid` while focused, so the edge and the ring match, except a border
+that carries state and a control the ring goes around. No component tunes its own width,
+offset or colour.
+
+A system may also choose where a focused field draws the ring (`overrides.focus.field`,
 the flag `--pm-focus-field`). Under `border`, a field (the composite form, a textarea, a
-combobox trigger) draws it inside its edge at the same width, in `--pm-border-focus-solid`,
-and keeps its seat shadow instead of the halo. An invalid field keeps the ring. The shared
-module branches on the flag, so no member restates it, except the two that draw their ring
-by hand outside it: PromptInput's frame, whose field is a `<textarea>` child the module's
-`> input` selector does not reach, and OTPInput's caret cell, which stands in for an invisible
-input. Each recipe repeats the same branch beside its own ring. The contrast law holds both
-focus colours to the focus floor on every surface (`docs/theming.md`).
+combobox trigger) draws it inside its edge at the system's width whatever the offset, and
+an invalid field inside its danger border. It differs from the default only in a system
+that moves the ring outside. The shared module branches on the flag, so no member restates
+it, except the members that draw their ring by hand outside it: PromptInput's frame, whose
+field is a `<textarea>` child the module's `> input` selector does not reach,
+RichTextInput's frame, whose field is a contenteditable surface, and OTPInput's caret
+cell, which stands in for an invisible input. Each repeats the branches that apply to it
+beside its own ring.
 
 ## 5. Disabled, loading, invalid
 
@@ -151,7 +201,8 @@ focus colours to the focus floor on every surface (`docs/theming.md`).
   width must not change: the spinner replaces the leading icon slot or joins the label.
   Spinner = `<Icon name="loading" />` bound to the `spin` pattern (§7).
 - **Invalid (inputs):** `data-invalid` + `aria-invalid="true"`. The border becomes
-  `--pm-danger-border`. FormField wires the message. The ring colour never changes.
+  `--pm-danger-border`. FormField wires the message. The ring colour never changes, and
+  a focused invalid field draws the ring inside the danger border (§4).
 
 ## 6. Type usage
 

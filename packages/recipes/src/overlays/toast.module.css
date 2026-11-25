@@ -8,10 +8,22 @@
  * handles the box, the swipe, and the rule that a leaving card is not a click
  * target. */
 
+/* The list scrolls when its cards are taller than the window, and a scroll
+ * container cuts what it holds at its padding edge, on both axes. So the cards'
+ * shadows are drawn inside the list's padding. The list reaches the window's end
+ * and bottom edges, where the window cuts a shadow anyway, and its padding there
+ * is the cards' inset, `space-6`. On the start side and the top its padding is
+ * the reach of a card's shadow. The list takes no pointer events, so its padding
+ * and the gaps between the cards take no click meant for the page under them;
+ * an open card takes its own (`.toast[data-state='open']`). */
 .viewport {
+  /* `space-9`: the reach of the longest transient shadow the shipped systems
+     derive, glass's, whose widest layer blurs over 64px with no sideways offset. */
+  --pm-toast-reach: var(--pm-space-9);
+
   position: fixed;
-  inset-block-end: var(--pm-space-6);
-  inset-inline-end: var(--pm-space-6);
+  inset-block-end: 0;
+  inset-inline-end: 0;
 
   /* `toast`, the top of the stacking order: announcements are above surfaces,
      which are above the frame. So a toast raised while a sheet is open paints
@@ -20,13 +32,21 @@
   display: flex;
   flex-direction: column;
   gap: var(--pm-space-3);
+
+  /* The sizes are the cards' own, and the padding is room around them: the
+     width, and the window less an inset at each end. When the cards fill the
+     window's height, the room lies past its top edge, so the cards still stop
+     `space-6` from it. */
+  box-sizing: content-box;
   inline-size: calc(var(--pm-space-10) * 4);
   max-inline-size: calc(100vw - var(--pm-space-6) * 2);
   max-block-size: calc(100dvh - var(--pm-space-6) * 2);
   overflow-y: auto;
   margin: 0;
-  padding: 0;
+  padding-block: var(--pm-toast-reach) var(--pm-space-6);
+  padding-inline: var(--pm-toast-reach) var(--pm-space-6);
   list-style: none;
+  pointer-events: none;
 }
 
 /* The phone register, below 30rem (toast.md) ----------------------------------
@@ -34,10 +54,11 @@
  * A fixed-width card in the `bottom-end` corner at `space-6` insets collides
  * with thumbs and the home indicator (`docs/layout.md`). So the viewport becomes
  * full-width (`inset-inline: 0`, with `padding-inline` for the margins), and the
- * bottom inset adds the safe area, which is zero where there is no notch. The
+ * bottom padding adds the safe area, which is zero where there is no notch. The
  * cards are full-width because the viewport's width cap no longer applies and
- * a column's items stretch. Max-visible, stack gap, ordering, timers and the
- * x-axis swipe are unchanged.
+ * a column's items stretch. Both sides are the window's edges, so the shadow
+ * needs no room there. Max-visible, stack gap, ordering, timers and the x-axis
+ * swipe are unchanged.
  *
  * `@media` is allowed here for the overlay class's reason (`docs/layout.md`):
  * the viewport is portalled and `fixed`, which makes it shell-class with the
@@ -45,10 +66,10 @@
  * rem literal because a breakpoint is geometry, not theme. */
 @media (width < 30rem) {
   .viewport {
-    inset-block-end: calc(var(--pm-space-6) + env(safe-area-inset-bottom, 0px));
     inset-inline: 0;
     inline-size: auto;
     max-inline-size: none;
+    padding-block-end: calc(var(--pm-space-6) + env(safe-area-inset-bottom, 0px));
     padding-inline: var(--pm-space-4);
   }
 }

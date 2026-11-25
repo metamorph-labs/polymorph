@@ -5,7 +5,12 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { assertGoverned } from '@polymorph/react'
 import { createAgentBridge } from '@polymorph/engine/agent'
 import { installTestTheme } from '@polymorph/engine/testing'
+import { Button } from '../controls/Button'
+import { FormField } from '../controls/FormField'
+import { Input } from '../controls/Input'
+import { reachCuts, shadowCuts, shadowReach, tokenLength } from '../controls/token-probe'
 import { SplitPane, type SplitPaneProps } from './SplitPane'
+import { Stack } from './Stack'
 import { states } from './split-pane.states'
 
 /**
@@ -374,4 +379,68 @@ describe('the stacked fixture entry', () => {
       expect(pane?.scrollHeight).toBe(pane?.clientHeight)
     }
   })
+})
+
+/**
+ * Room at the seam. A pane clips what it holds at its padding edge: a field's or a Button's seat
+ * shadow, and a control's focus mark, a 2px line drawn a `space-1` gap outside it. At the seam the
+ * pane takes that room from the divider's column. The outer sides are the edges of the region the
+ * split fills, and have none.
+ */
+describe('room at the seam', () => {
+  const form = (
+    <Stack gap={3}>
+      <Input aria-label="Name" defaultValue="Orbit" />
+      <FormField label="Owner">
+        <Input defaultValue="Platform" />
+      </FormField>
+      <Button variant="solid" tone="accent" label="Save" />
+    </Stack>
+  )
+
+  /** The cuts on one side of each control in a pane, of the seat and of a focus mark. */
+  function cutsAt(pane: HTMLElement, side: 'left' | 'right' | 'top'): string[] {
+    const mark = Number.parseFloat(tokenLength('--pm-space-1')) + 2
+    const controls = [
+      ...pane.querySelectorAll<HTMLElement>('[data-member="input"], [data-member="button"]'),
+    ]
+    expect(controls).toHaveLength(3)
+    return controls.flatMap((control) => {
+      expect(shadowReach(control).bottom, 'the control draws no seat').toBeGreaterThan(0)
+      return [...shadowCuts(control), ...reachCuts(control, mark)].filter((cut) =>
+        cut.startsWith(`${side},`),
+      )
+    })
+  }
+
+  for (const orientation of ['horizontal', 'vertical'] as const) {
+    it(`cuts neither a seat nor a focus mark at the seam, ${orientation}, and moves nothing`, () => {
+      // Inside a padded host, so the window's edge is not a pane's.
+      const { container } = render(
+        <div style={{ padding: 40 }}>
+          <div style={{ inlineSize: '480px', blockSize: '480px' }}>
+            <SplitPane label="Resize" orientation={orientation} start={form} end={form} />
+          </div>
+        </div>,
+      )
+      const split = container.querySelector('[data-orientation]') as HTMLElement
+      const [start, seam, end] = [...split.children] as [HTMLElement, HTMLElement, HTMLElement]
+      const line = seam.getBoundingClientRect()
+      const first = (pane: HTMLElement) =>
+        (pane.querySelector('[data-member="input"]') as HTMLElement).getBoundingClientRect()
+      if (orientation === 'horizontal') {
+        expect(cutsAt(start, 'right'), 'the start pane').toEqual([])
+        expect(cutsAt(end, 'left'), 'the end pane').toEqual([])
+        expect(first(start).right, 'the start pane’s content').toBeCloseTo(line.left, 1)
+        expect(first(end).left, 'the end pane’s content').toBeCloseTo(line.right, 1)
+      } else {
+        expect(cutsAt(end, 'top'), 'the end pane').toEqual([])
+        expect(first(end).top, 'the end pane’s content').toBeCloseTo(line.bottom, 1)
+      }
+      for (const pane of [start, end]) {
+        expect(pane.scrollWidth, 'a pane pans').toBe(pane.clientWidth)
+        expect(pane.scrollHeight, 'a pane scrolls').toBe(pane.clientHeight)
+      }
+    })
+  }
 })

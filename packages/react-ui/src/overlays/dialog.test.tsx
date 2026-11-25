@@ -6,11 +6,38 @@ import { dialogFitLaw } from '@polymorph/conformance/dialog-fit'
 import { serverPassed } from '@polymorph/conformance/server-passed'
 import { assertGoverned } from '@polymorph/react'
 import { Button } from '../controls/Button'
+import { FormField } from '../controls/FormField'
 import { Input } from '../controls/Input'
-import { tokenColor, tokenLength } from '../controls/token-probe'
+import {
+  reachCuts,
+  shadowCuts,
+  shadowReach,
+  tokenColor,
+  tokenLength,
+} from '../controls/token-probe'
+import {
+  appendThemeCSS,
+  composeTheme,
+  emitThemeCSS,
+  parsePalette,
+  parseSystem,
+  resolveTheme,
+} from '@polymorph/engine'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { Dialog, type DialogProps } from './Dialog'
 import dialogCss from '@polymorph/recipes/overlays/dialog.module.css?raw'
+
+/** The shipped systems and palettes, so a law about a shadow holds for every shadow they derive. */
+const SYSTEMS = import.meta.glob<string>('../../../../design/systems/*.json', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+})
+const PALETTES = import.meta.glob<string>('../../../../design/palettes/*.json', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+})
 
 /**
  * Dialog in a real browser. The important parts of a modal (the focus trap,
@@ -316,6 +343,150 @@ describe('recipe', () => {
     const node = panel() as HTMLElement
     expect(node.scrollHeight).toBe(node.clientHeight)
     expect(node.offsetHeight).toBeLessThanOrEqual(window.innerHeight)
+  })
+})
+
+/**
+ * Fields at the edges of the body. The body scrolls, and a scroll container cuts what it holds
+ * at its padding edge on both axes, so a field against the body's side, top or bottom would have
+ * its seat shadow cut there, which squares off its rounded corners. The body is larger than its
+ * content by the room the seat takes, and its margins take that room back, so nothing moves.
+ */
+describe('fields at the edges of the body', () => {
+  afterEach(async () => {
+    await page.viewport(1280, 800)
+  })
+
+  const part = (name: 'body' | 'footer') =>
+    (panel() as HTMLElement).querySelector(`[data-dialog-part="${name}"]`) as HTMLElement
+  const fields = () => [...part('body').querySelectorAll<HTMLElement>('[data-member="input"]')]
+
+  /** The panel once its entrance has ended: its box the same on two frames in a row. */
+  const settledPanel = () =>
+    vi.waitFor(async () => {
+      const before = (panel() as HTMLElement).getBoundingClientRect().toJSON()
+      await frame()
+      await frame()
+      expect((panel() as HTMLElement).getBoundingClientRect().toJSON()).toEqual(before)
+    })
+
+  /** Nothing cuts the field's seat shadow inside the window. */
+  function expectWholeSeat(field: HTMLElement, what: string) {
+    expect(shadowReach(field).bottom, `${what}: the field draws no seat`).toBeGreaterThan(0)
+    expect(shadowCuts(field), `${what}: its seat is cut`).toEqual([])
+    // A control's focus mark, a 2px line drawn a `space-1` gap outside it, fits the same room.
+    const mark = Number.parseFloat(tokenLength('--pm-space-1')) + 2
+    expect(reachCuts(field, mark), `${what}: a focus mark is cut`).toEqual([])
+  }
+
+  const FORMS = [
+    { name: 'card', width: 1280, presentation: 'auto' },
+    { name: 'full-screen form', width: 420, presentation: 'auto' },
+    { name: 'bottom sheet', width: 420, presentation: 'sheet' },
+  ] as const
+
+  for (const form of FORMS) {
+    for (const scrolls of [false, true]) {
+      it(`draws the whole seat of the first and the last field in the ${form.name}, with a body that ${scrolls ? 'scrolls' : 'does not scroll'}`, async () => {
+        await page.viewport(form.width, 800)
+        render(
+          <Dialog
+            defaultOpen
+            presentation={form.presentation}
+            title="Hosting"
+            footer={<Button label="Save" />}
+          >
+            <Input aria-label="Search" defaultValue="orbit" />
+            {Array.from({ length: scrolls ? 60 : 1 }, (_, index) => (
+              <p key={index}>Paragraph {index + 1} between the fields.</p>
+            ))}
+            <FormField label="Monthly cap">
+              <Input defaultValue="120" />
+            </FormField>
+          </Dialog>,
+        )
+        await settledPanel()
+        // At rest: the dialog focused the first field when it opened.
+        ;(document.activeElement as HTMLElement | null)?.blur()
+        const body = part('body')
+        const [first, last] = fields() as [HTMLElement, HTMLElement]
+        expect(body.scrollHeight > body.clientHeight, 'the body scrolls').toBe(scrolls)
+
+        body.scrollTop = 0
+        await frame()
+        expectWholeSeat(first, 'the first field')
+        body.scrollTop = body.scrollHeight
+        await frame()
+        expectWholeSeat(last, 'the last field')
+
+        // The room scrolls nothing that did not scroll before.
+        const node = panel() as HTMLElement
+        expect(node.scrollHeight, 'the panel scrolls').toBeLessThanOrEqual(node.clientHeight + 1)
+        expect(node.scrollWidth, 'the panel pans').toBeLessThanOrEqual(node.clientWidth + 1)
+        expect(body.scrollWidth, 'the body pans').toBeLessThanOrEqual(body.clientWidth + 1)
+      })
+    }
+  }
+
+  it('draws the whole seat in every shipped system that draws one', async () => {
+    try {
+      for (const [path, source] of Object.entries(SYSTEMS)) {
+        const system = parseSystem(JSON.parse(source))
+        const palette = PALETTES[`../../../../design/palettes/${system.defaultPalette}.json`]
+        expect(palette, `${path}: its default palette`).toBeDefined()
+        const theme = resolveTheme(composeTheme(system, parsePalette(JSON.parse(palette ?? ''))))
+        appendThemeCSS(emitThemeCSS(theme), theme.name)
+        document.documentElement.setAttribute('data-system', theme.system)
+        document.documentElement.setAttribute('data-palette', theme.palette)
+        const view = render(
+          <Dialog defaultOpen title="Hosting">
+            <Input aria-label="Search" defaultValue="orbit" />
+            <FormField label="Monthly cap">
+              <Input defaultValue="120" />
+            </FormField>
+          </Dialog>,
+        )
+        await settledPanel()
+        ;(document.activeElement as HTMLElement | null)?.blur()
+        for (const [at, field] of fields().entries()) {
+          // A flat system draws no seat, so there is nothing to cut.
+          if (shadowReach(field).bottom > 0) expectWholeSeat(field, `${theme.system}, field ${at}`)
+        }
+        view.unmount()
+        await vi.waitFor(() => expect(panels()).toHaveLength(0))
+      }
+    } finally {
+      installTestTheme()
+    }
+  })
+
+  it('keeps the body’s content where it was: at the panel’s padding, under the title, over the footer', async () => {
+    render(
+      <Dialog defaultOpen title="Hosting" footer={<Button label="Save" />}>
+        <Input aria-label="Search" defaultValue="orbit" />
+        <FormField label="Monthly cap">
+          <Input defaultValue="120" />
+        </FormField>
+      </Dialog>,
+    )
+    await settledPanel()
+    const node = panel() as HTMLElement
+    const box = node.getBoundingClientRect()
+    const inset = Number.parseFloat(tokenLength('--pm-inset-surface'))
+    const border = Number.parseFloat(getComputedStyle(node).borderTopWidth)
+    const [first, last] = fields().map((field) => field.getBoundingClientRect()) as [
+      DOMRect,
+      DOMRect,
+    ]
+    const title = (node.querySelector('h2') as HTMLElement).getBoundingClientRect()
+    expect(first.left).toBeCloseTo(box.left + border + inset, 1)
+    expect(first.top).toBeCloseTo(title.bottom + Number.parseFloat(tokenLength('--pm-space-5')), 1)
+    expect(last.left).toBeCloseTo(box.left + border + inset, 1)
+    expect(last.right).toBeCloseTo(box.right - border - inset, 1)
+    expect(part('footer').getBoundingClientRect().top).toBeCloseTo(
+      last.bottom + Number.parseFloat(tokenLength('--pm-space-6')),
+      1,
+    )
   })
 })
 

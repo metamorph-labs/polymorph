@@ -46,12 +46,17 @@ export function themeCommand(cli: ThemeCli, items: string[], flags: ThemeFlags):
       return emit(cli, paths, flags)
     case 'schema':
       return schema(cli, paths, flags)
+    case 'propose':
+      // The proposal is the MCP tool's, which answers asynchronously; `main` runs it.
+      cli.out('polymorph theme propose runs through `main`, which waits for the tools')
+      return { code: 1 }
     default:
       cli.out(
         'polymorph theme — bring your own system\n\n' +
           '  polymorph theme validate <system.json> <palette.json> [<partner.json>]   the laws, as a report\n' +
           '  polymorph theme emit <system.json> <palette.json> [<partner.json>]       the emitted sheet (--out file.css)\n' +
-          '  polymorph theme schema <system|palette>                                  the JSON Schema (--out file.json)\n\n' +
+          '  polymorph theme schema <system|palette>                                  the JSON Schema (--out file.json)\n' +
+          '  polymorph theme propose "<intent>"                                        a checked pair from plain words (--save)\n\n' +
           '  A palette that names a more-contrast partner is admitted with it: <partner.json>,\n' +
           '  or the file named for the partner beside the palette.\n',
       )

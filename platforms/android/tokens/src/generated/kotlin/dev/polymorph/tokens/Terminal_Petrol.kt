@@ -198,7 +198,7 @@ internal object Terminal_Petrol {
                 dark = PMRgba(21, 24, 24, 1f),
             ),
         ),
-        focus = PMFocus(width = 4f, offset = 0f),
+        focus = PMFocus(width = 3f, offset = -3f),
         icon = PMIcons(
             sm = PMIconScale(size = 14f, stroke = 2f),
             md = PMIconScale(size = 16f, stroke = 1.75f),
@@ -490,8 +490,8 @@ internal object Terminal_Petrol {
                 dark = PMRgba(0, 153, 159, 0.5f),
             ),
             borderFocusSolid = PMDynamicColor(
-                light = PMRgba(0, 153, 159, 1f),
-                dark = PMRgba(0, 153, 159, 1f),
+                light = PMRgba(0, 142, 148, 1f),
+                dark = PMRgba(0, 142, 148, 1f),
             ),
             dangerSolid = PMDynamicColor(
                 light = PMRgba(234, 60, 63, 1f),

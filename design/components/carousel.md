@@ -59,7 +59,7 @@ Attributes: root `data-member` only. Position is exposed through ARIA
 | dot | `--pm-space-2` square · radius `--pm-radius-pill` · bg `--pm-border-default` · hit area grown to the `--pm-hit-target` square by a centred pseudo-element (the 24px minimum, as everywhere) |
 | dot hover | bg `--pm-border-strong` |
 | dot current | bg `--pm-accent-bg` · width `--pm-space-4`, a lozenge that marks the current slide. It grows about its own centre, so the other dots keep their places |
-| dot focus | the shared focus ring (conventions §4) |
+| dot focus | the shared focus ring around the dot with a `--pm-space-1` gap, in `--pm-border-focus-solid`, current or not (conventions §4, the around placement) |
 
 ## States
 

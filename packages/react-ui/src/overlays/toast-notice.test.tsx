@@ -243,9 +243,22 @@ describe('application feedback', () => {
         expect(bounds.left).toBeGreaterThanOrEqual(0)
         expect(bounds.right).toBeLessThanOrEqual(320)
       }
+      // The list is larger than its cards by the room it keeps for their shadows, and that room
+      // may lie past the window's top edge. The cards' own region is shorter than the window, and
+      // scrolling brings the first and the last card inside it.
       const viewport = document.querySelector('ol')!
-      expect(viewport.clientHeight).toBeLessThan(640)
+      const style = getComputedStyle(viewport)
+      const room = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
+      expect(viewport.clientHeight - room).toBeLessThan(640)
       expect(viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight)
+      viewport.scrollTop = 0
+      expect(
+        Math.min(...[...cards()].map((card) => card.getBoundingClientRect().top)),
+      ).toBeGreaterThan(0)
+      viewport.scrollTop = viewport.scrollHeight
+      expect(
+        Math.max(...[...cards()].map((card) => card.getBoundingClientRect().bottom)),
+      ).toBeLessThan(640)
     })
     await page.viewport(1280, 800)
   })

@@ -253,7 +253,7 @@ internal object Journal_Umber {
                 dark = PMRgba(25, 23, 20, 1f),
             ),
         ),
-        focus = PMFocus(width = 2f, offset = 0f),
+        focus = PMFocus(width = 2f, offset = -2f),
         icon = PMIcons(
             sm = PMIconScale(size = 14f, stroke = 1.43f),
             md = PMIconScale(size = 16f, stroke = 1.25f),

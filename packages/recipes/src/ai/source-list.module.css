@@ -71,11 +71,11 @@
 }
 
 /* The title restates Link's standalone recipe (accent colour, underline on
-   hover, the shared ring) on an anchor that can wrap. Link's external style
+   hover, the focus mark at the text box) on an anchor that can wrap. Link's external style
    does not wrap, so its glyph never ends up alone on a line. A title is a
    sentence and wraps, and the glyph stays with the last word. */
 .title {
-  composes: focusRing from '../conventions/focus.module.css';
+  composes: focusAround from '../conventions/focus.module.css';
   font-family: var(--pm-text-sm-family);
   font-size: var(--pm-text-sm-size);
   font-weight: var(--pm-text-sm-weight);

@@ -30,7 +30,7 @@ light / 91% dark, resting surfaces stay solid paper, and shadow is secondary.
 | typePersonality | `grotesque` | Geist is a grotesque, so the chrome looks like chrome. Character comes from the display serif (below), used only at page scale: quiet at 13px, expressive at 40px. |
 | colorStrategy | `quiet` | Neutral surfaces, with teal only where something is interactive, selected, or *left the machine*. A tinted wash would turn the accent into background. |
 | motionTemperament | `subtle` | Ambient software should not draw the eye. A sheet that drops or a pane that springs would ask to be watched. |
-| ornament | `none` | No decorative motion or texture. Glass's specular edge is material and the focus halo is accessibility, so neither counts. Grain or hover lift would clash with paper and glass. With depth and motion, this axis separates dew from `desktop` and `plain`. |
+| ornament | `none` | No decorative motion or texture. Glass's specular edge is material and the focus ring is accessibility, so neither counts. Grain or hover lift would clash with paper and glass. With depth and motion, this axis separates dew from `desktop` and `plain`. |
 
 Divergence: 3 from `desktop` and `plain` (both reference-calibrated: depth,
 motion, ornament), 5 from `glassmorphic`, `pebble`, `journal` and `pastel`, and

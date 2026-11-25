@@ -28,7 +28,8 @@ import { createJiti } from 'jiti'
  * project registers no write tool.
  *
  * The arguments are parsed strictly, before the server is loaded, by the
- * parser every entry point shares (`src/flags.ts`). An unknown flag stops the
+ * parser everything that starts the server shares
+ * (`packages/cli/src/server-flags.ts`). An unknown flag stops the
  * server instead of being ignored. Otherwise a mistyped `--readonly` would be
  * ignored, and someone who asked for a read-only server would get one that
  * writes.
@@ -37,15 +38,17 @@ import { createJiti } from 'jiti'
  * program that builds it, as it names the two roots, and the tool runs that
  * program the first time it is called (`src/render.ts`).
  *
- * The published tools (`packages/tools`) start the same server from the
- * `registry.json` and the built page they ship, with no build.
+ * `polymorph mcp` starts the same server through the same function
+ * (`src/stdio.ts`), with the same two flags. The published tools
+ * (`packages/tools`) start it from the `registry.json` and the built page they
+ * ship, with no build.
  */
 
 const SOURCE = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
 const jiti = createJiti(import.meta.url)
 
 const { SERVER_FLAGS, serverFlags, ServerFlagsError } = await jiti.import(
-  resolve(SOURCE, 'packages/mcp/src/flags.ts'),
+  resolve(SOURCE, 'packages/cli/src/server-flags.ts'),
 )
 
 /** Exits with a message on stderr. stdout is the protocol, and no client is connected yet. */

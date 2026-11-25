@@ -27,25 +27,24 @@
   box-shadow: var(--pm-shadow-seat);
 }
 
-/* The ring on the frame when the field inside it has keyboard focus. This
+/* The focus mark on the frame when the field inside it has keyboard focus. This
    restates the composite-field convention (focus.module.css) for a
-   `<textarea>` child, which the convention's `> input` selector cannot reach. */
+   `<textarea>` child, which the convention's `> input` selector cannot reach.
+   The outline is at the system's offset, inside the frame's edge by default,
+   and the border takes the focus colour, which shows where a system moves the
+   mark outside. */
 .frame:has(> textarea:focus-visible) {
   border-color: var(--pm-border-focus-solid);
-  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline: var(--pm-focus-width) solid var(--pm-border-focus-solid);
   outline-offset: var(--pm-focus-offset);
-  box-shadow: var(--pm-glow-focus);
 }
 
 /* The field style, as the focus convention draws it for a composite field, where the system
-   chooses it (`overrides.focus.field: border`, the flag `--pm-focus-field`): the outline moves
-   inside the frame's edge by its width and takes the solid focus colour, and the frame keeps its
-   seat shadow in place of the halo. */
+   chooses it (`overrides.focus.field: border`, the flag `--pm-focus-field`): the outline lies
+   inside the frame's edge by its width whatever the system's offset. */
 @container style(--pm-focus-field: border) {
   .frame:has(> textarea:focus-visible) {
-    outline-color: var(--pm-border-focus-solid);
     outline-offset: calc(var(--pm-focus-width) * -1);
-    box-shadow: var(--pm-shadow-seat);
   }
 }
 
@@ -326,7 +325,8 @@
   color: var(--pm-text-disabled);
 }
 
-/* A pending drop is styled like focus, copied exactly from FileUpload's zone. */
+/* A pending drop takes FileUpload's zone treatment, copied exactly: the accent wash, the accent
+   border and the focus glow. */
 .root[data-state='dragover'] .frame {
   background: var(--pm-accent-subtle);
   border-color: var(--pm-accent-bg);

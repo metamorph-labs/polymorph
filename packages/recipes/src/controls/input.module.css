@@ -34,13 +34,19 @@
 }
 
 /* Transparent, borderless, and using the container's type. `font: inherit` keeps the text on the
-   type scale without restating the text tokens. */
+   type scale without restating the text tokens.
+
+   In a field narrower than its parts, the value is the part that gives way: it shrinks to nothing
+   (`min-inline-size: 0`) while the icon, the affixes and the clear button keep their width
+   (`flex: none`) and the field keeps its padding. A value cut short ends in an ellipsis while the
+   field is not focused; while it is, the browser scrolls the value to the caret instead. */
 .input {
   flex: 1;
   min-inline-size: 0;
   padding: 0;
   font: inherit;
   color: inherit;
+  text-overflow: ellipsis;
   background: transparent;
   border: 0;
   outline: none;
@@ -77,8 +83,8 @@
  *
  * The embedded-adornment convention (input.md): muted at rest to match the leading icon and not
  * compete with the value, primary on a `bg-subtle` wash on hover, its own `radius-sm` inside the
- * field's `md`, press feedback, and the focus ring. The ring may overflow the field's frame, and
- * should, because it marks the inner target. Never `--pm-danger-*` in an invalid field, because it
+ * field's `md`, press feedback, and the focus mark inside its own edge, which marks the inner
+ * target and not the field. Never `--pm-danger-*` in an invalid field, because it
  * is an action, not a status. */
 .clear {
   composes: focusRing from '../conventions/focus.module.css';

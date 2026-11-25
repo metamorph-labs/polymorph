@@ -131,7 +131,7 @@
   /* Declared here with a default and set by the component, as chart tips do. */
   --pm-color-input-thumb: transparent;
 
-  composes: focusRing from '../conventions/focus.module.css';
+  composes: focusAround from '../conventions/focus.module.css';
   box-sizing: border-box;
   display: block;
   inline-size: var(--pm-space-5);

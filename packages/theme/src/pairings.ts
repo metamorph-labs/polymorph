@@ -21,9 +21,9 @@ export interface Pairing {
   foreground: ColorRole
   background: ColorRole
   /**
-   * Minimum |Lc| under APCA. **0 for the delineation class**, which uses
-   * `minDeltaL` because APCA does not score hairlines (see
-   * `DELINEATION_MIN_DELTA_L`).
+   * Minimum |Lc| under APCA. **0 for the delineation and focus classes**,
+   * which use `minDeltaL` and `minRatio` because APCA does not score lines
+   * (see `DELINEATION_MIN_DELTA_L`, `FOCUS_MIN_RATIO`).
    */
   minLc: number
   /**
@@ -31,7 +31,11 @@ export interface Pairing {
    * measured as drawn. Delineation class only.
    */
   minDeltaL?: number
-  kind: 'text' | 'delineation'
+  /**
+   * Minimum WCAG 2 contrast ratio, on the composite. Focus class only.
+   */
+  minRatio?: number
+  kind: 'text' | 'delineation' | 'focus'
   reason: string
 }
 
@@ -70,21 +74,71 @@ export const LC_FLOORS = {
 export const DELINEATION_MIN_DELTA_L = 0.04
 
 /**
- * **The focus floor: twice the hairline floor, in the same measure.**
+ * **The half-alpha focus colour's floor: twice the hairline floor, in the
+ * same measure.**
  *
- * A focus indicator is a line, so APCA scores it as poorly as a border, and
- * the reference's half-alpha ring scores close to zero on dark surfaces. ΔL
- * measures it. Its floor is twice the hairline's, because the indicator
- * must stand out from the borders it is drawn beside, not merely match them.
- * Both focus roles are held to it on every surface, whichever field style
- * (`overrides.focus.field`) draws them, and a pinned focus colour is held like
- * a derived one.
+ * `border.focus` is a translucent line, so APCA scores it as poorly as a
+ * border, and the reference's half-alpha ring scores close to zero on dark
+ * surfaces. ΔL measures it, on the composite. Its floor is twice the
+ * hairline's, because a focus indicator must stand out from the borders it is
+ * drawn beside, not merely match them. No member draws in it; it is held
+ * because a palette may pin it and a part may draw a translucent focus colour.
  */
 export const FOCUS_MIN_DELTA_L = DELINEATION_MIN_DELTA_L * 2
+
+/**
+ * **The focus floor: 3:1 by the WCAG contrast ratio.**
+ *
+ * The focus ring is a 2px line in `border.focusSolid`, so the colour carries
+ * it, and WCAG 1.4.11 asks 3:1 of a component's visual state against what is
+ * next to it. APCA does not score a line, and ΔL does not track the luminance
+ * a ratio measures, so the ring is held to the ratio itself, on every
+ * background and every wash it is drawn on (`FOCUS_WASHES`), in both modes,
+ * whichever field style (`overrides.focus.field`) draws it. A pinned focus
+ * colour is held like a derived one. The layout measure
+ * (`apps/workbench/src/screen/measure.ts`) reports a focus mark under the
+ * same 3:1 as faint, so the law and the measure agree.
+ */
+export const FOCUS_MIN_RATIO = 3
+
+/**
+ * The washes a focusable part may be drawn on besides the text-bearing
+ * backgrounds: the accent and status washes at rest, hovered and pressed, and
+ * the selected surfaces. The focus mark sits inside the part's edge, on this
+ * fill, so `border.focusSolid` is held to the focus floor on each.
+ */
+export const FOCUS_WASHES: readonly ColorRole[] = [
+  'accent.subtle',
+  'accent.subtleHover',
+  'accent.subtleActive',
+  ...STATUS_TONES.flatMap((tone): ColorRole[] => [
+    `${tone}.subtle`,
+    `${tone}.subtleHover`,
+    `${tone}.subtleActive`,
+  ]),
+  ...SELECTION_SURFACES,
+]
 
 /** Whether a pairing is measured in ΔL instead of APCA Lc. */
 export function isDelineation(pairing: Pairing): boolean {
   return pairing.kind === 'delineation'
+}
+
+/** Whether a pairing is measured by the WCAG contrast ratio instead of APCA Lc. */
+export function isFocus(pairing: Pairing): boolean {
+  return pairing.kind === 'focus'
+}
+
+/** How a pairing's measure and floor are written in a report: `ΔL 0.031, floor is 0.04`. */
+export function pairingMeasure(
+  pairing: Pairing,
+  achieved: { lc: number; deltaL: number; ratio: number },
+): string {
+  if (isDelineation(pairing)) {
+    return `ΔL ${achieved.deltaL.toFixed(3)}, floor is ${pairing.minDeltaL}`
+  }
+  if (isFocus(pairing)) return `${achieved.ratio.toFixed(2)}:1, floor is ${pairing.minRatio}:1`
+  return `Lc ${achieved.lc.toFixed(1)}, floor is ${pairing.minLc}`
 }
 
 function delineationPairings(
@@ -256,18 +310,30 @@ export const LAWFUL_PAIRINGS: readonly Pairing[] = [
     'a selection edge must separate from the surface it sits on',
   ),
 
-  // The two focus colours: the ring drawn around a part (translucent, so it is
-  // composited before it is measured) and the solid edge a focused field takes.
+  // The half-alpha focus colour, translucent, so it is composited before it is
+  // measured.
   ...delineationPairings(
     'border.focus',
-    'the focus ring must stand out from the surface it is drawn on',
+    'the softer, half-transparent focus colour must stand out from the surface it is drawn on',
     FOCUS_MIN_DELTA_L,
   ),
-  ...delineationPairings(
-    'border.focusSolid',
-    'a focused edge must stand out from the surface it is drawn on',
-    FOCUS_MIN_DELTA_L,
-  ),
+  // The focus ring's colour, at the focus floor. The ring is drawn inside the
+  // part's edge or a little outside it, so it sits on the part's own
+  // background or on the surface behind it. A field and a transparent part
+  // draw on a background. A washed part draws on its wash: a soft or a hovered
+  // and pressed unfilled Button, a checked choice, a control inside a toned
+  // Alert, a selected row. A part with a solid fill draws the ring in its own
+  // label colour, which the label laws above hold on the fill.
+  ...[...TEXT_BEARING_BACKGROUNDS, ...FOCUS_WASHES].map((background): Pairing => ({
+    foreground: 'border.focusSolid',
+    background,
+    minLc: 0,
+    minRatio: FOCUS_MIN_RATIO,
+    kind: 'focus',
+    reason: FOCUS_WASHES.includes(background)
+      ? 'the focus ring must stand out from the fill of the control it is drawn inside'
+      : 'the focus ring must stand out from the surface it is drawn on',
+  })),
 ]
 
 /**

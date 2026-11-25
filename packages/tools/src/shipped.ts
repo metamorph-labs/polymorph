@@ -72,10 +72,17 @@ export function shippedBrowserSetup(): BrowserSetup {
   }
 }
 
-/** The tools' context: the shipped registry and source, and the project the write tools write in. */
-export function shippedContext(project: string | undefined): ToolContext {
+/**
+ * The tools' context: the shipped registry and source, the shipped screen page,
+ * and the project the write tools write in, or none for a server with no write
+ * tool. The CLI's verbs and the server are built from it.
+ */
+export function shippedContext(
+  project: string | undefined,
+  registry: Registry = shippedRegistry(),
+): ToolContext {
   return {
-    registry: shippedRegistry(),
+    registry,
     root: SOURCE,
     ...(project === undefined ? {} : { project }),
     screenPage: SCREEN_PAGE,

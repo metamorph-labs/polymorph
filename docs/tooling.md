@@ -24,7 +24,7 @@ A few terms used throughout:
 | Command | What it does | Code |
 | --- | --- | --- |
 | `pnpm registry` | Builds `registry/registry.json`, its JSON Schema and the system card | `packages/registry/bin/registry.js` |
-| `pnpm polymorph <command>` | The CLI: `init`, `add`, `diff`, `update`, `theme`, `check` | `packages/cli` |
+| `pnpm polymorph <command>` | The CLI: `init`, `add`, `diff`, `update`, `theme`, `check`, and a verb for each MCP tool (`card`, `search`, `component`, `axes`, `plan`, `validate`, `fix`, `emit`, `render`, `theme propose`) and `mcp`, the server | `packages/cli` |
 | `pnpm mcp` | The MCP server, over stdio | `packages/mcp` |
 | `npx -y @metamorph-labs/polymorph@<range> <command>` | The CLI and the MCP server (`mcp`) from the published package, in any repository, with no checkout | `packages/tools` |
 | `pnpm emit <spec.json> [out.tsx \| out.vue \| out.svelte \| out.ts \| out.swift \| out.kt]` | Validates a screen spec and emits TSX (Solid's with `--framework solid`), a Vue or Svelte single-file component, an Angular standalone component, SwiftUI for a spec for `ios`, or Jetpack Compose for a spec for `android` | `packages/spec` |
@@ -251,6 +251,13 @@ application code uses them are installed with them. Vendoring is one of two ways
 polymorph. The other is installing the packages, which `init` sets up.
 [consuming.md](consuming.md) compares them.
 
+Every tool of the [MCP server](#the-mcp-server) is also a verb: `card`, `search`, `component`,
+`axes` and `plan` look things up, `validate` and `render` check code and screens, `fix` and `emit`
+write, and `theme propose` proposes a theme and saves it. Each verb is the MCP tool of the same
+job and returns the same answer, so a harness with a shell and no MCP client, or a skill that runs
+a command, can do all an agent with the server can. `mcp` starts the server itself.
+[The verbs that ask the MCP tools](#the-verbs-that-ask-the-mcp-tools) covers them.
+
 The CLI writes apps and vendors members for the web frameworks (`--framework`, below). The SwiftUI
 and Compose renderers are not npm packages. An app reaches them through a checkout or a git
 submodule of this repository, and [native.md](native.md) describes them.
@@ -281,29 +288,76 @@ The CLI has two roots. It reads the vocabulary from a source tree, and it instal
 - **In this repository** — `pnpm polymorph <command>` runs from this repository's root. `add`
   and `update` refuse to write into a checkout of polymorph (this one, or another clone or
   worktree, recognised by the base layer at the path the registry copies it from) or into a
-  directory inside one, as `init` and the MCP tool `install` do. Use it here for `help`, `add --dry-run` and
-  `theme`.
+  directory inside one, as `init` and the MCP tool `install` do. Use it here for `help`, the
+  verbs that look up and check (`card`, `search`, `component`, `axes`, `plan`, `validate`,
+  `render`), `add --dry-run` and `theme`.
 
 ```text
-polymorph init <dir>        a new app: packages, theme, rules, agent tools, a first screen
-polymorph add <item...>     vendor components and themes, and travel the rules
-polymorph diff              what you have changed, and what we have
-polymorph update            re-vendor what you have not touched
-polymorph theme <verb>      bring your own system — validate, emit, schema
-polymorph check [dir]       run the red rules over a directory, with no config
+Start
+  polymorph init <dir>                Write a new app: packages, theme, rules, agent tools and a first screen.
+
+Look up
+  polymorph card                      Print the system card: every member, the tokens, the red rules and the ladder.
+  polymorph search [query]            Find members by name, purpose, prop or variant; with no query, list them all.
+  polymorph component <name>          Print one member: its props, its lawful cells, its states and what it depends on.
+  polymorph axes                      Print the theme axes, the systems and palettes, the colour roles and the scales.
+  polymorph plan <item...>            Print what `add` would copy and install, and write nothing.
+
+Check
+  polymorph validate <file...|->      Check code against the red rules, or a screen spec against the vocabulary.
+  polymorph check [dir]               Run the red rules over a directory, with no lint config.
+  polymorph render <spec.json>        Draw a screen spec in a browser, and report its layout faults beside the pictures.
+  polymorph diff                      List what you have changed in an install, and what has changed upstream.
+
+Write
+  polymorph add <item...>             Vendor members and themes, and extend the lint configs with the red rules.
+  polymorph update                    Vendor again the files you have not edited, and keep the ones you have.
+  polymorph fix <file|->              Rewrite what has exactly one lawful rewrite in a file, and report the rest.
+  polymorph emit <spec.json> <out>    Compile a screen spec to a file in the project, checked against the red rules.
+
+Themes
+  polymorph theme propose "<intent>"  Turn plain words into a checked system and palette, and save them with `--save`.
+  polymorph theme validate <system.json> <palette.json> [partner.json]
+  polymorph theme emit <system.json> <palette.json> [partner.json]
+  polymorph theme schema <system|palette>
+
+Agents
+  polymorph mcp                       Start the MCP server over stdio, for an agent’s client.
 ```
+
+This is the list `polymorph help` prints, from the verb list `@polymorph/cli` exports (`VERBS`,
+`packages/cli/src/verbs.ts`): each verb's name, group, summary, usage, flags and the MCP tools of
+the same job. `polymorph <verb> --help` prints one verb's usage and flags.
 
 | Flag | Applies to | Effect |
 | --- | --- | --- |
-| `--dir <path>` | `add` | Where vendored source lands. Default `src/polymorph`. Must stay inside the repository. |
+| `--dir <path>` | `add`, `plan` | Where vendored source lands. Default `src/polymorph`. Must stay inside the repository. |
+| `--dir <path>` | `theme propose --save` | The directory holding `systems/` and `palettes/`. Default `design`. |
 | `--out <path>` | `theme emit`, `theme schema` | Write to a file instead of stdout |
+| `--out <dir>` | `render` | Where the pictures are written. Default `<spec>.render/` beside the spec |
 | `--system <name>` | `init` | The catalogue system the app wears. Default `plain`; an unknown name lists the catalogue |
 | `--registry <name>` | `init` | Where the app installs the packages from: `npmjs` (no `.npmrc`, no token) or `github` (GitHub Packages, with a token). Default `npmjs` from the published package and `github` from a checkout |
+| `--system <name>` | `render` | The shipped system the screen is drawn in. Required |
+| `--palette <name>`, `--mode <mode>` | `render` | A shipped palette, and `light` or `dark`. Default the system's own |
+| `--data <file>`, `--empty <file>` | `render` | A JSON file of input values: the populated screen, and a second drawing laid over it |
+| `--viewports <list>` | `render` | `phone`, `desktop` or `phone,desktop`. Default both |
 | `--framework <name>` | `init`, `add`, `check` | `react` (default), `vue`, `svelte`, `solid` or `angular`: an app in that framework, or that vocabulary's components ([frameworks.md](frameworks.md)). Once an install has a manifest, `add` plans in the framework it records and refuses a different one. `check` reads every file in it instead of inferring each file's |
-| `--json` | `check` | Print the report as JSON |
+| `--framework <name>` | `card`, `search`, `plan`, `validate`, `fix`, `emit` | The tool's `framework` argument |
+| `--framework <name>` | `component` | Narrows the reading's frameworks to one. The JSON answer lists every framework |
+| `--platform <name>` | `card`, `search` | `web` (default), `ios` or `android` |
+| `--tier`, `--origin`, `--limit` | `search` | The tool's filters |
+| `--source` | `component` | Adds the member's source, stylesheet and states fixture |
+| `--properties`, `--values` | `axes` | Add every `--pm-*` property, and each system's token values |
+| `--filename <name>` | `validate -`, `fix -` | The name the text read from stdin is checked as |
+| `--surface <name>` | `validate`, `fix` | `application` (default) or `vocabulary` |
+| `--based-on <system>/<palette>` | `theme propose` | Where the proposal starts; either half may be left out |
+| `--save`, `--overwrite` | `theme propose` | Save the proposal; replace files already saved under its names |
+| `--project <path>`, `--read-only` | `mcp` | As for `polymorph-mcp`: the project the write tools write into, or none |
+| `--json` | `check` and every verb that asks a tool | Print the report, or the tool's answer, as JSON |
 | `--no-install` | `init` | Write the app and do not install it |
 | `--force` | `add`, `update` | Overwrite files you have edited |
 | `--dry-run` | `add`, `init` | Print the plan and write nothing |
+| `--dry-run` | `fix` | Print the fixed code and write nothing |
 
 ### `init`
 
@@ -651,6 +705,134 @@ application code, through `verify` from `@polymorph/rules/verify`, the function 
 - **Exit code.** 1 on any violation or unread file, and on a usage error (a directory outside the
   repository or missing, an unknown framework, an unreadable `polymorph.json`); 0 otherwise.
 
+### The verbs that ask the MCP tools
+
+`card`, `search`, `component`, `axes`, `plan`, `validate`, `fix`, `emit`, `render` and
+`theme propose` each call an [MCP tool](#the-mcp-server) and print its answer. A verb is the tool
+of the same job and gives the same answer: the CLI turns the flags into the tool's arguments, and
+the tool decides everything. Both read the vocabulary from the checkout that holds the bin, or
+from the published package, and write into the directory the command runs in, which is the
+tools' project.
+
+| Verb | Tool |
+| --- | --- |
+| `card` | `get_system_card` |
+| `search` | `search_components` |
+| `component` | `get_component` |
+| `axes` | `get_theme_axes` |
+| `plan` | `get_install_plan` |
+| `validate` | `validate` |
+| `render` | `render_screen` |
+| `fix` | `fix_file`; with `--dry-run` or `-`, `fix` |
+| `emit` | `emit_screen` |
+| `theme propose` | `propose_theme`; with `--save`, then `save_theme` |
+| `add` | the CLI's own installer, which the tool `install` also runs |
+
+A law holds the verb list to the server's table of tools
+(`packages/mcp/src/verbs.test.ts`): every tool the server registers is some verb's job, and every
+tool a verb names is one the server registers.
+
+- **`--json`** prints exactly the tool's JSON answer and nothing else on stdout. The answer of
+  `card` is Markdown, so its JSON is a string. A refusal prints `{ "error": "<the tool's
+  message>" }`. `validate` given several files prints an array of answers, one for each file in
+  the order named, and `theme propose --save` prints `{ "propose_theme": …, "save_theme": … }`.
+- **Without `--json`** a verb prints a plain reading: the card as Markdown, a member as Markdown
+  with its props, the theme axes as Markdown, a plan as `add --dry-run` prints it, each violation
+  as one line (below), and each drawing with the path of its picture.
+- **Exit codes.** 0 when the answer is clean; 1 when it reports violations, faults or a refusal,
+  or the tool refused its arguments (an unknown framework); 2 when the command line cannot be read:
+  a flag the verb does not take, a missing argument, a file that does not exist or a JSON file
+  that does not parse. A verb refuses a flag it does not declare rather than ignore it.
+- **In this repository** a verb that writes is refused where its tool is refused: `add` refuses a
+  checkout, as `install` does, and `emit`, `fix` and `theme propose --save` write here, as
+  `emit_screen`, `fix_file` and `save_theme` do ([the project](#the-project)).
+
+The CLI cannot load the tools itself, because `@polymorph/mcp` depends on it. Its entry point
+supplies them: `cli.tools` is a function that calls one tool by name in the same process
+(`toolCaller` from `@polymorph/mcp`), and `cli.serve` starts the server (`serveStdio`). The bin
+loads each the first time a verb calls it, so `add` and `diff` never load the linters the tools
+carry. The published package's bin (`packages/tools`) supplies the same two functions over the
+registry and the files it ships, so every verb runs there with no checkout.
+
+### Looking up: `card`, `search`, `component`, `axes`, `plan`
+
+```sh
+polymorph card --framework vue              # the system card for a Vue app
+polymorph search date picker --limit 5      # the query is every word after the verb
+polymorph component Button                  # a wrong name gets suggestions, and exits 1
+polymorph axes --properties                 # the axes, systems, palettes, roles and scales
+polymorph plan button theme:pastel          # what `add` would copy; writes nothing
+```
+
+`plan` prints what `add --dry-run` prints for the same items, from the tool `get_install_plan`.
+
+### Checking: `validate` and `render`
+
+`validate <file...>` reads each file and sends its text with its path in the project, so the
+rules read it where it is. A `.json` file is a screen spec, sent as `spec` and checked against the
+vocabulary. `-` reads stdin, named by `--filename`. A directory is `check`'s job, and `validate`
+says so. Each violation is one line, and under it the lawful answer:
+
+```text
+src/App.tsx:4:7  polymorph/no-raw-interactive  Unexpected <button>. Use `<Button label="Save" />` (rung 1): …
+    fix    one lawful rewrite, which `polymorph fix` applies
+    use    <Button label> (rung 1)
+    climb  rung 1 variant selection · rung 4 bespoke zone
+screens/inbox.json  $.root  no component called `Modal` — did you mean `Dialog`, `Drawer`, `Popover`?
+1 violation, 1 fault.
+```
+
+`fix` is the rule's own rewrite, shown in full when it fits on a line; `use` lists the members,
+props and tokens the message names, with their rungs; `climb` lists every rung that answers the
+rule.
+
+`render <spec.json> --system <name>` draws the spec in a browser, as `render_screen` does, and
+writes one PNG for each drawing into `--out <dir>`, by default a directory beside the spec named
+for it (`screens/inbox.json` → `screens/inbox.render/`). Each picture is
+`<state>-<viewport>.png`: `sampled-phone.png`, `populated-desktop.png`, `empty-phone.png`. The
+pictures are written with `--json` too, so a reader of the JSON answer finds each view's picture
+by its `state` and `viewport`. The red rules, `check` and Prettier read no PNG, and this
+repository's `.gitignore` leaves out `*.render/`. The reading lists the pairing, how each input was
+filled, and each view with its picture's path and its faults under it. `--data` and `--empty` take
+a JSON file each. It exits 1 when a view has a fault or a failed element, and when the spec is not
+lawful.
+
+### Writing: `fix` and `emit`
+
+```sh
+polymorph fix src/App.tsx                   # rewrites the file, as `fix_file` does
+polymorph fix src/App.tsx --dry-run         # prints the fixed code; writes nothing
+polymorph fix - --filename src/App.tsx < App.tsx > Fixed.tsx
+polymorph emit screens/inbox.json src/screens/Inbox.tsx
+```
+
+`fix <file>` is `fix_file`: the file is fixed where it stands, and the reading names how many
+reports each rule's fixes answered and the violations left. `--dry-run`, and `-` for stdin, is
+`fix`: stdout is the fixed code and nothing else, so it can be redirected into a file, and what
+the fix did and what it left go to stderr. `emit <spec.json> <out>` is `emit_screen`: `<out>` is a
+path in the project, and the file written is the emitter's, byte for byte.
+
+### Themes: `theme propose`
+
+```sh
+polymorph theme propose "calmer, more editorial, warmer paper"
+polymorph theme propose calm --based-on journal/umber --save --dir design
+```
+
+The intent is every word after `propose`. The reading lists what each word moved, the words the
+table does not have, and the verdict. `--save` then calls `save_theme` with the two documents,
+into `--dir` (default `design`), and `--overwrite` replaces files already saved under the names.
+It exits 1 when the proposal is not lawful or the save wrote nothing.
+
+### Agents: `mcp`
+
+`polymorph mcp [--project <path>] [--read-only]` starts the MCP server over stdio, with the flags
+`polymorph-mcp` takes, read by the same parser (`serverFlags`), and through the same function
+(`serveStdio`), so the two are one server.
+`--project` is resolved against the directory the command runs in. From then on stdout is the
+protocol: a refusal goes to stderr, and the command exits when the client closes stdin and every
+request has its answer.
+
 ## The MCP server
 
 `packages/mcp` — bin `polymorph-mcp`; in this repository, `pnpm mcp`. Published with the CLI as
@@ -731,6 +913,8 @@ document and not only the part in the picture. Each names its element as an auth
 | `clipped-text` | Text its own box cuts with no ellipsis, or text drawn outside a box too narrow for it. |
 | `small-target` | A control whose hit area is under 24px, with another control inside the 24px circle centred on it. This is WCAG 2.2's target size, with its spacing exception ([layout.md](layout.md) has the floor). The hit area is asked of the page point by point, so a checkbox's label row and a text field's frame count. |
 | `cut-off` | Text or a control hidden by a box that clips it, or lying past an edge of the page, where nothing scrolls to it. |
+| `no-gap` | A member that touches another member with nothing between them, in a box that lays its children out in flow (a field directly above a table in a Card), or whose border lies against the inside of a box's border with no inset. A member that paints nothing (a Table, an Image's frame), a member's own parts, members in a flex or grid container, and a bar that runs edge to edge are not reported. |
+| `unseen-focus` | A control that, with keyboard focus, draws no mark, draws only an outline under 2px, or draws an outline under 3:1 against what it is drawn on or cut by a box that cannot scroll to it (WCAG 2.4.13 and 1.4.11). A mark on the box around the control, such as a field's frame, counts. The page gives each control focus as the keyboard does, after the picture is taken. |
 
 Three decisions shape the tool.
 
@@ -864,7 +1048,10 @@ bin, or from the published package. It writes into the **project**: the director
 
 The tools are plain functions in `packages/mcp/src/tools.ts`, `propose.ts`, `render.ts` and
 `write.ts`.
-`packages/mcp/src/server.ts` only binds them to the protocol. `packages/mcp/transcript.test.ts`
+`packages/mcp/src/server.ts` holds one table of them (`TOOLS`), each with its name, argument schema
+and annotations, and only binds it to the protocol. `toolCaller` (`oneshot.ts`) calls the same
+table by name outside the protocol, checking the arguments with each tool's schema as the SDK
+does, which is what the CLI's verbs run on. `packages/mcp/transcript.test.ts`
 spawns the real server over stdio, as a client would, calls every tool with a scratch directory as
 the project, and checks that `validate` returns exactly what ESLint reports for the same input.
 
@@ -900,10 +1087,11 @@ From a checkout, run the checkout's bin instead:
 
 Add `"--project", "/absolute/path/to/your/repository"` to `args` for a client that does not start
 the server in your repository, or `"--read-only"` for a server that only reads. Every entry point
-reads the flags with one parser (`packages/mcp/src/flags.ts`) and starts the server with one
-function (`serveStdio`).
+reads the flags with one parser (`serverFlags`, `packages/cli/src/server-flags.ts`) and starts the
+server with one function (`serveStdio`).
 
-Run it by hand with `pnpm mcp`. Diagnostics go to stderr. Stdout carries only protocol messages.
+Run it by hand with `pnpm mcp`, or `pnpm polymorph mcp`, which starts the same server. Diagnostics
+go to stderr. Stdout carries only protocol messages.
 
 ## The screen spec
 

@@ -254,7 +254,8 @@ project its path falls under in the table above, unless its row names another ga
 | The round trip | `packages/spec/roundtrip.test.ts` | a Relay screen spec that does not emit code the real vocabulary typechecks |
 | Install and init | `packages/cli/scratch.test.ts`, `packages/cli/init.test.ts` | a vendored install, or a new app, that does not build and lint clean against the packages' builds |
 | The MCP server | `packages/mcp/transcript.test.ts` | a tool that fails over a real stdio session |
-| The published tools | `packages/tools/packaging.test.ts` | a tarball, cut as the publish step cuts it and installed outside the repository with no workspace above it, whose bins do not run there: `--help`, `init` (whose `.mcp.json` runs `npx` and names no path, and whose app is the checkout bin's apart from `package.json`, `.mcp.json` and `AGENTS.md`), `init` in every other framework and for a page with no build, `add`, `diff`, `update`, `check`, `theme validate`, and the MCP server over stdio (`get_system_card`, `get_component` with its source, `validate` on code, a stylesheet and a spec, `emit_screen`, `install`, `render_screen` drawing in the shipped page where Playwright's Chromium starts, and the command that downloads it where it does not); a tarball that holds a file outside the declared set or a path of this machine, misses a file the registry names, or imports a package it does not declare. It builds the elements vocabulary and the tools under their locks first |
+| The CLI's verbs | `packages/mcp/src/verbs.test.ts`, `packages/cli/src/verbs.test.ts` | a tool with no CLI verb, or a verb that names a tool the server does not register; a one-shot call that answers differently from the server; a verb whose `--json` is not the tool's answer, whose exit code does not say whether the answer was clean, or that reads a command line it should refuse; `polymorph mcp` that drops an answer or does not exit when its client closes stdin |
+| The published tools | `packages/tools/packaging.test.ts` | a tarball, cut as the publish step cuts it and installed outside the repository with no workspace above it, whose bins do not run there: `--help` (which lists every verb, `mcp` among them), `init` (whose `.mcp.json` runs `npx` and names no path, and whose app is the checkout bin's apart from `package.json`, `.mcp.json` and `AGENTS.md`), `init` in every other framework and for a page with no build, `add`, `diff`, `update`, `check` over every framework's files, `theme validate`, every verb that asks a tool (`card`, `search`, `component`, `validate` on code and on a spec, `fix --dry-run`, `emit`, `render` where Playwright's Chromium starts, `theme propose`), and the MCP server over stdio through `polymorph mcp` and `polymorph-mcp` (`get_system_card`, `get_component` with its source, `validate` on code, a stylesheet and a spec, `emit_screen`, `install`, `render_screen` drawing in the shipped page where Chromium starts, and the command that downloads it where it does not); a published bin whose verbs and the server's tools are not each other's; a tarball that holds a file outside the declared set or a path of this machine, misses a file the registry names, or imports a package it does not declare. It builds the elements vocabulary and the tools under their locks first |
 | The tools add no decision | `packages/tools/entries.test.ts` | a module in the tools' `src/` other than the entry points, an import other than Node, the fronts and the emitter, a registry built at run time, or a polymorph package as a dependency instead of bundled |
 | The docs site | `apps/docs/src/llms.test.ts` | an `/llms.txt` that does not point an agent at the card, the tools, every guide's markdown file and every application rule; a guide's markdown file with a link the site does not serve |
 | The docs site | `apps/docs/src/page-head.test.ts` | a page title that does not name the pages above it; structured data with an address that is not written in full |
@@ -384,8 +385,46 @@ A fault on any page fails the run:
 | `clipped-text` | text its own box cuts with no ellipsis, or a word wider than its box |
 | `cut-off` | a control or text that a box hides, or that is past the page's edge, with nothing that scrolls to it |
 | `small-target` | a control whose hit area is under 24px, with another control inside the 24px circle centred on it (WCAG 2.5.8) |
+| `no-gap` | a member that touches another member with nothing between them in a box that lays its children out in flow, as a field touches a table in a Card, or whose border lies against the inside of a box's border with no inset |
+| `unseen-focus` | a control that, with keyboard focus, draws no mark, draws only an outline under 2px, or draws an outline under 3:1 against what it is drawn on or cut by a box that cannot scroll to it (WCAG 2.4.13, 1.4.11) |
 
 A page that throws fails the run too, and so does a gallery that does not draw.
+
+**`no-gap`** measures a member whose root (`data-member`) is a control or paints a border, a fill
+or a shadow. A member that paints nothing, such as a Table, a Stack or an Image's frame, has no
+edge to keep apart, so a table edge to edge in ListPage's bordered body and a full-bleed image in
+a Card are not reported. A member's parts carry no `data-member`, so a field and its clear button,
+SplitButton's two halves, a segmented group and the rows of a List, Menu, Tree or Table are one
+member. Two members touch only where their box lays its children out in flow: a flex or grid
+container's gap is the decision of the member or layout that owns it, and a block such as Card's
+has no gap, so members in it touch unless something spaces them. An edge is followed out through
+the boxes that end where it ends, so a field in a FormField touches what follows the FormField.
+Against a box's border, a member is reported only where it draws a border of its own, so that two
+borders run together: a search field's frame against a panel's border is reported, and a
+borderless button that a member places flush in its own frame, as DatePicker does, is not. While a
+member has keyboard focus its border is left out, because the focus convention recolours it. A bar
+is never reported: a member square at every corner and as long as its box along one axis runs edge
+to edge by design, as Banner does. A member that is positioned is placed by its member's recipe and
+is not reported either.
+
+**`unseen-focus`** gives each control keyboard focus with `focus({ focusVisible: true })`, which
+makes `:focus-visible` match whatever the last input was, so `render_screen` and the scan get the
+same state from inside the page and neither presses a key. It runs last, because it moves focus,
+and it waits a task after each focus for the page to commit what the focus queued, such as a
+menu row's highlight. What the control, its pseudo-elements, its descendants, its siblings and the
+boxes around it draw is compared with what they drew without focus: a mark on the field's frame
+(`:has(> input:focus-visible)`), on an interactive Card (`:has(:focus-visible)`) or on OTPInput's
+caret cell counts. A change of fill, border or shadow is a mark, and only an outline's colour is
+measured. Inside the control's edge the outline is measured against the fill of the box that
+carries it, or of the nearest box around it with a fill, and outside the edge against what is
+around that box, with a translucent outline composited first. Where an image is painted under it,
+it is not measured. A control a modal dialog keeps focus from is skipped. So is a text field that
+is the only control taking focus in a modal dialog, such as Command's search field: focus is
+nowhere else while the dialog is open, and the caret shows it. A focus trap can give focus back to
+a control as soon as it leaves, so the control is never drawn without focus. Its outline is then
+measured as drawn, and a control with no outline is not reported. Transitions are switched
+off while it runs, and focus, scroll positions and transitions are put back after it. State a
+member keeps from a focus is not put back: Tabs selects the tab it focuses.
 
 A component test checks the widths its author thought of. The scan checks every state at both
 widths, which is where a member that fits a desktop and not a phone is found. The scan keeps no
@@ -808,6 +847,14 @@ either on the first attempt or after correcting itself using the system's own fe
   outside the workspace. A `--read-only` server offers none of the write tools. `render_screen`
   returns its pictures over the transport, and a server started where Playwright has downloaded no
   browser answers that tool with the install command and every other tool as before.
+- `packages/mcp/src/verbs.test.ts`: every CLI verb that asks a tool, run through `main` with the
+  real one-shot caller in a scratch project outside the workspace. `--json` prints exactly what the
+  tool answers for the same call; `validate` prints one line for each violation; `emit` writes the
+  bytes `emit_screen` writes; `render` writes its pictures beside the spec, and is skipped, saying
+  why, on a machine where Playwright has no Chromium. The caller's answers are compared with the
+  server's over an in-memory transport, refusals and schema errors included. `polymorph mcp` is
+  spoken to by hand over stdio and exits 0 once it has answered everything sent before stdin
+  closed.
 - `packages/mcp/src/render.test.ts`: `render_screen` as a function, in a real Chromium over the
   page the workbench's builder builds in memory. A lawful spec comes back as one PNG for each width,
   of the window's size. A row told not to wrap is reported at the phone's width and not the

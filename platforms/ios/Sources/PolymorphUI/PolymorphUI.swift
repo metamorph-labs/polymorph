@@ -549,23 +549,35 @@ extension View {
 
 // MARK: - Focus ring
 
-/// The focus ring of conventions §4: an outline of `focus.width` in
-/// `border.focus`, `focus.offset` outside the part's own shape. The outline is
-/// the accessibility surface; the web's decorative glow under it is not drawn.
-/// A part that takes keyboard or text focus draws it while focused; a button
-/// leaves focus to the system's own focus effect.
+/// The focus mark of conventions §4: an outline of `focus.width` in
+/// `border.focusSolid`, at `focus.offset` from the part's own shape. The
+/// derived offset is minus the width, so the line lies inside the part's edge
+/// and covers its border; a system's offset of 0 or more draws it outside.
+/// While it lies inside, as on the web, a part with a solid fill passes
+/// `onFill`, the colour the label laws hold on that fill, and the line takes
+/// it; a part whose border carries state (an invalid field) passes
+/// `stateBorder`, and the line moves in past that hairline, so both show. The
+/// outline is the accessibility surface; the web's decorative glow is not
+/// drawn. A part that takes keyboard or text focus draws it while focused; a
+/// button leaves focus to the system's own focus effect.
 private struct PMFocusRing: ViewModifier {
   @Environment(\.pmTheme) private var theme
   let visible: Bool
   let cornerRadius: CGFloat
+  let onFill: Color?
+  let stateBorder: Bool
 
   func body(content: Content) -> some View {
-    let outset = theme.focus.offset + theme.focus.width
+    let inside = theme.focus.offset < 0
+    // The hairline every border here is drawn at.
+    let offset = inside && stateBorder ? theme.focus.offset - 1 : theme.focus.offset
+    let outset = offset + theme.focus.width
+    let solid = theme.colors.borderFocusSolid.color
     content.overlay {
       if visible {
         RoundedRectangle(cornerRadius: cornerRadius)
           .inset(by: -outset)
-          .strokeBorder(theme.colors.borderFocus.color, lineWidth: theme.focus.width)
+          .strokeBorder(inside ? (onFill ?? solid) : solid, lineWidth: theme.focus.width)
           .allowsHitTesting(false)
       }
     }
@@ -573,10 +585,23 @@ private struct PMFocusRing: ViewModifier {
 }
 
 extension View {
-  /// Draws the focus ring around the view while `visible`, following a corner
-  /// radius of `cornerRadius`.
-  func pmFocusRing(_ visible: Bool, cornerRadius: CGFloat) -> some View {
-    modifier(PMFocusRing(visible: visible, cornerRadius: cornerRadius))
+  /// Draws the focus mark on the view's edge while `visible`, following a
+  /// corner radius of `cornerRadius`: in `onFill` on a solid fill, and inside
+  /// the border where `stateBorder` says it carries state.
+  func pmFocusRing(
+    _ visible: Bool,
+    cornerRadius: CGFloat,
+    onFill: Color? = nil,
+    stateBorder: Bool = false
+  ) -> some View {
+    modifier(
+      PMFocusRing(
+        visible: visible,
+        cornerRadius: cornerRadius,
+        onFill: onFill,
+        stateBorder: stateBorder
+      )
+    )
   }
 }
 

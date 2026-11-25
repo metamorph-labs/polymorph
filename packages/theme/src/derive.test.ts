@@ -13,6 +13,7 @@ import {
   deriveFontStacks,
   deriveNonColorTokens,
   EXIT_RATIO,
+  focusPx,
   GEOMETRY_RADII,
   MOTION_SCALE,
   SPACE_LADDER_PX,
@@ -311,17 +312,23 @@ describe('elevation and focus', () => {
     expect(shadow.overlay.split(',').length).toBe(2)
   })
 
-  it('offsets the focus ring on round geometry and not on sharp geometry', () => {
-    expect(deriveNonColorTokens(axesWith({ geometry: 'sharp' })).focus.offset).toBe('0px')
-    expect(px(deriveNonColorTokens(axesWith({ geometry: 'round' })).focus.offset)).toBeGreaterThan(
-      0,
-    )
+  it('draws the focus mark 2px wide at the standard temperament, 3px at stark, 2px at soft', () => {
+    const width = (contrastTemperament: Axes['contrastTemperament']) =>
+      deriveNonColorTokens(axesWith({ contrastTemperament })).focus.width
+    expect(width('soft')).toBe('2px')
+    expect(width('standard')).toBe('2px')
+    expect(width('stark')).toBe('3px')
   })
 
-  it('thickens the focus ring for a stark temperament', () => {
-    const soft = px(deriveNonColorTokens(axesWith({ contrastTemperament: 'soft' })).focus.width)
-    const stark = px(deriveNonColorTokens(axesWith({ contrastTemperament: 'stark' })).focus.width)
-    expect(stark).toBeGreaterThan(soft)
+  it('moves the focus mark inside the edge by its own width at every geometry', () => {
+    // Nothing is drawn outside the control, so a container that clips never cuts the mark.
+    // The offset is no longer a function of geometry: round corners keep the mark inside too.
+    for (const geometry of ['sharp', 'crisp', 'soft', 'round'] as const) {
+      for (const contrastTemperament of ['soft', 'standard', 'stark'] as const) {
+        const { focus } = deriveNonColorTokens(axesWith({ geometry, contrastTemperament }))
+        expect(px(focus.offset), `${geometry} × ${contrastTemperament}`).toBe(-px(focus.width))
+      }
+    }
   })
 })
 
@@ -511,13 +518,24 @@ describe('system-file overrides: shadow throw, focus ring, type ratio', () => {
     expect(far.shadow.overlay).not.toBe('none')
   })
 
-  it('the focus overrides land in the assembled ring', () => {
+  it('the focus overrides land in the assembled mark', () => {
     const tokens = deriveNonColorTokens(base, 'normal', { focus: { width: 5, offset: 1 } })
     expect(tokens.focus.width).toBe('5px')
     expect(tokens.focus.offset).toBe('1px')
-    // Absent halves keep deriving from their axes.
-    const half = deriveNonColorTokens(base, 'normal', { focus: { width: 5 } })
-    expect(half.focus.offset).toBe(deriveNonColorTokens(base).focus.offset)
+    // An offset alone keeps the temperament's width.
+    const outside = deriveNonColorTokens(base, 'normal', { focus: { offset: 0 } })
+    expect(outside.focus.width).toBe(deriveNonColorTokens(base).focus.width)
+    expect(outside.focus.offset).toBe('0px')
+  })
+
+  it('a width alone moves the derived mark inside the edge by the new width', () => {
+    // The default offset follows the width the system sets, not the temperament's, so a wider
+    // mark still covers the border and draws nothing outside the control.
+    const wide = deriveNonColorTokens(base, 'normal', { focus: { width: 5 } })
+    expect(wide.focus.width).toBe('5px')
+    expect(wide.focus.offset).toBe('-5px')
+    expect(focusPx('standard', { width: 5 })).toEqual({ width: 5, offset: -5 })
+    expect(focusPx('stark')).toEqual({ width: 3, offset: -3 })
   })
 
   it('the two steps under the base take their set sizes and the rest still derive', () => {

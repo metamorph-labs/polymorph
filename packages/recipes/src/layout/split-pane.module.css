@@ -29,11 +29,31 @@
 }
 
 /* A pane that cannot shrink would block the divider, so both axes get a zero
-   minimum size. Scrolling inside a pane is that pane's concern. */
+   minimum size. Scrolling inside a pane is that pane's concern.
+
+   A pane clips what it holds at its padding edge: the seat shadow of a field or
+   a Button against its side, and a control's focus mark, drawn a `space-1` gap
+   outside it. At the seam a pane is larger than its content by `space-2`,
+   inside the divider's column, which is the split's own, and its margin takes
+   that back, so the content stays in the pane's track. The outer sides have no
+   room: they are the edges of the region the split fills, and a pane drawn past
+   them would make that region scroll. */
 .pane {
+  --pm-split-reach: var(--pm-space-2);
+
   min-inline-size: 0;
   min-block-size: 0;
   overflow: hidden;
+}
+
+.pane:first-child {
+  margin-inline-end: calc(var(--pm-split-reach) * -1);
+  padding-inline-end: var(--pm-split-reach);
+}
+
+.pane:last-child {
+  margin-inline-start: calc(var(--pm-split-reach) * -1);
+  padding-inline-start: var(--pm-split-reach);
 }
 
 /* The divider: an empty 8px column with a 1px line down its centre. The
@@ -101,6 +121,21 @@
   inline-size: auto;
   block-size: var(--pm-space-2);
   cursor: row-resize;
+}
+
+/* The seam's room moves to the block axis with the seam. */
+.root[data-orientation='vertical'] .pane:first-child {
+  margin-block-end: calc(var(--pm-split-reach) * -1);
+  margin-inline-end: 0;
+  padding-block-end: var(--pm-split-reach);
+  padding-inline-end: 0;
+}
+
+.root[data-orientation='vertical'] .pane:last-child {
+  margin-block-start: calc(var(--pm-split-reach) * -1);
+  margin-inline-start: 0;
+  padding-block-start: var(--pm-split-reach);
+  padding-inline-start: 0;
 }
 
 .root[data-orientation='vertical'] .divider::before {

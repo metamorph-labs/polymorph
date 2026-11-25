@@ -12,8 +12,8 @@ import { describe, expect, it } from 'vitest'
  * The published tools run those same fronts with the registry and the files
  * they ship, so a decision made here would be a third front, and one no
  * checkout runs. This law keeps `src/` to entry points: the two bins, the
- * screen emitter `init` runs, the server starter the bins share, and the
- * module that says where the shipped files are. Each imports only Node's own
+ * screen emitter `init` runs, and the module that says where the shipped
+ * files are and builds the tools' context from them. Each imports only Node's own
  * modules, the fronts, the emitter, the registry's types and its siblings.
  */
 
@@ -23,7 +23,6 @@ const SRC = resolve(import.meta.dirname, 'src')
 const ALLOWED = new Set([
   '@polymorph/cli',
   '@polymorph/mcp',
-  '@polymorph/mcp/flags',
   '@polymorph/spec',
   '@polymorph/registry',
 ])
@@ -31,8 +30,8 @@ const ALLOWED = new Set([
 describe('the tools add no decision to the fronts', () => {
   const files = readdirSync(SRC).sort()
 
-  it('hold only the entry points and the two modules they share', () => {
-    expect(files).toEqual(['emit.ts', 'polymorph-mcp.ts', 'polymorph.ts', 'serve.ts', 'shipped.ts'])
+  it('hold only the entry points and the module they share', () => {
+    expect(files).toEqual(['emit.ts', 'polymorph-mcp.ts', 'polymorph.ts', 'shipped.ts'])
   })
 
   it('import nothing but Node, the fronts, the emitter and each other', () => {

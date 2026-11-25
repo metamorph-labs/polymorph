@@ -31,7 +31,7 @@ its simplest form: **colour is a palette, shape is a system**.
 | typePersonality | `grotesque` | On the desktop a UI grotesque keeps the chrome in the background and the content forward. The axis names the voice. The family is chosen under Fonts. |
 | colorStrategy | `quiet` | Neutral surfaces, with blue only where something is interactive or selected, as in pebble. `tinted` would wash every panel and make the accent a background instead of an affordance. |
 | motionTemperament | `standard` | Desktop animation is smooth and damped (window transitions, sheet drops, menu fades), without the spring overshoot pebble uses. This is one of the three axes that separate pebble and desktop. `expressive` on a desktop would look like a phone app in a window. |
-| ornament | `minimal` | Hover lift and focus halo, no page texture. The register's decoration is its depth, and translucent material is `depth: glass`, glassmorphic's axis. `grain` would add a decoration the register does not have. |
+| ornament | `minimal` | Hover lift and the pending drop's halo, no page texture. The register's decoration is its depth, and translucent material is `depth: glass`, glassmorphic's axis. `grain` would add a decoration the register does not have. |
 
 Divergence: 3 axes from pebble (geometry, density, motion: the entire
 phone/desk difference), 3 from dew and flint, 4 from pop and press, 5 from
