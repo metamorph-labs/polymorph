@@ -258,10 +258,9 @@ export default describeMember({
       many: {
         within: { member: 'Inline', props: { gap: 3, wrap: true } },
         each: [
+          // The danger cells come last, as a danger Button does in any group (`danger-last`).
           { props: { variant: 'solid', tone: 'accent', disabled: true, label: 'solid/accent' } },
-          { props: { variant: 'solid', tone: 'danger', disabled: true, label: 'solid/danger' } },
           { props: { variant: 'soft', tone: 'accent', disabled: true, label: 'soft/accent' } },
-          { props: { variant: 'soft', tone: 'danger', disabled: true, label: 'soft/danger' } },
           {
             props: {
               variant: 'outline',
@@ -273,11 +272,13 @@ export default describeMember({
           {
             props: { variant: 'outline', tone: 'accent', disabled: true, label: 'outline/accent' },
           },
+          { props: { variant: 'ghost', tone: 'neutral', disabled: true, label: 'ghost/neutral' } },
+          { props: { variant: 'ghost', tone: 'accent', disabled: true, label: 'ghost/accent' } },
+          { props: { variant: 'solid', tone: 'danger', disabled: true, label: 'solid/danger' } },
+          { props: { variant: 'soft', tone: 'danger', disabled: true, label: 'soft/danger' } },
           {
             props: { variant: 'outline', tone: 'danger', disabled: true, label: 'outline/danger' },
           },
-          { props: { variant: 'ghost', tone: 'neutral', disabled: true, label: 'ghost/neutral' } },
-          { props: { variant: 'ghost', tone: 'accent', disabled: true, label: 'ghost/accent' } },
           { props: { variant: 'ghost', tone: 'danger', disabled: true, label: 'ghost/danger' } },
         ],
       },

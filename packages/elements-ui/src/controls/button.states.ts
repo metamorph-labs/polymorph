@@ -210,14 +210,14 @@ export const states: ComponentStates = {
       name: 'every cell, disabled',
       html: `<poly-inline gap="3" wrap>
   <poly-button variant="solid" tone="accent" disabled label="solid/accent"></poly-button>
-  <poly-button variant="solid" tone="danger" disabled label="solid/danger"></poly-button>
   <poly-button variant="soft" tone="accent" disabled label="soft/accent"></poly-button>
-  <poly-button variant="soft" tone="danger" disabled label="soft/danger"></poly-button>
   <poly-button variant="outline" tone="neutral" disabled label="outline/neutral"></poly-button>
   <poly-button variant="outline" tone="accent" disabled label="outline/accent"></poly-button>
-  <poly-button variant="outline" tone="danger" disabled label="outline/danger"></poly-button>
   <poly-button variant="ghost" tone="neutral" disabled label="ghost/neutral"></poly-button>
   <poly-button variant="ghost" tone="accent" disabled label="ghost/accent"></poly-button>
+  <poly-button variant="solid" tone="danger" disabled label="solid/danger"></poly-button>
+  <poly-button variant="soft" tone="danger" disabled label="soft/danger"></poly-button>
+  <poly-button variant="outline" tone="danger" disabled label="outline/danger"></poly-button>
   <poly-button variant="ghost" tone="danger" disabled label="ghost/danger"></poly-button>
 </poly-inline>`,
       subject: 'poly-button',

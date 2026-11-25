@@ -204,7 +204,11 @@ export const states: ComponentStates = {
       name: 'every cell, disabled',
       render: () => (
         <Inline gap={3} wrap>
-          {CELLS.map((pair) => (
+          {/* The danger cells come last, as a danger Button does in any group (`danger-last`). */}
+          {[
+            ...CELLS.filter((pair) => pair.tone !== 'danger'),
+            ...CELLS.filter((pair) => pair.tone === 'danger'),
+          ].map((pair) => (
             <Button
               key={`${pair.variant}/${pair.tone}`}
               {...cell(pair)}

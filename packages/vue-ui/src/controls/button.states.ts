@@ -310,14 +310,7 @@ export const states: ComponentStates = {
                 label: 'solid/accent',
                 ...overrides,
               }),
-              h(Button, {
-                variant: 'solid',
-                tone: 'danger',
-                disabled: true,
-                label: 'solid/danger',
-              }),
               h(Button, { variant: 'soft', tone: 'accent', disabled: true, label: 'soft/accent' }),
-              h(Button, { variant: 'soft', tone: 'danger', disabled: true, label: 'soft/danger' }),
               h(Button, {
                 variant: 'outline',
                 tone: 'neutral',
@@ -331,12 +324,6 @@ export const states: ComponentStates = {
                 label: 'outline/accent',
               }),
               h(Button, {
-                variant: 'outline',
-                tone: 'danger',
-                disabled: true,
-                label: 'outline/danger',
-              }),
-              h(Button, {
                 variant: 'ghost',
                 tone: 'neutral',
                 disabled: true,
@@ -347,6 +334,19 @@ export const states: ComponentStates = {
                 tone: 'accent',
                 disabled: true,
                 label: 'ghost/accent',
+              }),
+              h(Button, {
+                variant: 'solid',
+                tone: 'danger',
+                disabled: true,
+                label: 'solid/danger',
+              }),
+              h(Button, { variant: 'soft', tone: 'danger', disabled: true, label: 'soft/danger' }),
+              h(Button, {
+                variant: 'outline',
+                tone: 'danger',
+                disabled: true,
+                label: 'outline/danger',
               }),
               h(Button, {
                 variant: 'ghost',

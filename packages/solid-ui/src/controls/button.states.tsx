@@ -303,14 +303,14 @@ export const states: ComponentStates = {
             label="solid/accent"
             {...overrides}
           />
-          <Button variant="solid" tone="danger" disabled={true} label="solid/danger" />
           <Button variant="soft" tone="accent" disabled={true} label="soft/accent" />
-          <Button variant="soft" tone="danger" disabled={true} label="soft/danger" />
           <Button variant="outline" tone="neutral" disabled={true} label="outline/neutral" />
           <Button variant="outline" tone="accent" disabled={true} label="outline/accent" />
-          <Button variant="outline" tone="danger" disabled={true} label="outline/danger" />
           <Button variant="ghost" tone="neutral" disabled={true} label="ghost/neutral" />
           <Button variant="ghost" tone="accent" disabled={true} label="ghost/accent" />
+          <Button variant="solid" tone="danger" disabled={true} label="solid/danger" />
+          <Button variant="soft" tone="danger" disabled={true} label="soft/danger" />
+          <Button variant="outline" tone="danger" disabled={true} label="outline/danger" />
           <Button variant="ghost" tone="danger" disabled={true} label="ghost/danger" />
         </Inline>
       ),
