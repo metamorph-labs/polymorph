@@ -840,7 +840,10 @@ describe('the judge', () => {
   }
 
   it('runs the typecheck and the build of an installed app, and says which failed', async () => {
-    const toolbox = await loadToolbox()
+    // Loaded as the test runner loads every module, so each file is one script to the coverage.
+    const toolbox = await loadToolbox({
+      importModule: (path: string) => import(/* @vite-ignore */ path),
+    })
     const required = loadRequirements({
       registry: toolbox.registry,
       shapes: toolbox.requirementShapes,

@@ -943,7 +943,8 @@ beforeAll(async () => {
     listen(unparsedServer),
     listen(runtimeServer),
   ])
-  screen = await loadScreen()
+  // Loaded as the test runner loads every module, so each file is one script to the coverage.
+  screen = await loadScreen({ importModule: (path: string) => import(/* @vite-ignore */ path) })
   const [two, cap, tsx, every, cliRuns, runtimeEvery] = await Promise.all([
     evaluate('two', ['--fake', '--briefs', 'eval/briefs/{list-incidents,settings-workspace}.md']),
     evaluate('cap', [

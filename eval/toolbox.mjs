@@ -5,6 +5,20 @@ import { fileURLToPath } from 'node:url'
 import { createJiti } from 'jiti'
 
 /**
+ * What loads a source file of the repository by its path from the root. The
+ * eval runs under node, which cannot import TypeScript with the repository's
+ * aliases, so it loads through `jiti`. A test passes its own `importModule`:
+ * a module loaded twice in one process, once by the test runner and once by
+ * `jiti`, is two scripts with one name, and the coverage of the two cannot be
+ * joined, so the file reports less than its tests cover.
+ */
+function loader(importModule) {
+  if (importModule !== undefined) return (path) => importModule(resolve(ROOT, path))
+  const jiti = createJiti(import.meta.url)
+  return (path) => jiti.import(resolve(ROOT, path))
+}
+
+/**
  * The four tools the agent eval offers, shared by its runners
  * (`docs/verification.md`, "The agent eval"). `eval/run.mjs` answers the
  * Messages API runner's tool calls with them, and `eval/mcp.mjs` serves the
@@ -36,9 +50,8 @@ const EXCERPT_LIMIT = 6000
  * does before it writes anything. A spec is lawful here only when the screen
  * it emits may be written.
  */
-export async function loadToolbox({ registry: built } = {}) {
-  const jiti = createJiti(import.meta.url)
-  const load = (path) => jiti.import(resolve(ROOT, path))
+export async function loadToolbox({ registry: built, importModule } = {}) {
+  const load = loader(importModule)
 
   const { jsonSchema, validate: validateShape } = await load('packages/registry/src/shape.ts')
   const mcp = await load('packages/mcp/src/tools.ts')
@@ -209,9 +222,8 @@ export async function loadToolbox({ registry: built } = {}) {
  * loaded from source, as the tools are, so a run measures the card of the
  * tree it runs on.
  */
-export async function loadScreen() {
-  const jiti = createJiti(import.meta.url)
-  const load = (path) => jiti.import(resolve(ROOT, path))
+export async function loadScreen({ importModule } = {}) {
+  const load = loader(importModule)
   const { runtimeCard } = await load('packages/screen/src/card.ts')
   const { checkScreen } = await load('packages/screen/src/check.ts')
   const { parsePartial } = await load('packages/screen/src/partial.ts')
