@@ -24,7 +24,7 @@ The skills and the server run the published tools of release 1.0.17, the npm pac
 `@metamorph-labs/polymorph`:
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 <verb>
+npx -y @metamorph-labs/polymorph@1.0.17 card
 npx -y @metamorph-labs/polymorph@1.0.17 mcp --read-only
 ```
 

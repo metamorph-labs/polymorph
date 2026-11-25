@@ -397,11 +397,14 @@ function listed(items: readonly string[]): string {
   return `${items.slice(0, -1).join(', ')} and ${items.at(-1) as string}`
 }
 
-/** Wraps prose at the column every file here keeps, indenting each line after the first. */
+/**
+ * Wraps prose at the column every file here keeps, indenting each line after
+ * the first. A code span is one word, so no line break falls inside one.
+ */
 function wrap(text: string, indent = '', width = 100): string {
   const lines: string[] = []
   let line = ''
-  for (const word of text.split(' ')) {
+  for (const word of text.match(/(?:`[^`]*`|[^\s`])+/g) ?? []) {
     const next = line === '' ? word : `${line} ${word}`
     if (next.length + (lines.length === 0 ? 0 : indent.length) > width && line !== '') {
       lines.push(line)
@@ -516,12 +519,18 @@ function serverSentence(options: AgentOptions, servers: string[]): string {
     : ''
   // The configs are committed and shared, so they name `npx` for every machine, and the one
   // change a native Windows client may need is said instead of written.
+  // A page installs no tools, so its first start downloads them.
+  const download =
+    options.framework === 'elements' && options.mcp.command === 'npx'
+      ? ' The page installs no tools, so the server downloads them the first time it starts, which ' +
+        'can take longer than a client waits: run the `card` command above once first.'
+      : ''
   const windows =
     options.mcp.command === 'npx'
       ? ' A client on native Windows that cannot start `npx` runs it as `cmd /c npx` with the ' +
         'same arguments.'
       : ''
-  return `${where}${trust}${windows}`
+  return `${where}${download}${trust}${windows}`
 }
 
 /* -------------------------------------------------------------------------- */

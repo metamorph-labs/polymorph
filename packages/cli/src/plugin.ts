@@ -401,7 +401,7 @@ The skills and the server run the published tools of release ${registry.version}
 \`${TOOLS_NAME}\`:
 
 \`\`\`sh
-${run} <verb>
+${run} card
 ${server}
 \`\`\`
 

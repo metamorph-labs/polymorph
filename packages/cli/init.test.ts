@@ -101,10 +101,15 @@ describe('polymorph init writes an app', () => {
       'polymorph.stylelint.js',
       'eslint.config.js',
       'stylelint.config.js',
-      '.mcp.json',
-      'polymorph/system-card.md',
       'AGENTS.md',
       'CLAUDE.md',
+      'polymorph/system-card.md',
+      '.claude/skills/polymorph-screen/SKILL.md',
+      '.agents/skills/polymorph-screen/SKILL.md',
+      '.mcp.json',
+      '.cursor/mcp.json',
+      '.codex/config.toml',
+      'polymorph/agents.json',
       'src/screens/welcome.json',
       'src/screens/Welcome.tsx',
       'src/App.tsx',
@@ -138,14 +143,23 @@ describe('polymorph init writes an app', () => {
 
   it('writes the registry’s system card, and tells an agent to read it', () => {
     expect(read(app, 'polymorph/system-card.md')).toBe(renderSystemCard(registry))
-    const agents = read(app, 'AGENTS.md')
+    const agents = read(app, 'AGENTS.md').replace(/\s+/g, ' ')
     expect(agents).toContain('@polymorph/react-ui')
     expect(agents).toContain('polymorph/system-card.md')
-    expect(agents).toContain('get_system_card')
-    expect(agents).toContain('validate')
-    expect(agents).toContain('src/screens/*.json')
-    expect(agents).toContain('render_screen')
+    expect(agents).toContain(`${BIN} card`)
+    expect(agents).toContain(`${BIN} validate <file>`)
+    expect(agents).toContain('polymorph-screen/1')
+    expect(agents).toContain(`${BIN} render <spec.json>`)
     expect(read(app, 'CLAUDE.md')).toBe('@AGENTS.md\n')
+    for (const skill of [
+      'polymorph-screen',
+      'polymorph-rules',
+      'polymorph-setup',
+      'polymorph-theme',
+    ]) {
+      expect(read(app, `.claude/skills/${skill}/SKILL.md`)).toContain(`name: ${skill}`)
+      expect(read(app, `.agents/skills/${skill}/SKILL.md`)).toContain(`name: ${skill}`)
+    }
   })
 
   it('writes the theme’s values into both lint fragments', () => {
