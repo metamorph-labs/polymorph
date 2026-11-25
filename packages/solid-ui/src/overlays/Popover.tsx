@@ -86,7 +86,7 @@ export default function Popover(given: PopoverProps): JSX.Element {
     const sheetPanel = elementRef<HTMLElement>()
     const phone = useMediaQuery('phone')
     const sheeting = createDerived(() => props.presentation === 'sheet' && phone())
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => anchor.value)
     const service = useMachine(
       zag.machine,
       () =>

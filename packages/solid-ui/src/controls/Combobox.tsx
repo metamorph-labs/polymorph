@@ -215,7 +215,7 @@ export default function Combobox(given: ComboboxProps): JSX.Element {
     const emitBlur = createDerived(
       () => (event: FocusEvent) => setTimeout(() => props.onBlur?.(event)),
     )
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => input.value)
     const service = useMachine(
       zag.machine,
       () =>

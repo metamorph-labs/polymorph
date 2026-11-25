@@ -72,7 +72,7 @@ let {
 const uid = $props.id()
 const joined = joinSlot(undefined, () => ({}))
 let list = $state<HTMLElement | null>(null)
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => list)
 const service = useMachine(
   zag.machine,
   () =>

@@ -47,7 +47,7 @@ defineSlots<{ default: (props: Record<string, never>) => unknown }>()
 const uid = useId()
 const anchor = useTemplateRef<HTMLElement>('anchor')
 const bubble = useTemplateRef<HTMLElement>('bubble')
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => anchor.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({

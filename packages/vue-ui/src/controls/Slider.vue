@@ -62,7 +62,7 @@ const emit = defineEmits<{
 }>()
 const uid = useId()
 const root = useTemplateRef<HTMLElement>('root')
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => root.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({

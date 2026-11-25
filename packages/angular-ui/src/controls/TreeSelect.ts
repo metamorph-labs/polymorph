@@ -444,7 +444,7 @@ export class TreeSelect {
     })(this.$p.items, this.branches.value, this.chosen.value)
     if (next !== this.branches.value) this.changeExpanded.value(next)
   })
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.trigger.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,

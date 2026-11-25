@@ -158,8 +158,8 @@ A control is `role="radiogroup"` named by `label`, or by FormField's label throu
 chosen mark is checked, though the marks before it are drawn filled. One mark is a tab stop:
 the chosen one, or the first when nothing is chosen. The arrows move focus to the next or the
 previous mark and choose it, as in a radio group. The arrows that point along the row follow
-the document's direction, so in a right-to-left document the arrow that points left moves to
-the next mark. Down is the next mark and Up the previous one. Home and End move to and choose
+the reading direction of the place the rating is in, so in a right-to-left page or section the
+arrow that points left moves to the next mark. Down is the next mark and Up the previous one. Home and End move to and choose
 the first and the last mark. The arrows stop at either end and do not wrap, because one press
 past the top would set the lowest score. Space presses the focused mark, and Enter does
 nothing, as WAI-ARIA's radio group pattern has it. A keyboard reader clears a rating with Space

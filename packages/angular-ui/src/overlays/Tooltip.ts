@@ -98,7 +98,7 @@ export class Tooltip {
   protected readonly uid = uniqueId()
   protected readonly anchor = elementRef<HTMLElement>()
   protected readonly bubble = elementRef<HTMLElement>()
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.anchor.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,

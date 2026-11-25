@@ -148,7 +148,7 @@ export class Popover {
   protected readonly sheetPanel = elementRef<HTMLElement>()
   protected readonly phone = useMediaQuery('phone')
   protected readonly sheeting = derived(() => this.$p.presentation === 'sheet' && this.phone())
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.anchor.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,

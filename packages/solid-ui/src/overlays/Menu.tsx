@@ -148,7 +148,7 @@ export default function Menu(given: MenuProps): JSX.Element {
           : [entry],
       ),
     )
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => anchor.value)
     const service = useMachine(
       zag.machine,
       () =>

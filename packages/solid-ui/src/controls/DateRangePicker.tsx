@@ -301,7 +301,7 @@ export default function DateRangePicker(given: DateRangePickerProps): JSX.Elemen
           }
         },
     )
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => field.value)
     const service = useMachine(
       zag.machine,
       () =>

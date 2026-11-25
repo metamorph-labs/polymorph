@@ -494,7 +494,7 @@ export class Combobox {
   protected readonly emitBlur = derived(
     () => (event: FocusEvent) => setTimeout(() => this.$.emit(this.onBlur, 'onBlur', event)),
   )
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.input.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,

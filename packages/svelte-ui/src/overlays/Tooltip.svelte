@@ -52,7 +52,7 @@ const uid = $props.id()
 const joined = joinSlot(undefined, () => ({}))
 let anchor = $state<HTMLElement | null>(null)
 let bubble = $state<HTMLElement | null>(null)
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => anchor)
 const service = useMachine(
   zag.machine,
   () =>

@@ -154,7 +154,7 @@ export class Accordion {
   protected readonly heights = cell(() => new Map())
   protected readonly regions = elementList<HTMLElement>()
   protected readonly root = elementRef<HTMLElement>()
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.root.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,

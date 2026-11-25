@@ -120,7 +120,7 @@ const toDraft = computed(
       .trim()
       .slice(0, props.alpha ? 8 : 6),
 )
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => root.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({

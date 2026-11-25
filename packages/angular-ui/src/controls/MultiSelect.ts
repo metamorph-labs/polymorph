@@ -657,7 +657,7 @@ export class MultiSelect {
         at
       ] ?? null,
   )
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.frame.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,

@@ -81,6 +81,24 @@ describe('readDirection reads the place an element is in', () => {
     }
   })
 
+  it("takes a popup's content as the direction of the member that opened it", () => {
+    const content = document.createElement('div')
+    content.setAttribute('dir', 'rtl')
+    content.setAttribute('data-scope', 'menu')
+    content.setAttribute('data-part', 'content')
+    const row = document.createElement('div')
+    row.setAttribute('dir', 'ltr')
+    row.setAttribute('data-scope', 'menu')
+    row.setAttribute('data-part', 'trigger')
+    content.append(row)
+    document.body.append(content)
+    try {
+      expect(readDirection(row)).toBe('rtl')
+    } finally {
+      content.remove()
+    }
+  })
+
   it('reads the document for an element out of it', () => {
     document.documentElement.setAttribute('dir', 'rtl')
     expect(readDirection(document.createElement('div'))).toBe('rtl')

@@ -53,7 +53,7 @@ const emit = defineEmits<{ change: [value: string] }>()
 defineSlots<{ default: (props: Record<string, never>) => unknown }>()
 const uid = useId()
 const list = useTemplateRef<HTMLElement>('list')
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => list.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({

@@ -552,14 +552,17 @@ app hosts, as `pnpm inventory` does in this repository.
 
 A product in a right-to-left language says so once, with `dir="rtl"` on `<html>` (or on
 `<body>`). Every member in every web framework follows it, the elements included. A recipe mirrors because it is
-written in logical properties. A member also hands the document's direction to the substrate it
-is built on, so the arrow keys, a Slider's track, a submenu's side and a Tabs strip turn with
-the page. A member already on the page follows a change to the attribute.
+written in logical properties. A member also hands its direction to the substrate it is built
+on, so the arrow keys, a Slider's track, a submenu's side and a Tabs strip turn with the page. A
+member already on the page follows a change to the attribute.
 
-The direction is the document's. A member inside an element whose `dir` differs from the
-document's follows the document, and a direction set only in CSS is not read. Each foundation
-exports `useDirection`, which returns the direction and keeps it current. On iOS and Android
-the members follow the platform's layout direction.
+The direction is the one `dir` says on the nearest element around the member, so a section that
+says `dir="rtl"` in a left-to-right page turns the members inside it, and a member follows a
+change to that attribute too. A direction set only in CSS is not read. A member that draws
+everything in a layer over the page (Dialog, Drawer, Command, Lightbox, Tour) follows the
+document. Each foundation exports `useDirection`, which returns the direction of the place an
+element is in and keeps it current. On iOS and Android the members follow the platform's layout
+direction.
 
 ## Routing
 

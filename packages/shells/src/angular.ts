@@ -28,6 +28,7 @@ import {
   checkSlots,
   classReference,
   descriptionPath,
+  directionPlace,
   entrySubject,
   EVENT_TYPES as SHARED_EVENT_TYPES,
   fixtureName,
@@ -1749,7 +1750,10 @@ export function renderAngularMember(
     ]
     // The assertion gives the literals their machine's types (`placement: 'bottom-end'`), and
     // the callbacks their details.
-    fields.push('protected readonly documentDirection = useDirection()')
+    const place = directionPlace(template)
+    fields.push(
+      `protected readonly documentDirection = useDirection(${place === undefined ? '' : `() => ${scriptExpr(place)}`})`,
+    )
     fields.push(
       `protected readonly service: { readonly value: zag.Service } = setup(() => useMachine(zag.machine, () => ({ ${machineContext.join(', ')} }) as Partial<zag.Props>))`,
     )

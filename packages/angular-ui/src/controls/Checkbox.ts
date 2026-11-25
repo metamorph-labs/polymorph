@@ -200,7 +200,7 @@ export class Checkbox {
   protected readonly $p = this.$.props
   protected readonly uid = uniqueId()
   protected readonly box = elementRef<HTMLElement>()
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.box.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,

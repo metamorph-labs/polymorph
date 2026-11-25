@@ -99,7 +99,7 @@ const dayName = computed(
     return said
   },
 )
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => root.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({

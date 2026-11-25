@@ -16,7 +16,9 @@
  * so a member inside a section that says `dir="rtl"` on a left-to-right page
  * runs right to left. The `dir` a Zag machine writes on its own parts (the
  * elements that carry `data-scope`) is passed over, because it is the
- * direction a member was handed and not one the page says. A member built on
+ * direction a member was handed and not one the page says. A popup's content
+ * part counts: it carries the direction of the member that opened it, so a
+ * submenu drawn inside a menu's content takes the menu's. A member built on
  * Radix, whose parts carry no such mark, reads from outside its own root. Given
  * no place, or a place out of the document, the direction is the one `dir`
  * says on `<body>`, or else on `<html>`. A document that sets its direction
@@ -26,8 +28,12 @@
  */
 export type ReadingDirection = 'ltr' | 'rtl'
 
-/** An element whose `dir` the page says, and not one a Zag machine wrote on its part. */
-const SAYS = '[dir]:not([data-scope])'
+/**
+ * An element whose `dir` the page says, and not one a Zag machine wrote on its
+ * part, or a popup's content, which says the direction of the member it
+ * belongs to.
+ */
+const SAYS = '[dir]:not([data-scope]), [dir][data-scope][data-part="content"]'
 
 /** The direction an element's own `dir` says, or `undefined` when it says none that counts. */
 function said(element: Element): ReadingDirection | undefined {

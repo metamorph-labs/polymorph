@@ -50,8 +50,9 @@ const joined = joinSlot(undefined, () => ({ label: labelOwn }))
 const label = $derived(
   joined.passed['label'] === undefined ? labelOwn : (joined.passed['label'] as typeof labelOwn),
 )
+let root = $state<HTMLElement | null>(null)
 const fades = $derived(type === 'hover')
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => root)
 const service = useMachine(
   zag.machine,
   () => ({ id: uid, dir: documentDirection.current }) as Partial<zag.Props>,
@@ -62,7 +63,11 @@ const overflowing = $derived(api.hasOverflowX || api.hasOverflowY)
 
 {@render joined.start?.()
 }{#if joined.shown
-  }<div {...attributes(api.getRootProps())} class={styles.root} data-member="scroll-area"
+  }<div
+    bind:this={root}
+    {...attributes(api.getRootProps())}
+    class={styles.root}
+    data-member="scroll-area"
     ><div
       {...attributes(api.getViewportProps())}
       class={styles.viewport}

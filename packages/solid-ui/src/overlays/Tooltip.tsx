@@ -59,7 +59,7 @@ export default function Tooltip(given: TooltipProps): JSX.Element {
     const uid = createUniqueId()
     const anchor = elementRef<HTMLElement>()
     const bubble = elementRef<HTMLElement>()
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => anchor.value)
     const service = useMachine(
       zag.machine,
       () =>
