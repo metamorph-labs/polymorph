@@ -15,6 +15,7 @@ import {
 import { builtinModules } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import {
@@ -40,7 +41,10 @@ import { buildTools, lockToolsDist } from './dist-lock'
  * writes names no path of this machine and matches the checkout's app apart
  * from the files that say where the server runs from, `add`, `diff`,
  * `update`, `check` and `theme validate` work in a project that has the tools
- * in its `node_modules`, and the MCP server answers a real client over stdio.
+ * in its `node_modules`, so does every verb that asks a tool, and the MCP
+ * server, started by `polymorph mcp` and by `polymorph-mcp`, answers a real
+ * client over stdio. The verbs and the server's tools are each other's, as in
+ * a checkout.
  * The tarball holds only what the package declares, every file the registry
  * names, and no path of this machine.
  *
@@ -333,11 +337,14 @@ describe('the tarball', () => {
 /* -------------------------------------------------------------------------- */
 
 describe('the installed CLI', () => {
-  it('answers --help', () => {
+  it('answers --help with every verb, the server among them', () => {
     const { code, stdout } = bin('polymorph', ['--help'])
     expect(code).toBe(0)
-    expect(stdout).toContain('polymorph init <dir>')
-    expect(stdout).toContain('--registry <name>')
+    for (const verb of ['init <dir>', 'card', 'validate', 'render', 'theme propose', 'mcp']) {
+      expect(stdout, verb).toContain(`polymorph ${verb}`)
+    }
+    const init = bin('polymorph', ['init', '--help'])
+    expect(init.stdout).toContain('--registry <name>')
   })
 
   it('lists an app on a dry run, and writes nothing', () => {
@@ -528,6 +535,108 @@ describe('the installed CLI', () => {
 })
 
 /* -------------------------------------------------------------------------- */
+/* The verbs that ask the tools                                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The verbs that ask an MCP tool, run from the installed bin in an app.
+ * Each calls the tool in the bin's own process, over the shipped registry and
+ * files, and prints its answer; the exit code says whether it was clean.
+ */
+describe('the installed verbs', () => {
+  const SEEDED = 'export const A = () => <div style={{ padding: 12 }} />\n'
+  const RAW_BUTTON = 'export function A() {\n  return <button type="button">Save</button>\n}\n'
+
+  /**
+   * An app that installs the React vocabulary, which the tools see as the
+   * project when a verb runs in it. The project above vendors, and a `<button>`
+   * is rewritten only where `Button` can be imported from the vocabulary.
+   */
+  const APP = resolve(SCRATCH, 'verbs-app')
+  const verb = (args: string[]) => bin('polymorph', args, APP)
+
+  beforeAll(() => {
+    mkdirSync(resolve(APP, 'src'), { recursive: true })
+    const manifest = {
+      name: 'verbs-app',
+      private: true,
+      dependencies: { '@polymorph/react-ui': '^1.0.0' },
+    }
+    writeFileSync(resolve(APP, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`)
+    writeFileSync(resolve(APP, 'src/Seeded.tsx'), SEEDED)
+    writeFileSync(resolve(APP, 'src/Raw.tsx'), RAW_BUTTON)
+    writeFileSync(resolve(APP, 'probe.json'), `${JSON.stringify(SPEC, null, 2)}\n`)
+  })
+
+  it('prints the card, finds a member, and answers one as the tool’s JSON', () => {
+    const card = verb(['card'])
+    expect(card.code, card.stderr).toBe(0)
+    expect(card.stdout).toContain('system card')
+
+    const search = verb(['search', 'date'])
+    expect(search.code, search.stderr).toBe(0)
+    expect(search.stdout).toContain('DatePicker')
+
+    const component = verb(['component', 'Button', '--json'])
+    expect(component.code, component.stderr).toBe(0)
+    const answer = JSON.parse(component.stdout) as { component: { name: string } }
+    expect(answer.component.name).toBe('Button')
+  })
+
+  it('validates a file with a violation (exit 1) and a lawful spec (exit 0)', () => {
+    const seeded = verb(['validate', 'src/Seeded.tsx'])
+    expect(seeded.code).toBe(1)
+    expect(seeded.stdout).toContain('polymorph/no-raw-styles')
+
+    const spec = verb(['validate', 'probe.json'])
+    expect(spec.code, spec.stdout).toBe(0)
+  })
+
+  it('prints a file’s fixes on a dry run, and writes nothing', () => {
+    const { code, stdout } = verb(['fix', 'src/Raw.tsx', '--dry-run'])
+    expect(code, stdout).toBe(0)
+    expect(stdout).toContain('<Button label="Save" />')
+    expect(readFileSync(resolve(APP, 'src/Raw.tsx'), 'utf8')).toBe(RAW_BUTTON)
+  })
+
+  it('emits a spec into the app', () => {
+    const { code, stdout, stderr } = verb(['emit', 'probe.json', 'src/screens/ProbeVerb.tsx'])
+    expect(code, stdout + stderr).toBe(0)
+    expect(readFileSync(resolve(APP, 'src/screens/ProbeVerb.tsx'), 'utf8')).toContain(
+      'export function Probe',
+    )
+  })
+
+  it('draws a spec in the shipped page where Playwright has its Chromium', async () => {
+    const { chromium } = await import('playwright')
+    const browser = await chromium.launch().catch(() => null)
+    await browser?.close()
+    const { code, stdout } = verb([
+      'render',
+      'probe.json',
+      '--system',
+      'plain',
+      '--viewports',
+      'phone',
+    ])
+    if (browser !== null) {
+      expect(code, stdout).toBe(0)
+      expect(existsSync(resolve(APP, 'probe.render/sampled-phone.png'))).toBe(true)
+    } else {
+      expect(code).toBe(1)
+      expect(stdout).toContain('install chromium')
+    }
+  }, 180_000)
+
+  it('proposes a theme from plain words, with the engine’s verdict', () => {
+    const { code, stdout } = verb(['theme', 'propose', 'calmer, warmer paper', '--json'])
+    const answer = JSON.parse(stdout) as { lawful: boolean; unmapped: string[] }
+    expect(typeof answer.lawful).toBe('boolean')
+    expect(code).toBe(answer.lawful ? 0 : 1)
+  })
+})
+
+/* -------------------------------------------------------------------------- */
 /* The MCP server                                                             */
 /* -------------------------------------------------------------------------- */
 
@@ -560,18 +669,36 @@ const SPEC = {
   },
 }
 
-/** A client of the installed server, started as `.mcp.json` starts it, in the project. */
-async function connect(args: string[], env: Record<string, string> = {}): Promise<Client> {
+/**
+ * A client of the installed server in the project: `polymorph mcp`, as
+ * `.mcp.json` starts it, or the `polymorph-mcp` bin.
+ */
+async function connect(
+  args: string[],
+  env: Record<string, string> = {},
+  command: ['polymorph', 'mcp'] | ['polymorph-mcp'] = ['polymorph', 'mcp'],
+): Promise<Client> {
+  const [program, ...words] = command
   const client = new Client({ name: 'tools-packaging', version: '0' })
   await client.connect(
     new StdioClientTransport({
-      command: resolve(PROJECT, 'node_modules/.bin/polymorph'),
-      args: ['mcp', ...args],
+      command: resolve(PROJECT, 'node_modules/.bin', program),
+      args: [...words, ...args],
       cwd: PROJECT,
       env: { ...getDefaultEnvironment(), ...env },
     }),
   )
   return client
+}
+
+/** The tools the installed CLI's verbs name, read from the verb list the package ships. */
+function verbTools(): string[] {
+  const verbs = pathToFileURL(resolve(INSTALLED, 'dist/packages/cli/src/verbs.js')).href
+  const probe = `const { VERBS } = await import(${JSON.stringify(verbs)})
+console.log(JSON.stringify(VERBS.flatMap((verb) => verb.tools)))`
+  return JSON.parse(
+    execFileSync(process.execPath, ['--input-type=module', '-e', probe], { encoding: 'utf8' }),
+  ) as string[]
 }
 
 describe('the installed MCP server', () => {
@@ -583,6 +710,14 @@ describe('the installed MCP server', () => {
 
   afterAll(async () => {
     await client?.close()
+  })
+
+  it('gives each of its tools a verb, and the verbs name only its tools', async () => {
+    const { tools } = await client.listTools()
+    const listed = tools.map((tool) => tool.name)
+    const named = verbTools()
+    expect(listed.filter((tool) => !named.includes(tool))).toEqual([])
+    expect(named.filter((tool) => !listed.includes(tool))).toEqual([])
   })
 
   it('serves the card of the release it shipped with', async () => {
@@ -701,6 +836,18 @@ describe('the installed MCP server with no browser', () => {
 })
 
 describe('the server’s own bin', () => {
+  it('starts the server `polymorph mcp` starts', async () => {
+    const own = await connect(['--read-only'], {}, ['polymorph-mcp'])
+    try {
+      const { tools } = await own.listTools()
+      expect(tools.map((tool) => tool.name)).toContain('get_system_card')
+      expect(tools.map((tool) => tool.name)).not.toContain('install')
+      expect(own.getServerVersion()?.version).toBe(registry.version)
+    } finally {
+      await own.close()
+    }
+  }, 120_000)
+
   it('refuses an unknown flag on stderr, before it starts', () => {
     const { code, stdout, stderr } = bin('polymorph-mcp', ['--readonly'])
     expect(code).toBe(1)
@@ -709,9 +856,11 @@ describe('the server’s own bin', () => {
     expect(stderr).toContain('usage: polymorph-mcp [--project <path>] [--read-only]')
   })
 
-  it('is the server `polymorph mcp` starts', () => {
-    const { code, stderr } = bin('polymorph', ['mcp', '--readonly'])
-    expect(code).toBe(1)
+  it('reads its flags as `polymorph mcp` reads them, which refuses a usage error with 2', () => {
+    const { code, stdout, stderr } = bin('polymorph', ['mcp', '--readonly'])
+    expect(code).toBe(2)
+    expect(stdout).toBe('')
+    expect(stderr).toContain('unknown argument "--readonly"')
     expect(stderr).toContain('usage: polymorph mcp [--project <path>] [--read-only]')
   })
 })
