@@ -14,6 +14,7 @@ import { ContextMenu } from './ContextMenu'
 import { Dialog } from './Dialog'
 import { Menu, type MenuEntry } from './Menu'
 import { Popover } from './Popover'
+import { Tooltip, TooltipProvider } from './Tooltip'
 import menuCss from '@polymorph/recipes/overlays/menu.module.css?raw'
 import popoverCss from '@polymorph/recipes/overlays/popover.module.css?raw'
 import sheetCss from '@polymorph/recipes/overlays/sheet.module.css?raw'
@@ -402,6 +403,34 @@ describe('Popover — the sheet is an opt-in that makes it modal', () => {
     await userEvent.click(trigger)
     await vi.waitFor(() => expect(sheetPanel()).not.toBeNull())
     await userEvent.click(scrim() as HTMLElement)
+    await vi.waitFor(() => expect(sheetPanel()).toBeNull())
+  })
+
+  it('leaves the sheet open when Escape closes a Tooltip inside it', async () => {
+    await page.viewport(NARROW, 800)
+    render(
+      <TooltipProvider>
+        <Popover trigger={<Button label="Filter" />} label="Filter tickets" presentation="sheet">
+          <Input aria-label="Assignee" />
+          <Tooltip content="Assign the ticket to yourself">
+            <Button label="Me" />
+          </Tooltip>
+        </Popover>
+      </TooltipProvider>,
+    )
+    screen.getByRole('button', { name: 'Filter' }).focus()
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(sheetPanel()?.contains(document.activeElement)).toBe(true))
+    // Focus is put on the control, because WebKit's Tab passes over buttons.
+    screen.getByRole('button', { name: 'Me', hidden: true }).focus()
+    await vi.waitFor(() => expect(document.querySelector('[role="tooltip"]')).not.toBeNull())
+
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(document.querySelector('[role="tooltip"]')).toBeNull())
+    await new Promise((settle) => setTimeout(settle, 300))
+    expect(sheetPanel(), 'the Escape that closed the Tooltip closed the sheet').not.toBeNull()
+
+    await userEvent.keyboard('{Escape}')
     await vi.waitFor(() => expect(sheetPanel()).toBeNull())
   })
 
