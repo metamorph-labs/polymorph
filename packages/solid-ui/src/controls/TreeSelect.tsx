@@ -226,7 +226,7 @@ export default function TreeSelect(given: TreeSelectProps): JSX.Element {
       })(props.items, branches.value, chosen.value)
       if (next !== branches.value) changeExpanded.value(next)
     })
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => trigger.value)
     const service = useMachine(
       zag.machine,
       () =>

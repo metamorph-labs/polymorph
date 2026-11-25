@@ -20,6 +20,7 @@ import {
 
 import {
   COLOR_INPUT_REST,
+  composingKey,
   type ControlSize,
   dataAttrs,
   dataFlag,
@@ -148,7 +149,8 @@ export function ColorInput({
   }
 
   function onFieldKeyDown(event: KeyboardEvent<HTMLSpanElement>) {
-    if (event.key === 'Enter') commitDraft()
+    // The Enter that confirms an input method's candidate is the input method's (`composingKey`).
+    if (event.key === 'Enter' && !composingKey(event.nativeEvent)) commitDraft()
   }
 
   // The member registers its hex field and withholds the Input it draws. The picker's Popover is

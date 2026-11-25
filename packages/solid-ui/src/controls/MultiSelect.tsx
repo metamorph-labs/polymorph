@@ -28,9 +28,12 @@ import {
   afterRender,
   agentMember,
   claimSlot,
+  composingKey,
   createCell,
   createDerived,
   elementRef,
+  holdFieldEscape,
+  lineStartKey,
   mergeParts,
   scope,
   useDirection,
@@ -326,7 +329,7 @@ export default function MultiSelect(given: MultiSelectProps): JSX.Element {
           at
         ] ?? null,
     )
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => frame.value)
     const service = useMachine(
       zag.machine,
       () =>
@@ -411,7 +414,9 @@ export default function MultiSelect(given: MultiSelectProps): JSX.Element {
         })
       })
     })
+    const clearable = createDerived(() => !api.value.open && text.value !== '')
     const fieldKeyDown = createDerived(() => (event: KeyboardEvent) => {
+      if (composingKey(event)) return
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault()
         const down = event.key === 'ArrowDown'
@@ -463,7 +468,12 @@ export default function MultiSelect(given: MultiSelectProps): JSX.Element {
         if (last !== undefined) remove.value(last)
         return
       }
-      if (event.key === 'ArrowLeft' && (event.target as HTMLInputElement).selectionStart === 0) {
+      // The key toward the line's start moves into the chips, as in TagInput. The direction is
+      // the field's: the machine writes the document's on the input. It is a computed style, read
+      // only for an arrow.
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+      const input = event.target as HTMLInputElement
+      if (event.key === lineStartKey(frame.value ?? input) && input.selectionStart === 0) {
         removeButton.value(orderedValues.value.length - 1)?.focus()
       }
     })
@@ -477,7 +487,7 @@ export default function MultiSelect(given: MultiSelectProps): JSX.Element {
       }
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         event.preventDefault()
-        const step = event.key === 'ArrowLeft' ? -1 : 1
+        const step = event.key === lineStartKey(frame.value ?? (event.target as Element)) ? -1 : 1
         if (at + step === orderedValues.value.length) api.value.focus()
         else if (at + step >= 0) removeButton.value(at + step)?.focus()
       }
@@ -557,23 +567,37 @@ export default function MultiSelect(given: MultiSelectProps): JSX.Element {
       settled.value = true
     }
     onMount(effect1)
+    let release2: (() => void) | undefined
     const effect2 = () => {
+      release2?.()
+      const ran = clearable.value && textField.value ? holdFieldEscape(textField.value) : () => {}
+      release2 = () => {
+        ran()
+      }
+    }
+    watchEffect(
+      createMemo(() => clearable.value),
+      effect2,
+      true,
+    )
+    onCleanup(() => release2?.())
+    const effect3 = () => {
       void (api.value.open && aimFirst.value())
     }
     watchEffect(
       createMemo(() => text.value),
-      effect2,
+      effect3,
       true,
     )
-    const effect3 = () => {
+    const effect4 = () => {
       void (api.value.open && api.value.highlightedValue === null && aimFirst.value())
     }
     watchEffect(
       createMemo(() => api.value.open),
-      effect3,
+      effect4,
       false,
     )
-    const effect4 = () => {
+    const effect5 = () => {
       void (
         api.value.open &&
         api.value.highlightedValue !== null &&
@@ -583,12 +607,12 @@ export default function MultiSelect(given: MultiSelectProps): JSX.Element {
     }
     watchEffect(
       createMemo(() => api.value.highlightedValue),
-      effect4,
+      effect5,
       true,
     )
-    let release5: (() => void) | undefined
-    const effect5 = () => {
-      release5?.()
+    let release6: (() => void) | undefined
+    const effect6 = () => {
+      release6?.()
       const ran = agentMember({
         member: 'MultiSelect',
         element: () => textField.value,
@@ -639,12 +663,12 @@ export default function MultiSelect(given: MultiSelectProps): JSX.Element {
           close: () => api.value.setOpen(false),
         },
       })
-      release5 = () => {
+      release6 = () => {
         ran()
       }
     }
-    onMount(effect5)
-    onCleanup(() => release5?.())
+    onMount(effect6)
+    onCleanup(() => release6?.())
     return (
       <>
         {/* field */}

@@ -101,6 +101,12 @@ export type { StateAttributeInput, StateAttributes, StateName } from './conventi
 
 export { fitTextarea } from './conventions/autosize'
 
+export { composingKey } from './conventions/composition'
+export { holdFieldEscape } from './conventions/field-escape'
+export { lineStartKey } from './conventions/line-keys'
+export { focusAfterListRemoval } from './conventions/removal-focus'
+export type { PressedRemoval } from './conventions/removal-focus'
+
 export { formatBytes, gateFiles } from './conventions/files'
 export type { FileGate, FileRejection, FileRejectionReason } from './conventions/files'
 
@@ -155,6 +161,16 @@ export type { ControlComponent, ControlKind } from './conventions/kind'
 
 export { modalFocusTarget } from './conventions/modal-focus'
 export type { InitialFocus, ModalPart } from './conventions/modal-focus'
+/* Where focus goes when the control an overlay returns to, or the region that holds focus,
+   has left the page. */
+export {
+  focusAfterRemoval,
+  focusPlace,
+  focusReturnTarget,
+  nearestFocusable,
+  returnFocusTo,
+} from './conventions/focus-after-removal'
+export type { FocusPlace } from './conventions/focus-after-removal'
 
 /* The focus and key handling a Zag machine leaves to its renderer, the trigger
    anchor of an overlay whose trigger is a governed control, and the development
@@ -277,6 +293,8 @@ export type {
 export { anchorFocusReturns, anchorProps, syncTriggerAnchor } from './conventions/trigger-anchor'
 export type { FocusHandlerNames } from './conventions/trigger-anchor'
 
+export { arriveAtPage, focusFromScript } from './conventions/page-arrival'
+
 export { DIFF_LINES_LIMIT, diffLines, diffRuns } from './conventions/diff'
 export type { DiffRow, DiffRowKind, DiffRun } from './conventions/diff'
 
@@ -346,6 +364,12 @@ export { spacingAttrs } from './conventions/spacing'
 export type { LayoutPatch, SpacingProps } from './conventions/spacing'
 
 export { TOOLTIP_DELAY_MS, TOOLTIP_SKIP_DELAY_MS } from './conventions/tooltip'
+export {
+  closeTooltipOnScroll,
+  holdTooltipFromPointer,
+  keyboardHolds,
+  trackFocusOrigin,
+} from './conventions/tooltip-hold'
 
 export {
   revealTourTarget,
@@ -384,3 +408,10 @@ export type {
 } from './toast/store'
 export { actOnToastNotice, dismissToastNotice, toastDetails, toastNotices } from './toast/agent'
 export type { ToastNoticeChoice, ToastNoticeDetail } from './toast/agent'
+/* Where focus goes when a toast that holds it leaves, when a viewport's timers wait, and what
+   its live regions say. */
+export { focusAfterToast, followToastFocus } from './toast/focus'
+export { holdToastTimers, toastClock, toastTimeLeft } from './toast/hold'
+export type { ToastClock } from './toast/hold'
+export { announceToasts, TOAST_QUIET } from './toast/announce'
+export type { ToastAnnouncements, ToastSaying } from './toast/announce'

@@ -63,7 +63,7 @@ const label = $derived(
   joined.passed['label'] === undefined ? labelOwn : (joined.passed['label'] as typeof labelOwn),
 )
 let trigger = $state<HTMLElement | null>(null)
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => trigger)
 const service = useMachine(
   zag.machine,
   () =>

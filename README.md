@@ -73,7 +73,7 @@ export function Inbox({ onNewTicket }: { onNewTicket: () => void }) {
 | a React app | `node <checkout>/packages/cli/bin/polymorph.js init my-app`, then `cd my-app && pnpm dev` |
 | a Vue, Svelte, Solid or Angular app | the same command with `--framework vue`, `svelte`, `solid` or `angular` |
 | a page in HTML: static, server-rendered, htmx or Turbo | the same command with `--framework elements`, which copies the files the page loads into its static directory ([docs/consuming.md](docs/consuming.md#a-page-with-no-build)) |
-| an iOS app | the Swift package in `platforms/ios` as a path dependency: products `PolymorphTokens` and `PolymorphUI` |
+| an iOS app | the Swift package, added by this repository's URL: products `PolymorphTokens` and `PolymorphUI` |
 | an Android app | the Gradle build in `platforms/android`, included with `includeBuild`: `dev.polymorph:tokens` and `dev.polymorph:ui` |
 | a Flutter or Dart app | the tokens only, in `platforms/dart` (`polymorph_tokens`); there is no Flutter renderer |
 | an existing web app | [docs/consuming.md](docs/consuming.md): the packages by hand, or members vendored with `polymorph add` |
@@ -185,6 +185,7 @@ The engine, the rules, the recipes, the run-time screen core, and a foundation a
 for each web framework publish privately to GitHub Packages under the `metamorph-labs` org, and are installed under
 their `@polymorph/*` names
 ([docs/consuming.md](docs/consuming.md#1-registry-access) has the table). The iOS, Android and
-Dart packages are not published to a registry: an app reaches them through a checkout or a git
-submodule of this repository, at a release tag. Polymorph is licensed under the MIT License
+Dart packages are not published to a registry. An iOS app adds the Swift package by this
+repository's URL, an Android app includes the Gradle build from a checkout or a git submodule of
+this repository, and a Dart app adds its package by path or by git; each takes a release tag. Polymorph is licensed under the MIT License
 ([LICENSE](LICENSE), [NOTICE](NOTICE)).

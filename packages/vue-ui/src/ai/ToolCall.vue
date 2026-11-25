@@ -100,7 +100,7 @@ const statusIcon = computed(
       }) as const
     )[props.status],
 )
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => trigger.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({

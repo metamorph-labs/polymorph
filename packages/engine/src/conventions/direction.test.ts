@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { readDirection, watchDirection } from './direction'
 
 /**
- * The document's reading direction, as every foundation reads it before it
- * hands it to a substrate.
+ * The reading direction of a member's place, or of the document, as every
+ * foundation reads it before it hands it to a substrate.
  */
 
 afterEach(() => {
@@ -44,6 +44,110 @@ describe('readDirection reads what the document says', () => {
       expect(readDirection()).toBe('ltr')
     } finally {
       inner.remove()
+    }
+  })
+})
+
+describe('readDirection reads the place an element is in', () => {
+  function section(dir: string) {
+    const outer = document.createElement('section')
+    outer.setAttribute('dir', dir)
+    const inner = document.createElement('div')
+    outer.append(inner)
+    document.body.append(outer)
+    return { outer, inner }
+  }
+
+  it('reads the nearest `dir` around the element', () => {
+    const { outer, inner } = section('rtl')
+    try {
+      expect(readDirection(inner)).toBe('rtl')
+      expect(readDirection()).toBe('ltr')
+    } finally {
+      outer.remove()
+    }
+  })
+
+  it('passes over the `dir` a Zag machine wrote on its part', () => {
+    const { outer, inner } = section('rtl')
+    inner.setAttribute('dir', 'ltr')
+    inner.setAttribute('data-scope', 'tabs')
+    const control = document.createElement('button')
+    inner.append(control)
+    try {
+      expect(readDirection(control)).toBe('rtl')
+    } finally {
+      outer.remove()
+    }
+  })
+
+  it("takes a popup's content as the direction of the member that opened it", () => {
+    const content = document.createElement('div')
+    content.setAttribute('dir', 'rtl')
+    content.setAttribute('data-scope', 'menu')
+    content.setAttribute('data-part', 'content')
+    const row = document.createElement('div')
+    row.setAttribute('dir', 'ltr')
+    row.setAttribute('data-scope', 'menu')
+    row.setAttribute('data-part', 'trigger')
+    content.append(row)
+    document.body.append(content)
+    try {
+      expect(readDirection(row)).toBe('rtl')
+    } finally {
+      content.remove()
+    }
+  })
+
+  it("reads around a place that is a machine's content part, whose `dir` is the member's own", () => {
+    // Calendar's root is its machine's content part. The `dir` on it is the one the member handed
+    // its machine, so reading it back would keep the member in the direction it started in.
+    const { outer, inner } = section('rtl')
+    inner.setAttribute('dir', 'ltr')
+    inner.setAttribute('data-scope', 'date-picker')
+    inner.setAttribute('data-part', 'content')
+    try {
+      expect(readDirection(inner)).toBe('rtl')
+    } finally {
+      outer.remove()
+    }
+  })
+
+  it('reads the document for an element out of it', () => {
+    document.documentElement.setAttribute('dir', 'rtl')
+    expect(readDirection(document.createElement('div'))).toBe('rtl')
+  })
+
+  it('is left-to-right where nothing around the element says a direction', () => {
+    const inner = document.createElement('div')
+    document.body.append(inner)
+    try {
+      expect(readDirection(inner)).toBe('ltr')
+    } finally {
+      inner.remove()
+    }
+  })
+})
+
+describe('watchDirection follows a section', () => {
+  it('calls a listener for sections when `dir` changes on any element, and the others only for the document', async () => {
+    const forSections = vi.fn()
+    const forDocument = vi.fn()
+    const releaseSections = watchDirection(forSections, true)
+    const releaseDocument = watchDirection(forDocument)
+    const outer = document.createElement('section')
+    document.body.append(outer)
+    try {
+      outer.setAttribute('dir', 'rtl')
+      await vi.waitFor(() => expect(forSections).toHaveBeenCalledTimes(1))
+      expect(forDocument).not.toHaveBeenCalled()
+      document.documentElement.setAttribute('dir', 'rtl')
+      await vi.waitFor(() => expect(forSections).toHaveBeenCalledTimes(2))
+      expect(forDocument).toHaveBeenCalledTimes(1)
+    } finally {
+      outer.remove()
+      releaseSections()
+      releaseDocument()
     }
   })
 })

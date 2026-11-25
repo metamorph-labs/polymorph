@@ -1,16 +1,18 @@
 'use client'
 
-import { useRef, useState, type DragEvent } from 'react'
+import { useLayoutEffect, useRef, useState, type DragEvent } from 'react'
 
 import {
   type ControlKind,
   dataAttrs,
   type FileRejection,
   type FileRejectionReason,
+  focusAfterListRemoval,
   formatBytes,
   gateFiles,
   Icon,
   memberAttr,
+  type PressedRemoval,
   useAgentMember,
 } from '@polymorph/react'
 import { MotionPresence, MotionSurface } from '@polymorph/react/motion'
@@ -196,6 +198,30 @@ export function FileUpload({
     withholds: () => rootRef.current,
   })
 
+  /*
+   * Focus after a removal (`focusAfterListRemoval`). The app removes the file in its own time, so the
+   * pressed row is remembered, and once its file has left `files` focus moves to the remove
+   * control of the row in its place, else of the row before it, else to the zone. A leaving row
+   * stays in the document while it plays its exit, so it is found by its file's id.
+   */
+  const pressed = useRef<PressedRemoval | null>(null)
+  const rows = useRef(new Map<string, HTMLElement>())
+  useLayoutEffect(() => {
+    const removal = pressed.current
+    pressed.current = focusAfterListRemoval(
+      removal,
+      files.map((file) => file.id),
+      (at) => removeControl(rows.current.get(files[at]?.id ?? '')),
+      zoneRef.current,
+      removal === null ? null : rows.current.get(removal.id),
+    )
+  }, [files])
+
+  function requestRemoval(id: string): void {
+    pressed.current = { id, at: files.findIndex((file) => file.id === id) }
+    onRemove(id)
+  }
+
   return (
     <div
       ref={rootRef}
@@ -259,6 +285,10 @@ export function FileUpload({
             {files.map((file) => (
               <MotionSurface
                 key={file.id}
+                ref={(node: HTMLElement | null) => {
+                  if (node === null) rows.current.delete(file.id)
+                  else rows.current.set(file.id, node)
+                }}
                 as="li"
                 binding="fileupload.row"
                 layoutBinding="fileupload.reflow"
@@ -317,7 +347,7 @@ export function FileUpload({
                   iconOnly
                   icon="close"
                   label={messages.remove(file.name)}
-                  onClick={() => onRemove(file.id)}
+                  onClick={() => requestRemoval(file.id)}
                 />
               </MotionSurface>
             ))}
@@ -341,6 +371,12 @@ export function FileUpload({
       </span>
     </div>
   )
+}
+
+/** A row's remove control, its last Button. */
+function removeControl(row: HTMLElement | undefined): HTMLElement | null {
+  const buttons = row?.querySelectorAll<HTMLElement>('button')
+  return buttons?.[buttons.length - 1] ?? null
 }
 
 /**

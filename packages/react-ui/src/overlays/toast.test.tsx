@@ -2,7 +2,10 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { page, userEvent } from 'vitest/browser'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
+import { toastFocusLaw } from '@polymorph/conformance/toast-focus'
+import { toastTimerLaw } from '@polymorph/conformance/toast-timer'
 import { Button } from '../controls/Button'
+import { Input } from '../controls/Input'
 import { Select } from '../controls/Select'
 import { shadowCuts, shadowReach, tokenColor, tokenLength } from '../controls/token-probe'
 import {
@@ -15,13 +18,14 @@ import {
 } from '@polymorph/engine'
 import { createAgentBridge } from '@polymorph/engine/agent'
 import { installTestTheme } from '@polymorph/engine/testing'
+import { Dialog } from './Dialog'
 import { Toaster } from './Toaster'
-import { getToasts, toast, TOAST_MAX_VISIBLE, type ToastTone } from './toast-store'
+import { getToasts, removeToast, toast, TOAST_MAX_VISIBLE, type ToastTone } from './toast-store'
 
 /**
- * Toast. The store is module-level and the viewport is portalled, so these
- * tests work as an application does: mount one `<Toaster />`, call `toast()`
- * from outside React, and check what renders.
+ * Toast. The store is module-level, so these tests work as an application
+ * does: mount one `<Toaster />`, call `toast()` from outside React, and check
+ * what renders.
  */
 
 beforeAll(installTestTheme)
@@ -98,6 +102,59 @@ function watchCardStates(): { seen: { state: string; pointerEvents: string }[]; 
 }
 
 const statesOf = (watch: { seen: { state: string }[] }) => watch.seen.map((entry) => entry.state)
+
+toastFocusLaw({
+  shell: 'React',
+  mount: async () => render(<Toaster />),
+  raise: (options) => toast({ durationMs: Number.POSITIVE_INFINITY, ...options }),
+  remove: (id) => removeToast(id),
+  clear: () => getToasts().forEach((record) => removeToast(record.id)),
+})
+
+toastTimerLaw({
+  shell: 'React',
+  mount: async () => render(<Toaster />),
+  raise: (title, durationMs) => void toast({ title, durationMs }),
+  clear: () => getToasts().forEach((record) => removeToast(record.id)),
+})
+
+/**
+ * A toast raised while a Dialog is open is newer than the dialog. Escape in
+ * the dialog's field belongs to the dialog all the same: a card takes Escape
+ * only while focus is in it.
+ */
+describe('a toast raised over an open Dialog', () => {
+  const dialogOpen = () => document.querySelector('[role="dialog"]') !== null
+
+  async function raiseOverDialog(options: Parameters<typeof toast>[0]) {
+    render(
+      <>
+        <Toaster />
+        <Dialog defaultOpen title="Edit ticket">
+          <Input aria-label="Subject" />
+        </Dialog>
+      </>,
+    )
+    await vi.waitFor(() => expect(dialogOpen()).toBe(true))
+    screen.getByLabelText('Subject').focus()
+    toast(options)
+    await settled(1)
+  }
+
+  it('leaves Escape in the dialog’s field to the dialog', async () => {
+    await raiseOverDialog({ title: 'Saved', durationMs: Number.POSITIVE_INFINITY })
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(dialogOpen()).toBe(false))
+    expect(getToasts().filter((record) => record.closing !== true)).toHaveLength(1)
+  })
+
+  it('leaves it to the dialog when the toast cannot be dismissed', async () => {
+    await raiseOverDialog({ title: 'Retry required', dismissible: false })
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(dialogOpen()).toBe(false))
+    expect(getToasts()).toHaveLength(1)
+  })
+})
 
 describe('the imperative API', () => {
   it('raises a toast from outside React and returns its id', async () => {
@@ -291,22 +348,52 @@ describe('what it says, and how loudly', () => {
     expect(glyphs.map((glyph) => glyph.getAttribute('data-icon'))).toEqual(['close'])
   })
 
-  it('interrupts for danger and warning, and is polite for the rest', async () => {
+  it('interrupts for danger only, and is polite for the rest, warning included', async () => {
+    const polite = () => document.querySelector('[aria-live="polite"]')?.textContent ?? ''
+    const assertive = () => document.querySelector('[aria-live="assertive"]')?.textContent ?? ''
     render(<Toaster />)
     toast({ title: 'Went wrong', tone: 'danger' })
     await settled(1)
-    await vi.waitFor(() =>
-      expect(document.querySelector('[aria-live="assertive"]')?.textContent).toContain(
-        'Went wrong',
-      ),
-    )
+    await vi.waitFor(() => expect(assertive()).toContain('Went wrong'))
 
     toast.dismiss()
     await settled(0)
     toast({ title: 'Saved', tone: 'success' })
-    await vi.waitFor(() =>
-      expect(document.querySelector('[aria-live="polite"]')?.textContent).toContain('Saved'),
-    )
+    await vi.waitFor(() => expect(polite()).toContain('Saved'))
+
+    toast.dismiss()
+    await settled(0)
+    toast({ title: 'Storage almost full', tone: 'warning' })
+    await vi.waitFor(() => expect(polite()).toContain('Storage almost full'))
+    expect(assertive()).not.toContain('Storage almost full')
+  })
+})
+
+describe('a control in the content', () => {
+  it('keeps the Escape that closes a Select in the content, and the toast stays', async () => {
+    render(<Toaster />)
+    toast({
+      title: 'Move the ticket',
+      content: (
+        <Select
+          aria-label="Queue"
+          options={[
+            { value: 'billing', label: 'Billing' },
+            { value: 'onboarding', label: 'Onboarding' },
+          ]}
+        />
+      ),
+      durationMs: Number.POSITIVE_INFINITY,
+    })
+    const listbox = () => document.querySelector('[role="listbox"]')
+    const trigger = await vi.waitFor(() => screen.getByRole('combobox', { name: 'Queue' }))
+    trigger.focus()
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(listbox()).not.toBeNull())
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(listbox()).toBeNull())
+    await sleep(300)
+    expect(getToasts().filter((record) => record.closing !== true)).toHaveLength(1)
   })
 })
 
@@ -397,7 +484,7 @@ describe('leaving', () => {
     const rest = card.getBoundingClientRect().x
 
     // The browser does not capture a synthetic pointer id, so the capture is stubbed.
-    // Radix's own handlers still measure the drag and mark the card.
+    // The card's own handlers still measure the drag and mark the card.
     const capture = vi.spyOn(card, 'setPointerCapture').mockImplementation(() => {})
     fireEvent.pointerDown(card, { pointerId: 1, button: 0, clientX: 0, clientY: 0 })
     fireEvent.pointerMove(card, { pointerId: 1, clientX: 20, clientY: 0 })
@@ -414,6 +501,24 @@ describe('leaving', () => {
     // It leaves from where the finger let go.
     expect(card.getBoundingClientRect().x - rest).toBeGreaterThan(0)
     await settled(0)
+  })
+
+  it('dismisses on a swipe let go before the drag has been drawn', async () => {
+    render(<Toaster />)
+    toast({ title: 'Dragged', durationMs: Number.POSITIVE_INFINITY })
+    await settled(1)
+    const card = cards()[0] as HTMLElement
+    const capture = vi.spyOn(card, 'setPointerCapture').mockImplementation(() => {})
+    const pointer = (type: string, clientX: number) =>
+      card.dispatchEvent(
+        new PointerEvent(type, { bubbles: true, pointerId: 1, button: 0, clientX, clientY: 0 }),
+      )
+    // One task: no render comes between the move and the release.
+    pointer('pointerdown', 0)
+    pointer('pointermove', 90)
+    pointer('pointerup', 90)
+    capture.mockRestore()
+    await vi.waitFor(() => expect(getToasts()).toHaveLength(0))
   })
 
   it('returns the card to rest when the drag is let go short of the threshold', async () => {
@@ -445,7 +550,7 @@ describe('leaving', () => {
 
     // Dispatched rather than performed: the pointer harness waits for the
     // element to be actionable, and a card with 250ms left is gone before
-    // then. Radix pauses on `pointermove` over the viewport.
+    // then. The viewport pauses on `pointermove` over its region.
     ;(cards()[0] as HTMLElement).dispatchEvent(
       new PointerEvent('pointermove', { bubbles: true, composed: true }),
     )
@@ -453,8 +558,8 @@ describe('leaving', () => {
     await sleep(700)
     expect(cards(), 'the timer ran while the pointer was on the card').toHaveLength(1)
 
-    // It resumes when the pointer leaves. Radix listens on the wrapper it puts
-    // around the viewport, and `pointerleave` does not bubble.
+    // It resumes when the pointer leaves. The viewport listens on the region
+    // around its list, and `pointerleave` does not bubble.
     ;(document.querySelector('ol')?.parentElement as HTMLElement).dispatchEvent(
       new PointerEvent('pointerleave', { bubbles: false, composed: true }),
     )

@@ -17,7 +17,10 @@ import {
   afterRender,
   agentMember,
   attributes,
+  composingKey,
+  holdFieldEscape,
   joinSlot,
+  lineStartKey,
   mergeParts,
   normalizeProps,
   useDirection,
@@ -325,7 +328,7 @@ const removeButton = $derived(
   (at: number) =>
     chipList?.querySelectorAll<HTMLElement>(':scope > li:not([data-removing]) button')[at] ?? null,
 )
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => frame)
 const service = useMachine(
   zag.machine,
   () =>
@@ -406,7 +409,9 @@ const typed = $derived((event: Event) => {
     })
   })
 })
+const clearable = $derived(!api.open && text !== '')
 const fieldKeyDown = $derived((event: KeyboardEvent) => {
+  if (composingKey(event)) return
   if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
     event.preventDefault()
     const down = event.key === 'ArrowDown'
@@ -456,7 +461,12 @@ const fieldKeyDown = $derived((event: KeyboardEvent) => {
     if (last !== undefined) remove(last)
     return
   }
-  if (event.key === 'ArrowLeft' && (event.target as HTMLInputElement).selectionStart === 0) {
+  // The key toward the line's start moves into the chips, as in TagInput. The direction is
+  // the field's: the machine writes the document's on the input. It is a computed style, read
+  // only for an arrow.
+  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+  const input = event.target as HTMLInputElement
+  if (event.key === lineStartKey(frame ?? input) && input.selectionStart === 0) {
     removeButton(orderedValues.length - 1)?.focus()
   }
 })
@@ -470,7 +480,7 @@ const chipKeyDown = $derived((event: KeyboardEvent, entry: string) => {
   }
   if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
     event.preventDefault()
-    const step = event.key === 'ArrowLeft' ? -1 : 1
+    const step = event.key === lineStartKey(frame ?? (event.target as Element)) ? -1 : 1
     if (at + step === orderedValues.length) api.focus()
     else if (at + step >= 0) removeButton(at + step)?.focus()
   }
@@ -516,21 +526,31 @@ const effect1 = () => {
   settled = true
 }
 watchEffect(effect1)
+let release2: (() => void) | undefined
 const effect2 = () => {
+  release2?.()
+  const ran = clearable && textField ? holdFieldEscape(textField) : () => {}
+  release2 = () => {
+    ran()
+  }
+}
+watchEffect(effect2, { watch: () => clearable })
+onDestroy(() => release2?.())
+const effect3 = () => {
   api.open && aimFirst()
 }
-watchEffect(effect2, { watch: () => text })
-const effect3 = () => {
+watchEffect(effect3, { watch: () => text })
+const effect4 = () => {
   api.open && api.highlightedValue === null && aimFirst()
 }
-watchEffect(effect3, { watch: () => api.open, mount: false })
-const effect4 = () => {
+watchEffect(effect4, { watch: () => api.open, mount: false })
+const effect5 = () => {
   api.open && api.highlightedValue !== null && api.highlightedValue === lastReal && requestMore()
 }
-watchEffect(effect4, { watch: () => api.highlightedValue })
-let release5: (() => void) | undefined
-const effect5 = () => {
-  release5?.()
+watchEffect(effect5, { watch: () => api.highlightedValue })
+let release6: (() => void) | undefined
+const effect6 = () => {
+  release6?.()
   const ran = agentMember({
     member: 'MultiSelect',
     element: () => textField,
@@ -581,12 +601,12 @@ const effect5 = () => {
       close: () => api.setOpen(false),
     },
   })
-  release5 = () => {
+  release6 = () => {
     ran()
   }
 }
-watchEffect(effect5)
-onDestroy(() => release5?.())
+watchEffect(effect6)
+onDestroy(() => release6?.())
 </script>
 
 {@render joined.start?.()

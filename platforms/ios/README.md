@@ -63,26 +63,35 @@ system `design/defaults.json` names, with its default palette.
 
 ## Adding it to an app
 
-The package lives in a subdirectory of this repository, so an app depends on it by path: a
-checkout of the repository, or a git submodule of it. SwiftPM names a path dependency after its
-directory, so the package is `ios`.
+An app adds the package by the repository's URL, at a release tag. SwiftPM reads a URL
+dependency from the repository's root, so the root `Package.swift` declares the same two libraries
+over the sources in this directory, and nothing else. SwiftPM names a URL dependency after the
+repository, so the package is `polymorph`.
 
 ```swift
 // Package.swift
-dependencies: [.package(path: "../polymorph/platforms/ios")],
+dependencies: [.package(url: "https://github.com/metamorph-labs/polymorph", from: "1.0.18")],
 targets: [
   .target(
     name: "App",
     dependencies: [
-      .product(name: "PolymorphTokens", package: "ios"),
-      .product(name: "PolymorphUI", package: "ios"),
+      .product(name: "PolymorphTokens", package: "polymorph"),
+      .product(name: "PolymorphUI", package: "polymorph"),
     ]
   )
 ]
 ```
 
-In Xcode, choose **File › Add Package Dependencies…**, then **Add Local…**, and pick
-`platforms/ios`.
+In Xcode, choose **File › Add Package Dependencies…**, enter the repository's URL and pick a
+version rule. The tags before `v1.0.18` have no `Package.swift` at the root.
+
+An app that holds a checkout of the repository, or a git submodule of it, can depend on this
+directory by path instead: `.package(path: "../polymorph/platforms/ios")`, or **Add Local…** in
+Xcode. SwiftPM names a path dependency after its directory, so that package is `ios`.
+
+This directory's `Package.swift` also holds the tests and the Relay example, which
+`pnpm gate:ios` builds. A law (`packages/native/src/swift-package.test.ts`) holds the two
+manifests' platforms, libraries and library targets to each other.
 
 ## What is in it
 

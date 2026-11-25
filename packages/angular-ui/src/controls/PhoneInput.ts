@@ -13,6 +13,7 @@ import {
   agentMember,
   cell,
   commitPhone,
+  composingKey,
   derived,
   devWarning,
   elementRef,
@@ -534,7 +535,7 @@ export class PhoneInput {
   }
 
   protected h3($event: KeyboardEvent): void {
-    if ($event.key === 'Enter') {
+    if ($event.key === 'Enter' && !composingKey($event)) {
       this.commitDraft.value()
     }
   }

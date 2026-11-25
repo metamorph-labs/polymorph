@@ -22,10 +22,16 @@ export default describeMember({
     presentation: lit('auto'),
   },
   media: { phone: 'phone' },
-  // The control whose press opened the panel. Focus returns to it when the panel closes, as
-  // Radix returns it to its trigger. The machine alone returns focus to where it was before
-  // the panel opened, and a press leaves a button unfocused in WebKit.
-  state: { opener: 'null as HTMLElement | null' },
+  // The control whose press opened the panel, and where focus returns as the panel closes:
+  // that control, or what had focus when the panel opened without a press, as Radix returns
+  // focus to its trigger. The machine alone returns focus to where it was before the panel
+  // opened, and a press leaves a button unfocused in WebKit. When that element has left the
+  // page by the time the panel closes, focus goes to the focusable element nearest where it was
+  // (`focusReturnTarget`).
+  state: {
+    pressed: 'null as HTMLElement | null',
+    returnTo: 'null as ReturnType<typeof focusPlace>',
+  },
   machine: {
     of: 'dialog',
     context: {
@@ -36,7 +42,7 @@ export default describeMember({
       closeOnEscape: 'dismissible',
       closeOnInteractOutside: 'dismissible',
       initialFocusEl: '() => modalFocusTarget(panel, initialFocus)',
-      finalFocusEl: '() => opener',
+      finalFocusEl: '() => focusReturnTarget(returnTo, [panel])',
     },
     events: { onOpenChange: { emit: 'openChange', payload: 'details.open' } },
   },
@@ -45,13 +51,20 @@ export default describeMember({
     sheet: "presentation === 'sheet' && phone",
     // The trigger's click: it opens the panel and records the control that was pressed.
     openFrom: `(event?: Event) => {
-      if (event?.currentTarget instanceof HTMLElement) opener = event.currentTarget
+      if (event?.currentTarget instanceof HTMLElement) pressed = event.currentTarget
       api.setOpen(true)
     }`,
   },
   // A member that lends this one its identity (ConfirmDialog) reads the panel through its
   // holder, because its agent handle names and withholds the panel.
-  effects: [{ run: 'lender && (lender.element = () => panel)' }],
+  effects: [
+    { run: 'lender && (lender.element = () => panel)' },
+    // Where focus returns is recorded as the panel opens, before the trap moves focus into it.
+    {
+      watch: 'api.open',
+      run: 'api.open && ((returnTo = focusPlace(pressed ?? document.activeElement)), (pressed = null))',
+    },
+  ],
   // The spec's `agent` fence. The machine owns the open state, controlled or not, so closing goes
   // through it and it reports `openChange`. A non-dismissible dialog asks for a choice among its
   // own actions, so it refuses. The panel names the dialog, and a closed dialog has none.

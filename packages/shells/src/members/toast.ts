@@ -92,12 +92,19 @@ const raise = (...buttons: FixtureChild[]) => ({
  *
  * The viewport is React's Toaster: a labelled region around the list, which
  * F8 focuses; a card per toast, entering and leaving with `toast.enter`; a
- * timer per card, held while the reader hovers or focuses the list, and none
- * for a pinned toast or one the reader cannot dismiss; Escape, the close
- * button and a swipe to the right dismiss a dismissible card; and a polite
- * and an assertive live region, which announce the newest toast of each
- * politeness: danger and warning interrupt, and the other tones wait. A card
- * that has played its exit is removed from the store.
+ * timer per card, held while the reader hovers or focuses the notifications
+ * or the window is in the background (`holdToastTimers`), and none for a
+ * pinned toast or one the reader cannot dismiss; Escape, the close button and
+ * a swipe to the right dismiss a dismissible card; and a polite and an
+ * assertive live region, which say a toast as it is raised or updated
+ * (`announceToasts`): danger interrupts, and the other tones, warning included,
+ * wait.
+ * Escape reaches a card only while focus is in it, and an Escape a control in
+ * the content has handled, or an input method is handling, is not the card's.
+ * Focus in a card whose toast leaves, by any route, moves to the next toast,
+ * else the previous one, else where it came from as it entered the list
+ * (`focusAfterToast`, `followToastFocus`). A card that has played its exit is
+ * removed from the store.
  */
 export default describeMember({
   member: 'Toast',
@@ -146,15 +153,14 @@ export default describeMember({
       state: {
         // Moves each time the store changes, so the records are read again.
         version: '0',
-        // The reader is on the list: the timers wait.
+        // The reader is on the notifications, or the window is in the background: the timers wait.
         paused: 'false',
+        // What the live regions say, and what each showing toast was said for.
+        said: 'TOAST_QUIET',
       },
       derived: {
         say: "messages ?? { dismiss: 'Dismiss', notification: 'Notification', viewport: 'Notifications (F8)' }",
         records: 'version < 0 ? [] : getToasts()',
-        // The newest showing toast of each politeness, in words.
-        words:
-          "(urgent: boolean): string => { const record = records.filter((each) => each.closing !== true && (each.tone === 'danger' || each.tone === 'warning') === urgent).at(-1); return record === undefined ? '' : [say.notification, record.title, record.description].filter(Boolean).join(' ') }",
       },
       effects: [
         // The store is followed while the viewport is mounted, and read again as it starts to,
@@ -165,6 +171,16 @@ export default describeMember({
           listen: 'keydown',
           run: "$event.key === 'F8' && ($event.preventDefault(), list?.focus())",
         },
+        // What holds the timers: focus or the pointer on the notifications, or the window in
+        // the background.
+        { run: 'holdToastTimers(region, (held) => { paused = held })', release: 'ran()' },
+        // Focus in a card that leaves the page by any route moves on, and the list records where
+        // focus came from as it enters.
+        { run: 'followToastFocus(list)', release: 'ran()' },
+        // A toast is said as it is raised, and again when an update changes its words, read
+        // once the change is drawn, because a toast's content is read from its card. It follows
+        // `version`, which also moves as the viewport mounts and draws the toasts raised before.
+        { watch: 'version', run: 'said = announceToasts(said, records, list, say.notification)' },
       ],
       // The spec's `agent` fence, registered as `Toast`, because the member renders nothing and
       // its viewport shows its notices. A notice is a record of the store, so the viewport reads
@@ -196,12 +212,6 @@ export default describeMember({
               class: ['viewport'],
               ref: 'list',
               attrs: { tabindex: lit('-1'), 'data-toast-part': lit('list') },
-              on: {
-                pointerenter: run('paused = true'),
-                pointerleave: run('paused = false'),
-                focusin: run('paused = true'),
-                focusout: run('paused = false'),
-              },
             },
             [
               each('records', 'record', 'record.id', [
@@ -214,7 +224,8 @@ export default describeMember({
             ],
           ),
           // The announcements: the cards are not live regions, because a region that appears
-          // with its content is not reliably read.
+          // with its content is not reliably read. Each announcement is a new element, keyed by
+          // its own key, so the same words said twice are said twice.
           el(
             'div',
             {
@@ -226,7 +237,11 @@ export default describeMember({
                 'aria-atomic': lit('true'),
               },
             },
-            [text('words(false)')],
+            [
+              each('[said.polite]', 'saying', 'saying.key', [
+                el('span', { part: 'saying' }, [text('saying.words')]),
+              ]),
+            ],
           ),
           el(
             'div',
@@ -239,7 +254,11 @@ export default describeMember({
                 'aria-atomic': lit('true'),
               },
             },
-            [text('words(true)')],
+            [
+              each('[said.assertive]', 'saying', 'saying.key', [
+                el('span', { part: 'urgent' }, [text('saying.words')]),
+              ]),
+            ],
           ),
         ],
       ),
@@ -262,6 +281,8 @@ export default describeMember({
       },
       derived: {
         icon: "record.tone === 'neutral' ? null : TOAST_TONE_ICON[record.tone]",
+        // The card's reading window, kept across the holds.
+        clock: 'toastClock()',
         dismissible: 'record.dismissible !== false',
         dismiss: '(): void => { if (dismissible) toast.dismiss(record.id) }',
         act: '(): void => { record.action?.onClick(); toast.dismiss(record.id) }',
@@ -276,13 +297,27 @@ export default describeMember({
         present: { open: 'record.closing !== true', ref: 'card', binding: 'toast.enter' },
       },
       effects: [
-        // Step two of dismissal: once the exit has played, the record leaves the store.
-        { watch: 'present', mount: false, run: 'present || removeToast(record.id)' },
-        // The timer: restarted by an update, held while the reader is on the list, and none for
-        // a pinned toast or one that cannot be dismissed.
+        // Focus in a card whose toast starts to leave moves to the next toast, else the previous
+        // one, else where it came from (`focusAfterToast`), before the card leaves the page.
+        {
+          watch: 'record.closing',
+          mount: false,
+          run: 'record.closing === true && focusAfterToast(card)',
+        },
+        // Step two of dismissal: once the exit has played, the record leaves the store. Its
+        // `raised` keeps a toast raised again under the same id meanwhile.
+        {
+          watch: 'present',
+          mount: false,
+          run: 'present || removeToast(record.id, record.raised)',
+        },
+        // The timer: restarted by an update, held while the viewport holds the timers, when it
+        // resumes with the time that was left (`toastTimeLeft`), and none for a pinned toast or
+        // one that cannot be dismissed.
         {
           watch: '[record.revision, paused, record.closing]',
-          delay: 'Number.isFinite(record.durationMs) ? record.durationMs : 0',
+          delay:
+            'Number.isFinite(record.durationMs) ? toastTimeLeft(clock, record.revision, record.durationMs, !paused && record.closing !== true) : 0',
           run: '!paused && record.closing !== true && dismissible && Number.isFinite(record.durationMs) && toast.dismiss(record.id)',
         },
       ],
@@ -308,7 +343,12 @@ export default describeMember({
             '--radix-toast-swipe-end-x': '`${deltaX}px`',
           },
           on: {
-            keydown: run('($event.preventDefault(), dismiss())', "$event.key === 'Escape'"),
+            // An Escape a control in the content has handled, or an input method is handling,
+            // is not the card's.
+            keydown: run(
+              '($event.preventDefault(), dismiss())',
+              "$event.key === 'Escape' && !$event.defaultPrevented && !composingKey($event)",
+            ),
             pointerdown: run('press($event)'),
             pointermove: run('drag($event)'),
             pointerup: run('lift()'),
@@ -339,7 +379,11 @@ export default describeMember({
               ]),
             ]),
             cond('record.content !== undefined', [
-              el('div', { part: 'content', class: ['content'] }, [render('record.content')]),
+              el(
+                'div',
+                { part: 'content', class: ['content'], attrs: { 'data-toast-content': lit('') } },
+                [render('record.content')],
+              ),
             ]),
           ]),
           cond('record.action !== undefined', [

@@ -134,7 +134,7 @@ export class ReasoningDisclosure {
   protected readonly $p = this.$.props
   protected readonly uid = uniqueId()
   protected readonly trigger = elementRef<HTMLElement>()
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.trigger.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,

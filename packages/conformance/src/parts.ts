@@ -110,8 +110,8 @@ export const PARTS: Readonly<Record<string, Readonly<Record<string, string>>>> =
     panel: '[data-member="hover-card"]',
   },
   Toast: {
-    // Radix renders the labelled region around the list and passes no prop to
-    // it, so the region is the element that holds the list.
+    // The labelled region around the list carries no hook of its own, so the
+    // region is the element that holds the list.
     viewport: ':scope :has(> [data-toast-part="list"])',
   },
 
@@ -609,6 +609,8 @@ export const HANDLERS: Readonly<Record<string, readonly string[]>> = {
   Alert: ['onDismiss'],
   Banner: ['onDismiss'],
   Carousel: ['onIndexChange'],
+  // An arrow moves to another picture, which the panel shows and `onIndexChange` reports.
+  Lightbox: ['onIndexChange'],
   // Previous and Next report the step, and Close and Done the end.
   Tour: ['onStepChange', 'onEnd'],
   DataTable: ['onSortChange', 'onSelectionChange', 'onRowClick', 'onExpandedChange'],

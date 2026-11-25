@@ -2,7 +2,9 @@ import { userEvent } from 'vitest/browser'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
 
+import { toastFocusLaw } from '@polymorph/conformance/toast-focus'
 import { toastSwipeLaw } from '@polymorph/conformance/toast-swipe'
+import { toastTimerLaw } from '@polymorph/conformance/toast-timer'
 import { createAgentBridge } from '@polymorph/engine/agent'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { getToasts, removeToast, toast, TOAST_DEFAULT_DURATION_MS } from '@polymorph/vue'
@@ -28,11 +30,26 @@ afterEach(() => {
 const cards = () => [...document.querySelectorAll<HTMLElement>('[data-member="toast"]')]
 const list = () => document.querySelector<HTMLElement>('[data-toast-part="list"]')
 
+toastFocusLaw({
+  shell: 'Vue',
+  mount: () => mount(() => h(Toast.Viewport)),
+  raise: (options) => toast({ durationMs: Number.POSITIVE_INFINITY, ...options }),
+  remove: (id) => removeToast(id),
+  clear: () => getToasts().forEach((record) => removeToast(record.id)),
+})
+
 toastSwipeLaw({
   shell: 'Vue',
   mount: () => mount(() => h(Toast.Viewport)),
   raise: (title) => void toast({ title, durationMs: Number.POSITIVE_INFINITY }),
   held: () => getToasts().length,
+  clear: () => getToasts().forEach((record) => removeToast(record.id)),
+})
+
+toastTimerLaw({
+  shell: 'Vue',
+  mount: () => mount(() => h(Toast.Viewport)),
+  raise: (title, durationMs) => void toast({ title, durationMs }),
   clear: () => getToasts().forEach((record) => removeToast(record.id)),
 })
 
@@ -122,6 +139,12 @@ describe('a declared Toast', () => {
     await mount(() => h(App))
     await vi.waitFor(() => expect(cards()).toHaveLength(1))
     expect(cards()[0]?.textContent).toContain('Three files.')
+    // The content is said with the toast.
+    await vi.waitFor(() =>
+      expect(document.querySelector('[aria-live="polite"]')?.textContent?.trim()).toBe(
+        'Notification Export ready Three files.',
+      ),
+    )
     shown.value = false
     await vi.waitFor(() => expect(getToasts()).toHaveLength(0))
   })

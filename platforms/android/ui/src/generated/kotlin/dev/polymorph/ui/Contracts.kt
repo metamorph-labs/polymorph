@@ -5888,7 +5888,11 @@ enum class PMToastTone(val value: String) {
  * Toast's props (`design/components/toast.md`): Notifications that report the outcome of an action.
  */
 data class PMToastProps(
-    /** At most one; a shortcut, never the only way to do what it does. */
+    /**
+     * At most one; a shortcut, never the only way to do what it does. A call with an action that
+     * sets neither `durationMs` nor `retained` is pinned, so a reader has the time to reach the
+     * action.
+     */
     val action: PMToastAction? = null,
     /** Content supplied by the host, including current, controller-gated recovery controls. */
     val content: PMContent? = null,

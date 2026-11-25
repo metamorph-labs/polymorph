@@ -15,6 +15,8 @@ import {
   Portal,
   agentMember,
   attributes,
+  focusPlace,
+  focusReturnTarget,
   joinSlot,
   modalFocusTarget,
   normalizeProps,
@@ -85,6 +87,7 @@ const slots = {
     return footer
   },
 }
+let returnTo = $state(null as ReturnType<typeof focusPlace>)
 let panel = $state<HTMLElement | null>(null)
 let scrim = $state<HTMLElement | null>(null)
 const documentDirection = useDirection()
@@ -99,6 +102,7 @@ const service = useMachine(
       closeOnEscape: dismissible,
       closeOnInteractOutside: dismissible,
       initialFocusEl: () => modalFocusTarget(panel, initialFocus),
+      finalFocusEl: () => focusReturnTarget(returnTo, [panel]),
       onOpenChange: (details) => {
         onOpenChange?.(details.open)
       },
@@ -120,9 +124,13 @@ const panelPresent = usePresence(
     },
   },
 )
-let release1: (() => void) | undefined
 const effect1 = () => {
-  release1?.()
+  api.open && (returnTo = focusPlace(document.activeElement))
+}
+watchEffect(effect1, { watch: () => api.open })
+let release2: (() => void) | undefined
+const effect2 = () => {
+  release2?.()
   const ran = agentMember({
     member: 'Drawer',
     element: () => panel,
@@ -135,12 +143,12 @@ const effect1 = () => {
         })(),
     },
   })
-  release1 = () => {
+  release2 = () => {
     ran()
   }
 }
-watchEffect(effect1)
-onDestroy(() => release1?.())
+watchEffect(effect2)
+onDestroy(() => release2?.())
 </script>
 
 {@render joined.start?.()

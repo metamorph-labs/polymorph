@@ -94,7 +94,12 @@ this member alone has, so it is a flag of its own, as Button's `data-icon-only` 
   the field is open. The app clears it when the reader saves again and when the field
   closes (`onEditingChange(false)`).
 - **Cancelling.** Escape anywhere in the open row and the cancel control close the field
-  and report nothing. The next opening starts from the value again.
+  and report nothing. The next opening starts from the value again. Inside a Dialog that
+  Escape is the member's and the Dialog stays open; the next Escape, from the edit control,
+  closes the Dialog.
+- **An input method's keys are its own.** The Enter that confirms a Japanese or Chinese
+  candidate, Safari's included, saves nothing, and the Escape that abandons a composition
+  keeps the field open.
 - **Leaving the field does nothing.** Focus that moves out of the open row neither saves
   nor cancels. A save on leaving sends a request the reader did not ask for when they only
   clicked elsewhere, and its failure would be drawn in a field they have left. A cancel on

@@ -9,10 +9,14 @@
 import { onDestroy } from 'svelte'
 
 import {
+  TOAST_QUIET,
   actOnToastNotice,
   agentMember,
+  announceToasts,
   dismissToastNotice,
+  followToastFocus,
   getToasts,
+  holdToastTimers,
   joinSlot,
   subscribeToasts,
   toast,
@@ -38,23 +42,13 @@ let { messages }: ToastViewportProps = $props()
 const joined = joinSlot(undefined, () => ({}))
 let version = $state(0)
 let paused = $state(false)
+let said = $state(TOAST_QUIET)
 let list = $state<HTMLElement | null>(null)
 let region = $state<HTMLElement | null>(null)
 const say = $derived(
   messages ?? { dismiss: 'Dismiss', notification: 'Notification', viewport: 'Notifications (F8)' },
 )
 const records = $derived(version < 0 ? [] : getToasts())
-const words = $derived((urgent: boolean): string => {
-  const record = records
-    .filter(
-      (each) =>
-        each.closing !== true && (each.tone === 'danger' || each.tone === 'warning') === urgent,
-    )
-    .at(-1)
-  return record === undefined
-    ? ''
-    : [say.notification, record.title, record.description].filter(Boolean).join(' ')
-})
 let release1: (() => void) | undefined
 const effect1 = () => {
   release1?.()
@@ -83,6 +77,32 @@ onDestroy(() => release2?.())
 let release3: (() => void) | undefined
 const effect3 = () => {
   release3?.()
+  const ran = holdToastTimers(region, (held) => {
+    paused = held
+  })
+  release3 = () => {
+    ran()
+  }
+}
+watchEffect(effect3)
+onDestroy(() => release3?.())
+let release4: (() => void) | undefined
+const effect4 = () => {
+  release4?.()
+  const ran = followToastFocus(list)
+  release4 = () => {
+    ran()
+  }
+}
+watchEffect(effect4)
+onDestroy(() => release4?.())
+const effect5 = () => {
+  said = announceToasts(said, records, list, say.notification)
+}
+watchEffect(effect5, { watch: () => version })
+let release6: (() => void) | undefined
+const effect6 = () => {
+  release6?.()
   const ran = agentMember({
     member: 'Toast',
     element: () => region,
@@ -93,35 +113,27 @@ const effect3 = () => {
     },
     withholds: () => [...(list?.querySelectorAll('[data-member="toast"] > div ~ div') ?? [])],
   })
-  release3 = () => {
+  release6 = () => {
     ran()
   }
 }
-watchEffect(effect3)
-onDestroy(() => release3?.())
+watchEffect(effect6)
+onDestroy(() => release6?.())
 </script>
 
 {@render joined.start?.()
 }{#if joined.shown
   }<div bind:this={region} role="region" aria-label={say.viewport} tabindex="-1"
-    ><ol
-      bind:this={list}
-      class={styles.viewport}
-      tabindex="-1"
-      data-toast-part="list"
-      onpointerenter={() => { paused = true }}
-      onpointerleave={() => { paused = false }}
-      onfocusin={() => { paused = true }}
-      onfocusout={() => { paused = false }}
+    ><ol bind:this={list} class={styles.viewport} tabindex="-1" data-toast-part="list"
       >{#each records as record (record.id)
         }<ToastCard {record} dismissLabel={say.dismiss} {paused}
       />{/each
     }</ol
     ><div class={a11y.visuallyHidden} role="status" aria-live="polite" aria-atomic="true"
-      >{words(false)
+      >{#each [said.polite] as saying (saying.key)}<span>{saying.words}</span>{/each
     }</div
     ><div class={a11y.visuallyHidden} role="alert" aria-live="assertive" aria-atomic="true"
-      >{words(true)
+      >{#each [said.assertive] as saying (saying.key)}<span>{saying.words}</span>{/each
     }</div
   ></div
 >{/if

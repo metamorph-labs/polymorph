@@ -11,6 +11,7 @@ import { onDestroy } from 'svelte'
 import {
   Icon,
   agentMember,
+  focusAfterListRemoval,
   formatBytes,
   gateFiles,
   joinSlot,
@@ -171,10 +172,20 @@ const listening = {
   },
 }
 let dragover = $state(false)
+let pressed = $state(null as { id: string; at: number } | null)
 let picker = $state<HTMLElement | null>(null)
 let root = $state<HTMLElement | null>(null)
+let rowList = $state<HTMLElement | null>(null)
 let zone = $state<HTMLElement | null>(null)
 const zoneState = $derived(dragover ? 'dragover' : 'idle')
+const rowOf = $derived((id: string | undefined) =>
+  id === undefined
+    ? null
+    : (rowList?.children[rows.current.findIndex((row) => row.key === id)] ?? null),
+)
+const removeControl = $derived((row: Element | null) =>
+  row === null ? null : ([...row.querySelectorAll<HTMLElement>('button')].pop() ?? null),
+)
 const add = $derived(
   (list: FileList | null | undefined) =>
     !disabled &&
@@ -189,9 +200,19 @@ const rows = useListPresence(
   () => files,
   (file: FileUploadItem) => file.id,
 )
-let release1: (() => void) | undefined
 const effect1 = () => {
-  release1?.()
+  pressed = focusAfterListRemoval(
+    pressed,
+    files.map((file) => file.id),
+    (at) => removeControl(rowOf(files[at]?.id)),
+    zone,
+    pressed === null ? null : rowOf(pressed.id),
+  )
+}
+watchEffect(effect1, { watch: () => files, mount: false })
+let release2: (() => void) | undefined
+const effect2 = () => {
+  release2?.()
   const ran = agentMember({
     member: 'FileUpload',
     element: () => zone,
@@ -216,12 +237,12 @@ const effect1 = () => {
     },
     withholds: () => root,
   })
-  release1 = () => {
+  release2 = () => {
     ran()
   }
 }
-watchEffect(effect1)
-onDestroy(() => release1?.())
+watchEffect(effect2)
+onDestroy(() => release2?.())
 </script>
 
 {@render joined.start?.()
@@ -265,7 +286,7 @@ onDestroy(() => release1?.())
       tabindex="-1"
       onchange={(event) => { (add((event.target as HTMLInputElement).files), ((event.target as HTMLInputElement).value = '')) }}
     />{#if files.length > 0
-      }<ul class={styles.list}
+      }<ul bind:this={rowList} class={styles.list}
         >{#each rows.current as row (row.key)
           }<FileUploadRow
             file={row.item}
@@ -276,7 +297,7 @@ onDestroy(() => release1?.())
             removeLabel={messages.remove(row.item.name)}
             progressLabel={messages.progress(row.item.name)}
             onRetry={() => { onRetry?.(row.item.id) }}
-            onRemove={() => { onRemove?.(row.item.id) }}
+            onRemove={() => { ((pressed = { id: row.item.id, at: files.findIndex((file) => file.id === row.item.id) }), onRemove?.(row.item.id)) }}
             onDone={() => { row.done() }}
         />{/each
       }</ul

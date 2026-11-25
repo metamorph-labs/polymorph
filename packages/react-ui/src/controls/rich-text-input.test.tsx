@@ -55,6 +55,11 @@ const doc = (...blocks: unknown[]): RichTextDocument =>
 const p = (...content: unknown[]) => ({ type: 'paragraph', content })
 const t = (text: string, ...marks: unknown[]) =>
   marks.length === 0 ? { type: 'text', text } : { type: 'text', text, marks }
+const ul = (...items: unknown[][]) => ({
+  type: 'list',
+  ordered: false,
+  items: items.map((content) => ({ type: 'listItem', content })),
+})
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -360,6 +365,37 @@ describe('formatting', () => {
     await userEvent.keyboard('{Enter}')
     await said('Redone')
     expect(surface().textContent).toBe('x')
+  })
+})
+
+describe('leaving the text from a list', () => {
+  it('leaves on Shift+Tab from a top-level item, and on Escape then Tab from an item Tab would sink, and changes nothing', async () => {
+    const onChange = vi.fn()
+    const { seen, toolbar } = capture()
+    render(
+      <>
+        <RichTextInput
+          aria-label="Comment"
+          defaultValue={doc(ul([p(t('one'))], [p(t('two'))]))}
+          onChange={onChange}
+          toolbar={toolbar}
+        />
+        <input aria-label="After" />
+      </>,
+    )
+    // Shift+Tab from the text reaches the toolbar's stop before it.
+    await caretAfter(surface(), 'two', seen)
+    await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+    await vi.waitFor(() => expect(document.activeElement?.getAttribute('aria-label')).toBe('Bold'))
+    // Tab would sink "two" under "one"; after Escape it moves on.
+    await caretAfter(surface(), 'two', seen)
+    await userEvent.keyboard('{Escape}{Tab}')
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'After' })),
+    )
+    await sleep(30)
+    expect(onChange).not.toHaveBeenCalled()
+    expect(surface().querySelectorAll('li')).toHaveLength(2)
   })
 })
 

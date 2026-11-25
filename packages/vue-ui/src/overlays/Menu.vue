@@ -119,7 +119,7 @@ const flat = computed(() =>
       : [entry],
   ),
 )
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => anchor.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({

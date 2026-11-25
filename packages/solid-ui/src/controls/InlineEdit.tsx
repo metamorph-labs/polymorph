@@ -12,9 +12,11 @@ import {
   afterRender,
   agentMember,
   claimSlot,
+  composingKey,
   createCell,
   createDerived,
   elementRef,
+  holdFieldEscape,
   scope,
   watchEffect,
   type Defaults,
@@ -160,16 +162,18 @@ export default function InlineEdit(given: InlineEditProps): JSX.Element {
       if (props.editing === undefined) setOpen.value(false)
     })
     const onKey = createDerived(() => (event: KeyboardEvent) => {
+      if (composingKey(event)) return
       if (event.key === 'Escape') {
         event.preventDefault()
         cancel.value()
         return
       }
-      if (event.key === 'Enter' && event.target instanceof HTMLInputElement && !event.isComposing) {
+      if (event.key === 'Enter' && event.target instanceof HTMLInputElement) {
         event.preventDefault()
         commit.value()
       }
     })
+    const cancellable = createDerived(() => current.value && !props.pending)
     const leave = createDerived(() => (event: FocusEvent) => {
       const next = event.relatedTarget
       if (next instanceof Node && !(root.value?.contains(next) ?? false)) within.value = false
@@ -186,7 +190,21 @@ export default function InlineEdit(given: InlineEditProps): JSX.Element {
       props.onCommit?.(text)
       if (props.editing === undefined) setOpen.value(false)
     })
+    let release1: (() => void) | undefined
     const effect1 = () => {
+      release1?.()
+      const ran = cancellable.value && root.value ? holdFieldEscape(root.value) : () => {}
+      release1 = () => {
+        ran()
+      }
+    }
+    watchEffect(
+      createMemo(() => cancellable.value),
+      effect1,
+      true,
+    )
+    onCleanup(() => release1?.())
+    const effect2 = () => {
       void (current.value
         ? ((draft.value = props.value),
           afterRender(() => {
@@ -198,10 +216,10 @@ export default function InlineEdit(given: InlineEditProps): JSX.Element {
     }
     watchEffect(
       createMemo(() => current.value),
-      effect1,
+      effect2,
       false,
     )
-    const effect2 = () => {
+    const effect3 = () => {
       void (
         !props.pending &&
         current.value &&
@@ -211,12 +229,12 @@ export default function InlineEdit(given: InlineEditProps): JSX.Element {
     }
     watchEffect(
       createMemo(() => props.pending),
-      effect2,
+      effect3,
       false,
     )
-    let release3: (() => void) | undefined
-    const effect3 = () => {
-      release3?.()
+    let release4: (() => void) | undefined
+    const effect4 = () => {
+      release4?.()
       const ran = agentMember({
         member: 'InlineEdit',
         element: () => root.value?.querySelector('input') ?? root.value?.querySelector('button'),
@@ -241,12 +259,12 @@ export default function InlineEdit(given: InlineEditProps): JSX.Element {
         },
         withholds: () => root.value,
       })
-      release3 = () => {
+      release4 = () => {
         ran()
       }
     }
-    onMount(effect3)
-    onCleanup(() => release3?.())
+    onMount(effect4)
+    onCleanup(() => release4?.())
     return (
       <div
         class={styles.root}

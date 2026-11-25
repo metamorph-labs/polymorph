@@ -17,9 +17,12 @@ import {
   Spread,
   agentMember,
   cell,
+  composingKey,
   derived,
   elementRef,
   fieldValue,
+  holdFieldEscape,
+  lineStartKey,
   mergeParts,
   mountEffect,
   normalizeProps,
@@ -657,7 +660,7 @@ export class MultiSelect {
         at
       ] ?? null,
   )
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.frame.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,
@@ -747,7 +750,9 @@ export class MultiSelect {
       })
     })
   })
+  protected readonly clearable = derived(() => !this.api.value.open && this.text.value !== '')
   protected readonly fieldKeyDown = derived(() => (event: KeyboardEvent) => {
+    if (composingKey(event)) return
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault()
       const down = event.key === 'ArrowDown'
@@ -799,7 +804,12 @@ export class MultiSelect {
       if (last !== undefined) this.remove.value(last)
       return
     }
-    if (event.key === 'ArrowLeft' && (event.target as HTMLInputElement).selectionStart === 0) {
+    // The key toward the line's start moves into the chips, as in TagInput. The direction is
+    // the field's: the machine writes the document's on the input. It is a computed style, read
+    // only for an arrow.
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+    const input = event.target as HTMLInputElement
+    if (event.key === lineStartKey(this.frame.value ?? input) && input.selectionStart === 0) {
       this.removeButton.value(this.orderedValues.value.length - 1)?.focus()
     }
   })
@@ -813,7 +823,8 @@ export class MultiSelect {
     }
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault()
-      const step = event.key === 'ArrowLeft' ? -1 : 1
+      const step =
+        event.key === lineStartKey(this.frame.value ?? (event.target as Element)) ? -1 : 1
       if (at + step === this.orderedValues.value.length) this.api.value.focus()
       else if (at + step >= 0) this.removeButton.value(at + step)?.focus()
     }
@@ -867,27 +878,34 @@ export class MultiSelect {
       'dialog.scrim',
     ),
   )
-  private release5: (() => void) | undefined
+  private release2: (() => void) | undefined
+  private release6: (() => void) | undefined
 
   constructor() {
     mountEffect(() => this.effect1())
+    inject(DestroyRef).onDestroy(() => this.release2?.())
     watchEffect(
-      () => this.text.value,
+      () => this.clearable.value,
       () => this.effect2(),
       true,
     )
     watchEffect(
-      () => this.api.value.open,
+      () => this.text.value,
       () => this.effect3(),
+      true,
+    )
+    watchEffect(
+      () => this.api.value.open,
+      () => this.effect4(),
       false,
     )
     watchEffect(
       () => this.api.value.highlightedValue,
-      () => this.effect4(),
+      () => this.effect5(),
       true,
     )
-    inject(DestroyRef).onDestroy(() => this.release5?.())
-    mountEffect(() => this.effect5())
+    inject(DestroyRef).onDestroy(() => this.release6?.())
+    mountEffect(() => this.effect6())
   }
 
   protected e1() {
@@ -1475,14 +1493,25 @@ export class MultiSelect {
   }
 
   private effect2(): void {
-    void (this.api.value.open && this.aimFirst.value())
+    this.release2?.()
+    const ran =
+      this.clearable.value && this.textField.value
+        ? holdFieldEscape(this.textField.value)
+        : () => {}
+    this.release2 = () => {
+      ran()
+    }
   }
 
   private effect3(): void {
-    void (this.api.value.open && this.api.value.highlightedValue === null && this.aimFirst.value())
+    void (this.api.value.open && this.aimFirst.value())
   }
 
   private effect4(): void {
+    void (this.api.value.open && this.api.value.highlightedValue === null && this.aimFirst.value())
+  }
+
+  private effect5(): void {
     void (
       this.api.value.open &&
       this.api.value.highlightedValue !== null &&
@@ -1491,8 +1520,8 @@ export class MultiSelect {
     )
   }
 
-  private effect5(): void {
-    this.release5?.()
+  private effect6(): void {
+    this.release6?.()
     const ran = agentMember({
       member: 'MultiSelect',
       element: () => this.textField.value,
@@ -1544,7 +1573,7 @@ export class MultiSelect {
         close: () => this.api.value.setOpen(false),
       },
     })
-    this.release5 = () => {
+    this.release6 = () => {
       ran()
     }
   }

@@ -167,8 +167,10 @@ export function Menu({
   onOpenChange,
   presentation = 'auto',
 }: MenuProps) {
-  // The document's direction, which Radix would otherwise take to be left-to-right.
-  const dir = useDirection()
+  // The direction of the place the member is in, which Radix would otherwise take to be
+  // left-to-right.
+  const anchorRef = useRef<HTMLSpanElement>(null)
+  const dir = useDirection(anchorRef)
   // Mirrored in both modes: the TriggerAnchor needs the open state to set
   // `aria-expanded`, so the uncontrolled copy exists even when the caller
   // controls the state.
@@ -197,7 +199,6 @@ export function Menu({
   // An agent chooses an entry by its id without opening the menu, and the entry's own
   // `onSelect` (or a checkbox entry's `onCheckedChange`) runs, as for a person's choice. A
   // command closes a menu that is open, as a person's does. The trigger names the menu.
-  const anchorRef = useRef<HTMLSpanElement>(null)
   useAgentMember({
     member: 'Menu',
     element: () => anchorRef.current?.querySelector('button, a[href], [tabindex]'),

@@ -1,3 +1,4 @@
+import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { h, ref } from 'vue'
 
@@ -55,5 +56,46 @@ describe('the palette', () => {
     open.value = true
     // Firefox writes the third axis out, as `center top 0px`.
     await vi.waitFor(() => expect(panel()?.style.transformOrigin).toMatch(/^center top( 0px)?$/))
+  })
+})
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * A key an input method is handling, dispatched on `target`: marked `isComposing`, or reported
+ * with key code 229 after the composition has ended, as Safari sends the Enter that confirms it.
+ */
+function inputMethodKey(
+  target: HTMLElement,
+  key: string,
+  how: 'composing' | 'processed',
+): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    bubbles: true,
+    cancelable: true,
+    isComposing: how === 'composing',
+  })
+  if (how === 'processed') Object.defineProperty(event, 'keyCode', { value: 229 })
+  target.dispatchEvent(event)
+  return event
+}
+
+describe('the query and an input method', () => {
+  it('clears nothing and stays open on an Escape an input method is handling', async () => {
+    const onOpenChange = vi.fn()
+    await mount(() => h(Command, { open: true, onOpenChange, items: ITEMS }))
+    await vi.waitFor(() => expect(document.activeElement).toBe(field()))
+    await userEvent.keyboard('new')
+    await vi.waitFor(() => expect(field()?.value).toBe('new'))
+    inputMethodKey(field() as HTMLElement, 'Escape', 'composing')
+    inputMethodKey(field() as HTMLElement, 'Escape', 'processed')
+    await sleep(30)
+    expect(field()?.value).toBe('new')
+    expect(onOpenChange).not.toHaveBeenCalled()
+    // The Escape after the composition clears the query, and the palette stays open.
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(field()?.value).toBe(''))
+    expect(onOpenChange).not.toHaveBeenCalled()
   })
 })

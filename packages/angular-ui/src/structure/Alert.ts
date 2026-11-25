@@ -16,9 +16,11 @@ import {
   agentMember,
   cell,
   elementRef,
+  focusAfterRemoval,
   mountEffect,
   useDeparture,
   useMember,
+  watchEffect,
   type IconProps,
 } from '@polymorph/angular'
 import styles from '@polymorph/recipes/structure/alert.module.css'
@@ -141,12 +143,19 @@ export class Alert {
   protected readonly departure = useDeparture(() => this.root.value, 'alert.dismiss')
   private release1: (() => void) | undefined
   private release2: (() => void) | undefined
+  private release3: (() => void) | undefined
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.release1?.())
     mountEffect(() => this.effect1())
     inject(DestroyRef).onDestroy(() => this.release2?.())
-    mountEffect(() => this.effect2())
+    watchEffect(
+      () => this.root.value,
+      () => this.effect2(),
+      true,
+    )
+    inject(DestroyRef).onDestroy(() => this.release3?.())
+    mountEffect(() => this.effect3())
   }
 
   protected e1() {
@@ -301,6 +310,14 @@ export class Alert {
 
   private effect2(): void {
     this.release2?.()
+    const ran = focusAfterRemoval(this.root.value)
+    this.release2 = () => {
+      ran()
+    }
+  }
+
+  private effect3(): void {
+    this.release3?.()
     const ran = agentMember({
       member: 'Alert',
       element: () => this.root.value,
@@ -328,7 +345,7 @@ export class Alert {
       },
       withholds: () => this.closeRegion.value,
     })
-    this.release2 = () => {
+    this.release3 = () => {
       ran()
     }
   }

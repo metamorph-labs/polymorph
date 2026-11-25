@@ -401,6 +401,35 @@ export function walk(
   }
 }
 
+/**
+ * The ref a member reads its reading direction around (`readDirection` in
+ * `@polymorph/engine`): the first element ref in document order that is drawn
+ * in the page with the member, outside a portal and a loop, and one outside a
+ * condition before one inside it. An element of the member is enough, because
+ * the engine passes over the `dir` a machine writes on its own parts, and reads
+ * a place that is itself a machine's part (Calendar's root, its content part)
+ * from its parent. A member with no such ref reads the document's direction.
+ */
+export function directionPlace(nodes: readonly Node[]): string | undefined {
+  let conditional: string | undefined
+  const visit = (list: readonly Node[], inCondition: boolean): string | undefined => {
+    for (const node of list) {
+      if (node.kind === 'portal' || node.kind === 'each') continue
+      if (node.kind === 'element' && typeof node.tag === 'string' && node.ref !== undefined) {
+        if (!inCondition) return node.ref
+        conditional ??= node.ref
+      }
+      const inner = node.kind === 'if' || inCondition
+      for (const children of childLists(node)) {
+        const found = visit(children, inner)
+        if (found !== undefined) return found
+      }
+    }
+    return undefined
+  }
+  return visit(nodes, false) ?? conditional
+}
+
 /** Every node of a tree, depth first, for the analyses that look for one kind. */
 export function allNodes(nodes: readonly Node[]): Node[] {
   const out: Node[] = []

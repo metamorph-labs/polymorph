@@ -158,8 +158,10 @@ export function Select({
   'aria-required': required,
   presentation = 'auto',
 }: SelectProps) {
-  // The document's direction, which Radix would otherwise take to be left-to-right.
-  const dir = useDirection()
+  // The direction of the place the member is in, which Radix would otherwise take to be
+  // left-to-right.
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const dir = useDirection(triggerRef)
   const offersEmpty = emptyOption !== undefined
 
   useDevWarning(
@@ -221,7 +223,6 @@ export function Select({
 
   const generatedId = useId()
   const listboxId = `${generatedId}-listbox`
-  const triggerRef = useRef<HTMLButtonElement>(null)
 
   /**
    * Focus returns to the trigger whenever the sheet closes (Escape, the scrim, or a

@@ -1,8 +1,8 @@
 'use client'
 
 /**
- * The document's reading direction, which every member hands to the substrate
- * it is built on.
+ * The reading direction of the place a member is in, which every member hands
+ * to the substrate it is built on.
  *
  * A recipe mirrors by itself in a right-to-left document, because it is written
  * in logical properties. A substrate does not. Radix and Zag take the direction
@@ -12,60 +12,100 @@
  * right-to-left page. So each foundation reads the direction here, and each
  * member passes it on.
  *
- * The direction is the one `dir` says on `<body>`, or else on `<html>`. It is
- * the document's and not that of the place a member is mounted in: a member
- * inside an element whose `dir` differs from the document's follows the
- * document. A document that sets its direction only in CSS reads as
- * left-to-right here.
+ * The direction is the one `dir` says on the nearest element around the place,
+ * so a member inside a section that says `dir="rtl"` on a left-to-right page
+ * runs right to left. The `dir` a Zag machine writes on its own parts (the
+ * elements that carry `data-scope`) is passed over, because it is the
+ * direction a member was handed and not one the page says. A popup's content
+ * part counts: it carries the direction of the member that opened it, so a
+ * submenu drawn inside a menu's content takes the menu's. A place that is
+ * itself one of a machine's parts is read from its parent: the `dir` on it is
+ * the one the member handed its machine, which a content part (Calendar's
+ * root) would otherwise give back. A member built on Radix, whose parts carry
+ * no such mark, reads from outside its own root. Given
+ * no place, or a place out of the document, the direction is the one `dir`
+ * says on `<body>`, or else on `<html>`. A document that sets its direction
+ * only in CSS reads as left-to-right here.
  *
  * It is `ltr` where there is no document, as on a server render.
  */
 export type ReadingDirection = 'ltr' | 'rtl'
 
 /**
- * The document's reading direction now. It reads two attributes, and a
- * computed style only for `dir="auto"`, so a member can call it on every render.
+ * An element whose `dir` the page says, and not one a Zag machine wrote on its
+ * part, or a popup's content, which says the direction of the member it
+ * belongs to.
  */
-export function readDirection(): ReadingDirection {
+const SAYS = '[dir]:not([data-scope]), [dir][data-scope][data-part="content"]'
+
+/** The direction an element's own `dir` says, or `undefined` when it says none that counts. */
+function said(element: Element): ReadingDirection | undefined {
+  const value = element.getAttribute('dir')?.toLowerCase()
+  if (value === 'rtl' || value === 'ltr') return value
+  // `auto` takes the direction from the element's text, which only the browser resolves.
+  if (value === 'auto') return getComputedStyle(element).direction === 'rtl' ? 'rtl' : 'ltr'
+  return undefined
+}
+
+/**
+ * The reading direction of the place `within` is in, or of the document when
+ * there is none. It reads attributes, and a computed style only for
+ * `dir="auto"`, so a member can call it on every render.
+ */
+export function readDirection(within?: Element | null): ReadingDirection {
   if (typeof document === 'undefined') return 'ltr'
+  if (within?.isConnected === true) {
+    const start = within.hasAttribute('data-scope') ? within.parentElement : within
+    for (
+      let at = start?.closest(SAYS) ?? null;
+      at !== null;
+      at = at.parentElement?.closest(SAYS) ?? null
+    ) {
+      const direction = said(at)
+      if (direction !== undefined) return direction
+    }
+    return 'ltr'
+  }
   // A document still being parsed has no body yet.
   const places: (HTMLElement | null)[] = [document.body, document.documentElement]
   for (const element of places) {
     if (element === null) continue
-    const said = element.getAttribute('dir')?.toLowerCase()
-    if (said === 'rtl' || said === 'ltr') return said
-    // `auto` takes the direction from the element's text, which only the browser resolves.
-    if (said === 'auto') return getComputedStyle(element).direction === 'rtl' ? 'rtl' : 'ltr'
+    const direction = said(element)
+    if (direction !== undefined) return direction
   }
   return 'ltr'
 }
 
 const listeners = new Set<() => void>()
+const anywhere = new Set<() => void>()
 let observer: MutationObserver | null = null
 
 /**
- * Calls `listener` each time `dir` changes on `<html>` or `<body>`, until the
- * function it returns is called. The listener reads the new direction with
- * `readDirection`. Every listener shares one observer, which is released with
- * the last of them.
+ * Calls `listener` each time `dir` changes on `<html>` or `<body>`, or, with
+ * `sections`, on any element of the document, until the function it returns
+ * is called. The listener reads the new direction with `readDirection`. Every
+ * listener shares one observer, which is released with the last of them.
  */
-export function watchDirection(listener: () => void): () => void {
+export function watchDirection(listener: () => void, sections = false): () => void {
   if (typeof document === 'undefined' || typeof MutationObserver === 'undefined') return () => {}
-  listeners.add(listener)
+  ;(sections ? anywhere : listeners).add(listener)
   if (observer === null) {
-    observer = new MutationObserver(() => {
-      for (const each of [...listeners]) each()
+    observer = new MutationObserver((records) => {
+      const own = records.some(
+        (record) => record.target === document.documentElement || record.target === document.body,
+      )
+      for (const each of own ? [...listeners, ...anywhere] : [...anywhere]) each()
     })
-    const places: (HTMLElement | null)[] = [document.documentElement, document.body]
-    for (const element of places) {
-      if (element !== null) {
-        observer.observe(element, { attributes: true, attributeFilter: ['dir'] })
-      }
-    }
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['dir'],
+      subtree: true,
+    })
   }
   return () => {
     listeners.delete(listener)
-    if (listeners.size > 0) return
+    anywhere.delete(listener)
+    if (listeners.size > 0 || anywhere.size > 0) return
     observer?.disconnect()
     observer = null
   }

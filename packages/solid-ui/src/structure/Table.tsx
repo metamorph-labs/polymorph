@@ -96,6 +96,7 @@ export default function Table(given: TableProps): JSX.Element {
     const overflowing = createCell(false)
     const at = createCell({ row: 0, column: 0, detail: false })
     const placed = createCell(false)
+    const holds = createCell(false)
     const stopIn = createDerived(() => (cell: HTMLTableCellElement): HTMLElement => {
       for (const node of Array.from(
         cell.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea'),
@@ -213,6 +214,7 @@ export default function Table(given: TableProps): JSX.Element {
     const focusIn = createDerived(() => (event: FocusEvent) => {
       const element = table.value as HTMLTableElement | null
       if (element === null) return
+      if (!holds.value) holds.value = true
       const cell = gridCellOf.value(element, event.target)
       if (cell === null) return
       const to = clampCell.value(
@@ -222,6 +224,19 @@ export default function Table(given: TableProps): JSX.Element {
       if (to === null) return
       placed.value = true
       rove.value(element, to)
+    })
+    const focusOut = createDerived(() => (event: FocusEvent) => {
+      const element = table.value as HTMLTableElement | null
+      const left = event.target
+      queueMicrotask(() => {
+        if (
+          element !== null &&
+          left instanceof Node &&
+          left.isConnected &&
+          !element.contains(document.activeElement)
+        )
+          holds.value = false
+      })
     })
     const keyDown = createDerived(() => (event: KeyboardEvent) => {
       const element = table.value as HTMLTableElement | null
@@ -304,7 +319,10 @@ export default function Table(given: TableProps): JSX.Element {
       const element = table.value as HTMLTableElement | null
       if (element === null || !props.grid) return
       const to = clampCell.value(element, whereIn.value(element))
-      if (to !== null) rove.value(element, to)
+      if (to === null) return
+      rove.value(element, to)
+      const fell = document.activeElement === null || document.activeElement === document.body
+      if (holds.value && fell) stopAt.value(element, to)?.focus()
     })
     let release1: (() => void) | undefined
     const effect1 = () => {
@@ -392,6 +410,7 @@ export default function Table(given: TableProps): JSX.Element {
           role={props.grid ? 'grid' : undefined}
           aria-multiselectable={props.grid && props.multiselectable ? 'true' : undefined}
           onfocusin={($event: FocusEvent) => props.grid && focusIn.value($event)}
+          onfocusout={($event: FocusEvent) => props.grid && focusOut.value($event)}
           onkeydown={($event: KeyboardEvent) => props.grid && keyDown.value($event)}
           ref={table.attach}
         >

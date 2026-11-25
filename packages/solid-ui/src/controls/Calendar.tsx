@@ -112,7 +112,7 @@ export default function Calendar(given: CalendarProps): JSX.Element {
         return said
       },
     )
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => root.value)
     const service = useMachine(
       zag.machine,
       () =>

@@ -22,6 +22,7 @@ import {
   followFieldFocus,
   followFormReset,
   followSelectionBar,
+  holdFieldEscape,
   Icon,
   type IconRole,
   idPart,
@@ -998,20 +999,14 @@ export function RichTextInput(props: RichTextInputProps) {
    * hears Escape on the document in the capture phase, before the text does, and
    * closes unless the key's default is prevented. So while either is open the
    * field prevents it on the window, which the key reaches first, and acts on it
-   * there; the editor then leaves the key alone, as it does any key whose
-   * default is prevented.
+   * there (`holdFieldEscape`); the editor then leaves the key alone, as it does
+   * any key whose default is prevented.
    */
   const holding = open || barOpen
   useEffect(() => {
     const element = surfaceRef.current
-    const view = element?.ownerDocument.defaultView
-    if (!holding || element === null || view === null || view === undefined) return
-    const hold = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== 'Escape' || event.isComposing || event.target !== element) return
-      if (latestRef.current?.escape() === true) event.preventDefault()
-    }
-    view.addEventListener('keydown', hold, true)
-    return () => view.removeEventListener('keydown', hold, true)
+    if (!holding || element === null) return
+    return holdFieldEscape(element, () => latestRef.current?.escape() === true)
   }, [holding, surfaceRef])
 
   // The editor, mounted on the surface once and destroyed with it. Every callback reads the

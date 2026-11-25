@@ -47,7 +47,7 @@ const props = withDefaults(defineProps<SwitchProps>(), {
 const emit = defineEmits<{ checkedChange: [checked: boolean] }>()
 const uid = useId()
 const track = useTemplateRef<HTMLElement>('track')
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => track.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({

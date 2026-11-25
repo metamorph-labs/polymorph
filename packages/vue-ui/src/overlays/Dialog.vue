@@ -16,6 +16,7 @@ import {
   ref,
   useId,
   useTemplateRef,
+  watch,
 } from 'vue'
 
 import * as zag from '@zag-js/dialog'
@@ -24,6 +25,8 @@ import { normalizeProps, useMachine } from '@zag-js/vue'
 import {
   agentMember,
   definedProps,
+  focusPlace,
+  focusReturnTarget,
   modalFocusTarget,
   slottedElements,
   useDirection,
@@ -90,7 +93,8 @@ const lender = inject<{ element?: () => Element | null | undefined } | undefined
   undefined,
 )
 provide('polymorph:borrowed', undefined)
-const opener = ref(null as HTMLElement | null)
+const pressed = ref(null as HTMLElement | null)
+const returnTo = ref(null as ReturnType<typeof focusPlace>)
 const panel = useTemplateRef<HTMLElement>('panel')
 const scrim = useTemplateRef<HTMLElement>('scrim')
 const phone = useMediaQuery('phone')
@@ -107,7 +111,7 @@ const service = useMachine(
     closeOnEscape: props.dismissible,
     closeOnInteractOutside: props.dismissible,
     initialFocusEl: () => modalFocusTarget(panel.value, props.initialFocus),
-    finalFocusEl: () => opener.value,
+    finalFocusEl: () => focusReturnTarget(returnTo.value, [panel.value]),
     onOpenChange: (details) => {
       emit('openChange', details.open)
     },
@@ -115,7 +119,7 @@ const service = useMachine(
 )
 const api = computed(() => zag.connect(service, normalizeProps))
 const openFrom = computed(() => (event?: Event) => {
-  if (event?.currentTarget instanceof HTMLElement) opener.value = event.currentTarget
+  if (event?.currentTarget instanceof HTMLElement) pressed.value = event.currentTarget
   api.value.setOpen(true)
 })
 const scrimPresent = usePresence(() => api.value.open, scrim, 'dialog.scrim')
@@ -129,9 +133,15 @@ const effect1 = () => {
   lender && (lender.element = () => panel.value)
 }
 onMounted(effect1)
-let release2: (() => void) | undefined
 const effect2 = () => {
-  release2?.()
+  api.value.open &&
+    ((returnTo.value = focusPlace(pressed.value ?? document.activeElement)), (pressed.value = null))
+}
+onMounted(effect2)
+watch(() => api.value.open, effect2, { flush: 'post' })
+let release3: (() => void) | undefined
+const effect3 = () => {
+  release3?.()
   const ran = lender
     ? () => {}
     : agentMember({
@@ -147,12 +157,12 @@ const effect2 = () => {
             })(),
         },
       })
-  release2 = () => {
+  release3 = () => {
     ran()
   }
 }
-onMounted(effect2)
-onBeforeUnmount(() => release2?.())
+onMounted(effect3)
+onBeforeUnmount(() => release3?.())
 </script>
 
 <template>

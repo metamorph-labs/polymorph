@@ -223,7 +223,7 @@ const requestMore = $derived(
     ((loadMoreAt = options.length), onLoadMore?.(), true),
 )
 const emitBlur = $derived((event: FocusEvent) => setTimeout(() => onBlur?.(event)))
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => input)
 const service = useMachine(
   zag.machine,
   () =>

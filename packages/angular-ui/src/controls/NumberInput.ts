@@ -243,7 +243,7 @@ export class NumberInput {
   )
   protected readonly draft = cell(() => '')
   protected readonly control = elementRef<HTMLElement>()
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.control.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,

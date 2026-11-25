@@ -184,7 +184,8 @@ export default describeMember({
           part: 'number',
           class: ['number'],
           on: {
-            keydown: run('commitDraft()', "$event.key === 'Enter'"),
+            // The Enter that confirms an input method's candidate is the input method's.
+            keydown: run('commitDraft()', "$event.key === 'Enter' && !composingKey($event)"),
             paste: run('pasteInto($event)'),
             input: run('fitNumber($event)'),
           },

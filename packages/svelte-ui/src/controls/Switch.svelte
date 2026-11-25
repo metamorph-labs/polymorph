@@ -79,7 +79,7 @@ const label = $derived(
   joined.passed['label'] === undefined ? labelOwn : (joined.passed['label'] as typeof labelOwn),
 )
 let track = $state<HTMLElement | null>(null)
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => track)
 const service = useMachine(
   zag.machine,
   () =>

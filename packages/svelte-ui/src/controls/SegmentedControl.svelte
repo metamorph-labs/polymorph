@@ -78,7 +78,7 @@ const lender = getContext<{ element?: () => Element | null | undefined } | undef
 )
 setContext('polymorph:borrowed', undefined)
 let track = $state<HTMLElement | null>(null)
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => track)
 const service = useMachine(
   zag.machine,
   () =>

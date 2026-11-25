@@ -107,7 +107,7 @@ const resting = $derived(
     viewport !== null &&
     Math.abs(Math.abs(viewport.scrollLeft) - nearest * viewport.clientWidth) <= 1,
 )
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => root)
 const service = useMachine(
   zag.machine,
   () =>

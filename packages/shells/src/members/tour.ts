@@ -133,6 +133,8 @@ export default describeMember({
     uncontrolledStep: 'defaultStep ?? 0',
     // Why the panel is closing, set by the control that closes it; Escape leaves it unset.
     ending: "null as 'finished' | 'dismissed' | null",
+    // Where focus was as the tour opened, which it returns to as the tour ends.
+    returnTo: 'null as ReturnType<typeof focusPlace>',
     // The panel's corner, its placement and the target's rectangle, as the engine measured them.
     geometry:
       "null as { x: number; y: number; placement: 'top' | 'right' | 'bottom' | 'left' | 'center'; hole: { x: number; y: number; width: number; height: number } | null } | null",
@@ -172,6 +174,8 @@ export default describeMember({
       closeOnInteractOutside: 'false',
       // The panel takes focus, so assistive software reads the step's title, body and position.
       initialFocusEl: '() => panel',
+      // Focus returns to where it was as the tour opened, else to the element nearest it.
+      finalFocusEl: '() => focusReturnTarget(returnTo, [panel])',
     },
     events: { onOpenChange: { run: 'closed(details.open)' } },
   },
@@ -191,6 +195,8 @@ export default describeMember({
     },
   },
   effects: [
+    // Recorded as the tour opens, before the trap moves focus into the panel.
+    { watch: 'api.open', run: 'api.open && (returnTo = focusPlace(document.activeElement))' },
     { watch: '[api.open, index]', run: 'show()' },
     // The panel follows its target when its own size changes, when the window resizes and when
     // anything on the page scrolls.

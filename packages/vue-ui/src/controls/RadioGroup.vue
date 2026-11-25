@@ -54,7 +54,7 @@ const props = withDefaults(defineProps<RadioGroupProps>(), {
 const emit = defineEmits<{ change: [value: string] }>()
 const uid = useId()
 const group = useTemplateRef<HTMLElement>('group')
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => group.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({

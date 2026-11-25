@@ -79,7 +79,7 @@ export default function Slider(given: SliderProps): JSX.Element {
   )
   const uid = createUniqueId()
   const root = elementRef<HTMLElement>()
-  const documentDirection = useDirection()
+  const documentDirection = useDirection(() => root.value)
   const service = useMachine(
     zag.machine,
     () =>

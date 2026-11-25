@@ -1,4 +1,6 @@
 import { Component, signal } from '@angular/core'
+import { userEvent } from 'vitest/browser'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
   promptTriggersLaw,
@@ -77,4 +79,97 @@ promptTriggersLaw({
     const { ref } = await mountComponent(InDialog)
     ;(ref.instance as InDialog).law.set(options)
   },
+})
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * A key an input method is handling, dispatched on `target`: marked `isComposing`, or reported
+ * with key code 229 after the composition has ended, as Safari sends the Enter that confirms it.
+ */
+function inputMethodKey(
+  target: HTMLElement,
+  key: string,
+  how: 'composing' | 'processed',
+): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    bubbles: true,
+    cancelable: true,
+    isComposing: how === 'composing',
+  })
+  if (how === 'processed') Object.defineProperty(event, 'keyCode', { value: 229 })
+  target.dispatchEvent(event)
+  return event
+}
+
+/** What the components below report to the test that mounted them. */
+const heard = { submit: vi.fn() }
+
+/** A composer that reports a send. */
+@Component({
+  selector: 'test-sending',
+  imports: [PromptInput],
+  template: `<pm-prompt-input label="Message" (submit)="heard.submit($event)" />`,
+})
+class Sending {
+  readonly heard = heard
+}
+
+/** A composer with three chips, whose application removes each one asked for. */
+@Component({
+  selector: 'test-chips',
+  imports: [PromptInput],
+  template: `<pm-prompt-input
+    label="Message"
+    [attachments]="attachments()"
+    (attach)="none()"
+    (reject)="none()"
+    (removeAttachment)="remove($event)"
+    (submit)="none()"
+  />`,
+})
+class Chips {
+  readonly attachments = signal([
+    { id: 'a', name: 'spec.pdf' },
+    { id: 'b', name: 'notes.txt' },
+    { id: 'c', name: 'shot.png' },
+  ])
+  none() {}
+  remove(id: string) {
+    this.attachments.update((was) => was.filter((one) => one.id !== id))
+  }
+}
+
+const message = () =>
+  document.querySelector<HTMLTextAreaElement>('[data-member="prompt-input"] textarea')
+const removeControl = (name: string) =>
+  document.querySelector<HTMLElement>(`button[aria-label="Remove ${name}"]`)
+
+describe('PromptInput — keys and chips', () => {
+  it('sends nothing on a key an input method is handling, Safari’s confirming Enter included', async () => {
+    heard.submit = vi.fn()
+    await mountComponent(Sending)
+    const field = message() as HTMLTextAreaElement
+    field.focus()
+    await userEvent.keyboard('にほん')
+    for (const how of ['composing', 'processed'] as const) {
+      expect(inputMethodKey(field, 'Enter', how).defaultPrevented, how).toBe(false)
+    }
+    await sleep(30)
+    expect(heard.submit).not.toHaveBeenCalled()
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(heard.submit).toHaveBeenCalledWith('にほん'))
+  })
+
+  it('moves focus to the next chip’s remove control once a chip is removed, else the previous one, else the field', async () => {
+    await mountComponent(Chips)
+    removeControl('notes.txt')?.focus()
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(document.activeElement).toBe(removeControl('shot.png')))
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(document.activeElement).toBe(removeControl('spec.pdf')))
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(document.activeElement).toBe(message()))
+  })
 })

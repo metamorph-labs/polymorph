@@ -266,7 +266,7 @@ export class ToolCall {
         }) as const
       )[this.$p.status],
   )
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.trigger.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,

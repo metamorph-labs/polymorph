@@ -105,6 +105,11 @@ rules the picker enforces natively. Status changes are announced through a singl
 row's Progress has `aria-label="{name} upload progress"`. The error `message` prop is the
 app's text; the vocabulary never writes error text.
 
+Focus never falls to the page when a row is removed. The app removes a file in its own time, and
+once the file of a row whose remove control was pressed has left `files`, focus moves to the
+remove control of the row in its place, else of the row before it, else to the dropzone. Focus
+the reader has moved since the press stays where it is.
+
 ```contract
 role dropzone button
 key Enter activates on dropzone when idle

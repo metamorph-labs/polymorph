@@ -37,7 +37,7 @@ run from a checkout.
 | `packages/mcp` | The same system as tools for an agent, over the Model Context Protocol. | `theme`, `rules`, `registry`, `spec`, `cli` | internal |
 | `packages/spec` | Screen documents (`polymorph-screen/1`): schema, validation against the registry, emission to React, Vue, Svelte, Solid and Angular, and to SwiftUI and Compose for a spec whose platform is `ios` or `android`. It validates a spec for the elements and emits none. | `rules`, `registry` | internal |
 | `packages/screen` | Screens a model writes and a host draws at run time, each part on a subpath of its own: the vocabulary table `pnpm registry` generates from the registry (`/vocabulary`, from `src/vocabulary.gen.ts`, gitignored), `checkScreen` (`/check`: the spec validator bound to that table, with the host's allowed members and the addresses a screen may hold), `parsePartial` for a document a model is still writing (`/partial`), the walk every run-time renderer draws from (`/walk`: `createScreen`), and the run-time card a host puts in a model's prompt (`/card`). React's and the elements' run-time renderers draw from it. No framework, no DOM, no runtime dependency. See [run-time-screens.md](run-time-screens.md). | `spec`, `registry` (their pure modules inlined) | `@metamorph-labs/polymorph-screen` |
-| `platforms/ios` | One Swift package: `PolymorphTokens`, the pairings as Swift values, and `PolymorphUI`, the SwiftUI members, their foundation and their generated contracts; the Relay example app (`Examples/Relay`). iOS 17 and macOS 14. See [`platforms/ios/README.md`](../platforms/ios/README.md). | generated from `engine` and `native` | not published: a path dependency on a checkout |
+| `platforms/ios` | One Swift package: `PolymorphTokens`, the pairings as Swift values, and `PolymorphUI`, the SwiftUI members, their foundation and their generated contracts; the Relay example app (`Examples/Relay`). iOS 17 and macOS 14. See [`platforms/ios/README.md`](../platforms/ios/README.md). | generated from `engine` and `native` | not published: added by this repository's URL, through the root `Package.swift`, or as a path dependency on a checkout |
 | `platforms/android` | One Gradle build: `:tokens` (`dev.polymorph.tokens`, plain Kotlin) and `:ui` (`dev.polymorph.ui`, the Compose members on Compose Multiplatform, `jvm` and `android` targets); the Relay example (`examples/relay`). See [`platforms/android/README.md`](../platforms/android/README.md). | generated from `engine` and `native` | not published: `includeBuild` of a checkout |
 | `platforms/dart` | `polymorph_tokens`: the pairings as Dart values, with no Flutter dependency. There is no Dart renderer. See [`platforms/dart/README.md`](../platforms/dart/README.md). | generated from `engine` | not published: a path or git dependency |
 | `apps/workbench` | The designer's app: studio, composer, component browser, galleries, mood board, Relay. `pnpm dev`. Also the screen page (`screen.html`) the MCP tool `render_screen` draws a spec in. The composer and the screen page draw with the run-time renderer. | `engine`, `react`, `react-ui`, `registry`, `screen`, `spec` | — |
@@ -189,10 +189,12 @@ has the token document.
   packages under their `@polymorph/*` names. See [consuming.md](consuming.md). The packages with
   no published name are internal.
 - **Shipped with the repository.** `platforms/ios`, `platforms/android` and `platforms/dart` are
-  not uploaded anywhere. An app depends on them through a checkout or a git submodule of this
-  repository, so their version is the repository's release tag the app checks out
-  ([`.changeset/README.md`](../.changeset/README.md)). Their generated sources are committed for
-  that reason.
+  not uploaded anywhere. An iOS app adds the Swift package by this repository's URL, through the
+  root `Package.swift`, an Android app includes the Gradle build from a checkout or a git
+  submodule of this repository, and a Dart app adds its package by path or by git. Their version is the release's: SwiftPM reads it from the
+  tag, and `pnpm version-packages` writes it into the Gradle and Dart manifests
+  ([`.changeset/README.md`](../.changeset/README.md)). Every app builds them from source, so their
+  generated sources are committed.
 - **Versions.** Every published package follows semver, so a breaking change is a major
   release. Every package carries one version, the release's, in its `package.json`, and the
   release tag is `v` and that version. Changesets (`.changeset/`) records

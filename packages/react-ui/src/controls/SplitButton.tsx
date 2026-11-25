@@ -153,8 +153,10 @@ export function SplitButton({
   defaultOpen,
   presentation = 'auto',
 }: SplitButtonProps) {
-  // The document's direction, which Radix would otherwise take to be left-to-right.
-  const dir = useDirection()
+  // The direction of the place the member is in, which Radix would otherwise take to be
+  // left-to-right.
+  const primaryRef = useRef<HTMLButtonElement>(null)
+  const dir = useDirection(primaryRef)
   const shared = dataAttrs({ variant, tone, size, disabled })
 
   /**
@@ -165,7 +167,6 @@ export function SplitButton({
    */
   const [open, setOpen] = useState(defaultOpen ?? false)
   const chevronRef = useRef<HTMLButtonElement>(null)
-  const primaryRef = useRef<HTMLButtonElement>(null)
   const menuId = useId()
 
   /**

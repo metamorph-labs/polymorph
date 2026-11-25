@@ -1,11 +1,12 @@
 import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { h } from 'vue'
+import { h, ref } from 'vue'
 
 import { PASTE_IS_UNREADABLE } from '@polymorph/conformance/engines'
 import { installTestTheme } from '@polymorph/engine/testing'
 
 import { mount } from '../mount'
+import Dialog from '../overlays/Dialog.vue'
 import TagInput from './TagInput.vue'
 
 /**
@@ -78,6 +79,104 @@ function whenMarked<T>(host: Element, read: (chip: Element) => T): Promise<T> {
     })
   })
 }
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * A key an input method is handling, dispatched on `target`: marked `isComposing`, or reported
+ * with key code 229 after the composition has ended, as Safari sends the Enter that confirms it.
+ */
+function inputMethodKey(
+  target: HTMLElement,
+  key: string,
+  how: 'composing' | 'processed',
+): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    bubbles: true,
+    cancelable: true,
+    isComposing: how === 'composing',
+  })
+  if (how === 'processed') Object.defineProperty(event, 'keyCode', { value: 229 })
+  target.dispatchEvent(event)
+  return event
+}
+
+describe('keys', () => {
+  it('keeps every key an input method is handling, so no half-typed text becomes a tag', async () => {
+    const onChange = vi.fn()
+    await mount(() => h(TagInput, { defaultValue: ['billing'], onChange, ariaLabel: 'Labels' }))
+    const input = field() as HTMLInputElement
+    await userEvent.click(input)
+    await userEvent.keyboard('にほ')
+    for (const how of ['composing', 'processed'] as const) {
+      for (const key of ['Enter', ',', 'Escape']) {
+        expect(inputMethodKey(input, key, how).defaultPrevented, `${how} ${key}`).toBe(false)
+      }
+    }
+    await sleep(30)
+    expect(input.value).toBe('にほ')
+    expect(onChange).not.toHaveBeenCalled()
+    await userEvent.keyboard('{Enter}')
+    expect(onChange).toHaveBeenLastCalledWith(['billing', 'にほ'])
+  })
+
+  it('clears uncommitted text on Escape inside a Dialog, which stays open until the next Escape', async () => {
+    const onOpenChange = vi.fn()
+    const open = ref(true)
+    await mount(() =>
+      h(
+        Dialog,
+        {
+          title: 'Labels',
+          open: open.value,
+          onOpenChange: (next: boolean) => {
+            onOpenChange(next)
+            open.value = next
+          },
+        },
+        { default: () => h(TagInput, { ariaLabel: 'Labels' }) },
+      ),
+    )
+    await vi.waitFor(() => expect(field()).not.toBeNull())
+    await userEvent.click(field() as HTMLElement)
+    await userEvent.keyboard('regressio{Escape}')
+    await vi.waitFor(() => expect(field()?.value).toBe(''))
+    await sleep(60)
+    expect(onOpenChange).not.toHaveBeenCalled()
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+  })
+
+  it('reads the writing direction for an arrow only, and not for each typed character', async () => {
+    await mount(() => h(TagInput, { defaultValue: ['billing'], ariaLabel: 'Labels' }))
+    const member = document.querySelector('[data-member="tag-input"]') as HTMLElement
+    await userEvent.click(field() as HTMLElement)
+    const read = vi.spyOn(window, 'getComputedStyle')
+    try {
+      await userEvent.keyboard('abc')
+      expect(read.mock.calls.filter(([element]) => member.contains(element))).toEqual([])
+    } finally {
+      read.mockRestore()
+    }
+  })
+
+  it('follows a right-to-left line: → moves back into the chips and ← forward to the field', async () => {
+    const { host } = await mount(() =>
+      h(TagInput, { defaultValue: ['billing', 'regression'], ariaLabel: 'Labels' }),
+    )
+    host.dir = 'rtl'
+    await userEvent.click(field() as HTMLElement)
+    await userEvent.keyboard('{ArrowLeft}')
+    expect(document.activeElement).toBe(field())
+    await userEvent.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(removeButton('regression'))
+    await userEvent.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(removeButton('billing'))
+    await userEvent.keyboard('{ArrowLeft}{ArrowLeft}')
+    expect(document.activeElement).toBe(field())
+  })
+})
 
 describe('committing', () => {
   it('takes a tag on Enter and on a comma, and empties the field', async () => {

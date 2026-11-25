@@ -81,7 +81,7 @@ const remember = $derived((pressed: boolean) => {
   const focused = active instanceof HTMLElement && active !== document.body ? active : null
   restoreTo = pressed ? focused : (focused ?? restoreTo)
 })
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => surface)
 const service = useMachine(
   zag.machine,
   () =>

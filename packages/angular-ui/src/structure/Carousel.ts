@@ -220,7 +220,7 @@ export class Carousel {
         Math.abs(this.viewport.value.scrollLeft) - nearest * this.viewport.value.clientWidth,
       ) <= 1,
   )
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.root.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,

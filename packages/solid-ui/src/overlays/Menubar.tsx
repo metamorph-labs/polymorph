@@ -95,7 +95,7 @@ export default function Menubar(given: MenubarProps): JSX.Element {
     const last = createCell((props.defaultOpen ?? null) as string | null)
     const stop = createDerived(() => menubarStop(props.menus, last.value))
     const collapsed = createDerived(() => menubarEntries(props.menus))
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => bar.value)
     const service = useMachine(
       zag.machine,
       () =>

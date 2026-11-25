@@ -5,7 +5,7 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { Component, ViewEncapsulation, input } from '@angular/core'
+import { Component, DestroyRef, ViewEncapsulation, inject, input } from '@angular/core'
 
 import * as zag from '@zag-js/tooltip'
 
@@ -19,9 +19,12 @@ import {
   TOOLTIP_DELAY_MS,
   TOOLTIP_SKIP_DELAY_MS,
   anchorProps,
+  closeTooltipOnScroll,
   derived,
   elementRef,
+  holdTooltipFromPointer,
   mergeParts,
+  mountEffect,
   normalizeProps,
   setup,
   syncTriggerAnchor,
@@ -97,7 +100,7 @@ export class Tooltip {
   protected readonly uid = uniqueId()
   protected readonly anchor = elementRef<HTMLElement>()
   protected readonly bubble = elementRef<HTMLElement>()
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.anchor.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,
@@ -108,6 +111,7 @@ export class Tooltip {
           defaultOpen: this.$p.defaultOpen,
           openDelay: TOOLTIP_DELAY_MS,
           closeDelay: TOOLTIP_SKIP_DELAY_MS,
+          closeOnScroll: false,
           positioning: {
             placement:
               this.$p.align === 'center' ? this.$p.side : `${this.$p.side}-${this.$p.align}`,
@@ -127,6 +131,8 @@ export class Tooltip {
       () => ({ side: this.$p.side, align: this.$p.align }),
     ),
   )
+  private release2: (() => void) | undefined
+  private release3: (() => void) | undefined
 
   constructor() {
     watchEffect(
@@ -134,6 +140,14 @@ export class Tooltip {
       () => this.effect1(),
       true,
     )
+    inject(DestroyRef).onDestroy(() => this.release2?.())
+    watchEffect(
+      () => this.api.value.open,
+      () => this.effect2(),
+      true,
+    )
+    inject(DestroyRef).onDestroy(() => this.release3?.())
+    mountEffect(() => this.effect3())
   }
 
   protected e1() {
@@ -172,5 +186,23 @@ export class Tooltip {
       this.api.value.open,
       false,
     )
+  }
+
+  private effect2(): void {
+    this.release2?.()
+    const ran = closeTooltipOnScroll(this.api.value.open ? this.anchor.value : null, () =>
+      this.api.value.setOpen(false),
+    )
+    this.release2 = () => {
+      ran()
+    }
+  }
+
+  private effect3(): void {
+    this.release3?.()
+    const ran = holdTooltipFromPointer(this.anchor.value)
+    this.release3 = () => {
+      ran()
+    }
   }
 }

@@ -52,7 +52,7 @@ export default function Switch(given: SwitchProps): JSX.Element {
   )
   const uid = createUniqueId()
   const track = elementRef<HTMLElement>()
-  const documentDirection = useDirection()
+  const documentDirection = useDirection(() => track.value)
   const service = useMachine(
     zag.machine,
     () =>

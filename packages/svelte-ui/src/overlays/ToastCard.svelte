@@ -12,9 +12,13 @@ import {
   Icon,
   Render,
   TOAST_TONE_ICON,
+  composingKey,
+  focusAfterToast,
   joinSlot,
   removeToast,
   toast,
+  toastClock,
+  toastTimeLeft,
   watchEffect,
   type ToastRecord,
 } from '@polymorph/svelte'
@@ -44,6 +48,7 @@ let startX = $state(0)
 let deltaX = $state(0)
 let card = $state<HTMLElement | null>(null)
 const icon = $derived(record.tone === 'neutral' ? null : TOAST_TONE_ICON[record.tone])
+const clock = $derived(toastClock())
 const dismissible = $derived(record.dismissible !== false)
 const dismiss = $derived((): void => {
   if (dismissible) toast.dismiss(record.id)
@@ -82,12 +87,16 @@ const present = usePresence(
   'toast.enter',
 )
 const effect1 = () => {
-  present.current || removeToast(record.id)
+  record.closing === true && focusAfterToast(card)
 }
-watchEffect(effect1, { watch: () => present.current, mount: false })
-let release2: (() => void) | undefined
+watchEffect(effect1, { watch: () => record.closing, mount: false })
 const effect2 = () => {
-  release2?.()
+  present.current || removeToast(record.id, record.raised)
+}
+watchEffect(effect2, { watch: () => present.current, mount: false })
+let release3: (() => void) | undefined
+const effect3 = () => {
+  release3?.()
   const timer = setTimeout(
     () => {
       !paused &&
@@ -96,12 +105,14 @@ const effect2 = () => {
         Number.isFinite(record.durationMs) &&
         toast.dismiss(record.id)
     },
-    Number.isFinite(record.durationMs) ? record.durationMs : 0,
+    Number.isFinite(record.durationMs)
+      ? toastTimeLeft(clock, record.revision, record.durationMs, !paused && record.closing !== true)
+      : 0,
   )
-  release2 = () => clearTimeout(timer)
+  release3 = () => clearTimeout(timer)
 }
-watchEffect(effect2, { watch: () => [record.revision, paused, record.closing] })
-onDestroy(() => release2?.())
+watchEffect(effect3, { watch: () => [record.revision, paused, record.closing] })
+onDestroy(() => release3?.())
 </script>
 
 {@render joined.start?.()
@@ -117,7 +128,7 @@ onDestroy(() => release2?.())
     data-swipe={swipe === '' ? undefined : swipe}
     data-swipe-direction="right"
     data-member="toast"
-    onkeydown={(event) => { if (event.key === 'Escape') (event.preventDefault(), dismiss()) }}
+    onkeydown={(event) => { if (event.key === 'Escape' && !event.defaultPrevented && !composingKey(event)) (event.preventDefault(), dismiss()) }}
     onpointerdown={(event) => { press(event) }}
     onpointermove={(event) => { drag(event) }}
     onpointerup={() => { lift() }}
@@ -133,7 +144,7 @@ onDestroy(() => release2?.())
         }<div class={styles.description}>{record.description}</div
       >{/if
       }{#if record.content !== undefined
-        }<div class={styles.content}><Render node={record.content} /></div
+        }<div class={styles.content} data-toast-content=""><Render node={record.content} /></div
       >{/if
     }</div
     >{#if record.action !== undefined

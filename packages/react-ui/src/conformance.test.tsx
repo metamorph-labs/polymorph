@@ -11,6 +11,7 @@ import {
 } from '@polymorph/conformance'
 import { TAB_PASSES_BUTTONS } from '@polymorph/conformance/engines'
 import { harness } from '@polymorph/conformance/harness'
+import { focusAfterRemovalLaw } from '@polymorph/conformance/focus-after-removal'
 import { agentConformanceLaw, FALSE_STATEMENTS, isAgentText } from '@polymorph/conformance/law'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { gallerySlug } from '@polymorph/react'
@@ -386,6 +387,13 @@ agentConformanceLaw({
   ledger: CONFORMANCE_LEDGER,
   specs: SPECS,
 })
+
+/**
+ * Where focus goes when an Alert, a Banner or an ArtifactPane that holds it
+ * leaves the page (`@polymorph/conformance/focus-after-removal`). The
+ * generated shells run the same law through `conformanceLaw`.
+ */
+focusAfterRemovalLaw('React', reactAdapter)
 
 describe('the runner’s statements are the registry’s', () => {
   it('takes every statement the grammar can write', () => {

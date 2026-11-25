@@ -91,7 +91,7 @@ export default function Tabs(given: TabsProps): JSX.Element {
     })
     const uid = createUniqueId()
     const list = elementRef<HTMLElement>()
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => list.value)
     const service = useMachine(
       zag.machine,
       () =>

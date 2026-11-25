@@ -139,7 +139,7 @@ const invalid = $derived(
 let committed = $state(value === undefined ? (defaultValue ?? null) : value)
 let draft = $state('')
 let control = $state<HTMLElement | null>(null)
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => control)
 const service = useMachine(
   zag.machine,
   () =>

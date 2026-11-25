@@ -74,7 +74,7 @@ let panel = $state<HTMLElement | null>(null)
 const phone = useMediaQuery('phone')
 const stop = $derived(menubarStop(menus, last))
 const collapsed = $derived(menubarEntries(menus))
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => bar)
 const service = useMachine(
   zag.machine,
   () =>

@@ -53,7 +53,7 @@ const props = withDefaults(defineProps<CheckboxProps>(), {
 const emit = defineEmits<{ checkedChange: [checked: CheckedState] }>()
 const uid = useId()
 const box = useTemplateRef<HTMLElement>('box')
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => box.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({

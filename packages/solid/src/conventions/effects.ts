@@ -1,10 +1,17 @@
-import { createEffect, getOwner, on, onCleanup, type Accessor } from 'solid-js'
+import { createEffect, getOwner, on, onCleanup, untrack, type Accessor } from 'solid-js'
 
 /**
  * An effect a description runs when a value it watches changes: once when the
  * member mounts, unless `mount` is `false`, and again in a microtask after
  * `watch` changes, as Vue runs a `watch` with `flush: 'post'`. Changes made in
  * one task run the effect once, in the microtask after the first of them.
+ *
+ * The value is first read as the member is set up, as Vue's `watch` reads it.
+ * A change made between then and the mount, such as by a mount effect that
+ * reads a store again, runs the effect in a microtask after the mount as well,
+ * once Solid has drawn what the change shows. The run at the mount comes
+ * before Solid draws it: the toast viewport says a toast raised before it
+ * mounted only once that toast's card is drawn.
  *
  * The microtask matters where a change opens content. A presence renders its
  * content a microtask after the change (`@polymorph/solid/motion`), so an
@@ -23,19 +30,24 @@ export function watchEffect(watch: Accessor<unknown>, run: () => void, mount: bo
     })
   }
   let pending = false
+  const later = (): void => {
+    if (pending) return
+    pending = true
+    queueMicrotask(() => {
+      pending = false
+      if (live) run()
+    })
+  }
+  const setUp = untrack(watch)
   createEffect(
-    on(watch, () => {
+    on(watch, (value) => {
       if (first) {
         first = false
         if (mount) run()
+        if (!Object.is(value, setUp)) later()
         return
       }
-      if (pending) return
-      pending = true
-      queueMicrotask(() => {
-        pending = false
-        if (live) run()
-      })
+      later()
     }),
   )
 }

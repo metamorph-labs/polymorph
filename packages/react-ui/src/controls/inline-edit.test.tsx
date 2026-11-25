@@ -1,11 +1,13 @@
 import { render, screen } from '@testing-library/react'
 import { useState } from 'react'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { userEvent } from 'vitest/browser'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { inlineEditLaw, type InlineEditLawProps } from '@polymorph/conformance/inline-edit'
 import { createAgentBridge } from '@polymorph/engine/agent'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { assertGoverned } from '@polymorph/react'
+import { Dialog } from '../overlays/Dialog'
 import { SettingsRow } from '../structure/SettingsRow'
 import { InlineEdit, type InlineEditProps } from './InlineEdit'
 import { tokenColor, tokenLength } from './token-probe'
@@ -53,6 +55,81 @@ inlineEditLaw({
 })
 
 const noop = () => {}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * A key an input method is handling, dispatched on `target`: marked `isComposing`, or reported
+ * with key code 229 after the composition has ended, as Safari sends the Enter that confirms it.
+ */
+function inputMethodKey(
+  target: HTMLElement,
+  key: string,
+  how: 'composing' | 'processed',
+): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    bubbles: true,
+    cancelable: true,
+    isComposing: how === 'composing',
+  })
+  if (how === 'processed') Object.defineProperty(event, 'keyCode', { value: 229 })
+  target.dispatchEvent(event)
+  return event
+}
+
+describe('InlineEdit — keys', () => {
+  it('leaves every key an input method is handling to it: Enter saves nothing, Escape keeps the field', async () => {
+    const onCommit = vi.fn()
+    const onEditingChange = vi.fn()
+    render(
+      <InlineEdit
+        label="Project name"
+        value="Acme"
+        defaultEditing
+        onCommit={onCommit}
+        onEditingChange={onEditingChange}
+      />,
+    )
+    const field = screen.getByRole('textbox', { name: 'Project name' })
+    for (const how of ['composing', 'processed'] as const) {
+      for (const key of ['Enter', 'Escape']) {
+        expect(inputMethodKey(field, key, how).defaultPrevented, `${how} ${key}`).toBe(false)
+      }
+    }
+    await sleep(30)
+    expect(onCommit).not.toHaveBeenCalled()
+    expect(onEditingChange).not.toHaveBeenCalled()
+    expect(screen.getByRole('textbox', { name: 'Project name' })).toBe(field)
+  })
+
+  it('cancels on Escape inside a Dialog with the Dialog still open, and the next Escape closes it', async () => {
+    const onOpenChange = vi.fn()
+    const onEditingChange = vi.fn()
+    render(
+      <Dialog title="Project" defaultOpen onOpenChange={onOpenChange}>
+        <InlineEdit
+          label="Project name"
+          value="Acme"
+          onCommit={noop}
+          onEditingChange={onEditingChange}
+        />
+      </Dialog>,
+    )
+    await userEvent.click(screen.getByRole('button', { name: /Project name/ }))
+    const field = await vi.waitFor(() => screen.getByRole('textbox', { name: 'Project name' }))
+    await vi.waitFor(() => expect(document.activeElement).toBe(field))
+
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(onEditingChange).toHaveBeenLastCalledWith(false))
+    await sleep(60)
+    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog')).toBeTruthy()
+
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+  })
+})
 
 describe('InlineEdit — what the reader sees', () => {
   it('draws the value at the field’s own text step at every size, so the text keeps its size', () => {

@@ -120,8 +120,10 @@ export function ContextMenu({
   onOpenChange,
   presentation = 'auto',
 }: ContextMenuProps) {
-  // The document's direction, which Radix would otherwise take to be left-to-right.
-  const dir = useDirection()
+  // The direction of the place the member is in, which Radix would otherwise take to be
+  // left-to-right.
+  const surfaceRef = useRef<HTMLSpanElement>(null)
+  const dir = useDirection(surfaceRef)
   /**
    * The sheet presentation's width threshold, resolved once. Submenus also
    * move into the sheet, which flattens them (as `design/components/menu.md`
@@ -174,7 +176,6 @@ export function ContextMenu({
   // point, and the entry's own `onSelect` (or a checkbox entry's `onCheckedChange`) runs, as for
   // a person's choice. A command closes a menu that is open, as a person's does. The surface,
   // the area that owns the commands, names the menu.
-  const surfaceRef = useRef<HTMLSpanElement>(null)
   useAgentMember({
     member: 'ContextMenu',
     element: () => surfaceRef.current,

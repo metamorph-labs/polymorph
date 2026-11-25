@@ -1,9 +1,15 @@
 'use client'
 
-import { useRef, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, type ReactNode } from 'react'
 
 import { Button } from '../controls/Button'
-import { Icon, type IconRole, memberAttr, useAgentMember } from '@polymorph/react'
+import {
+  focusAfterRemoval,
+  Icon,
+  type IconRole,
+  memberAttr,
+  useAgentMember,
+} from '@polymorph/react'
 import styles from '@polymorph/recipes/structure/banner.module.css'
 
 /**
@@ -65,6 +71,11 @@ export function Banner({
   // stands in its place. The application's action is its own and stays an agent's.
   const root = useRef<HTMLDivElement>(null)
   const close = useRef<HTMLDivElement>(null)
+  // Focus in the Banner as the application removes it, the ✕'s after a
+  // dismissal, moves to the focusable element nearest where it was, not to
+  // the body. A layout effect's cleanup runs while the root is still in the
+  // document.
+  useLayoutEffect(() => focusAfterRemoval(root.current), [])
   useAgentMember({
     member: 'Banner',
     element: () => root.current,

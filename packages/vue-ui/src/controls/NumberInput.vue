@@ -84,7 +84,7 @@ const uid = useId()
 const committed = ref(props.value === undefined ? (props.defaultValue ?? null) : props.value)
 const draft = ref('')
 const control = useTemplateRef<HTMLElement>('control')
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => control.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({

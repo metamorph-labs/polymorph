@@ -17,8 +17,8 @@ import type { IconRole } from '../icon/roles'
  * State-owned error notices persist until resolved or explicitly dismissed;
  * required recovery controls cannot disappear while their owning state remains.
  * A toast's tone sets how long it stays unless the call says (`toneLifetime`),
- * so a toast raised by `toast()`, a declared Toast and React's ToastNotice keep
- * one rule.
+ * and a toast with an action waits to be dismissed, so a toast raised by
+ * `toast()`, a declared Toast and React's ToastNotice keep one rule.
  */
 
 export type ToastTone = 'neutral' | 'success' | 'danger' | 'warning' | 'info'
@@ -43,7 +43,11 @@ export interface ToastStoreOptions<Content = unknown> {
    */
   retained?: boolean
   tone?: ToastTone
-  /** At most one; a shortcut, never the only way to do what it does. */
+  /**
+   * At most one; a shortcut, never the only way to do what it does. A call with
+   * an action that sets neither `durationMs` nor `retained` is pinned, so a
+   * reader has the time to reach the action.
+   */
   action?: ToastAction
   /**
    * `Infinity` pins the toast until it is dismissed. A call that sets neither this nor
@@ -83,6 +87,13 @@ export interface ToastStoreRecord<Content = unknown> extends ToastStoreOptions<C
    * old timer running, and an updated toast needs a full countdown.
    */
   revision: number
+  /**
+   * Which raise the record came from: the store's count of `toast()` calls when it was raised.
+   * An update in place keeps it, and a toast raised again under the same id gets a new one, so
+   * the viewport says it again (`announceToasts`) while an update that changes no words says
+   * nothing.
+   */
+  raised: number
   /**
    * Set while the toast leaves. Dismissal has two steps so that a toast closed
    * by hand passes through the same `data-state="closed"` as one that timed
@@ -128,8 +139,11 @@ export interface ToastStore<Content = unknown> {
   subscribe: (listener: () => void) => () => void
   /** The records, referentially stable between changes. */
   get: () => readonly ToastStoreRecord<Content>[]
-  /** Step two of dismissal, called by the card once its closed state has been rendered. */
-  remove: (id: string) => void
+  /**
+   * Step two of dismissal, called by the card once its closed state has been rendered, with its
+   * record's `raised`; and the removal of a toast its owner takes away, by its id alone.
+   */
+  remove: (id: string, raised?: number) => void
 }
 
 export const TOAST_DEFAULT_DURATION_MS = 5000
@@ -157,13 +171,23 @@ export function toneLifetime(tone: ToastTone): { retained: boolean; durationMs: 
  * The lifetime a call gets: the tone's when it sets neither `retained` nor
  * `durationMs`, and otherwise what it sets, with the default duration and no
  * retention for the one it leaves out, as before the tone decided.
+ *
+ * A toast with an action that sets neither is pinned until it is dismissed,
+ * whatever its tone. A reader who works by keyboard or with a screen reader
+ * hears the toast, then has to reach its action with F8 and Tab, and a timer
+ * that ends first takes the action away (WCAG 2.2.1, timing adjustable). The
+ * tone still decides whether newer toasts may evict it.
  */
 function lifetimeOf(options: ToastStoreOptions<unknown>): {
   retained: boolean | undefined
   durationMs: number
 } {
-  if (options.retained === undefined && options.durationMs === undefined)
-    return toneLifetime(options.tone ?? 'neutral')
+  if (options.retained === undefined && options.durationMs === undefined) {
+    const lifetime = toneLifetime(options.tone ?? 'neutral')
+    return options.action === undefined
+      ? lifetime
+      : { ...lifetime, durationMs: Number.POSITIVE_INFINITY }
+  }
   return {
     retained: options.retained,
     durationMs: options.durationMs ?? TOAST_DEFAULT_DURATION_MS,
@@ -210,6 +234,7 @@ export function createToastStore<Content = unknown>(): ToastStore<Content> {
         tone: options.tone ?? 'neutral',
         ...lifetimeOf(options),
         revision: previous.revision + 1,
+        raised: previous.raised,
       }
       publish(records.map((entry, index) => (index === live ? record : entry)))
       return id
@@ -221,6 +246,7 @@ export function createToastStore<Content = unknown>(): ToastStore<Content> {
       tone: options.tone ?? 'neutral',
       ...lifetimeOf(options),
       revision: 0,
+      raised: sequence,
     }
     // The oldest are evicted, so the toast just raised is always kept.
     const next = [...records, record]
@@ -251,8 +277,16 @@ export function createToastStore<Content = unknown>(): ToastStore<Content> {
     left(closed)
   }
 
-  function remove(id: string): void {
-    publish(records.filter((record) => record.id !== id))
+  /**
+   * Takes the toast out of the store. A card that has played its exit passes its record's
+   * `raised`, so a toast raised again under the same id while the card was leaving stays.
+   */
+  function remove(id: string, raised?: number): void {
+    publish(
+      records.filter(
+        (record) => record.id !== id || (raised !== undefined && record.raised !== raised),
+      ),
+    )
   }
 
   const toned =

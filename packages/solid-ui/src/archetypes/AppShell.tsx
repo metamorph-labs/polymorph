@@ -5,12 +5,14 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { createMemo, mergeProps, onCleanup, onMount, type JSX } from 'solid-js'
+import { createMemo, createUniqueId, mergeProps, onCleanup, onMount, type JSX } from 'solid-js'
 import { Dynamic } from 'solid-js/web'
 
 import {
   PageTransition,
   agentMember,
+  anchorFocusReturns,
+  arriveAtPage,
   claimSlot,
   classes,
   createCell,
@@ -18,6 +20,7 @@ import {
   createKept,
   currentRailDestination,
   elementRef,
+  focusFromScript,
   goToRailDestination,
   ownerContext,
   provide,
@@ -124,7 +127,10 @@ export default function AppShell(given: AppShellProps): JSX.Element {
         return isCollapsed.value
       },
     })
+    const uid = createUniqueId()
+    const announcer = elementRef<HTMLElement>()
     const drawerToggle = elementRef<HTMLElement>()
+    const frame = elementRef<HTMLElement>()
     const rail = elementRef<HTMLElement>()
     const railToggle = elementRef<HTMLElement>()
     const bannerSlot = resolveSlot(() => props.banner)
@@ -153,24 +159,81 @@ export default function AppShell(given: AppShellProps): JSX.Element {
     const effect1 = () => {
       void (drawer.value
         ? rail.value?.focus()
-        : drawerToggle.value?.querySelector<HTMLElement>('button')?.focus())
+        : drawerToggle.value &&
+          anchorFocusReturns(drawerToggle.value, rail.value ?? null) &&
+          drawerToggle.value.querySelector<HTMLElement>('button')?.focus())
     }
     watchEffect(
       createMemo(() => drawer.value),
       effect1,
       false,
     )
+    let release2: (() => void) | undefined
     const effect2 = () => {
+      release2?.()
+      const listener = ($event: KeyboardEvent) => {
+        void (
+          drawer.value &&
+          $event.key === 'Escape' &&
+          !$event.defaultPrevented &&
+          (drawer.value = false)
+        )
+      }
+      document.addEventListener('keydown', listener)
+      release2 = () => document.removeEventListener('keydown', listener)
+    }
+    onMount(effect2)
+    onCleanup(() => release2?.())
+    let release3: (() => void) | undefined
+    const effect3 = () => {
+      release3?.()
+      const run = () => {
+        void (
+          drawer.value &&
+          drawerToggle.value &&
+          window.getComputedStyle(drawerToggle.value).display === 'none' &&
+          (drawer.value = false)
+        )
+      }
+      const resize = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(run)
+      for (const element of [drawerToggle.value]) if (element) resize?.observe(element)
+      release3 = () => {
+        resize?.disconnect()
+      }
+      run()
+    }
+    onMount(effect3)
+    onCleanup(() => release3?.())
+    const effect4 = () => {
       drawer.value = false
     }
     watchEffect(
       createMemo(() => props.transitionKey),
-      effect2,
+      effect4,
       false,
     )
-    let release3: (() => void) | undefined
-    const effect3 = () => {
-      release3?.()
+    let release5: (() => void) | undefined
+    const effect5 = () => {
+      release5?.()
+      const ran = arriveAtPage(
+        frame.value?.querySelector<HTMLElement>(':scope > main'),
+        announcer.value,
+        props.transitionKey,
+        props.pending,
+      )
+      release5 = () => {
+        ran()
+      }
+    }
+    watchEffect(
+      createMemo(() => [props.transitionKey, props.pending]),
+      effect5,
+      true,
+    )
+    onCleanup(() => release5?.())
+    let release6: (() => void) | undefined
+    const effect6 = () => {
+      release6?.()
       const ran = agentMember({
         member: 'AppShell',
         element: () => rail.value,
@@ -237,12 +300,12 @@ export default function AppShell(given: AppShellProps): JSX.Element {
         },
         withholds: () => [railToggle.value, drawerToggle.value],
       })
-      release3 = () => {
+      release6 = () => {
         ran()
       }
     }
-    onMount(effect3)
-    onCleanup(() => release3?.())
+    onMount(effect6)
+    onCleanup(() => release6?.())
     return (
       <div
         class={styles.shell}
@@ -250,15 +313,26 @@ export default function AppShell(given: AppShellProps): JSX.Element {
         data-navigation={props.navigation === 'top' ? 'top' : undefined}
         data-drawer={drawer.value ? '' : undefined}
         data-member="app-shell"
+        ref={frame.attach}
       >
         {/* skip */}
-        <a class={styles.skip} href="#content">
+        <a
+          class={styles.skip}
+          href="#content"
+          inert={drawer.value}
+          onclick={() => focusFromScript(frame.value?.querySelector<HTMLElement>(':scope > main'))}
+        >
           {say.value.skipToContent ?? 'Skip to content'}
         </a>
-        {bannerSlot.filled() ? <div class={styles.banner}>{bannerSlot()}</div> : null}
+        {bannerSlot.filled() ? (
+          <div class={styles.banner} inert={drawer.value}>
+            {bannerSlot()}
+          </div>
+        ) : null}
         {/* sidebar */}
         <nav
           class={styles.sidebar}
+          id={uid}
           aria-label={say.value.primaryNavigation}
           tabindex="-1"
           ref={rail.attach}
@@ -286,7 +360,7 @@ export default function AppShell(given: AppShellProps): JSX.Element {
           ) : null}
         </nav>
         {/* topbar */}
-        <header class={styles.topbar}>
+        <header class={styles.topbar} inert={drawer.value}>
           {/* leading */}
           <div class={styles.topbarSlot}>
             {/* drawerToggle */}
@@ -298,6 +372,8 @@ export default function AppShell(given: AppShellProps): JSX.Element {
                 iconOnly={true}
                 icon="menu"
                 label={drawer.value ? say.value.closeNavigation : say.value.openNavigation}
+                expanded={drawer.value}
+                aria-controls={uid}
                 onClick={() => (drawer.value = !drawer.value)}
               />
             </span>
@@ -325,6 +401,7 @@ export default function AppShell(given: AppShellProps): JSX.Element {
           )}
           as="main"
           id="content"
+          inert={drawer.value}
           transitionKey={props.transitionKey}
           pending={props.pending}
           ribbon={transitions.indicator}
@@ -335,7 +412,13 @@ export default function AppShell(given: AppShellProps): JSX.Element {
             props.children
           )}
         </Dynamic>
-        {dockSlot.filled() ? <div class={styles.dock}>{dockSlot()}</div> : null}
+        {dockSlot.filled() ? (
+          <div class={styles.dock} inert={drawer.value}>
+            {dockSlot()}
+          </div>
+        ) : null}
+        {/* announcer */}
+        <div class={styles.announcer} role="status" ref={announcer.attach} />
       </div>
     )
   })

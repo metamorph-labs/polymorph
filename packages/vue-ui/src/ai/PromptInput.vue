@@ -13,8 +13,11 @@ import {
   afterRender,
   agentFill,
   agentMember,
+  composingKey,
   fitTextarea,
+  focusAfterListRemoval,
   gateFiles,
+  holdFieldEscape,
   promptPick,
   promptToken,
   useListening,
@@ -159,6 +162,7 @@ const dismissed = ref(null as number | null)
 const highlight = ref({ key: '', index: 0 })
 const side = ref('top' as 'top' | 'bottom')
 const reported = ref(null as string | null)
+const pressed = ref(null as { id: string; at: number } | null)
 const chips = useTemplateRef<HTMLElement>('chips')
 const end = useTemplateRef<HTMLElement>('end')
 const field = useTemplateRef<HTMLElement>('field')
@@ -292,15 +296,6 @@ const pick = computed(() => (index: number) => {
   )
   by.onSelect?.(option)
 })
-const holdEscape = computed(() => (element: HTMLTextAreaElement) => {
-  const view = element.ownerDocument.defaultView
-  const hold = (event: KeyboardEvent) => {
-    if (event.key === 'Escape' && event.target === element && !event.isComposing)
-      event.preventDefault()
-  }
-  view?.addEventListener('keydown', hold, true)
-  return () => view?.removeEventListener('keydown', hold, true)
-})
 const listKeys = computed(() => (event: KeyboardEvent) => {
   const at = token.value
   if (!open.value || at === null) return false
@@ -355,8 +350,7 @@ onMounted(effect2)
 let release3: (() => void) | undefined
 const effect3 = () => {
   release3?.()
-  const ran =
-    open.value && field.value ? holdEscape.value(field.value as HTMLTextAreaElement) : () => {}
+  const ran = open.value && field.value ? holdFieldEscape(field.value) : () => {}
   release3 = () => {
     ran()
   }
@@ -365,6 +359,15 @@ onMounted(effect3)
 watch(() => open.value, effect3, { flush: 'post' })
 onBeforeUnmount(() => release3?.())
 const effect4 = () => {
+  pressed.value = focusAfterListRemoval(
+    pressed.value,
+    props.attachments.map((attachment) => attachment.id),
+    (at) => chips.value?.children[at]?.querySelector<HTMLElement>('button'),
+    field.value,
+  )
+}
+watch(() => props.attachments, effect4, { flush: 'post' })
+const effect5 = () => {
   sideKey.value !== null &&
     root.value &&
     ((box: DOMRect) =>
@@ -372,11 +375,11 @@ const effect4 = () => {
       (root.value as HTMLElement).getBoundingClientRect(),
     )
 }
-onMounted(effect4)
-watch(() => sideKey.value, effect4, { flush: 'post' })
-let release5: (() => void) | undefined
-const effect5 = () => {
-  release5?.()
+onMounted(effect5)
+watch(() => sideKey.value, effect5, { flush: 'post' })
+let release6: (() => void) | undefined
+const effect6 = () => {
+  release6?.()
   const ran = agentMember({
     member: 'PromptInput',
     element: () => field.value,
@@ -414,12 +417,12 @@ const effect5 = () => {
       end.value?.lastElementChild,
     ],
   })
-  release5 = () => {
+  release6 = () => {
     ran()
   }
 }
-onMounted(effect5)
-onBeforeUnmount(() => release5?.())
+onMounted(effect6)
+onBeforeUnmount(() => release6?.())
 </script>
 
 <template>
@@ -455,7 +458,10 @@ onBeforeUnmount(() => release5?.())
             :message="attachment.message"
             :removeLabel="messages.remove(attachment.name)"
             :uploadingLabel="messages.uploading(attachment.name)"
-            @remove="emit('removeAttachment', attachment.id)"
+            @remove="
+              ((pressed = { id: attachment.id, at: attachments.indexOf(attachment) }),
+              emit('removeAttachment', attachment.id))
+            "
           />
           <AttachmentChip
             v-else
@@ -488,7 +494,7 @@ onBeforeUnmount(() => release5?.())
           track($event.target as HTMLTextAreaElement, ($event.target as HTMLTextAreaElement).value))
         "
         @keydown="
-          !$event.isComposing &&
+          !composingKey($event) &&
           !listKeys($event) &&
           $event.key === 'Enter' &&
           !$event.shiftKey &&

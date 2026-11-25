@@ -280,7 +280,7 @@ const endInput = computed(
       }
     },
 )
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => field.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({

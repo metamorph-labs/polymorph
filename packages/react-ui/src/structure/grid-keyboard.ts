@@ -26,6 +26,11 @@ import { useEffect, useRef, type RefObject } from 'react'
  * found from the row it follows. The detail cell takes the stop itself. No
  * `tabindex` is written on what it holds, so its controls stay in the page's
  * tab order, and a key pressed in one of them is that control's own.
+ *
+ * Focus stays in the grid when the row that holds it leaves the document,
+ * where a browser hands focus to the page: it goes to the same column of the
+ * row that takes the removed row's place, or of the last row when the removed
+ * row was the last. Tree does the same for its rows (`tree-keyboard.ts`).
  */
 
 interface At {
@@ -187,10 +192,13 @@ export function useGridKeyboard(ref: RefObject<HTMLTableElement | null>, enabled
   // Nothing until focus or a key places the stop. Until then it is where the
   // grid starts, worked out again after each commit.
   const at = useRef<At | null>(null)
+  // Whether focus is in the grid, so a commit that removes the focused row
+  // knows that the focus the page holds fell from the grid.
+  const held = useRef(false)
 
   // After every commit: sorting, paging and loading replace rows, and a stop on a
   // removed node would leave no tab stop. Re-clamping also handles a shorter last
-  // page.
+  // page. Focus that was in a removed row goes to the stop that takes its place.
   useEffect(() => {
     const table = ref.current
     if (table === null || !enabled) return
@@ -198,6 +206,8 @@ export function useGridKeyboard(ref: RefObject<HTMLTableElement | null>, enabled
     if (next === null) return
     if (at.current !== null) at.current = next
     applyRoving(table, next)
+    const fell = document.activeElement === null || document.activeElement === document.body
+    if (held.current && fell) stopAt(table, next)?.focus()
   })
 
   useEffect(() => {
@@ -207,6 +217,7 @@ export function useGridKeyboard(ref: RefObject<HTMLTableElement | null>, enabled
     // Focus is the single source of truth for the current cell. A click and an
     // arrow key end in the same state, so only focus needs handling.
     const onFocusIn = (event: FocusEvent) => {
+      held.current = true
       const cell = gridCellOf(table, event.target as HTMLElement | null)
       if (cell === null) return
       const column = (at.current ?? start(table)).column
@@ -302,10 +313,22 @@ export function useGridKeyboard(ref: RefObject<HTMLTableElement | null>, enabled
       stopAt(table, to)?.focus()
     }
 
+    // A browser may report focus leaving a cell as the cell leaves the
+    // document. That cell is gone a moment later, and the grid still holds
+    // focus for it. A cell that is still drawn lost focus to something else.
+    const onFocusOut = (event: FocusEvent) => {
+      const left = event.target as Node
+      queueMicrotask(() => {
+        if (left.isConnected && !table.contains(document.activeElement)) held.current = false
+      })
+    }
+
     table.addEventListener('focusin', onFocusIn)
+    table.addEventListener('focusout', onFocusOut)
     table.addEventListener('keydown', onKeyDown)
     return () => {
       table.removeEventListener('focusin', onFocusIn)
+      table.removeEventListener('focusout', onFocusOut)
       table.removeEventListener('keydown', onKeyDown)
     }
   }, [ref, enabled])

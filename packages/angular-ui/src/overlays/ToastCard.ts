@@ -14,13 +14,17 @@ import {
   TOAST_TONE_ICON,
   cell,
   classes,
+  composingKey,
   derived,
   elementRef,
+  focusAfterToast,
   hostRef,
   isTemplate,
   removeToast,
   setup,
   toast,
+  toastClock,
+  toastTimeLeft,
   useMember,
   watchEffect,
   type IconProps,
@@ -93,27 +97,28 @@ name="loading"
 @if (e18()) {<!-- content -->
 <div
 [attr.class]="e19()"
->@if (template(e20())) {<ng-container [pmRender]="e20()" />} @else {{{ e20() }}}</div>}</div>
-@if (e21()) {<!-- action -->
+[attr.data-toast-content]="e20()"
+>@if (template(e21())) {<ng-container [pmRender]="e21()" />} @else {{{ e21() }}}</div>}</div>
+@if (e22()) {<!-- action -->
 <div
-[attr.class]="e22()"
+[attr.class]="e23()"
 ><pm-button
 variant="ghost"
-[tone]="e23()"
+[tone]="e24()"
 size="sm"
-[label]="e24()"
+[label]="e25()"
 (click)="h6()"
 ></pm-button></div>}
-@if (e25()) {<!-- close -->
+@if (e26()) {<!-- close -->
 <div
-[attr.class]="e26()"
+[attr.class]="e27()"
 ><pm-button
 variant="ghost"
 tone="neutral"
 size="sm"
-[iconOnly]="e27()"
+[iconOnly]="e28()"
 icon="close"
-[label]="e28()"
+[label]="e29()"
 (click)="h7()"
 ></pm-button></div>}`,
 })
@@ -145,6 +150,7 @@ export class ToastCard {
   protected readonly icon = derived(() =>
     this.$p.record.tone === 'neutral' ? null : TOAST_TONE_ICON[this.$p.record.tone],
   )
+  protected readonly clock = derived(() => toastClock())
   protected readonly dismissible = derived(() => this.$p.record.dismissible !== false)
   protected readonly dismiss = derived(() => (): void => {
     if (this.dismissible.value) toast.dismiss(this.$p.record.id)
@@ -189,19 +195,24 @@ export class ToastCard {
     ),
   )
   protected readonly template = isTemplate
-  private release2: (() => void) | undefined
+  private release3: (() => void) | undefined
 
   constructor() {
     hostRef(this.card)
     watchEffect(
-      () => this.present.value(),
+      () => this.$p.record.closing,
       () => this.effect1(),
       false,
     )
-    inject(DestroyRef).onDestroy(() => this.release2?.())
+    watchEffect(
+      () => this.present.value(),
+      () => this.effect2(),
+      false,
+    )
+    inject(DestroyRef).onDestroy(() => this.release3?.())
     watchEffect(
       () => [this.$p.record.revision, this.$p.paused, this.$p.record.closing],
-      () => this.effect2(),
+      () => this.effect3(),
       true,
     )
   }
@@ -227,7 +238,8 @@ export class ToastCard {
   }
 
   protected h1($event: KeyboardEvent): void {
-    if ($event.key === 'Escape') void ($event.preventDefault(), this.dismiss.value())
+    if ($event.key === 'Escape' && !$event.defaultPrevented && !composingKey($event))
+      void ($event.preventDefault(), this.dismiss.value())
   }
 
   protected h2($event: PointerEvent): void {
@@ -313,24 +325,29 @@ export class ToastCard {
 
   protected e20() {
     if (!(this.$p.record.content !== undefined)) return undefined as never
-    return this.$p.record.content
+    return ''
   }
 
   protected e21() {
-    return this.$p.record.action !== undefined
+    if (!(this.$p.record.content !== undefined)) return undefined as never
+    return this.$p.record.content
   }
 
   protected e22() {
+    return this.$p.record.action !== undefined
+  }
+
+  protected e23() {
     if (!(this.$p.record.action !== undefined)) return undefined as never
     return styles.action
   }
 
-  protected e23(): ButtonProps['tone'] {
+  protected e24(): ButtonProps['tone'] {
     if (!(this.$p.record.action !== undefined)) return undefined as never
     return this.$p.record.tone === 'danger' ? 'danger' : 'accent'
   }
 
-  protected e24(): ButtonProps['label'] {
+  protected e25(): ButtonProps['label'] {
     if (!(this.$p.record.action !== undefined)) return undefined as never
     return this.$p.record.action?.label ?? ''
   }
@@ -340,21 +357,21 @@ export class ToastCard {
     this.act.value()
   }
 
-  protected e25() {
+  protected e26() {
     return this.dismissible.value
   }
 
-  protected e26() {
+  protected e27() {
     if (!this.dismissible.value) return undefined as never
     return styles.close
   }
 
-  protected e27(): ButtonProps['iconOnly'] {
+  protected e28(): ButtonProps['iconOnly'] {
     if (!this.dismissible.value) return undefined as never
     return true
   }
 
-  protected e28(): ButtonProps['label'] {
+  protected e29(): ButtonProps['label'] {
     if (!this.dismissible.value) return undefined as never
     return this.$p.dismissLabel
   }
@@ -365,11 +382,15 @@ export class ToastCard {
   }
 
   private effect1(): void {
-    void (this.present.value() || removeToast(this.$p.record.id))
+    void (this.$p.record.closing === true && focusAfterToast(this.card.value))
   }
 
   private effect2(): void {
-    this.release2?.()
+    void (this.present.value() || removeToast(this.$p.record.id, this.$p.record.raised))
+  }
+
+  private effect3(): void {
+    this.release3?.()
     const timer = setTimeout(
       () => {
         void (
@@ -380,8 +401,15 @@ export class ToastCard {
           toast.dismiss(this.$p.record.id)
         )
       },
-      Number.isFinite(this.$p.record.durationMs) ? this.$p.record.durationMs : 0,
+      Number.isFinite(this.$p.record.durationMs)
+        ? toastTimeLeft(
+            this.clock.value,
+            this.$p.record.revision,
+            this.$p.record.durationMs,
+            !this.$p.paused && this.$p.record.closing !== true,
+          )
+        : 0,
     )
-    this.release2 = () => clearTimeout(timer)
+    this.release3 = () => clearTimeout(timer)
   }
 }

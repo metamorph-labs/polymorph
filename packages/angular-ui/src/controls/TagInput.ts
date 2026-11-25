@@ -12,14 +12,18 @@ import {
   Ref,
   agentMember,
   cell,
+  composingKey,
   derived,
   elementRef,
   fieldValue,
+  holdFieldEscape,
+  lineStartKey,
   mountEffect,
   presence,
   setup,
   uniqueId,
   useMember,
+  watchEffect,
   type Each,
   type Emitted,
 } from '@polymorph/angular'
@@ -294,7 +298,9 @@ export class TagInput {
   protected readonly receive = derived(() => (event: Event) => {
     this.draft.value = (event.target as HTMLInputElement).value
   })
+  protected readonly clearable = derived(() => this.draft.value !== '')
   protected readonly fieldKeyDown = derived(() => (event: KeyboardEvent) => {
+    if (composingKey(event)) return
     if (event.key === 'Enter' || event.key === ',') {
       event.preventDefault()
       this.add.value([this.draft.value])
@@ -311,7 +317,10 @@ export class TagInput {
       if (last !== undefined) this.remove.value(last)
       return
     }
-    if (event.key === 'ArrowLeft' && (event.target as HTMLInputElement).selectionStart === 0) {
+    // The direction is a computed style, read only for an arrow.
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+    const input = event.target as HTMLInputElement
+    if (event.key === lineStartKey(this.chipList.value ?? input) && input.selectionStart === 0) {
       this.removeButton.value(this.values.value.length - 1)?.focus()
     }
   })
@@ -325,7 +334,8 @@ export class TagInput {
     }
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault()
-      const step = event.key === 'ArrowLeft' ? -1 : 1
+      const step =
+        event.key === lineStartKey(this.chipList.value ?? (event.target as Element)) ? -1 : 1
       if (at + step === this.values.value.length) this.field.value?.focus()
       else if (at + step >= 0) this.removeButton.value(at + step)?.focus()
     }
@@ -353,11 +363,18 @@ export class TagInput {
     ),
   )
   private release2: (() => void) | undefined
+  private release3: (() => void) | undefined
 
   constructor() {
     mountEffect(() => this.effect1())
     inject(DestroyRef).onDestroy(() => this.release2?.())
-    mountEffect(() => this.effect2())
+    watchEffect(
+      () => this.clearable.value,
+      () => this.effect2(),
+      true,
+    )
+    inject(DestroyRef).onDestroy(() => this.release3?.())
+    mountEffect(() => this.effect3())
   }
 
   protected e1() {
@@ -546,6 +563,15 @@ export class TagInput {
 
   private effect2(): void {
     this.release2?.()
+    const ran =
+      this.clearable.value && this.field.value ? holdFieldEscape(this.field.value) : () => {}
+    this.release2 = () => {
+      ran()
+    }
+  }
+
+  private effect3(): void {
+    this.release3?.()
     const ran = agentMember({
       member: 'TagInput',
       element: () => this.field.value,
@@ -577,7 +603,7 @@ export class TagInput {
           })(),
       },
     })
-    this.release2 = () => {
+    this.release3 = () => {
       ran()
     }
   }

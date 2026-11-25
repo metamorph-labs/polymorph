@@ -15,11 +15,15 @@ import {
   agentFill,
   agentMember,
   claimSlot,
+  composingKey,
   createCell,
   createDerived,
   elementRef,
   fitTextarea,
+  focusAfterListRemoval,
   gateFiles,
+  holdFieldEscape,
+  itemOf,
   promptPick,
   promptToken,
   scope,
@@ -203,6 +207,7 @@ export default function PromptInput(given: PromptInputProps): JSX.Element {
     const highlight = createCell({ key: '', index: 0 })
     const side = createCell('top' as 'top' | 'bottom')
     const reported = createCell(null as string | null)
+    const pressed = createCell(null as { id: string; at: number } | null)
     const text = createDerived(() => props.value ?? uncontrolled.value)
     const empty = createDerived(() => text.value.trim() === '' && props.attachments.length === 0)
     const attachable = createDerived(() => props.onAttach !== undefined && !props.disabled)
@@ -336,15 +341,6 @@ export default function PromptInput(given: PromptInputProps): JSX.Element {
       )
       by.onSelect?.(option)
     })
-    const holdEscape = createDerived(() => (element: HTMLTextAreaElement) => {
-      const view = element.ownerDocument.defaultView
-      const hold = (event: KeyboardEvent) => {
-        if (event.key === 'Escape' && event.target === element && !event.isComposing)
-          event.preventDefault()
-      }
-      view?.addEventListener('keydown', hold, true)
-      return () => view?.removeEventListener('keydown', hold, true)
-    })
     const listKeys = createDerived(() => (event: KeyboardEvent) => {
       const at = token.value
       if (!open.value || at === null) return false
@@ -407,8 +403,7 @@ export default function PromptInput(given: PromptInputProps): JSX.Element {
     let release3: (() => void) | undefined
     const effect3 = () => {
       release3?.()
-      const ran =
-        open.value && field.value ? holdEscape.value(field.value as HTMLTextAreaElement) : () => {}
+      const ran = open.value && field.value ? holdFieldEscape(field.value) : () => {}
       release3 = () => {
         ran()
       }
@@ -420,6 +415,19 @@ export default function PromptInput(given: PromptInputProps): JSX.Element {
     )
     onCleanup(() => release3?.())
     const effect4 = () => {
+      pressed.value = focusAfterListRemoval(
+        pressed.value,
+        props.attachments.map((attachment) => attachment.id),
+        (at) => chips.value?.children[at]?.querySelector<HTMLElement>('button'),
+        field.value,
+      )
+    }
+    watchEffect(
+      createMemo(() => props.attachments),
+      effect4,
+      false,
+    )
+    const effect5 = () => {
       void (
         sideKey.value !== null &&
         root.value &&
@@ -431,12 +439,12 @@ export default function PromptInput(given: PromptInputProps): JSX.Element {
     }
     watchEffect(
       createMemo(() => sideKey.value),
-      effect4,
+      effect5,
       true,
     )
-    let release5: (() => void) | undefined
-    const effect5 = () => {
-      release5?.()
+    let release6: (() => void) | undefined
+    const effect6 = () => {
+      release6?.()
       const ran = agentMember({
         member: 'PromptInput',
         element: () => field.value,
@@ -477,12 +485,12 @@ export default function PromptInput(given: PromptInputProps): JSX.Element {
           end.value?.lastElementChild,
         ],
       })
-      release5 = () => {
+      release6 = () => {
         ran()
       }
     }
-    onMount(effect5)
-    onCleanup(() => release5?.())
+    onMount(effect6)
+    onCleanup(() => release6?.())
     return (
       <div
         class={styles.root}
@@ -523,7 +531,13 @@ export default function PromptInput(given: PromptInputProps): JSX.Element {
                         message={attachment.message}
                         removeLabel={props.messages.remove(attachment.name)}
                         uploadingLabel={props.messages.uploading(attachment.name)}
-                        onRemove={() => props.onRemoveAttachment?.(attachment.id)}
+                        onRemove={() => (
+                          (pressed.value = {
+                            id: attachment.id,
+                            at: props.attachments.indexOf(itemOf(attachment)),
+                          }),
+                          props.onRemoveAttachment?.(attachment.id)
+                        )}
                       />
                     ) : (
                       <AttachmentChip
@@ -564,7 +578,7 @@ export default function PromptInput(given: PromptInputProps): JSX.Element {
               )
             )}
             onkeydown={($event: KeyboardEvent) =>
-              !$event.isComposing &&
+              !composingKey($event) &&
               !listKeys.value($event) &&
               $event.key === 'Enter' &&
               !$event.shiftKey &&

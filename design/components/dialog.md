@@ -167,6 +167,13 @@ action, else close), focus return to trigger, scroll lock, `aria-labelledby` = t
 `aria-describedby` = description. Escape and outside click respect `dismissible`. The click
 target is the scrim only, so a click on the panel padding does not close the dialog.
 
+The trigger can leave the page while the dialog is open: a confirm that deletes the row the
+trigger was in takes the trigger with it. Focus then goes to the first focusable element after
+where the trigger was, else the last one before it, else the page's `main`, and not to the body,
+where a keyboard reader would start again from the top. The rule is the engine's
+(`focusReturnTarget`, `packages/engine/src/conventions/focus-after-removal.ts`), and every modal
+surface returns focus by it: Dialog, ConfirmDialog, Drawer, Lightbox, Command and Tour.
+
 ```contract
 role panel dialog when open md
 attr panel aria-modal=true when open md
@@ -176,6 +183,7 @@ focus on-open body when with a form
 focus on-open primary when with a footer
 focus on-open close when plain
 focus on-close trigger
+focus on-close nearest
 key Escape closes when open md
 dismiss both
 dismiss none when non-dismissible

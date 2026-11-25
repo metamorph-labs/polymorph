@@ -2,7 +2,13 @@
 
 import { useCallback, useRef } from 'react'
 
-import { modalFocusTarget, type InitialFocus } from '@polymorph/react'
+import {
+  focusPlace,
+  modalFocusTarget,
+  returnFocusTo,
+  type FocusPlace,
+  type InitialFocus,
+} from '@polymorph/react'
 
 /**
  * The focus policy every modal surface in the vocabulary shares.
@@ -23,9 +29,12 @@ import { modalFocusTarget, type InitialFocus } from '@polymorph/react'
  *  - **Where focus returns on close.** Radix restores focus to its own
  *    `Trigger`, and no surface here uses one. A governed control has closed
  *    props and forwards no ref, so `asChild` has nothing to attach to and
- *    Radix's restore focuses nothing. So this records the element that had
- *    focus when the panel opened. That also covers panels opened with no
- *    trigger: a controlled prop, or `defaultOpen`.
+ *    Radix's restore focuses nothing. So this records where the element that
+ *    had focus was when the panel opened. That also covers panels opened with
+ *    no trigger: a controlled prop, or `defaultOpen`. When that element has
+ *    left the page by the time the panel closes (a confirm that deletes the
+ *    row it was in), focus goes to the focusable element nearest where it
+ *    was, by the engine's rule (`returnFocusTo`), not to the body.
  */
 
 /**
@@ -45,11 +54,11 @@ export interface ModalFocusHandlers {
  * fires before the trap moves focus, so it can record where focus came from.
  */
 export function useModalFocus(prefer: InitialFocus): ModalFocusHandlers {
-  const restoreFocusTo = useRef<HTMLElement | null>(null)
+  const restoreFocusTo = useRef<FocusPlace | null>(null)
 
   const onOpenAutoFocus = useCallback(
     (event: Event) => {
-      restoreFocusTo.current = document.activeElement as HTMLElement | null
+      restoreFocusTo.current = focusPlace(document.activeElement)
       const target = modalFocusTarget(event.currentTarget as HTMLElement, prefer)
       if (!target) return
       event.preventDefault()
@@ -60,7 +69,8 @@ export function useModalFocus(prefer: InitialFocus): ModalFocusHandlers {
 
   const onCloseAutoFocus = useCallback((event: Event) => {
     event.preventDefault()
-    restoreFocusTo.current?.focus()
+    // The panel may still be in the document while its exit plays, so it is passed over.
+    returnFocusTo(restoreFocusTo.current, [event.currentTarget as Element | null])
   }, [])
 
   return { onOpenAutoFocus, onCloseAutoFocus }

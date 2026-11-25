@@ -50,6 +50,7 @@ export type ConformanceEffect =
   | 'commits'
   | 'increments'
   | 'decrements'
+  | 'focuses'
   | 'nothing'
 
 /** What a pointer click on a part does. */
@@ -69,10 +70,10 @@ export type BehaviourStatement = Said &
   (
     | { kind: 'role'; part: string; role: string }
     | { kind: 'name'; part: string; from: string }
-    | { kind: 'key'; key: string; effect: ConformanceEffect; on?: string }
+    | { kind: 'key'; key: string; effect: ConformanceEffect; on?: string; into?: string }
     | { kind: 'click'; effect: ConformanceClickEffect; on: string }
     | { kind: 'focus'; moment: 'on-open'; part: string }
-    | { kind: 'focus'; moment: 'on-close'; target: 'trigger' | 'previous' }
+    | { kind: 'focus'; moment: 'on-close'; target: 'trigger' | 'previous' | 'nearest' }
     | { kind: 'dismiss'; by: 'outside' | 'escape' | 'both' | 'none' }
     | {
         kind: 'announces'
@@ -737,8 +738,12 @@ class Run {
     }, CLOSE_BUDGET)
   }
 
-  private async focusOnClose(statement: BehaviourStatement, target: 'trigger' | 'previous') {
+  private async focusOnClose(
+    statement: BehaviourStatement,
+    target: 'trigger' | 'previous' | 'nearest',
+  ) {
     await this.closedEntry(statement)
+    if (target === 'nearest') return this.focusOnCloseNearest()
     const before = await this.openFromTrigger()
     await this.harness.keyboard(keystrokes(this.closingKey()))
     await this.wait(() => (this.open() ? 'the panel did not close' : true), CLOSE_BUDGET)
@@ -751,6 +756,42 @@ class Run {
           : this.all('trigger').some((element) => element.contains(active))
       return back ? true : `focus went to ${describe(active)}, not to the ${target}`
     }, CLOSE_BUDGET)
+  }
+
+  /**
+   * The trigger leaves the page while the member is open, as a row leaves with
+   * its own button when a dialog it opened deletes the row. The runner puts a
+   * Button of its own just after the trigger, opens the member, takes the
+   * trigger alone out of the document, closes the member and waits for focus
+   * on its Button: the first focusable element after where the trigger was.
+   * The member itself stays in the page, so its own close path runs, as it
+   * does for a reader: a custom element taken out of the document would tear
+   * its member down, and a closed panel would prove nothing. The trigger goes
+   * back before the statement ends, so the entry unmounts as it mounted.
+   */
+  private async focusOnCloseNearest() {
+    const name = this.opener()?.on ?? 'trigger'
+    const trigger = this.one(name)
+    const parent = trigger.parentNode
+    if (parent === null) throw new Error(`the part "${name}" is in no element of the document`)
+    const after = document.createElement('button')
+    after.textContent = 'After the trigger'
+    parent.insertBefore(after, trigger.nextSibling)
+    try {
+      await this.openFromTrigger()
+      trigger.remove()
+      await this.harness.keyboard(keystrokes(this.closingKey()))
+      await this.wait(() => (this.open() ? 'the panel did not close' : true), CLOSE_BUDGET)
+      await this.wait(() => {
+        const active = document.activeElement
+        return active === after
+          ? true
+          : `focus went to ${describe(active)}, not to the nearest focusable element`
+      }, CLOSE_BUDGET)
+    } finally {
+      if (!trigger.isConnected && after.parentNode === parent) parent.insertBefore(trigger, after)
+      after.remove()
+    }
   }
 
   private async dismiss(statement: BehaviourStatement, by: 'outside' | 'escape' | 'both' | 'none') {
@@ -856,6 +897,7 @@ class Run {
     statement: BehaviourStatement & { key: string; effect: ConformanceEffect; on?: string },
   ) {
     const { effect } = statement
+    if (effect === 'focuses') return this.focuses(statement)
     const on = statement.on ?? (effect === 'opens' && this.has('trigger') ? 'trigger' : undefined)
     const hasPanel = this.has('panel')
 
@@ -903,6 +945,38 @@ class Run {
         return this.steps(effect, press)
       case 'nothing':
         return this.nothing(press)
+    }
+  }
+
+  /**
+   * A key pressed from the page, outside the member, that puts focus in one of
+   * its parts. The runner puts focus on a Button of its own, outside the
+   * element the entry rendered into, presses the key there and waits for focus
+   * in the part.
+   */
+  private async focuses(statement: BehaviourStatement & { key: string; into?: string }) {
+    const into = statement.into
+    if (into === undefined) throw new Error(`"${statement.text}" names no part to focus`)
+    await this.mountWhere(statement, () => this.present(into))
+    const page = document.createElement('button')
+    page.textContent = 'On the page'
+    document.body.prepend(page)
+    try {
+      page.focus()
+      if (document.activeElement !== page) {
+        throw new Divergence(
+          `focus cannot rest on the page: it is on ${describe(document.activeElement)}`,
+        )
+      }
+      await this.harness.keyboard(keystrokes(statement.key))
+      await this.wait(() => {
+        const active = document.activeElement
+        return this.all(into).some((element) => element.contains(active))
+          ? true
+          : `focus is on ${describe(active)}, outside the part "${into}"`
+      }, CLOSE_BUDGET)
+    } finally {
+      page.remove()
     }
   }
 

@@ -358,7 +358,10 @@ still a menu: `role="menu"`, roving focus, typeahead, Escape. A combobox's listb
 still driven by `aria-activedescendant` from an input that keeps DOM focus. The focus
 boundary in `README-substrates.md` ("Focus-management interplay") still applies, so a
 combobox-lane sheet takes no focus scope and its scrim is only a dismiss target, while
-Dialog-lane sheets keep their trap. The sheet does not work against the popper primitives. Three things are ruled out:
+Dialog-lane sheets keep their trap. A sheet opened inside a Dialog or a Drawer is a layer above
+it: focus stays in the sheet, Escape and a press on its scrim close the sheet and not the
+Dialog, and while a Dialog-lane sheet is open the rest of the page, the Dialog included, is
+hidden from assistive software. The sheet does not work against the popper primitives. Three things are ruled out:
 `:global` overrides, `!important` against popper wrappers, and `fixed` positioning inside
 a transformed ancestor (the CSS spec breaks that, not this repo). In React, where a Radix
 primitive ties its semantics to its popper (dropdown-menu, select), sheet mode carries the

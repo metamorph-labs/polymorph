@@ -3,9 +3,11 @@
 import { useEffect, useId, useRef, useState, type FocusEvent, type KeyboardEvent } from 'react'
 
 import {
+  composingKey,
   type ControlSize,
   dataAttrs,
   dataFlag,
+  holdFieldEscape,
   Icon,
   memberAttr,
   useAgentMember,
@@ -205,21 +207,32 @@ export function InlineEdit({
   })
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    // Every key an input method is handling is its own: the Enter that confirms a candidate saves
+    // nothing, and the Escape that abandons a composition keeps the field open.
+    if (composingKey(event.nativeEvent)) return
     if (event.key === 'Escape') {
       event.preventDefault()
       cancel()
       return
     }
-    // Enter on a Button presses it. Enter that ends an IME composition is the composition's.
-    if (
-      event.key === 'Enter' &&
-      event.target instanceof HTMLInputElement &&
-      !event.nativeEvent.isComposing
-    ) {
+    // Enter on a Button presses it.
+    if (event.key === 'Enter' && event.target instanceof HTMLInputElement) {
       event.preventDefault()
       commit()
     }
   }
+
+  /*
+   * Escape cancels an open edit, and that Escape is the member's: a Dialog around it stays open
+   * (`holdFieldEscape`). Closed, or with a save in flight, Escape does nothing here and is the
+   * Dialog's.
+   */
+  const cancellable = open && !pending
+  useEffect(() => {
+    const element = root.current
+    if (!cancellable || element === null) return
+    return holdFieldEscape(element)
+  }, [cancellable])
 
   function handleBlur(event: FocusEvent<HTMLDivElement>) {
     const next = event.relatedTarget

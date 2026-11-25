@@ -101,7 +101,7 @@ its unit. A typed digit belongs to the count it is typed into: turning 90 typed 
 
 ## Direction
 
-The counts follow the document's direction. In a right-to-left page the largest unit is
+The counts follow the direction of the place the field is in. In a right-to-left page the largest unit is
 rightmost and the row reads from it, which is how Arabic and Hebrew write a duration. The
 recipe is written in logical properties and the member writes no `dir`, so the direction law
 holds it. The arrows that move between counts follow the drawn order, as TimeInput's do.

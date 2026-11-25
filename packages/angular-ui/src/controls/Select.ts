@@ -357,7 +357,7 @@ export class Select {
     ...(this.$p.emptyOption === undefined ? [] : [this.emptyChoice.value]),
     ...this.$p.options.flatMap((entry) => ('options' in entry ? entry.options : [entry])),
   ])
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.trigger.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,
