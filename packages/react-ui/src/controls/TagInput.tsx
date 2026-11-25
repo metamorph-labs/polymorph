@@ -247,8 +247,10 @@ export function TagInput({
       return
     }
     // The chips come before the field in reading order, so the key toward the line's start
-    // moves into them: ← left to right, → right to left.
+    // moves into them: ← left to right, → right to left. The direction is a computed style, read
+    // only for an arrow, so a typed character does not read it.
     if (
+      (event.key === 'ArrowLeft' || event.key === 'ArrowRight') &&
       event.key === lineStartKey(event.currentTarget) &&
       event.currentTarget.selectionStart === 0
     ) {

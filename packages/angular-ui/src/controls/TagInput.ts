@@ -317,6 +317,8 @@ export class TagInput {
       if (last !== undefined) this.remove.value(last)
       return
     }
+    // The direction is a computed style, read only for an arrow.
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
     const input = event.target as HTMLInputElement
     if (event.key === lineStartKey(this.chipList.value ?? input) && input.selectionStart === 0) {
       this.removeButton.value(this.values.value.length - 1)?.focus()

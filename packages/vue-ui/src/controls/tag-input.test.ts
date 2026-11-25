@@ -148,6 +148,19 @@ describe('keys', () => {
     await vi.waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
   })
 
+  it('reads the writing direction for an arrow only, and not for each typed character', async () => {
+    await mount(() => h(TagInput, { defaultValue: ['billing'], ariaLabel: 'Labels' }))
+    const member = document.querySelector('[data-member="tag-input"]') as HTMLElement
+    await userEvent.click(field() as HTMLElement)
+    const read = vi.spyOn(window, 'getComputedStyle')
+    try {
+      await userEvent.keyboard('abc')
+      expect(read.mock.calls.filter(([element]) => member.contains(element))).toEqual([])
+    } finally {
+      read.mockRestore()
+    }
+  })
+
   it('follows a right-to-left line: → moves back into the chips and ← forward to the field', async () => {
     const { host } = await mount(() =>
       h(TagInput, { defaultValue: ['billing', 'regression'], ariaLabel: 'Labels' }),

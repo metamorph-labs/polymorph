@@ -168,6 +168,8 @@ export default function TagInput(given: TagInputProps): JSX.Element {
         if (last !== undefined) remove.value(last)
         return
       }
+      // The direction is a computed style, read only for an arrow.
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
       const input = event.target as HTMLInputElement
       if (event.key === lineStartKey(chipList.value ?? input) && input.selectionStart === 0) {
         removeButton.value(values.value.length - 1)?.focus()

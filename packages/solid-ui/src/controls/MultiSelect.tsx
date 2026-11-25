@@ -469,7 +469,9 @@ export default function MultiSelect(given: MultiSelectProps): JSX.Element {
         return
       }
       // The key toward the line's start moves into the chips, as in TagInput. The direction is
-      // the field's: the machine writes the document's on the input.
+      // the field's: the machine writes the document's on the input. It is a computed style, read
+      // only for an arrow.
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
       const input = event.target as HTMLInputElement
       if (event.key === lineStartKey(frame.value ?? input) && input.selectionStart === 0) {
         removeButton.value(orderedValues.value.length - 1)?.focus()
