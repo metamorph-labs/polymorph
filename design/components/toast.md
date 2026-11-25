@@ -246,9 +246,10 @@ Escape that an input method is handling (`composingKey`), are not the toast's.
 
 When a toast that holds focus leaves, by its close control, its action, Escape, a call to
 `toast.dismiss`, its owner's removal or a newer toast's eviction, focus moves to the next toast,
-else the previous one, so a reader working down the stack stays in it. With no toast left, focus goes back to the element it came from as it
-entered the notifications, by F8 or by Tab, while that element is in the document, and
-otherwise to the list. The rule is the engine's (`focusAfterToast` and `followToastFocus`,
+else the previous one, so a reader working down the stack stays in it. With no toast left, focus
+goes back to the element it came from as it entered the notifications, by F8 or by Tab, while
+focus can go to that element (it is in the document, enabled, drawn and not inert), and otherwise
+to the list. The rule is the engine's (`focusAfterToast` and `followToastFocus`,
 `packages/engine/src/toast/focus.ts`), and the shared law in
 `packages/conformance/src/toast-focus.ts` holds it, the Escape rule, the announcements and the
 timers in every web framework.
