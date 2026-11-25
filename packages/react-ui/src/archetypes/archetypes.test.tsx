@@ -1098,10 +1098,13 @@ describe('AppShell — the drawer', () => {
   })
 
   it('says whether it is open, and which region it opens', async () => {
-    shell()
+    const root = shell()
     await narrow()
     const menu = await vi.waitFor(() => screen.getByRole('button', { name: 'Open navigation' }))
-    const rail = screen.getByRole('navigation', { name: 'Primary', hidden: true })
+    // The closed drawer is `visibility: hidden` once its slide ends, and a hidden element's
+    // accessible name is empty, so a query by name depends on when it runs. The landmark is found
+    // by the label it carries.
+    const rail = root.querySelector('nav[aria-label="Primary"]') as HTMLElement
     expect(menu.getAttribute('aria-expanded')).toBe('false')
     expect(menu.getAttribute('aria-controls')).toBe(rail.id)
     expect(rail.id).not.toBe('')
@@ -1249,7 +1252,9 @@ describe('AppShell — the drawer', () => {
     const sheetScrim = document.querySelector('[data-motion-pattern="fade"]') as HTMLElement
     expect(sheetScrim).not.toBeNull()
 
-    const rail = screen.getByRole('navigation', { name: 'Primary' })
+    // The open sheet hides the page behind it from a screen reader, the rail included, so the
+    // rail is found among the hidden elements.
+    const rail = screen.getByRole('navigation', { name: 'Primary', hidden: true })
     const rect = rail.getBoundingClientRect()
     // Inside the rail's box, well above the bottom sheet's maximum height
     // (66dvh of 800 leaves everything under y≈272 to the scrim).
