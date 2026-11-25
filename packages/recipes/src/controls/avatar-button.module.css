@@ -15,6 +15,12 @@
   flex: none;
 }
 
+/* The name tip (`nameTip` in `@polymorph/engine`): the label shown on hover and keyboard focus,
+   because the face draws no text. It is Button's tip, composed. */
+.tip {
+  composes: tip from './button.module.css';
+}
+
 /* The box: the face with a `space-1` gutter on every side, never smaller than the size's control
    height, and round at every geometry, as the Avatar inside is. Button's hairline border is the
    gutter's outer pixel, so the padding is the rest of the step, and at `md` the box is exactly

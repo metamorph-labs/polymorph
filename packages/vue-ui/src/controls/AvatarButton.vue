@@ -6,9 +6,9 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { computed, onBeforeUnmount, onMounted, useTemplateRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
 
-import { Icon, agentMember, agentPress } from '@polymorph/vue'
+import { Icon, agentMember, agentPress, nameTip } from '@polymorph/vue'
 import styles from '@polymorph/recipes/controls/avatar-button.module.css'
 import Avatar from '../structure/Avatar.vue'
 
@@ -73,18 +73,29 @@ const dataState = computed(() =>
 let release1: (() => void) | undefined
 const effect1 = () => {
   release1?.()
+  const ran = nameTip(control.value, props.disabled ? undefined : props.label, styles.tip)
+  release1 = () => {
+    ran()
+  }
+}
+onMounted(effect1)
+watch(() => [props.disabled, props.label], effect1, { flush: 'post' })
+onBeforeUnmount(() => release1?.())
+let release2: (() => void) | undefined
+const effect2 = () => {
+  release2?.()
   const ran = agentMember({
     member: 'AvatarButton',
     element: () => control.value,
     state: () => ({ disabled: props.disabled, loading: props.loading }),
     actions: { press: () => agentPress(control.value) },
   })
-  release1 = () => {
+  release2 = () => {
     ran()
   }
 }
-onMounted(effect1)
-onBeforeUnmount(() => release1?.())
+onMounted(effect2)
+onBeforeUnmount(() => release2?.())
 </script>
 
 <template>

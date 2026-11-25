@@ -14,6 +14,7 @@ import {
   type LawfulVariants,
   memberAttr,
   menuChoices,
+  nameTip,
   useAgentMember,
   useDirection,
 } from '@polymorph/react'
@@ -205,6 +206,14 @@ export function SplitButton({
    */
   const phone = usePhoneViewport()
   const sheeting = presentation === 'auto' && phone
+
+  // The chevron draws no text, so `menuLabel` shows as a name tip on hover and keyboard focus, as
+  // on an icon-only Button (`nameTip`). The chevron is drawn again when the sheet version takes
+  // over, so the tip follows the element. A disabled chevron takes neither, so it shows nothing.
+  useEffect(
+    () => nameTip(chevronRef.current, disabled || loading ? undefined : menuLabel, styles.tip),
+    [disabled, loading, menuLabel, sheeting],
+  )
 
   /**
    * Radix restores focus to the chevron in the popper version, and the sheet version must

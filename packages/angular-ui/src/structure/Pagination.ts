@@ -17,6 +17,7 @@ import {
   derived,
   elementRef,
   mountEffect,
+  nameTip,
   paginationWindow,
   useMember,
   watchEffect,
@@ -93,6 +94,7 @@ data-size="sm"
 data-tone="neutral"
 [attr.data-icon-only]="e11()"
 (click)="h3($event)"
+[pmRef]="previousLink"
 ><!-- glyph -->
 <span
 [attr.class]="e12()"
@@ -144,6 +146,7 @@ data-size="sm"
 data-tone="neutral"
 [attr.data-icon-only]="e36()"
 (click)="h7($event)"
+[pmRef]="nextLink"
 ><!-- glyph -->
 <span
 [attr.class]="e37()"
@@ -228,6 +231,8 @@ export class Pagination {
   protected readonly focused = cell(() => null as HTMLElement | null)
   protected readonly focusedControl = cell(() => null as string | number | null)
   protected readonly taken = cell(() => null as string | number | null)
+  protected readonly nextLink = elementRef<HTMLElement>()
+  protected readonly previousLink = elementRef<HTMLElement>()
   protected readonly root = elementRef<HTMLElement>()
   protected readonly entries = derived(() =>
     paginationWindow(this.$p.page, this.$p.pageCount, this.$p.siblingCount),
@@ -301,6 +306,8 @@ export class Pagination {
   })
   private release1: (() => void) | undefined
   private release3: (() => void) | undefined
+  private release4: (() => void) | undefined
+  private release5: (() => void) | undefined
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.release1?.())
@@ -315,7 +322,19 @@ export class Pagination {
       false,
     )
     inject(DestroyRef).onDestroy(() => this.release3?.())
-    mountEffect(() => this.effect3())
+    watchEffect(
+      () => [this.linked.value, this.$p.page, this.$p.pageCount, this.$p.messages.previous],
+      () => this.effect3(),
+      true,
+    )
+    inject(DestroyRef).onDestroy(() => this.release4?.())
+    watchEffect(
+      () => [this.linked.value, this.$p.page, this.$p.pageCount, this.$p.messages.next],
+      () => this.effect4(),
+      true,
+    )
+    inject(DestroyRef).onDestroy(() => this.release5?.())
+    mountEffect(() => this.effect5())
   }
 
   protected e1() {
@@ -648,6 +667,22 @@ export class Pagination {
 
   private effect3(): void {
     this.release3?.()
+    const ran = nameTip(this.previousLink.value, this.$p.messages.previous, styles.linkTip)
+    this.release3 = () => {
+      ran()
+    }
+  }
+
+  private effect4(): void {
+    this.release4?.()
+    const ran = nameTip(this.nextLink.value, this.$p.messages.next, styles.linkTip)
+    this.release4 = () => {
+      ran()
+    }
+  }
+
+  private effect5(): void {
+    this.release5?.()
     const ran = agentMember({
       member: 'Pagination',
       element: () => this.root.value,
@@ -672,7 +707,7 @@ export class Pagination {
       },
       withholds: () => this.root.value,
     })
-    this.release3 = () => {
+    this.release5 = () => {
       ran()
     }
   }

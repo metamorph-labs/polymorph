@@ -33,6 +33,12 @@
   border-inline-start-width: 0;
 }
 
+/* The name tip (`nameTip` in `@polymorph/engine`): the label shown on hover and keyboard focus,
+   because the chevron draws none. It is Button's tip, composed. */
+.tip {
+  composes: tip from './button.module.css';
+}
+
 /* Two tab stops, each with the focus mark. The mark lies inside each half's edge, so the
    halves do not cover it. The focused half is still raised above the other, because a
    system that moves the mark outside draws it over the seam and the neighbouring half.

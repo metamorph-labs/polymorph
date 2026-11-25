@@ -144,6 +144,13 @@ export default describeMember({
   effects: [
     // Real focus on the highlighted row, as Radix's menus have it (see `followHighlight`).
     { watch: 'api.highlightedValue', run: 'followHighlight(panel, api.highlightedValue)' },
+    // The chevron draws no text, so `menuLabel` shows as a name tip on hover and keyboard focus,
+    // as on an icon-only Button (`nameTip`). A disabled chevron takes neither.
+    {
+      watch: '[disabled, loading, menuLabel]',
+      run: 'nameTip(chevron, disabled || loading ? undefined : menuLabel, styles.tip)',
+      release: 'ran()',
+    },
   ],
   template: [
     el(
@@ -189,6 +196,7 @@ export default describeMember({
           {
             part: 'trigger',
             class: ['chevron'],
+            ref: 'chevron',
             spread: ['api.getTriggerProps()'],
             attrs: {
               disabled: 'disabled || loading',

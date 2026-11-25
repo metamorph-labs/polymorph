@@ -38,6 +38,15 @@ export default describeMember({
   },
   // The spec's `agent` fence. A press is the button's own click (`agentPress`), as Button's is,
   // so a disabled or loading button does nothing, and as a Menu's trigger it opens the menu.
+  effects: [
+    // The face draws no text, so the label shows as a name tip on hover and keyboard focus, as
+    // on an icon-only Button (`nameTip`). A disabled button takes neither, so it shows nothing.
+    {
+      watch: '[disabled, label]',
+      run: 'nameTip(control, disabled ? undefined : label, styles.tip)',
+      release: 'ran()',
+    },
+  ],
   agent: {
     on: 'control',
     state: { disabled: 'disabled', loading: 'loading' },

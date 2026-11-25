@@ -25,6 +25,7 @@ import {
   followHighlight,
   menuChoices,
   mergeParts,
+  nameTip,
   ownerContext,
   provide,
   scope,
@@ -133,6 +134,7 @@ export default function SplitButton(given: SplitButtonProps): JSX.Element {
       },
     })
     const uid = createUniqueId()
+    const chevron = elementRef<HTMLElement>()
     const panel = elementRef<HTMLElement>()
     const primary = elementRef<HTMLElement>()
     const scrim = elementRef<HTMLElement>()
@@ -190,6 +192,24 @@ export default function SplitButton(given: SplitButtonProps): JSX.Element {
     let release2: (() => void) | undefined
     const effect2 = () => {
       release2?.()
+      const ran = nameTip(
+        chevron.value,
+        props.disabled || props.loading ? undefined : props.menuLabel,
+        styles.tip,
+      )
+      release2 = () => {
+        ran()
+      }
+    }
+    watchEffect(
+      createMemo(() => [props.disabled, props.loading, props.menuLabel]),
+      effect2,
+      true,
+    )
+    onCleanup(() => release2?.())
+    let release3: (() => void) | undefined
+    const effect3 = () => {
+      release3?.()
       const ran = agentMember({
         member: 'SplitButton',
         element: () => primary.value,
@@ -220,12 +240,12 @@ export default function SplitButton(given: SplitButtonProps): JSX.Element {
           close: () => api.value.setOpen(false),
         },
       })
-      release2 = () => {
+      release3 = () => {
         ran()
       }
     }
-    onMount(effect2)
-    onCleanup(() => release2?.())
+    onMount(effect3)
+    onCleanup(() => release3?.())
     return (
       <>
         {/* group */}
@@ -275,6 +295,7 @@ export default function SplitButton(given: SplitButtonProps): JSX.Element {
               'data-disabled': props.disabled ? '' : undefined,
               'data-icon-only': '',
             })}
+            ref={chevron.attach}
           >
             <Icon name="expand" size={props.size} />
           </button>

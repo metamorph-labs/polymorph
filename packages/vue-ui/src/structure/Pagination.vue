@@ -8,7 +8,7 @@
  */
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
-import { Icon, PAGINATION_ELLIPSIS, agentMember, paginationWindow } from '@polymorph/vue'
+import { Icon, PAGINATION_ELLIPSIS, agentMember, nameTip, paginationWindow } from '@polymorph/vue'
 import styles from '@polymorph/recipes/structure/pagination.module.css'
 import Button from '../controls/Button.vue'
 import Inline from '../layout/Inline.vue'
@@ -64,6 +64,8 @@ const emit = defineEmits<{ pageChange: [page: number] }>()
 const focused = ref(null as HTMLElement | null)
 const focusedControl = ref(null as string | number | null)
 const taken = ref(null as string | number | null)
+const nextLink = useTemplateRef<HTMLElement>('nextLink')
+const previousLink = useTemplateRef<HTMLElement>('previousLink')
 const root = useTemplateRef<HTMLElement>('root')
 const entries = computed(() => paginationWindow(props.page, props.pageCount, props.siblingCount))
 const controls = computed(() => [
@@ -163,6 +165,32 @@ watch(() => props.disabled, effect2, { flush: 'post' })
 let release3: (() => void) | undefined
 const effect3 = () => {
   release3?.()
+  const ran = nameTip(previousLink.value, props.messages.previous, styles.linkTip)
+  release3 = () => {
+    ran()
+  }
+}
+onMounted(effect3)
+watch(() => [linked.value, props.page, props.pageCount, props.messages.previous], effect3, {
+  flush: 'post',
+})
+onBeforeUnmount(() => release3?.())
+let release4: (() => void) | undefined
+const effect4 = () => {
+  release4?.()
+  const ran = nameTip(nextLink.value, props.messages.next, styles.linkTip)
+  release4 = () => {
+    ran()
+  }
+}
+onMounted(effect4)
+watch(() => [linked.value, props.page, props.pageCount, props.messages.next], effect4, {
+  flush: 'post',
+})
+onBeforeUnmount(() => release4?.())
+let release5: (() => void) | undefined
+const effect5 = () => {
+  release5?.()
   const ran = agentMember({
     member: 'Pagination',
     element: () => root.value,
@@ -183,12 +211,12 @@ const effect3 = () => {
     },
     withholds: () => root.value,
   })
-  release3 = () => {
+  release5 = () => {
     ran()
   }
 }
-onMounted(effect3)
-onBeforeUnmount(() => release3?.())
+onMounted(effect5)
+onBeforeUnmount(() => release5?.())
 </script>
 
 <template>
@@ -207,6 +235,7 @@ onBeforeUnmount(() => release3?.())
       <!-- link -->
       <a
         v-if="linked && page > 1 && page - 1 <= pageCount"
+        ref="previousLink"
         :class="styles.link"
         :href="getPageHref?.(page - 1)"
         :aria-label="messages.previous"
@@ -270,6 +299,7 @@ onBeforeUnmount(() => release3?.())
       <!-- link -->
       <a
         v-if="linked && page < pageCount && page + 1 >= 1"
+        ref="nextLink"
         :class="styles.link"
         :href="getPageHref?.(page + 1)"
         :aria-label="messages.next"

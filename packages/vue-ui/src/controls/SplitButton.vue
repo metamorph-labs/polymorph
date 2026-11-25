@@ -18,6 +18,7 @@ import {
   chooseMenuEntry,
   followHighlight,
   menuChoices,
+  nameTip,
   useDirection,
   useMediaQuery,
   type IconRole,
@@ -97,6 +98,7 @@ const props = withDefaults(defineProps<SplitButtonProps>(), {
 })
 const emit = defineEmits<{ click: [event: MouseEvent] }>()
 const uid = useId()
+const chevron = useTemplateRef<HTMLElement>('chevron')
 const panel = useTemplateRef<HTMLElement>('panel')
 const primary = useTemplateRef<HTMLElement>('primary')
 const scrim = useTemplateRef<HTMLElement>('scrim')
@@ -151,6 +153,21 @@ watch(() => api.value.highlightedValue, effect1, { flush: 'post' })
 let release2: (() => void) | undefined
 const effect2 = () => {
   release2?.()
+  const ran = nameTip(
+    chevron.value,
+    props.disabled || props.loading ? undefined : props.menuLabel,
+    styles.tip,
+  )
+  release2 = () => {
+    ran()
+  }
+}
+onMounted(effect2)
+watch(() => [props.disabled, props.loading, props.menuLabel], effect2, { flush: 'post' })
+onBeforeUnmount(() => release2?.())
+let release3: (() => void) | undefined
+const effect3 = () => {
+  release3?.()
   const ran = agentMember({
     member: 'SplitButton',
     element: () => primary.value,
@@ -180,12 +197,12 @@ const effect2 = () => {
       close: () => api.value.setOpen(false),
     },
   })
-  release2 = () => {
+  release3 = () => {
     ran()
   }
 }
-onMounted(effect2)
-onBeforeUnmount(() => release2?.())
+onMounted(effect3)
+onBeforeUnmount(() => release3?.())
 </script>
 
 <template>
@@ -224,6 +241,7 @@ onBeforeUnmount(() => release2?.())
     <span :class="styles.seam" aria-hidden="true" />
     <!-- trigger -->
     <button
+      ref="chevron"
       v-bind="api.getTriggerProps()"
       :class="styles.chevron"
       :disabled="disabled || loading"

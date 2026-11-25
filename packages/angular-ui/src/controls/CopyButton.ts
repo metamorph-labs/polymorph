@@ -10,9 +10,12 @@ import { Component, DestroyRef, ViewEncapsulation, inject, input } from '@angula
 import {
   Icon,
   MEMBER_PROVIDERS,
+  Ref,
   cell,
   derived,
   devWarning,
+  elementRef,
+  nameTip,
   presence,
   useMember,
   watchEffect,
@@ -51,7 +54,7 @@ export interface CopyButtonProps {
   encapsulation: ViewEncapsulation.None,
   host: { style: 'display: contents' },
   providers: [...MEMBER_PROVIDERS],
-  imports: [Icon],
+  imports: [Ref, Icon],
   // prettier-ignore
   template: `<button
 [attr.class]="e1()"
@@ -66,6 +69,7 @@ data-tone="neutral"
 [attr.data-state]="e7()"
 data-member="copy-button"
 (click)="h1()"
+[pmRef]="control"
 ><span
 [attr.class]="e8()"
 aria-hidden="true"
@@ -129,6 +133,7 @@ export class CopyButton {
   protected readonly $p = this.$.props
   protected readonly copied = cell(() => false)
   protected readonly copies = cell(() => 0)
+  protected readonly control = elementRef<HTMLElement>()
   protected readonly copy = derived(
     () => () =>
       void navigator.clipboard.writeText(this.$p.value).then(
@@ -141,6 +146,7 @@ export class CopyButton {
       ),
   )
   private release1: (() => void) | undefined
+  private release2: (() => void) | undefined
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.release1?.())
@@ -148,6 +154,12 @@ export class CopyButton {
       () => this.copies.value,
       () => this.effect1(),
       false,
+    )
+    inject(DestroyRef).onDestroy(() => this.release2?.())
+    watchEffect(
+      () => [this.$p.disabled, this.copied.value, this.$p.label],
+      () => this.effect2(),
+      true,
     )
   }
 
@@ -213,5 +225,17 @@ export class CopyButton {
       this.copied.value = false
     }, 2000)
     this.release1 = () => clearTimeout(timer)
+  }
+
+  private effect2(): void {
+    this.release2?.()
+    const ran = nameTip(
+      this.control.value,
+      this.$p.disabled || this.copied.value ? undefined : this.$p.label,
+      styles.tip,
+    )
+    this.release2 = () => {
+      ran()
+    }
   }
 }

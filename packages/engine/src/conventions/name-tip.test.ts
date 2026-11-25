@@ -46,6 +46,17 @@ async function hoverAndWait(button: HTMLElement) {
   await vi.advanceTimersByTimeAsync(TOOLTIP_DELAY_MS)
 }
 
+/**
+ * Fakes the timers once the skip delay of a tip an earlier step closed has passed. The skip delay
+ * is read from the real clock, which is left real, so a faked clock that ran ahead in an earlier
+ * test cannot put the last close in the future.
+ */
+async function fakeTimersAfterSkip() {
+  vi.useRealTimers()
+  await new Promise((resolve) => setTimeout(resolve, TOOLTIP_SKIP_DELAY_MS))
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+}
+
 beforeEach(async () => {
   const style = document.createElement('style')
   style.textContent = STYLE
@@ -83,9 +94,7 @@ describe('before first use', () => {
 })
 
 describe('hover', () => {
-  beforeEach(() => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
-  })
+  beforeEach(fakeTimersAfterSkip)
 
   it('opens after the delay with the label, for the eye only', async () => {
     const button = tipped('Archive')
@@ -114,14 +123,14 @@ describe('hover', () => {
     // One bubble for the page, which the next tip takes over.
     expect(bubble()).toBe(first)
 
+    // Within the skip delay of that tip closing, the next opens at once.
     await restPointer()
     expect(bubble()).toBeNull()
-    await vi.advanceTimersByTimeAsync(TOOLTIP_SKIP_DELAY_MS - 50)
     await userEvent.hover(far)
     expect(bubble()?.textContent).toBe('Share')
 
     await restPointer()
-    await vi.advanceTimersByTimeAsync(TOOLTIP_SKIP_DELAY_MS)
+    await fakeTimersAfterSkip()
     await userEvent.hover(one)
     expect(bubble()).toBeNull()
     await vi.advanceTimersByTimeAsync(TOOLTIP_DELAY_MS)
@@ -224,7 +233,7 @@ describe('keyboard focus', () => {
 
 describe('Escape', () => {
   it('closes a tip the pointer opened and reaches nothing else, so a Dialog around it stays open', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+    await fakeTimersAfterSkip()
     const heard = vi.fn()
     await hoverAndWait(tipped('Archive'))
     expect(bubble()).not.toBeNull()
@@ -258,9 +267,7 @@ describe('Escape', () => {
 })
 
 describe('closing for other reasons', () => {
-  beforeEach(() => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
-  })
+  beforeEach(fakeTimersAfterSkip)
 
   it('closes when something that holds the button scrolls', async () => {
     const box = document.createElement('div')
@@ -298,9 +305,67 @@ describe('closing for other reasons', () => {
   })
 })
 
+describe('an icon-only link', () => {
+  /** A link standing for Pagination's arrow drawn as a link, with a name tip. */
+  function tippedLink() {
+    const link = document.createElement('a')
+    link.href = '#page-3'
+    link.setAttribute('aria-label', 'Next page')
+    link.style.cssText = 'position: fixed; left: 200px; top: 200px; width: 32px; height: 32px'
+    document.body.append(link)
+    releases.push(nameTip(link, 'Next page', 'tip'))
+    return link
+  }
+
+  it('opens on mouse hover after the delay, as a button does', async () => {
+    await fakeTimersAfterSkip()
+    const link = tippedLink()
+    await userEvent.hover(link)
+    await vi.advanceTimersByTimeAsync(TOOLTIP_DELAY_MS - 1)
+    expect(bubble()).toBeNull()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(bubble()?.textContent).toBe('Next page')
+    await restPointer()
+    expect(bubble()).toBeNull()
+  })
+
+  it('opens when focus arrives from the keyboard and not when a script gives it after a press', async () => {
+    const before = document.createElement('button')
+    before.textContent = 'Before'
+    document.body.append(before)
+    const link = tippedLink()
+    // A press elsewhere, then focus a script gives the link: no tip.
+    await userEvent.click(before)
+    link.focus()
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    expect(document.activeElement).toBe(link)
+    expect(bubble()).toBeNull()
+    // Focus the keyboard moves to the link: the tip.
+    await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+    expect(document.activeElement).toBe(before)
+    await userEvent.keyboard('{Tab}')
+    expect(document.activeElement).toBe(link)
+    await vi.waitFor(() => expect(bubble()?.textContent).toBe('Next page'))
+  })
+
+  it('closes when the link is followed from the keyboard', async () => {
+    const before = document.createElement('button')
+    before.textContent = 'Before'
+    document.body.append(before)
+    const link = tippedLink()
+    link.addEventListener('click', (event) => event.preventDefault())
+    before.focus()
+    await userEvent.keyboard('{Tab}')
+    expect(document.activeElement).toBe(link)
+    await vi.waitFor(() => expect(bubble()).not.toBeNull())
+    await userEvent.keyboard('{Enter}')
+    expect(bubble()).toBeNull()
+  })
+})
+
 describe('never twice', () => {
   it('shows nothing for a button inside a Tooltip’s trigger', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+    await fakeTimersAfterSkip()
     const anchor = document.createElement('span')
     anchor.dataset.tooltipPart = 'trigger'
     anchor.style.cssText = 'position: fixed; left: 200px; top: 200px'
@@ -315,9 +380,7 @@ describe('never twice', () => {
 })
 
 describe('where it is drawn', () => {
-  beforeEach(() => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
-  })
+  beforeEach(fakeTimersAfterSkip)
 
   it('sits centred above the button, the gap away', async () => {
     const button = tipped('Archive this ticket')
@@ -353,7 +416,7 @@ describe('where it is drawn', () => {
         document.documentElement.clientWidth,
       )
       await restPointer()
-      await vi.advanceTimersByTimeAsync(TOOLTIP_SKIP_DELAY_MS)
+      await fakeTimersAfterSkip()
     }
   })
 })

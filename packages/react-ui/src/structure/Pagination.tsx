@@ -63,7 +63,12 @@ export interface PaginationProps {
 }
 
 /** The link's classes, from this member's recipe. */
-const LINK = { link: styles.link, label: styles.linkLabel, glyph: styles.linkGlyph }
+const LINK = {
+  link: styles.link,
+  label: styles.linkLabel,
+  glyph: styles.linkGlyph,
+  tip: styles.linkTip,
+}
 
 /**
  * The visible pages, as data (`paginationWindow`): always the first, the last

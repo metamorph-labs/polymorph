@@ -5,7 +5,7 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { mergeProps, onCleanup, onMount, type JSX } from 'solid-js'
+import { createMemo, mergeProps, onCleanup, onMount, type JSX } from 'solid-js'
 
 import {
   Icon,
@@ -14,7 +14,9 @@ import {
   claimSlot,
   createDerived,
   elementRef,
+  nameTip,
   scope,
+  watchEffect,
   type Defaults,
 } from '@polymorph/solid'
 import styles from '@polymorph/recipes/controls/avatar-button.module.css'
@@ -82,18 +84,32 @@ export default function AvatarButton(given: AvatarButtonProps): JSX.Element {
     let release1: (() => void) | undefined
     const effect1 = () => {
       release1?.()
+      const ran = nameTip(control.value, props.disabled ? undefined : props.label, styles.tip)
+      release1 = () => {
+        ran()
+      }
+    }
+    watchEffect(
+      createMemo(() => [props.disabled, props.label]),
+      effect1,
+      true,
+    )
+    onCleanup(() => release1?.())
+    let release2: (() => void) | undefined
+    const effect2 = () => {
+      release2?.()
       const ran = agentMember({
         member: 'AvatarButton',
         element: () => control.value,
         state: () => ({ disabled: props.disabled, loading: props.loading }),
         actions: { press: () => agentPress(control.value) },
       })
-      release1 = () => {
+      release2 = () => {
         ran()
       }
     }
-    onMount(effect1)
-    onCleanup(() => release1?.())
+    onMount(effect2)
+    onCleanup(() => release2?.())
     return (
       <button
         class={styles.button}

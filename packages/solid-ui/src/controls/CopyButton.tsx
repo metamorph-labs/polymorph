@@ -13,6 +13,8 @@ import {
   createCell,
   createDerived,
   devWarning,
+  elementRef,
+  nameTip,
   scope,
   watchEffect,
   type Defaults,
@@ -50,6 +52,7 @@ export default function CopyButton(given: CopyButtonProps): JSX.Element {
     claimSlot(given),
   )
   return scope(() => {
+    const control = elementRef<HTMLElement>()
     const copied = createCell(false)
     const copies = createCell(0)
     const copy = createDerived(
@@ -77,6 +80,24 @@ export default function CopyButton(given: CopyButtonProps): JSX.Element {
       false,
     )
     onCleanup(() => release1?.())
+    let release2: (() => void) | undefined
+    const effect2 = () => {
+      release2?.()
+      const ran = nameTip(
+        control.value,
+        props.disabled || copied.value ? undefined : props.label,
+        styles.tip,
+      )
+      release2 = () => {
+        ran()
+      }
+    }
+    watchEffect(
+      createMemo(() => [props.disabled, copied.value, props.label]),
+      effect2,
+      true,
+    )
+    onCleanup(() => release2?.())
     return (
       <>
         <button
@@ -92,6 +113,7 @@ export default function CopyButton(given: CopyButtonProps): JSX.Element {
           data-state={copied.value ? 'copied' : undefined}
           data-member="copy-button"
           onclick={() => copy.value()}
+          ref={control.attach}
         >
           <span class={styles.glyphs} aria-hidden="true">
             <span class={styles.copyGlyph}>

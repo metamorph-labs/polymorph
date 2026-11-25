@@ -34,6 +34,8 @@ export interface PagerLinkLook {
   label: Expr
   /** The accessible name when it says more than the visible text (`Page 3` for `3`). */
   ariaLabel?: Expr
+  /** The ref an icon-only link's name tip is given to (`nameTip`). */
+  ref?: string
 }
 
 /**
@@ -59,6 +61,7 @@ export function pagerLink(href: Expr, look: PagerLinkLook, click: Expr): Element
     {
       part: 'link',
       class: ['link'],
+      ...(look.ref === undefined ? {} : { ref: look.ref }),
       attrs: {
         href,
         ...(look.ariaLabel === undefined && look.iconOnly !== true
@@ -215,7 +218,23 @@ export default describeMember({
     follow:
       "(event: MouseEvent, to: number): void => { if (!navigatesHere(event)) return; event.preventDefault(); emit('pageChange', to) }",
   },
-  effects: pagerFocusEffects('entries.length > 0'),
+  effects: [
+    ...pagerFocusEffects('entries.length > 0'),
+    // A direction drawn as a link draws only its arrow, so its label shows as a name tip on
+    // hover and keyboard focus, as on the icon-only Button it replaces (`nameTip`). The link is
+    // drawn while the pager links and the page has a neighbour that way, so the tip is given
+    // again whenever those change.
+    {
+      watch: '[linked, page, pageCount, messages.previous]',
+      run: 'nameTip(previousLink, messages.previous, styles.linkTip)',
+      release: 'ran()',
+    },
+    {
+      watch: '[linked, page, pageCount, messages.next]',
+      run: 'nameTip(nextLink, messages.next, styles.linkTip)',
+      release: 'ran()',
+    },
+  ],
   // The spec's `agent` fence. The pager's Buttons are its own parts, so it withholds them and an
   // agent asks for a page by its number. The page is the caller's, so `set` asks as a press
   // does, through `pageChange`.
@@ -267,6 +286,7 @@ export default describeMember({
                         iconOnly: true,
                         icon: 'previous',
                         label: 'messages.previous',
+                        ref: 'previousLink',
                       },
                       'follow($event, page - 1)',
                     ),
@@ -353,7 +373,13 @@ export default describeMember({
                   [
                     pagerLink(
                       'getPageHref?.(page + 1)',
-                      { variant: 'ghost', iconOnly: true, icon: 'next', label: 'messages.next' },
+                      {
+                        variant: 'ghost',
+                        iconOnly: true,
+                        icon: 'next',
+                        label: 'messages.next',
+                        ref: 'nextLink',
+                      },
                       'follow($event, page + 1)',
                     ),
                   ],

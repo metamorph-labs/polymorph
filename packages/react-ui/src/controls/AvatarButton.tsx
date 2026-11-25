@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, type MouseEvent } from 'react'
+import { useEffect, useRef, type MouseEvent } from 'react'
 
 import {
   agentPress,
@@ -8,6 +8,7 @@ import {
   dataAttrs,
   Icon,
   memberAttr,
+  nameTip,
   useAgentMember,
 } from '@polymorph/react'
 import styles from '@polymorph/recipes/controls/avatar-button.module.css'
@@ -80,6 +81,10 @@ export function AvatarButton({
     state: () => ({ disabled, loading }),
     actions: { press: () => agentPress(ref.current) },
   })
+
+  // The face draws no text, so the label shows as a name tip on hover and keyboard focus, as on
+  // an icon-only Button (`nameTip`). A disabled button takes neither, so it shows nothing.
+  useEffect(() => nameTip(ref.current, disabled ? undefined : label, styles.tip), [disabled, label])
 
   return (
     <button

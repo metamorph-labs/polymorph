@@ -17,6 +17,7 @@ import {
   createDerived,
   elementRef,
   itemOf,
+  nameTip,
   paginationWindow,
   scope,
   watchEffect,
@@ -78,6 +79,8 @@ export default function Pagination(given: PaginationProps): JSX.Element {
     claimSlot(given),
   )
   return scope(() => {
+    const nextLink = elementRef<HTMLElement>()
+    const previousLink = elementRef<HTMLElement>()
     const root = elementRef<HTMLElement>()
     const focused = createCell(null as HTMLElement | null)
     const focusedControl = createCell(null as string | number | null)
@@ -192,6 +195,34 @@ export default function Pagination(given: PaginationProps): JSX.Element {
     let release3: (() => void) | undefined
     const effect3 = () => {
       release3?.()
+      const ran = nameTip(previousLink.value, props.messages.previous, styles.linkTip)
+      release3 = () => {
+        ran()
+      }
+    }
+    watchEffect(
+      createMemo(() => [linked.value, props.page, props.pageCount, props.messages.previous]),
+      effect3,
+      true,
+    )
+    onCleanup(() => release3?.())
+    let release4: (() => void) | undefined
+    const effect4 = () => {
+      release4?.()
+      const ran = nameTip(nextLink.value, props.messages.next, styles.linkTip)
+      release4 = () => {
+        ran()
+      }
+    }
+    watchEffect(
+      createMemo(() => [linked.value, props.page, props.pageCount, props.messages.next]),
+      effect4,
+      true,
+    )
+    onCleanup(() => release4?.())
+    let release5: (() => void) | undefined
+    const effect5 = () => {
+      release5?.()
       const ran = agentMember({
         member: 'Pagination',
         element: () => root.value,
@@ -216,12 +247,12 @@ export default function Pagination(given: PaginationProps): JSX.Element {
         },
         withholds: () => root.value,
       })
-      release3 = () => {
+      release5 = () => {
         ran()
       }
     }
-    onMount(effect3)
-    onCleanup(() => release3?.())
+    onMount(effect5)
+    onCleanup(() => release5?.())
     return (
       <>
         {entries.value.length > 0 ? (
@@ -246,6 +277,7 @@ export default function Pagination(given: PaginationProps): JSX.Element {
                   data-tone="neutral"
                   data-icon-only={''}
                   onclick={($event: MouseEvent) => follow.value($event, props.page - 1)}
+                  ref={previousLink.attach}
                 >
                   {/* glyph */}
                   <span class={styles.linkGlyph}>
@@ -313,6 +345,7 @@ export default function Pagination(given: PaginationProps): JSX.Element {
                   data-tone="neutral"
                   data-icon-only={''}
                   onclick={($event: MouseEvent) => follow.value($event, props.page + 1)}
+                  ref={nextLink.attach}
                 >
                   {/* glyph */}
                   <span class={styles.linkGlyph}>
