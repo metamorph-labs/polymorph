@@ -16,7 +16,6 @@ import {
   FRAMEWORKS,
   PUBLISHED_NAMES,
   PUBLISHED_REGISTRY,
-  renderSystemCard,
   TOOLS_PACKAGE,
   type Framework,
   type MappedFramework,
@@ -24,6 +23,15 @@ import {
   type RegistrySystem,
 } from '@polymorph/registry'
 
+import {
+  AGENT_RECORD,
+  DEFAULT_HARNESSES,
+  freshRecord,
+  planAgents,
+  renderRecord,
+  runScript,
+  type AgentPlan,
+} from './agents'
 import { freshEslintConfig, freshStylelintConfig } from './apply'
 import {
   ELEMENTS_STATIC_DIR,
@@ -34,10 +42,8 @@ import {
 import { installedEslintFragment, stylelintFragment } from './emit'
 import { ANGULAR_INIT } from './init-angular'
 import {
-  browserNote,
   frameworkWelcomeSpec,
   mcpConfig,
-  serverNote,
   TOOLS_NAME,
   type FrameworkApp,
   type Origin,
@@ -111,6 +117,37 @@ export interface InitPrograms {
   mcp: Program
   /** The screen emitter, run in the new app as `<command> <args> <spec.json> <out>`. */
   emit: Program
+  /**
+   * The CLI itself, as the agent files name it before a verb: the checkout's bin
+   * by its path, or the published tools with `npx`. Omitted, the published
+   * tools at the release (`publishedTools`).
+   */
+  polymorph?: Program
+}
+
+/** The published tools at the registry's release, as a command: `npx -y @metamorph-labs/polymorph@^<version>`. */
+export function publishedTools(registry: Registry): Program {
+  return { command: 'npx', args: ['-y', `${TOOLS_NAME}@^${registry.version}`] }
+}
+
+/** The CLI the agent files name: the entry point's, or the published tools. */
+export const toolsOf = (programs: InitPrograms, registry: Registry): Program =>
+  programs.polymorph ?? publishedTools(registry)
+
+/**
+ * The agent files of a new app, as written steps: every part of the plan
+ * whole, then the record of what was written, so a later `polymorph agents`
+ * knows the files as its own.
+ */
+export function agentSteps(registry: Registry, plan: AgentPlan): InitStep[] {
+  return [
+    ...plan.steps.map((step): InitStep => ({
+      kind: 'write',
+      path: step.path,
+      contents: step.contents,
+    })),
+    { kind: 'write', path: AGENT_RECORD, contents: renderRecord(freshRecord(registry, plan)) },
+  ]
 }
 
 /**
@@ -163,7 +200,13 @@ export const installCommand = (manager: PackageManager): string =>
 export function packageManagerOf(env: NodeJS.ProcessEnv, origin: Origin): PackageManager {
   const agent = (env['npm_config_user_agent'] ?? '').split('/')[0] ?? ''
   if (Object.hasOwn(PACKAGE_MANAGERS, agent)) return agent as PackageManager
-  return origin === 'checkout' ? 'pnpm' : 'npm'
+  return DEFAULT_MANAGER[origin]
+}
+
+/** Each origin's package manager when nothing says which: `packageManagerOf`'s fallback. */
+const DEFAULT_MANAGER: Readonly<Record<Origin, PackageManager>> = {
+  checkout: 'pnpm',
+  published: 'npm',
 }
 
 /** One thing init does to the new directory, in the order it does them. */
@@ -419,32 +462,6 @@ function unshippedMembers(registry: Registry, spec: unknown, framework: Framewor
   })
 }
 
-const AGENTS = (origin: Origin): string => `# Working in this app
-
-This app is built with polymorph, a closed component vocabulary with lint rules that enforce it.
-
-- The vocabulary is \`@polymorph/react-ui\`. Screens compose its members and bind content to them.
-- The contract is \`polymorph/system-card.md\`: every member, its props, the token families and the
-  rules. A member or prop that is not in the card does not exist.
-- The MCP server in \`.mcp.json\` is the tool for both: \`get_system_card\` returns the card, and
-  \`validate\` checks code against the red rules and names the lawful fix for each violation.
-${serverNote(origin)}
-- Screens are written as specs under \`src/screens/*.json\` and emitted to TSX (\`emit_screen\`).
-  An emitted screen holds no state and no logic. A hand-written container, such as \`src/App.tsx\`,
-  renders it and owns both. To change an emitted screen, change its spec and emit it again.
-- To see a screen, call \`render_screen\` with its spec. It draws the screen in a browser at a
-  phone and a desktop width, and returns the pictures with the layout faults it measured.
-  ${browserNote(origin)}
-- Application code may not write styles or raw controls: no CSS files, no \`style\` or
-  \`className\`, no raw \`<button>\` or \`<input>\`. The red rules in \`${ESLINT_FRAGMENT}\` and
-  \`${STYLELINT_FRAGMENT}\` say the rest, and \`pnpm lint\` runs them.
-- Another library's component (a map, a rich-text editor, a data grid) goes inside
-  \`<ThirdParty library="…" reason="…">\`, in the file that imports it. The card says what the
-  boundary allows. \`useThemeValues()\` from \`@polymorph/react\` gives the theme's values to a
-  library that takes them in JavaScript.
-- The theme is the two JSON files in \`src/theme/\`, compiled at build time by the Vite plugin.
-`
-
 /**
  * The `.npmrc` of an app that installs from GitHub Packages: the scope, and the
  * token by the variable's name, never its value. The package manager reads the
@@ -508,6 +525,8 @@ export function planInit(
     origin?: Origin
     /** Where the app installs the packages from. The origin's default when omitted. */
     packageRegistry?: PackageRegistry
+    /** The package manager the app is installed with, which its agent notes name. The origin's when omitted. */
+    manager?: PackageManager
   },
 ): InitPlan {
   const framework = options.framework ?? 'react'
@@ -714,14 +733,18 @@ export default defineConfig({
     },
     { kind: 'write', path: 'eslint.config.js', contents: freshEslintConfig() },
     { kind: 'write', path: 'stylelint.config.js', contents: freshStylelintConfig() },
-    { kind: 'write', path: '.mcp.json', contents: mcpConfig(options.programs.mcp) },
-    {
-      kind: 'write',
-      path: 'polymorph/system-card.md',
-      contents: renderSystemCard(registry, { framework }),
-    },
-    { kind: 'write', path: 'AGENTS.md', contents: (app ? app.agents : AGENTS)(origin) },
-    { kind: 'write', path: 'CLAUDE.md', contents: '@AGENTS.md\n' },
+    // The agent files `polymorph agents` writes, for the harnesses it writes by default.
+    ...agentSteps(
+      registry,
+      planAgents(registry, {
+        harnesses: DEFAULT_HARNESSES,
+        framework,
+        origin,
+        tools: toolsOf(options.programs, registry),
+        mcp: options.programs.mcp,
+        lint: runScript(options.manager ?? DEFAULT_MANAGER[origin], 'lint'),
+      }),
+    ),
     { kind: 'write', path: WELCOME_SPEC, contents: json(welcome) },
     // The emitter reads the framework from the extension, and from the step for Solid.
     {
@@ -1040,6 +1063,11 @@ function installAdvice(
   }
 }
 
+/** What `init` says about the agent files it wrote. */
+const AGENT_FILES_LINE =
+  '  AGENTS.md, the skills and the MCP entries tell an agent how to work; `polymorph agents` ' +
+  'writes them again after an upgrade.'
+
 /** One aligned row, as the other commands print them. */
 const row = (label: string, value: string) => `  ${label.padEnd(11)}${value}`
 
@@ -1116,6 +1144,7 @@ export function initCommand(cli: InitCli, items: string[], flags: InitFlags): { 
     framework: framework as Framework,
     origin,
     packageRegistry: setup.packageRegistry,
+    manager: setup.manager,
     ...(flags.system === undefined ? {} : { system: flags.system }),
   })
   const fonts = plan.system.fonts.map((font) => font.family).join(', ')
@@ -1140,9 +1169,7 @@ export function initCommand(cli: InitCli, items: string[], flags: InitFlags): { 
   if (!flags.install) {
     cli.out('Next: install, then start it.')
     cli.out(`  ${installLine(given, setup)} && ${dev}`)
-    cli.out(
-      '  The MCP server is configured in .mcp.json, and AGENTS.md tells an agent how to work.',
-    )
+    cli.out(AGENT_FILES_LINE)
     return { code: 0 }
   }
 
@@ -1157,7 +1184,7 @@ export function initCommand(cli: InitCli, items: string[], flags: InitFlags): { 
 
   cli.out('')
   cli.out(`Next: cd ${given} && ${dev}`)
-  cli.out('  The MCP server is configured in .mcp.json, and AGENTS.md tells an agent how to work.')
+  cli.out(AGENT_FILES_LINE)
   return { code: 0 }
 }
 
@@ -1187,6 +1214,7 @@ function initElements(
       system,
       staticDir,
       mcp: programs.mcp,
+      tools: toolsOf(programs, cli.registry),
       origin,
     })
   } catch (error) {
@@ -1222,6 +1250,6 @@ function initElements(
     `  ${plan.system.name} names ${fonts}: link their stylesheets, or the page uses the ` +
       'fallback fonts.',
   )
-  cli.out('  The MCP server is configured in .mcp.json, and AGENTS.md tells an agent how to work.')
+  cli.out(AGENT_FILES_LINE)
   return { code: 0 }
 }

@@ -32,15 +32,18 @@ export function shippedRegistry(): Registry {
 export const SCREEN_PAGE = resolve(SOURCE, 'screen')
 
 /**
- * What `polymorph init` wires a new app to. The MCP server is this release run
- * with `npx`, a command any machine runs, so `.mcp.json` names no path. The app
- * lists the release as a dev dependency, so `npx` runs that copy. The screen
- * emitter runs once, while `init` runs, so it is this copy's, by its path.
+ * What `polymorph init` and `agents` wire a project to. The CLI and the MCP
+ * server are this release run with `npx`, a command any machine runs, so the
+ * agent files name no path. An app `init` writes lists the release as a dev
+ * dependency, so `npx` runs that copy. The screen emitter runs once, while
+ * `init` runs, so it is this copy's, by its path.
  */
 export function shippedPrograms(registry: Registry): InitPrograms {
+  const polymorph = { command: 'npx', args: ['-y', `${TOOLS_NAME}@^${registry.version}`] }
   return {
-    mcp: { command: 'npx', args: ['-y', `${TOOLS_NAME}@^${registry.version}`, 'mcp'] },
+    mcp: { command: polymorph.command, args: [...polymorph.args, 'mcp'] },
     emit: { command: process.execPath, args: [resolve(SOURCE, 'emit.js')] },
+    polymorph,
   }
 }
 
