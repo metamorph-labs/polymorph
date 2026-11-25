@@ -97,7 +97,7 @@ export const oneMainButton: Rule.RuleModule = {
             walk(item.children, inner, innerBranches)
           }
         }
-        walk(composedTrees(context), null, [])
+        for (const tree of composedTrees(context)) walk(tree, null, [])
 
         for (const scope of scopes) {
           const buttons = scope.buttons

@@ -24,7 +24,7 @@ exist only through `iconOnly` (below) and stay square.
 | `tone` | `'neutral' \| 'accent' \| 'danger'` | `'accent'` | allowed grid below; `neutral` exists only for `outline`/`ghost` |
 | `size` | `'sm' \| 'md' \| 'lg'` | `'md'` | conventions §2 |
 | `icon` | `IconRole` | — | leading |
-| `trailingIcon` | `IconRole` | — | a direction or a disclosure only: a role `design/icons.json` lists as `trailing` (`forward`, `next`, `expand`, `collapse`, `open-external`). Any other role leads, in `icon` (`polymorph/trailing-icon`) |
+| `trailingIcon` | `IconRole` | — | a direction or a disclosure only: a role `design/icons.json` lists as `trailing` (`forward`, `next`, `down`, `expand`, `collapse`, `open-external`). Any other role leads, in `icon` (`polymorph/trailing-icon`) |
 | `iconOnly` | `boolean` | `false` | square (width = control height); requires `label` |
 | `label` | `string` | — | **required.** Visible text, or the accessible name when `iconOnly` |
 | `loading` | `boolean` | `false` | conventions §5 |

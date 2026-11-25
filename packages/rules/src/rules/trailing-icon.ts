@@ -2,7 +2,7 @@ import type { Rule } from 'eslint'
 
 import iconSet from '../../../../design/icons.json' with { type: 'json' }
 import { BUTTON, isTrailingRole } from '../usage'
-import { either } from './advice'
+import { either, fit } from './advice'
 import { angularSelector, isAngularTemplate } from './angular'
 import { composedTrees, eachElement } from './composition'
 import { reporterFor } from './vue'
@@ -36,7 +36,7 @@ export const trailingIcon: Rule.RuleModule = {
     schema: [],
     messages: {
       notTrailing:
-        'Unexpected trailing icon "{{role}}" on <{{button}}>: an icon leads its text, and only {{roles}} trail it. {{advice}}',
+        'Unexpected trailing icon "{{role}}" on <{{button}}>: an icon leads its label. {{advice}}',
     },
   },
 
@@ -53,17 +53,20 @@ export const trailingIcon: Rule.RuleModule = {
             return
           const leading = element.prop('icon').value
           const rename = trailing.rename
+          const button = angular ? angularSelector(BUTTON) : BUTTON
+          const head = `Unexpected trailing icon "${role}" on <${button}>: an icon leads its label.`
           report({
             ...element.at,
             messageId: 'notTrailing',
             data: {
               role,
-              button: angular ? angularSelector(BUTTON) : BUTTON,
-              roles: either(TRAILING_ROLES, 'and'),
-              advice:
+              button,
+              advice: fit(head, [
                 leading === undefined
                   ? `Use \`icon="${role}"\` (rung 1).`
-                  : `Drop it, or use \`icon="${role}"\` in place of the other (rung 1).`,
+                  : `Drop it, or use \`icon="${role}"\` instead of the other (rung 1).`,
+                `Only ${either(TRAILING_ROLES, 'and')} follow it.`,
+              ]),
             },
             ...(leading === undefined && rename !== undefined
               ? { fix: (fixer: Rule.RuleFixer) => rename(fixer, 'icon') }

@@ -30,6 +30,12 @@ jsxRuleTester().run('danger-last', dangerLast, {
       filename: APP_FILE,
       code: `export const A = () => <Inline><Button tone="danger" label="Delete" />{extra.map((x) => <Button key={x} label={x} />)}</Inline>`,
     },
+    // Two JSX expressions are two trees, never one row.
+    {
+      filename: APP_FILE,
+      code: `export const A = () => confirm(<Button tone="danger" label="Delete" />)
+             export const B = () => <Button label="Save" />`,
+    },
     // A declared zone lifts the rule.
     {
       filename: APP_FILE,

@@ -105,8 +105,8 @@ roles (`filter`, `help`) do not change, so no call site does.
    (`polymorph/no-external-icons` reports it; only the chart tier draws SVG).
 
 7. An icon leads its text. The roles that may trail it point onward or show a disclosure, and
-   `icons.json` lists them as `trailing`: `forward`, `next`, `expand`, `collapse` and
-   `open-external`. A back arrow leads. `polymorph/trailing-icon` holds a Button's
+   `icons.json` lists them as `trailing`: `forward`, `next`, `down`, `expand`, `collapse`
+   and `open-external`. A back arrow leads. `polymorph/trailing-icon` holds a Button's
    `trailingIcon` to the list, and so does the validation a screen spec gets.
 
 ## Adding a role (the cheap promotion path)

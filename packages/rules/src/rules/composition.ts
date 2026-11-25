@@ -177,7 +177,11 @@ function jsxAttributeContent(attributes: readonly Node[], name: string): Compose
  * `fallback`. `<For>` and `<Index>` write their content with a function, which
  * is not read.
  */
-function solidConditional(node: Node, name: string, attributes: readonly Node[]): Composed[] | null {
+function solidConditional(
+  node: Node,
+  name: string,
+  attributes: readonly Node[],
+): Composed[] | null {
   const children = node['children'] as Node[]
   if (name === 'Show') {
     const fallback = jsxAttributeContent(attributes, 'fallback') ?? []
@@ -271,14 +275,14 @@ function isJsxRoot(node: Node): boolean {
   return true
 }
 
-function jsxTrees(context: Rule.RuleContext): Composed[] {
+function jsxTrees(context: Rule.RuleContext): Composed[][] {
   const keys = context.sourceCode.visitorKeys
-  const roots: Composed[] = []
+  const roots: Composed[][] = []
   const pending: Node[] = [context.sourceCode.ast as unknown as Node]
   while (pending.length > 0) {
     const node = pending.pop() as Node
     if ((node.type === 'JSXElement' || node.type === 'JSXFragment') && isJsxRoot(node)) {
-      roots.push(...jsxContent(node))
+      roots.push(jsxContent(node))
     }
     for (const key of keys[node.type] ?? []) {
       const value = node[key]
@@ -416,14 +420,14 @@ function vueNode(element: VueElement, imports: ReadonlySet<string>): Composed[] 
   ]
 }
 
-function vueTrees(context: Rule.RuleContext): Composed[] {
+function vueTrees(context: Rule.RuleContext): Composed[][] {
   const ast = context.sourceCode.ast as unknown as {
     templateBody?: VueElement | null
     body?: unknown[]
   }
   const template = ast.templateBody
   if (!template) return []
-  return vueContent(template.children, scriptImports(ast))
+  return [vueContent(template.children, scriptImports(ast))]
 }
 
 /* -------------------------------------------------------------------------- */
@@ -540,13 +544,15 @@ function svelteNode(element: SvelteElement): Composed[] {
   ]
 }
 
-function svelteTrees(context: Rule.RuleContext): Composed[] {
+function svelteTrees(context: Rule.RuleContext): Composed[][] {
   const program = context.sourceCode.ast as unknown as { body: SvelteNode[] }
-  return svelteContent(
-    program.body.filter(
-      (node) => node.type !== 'SvelteScriptElement' && node.type !== 'SvelteStyleElement',
+  return [
+    svelteContent(
+      program.body.filter(
+        (node) => node.type !== 'SvelteScriptElement' && node.type !== 'SvelteStyleElement',
+      ),
     ),
-  )
+  ]
 }
 
 /* -------------------------------------------------------------------------- */
@@ -659,10 +665,10 @@ function angularNode(element: AngularElement, context: Rule.RuleContext): Compos
   ]
 }
 
-function angularTrees(context: Rule.RuleContext): Composed[] {
+function angularTrees(context: Rule.RuleContext): Composed[][] {
   const nodes = (context.sourceCode.ast as unknown as { templateNodes: AngularNode[] })
     .templateNodes
-  return angularContent(nodes, context)
+  return [angularContent(nodes, context)]
 }
 
 /* -------------------------------------------------------------------------- */
@@ -670,13 +676,16 @@ function angularTrees(context: Rule.RuleContext): Composed[] {
 /* -------------------------------------------------------------------------- */
 
 /** One read per file, so the three rules share it. */
-const trees = new WeakMap<object, Composed[]>()
+const trees = new WeakMap<object, Composed[][]>()
 
 /**
- * Every tree the file writes, in its syntax. A Vue file's script and a Svelte
- * file's script are TypeScript, which writes no markup the rules read here.
+ * Every tree the file writes, in its syntax, each as the content at its top: a
+ * template's, or that of each JSX expression that is not inside another. Two
+ * trees are never siblings: a Button one function returns is not beside a
+ * Button another returns. A Vue file's script and a Svelte file's script are
+ * TypeScript, which writes no markup the rules read here.
  */
-export function composedTrees(context: Rule.RuleContext): Composed[] {
+export function composedTrees(context: Rule.RuleContext): Composed[][] {
   const ast = context.sourceCode.ast as unknown as object
   const cached = trees.get(ast)
   if (cached !== undefined) return cached
@@ -700,7 +709,7 @@ export const isZone = (element: ComposedElement): boolean => element.name === BE
  * the vocabulary rules are lifted.
  */
 export function eachElement(
-  trees: readonly Composed[],
+  trees: readonly (readonly Composed[])[],
   visit: (element: ComposedElement) => void,
 ): void {
   const walk = (content: readonly Composed[]): void => {
@@ -715,5 +724,5 @@ export function eachElement(
       for (const slot of item.slots.values()) walk(slot)
     }
   }
-  walk(trees)
+  trees.forEach(walk)
 }

@@ -160,6 +160,23 @@ export const stageOneRules: Linter.RulesRecord = {
   [q('no-app-css')]: 'error',
 }
 
+/** The usage rules, each at a severity. */
+const usageRules = (severity: 'warn' | 'error'): Linter.RulesRecord => ({
+  [q('one-main-button')]: severity,
+  [q('danger-last')]: severity,
+  [q('trailing-icon')]: severity,
+})
+
+const USAGE_RULES_AS_WARNINGS = usageRules('warn')
+
+/**
+ * The usage rules as errors. Spread it after the rule groups in a config whose
+ * screens hold to them already, as `fixableRawControls` is spread: the groups
+ * report the usage rules as warnings, so an app that upgrades is not stopped by
+ * screens it wrote before the rules existed.
+ */
+export const usageRulesAsErrors: Linter.RulesRecord = usageRules('error')
+
 /**
  * Rules that need the vocabulary and the exception ladder to exist first.
  *
@@ -191,10 +208,13 @@ export const stageTwoRules: Linter.RulesRecord = {
    * section, a danger Button last in its row, and a trailing icon that is a
    * direction or a disclosure. Like `one-opener`, they limit what a screen
    * composes, and they need the vocabulary's Button and scopes to exist.
+   *
+   * They are warnings here, because this is the group an install applies, and
+   * screens written before the rules existed break them: an app that upgrades
+   * sees the reports without a failing build. `usageRulesAsErrors`, spread
+   * after the groups, makes them errors, as this repository's config does.
    */
-  [q('one-main-button')]: 'error',
-  [q('danger-last')]: 'error',
-  [q('trailing-icon')]: 'error',
+  ...USAGE_RULES_AS_WARNINGS,
 }
 
 /**

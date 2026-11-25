@@ -94,8 +94,8 @@ the validation a screen spec gets reads too ([tooling.md](tooling.md)).
   the engine's `modalFocusTarget` passes over a danger Button in every renderer's modal
   surfaces, and Button takes no `autoFocus`, so no call site can ask for it.
 - **`trailing-icon`.** An icon leads its text. The roles that may trail it point onward or
-  show a disclosure: `trailing` in `design/icons.json` (`forward`, `next`, `expand`,
-  `collapse`, `open-external`). A back arrow leads.
+  show a disclosure: `trailing` in `design/icons.json` (`forward`, `next`, `down`,
+  `expand`, `collapse`, `open-external`). A back arrow leads.
 
 Each reads only what the code writes out. Buttons in different branches of one conditional (a
 ternary, `v-if` and `v-else`, `{#if}` and `{:else}`, `@if` and `@else`, `@switch`'s cases) are
@@ -368,7 +368,7 @@ theme.
 | `one-opener` | which opener to keep: the archetype's own title when the module renders one, otherwise `PageHeader` on a working screen and `Hero` on an opening page | ``<ListPage> renders its PageHeader from `<ListPage title="…">`: keep that and drop both here (rung 1).`` |
 | `one-main-button` | the scope, and the lesser variant | ``Unexpected second main Button in <Card>: a section has one solid accent Button, which marks its next step. Make this one `<Button variant="outline" tone="neutral">` (rung 1).`` |
 | `danger-last` | where the destructive Button goes | ``Unexpected <Button tone="danger"> before another Button in its row: the destructive action comes last, so a reader meets the safe one first. Move it after the others (rung 1).`` |
-| `trailing-icon` | the roles that may trail, and `icon` | ``Unexpected trailing icon "delete" on <Button>: an icon leads its text, and only forward, next, expand, collapse and open-external trail it. Use `icon="delete"` (rung 1).`` |
+| `trailing-icon` | the roles that may trail, and `icon` | ``Unexpected trailing icon "delete" on <Button>: an icon leads its label. Use `icon="delete"` (rung 1). Only forward, next, down, expand, collapse and open-external follow it.`` |
 | `scoped-token-owners` | the file that owns the pattern | ``"--pm-shell-*" belongs to app-shell.module.css and 1 more, not this file (…).`` |
 | `vendorable-imports` | the published import that replaces the path: `@polymorph/react` for the engine, the theme or the role data, a member's relative path, or no import at all for a dev-time tool | ``Import `@polymorph/theme` is not in the boundary a consumer installs. Import it from `@polymorph/react`, which re-exports the engine and the theme.`` |
 | `token-values-only` | the nearest token by value, for a colour, a length or a duration | ``Unexpected raw value "12px" in "padding". It is `var(--pm-space-4)` (12px).`` |
@@ -485,7 +485,8 @@ The red rules are their own package, `@polymorph/rules`, a dev dependency of a c
 | Export | Contents | Apply it to |
 | --- | --- | --- |
 | `stageOneRules` | `no-raw-styles`, `no-app-css` | application code: the rules about expressing style |
-| `stageTwoRules` | `no-raw-interactive`, `no-external-motion`, `no-external-icons`, `no-external-dataviz`, `scoped-token-owners` (with the owner map), `one-opener` | application code: the rules about rebuilding or reaching past the vocabulary |
+| `stageTwoRules` | `no-raw-interactive`, `no-external-motion`, `no-external-icons`, `no-external-dataviz`, `scoped-token-owners` (with the owner map), `one-opener`, and the usage rules `one-main-button`, `danger-last` and `trailing-icon` as warnings | application code: the rules about rebuilding or reaching past the vocabulary, and about using Button |
+| `usageRulesAsErrors` | the three usage rules as errors | spread after the groups, where the screens hold to them already |
 | `allRules` | both groups above | application code; this is what `polymorph add` applies |
 | `fixableRawControls` | `no-raw-interactive` with `vocabulary: '@polymorph/react-ui'`, which switches its `<button>`, checkbox and textarea fixes on | spread after the groups, where application code imports members from `@polymorph/react-ui` |
 | `solidSettings`, `fixableSolidControls` | the settings that read every TSX file as Solid, and `no-raw-interactive` with `vocabulary: '@polymorph/solid-ui'` | a Solid app: `settings: solidSettings` on the application block, and `fixableSolidControls` spread after the groups |
@@ -510,6 +511,14 @@ The rules are a separate package that only lint configs import. A bundler that f
 entry (`@polymorph/engine`, `@polymorph/react`, `@polymorph/react-ui`) therefore never reaches a
 linter.
 
+Every rule in the groups is an error except the three usage rules, which the groups report as
+warnings. A screen written before them can break them, and none of what they report stops a
+screen working, so an app that upgrades sees the reports and keeps building. It opts in to
+errors with `usageRulesAsErrors` once its screens hold to them. `verify`, and so
+`polymorph check`, the MCP server's `validate` and the screen emitter's check, report a warning
+as they report an error, because a diagnostic carries no severity. The validation of a screen
+spec reports the same three as faults.
+
 ### In this repository
 
 `eslint.config.ts` and `stylelint.config.js` at the root are the reference configuration:
@@ -517,7 +526,7 @@ linter.
 | Config block | Files | Rules |
 | --- | --- | --- |
 | `polymorph/red-rules-stage-1` | `apps/**/*.{ts,tsx}`, minus `apps/*/src/harness/**` | `stageOneRules` |
-| `polymorph/red-rules-stage-2` | the same | `stageTwoRules`, then `fixableRawControls` |
+| `polymorph/red-rules-stage-2` | the same | `stageTwoRules`, then `fixableRawControls` and `usageRulesAsErrors` |
 | `polymorph/vocabulary-containment` | `packages/{react-ui,react,engine}/**/*.{ts,tsx}` | `no-external-icons`, `no-external-motion`, `no-external-dataviz`, each with its gateway in `allowIn` |
 | `polymorph/vendorable-boundary` | `packages/react-ui/**/*.{ts,tsx}`, minus tests | `vendorableRules` |
 | Stylelint override | `packages/{recipes,react-ui,react}/**/*.css` | `token-values-only`, `scoped-token-owners`, `no-theme-selectors`, `no-member-selectors`, `no-ghost-tokens` (token list read from the theme engine at config load) |

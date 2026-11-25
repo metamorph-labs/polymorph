@@ -81,7 +81,7 @@ export const dangerLast: Rule.RuleModule = {
     return {
       'Program:exit'() {
         const trees = composedTrees(context)
-        collect(trees)
+        trees.forEach(collect)
         eachElement(trees, (element) => {
           collect(element.children)
           for (const held of element.slots.values()) collect(held)
