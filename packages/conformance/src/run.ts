@@ -761,22 +761,25 @@ class Run {
   /**
    * The trigger leaves the page while the member is open, as a row leaves with
    * its own button when a dialog it opened deletes the row. The runner puts a
-   * Button of its own just after the element the entry rendered into, opens the
-   * member, takes that element out of the document, closes the member and waits
-   * for focus on its Button: the first focusable element after where the
-   * trigger was. The element goes back before the statement ends, so the entry
-   * unmounts as it mounted.
+   * Button of its own just after the trigger, opens the member, takes the
+   * trigger alone out of the document, closes the member and waits for focus
+   * on its Button: the first focusable element after where the trigger was.
+   * The member itself stays in the page, so its own close path runs, as it
+   * does for a reader: a custom element taken out of the document would tear
+   * its member down, and a closed panel would prove nothing. The trigger goes
+   * back before the statement ends, so the entry unmounts as it mounted.
    */
   private async focusOnCloseNearest() {
-    const root = this.mounted?.root
-    const parent = root?.parentNode
-    if (!root || !parent) throw new Error('the entry rendered into no element in the document')
+    const name = this.opener()?.on ?? 'trigger'
+    const trigger = this.one(name)
+    const parent = trigger.parentNode
+    if (parent === null) throw new Error(`the part "${name}" is in no element of the document`)
     const after = document.createElement('button')
     after.textContent = 'After the trigger'
-    parent.insertBefore(after, root.nextSibling)
+    parent.insertBefore(after, trigger.nextSibling)
     try {
       await this.openFromTrigger()
-      root.remove()
+      trigger.remove()
       await this.harness.keyboard(keystrokes(this.closingKey()))
       await this.wait(() => (this.open() ? 'the panel did not close' : true), CLOSE_BUDGET)
       await this.wait(() => {
@@ -786,7 +789,7 @@ class Run {
           : `focus went to ${describe(active)}, not to the nearest focusable element`
       }, CLOSE_BUDGET)
     } finally {
-      if (!root.isConnected) parent.insertBefore(root, after)
+      if (!trigger.isConnected && after.parentNode === parent) parent.insertBefore(trigger, after)
       after.remove()
     }
   }

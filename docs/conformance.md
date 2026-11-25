@@ -163,7 +163,7 @@ the contract's first `opens` key names another part (DatePicker opens from a seg
 | `focus on-open` | after opening, focus is inside the part |
 | `focus on-close trigger` | after closing, focus is inside the trigger |
 | `focus on-close previous` | after closing, focus is on the element focused before the opening key |
-| `focus on-close nearest` | the runner puts a Button of its own just after the element the entry rendered into, opens the member, takes that element out of the document, and closes the member; focus is then on its Button, the first focusable element after where the trigger was. The element goes back before the statement ends |
+| `focus on-close nearest` | the runner puts a Button of its own just after the trigger (the part the member opens from), opens the member, takes the trigger alone out of the document, and closes the member; focus is then on its Button, the first focusable element after where the trigger was. The member stays in the page, so its own close path runs. The trigger goes back before the statement ends |
 | `dismiss` | from the open member, Escape closes it exactly when the statement says, and so does a press outside the member |
 | `announces busy` | an element of the member carries `aria-busy="true"` |
 | `announces live:polite` | an element of the member carries `aria-live="polite"`, or `role="status"` or `role="log"` without `aria-live` |
