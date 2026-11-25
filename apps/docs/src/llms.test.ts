@@ -1,11 +1,19 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
 import { GUIDES, guideMarkdownPath } from './guide-catalogue'
-import { CLI_BIN, LLMS_PATHS, llmsPaths, MCP_BIN, readLlmsFiles } from './llms'
-import { MCP_CONFIG, OWN_THE_CODE, QUICK_START, TARGETS, THEME_STEPS } from './reference/install'
+import { LLMS_PATHS, llmsPaths, readLlmsFiles, toolsCommand } from './llms'
+import { TOOLS_NAME } from './reference/facts'
+import {
+  MCP_CONFIG,
+  OWN_THE_CODE,
+  QUICK_START,
+  TARGETS,
+  THEME_STEPS,
+  TOOLS,
+} from './reference/install'
 import { REGISTRY } from './registry'
 
 /**
@@ -26,11 +34,12 @@ describe('/llms.txt points an agent at the contract', () => {
     expect(index).toContain(`](${LLMS_PATHS.full})`)
   })
 
-  it('names the MCP server and `init`, by bins that exist', () => {
-    expect(index).toContain(`node <checkout>/${MCP_BIN}`)
-    expect(index).toContain(`node <checkout>/${CLI_BIN} init`)
-    expect(existsSync(resolve(ROOT, MCP_BIN))).toBe(true)
-    expect(existsSync(resolve(ROOT, CLI_BIN))).toBe(true)
+  it('names the MCP server and `init` by the published package, at the release', () => {
+    const command = toolsCommand(REGISTRY)
+    expect(command).toBe(`npx -y ${TOOLS_NAME}@^${REGISTRY.version}`)
+    expect(index).toContain(`\`${command} mcp\``)
+    expect(index).toContain(`\`${command} init my-app\``)
+    expect(index).not.toContain('<checkout>')
   })
 
   it('states the three facts an agent works by', () => {
@@ -137,14 +146,17 @@ describe('the install page names the same bins', () => {
     ]),
   ].join('\n')
 
-  it('runs the CLI and the MCP server from a checkout, never by a bare name', () => {
-    // Neither is published, so a bare `polymorph` or `polymorph-mcp` is a
-    // command no reader has, and the CLI writes into the directory it runs in.
-    expect(MCP_CONFIG).toContain('"command": "node"')
-    expect(MCP_CONFIG).toContain(`/polymorph/${MCP_BIN}"`)
-    expect(commands).toContain(`node ../polymorph/${CLI_BIN} add`)
-    expect(commands).toContain(`node polymorph/${CLI_BIN} init`)
+  it('runs the CLI and the MCP server from the published package, never by a bare name', () => {
+    // A bare `polymorph` is a command no reader has, and `npx polymorph` fetches someone
+    // else's package: the tools are run by their scoped name.
+    expect(TOOLS).toBe(`npx -y ${TOOLS_NAME}@${REGISTRY.version}`)
+    expect(MCP_CONFIG).toContain('"command": "npx"')
+    expect(MCP_CONFIG).toContain(`"${TOOLS_NAME}@^${REGISTRY.version}", "mcp"`)
+    expect(commands).toContain(`${TOOLS} add`)
+    expect(commands).toContain(`${TOOLS} init my-app`)
     expect(commands).not.toMatch(/^polymorph(-mcp)?\b/m)
+    expect(commands).not.toMatch(/npx (-y )?polymorph\b/)
+    expect(commands).not.toContain('node ../polymorph/')
   })
 })
 

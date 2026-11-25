@@ -125,7 +125,7 @@ export function InstallPage() {
       <Section
         id="quick-start"
         title="The quickest way in"
-        lede="One command sets up a new React app with the components, a theme, the lint rules and a first screen. It runs from a copy of the repository, so you clone that first."
+        lede="One command sets up a new React app with the components, a theme, the lint rules and a first screen. There’s nothing to clone first: npx fetches the tools for you."
       >
         <Grid columns={2} gap={6}>
           <Stack gap={3}>
@@ -133,7 +133,7 @@ export function InstallPage() {
               {QUICK_START}
             </CodeBlock>
             <Text size="sm" tone="secondary">
-              {`You’ll need Node 24 or later, pnpm 11 and the GitHub CLI. The new app installs its packages from ${REGISTRY_ACCESS.host}, which asks for a token even to read them. Adding Polymorph to an app you already have needs no token.`}
+              {`You’ll need Node 24 or later. The new app installs its packages from npm with the package manager you ran the command with, and needs no token. Rather install from ${REGISTRY_ACCESS.host}? Add --registry github, and have a token that can read the packages ready.`}
             </Text>
           </Stack>
           <Stack gap={3}>
@@ -226,7 +226,7 @@ export function InstallPage() {
           <Grid columns={2} gap={6}>
             <Step
               title="Connect it"
-              help="polymorph init writes this for you as .mcp.json. Otherwise, add it to your client's config with the full path to your copy of the repository."
+              help="polymorph init writes this for you as .mcp.json, and it works on any machine. For an app you already have, add it to your client's config and start your client in the app's folder."
             >
               <CodeBlock copyable label="MCP server config">
                 {MCP_CONFIG}

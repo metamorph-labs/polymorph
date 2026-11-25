@@ -1,6 +1,6 @@
 import { SITE } from '../site'
 import { REGISTRY } from '../registry'
-import { CLI_BIN, MCP_BIN, PUBLISHED_NAMES, REGISTRY_ACCESS } from './facts'
+import { PUBLISHED_NAMES, TOOLS_NAME } from './facts'
 
 /**
  * The install page's content as data: one entry per framework and platform, each with how to
@@ -14,31 +14,20 @@ import { CLI_BIN, MCP_BIN, PUBLISHED_NAMES, REGISTRY_ACCESS } from './facts'
 /** The release the registry was built from. The release tag is `v` and this version. */
 export const RELEASE = REGISTRY.version
 
-/** The repository, as a reader clones it. */
-export const CLONE = `git clone ${SITE.repository}`
-
 /** The guide the page links for the full setup: `docs/consuming.md`, as the site publishes it. */
 export const GUIDE = '/guides/consuming'
 
 /** The system `polymorph init` themes a new app with (`packages/cli/src/plan.ts`). */
 export const INIT_SYSTEM = 'plain'
 
-/** The CLI, run from the directory that holds the checkout. */
-const cliBeside = `node polymorph/${CLI_BIN}`
-/** The CLI, run from inside an app that sits beside the checkout. */
-export const CLI_FROM_APP = `node ../polymorph/${CLI_BIN}`
+/**
+ * The CLI and the MCP server, the published package at this release, run with `npx` by its scoped
+ * name. It needs no copy of the repository, and runs in the directory it is started in.
+ */
+export const TOOLS = `npx -y ${TOOLS_NAME}@${RELEASE}`
 
 /** The one block that takes a reader from nothing to a running app. */
-export const QUICK_START = [
-  '# Once: a token that can read the packages',
-  REGISTRY_ACCESS.token,
-  '',
-  CLONE,
-  'cd polymorph && pnpm install && cd ..',
-  '',
-  `${cliBeside} init my-app`,
-  'cd my-app && pnpm dev',
-].join('\n')
+export const QUICK_START = [`${TOOLS} init my-app`, 'cd my-app && npm run dev'].join('\n')
 
 /** What `polymorph init` writes for React, from the table in `docs/consuming.md`. */
 export const INIT_WRITES: readonly { title: string; description: string; file: string }[] = [
@@ -126,10 +115,18 @@ function dependencies(foundation: string, vocabulary: string, framework?: string
 const PACKAGES_HELP =
   'They’re public on npm, so there’s nothing to set up first. Each one installs under its @polymorph name, so your imports match these docs.'
 
+/** A file of the repository at this release, as a reader downloads it. */
+const releaseFile = (path: string): string =>
+  `${SITE.repository.replace('https://github.com/', 'https://raw.githubusercontent.com/')}/v${RELEASE}/${path}`
+
 const themeStep: Snippet = {
   title: 'Copy a theme into your project',
   help: 'A theme is two small JSON files: a system and a palette. Start from a house one and change it later.',
-  code: `mkdir -p src/theme\ncp ../polymorph/design/systems/${INIT_SYSTEM}.json src/theme/\ncp ../polymorph/design/palettes/${PALETTE}.json src/theme/`,
+  code: [
+    'mkdir -p src/theme',
+    `curl -fsSLo src/theme/${INIT_SYSTEM}.json ${releaseFile(`design/systems/${INIT_SYSTEM}.json`)}`,
+    `curl -fsSLo src/theme/${PALETTE}.json ${releaseFile(`design/palettes/${PALETTE}.json`)}`,
+  ].join('\n'),
 }
 
 /** The Vite config `polymorph init` writes, with the framework's own plugin first. */
@@ -162,13 +159,13 @@ function entryStep(entry: string, extra = ''): Snippet {
 const lintStep: Snippet = {
   title: 'Turn on the lint rules',
   help: 'They keep styling out of your screens. The full guide has the ESLint and Stylelint config. To try them first, run this in your app. It needs no setup.',
-  code: `${CLI_FROM_APP} check src`,
+  code: `${TOOLS} check src`,
 }
 
 const createStep = (framework: string | null, dir = 'my-app'): Snippet => ({
   title: 'Start a new app',
-  help: 'Run this beside your copy of the repository.',
-  code: `${cliBeside} init ${dir}${framework === null ? '' : ` --framework ${framework}`}`,
+  help: 'Run this wherever you keep your projects. It makes the folder for you.',
+  code: `${TOOLS} init ${dir}${framework === null ? '' : ` --framework ${framework}`}`,
 })
 
 /** Members each generated vocabulary ships, against the whole vocabulary. */
@@ -346,8 +343,8 @@ import { Button } from '@polymorph/vue-ui'
     intro: `${shipped('elements')}, as custom elements like <poly-button>. For a static page, a server-rendered template, htmx or Turbo. Nothing to install and no build step.`,
     create: {
       title: 'Start a new site',
-      help: 'The files your page loads are built in your copy of the repository first, then copied into the site.',
-      code: `cd polymorph && ${REGISTRY.vendor.frameworks.elements.noBuild?.build ?? ''} && cd ..\n${cliBeside} init my-site --framework elements`,
+      help: 'This copies the files your page loads into the new site, ready to serve as they are.',
+      code: `${TOOLS} init my-site --framework elements`,
     },
     addTitle: 'Then write your page',
     add: [
@@ -491,7 +488,7 @@ dependencies:
 export const OWN_THE_CODE: Snippet = {
   title: 'Copy, compare, update',
   help: 'diff shows what you changed and what changed upstream. update brings in new releases for the files you left alone.',
-  code: `${CLI_FROM_APP} add button dialog\n${CLI_FROM_APP} diff\n${CLI_FROM_APP} update`,
+  code: `${TOOLS} add button dialog\n${TOOLS} diff\n${TOOLS} update`,
 }
 
 /** Checking and compiling a theme of the reader's own (`docs/theming.md`, `docs/consuming.md`). */
@@ -499,7 +496,7 @@ export const THEME_STEPS: readonly Snippet[] = [
   {
     title: 'Check it',
     help: 'Your theme goes through the same checks as ours, contrast in light and dark included. The report also lists the fonts to install.',
-    code: `${CLI_FROM_APP} theme validate my-system.json my-palette.json`,
+    code: `${TOOLS} theme validate my-system.json my-palette.json`,
   },
   {
     title: 'Use it',
@@ -508,12 +505,12 @@ export const THEME_STEPS: readonly Snippet[] = [
   },
 ]
 
-/** The mcpServers entry most clients read (`docs/tooling.md`). */
+/** The mcpServers entry most clients read (`docs/tooling.md`), as `polymorph init` writes it. */
 export const MCP_CONFIG = `{
   "mcpServers": {
     "polymorph": {
-      "command": "node",
-      "args": ["/absolute/path/to/polymorph/${MCP_BIN}"]
+      "command": "npx",
+      "args": ["-y", "${TOOLS_NAME}@^${RELEASE}", "mcp"]
     }
   }
 }`

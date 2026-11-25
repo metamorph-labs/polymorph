@@ -40,10 +40,10 @@ export const PUBLISHED_REGISTRY = 'https://npm.pkg.github.com'
 export const PUBLISHED_SCOPE = (Object.values(PUBLISHED_NAMES)[0] ?? '').split('/')[0] as string
 
 /**
- * What a reader needs before `polymorph init` can install a new app. The app it writes points
- * the scope at GitHub Packages (`packages/cli/src/init.ts`), which answers only a request with a
- * token, so the reader creates one once. An app that installs from npmjs.com needs none of this.
- * `facts.test.ts` fails when `PUBLISHED_REGISTRY` changes, so this block is revisited with it.
+ * What a reader needs when `polymorph init --registry github` installs a new app from GitHub
+ * Packages, which answers only a request with a token. The app it writes points the scope there
+ * (`packages/cli/src/init.ts`). The default, npmjs.com, needs none of this. `facts.test.ts` fails
+ * when `PUBLISHED_REGISTRY` changes, so this block is revisited with it.
  */
 export const REGISTRY_ACCESS = {
   /** The registry's name in a sentence. */
@@ -54,9 +54,12 @@ export const REGISTRY_ACCESS = {
   token: 'gh auth refresh -s read:packages\nexport NODE_AUTH_TOKEN=$(gh auth token)',
 } as const
 
-/** The bins a reader runs from a checkout. `facts.test.ts` checks that they exist. */
-export const CLI_BIN = 'packages/cli/bin/polymorph.js'
-export const MCP_BIN = 'packages/mcp/bin/polymorph-mcp.js'
+/**
+ * The CLI and the MCP server, one package a reader runs with `npx`, always by this scoped name:
+ * the unscoped `polymorph` on npm is another package. `facts.test.ts` holds it to the registry's
+ * name for the tools.
+ */
+export const TOOLS_NAME = PUBLISHED_NAMES['@polymorph/tools'] as string
 
 /** The MCP server's tools that only read, in the server's order. */
 export const MCP_READ_TOOLS = [
