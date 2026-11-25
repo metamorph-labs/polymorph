@@ -191,20 +191,31 @@ describe('hover', () => {
   })
 })
 
+/**
+ * Moves focus to `target` from the keyboard: Enter on a button whose press puts focus there, as
+ * a key that opens a dialog does when the dialog focuses its first control. Tab is not used,
+ * because on WebKit it passes over buttons and links (`TAB_PASSES_BUTTONS` in
+ * `@polymorph/conformance`); each shell's law reaches a control with Tab where the engine allows.
+ */
+async function focusByKey(target: HTMLElement) {
+  const from = document.createElement('button')
+  from.textContent = 'From'
+  from.addEventListener('click', () => target.focus())
+  document.body.append(from)
+  from.focus()
+  await userEvent.keyboard('{Enter}')
+  expect(document.activeElement).toBe(target)
+}
+
 describe('keyboard focus', () => {
-  it('opens when focus arrives from the keyboard, and closes on blur', async () => {
-    const before = document.createElement('button')
-    before.textContent = 'Before'
-    document.body.append(before)
-    before.focus()
+  it('opens when a key press moves focus to the button, and closes on blur', async () => {
     const button = tipped('Archive')
-    await userEvent.keyboard('{Tab}')
-    expect(document.activeElement).toBe(button)
+    await focusByKey(button)
     await vi.waitFor(() => expect(bubble()?.textContent).toBe('Archive'))
     // Held by focus, the tip stays while the pointer moves elsewhere.
-    await userEvent.hover(before)
+    await userEvent.hover(rest)
     expect(bubble()).not.toBeNull()
-    await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+    button.blur()
     expect(bubble()).toBeNull()
   })
 
@@ -223,9 +234,8 @@ describe('keyboard focus', () => {
 
   it('closes when the button is pressed from the keyboard', async () => {
     const button = tipped('Archive')
-    await userEvent.keyboard('{Tab}')
+    await focusByKey(button)
     await vi.waitFor(() => expect(bubble()).not.toBeNull())
-    expect(document.activeElement).toBe(button)
     await userEvent.keyboard('{Enter}')
     expect(bubble()).toBeNull()
   })
@@ -252,8 +262,7 @@ describe('Escape', () => {
 
   it('closes a tip focus opened and reaches the page, so a Dialog that focused the button closes', async () => {
     const heard = vi.fn()
-    tipped('Close')
-    await userEvent.keyboard('{Tab}')
+    await focusByKey(tipped('Close'))
     await vi.waitFor(() => expect(bubble()).not.toBeNull())
     document.addEventListener('keydown', heard, { capture: true })
     try {
@@ -329,34 +338,26 @@ describe('an icon-only link', () => {
     expect(bubble()).toBeNull()
   })
 
-  it('opens when focus arrives from the keyboard and not when a script gives it after a press', async () => {
-    const before = document.createElement('button')
-    before.textContent = 'Before'
-    document.body.append(before)
+  it('opens when a key press moves focus to it, and not for focus a script gives after a press', async () => {
+    const elsewhere = document.createElement('button')
+    elsewhere.textContent = 'Elsewhere'
+    elsewhere.style.cssText = 'position: fixed; left: 400px; top: 400px'
+    document.body.append(elsewhere)
     const link = tippedLink()
-    // A press elsewhere, then focus a script gives the link: no tip.
-    await userEvent.click(before)
+    await userEvent.click(elsewhere)
     link.focus()
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
     expect(document.activeElement).toBe(link)
     expect(bubble()).toBeNull()
-    // Focus the keyboard moves to the link: the tip.
-    await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
-    expect(document.activeElement).toBe(before)
-    await userEvent.keyboard('{Tab}')
-    expect(document.activeElement).toBe(link)
+    link.blur()
+    await focusByKey(link)
     await vi.waitFor(() => expect(bubble()?.textContent).toBe('Next page'))
   })
 
   it('closes when the link is followed from the keyboard', async () => {
-    const before = document.createElement('button')
-    before.textContent = 'Before'
-    document.body.append(before)
     const link = tippedLink()
     link.addEventListener('click', (event) => event.preventDefault())
-    before.focus()
-    await userEvent.keyboard('{Tab}')
-    expect(document.activeElement).toBe(link)
+    await focusByKey(link)
     await vi.waitFor(() => expect(bubble()).not.toBeNull())
     await userEvent.keyboard('{Enter}')
     expect(bubble()).toBeNull()

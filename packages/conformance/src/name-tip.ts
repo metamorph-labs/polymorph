@@ -4,6 +4,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { TOOLTIP_DELAY_MS, TOOLTIP_SKIP_DELAY_MS } from '@polymorph/engine'
 import { installTestTheme } from '@polymorph/engine/testing'
 
+import { TAB_PASSES_BUTTONS } from './engines'
 import type { MountAdapter } from './run'
 
 /**
@@ -106,13 +107,20 @@ export function nameTipLaw({ shell, adapter }: NameTipLaw): void {
 
     const extras: Element[] = []
 
-    /** Puts a plain button just before `root`, for focus to move from with the keyboard. */
-    function before(root: HTMLElement): HTMLButtonElement {
-      const button = document.createElement('button')
-      button.textContent = 'Before'
-      root.before(button)
-      extras.push(button)
-      return button
+    /**
+     * Moves focus to `target` from the keyboard: Enter on a plain button before `root`, whose
+     * press puts focus there, as a key that opens a dialog does when the dialog focuses its first
+     * control. It reaches a button on every engine, where Tab does not (`TAB_PASSES_BUTTONS`).
+     */
+    async function focusByKey(root: HTMLElement, target: HTMLElement): Promise<void> {
+      const from = document.createElement('button')
+      from.textContent = 'From'
+      from.addEventListener('click', () => target.focus())
+      root.before(from)
+      extras.push(from)
+      from.focus()
+      await userEvent.keyboard('{Enter}')
+      expect(document.activeElement).toBe(target)
     }
 
     beforeAll(installTestTheme)
@@ -150,12 +158,10 @@ export function nameTipLaw({ shell, adapter }: NameTipLaw): void {
 
     it('an icon-only Button shows its label on keyboard focus', async () => {
       const root = await mount('Button', 'icon-only')
-      const from = before(root)
-      from.focus()
-      await userEvent.keyboard('{Tab}')
-      expect(document.activeElement).toBe(find(root, 'button[aria-label="Edit"]'))
+      const button = find<HTMLButtonElement>(root, 'button[aria-label="Edit"]')
+      await focusByKey(root, button)
       await vi.waitFor(() => expect(tip()?.textContent).toBe('Edit'))
-      await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+      button.blur()
       expect(tip()).toBeNull()
     })
 
@@ -166,9 +172,7 @@ export function nameTipLaw({ shell, adapter }: NameTipLaw): void {
       await hoverAndWait(button)
       expect(tip()).toBeNull()
       vi.useRealTimers()
-      before(root).focus()
-      await userEvent.keyboard('{Tab}')
-      expect(document.activeElement).toBe(button)
+      await focusByKey(root, button)
       await frames()
       expect(tip()).toBeNull()
     })
@@ -221,16 +225,19 @@ export function nameTipLaw({ shell, adapter }: NameTipLaw): void {
       }
     })
 
-    it('Pagination’s arrow drawn as a link shows its label on keyboard focus', async () => {
-      const root = await mount(
-        'Pagination',
-        'with addresses — every page but the current one is a link',
-      )
-      find<HTMLElement>(root, 'a[aria-label="Page 5"]').focus()
-      await userEvent.keyboard('{Tab}')
-      expect(document.activeElement).toBe(find(root, 'a[aria-label="Next page"]'))
-      await vi.waitFor(() => expect(tip()?.textContent).toBe('Next page'))
-    })
+    it.skipIf(TAB_PASSES_BUTTONS)(
+      'Pagination’s arrow drawn as a link shows its label when Tab reaches it',
+      async () => {
+        const root = await mount(
+          'Pagination',
+          'with addresses — every page but the current one is a link',
+        )
+        find<HTMLElement>(root, 'a[aria-label="Page 5"]').focus()
+        await userEvent.keyboard('{Tab}')
+        expect(document.activeElement).toBe(find(root, 'a[aria-label="Next page"]'))
+        await vi.waitFor(() => expect(tip()?.textContent).toBe('Next page'))
+      },
+    )
 
     describe('in a modal Dialog', () => {
       const panel = () => find<HTMLElement>(document, '[data-member="dialog"][role="dialog"]')
