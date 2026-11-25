@@ -518,7 +518,7 @@ export const AGENT_SETUP: readonly Snippet[] = [
   },
   {
     title: 'Or add the plugin',
-    help: 'Claude Code installs the skills and the server in one go. In Codex, add the same repository with codex plugin marketplace add, then pick Polymorph under /plugins.',
+    help: 'Claude Code installs the skills and the server in one go. In Codex, add the same repository with codex plugin marketplace add, then run codex plugin add polymorph@metamorph-labs.',
     code: 'claude plugin marketplace add metamorph-labs/polymorph\nclaude plugin install polymorph@metamorph-labs',
   },
 ]

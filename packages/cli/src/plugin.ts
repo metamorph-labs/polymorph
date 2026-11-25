@@ -433,9 +433,10 @@ Codex:
 
 \`\`\`sh
 codex plugin marketplace add metamorph-labs/polymorph
+codex plugin add polymorph@metamorph-labs
 \`\`\`
 
-Then install Polymorph from the Metamorph Labs marketplace under \`/plugins\`.
+Inside Codex, \`/plugins\` lists the Metamorph Labs marketplace and installs Polymorph from it too.
 
 Any harness that reads Agent Skills:
 

@@ -143,7 +143,9 @@ codex mcp add polymorph -- npx -y @metamorph-labs/polymorph@^<version> mcp
 ```
 
 **As a plugin**: `codex plugin marketplace add metamorph-labs/polymorph` adds the marketplace in
-`.agents/plugins/marketplace.json`, and Polymorph is then installed from `/plugins`. The plugin is
+`.agents/plugins/marketplace.json`, and `codex plugin add polymorph@metamorph-labs` installs
+Polymorph from it, as `/plugins` does inside Codex. Codex then offers the four skills under the
+plugin's name (`polymorph:polymorph-screen`) and lists the server. The plugin is
 read through its portable manifest, `plugins/polymorph/plugin.json`, with its server in
 `plugins/polymorph/mcp.json`, read-only as in Claude Code.
 
