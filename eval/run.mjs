@@ -23,6 +23,7 @@ import * as prettier from 'prettier'
 import { scriptedTurns } from './fake/script.mjs'
 import {
   claudeEnvironment,
+  claudeHomeKind,
   codexEnvironment,
   codexHome,
   HarnessError as CliError,
@@ -1612,16 +1613,17 @@ async function runOnceCli({
  */
 
 /**
- * Items that mean Codex used a tool of its own. `todo_list` is its plan tool,
- * which no setting turns off
- * (https://learn.chatgpt.com/docs/config-file/config-reference lists none).
+ * Items that mean Codex used a tool of its own. Its plan tool is not among
+ * them: no setting turns it off
+ * (https://learn.chatgpt.com/docs/config-file/config-reference lists none),
+ * and a plan writes nothing and calls nothing, so a run that plans goes on
+ * and its plan updates (`todo_list` items) are counted in `planUpdates`.
  */
 const CODEX_OWN_TOOLS = new Set([
   'command_execution',
   'file_change',
   'web_search',
   'collab_tool_call',
-  'todo_list',
 ])
 
 /**
@@ -1758,6 +1760,7 @@ async function runOnceCodex({
   let lastError = null
   let harnessFault = null
   let stop = null
+  let planUpdates = 0
 
   const halt = (decision) => {
     if (stop !== null) return
@@ -1805,12 +1808,19 @@ async function runOnceCodex({
         started = Date.now()
         break
       case 'item.started':
+      case 'item.updated':
       case 'item.completed': {
         const item = event.item ?? {}
+        if (item.type === 'todo_list') {
+          // A plan is started and updated as it goes; its completion repeats the last update.
+          if (event.type !== 'item.completed') planUpdates += 1
+          break
+        }
         if (CODEX_OWN_TOOLS.has(item.type)) {
           ownTool(item)
           break
         }
+        if (event.type === 'item.updated') break
         if (item.type === 'mcp_tool_call') {
           if (runtime || item.server !== 'polymorph') {
             ownTool(item)
@@ -1906,7 +1916,11 @@ async function runOnceCodex({
     answer,
     harnessFault,
   })
-  return { ...measured, record: unreported(measured.record, meter), cost: null }
+  return {
+    ...measured,
+    record: { ...unreported(measured.record, meter), planUpdates },
+    cost: null,
+  }
 }
 
 /**
@@ -2162,19 +2176,23 @@ function summariseRuntime(records, endings) {
 }
 
 /**
- * Throws when a finished run's tokens are unknown: a harness that reports its
- * tokens only when it finishes (Codex, or Claude Code before its first
- * response) was stopped before it did. What that run spent cannot be added to
- * the total, so the total ceiling can no longer be held, and no further run
- * starts. A run that is the eval's last stops nothing.
+ * Throws when a finished run's tokens are unknown and `--max-tokens-total`
+ * was given: a harness that reports its tokens only when it finishes (Codex,
+ * or Claude Code before its first response) was stopped before it did, so
+ * the spend the eval was asked to cap is no longer known, and no further run
+ * starts. Without the flag, such a run is recorded and the eval goes on, and
+ * the default total ceiling counts the tokens that were reported. A run that
+ * is the eval's last stops nothing.
  */
 function holdsTotalCeiling(records) {
+  if (!settings.given.has('--max-tokens-total')) return
   const unknown = records.find((record) => record.inputTokens === null)
   if (unknown === undefined) return
   throw new CeilingError(
-    'tokens-total',
-    `${unknown.brief} #${unknown.run} ended before its harness reported its tokens, so the total ` +
-      `token ceiling (${settings.maxTokensTotal}) can no longer be held`,
+    'tokens-unknown',
+    `${unknown.brief} #${unknown.run} ended before its harness reported its tokens, so what the ` +
+      `eval has spent is unknown and \`--max-tokens-total ${settings.maxTokensTotal}\` can no ` +
+      'longer be held',
   )
 }
 
@@ -2399,6 +2417,8 @@ if (project) {
       tools: projectTools,
       template,
       harness: settings.runner,
+      // Codex always has a home of the run's own; Claude Code when its sign-in allows it.
+      harnessHome: settings.runner === 'codex' ? 'scratch' : claudeHomeKind(),
       launcher,
       scriptFor: (brief, run) => scriptFor(resolve(BRIEFS, `${brief}.md`), run),
     }
@@ -2497,6 +2517,7 @@ async function save({ partial, stopped }) {
             installed: lane.template.installed,
             agents: lane.template.agents,
             mcpServers: lane.template.mcpServers,
+            harnessHome: lane.harnessHome,
           },
         }),
     outputs: `${stem}.outputs.json`,

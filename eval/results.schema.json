@@ -55,8 +55,15 @@
               "properties": {
                 "reason": {
                   "type": "string",
-                  "description": "`api`: the Messages API refused, or kept failing. `cli`: the harness the runner started (Claude Code or Codex) failed, or reported an error, such as one from the API. `usage-limit`: the harness reported a usage or rate limit on the account it is signed in to. `tokens-per-run`, `tokens-total`: a token ceiling was reached.",
-                  "enum": ["api", "cli", "usage-limit", "tokens-per-run", "tokens-total"]
+                  "description": "`api`: the Messages API refused, or kept failing. `cli`: the harness the runner started (Claude Code or Codex) failed, or reported an error, such as one from the API. `usage-limit`: the harness reported a usage or rate limit on the account it is signed in to. `tokens-per-run`, `tokens-total`: a token ceiling was reached. `tokens-unknown`: `--max-tokens-total` was given, and a run ended before its harness reported its tokens, so the ceiling could no longer be held.",
+                  "enum": [
+                    "api",
+                    "cli",
+                    "usage-limit",
+                    "tokens-per-run",
+                    "tokens-total",
+                    "tokens-unknown"
+                  ]
                 },
                 "brief": { "type": "string", "description": "The brief whose run was under way." },
                 "run": { "type": "integer", "description": "Which run of that brief." },
@@ -798,6 +805,10 @@
                   "required": ["call", "fatal", "faults", "violations", "contract"],
                   "additionalProperties": false
                 }
+              },
+              "planUpdates": {
+                "type": "integer",
+                "description": "How often Codex started or updated its plan (its `todo_list` items). Its plan tool, which no setting turns off, writes nothing and calls nothing. Present for the `codex` runner only."
               }
             },
             "required": [
@@ -896,8 +907,15 @@
               "properties": {
                 "reason": {
                   "type": "string",
-                  "description": "`api`: the Messages API refused, or kept failing. `cli`: the harness the runner started (Claude Code or Codex) failed, or reported an error, such as one from the API. `usage-limit`: the harness reported a usage or rate limit on the account it is signed in to. `tokens-per-run`, `tokens-total`: a token ceiling was reached.",
-                  "enum": ["api", "cli", "usage-limit", "tokens-per-run", "tokens-total"]
+                  "description": "`api`: the Messages API refused, or kept failing. `cli`: the harness the runner started (Claude Code or Codex) failed, or reported an error, such as one from the API. `usage-limit`: the harness reported a usage or rate limit on the account it is signed in to. `tokens-per-run`, `tokens-total`: a token ceiling was reached. `tokens-unknown`: `--max-tokens-total` was given, and a run ended before its harness reported its tokens, so the ceiling could no longer be held.",
+                  "enum": [
+                    "api",
+                    "cli",
+                    "usage-limit",
+                    "tokens-per-run",
+                    "tokens-total",
+                    "tokens-unknown"
+                  ]
                 },
                 "brief": { "type": "string", "description": "The brief whose run was under way." },
                 "run": { "type": "integer", "description": "Which run of that brief." },
@@ -1700,6 +1718,10 @@
                   },
                   { "type": "null" }
                 ]
+              },
+              "planUpdates": {
+                "type": "integer",
+                "description": "How often Codex started or updated its plan (its `todo_list` items). Its plan tool, which no setting turns off, writes nothing and calls nothing. Present for the `codex` runner only."
               }
             },
             "required": [
@@ -1796,8 +1818,15 @@
               "properties": {
                 "reason": {
                   "type": "string",
-                  "description": "`api`: the Messages API refused, or kept failing. `cli`: the harness the runner started (Claude Code or Codex) failed, or reported an error, such as one from the API. `usage-limit`: the harness reported a usage or rate limit on the account it is signed in to. `tokens-per-run`, `tokens-total`: a token ceiling was reached.",
-                  "enum": ["api", "cli", "usage-limit", "tokens-per-run", "tokens-total"]
+                  "description": "`api`: the Messages API refused, or kept failing. `cli`: the harness the runner started (Claude Code or Codex) failed, or reported an error, such as one from the API. `usage-limit`: the harness reported a usage or rate limit on the account it is signed in to. `tokens-per-run`, `tokens-total`: a token ceiling was reached. `tokens-unknown`: `--max-tokens-total` was given, and a run ended before its harness reported its tokens, so the ceiling could no longer be held.",
+                  "enum": [
+                    "api",
+                    "cli",
+                    "usage-limit",
+                    "tokens-per-run",
+                    "tokens-total",
+                    "tokens-unknown"
+                  ]
                 },
                 "brief": { "type": "string", "description": "The brief whose run was under way." },
                 "run": { "type": "integer", "description": "Which run of that brief." },
@@ -1934,9 +1963,14 @@
               "type": "array",
               "description": "The MCP servers the project configures for the harness, by name.",
               "items": { "type": "string" }
+            },
+            "harnessHome": {
+              "type": "string",
+              "description": "Where the harness kept its own state. `scratch`: a directory of each run’s own (Codex’s `CODEX_HOME`, always; Claude Code’s `CLAUDE_CONFIG_DIR`, when it signs in from its environment). `owner`: the owner’s, because Claude Code signed in with `/login` keys that sign-in to its configuration directory, so it wrote `~/.claude.json` and `~/.claude/`.",
+              "enum": ["scratch", "owner"]
             }
           },
-          "required": ["tools", "installed", "agents", "mcpServers"],
+          "required": ["tools", "installed", "agents", "mcpServers", "harnessHome"],
           "additionalProperties": false
         },
         "outputs": {
@@ -2079,7 +2113,7 @@
                 },
                 "meetsBriefMeasured": {
                   "type": "integer",
-                  "description": "How many runs `meetsBriefRate` is over: the measured runs whose screen could be read: a spec, a React module, or no screen at all."
+                  "description": "How many runs `meetsBriefRate` is over: the measured runs whose screen could be read: a spec, a React or Solid module, or no screen at all."
                 },
                 "allThreeRate": {
                   "anyOf": [
@@ -2320,7 +2354,7 @@
                   },
                   "meetsBriefMeasured": {
                     "type": "integer",
-                    "description": "How many runs `meetsBriefRate` is over: the measured runs whose screen could be read: a spec, a React module, or no screen at all."
+                    "description": "How many runs `meetsBriefRate` is over: the measured runs whose screen could be read: a spec, a React or Solid module, or no screen at all."
                   },
                   "allThreeRate": {
                     "anyOf": [
@@ -2506,7 +2540,7 @@
                 "anyOf": [
                   {
                     "type": "boolean",
-                    "description": "Whether the screen the harness wrote meets every requirement of its brief (`eval/requirements/<brief>.json`). False when it wrote none. Null when it wrote one the requirements cannot read: a single-file component, or an Angular or Solid module."
+                    "description": "Whether the screen the harness wrote meets every requirement of its brief (`eval/requirements/<brief>.json`). False when it wrote none, or only modules that hold none. Null when it wrote one the requirements cannot read: a Vue or Svelte single-file component, an Angular component, or a page that uses the elements."
                   },
                   { "type": "null" }
                 ]
@@ -2524,7 +2558,7 @@
                     "properties": {
                       "kind": {
                         "type": "string",
-                        "description": "`spec`: specs the harness wrote under `src/screens/`, judged as a spec. `tsx`: React modules it wrote under `src/`, judged together as one module. `unread`: files the requirements cannot read.",
+                        "description": "`spec`: specs the harness wrote under `src/screens/`, judged together. `tsx`: React or Solid modules it wrote under `src/`, judged together, which name the same members. `unread`: a Vue or Svelte single-file component, an Angular component or a page that uses the elements, which the requirements cannot read.",
                         "enum": ["spec", "tsx", "unread"]
                       },
                       "files": {

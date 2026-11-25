@@ -17,6 +17,7 @@ import { clearTimeout, setTimeout } from 'node:timers'
 
 import {
   claudeEnvironment,
+  claudeHome,
   codexEnvironment,
   codexHome,
   HarnessError,
@@ -129,6 +130,13 @@ export function resolveTools(given, { scratch, cwd = process.cwd() }) {
     throw new SetupError('`--tools` names a packed tarball (`.tgz`) or a directory holding a bin')
   }
   const declared = binOf(path)
+  if (declared !== null && !existsSync(declared)) {
+    throw new SetupError(
+      `\`--tools\` names ${path}, whose \`package.json\` declares its \`polymorph\` bin at ` +
+        `${relative(path, declared)}, which does not exist: the package is not built. In this ` +
+        'checkout, `pnpm build:packages` builds it',
+    )
+  }
   const candidates = [declared, resolve(path, 'bin/polymorph.js'), resolve(path, 'polymorph')]
   const bin = candidates.find((candidate) => candidate !== null && existsSync(candidate))
   if (bin === undefined) {
@@ -151,6 +159,7 @@ function installTarball(tarball, scratch) {
   writeFileSync(resolve(prefix, 'package.json'), '{ "private": true }\n')
   const npm = spawnSync('npm', ['install', '--no-audit', '--no-fund', tarball], {
     cwd: prefix,
+    env: { ...process.env, ...packageStores(scratch) },
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
   })
@@ -174,24 +183,32 @@ function installTarball(tarball, scratch) {
 }
 
 /**
- * Where npm and pnpm keep what they fetch: inside the eval's scratch
- * directory, for the template's install, every harness and the judge's
- * scripts. Both harnesses' sandboxes let a command write there, so a harness
- * can install a package, and the owner's own cache and store are never
- * written. pnpm takes its store from `npm_config_store_dir`, as it takes
- * any setting from an `npm_config_` variable, and `pnpm_config_store_dir`
- * names it for a pnpm that reads only its own prefix. The template is
- * installed into this store, so a copy's `node_modules` and the store a
- * harness's pnpm finds agree.
+ * Where npm and pnpm keep what they fetch and what they remember: inside the
+ * eval's scratch directory, for the tools' install from a tarball, the
+ * template's install, every harness and the judge's scripts. npm's cache
+ * (`cache`), pnpm's store (`store-dir`), pnpm's metadata cache (`cache-dir`)
+ * and pnpm's state (`state-dir`) all move there, so the owner's own are never
+ * written, and both harnesses' sandboxes let a command write them, so a
+ * harness can install a package. pnpm takes a setting from an `npm_config_`
+ * variable, and the `pnpm_config_` one names it for a pnpm that reads only
+ * its own prefix. The template is installed into this store, so a copy's
+ * `node_modules` and the store a harness's pnpm finds agree.
  */
 export function packageStores(scratch) {
-  const store = resolve(scratch, 'pnpm-store')
+  const at = (name) => resolve(scratch, name)
   return {
-    npm_config_cache: resolve(scratch, 'npm-cache'),
-    npm_config_store_dir: store,
-    pnpm_config_store_dir: store,
+    npm_config_cache: at('npm-cache'),
+    npm_config_store_dir: at('pnpm-store'),
+    pnpm_config_store_dir: at('pnpm-store'),
+    npm_config_cache_dir: at('pnpm-cache'),
+    pnpm_config_cache_dir: at('pnpm-cache'),
+    npm_config_state_dir: at('pnpm-state'),
+    pnpm_config_state_dir: at('pnpm-state'),
   }
 }
+
+/** The directories `packageStores` names, once each. */
+export const storeDirectories = (stores) => [...new Set(Object.values(stores))]
 
 /** The tools' `polymorph` with `args`, run in `cwd`: its exit code and everything it printed. */
 export function polymorph(tools, args, { cwd, env = process.env, timeout = 600_000 }) {
@@ -256,8 +273,24 @@ export function makeTemplate({ tools, framework, harness, scratch, install }) {
     mcpServers: mcpServersOf(dir, harness),
     // What it holds, so a run that writes into it is caught.
     files: snapshot(dir),
+    // What the app is built with, so a run that takes it away is caught.
+    manifest: manifestOf(dir),
   }
 }
+
+/** Whether a project has a `package.json`, and which of the scripts the judge runs it holds. */
+function manifestOf(dir) {
+  const file = resolve(dir, 'package.json')
+  if (!existsSync(file)) return { present: false, scripts: [] }
+  const scripts = JSON.parse(readFileSync(file, 'utf8')).scripts ?? {}
+  return {
+    present: true,
+    scripts: BUILD_SCRIPTS.filter((name) => typeof scripts[name] === 'string'),
+  }
+}
+
+/** The scripts the judge runs, in order, when the app was installed. */
+const BUILD_SCRIPTS = ['typecheck', 'build']
 
 /**
  * The MCP servers a project configures for the harness, by name: the
@@ -431,9 +464,11 @@ function script(dir, name, env) {
  *   not judged, and is null.
  *
  * A `package.json` the harness left unreadable is the harness's work: the
- * project is not lawful, and an installed one does not build. A check that
- * cannot run on a readable project throws, which ends the run as the eval's
- * own fault. `env` is what the scripts run in.
+ * project is not lawful, and an installed one does not build. One it deleted,
+ * or a `typecheck` or `build` script it took out of one, leaves an installed
+ * app that does not build; `expected` is what the template's held. A check
+ * that cannot run on a readable project throws, which ends the run as the
+ * eval's own fault. `env` is what the scripts run in.
  */
 export async function judgeProject({
   dir,
@@ -442,6 +477,7 @@ export async function judgeProject({
   requirements,
   written,
   installed,
+  expected = { present: true, scripts: BUILD_SCRIPTS },
   env = process.env,
 }) {
   const broken = brokenManifest(dir)
@@ -483,12 +519,21 @@ export async function judgeProject({
 
   let builds = null
   let buildFault = null
+  const deleted = expected.present && !existsSync(resolve(dir, 'package.json'))
   if (installed && broken !== null) {
     builds = false
     buildFault = clip(`\`package.json\` cannot be read: ${broken}`)
+  } else if (installed && deleted) {
+    builds = false
+    buildFault = 'the harness deleted `package.json`, which the app is built from'
   } else if (installed) {
-    for (const name of ['typecheck', 'build']) {
+    for (const name of BUILD_SCRIPTS) {
       const result = script(dir, name, env)
+      if (result === null && expected.scripts.includes(name)) {
+        builds = false
+        buildFault = `the harness took the \`${name}\` script out of \`package.json\``
+        break
+      }
       if (result === null) continue
       builds = result.ok
       if (!result.ok) {
@@ -1146,12 +1191,15 @@ export async function runOnceProject({
       ? resolve(dir, '.mcp.json')
       : resolve(directory, 'no-servers.json')
     if (!existsSync(config)) writeFileSync(config, '{ "mcpServers": {} }\n')
-    const sandbox = {
-      allowWrite: [stores.npm_config_cache, stores.npm_config_store_dir],
-      denyWrite: [lane.template.dir],
-    }
+    const sandbox = { allowWrite: storeDirectories(stores), denyWrite: [lane.template.dir] }
     args = [...script, ...claudeProjectArguments({ settings, config, servers, sandbox })]
-    env = claudeEnvironment(stores)
+    // Claude Code keeps its state in a directory of the run's own when its sign-in survives that.
+    env = claudeEnvironment({
+      ...stores,
+      ...(lane.harnessHome === 'scratch'
+        ? { CLAUDE_CONFIG_DIR: claudeHome(resolve(directory, 'claude-home')) }
+        : {}),
+    })
     read = claudeReader({ maxTurns: settings.maxTurns, meter, ceilings })
   }
 
@@ -1186,6 +1234,7 @@ export async function runOnceProject({
       requirements,
       written,
       installed: lane.template.installed,
+      expected: lane.template.manifest,
       env: { ...process.env, ...stores },
     })
   } catch (error) {

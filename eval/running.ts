@@ -7,10 +7,14 @@ import { availableParallelism } from 'node:os'
  *
  * At most `limit` evals run at once, so a test file that starts many keeps
  * the machine's load, and each eval's time, within what its setup allows.
- * Every eval still running when a test file ends, a setup that timed out
- * among them, is sent SIGTERM by `stopAll`, which stops the harnesses it
- * started and removes its scratch directories (`onInterrupt`,
- * `eval/harnesses.mjs`).
+ * When a test file ends, `stopAll` sends SIGTERM to every eval still running
+ * (a setup that timed out leaves some), which stops the harnesses it started
+ * and removes its scratch directories (`onInterrupt`, `eval/harnesses.mjs`).
+ * The evals still waiting for their turn are refused, and so is every eval
+ * asked for afterwards, so none starts once the file has ended.
+ *
+ * `entry` is the script started, `eval/run.mjs` unless a test of the runner
+ * itself names another.
  */
 
 export interface Ran {
@@ -19,36 +23,48 @@ export interface Ran {
   stderr: string
 }
 
+/** What a run asked for after `stopAll` is refused with. */
+export class StoppedError extends Error {
+  constructor() {
+    super('the evals were stopped, so this one does not start')
+  }
+}
+
 export function evalRunner(
   root: string,
   limit = Math.max(2, Math.floor(availableParallelism() / 2)),
+  entry = 'eval/run.mjs',
 ) {
   const running = new Set<ChildProcess>()
-  const waiting: (() => void)[] = []
+  const waiting: { start: () => void; refuse: (error: Error) => void }[] = []
   let active = 0
+  let stopped = false
 
   const acquire = () =>
-    new Promise<void>((done) => {
-      if (active < limit) {
+    new Promise<void>((start, refuse) => {
+      if (stopped) refuse(new StoppedError())
+      else if (active < limit) {
         active += 1
-        done()
-      } else waiting.push(done)
+        start()
+      } else waiting.push({ start, refuse })
     })
   const release = () => {
-    const next = waiting.shift()
+    const next = stopped ? undefined : waiting.shift()
     if (next === undefined) active -= 1
-    else next()
+    else next.start()
   }
 
   /**
-   * `node eval/run.mjs <args>`: its exit code and what it printed. `env` is
-   * laid over the test's own environment, or replaces it when `whole` is set.
+   * `node <entry> <args>`: its exit code and what it printed. `env` is laid
+   * over the test's own environment, or replaces it when `whole` is set.
+   * Refused with `StoppedError` once `stopAll` has run.
    */
   async function run(args: string[], env: NodeJS.ProcessEnv = {}, whole = false): Promise<Ran> {
     await acquire()
     try {
+      if (stopped) throw new StoppedError()
       return await new Promise<Ran>((done) => {
-        const child = spawn(process.execPath, ['eval/run.mjs', ...args], {
+        const child = spawn(process.execPath, [entry, ...args], {
           cwd: root,
           env: whole ? env : { ...process.env, ...env },
           stdio: ['ignore', 'pipe', 'pipe'],
@@ -68,8 +84,10 @@ export function evalRunner(
     }
   }
 
-  /** Sends SIGTERM to every eval still running. */
+  /** Sends SIGTERM to every eval still running, and refuses every eval waiting or asked for later. */
   function stopAll() {
+    stopped = true
+    for (const { refuse } of waiting.splice(0)) refuse(new StoppedError())
     for (const child of running) child.kill('SIGTERM')
     running.clear()
   }

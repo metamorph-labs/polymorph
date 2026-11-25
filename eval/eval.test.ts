@@ -919,91 +919,32 @@ const listen = async (target: Server) => {
   return `http://127.0.0.1:${(target.address() as AddressInfo).port}`
 }
 
+/** The local servers' addresses, once they listen. */
+const bases = { api: '', faults: '', unparsed: '', runtime: '' }
+const LOCAL = { ANTHROPIC_API_KEY: 'local-key' }
+const SETTINGS_BRIEF = ['--briefs', 'eval/briefs/settings-workspace.md']
+const RUNTIME_ARGS = ['--mode', 'runtime']
+
+/** One run of the settings brief through a stand-in. */
+const throughStandIn = (name: string, scripts: object[], directory: string, more: string[] = []) =>
+  attempt(name, [
+    ...['--runner', 'cli', '--claude', standIn(scripts, directory), '--model', 'local-model'],
+    ...['--runs', '1', ...SETTINGS_BRIEF],
+    ...more,
+  ])
+
+// The evals that many sections read. A section that reads evals of its own has its own setup,
+// so no one setup waits on all of them.
 beforeAll(async () => {
   resultsBefore = listing()
-  const [base, faultsBase, unparsedBase, runtimeBase] = await Promise.all([
+  ;[bases.api, bases.faults, bases.unparsed, bases.runtime] = await Promise.all([
     listen(server),
     listen(faultsServer),
     listen(unparsedServer),
     listen(runtimeServer),
   ])
   screen = await loadScreen()
-  const local = { ANTHROPIC_API_KEY: 'local-key' }
-  const settingsBrief = ['--briefs', 'eval/briefs/settings-workspace.md']
-
-  /** One run of the settings brief through a stand-in. */
-  const throughStandIn = (
-    name: string,
-    scripts: object[],
-    directory: string,
-    more: string[] = [],
-  ) =>
-    attempt(name, [
-      ...['--runner', 'cli', '--claude', standIn(scripts, directory), '--model', 'local-model'],
-      ...['--runs', '1', '--briefs', 'eval/briefs/settings-workspace.md'],
-      ...more,
-    ])
-  const attempted = Promise.all([
-    throughStandIn('cli-half-line', HALF_LINE_RUNS, HALF_LINE),
-    throughStandIn('cli-unreadable', UNREADABLE_RUNS, UNREADABLE),
-    throughStandIn('cli-ahead', AHEAD_RUNS, AHEAD, ['--max-iterations', '1']),
-    throughStandIn('cli-ahead-denied', AHEAD_DENIED_RUNS, AHEAD_DENIED, ['--max-iterations', '1']),
-  ])
-
-  const runtime = ['--mode', 'runtime']
-  // The run-time lane: every brief twice through both runners, a subset and a list of members,
-  // the local API with eight runs of one brief, and the stand-in for the CLI.
-  const runtimeEvaluated = Promise.all([
-    evaluate('runtime-every', ['--fake', ...runtime, '--runs', '2']),
-    evaluate('runtime-cli', ['--fake', '--runner', 'cli', ...runtime, '--runs', '2']),
-    evaluate('runtime-small', ['--fake', ...runtime, '--members', 'small', ...settingsBrief]),
-    evaluate('runtime-list', [
-      '--fake',
-      ...runtime,
-      '--members',
-      'Stack, Heading,Text,Stack',
-      ...settingsBrief,
-    ]),
-    evaluate(
-      'runtime-api',
-      [
-        ...runtime,
-        ...['--model', 'local-model', '--thinking', 'disabled', '--effort', 'low'],
-        ...['--runs', '8', ...settingsBrief],
-      ],
-      { ...local, ANTHROPIC_BASE_URL: runtimeBase },
-    ),
-    evaluate(
-      'runtime-stand-in',
-      [
-        ...['--runner', 'cli', '--claude', standIn(RUNTIME_STAND_IN_RUNS, RUNTIME_STAND_IN)],
-        ...runtime,
-        ...['--model', 'local-model', '--effort', 'high', '--runs', '3', ...settingsBrief],
-      ],
-      { ANTHROPIC_API_KEY: '' },
-    ),
-    attempt('runtime-toolful', [
-      ...['--runner', 'cli', '--claude', toolfulCli(resolve(SCRATCH, 'toolful'))],
-      ...runtime,
-      ...settingsBrief,
-    ]),
-  ])
-
-  const [
-    two,
-    cap,
-    tsx,
-    api,
-    faults,
-    unparsed,
-    runCeiling,
-    totalCeiling,
-    cliTwo,
-    cliCap,
-    cliStandIn,
-    every,
-    cliRuns,
-  ] = await Promise.all([
+  const [two, cap, tsx, every, cliRuns, runtimeEvery] = await Promise.all([
     evaluate('two', ['--fake', '--briefs', 'eval/briefs/{list-incidents,settings-workspace}.md']),
     evaluate('cap', [
       '--fake',
@@ -1013,135 +954,16 @@ beforeAll(async () => {
       'eval/briefs/list-incidents.md',
     ]),
     evaluate('tsx', ['--fake', '--mode', 'tsx', '--briefs', 'eval/briefs/list-incidents.md']),
-    evaluate(
-      'api',
-      [
-        '--model',
-        'local-model',
-        '--effort',
-        'high',
-        '--briefs',
-        'eval/briefs/settings-workspace.md',
-      ],
-      // The trailing slash is dropped, as the SDKs drop it.
-      { ...local, ANTHROPIC_BASE_URL: `${base}/` },
-    ),
-    evaluate(
-      'faults',
-      ['--model', 'local-model', '--runs', '4', '--briefs', 'eval/briefs/settings-workspace.md'],
-      { ...local, ANTHROPIC_BASE_URL: faultsBase },
-    ),
-    evaluate(
-      'unparsed',
-      ['--model', 'local-model', '--briefs', 'eval/briefs/settings-workspace.md'],
-      {
-        ...local,
-        ANTHROPIC_BASE_URL: unparsedBase,
-      },
-    ),
-    evaluate('run-ceiling', [
-      '--fake',
-      '--max-tokens-per-run',
-      '20000',
-      '--briefs',
-      'eval/briefs/list-incidents.md',
-    ]),
-    evaluate('total-ceiling', [
-      '--fake',
-      '--max-tokens-total',
-      '70000',
-      '--briefs',
-      'eval/briefs/{list-incidents,settings-workspace}.md',
-    ]),
-    evaluate('cli-two', [
-      '--fake',
-      '--runner',
-      'cli',
-      '--briefs',
-      'eval/briefs/{list-incidents,settings-workspace}.md',
-    ]),
-    evaluate('cli-cap', [
-      '--fake',
-      '--runner',
-      'cli',
-      '--max-iterations',
-      '1',
-      '--briefs',
-      'eval/briefs/list-incidents.md',
-    ]),
-    evaluate(
-      'cli-stand-in',
-      [
-        '--runner',
-        'cli',
-        '--claude',
-        standIn(STAND_IN_RUNS),
-        '--model',
-        'local-model',
-        '--effort',
-        'high',
-        '--runs',
-        '5',
-        '--briefs',
-        'eval/briefs/settings-workspace.md',
-      ],
-      // No key, and the variables a Claude Code session sets for what it starts.
-      {
-        ANTHROPIC_API_KEY: '',
-        CLAUDECODE: '1',
-        CLAUDE_EFFORT: 'xhigh',
-        CLAUDE_AGENT_SDK_MCP_NO_PREFIX: '1',
-        CLAUDE_CODE_OAUTH_TOKEN: 'local-token',
-      },
-    ),
     // Every brief, three runs each. The second run of one brief plays a script of its own.
     evaluate('every', ['--fake', '--runs', '3']),
     evaluate('cli-runs', [
-      '--fake',
-      '--runner',
-      'cli',
-      '--runs',
-      '2',
-      '--briefs',
-      'eval/briefs/dashboard-usage.md',
+      ...['--fake', '--runner', 'cli', '--runs', '2'],
+      ...['--briefs', 'eval/briefs/dashboard-usage.md'],
     ]),
+    evaluate('runtime-every', ['--fake', ...RUNTIME_ARGS, '--runs', '2']),
   ])
-  const [halfLine, unreadable, ahead, aheadDenied] = await attempted
-  Object.assign(attempts, { halfLine, unreadable, ahead, aheadDenied })
-  const [
-    runtimeEvery,
-    runtimeCli,
-    runtimeSmall,
-    runtimeList,
-    runtimeApi,
-    runtimeStandIn,
-    runtimeToolful,
-  ] = await runtimeEvaluated
-  Object.assign(runs, {
-    runtimeEvery,
-    runtimeCli,
-    runtimeSmall,
-    runtimeList,
-    runtimeApi,
-    runtimeStandIn,
-  })
-  Object.assign(attempts, { runtimeToolful })
-  Object.assign(runs, {
-    two,
-    cap,
-    tsx,
-    api,
-    faults,
-    unparsed,
-    runCeiling,
-    totalCeiling,
-    cliTwo,
-    cliCap,
-    cliStandIn,
-    every,
-    cliRuns,
-  })
-}, 120_000)
+  Object.assign(runs, { two, cap, tsx, every, cliRuns, runtimeEvery })
+}, 90_000)
 
 afterAll(() => {
   runner.stopAll()
@@ -1355,240 +1177,313 @@ describe('tsx mode', () => {
   })
 })
 
-describe('the Messages API path, against a local server', () => {
-  it('sends the key, the version, the model, the effort, the tools and the brief', () => {
-    // Six requests for four turns: two of them were sent again.
-    expect(captured).toHaveLength(6)
-    for (const { url, headers, body } of captured) {
-      expect(url).toBe('/v1/messages')
-      expect(headers['x-api-key']).toBe('local-key')
-      expect(headers['anthropic-version']).toBe('2023-06-01')
-      expect(body.model).toBe('local-model')
-      expect(body.stream).toBe(true)
-      expect(body.output_config).toEqual({ effort: 'high' })
-      expect(body.tools.map((tool) => tool.name)).toEqual(TOOL_NAMES)
-      expect(body.system).toContain('# Screen brief — Workspace settings')
-      expect(body.system).toContain('"polymorph-screen/1"')
-      expect(body.system).toContain('Call `validate` before you answer.')
-    }
-    expect((runs.api as Evaluation).results.settings).toMatchObject({ effort: 'high' })
-  })
-
-  it('never shows the model the requirements its screen is judged by', () => {
-    const requirements = requirementsOf('settings-workspace')
-    expect(requirements.length).toBeGreaterThan(0)
-    for (const { body } of captured) {
-      const sent = JSON.stringify(body)
-      for (const { id, says } of requirements) {
-        expect(sent).not.toContain(says)
-        expect(sent).not.toContain(`"${id}"`)
-      }
-    }
-  })
-
-  it('sends no effort when none was chosen, so the model’s default applies', () => {
-    for (const { body } of faultsCaptured) expect(body.output_config).toBeUndefined()
-    expect((runs.faults as Evaluation).results.settings).toMatchObject({ effort: 'default' })
-  })
-
-  it('returns the assembled turn unchanged, and answers every tool call', () => {
-    const [opening, assistant, results] = captured[2]?.body.messages ?? []
-    expect(opening).toEqual({ role: 'user', content: 'Build the screen the brief describes.' })
-    // The thinking block keeps its signature, and the streamed input is whole again.
-    expect(assistant).toEqual({
-      role: 'assistant',
-      content: [
-        { type: 'thinking', thinking: '', signature: 'sig-card' },
-        { type: 'tool_use', id: 'toolu_card', name: 'get_system_card', input: { platform: 'web' } },
-      ],
-    })
-    const [result] = (results?.content ?? []) as { tool_use_id: string; content: string }[]
-    expect(result?.tool_use_id).toBe('toolu_card')
-    expect(result?.content).toContain('# Polymorph — system card')
-  })
-
-  it('sends a request that broke off mid-stream again, unchanged', () => {
-    expect(captured[3]?.body).toEqual(captured[2]?.body)
-  })
-
-  it('sends an input that is not JSON back as an empty object, and answers it as INVALID_JSON', () => {
-    // The API refuses an assistant turn whose call has an input that is not an object, and the
-    // local one does too, so a run that sent the text back would have stopped here.
-    const messages = captured[4]?.body.messages ?? []
-    const card = ((messages[2]?.content ?? []) as { content: string }[])[0]?.content
-    expect(messages[3]).toEqual({
-      role: 'assistant',
-      content: [
-        { type: 'tool_use', id: 'toolu_bad', name: 'get_component', input: {} },
-        {
-          type: 'tool_use',
-          id: 'toolu_card_again',
-          name: 'get_system_card',
-          input: { platform: 'web' },
-        },
-      ],
-    })
-    expect(messages[4]).toEqual({
-      role: 'user',
-      content: [
-        {
-          type: 'tool_result',
-          tool_use_id: 'toolu_bad',
-          content: expect.stringMatching(
-            /^\{"INVALID_JSON":"\{\\"name\\": \\"Settings","why":".+"\}$/,
-          ),
-          is_error: true,
-        },
-        // A repeated card call is answered from the run's own copy, and still counted.
-        { type: 'tool_result', tool_use_id: 'toolu_card_again', content: card },
-      ],
-    })
-  })
-
-  it('measures what the API reported, retries and discarded attempts apart', () => {
-    expect(record(runs.api as Evaluation, 'settings-workspace')).toMatchObject({
-      firstShotLawful: true,
-      iterations: 1,
-      lawful: true,
-      ended: 'answered',
-      turns: 4,
-      toolCalls: { get_system_card: 2, search_components: 0, get_component: 1, validate: 1 },
-      inputTokens: 28_000,
-      outputTokens: 5_000,
-      // The broken-off attempt's reported usage: 3,000 in and 1 out.
-      discardedTokens: 3_001,
-      retries: 2,
-      // The 529's `retry-after` of 0.01 s, then two seconds for the first retry of the stream.
-      backoffMs: 2_010,
-    })
-    expect((runs.api as Evaluation).results).toMatchObject({ model: 'local-model', fake: false })
-  })
-})
-
-describe('runs that must not count for the model', () => {
-  const faults = () => runs.faults as Evaluation
-
-  it('records an exception inside `validate` as a harness fault, with the document', () => {
-    expect(record(faults(), 'settings-workspace', 1)).toMatchObject({
-      ended: 'harness',
-      lawful: false,
-      // A run the harness failed on is not judged against its brief either.
-      meetsBrief: false,
-      failedRequirements: [],
-      iterations: null,
-      turns: 1,
-      toolCalls: { validate: 1 },
-    })
-    expect(record(faults(), 'settings-workspace', 1).harnessFault).toContain('`validate` failed')
-    expect(faults().outputs.outputs[0]?.document).toBe(UNCHECKABLE)
-  })
-
-  it('counts a `validate` call whose input is not JSON as a submission that is not lawful', () => {
-    // Written as text, a document that is not JSON is a first shot that missed. Written as the
-    // call's input, the same slip leaves the whole input unreadable, and it counts the same.
-    expect(record(runs.unparsed as Evaluation, 'settings-workspace', 1)).toMatchObject({
-      ended: 'answered',
-      firstShotLawful: false,
-      iterations: 2,
-      lawful: true,
-      toolCalls: { validate: 2 },
-      misses: [
-        {
-          call: 1,
-          // The parser's own words follow, with where the text stopped being JSON.
-          fatal: expect.stringMatching(
-            /^the input of the `validate` call is not a JSON object: .+, in 39 characters$/,
-          ),
-          faults: [],
-          violations: [],
-        },
-      ],
-    })
-    expect(unparsedCaptured[1]?.body.messages[1]).toEqual({
-      role: 'assistant',
-      content: [{ type: 'tool_use', id: 'toolu_slip', name: 'validate', input: {} }],
-    })
-  })
-
-  it('never counts a refused or cut-off response as lawful, whatever it carried', () => {
-    // The refused one carried a document that meets every requirement, and the cut-off one half
-    // a document. Neither is judged: neither meets its brief, and neither names a requirement.
-    expect(record(faults(), 'settings-workspace', 2)).toMatchObject({
-      ended: 'refusal',
-      firstShotLawful: true,
-      iterations: 1,
-      lawful: false,
-      meetsBrief: false,
-      failedRequirements: [],
-    })
-    expect(record(faults(), 'settings-workspace', 4)).toMatchObject({
-      ended: 'max_tokens',
-      lawful: false,
-      meetsBrief: false,
-      failedRequirements: [],
-    })
-  })
-
-  it('counts a lawful answer that was never validated apart from the call count', () => {
-    expect(record(faults(), 'settings-workspace', 3)).toMatchObject({
-      ended: 'answered',
-      lawful: true,
-      meetsBrief: true,
-      iterations: null,
-      toolCalls: { validate: 0 },
-    })
-  })
-
-  it('leaves the harness fault out of the rates, and counts every ending', () => {
-    expect(faults().results.summary.overall).toMatchObject({
-      runs: 4,
-      // The three runs the rates and their intervals are over.
-      measured: 3,
-      endings: { answered: 1, cap: 0, turns: 0, max_tokens: 1, refusal: 1, harness: 1 },
-      firstShotRate: 0.3333,
-      lawfulRate: 0.3333,
-      lawfulInterval: { low: 0.0615, high: 0.7923 },
-      meetsBriefRate: 0.3333,
-      lawfulAndMeetsBriefRate: 0.3333,
-      // The cut-off run's half document is not read, so it counts against no requirement.
-      failedRequirements: {},
-      meanIterations: null,
-      lawfulWithoutValidate: 1,
-    })
-  })
-})
-
-describe('the token ceilings', () => {
-  it('stop the eval before a run’s next request, keeping nothing of the unfinished run', () => {
-    const { code, stderr, results, readme } = runs.runCeiling as Evaluation
-    expect(code).toBe(1)
-    expect(stderr).toContain('per-run token ceiling')
-    expect(results).toMatchObject({
-      partial: true,
-      // Three turns of the scripted run spent 28,380 tokens; the fourth never started.
-      stopped: { reason: 'tokens-per-run', brief: 'list-incidents', run: 1, tokens: 28_380 },
-      records: [],
-      summary: { overall: { runs: 0, lawfulRate: null, meanInputTokens: null } },
-    })
-    expect(readme).toContain('(partial: stopped at the per-run token ceiling)')
-  })
-
-  it('stop the eval over all its runs, keeping the runs that finished', () => {
-    const { code, results } = runs.totalCeiling as Evaluation
-    expect(code).toBe(1)
-    expect(results).toMatchObject({
-      partial: true,
-      stopped: { reason: 'tokens-total', brief: 'settings-workspace', run: 1, tokens: 12_460 },
-    })
-    expect(results.records.map(({ brief }) => brief)).toEqual(['list-incidents'])
-    expect(results.summary.briefs.map(({ brief, runs: count }) => `${brief}:${count}`)).toEqual([
-      'list-incidents:1',
-      'settings-workspace:0',
+describe('the API runner against local servers, and the token ceilings', () => {
+  beforeAll(async () => {
+    const [api, faults, unparsed, runCeiling, totalCeiling] = await Promise.all([
+      evaluate(
+        'api',
+        ['--model', 'local-model', '--effort', 'high', ...SETTINGS_BRIEF],
+        // The trailing slash is dropped, as the SDKs drop it.
+        { ...LOCAL, ANTHROPIC_BASE_URL: `${bases.api}/` },
+      ),
+      evaluate('faults', ['--model', 'local-model', '--runs', '4', ...SETTINGS_BRIEF], {
+        ...LOCAL,
+        ANTHROPIC_BASE_URL: bases.faults,
+      }),
+      evaluate('unparsed', ['--model', 'local-model', ...SETTINGS_BRIEF], {
+        ...LOCAL,
+        ANTHROPIC_BASE_URL: bases.unparsed,
+      }),
+      evaluate('run-ceiling', [
+        ...['--fake', '--max-tokens-per-run', '20000'],
+        ...['--briefs', 'eval/briefs/list-incidents.md'],
+      ]),
+      evaluate('total-ceiling', [
+        ...['--fake', '--max-tokens-total', '70000'],
+        ...['--briefs', 'eval/briefs/{list-incidents,settings-workspace}.md'],
+      ]),
     ])
+    Object.assign(runs, { api, faults, unparsed, runCeiling, totalCeiling })
+  }, 90_000)
+
+  describe('the Messages API path, against a local server', () => {
+    it('sends the key, the version, the model, the effort, the tools and the brief', () => {
+      // Six requests for four turns: two of them were sent again.
+      expect(captured).toHaveLength(6)
+      for (const { url, headers, body } of captured) {
+        expect(url).toBe('/v1/messages')
+        expect(headers['x-api-key']).toBe('local-key')
+        expect(headers['anthropic-version']).toBe('2023-06-01')
+        expect(body.model).toBe('local-model')
+        expect(body.stream).toBe(true)
+        expect(body.output_config).toEqual({ effort: 'high' })
+        expect(body.tools.map((tool) => tool.name)).toEqual(TOOL_NAMES)
+        expect(body.system).toContain('# Screen brief — Workspace settings')
+        expect(body.system).toContain('"polymorph-screen/1"')
+        expect(body.system).toContain('Call `validate` before you answer.')
+      }
+      expect((runs.api as Evaluation).results.settings).toMatchObject({ effort: 'high' })
+    })
+
+    it('never shows the model the requirements its screen is judged by', () => {
+      const requirements = requirementsOf('settings-workspace')
+      expect(requirements.length).toBeGreaterThan(0)
+      for (const { body } of captured) {
+        const sent = JSON.stringify(body)
+        for (const { id, says } of requirements) {
+          expect(sent).not.toContain(says)
+          expect(sent).not.toContain(`"${id}"`)
+        }
+      }
+    })
+
+    it('sends no effort when none was chosen, so the model’s default applies', () => {
+      for (const { body } of faultsCaptured) expect(body.output_config).toBeUndefined()
+      expect((runs.faults as Evaluation).results.settings).toMatchObject({ effort: 'default' })
+    })
+
+    it('returns the assembled turn unchanged, and answers every tool call', () => {
+      const [opening, assistant, results] = captured[2]?.body.messages ?? []
+      expect(opening).toEqual({ role: 'user', content: 'Build the screen the brief describes.' })
+      // The thinking block keeps its signature, and the streamed input is whole again.
+      expect(assistant).toEqual({
+        role: 'assistant',
+        content: [
+          { type: 'thinking', thinking: '', signature: 'sig-card' },
+          {
+            type: 'tool_use',
+            id: 'toolu_card',
+            name: 'get_system_card',
+            input: { platform: 'web' },
+          },
+        ],
+      })
+      const [result] = (results?.content ?? []) as { tool_use_id: string; content: string }[]
+      expect(result?.tool_use_id).toBe('toolu_card')
+      expect(result?.content).toContain('# Polymorph — system card')
+    })
+
+    it('sends a request that broke off mid-stream again, unchanged', () => {
+      expect(captured[3]?.body).toEqual(captured[2]?.body)
+    })
+
+    it('sends an input that is not JSON back as an empty object, and answers it as INVALID_JSON', () => {
+      // The API refuses an assistant turn whose call has an input that is not an object, and the
+      // local one does too, so a run that sent the text back would have stopped here.
+      const messages = captured[4]?.body.messages ?? []
+      const card = ((messages[2]?.content ?? []) as { content: string }[])[0]?.content
+      expect(messages[3]).toEqual({
+        role: 'assistant',
+        content: [
+          { type: 'tool_use', id: 'toolu_bad', name: 'get_component', input: {} },
+          {
+            type: 'tool_use',
+            id: 'toolu_card_again',
+            name: 'get_system_card',
+            input: { platform: 'web' },
+          },
+        ],
+      })
+      expect(messages[4]).toEqual({
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: 'toolu_bad',
+            content: expect.stringMatching(
+              /^\{"INVALID_JSON":"\{\\"name\\": \\"Settings","why":".+"\}$/,
+            ),
+            is_error: true,
+          },
+          // A repeated card call is answered from the run's own copy, and still counted.
+          { type: 'tool_result', tool_use_id: 'toolu_card_again', content: card },
+        ],
+      })
+    })
+
+    it('measures what the API reported, retries and discarded attempts apart', () => {
+      expect(record(runs.api as Evaluation, 'settings-workspace')).toMatchObject({
+        firstShotLawful: true,
+        iterations: 1,
+        lawful: true,
+        ended: 'answered',
+        turns: 4,
+        toolCalls: { get_system_card: 2, search_components: 0, get_component: 1, validate: 1 },
+        inputTokens: 28_000,
+        outputTokens: 5_000,
+        // The broken-off attempt's reported usage: 3,000 in and 1 out.
+        discardedTokens: 3_001,
+        retries: 2,
+        // The 529's `retry-after` of 0.01 s, then two seconds for the first retry of the stream.
+        backoffMs: 2_010,
+      })
+      expect((runs.api as Evaluation).results).toMatchObject({ model: 'local-model', fake: false })
+    })
+  })
+
+  describe('runs that must not count for the model', () => {
+    const faults = () => runs.faults as Evaluation
+
+    it('records an exception inside `validate` as a harness fault, with the document', () => {
+      expect(record(faults(), 'settings-workspace', 1)).toMatchObject({
+        ended: 'harness',
+        lawful: false,
+        // A run the harness failed on is not judged against its brief either.
+        meetsBrief: false,
+        failedRequirements: [],
+        iterations: null,
+        turns: 1,
+        toolCalls: { validate: 1 },
+      })
+      expect(record(faults(), 'settings-workspace', 1).harnessFault).toContain('`validate` failed')
+      expect(faults().outputs.outputs[0]?.document).toBe(UNCHECKABLE)
+    })
+
+    it('counts a `validate` call whose input is not JSON as a submission that is not lawful', () => {
+      // Written as text, a document that is not JSON is a first shot that missed. Written as the
+      // call's input, the same slip leaves the whole input unreadable, and it counts the same.
+      expect(record(runs.unparsed as Evaluation, 'settings-workspace', 1)).toMatchObject({
+        ended: 'answered',
+        firstShotLawful: false,
+        iterations: 2,
+        lawful: true,
+        toolCalls: { validate: 2 },
+        misses: [
+          {
+            call: 1,
+            // The parser's own words follow, with where the text stopped being JSON.
+            fatal: expect.stringMatching(
+              /^the input of the `validate` call is not a JSON object: .+, in 39 characters$/,
+            ),
+            faults: [],
+            violations: [],
+          },
+        ],
+      })
+      expect(unparsedCaptured[1]?.body.messages[1]).toEqual({
+        role: 'assistant',
+        content: [{ type: 'tool_use', id: 'toolu_slip', name: 'validate', input: {} }],
+      })
+    })
+
+    it('never counts a refused or cut-off response as lawful, whatever it carried', () => {
+      // The refused one carried a document that meets every requirement, and the cut-off one half
+      // a document. Neither is judged: neither meets its brief, and neither names a requirement.
+      expect(record(faults(), 'settings-workspace', 2)).toMatchObject({
+        ended: 'refusal',
+        firstShotLawful: true,
+        iterations: 1,
+        lawful: false,
+        meetsBrief: false,
+        failedRequirements: [],
+      })
+      expect(record(faults(), 'settings-workspace', 4)).toMatchObject({
+        ended: 'max_tokens',
+        lawful: false,
+        meetsBrief: false,
+        failedRequirements: [],
+      })
+    })
+
+    it('counts a lawful answer that was never validated apart from the call count', () => {
+      expect(record(faults(), 'settings-workspace', 3)).toMatchObject({
+        ended: 'answered',
+        lawful: true,
+        meetsBrief: true,
+        iterations: null,
+        toolCalls: { validate: 0 },
+      })
+    })
+
+    it('leaves the harness fault out of the rates, and counts every ending', () => {
+      expect(faults().results.summary.overall).toMatchObject({
+        runs: 4,
+        // The three runs the rates and their intervals are over.
+        measured: 3,
+        endings: { answered: 1, cap: 0, turns: 0, max_tokens: 1, refusal: 1, harness: 1 },
+        firstShotRate: 0.3333,
+        lawfulRate: 0.3333,
+        lawfulInterval: { low: 0.0615, high: 0.7923 },
+        meetsBriefRate: 0.3333,
+        lawfulAndMeetsBriefRate: 0.3333,
+        // The cut-off run's half document is not read, so it counts against no requirement.
+        failedRequirements: {},
+        meanIterations: null,
+        lawfulWithoutValidate: 1,
+      })
+    })
+  })
+
+  describe('the token ceilings', () => {
+    it('stop the eval before a run’s next request, keeping nothing of the unfinished run', () => {
+      const { code, stderr, results, readme } = runs.runCeiling as Evaluation
+      expect(code).toBe(1)
+      expect(stderr).toContain('per-run token ceiling')
+      expect(results).toMatchObject({
+        partial: true,
+        // Three turns of the scripted run spent 28,380 tokens; the fourth never started.
+        stopped: { reason: 'tokens-per-run', brief: 'list-incidents', run: 1, tokens: 28_380 },
+        records: [],
+        summary: { overall: { runs: 0, lawfulRate: null, meanInputTokens: null } },
+      })
+      expect(readme).toContain('(partial: stopped at the per-run token ceiling)')
+    })
+
+    it('stop the eval over all its runs, keeping the runs that finished', () => {
+      const { code, results } = runs.totalCeiling as Evaluation
+      expect(code).toBe(1)
+      expect(results).toMatchObject({
+        partial: true,
+        stopped: { reason: 'tokens-total', brief: 'settings-workspace', run: 1, tokens: 12_460 },
+      })
+      expect(results.records.map(({ brief }) => brief)).toEqual(['list-incidents'])
+      expect(results.summary.briefs.map(({ brief, runs: count }) => `${brief}:${count}`)).toEqual([
+        'list-incidents:1',
+        'settings-workspace:0',
+      ])
+    })
   })
 })
 
 describe('the CLI runner', () => {
+  beforeAll(async () => {
+    const [cliTwo, cliCap, cliStandIn, halfLine, unreadable, ahead, aheadDenied] =
+      await Promise.all([
+        evaluate('cli-two', [
+          ...['--fake', '--runner', 'cli'],
+          ...['--briefs', 'eval/briefs/{list-incidents,settings-workspace}.md'],
+        ]),
+        evaluate('cli-cap', [
+          ...['--fake', '--runner', 'cli', '--max-iterations', '1'],
+          ...['--briefs', 'eval/briefs/list-incidents.md'],
+        ]),
+        evaluate(
+          'cli-stand-in',
+          [
+            ...['--runner', 'cli', '--claude', standIn(STAND_IN_RUNS), '--model', 'local-model'],
+            ...['--effort', 'high', '--runs', '5', ...SETTINGS_BRIEF],
+          ],
+          // No key, and the variables a Claude Code session sets for what it starts.
+          {
+            ANTHROPIC_API_KEY: '',
+            CLAUDECODE: '1',
+            CLAUDE_EFFORT: 'xhigh',
+            CLAUDE_AGENT_SDK_MCP_NO_PREFIX: '1',
+            CLAUDE_CODE_OAUTH_TOKEN: 'local-token',
+          },
+        ),
+        throughStandIn('cli-half-line', HALF_LINE_RUNS, HALF_LINE),
+        throughStandIn('cli-unreadable', UNREADABLE_RUNS, UNREADABLE),
+        throughStandIn('cli-ahead', AHEAD_RUNS, AHEAD, ['--max-iterations', '1']),
+        throughStandIn('cli-ahead-denied', AHEAD_DENIED_RUNS, AHEAD_DENIED, [
+          '--max-iterations',
+          '1',
+        ]),
+      ])
+    Object.assign(runs, { cliTwo, cliCap, cliStandIn })
+    Object.assign(attempts, { halfLine, unreadable, ahead, aheadDenied })
+  }, 90_000)
+
   const standInRun = () => runs.cliStandIn as Evaluation
   const withoutWallTime = (evaluation: Evaluation) =>
     evaluation.results.records.map(({ wallMs: _wallMs, ...rest }) => rest)
@@ -1734,8 +1629,9 @@ describe('the Codex runner', () => {
         retries: _retries,
         backoffMs: _backoffMs,
         discardedTokens: _discarded,
+        planUpdates: _planUpdates,
         ...rest
-      }) => rest,
+      }: RunRecord & { planUpdates?: number }) => rest,
     )
 
   // Its own setup, so neither this one nor the file's first needs long: the same scripts
@@ -1763,37 +1659,50 @@ describe('the Codex runner', () => {
         ],
       },
     ]
-    const [codexTwo, codexCap, codexRuntime, codexStandInRun, codexPlanning] = await Promise.all([
-      evaluate('codex-two', [
-        ...codex,
-        ...['--briefs', 'eval/briefs/{list-incidents,settings-workspace}.md'],
-      ]),
-      // Two runs, so the first, stopped at the cap before Codex reports its tokens, stops the eval.
-      evaluate('codex-cap', [
-        ...codex,
-        ...['--max-iterations', '1', '--runs', '2', '--briefs', 'eval/briefs/list-incidents.md'],
-      ]),
-      evaluate('codex-runtime', [...codex, '--mode', 'runtime', '--runs', '2']),
-      evaluate(
-        'codex-stand-in',
-        [
-          ...['--runner', 'codex', '--codex', codexStandIn(CODEX_STAND_IN_RUNS)],
-          ...['--model', 'local-model', '--effort', 'high', '--runs', '2', ...settingsBrief],
-        ],
-        {
-          ANTHROPIC_API_KEY: '',
-          CODEX_HOME: OWNER_CODEX_HOME,
-          CODEX_API_KEY: 'local-key',
-          CODEX_SANDBOX: 'seatbelt',
-        },
-      ),
-      attempt('codex-planning', [
-        ...['--runner', 'codex', '--model', 'local-model', ...settingsBrief],
-        ...['--codex', codexStandIn(planning, resolve(SCRATCH, 'codex-planning-files'))],
-      ]),
-    ])
-    Object.assign(runs, { codexTwo, codexCap, codexRuntime, codexStandInRun })
-    Object.assign(attempts, { codexPlanning })
+    const [codexTwo, codexCap, codexCeiling, codexRuntime, codexStandInRun, codexPlanning] =
+      await Promise.all([
+        evaluate('codex-two', [
+          ...codex,
+          ...['--briefs', 'eval/briefs/{list-incidents,settings-workspace}.md'],
+        ]),
+        // Two runs, each stopped at the cap before Codex reports its tokens, with no ceiling given.
+        evaluate('codex-cap', [
+          ...codex,
+          ...['--max-iterations', '1', '--runs', '2', '--briefs', 'eval/briefs/list-incidents.md'],
+        ]),
+        // The same with a total ceiling given, which the first run's unknown tokens leave unheld.
+        evaluate('codex-ceiling', [
+          ...codex,
+          ...['--max-iterations', '1', '--runs', '2', '--max-tokens-total', '10000000'],
+          ...['--briefs', 'eval/briefs/list-incidents.md'],
+        ]),
+        evaluate('codex-runtime', [...codex, '--mode', 'runtime', '--runs', '2']),
+        evaluate(
+          'codex-stand-in',
+          [
+            ...['--runner', 'codex', '--codex', codexStandIn(CODEX_STAND_IN_RUNS)],
+            ...['--model', 'local-model', '--effort', 'high', '--runs', '2', ...settingsBrief],
+          ],
+          {
+            ANTHROPIC_API_KEY: '',
+            CODEX_HOME: OWNER_CODEX_HOME,
+            CODEX_API_KEY: 'local-key',
+            CODEX_SANDBOX: 'seatbelt',
+          },
+        ),
+        evaluate('codex-planning', [
+          ...['--runner', 'codex', '--model', 'local-model', ...settingsBrief],
+          ...['--codex', codexStandIn(planning, resolve(SCRATCH, 'codex-planning-files'))],
+        ]),
+      ])
+    Object.assign(runs, {
+      codexTwo,
+      codexCap,
+      codexCeiling,
+      codexRuntime,
+      codexStandInRun,
+      codexPlanning,
+    })
   }, 90_000)
 
   it('measures the scripted model as the API runner does, apart from what Codex does not report', () => {
@@ -1829,19 +1738,37 @@ describe('the Codex runner', () => {
       retries: _retries,
       backoffMs: _backoffMs,
       discardedTokens: _discarded,
+      planUpdates: _planUpdates,
       ...rest
-    }: RunRecord) => rest
+    }: RunRecord & { planUpdates?: number }) => rest
     expect(without(capped as RunRecord)).toEqual(without(api as RunRecord))
     expect(results.summary.overall).toMatchObject({ meanInputTokens: null, meanOutputTokens: null })
-    // What the run spent is unknown, so the total ceiling cannot be held for a second run.
-    expect(code).toBe(1)
-    expect(stderr).toContain('can no longer be held')
+    // No total ceiling was given, so a run with unknown tokens is recorded and the eval goes on.
+    expect({ code, stderr: code === 0 ? '' : stderr }).toEqual({ code: 0, stderr: '' })
     expect(results).toMatchObject({
-      partial: true,
-      stopped: { reason: 'tokens-total', brief: 'list-incidents', run: 2 },
+      partial: false,
+      stopped: null,
       settings: { maxTokensPerRun: null },
     })
+    expect(results.records.map(({ ended, inputTokens }) => `${ended} ${inputTokens}`)).toEqual([
+      'cap null',
+      'cap null',
+    ])
+  })
+
+  it('stops before the next run when a run’s tokens are unknown and a total ceiling was given', () => {
+    const { results, code, stderr, readme } = runs.codexCeiling as Evaluation
+    expect(code).toBe(1)
+    expect(stderr).toContain('`--max-tokens-total 10000000` can no longer be held')
+    expect(results).toMatchObject({
+      partial: true,
+      stopped: { reason: 'tokens-unknown', brief: 'list-incidents', run: 2, tokens: 0 },
+    })
     expect(results.records).toHaveLength(1)
+    // The report says why it stopped, and does not say the ceiling was reached.
+    expect(readme).toContain(
+      '(partial: stopped when a run’s tokens went unreported under a total ceiling given)',
+    )
   })
 
   it('records what Codex does not report, its retries and their cost, as absent', () => {
@@ -1856,11 +1783,16 @@ describe('the Codex runner', () => {
     expect((runs.codexTwo as Evaluation).readme).toContain('| not reported |')
   })
 
-  it('stops the eval when Codex uses its plan tool, which no setting turns off', () => {
-    const { code, stderr, results } = attempts.codexPlanning as Awaited<ReturnType<typeof attempt>>
-    expect(code).toBe(1)
-    expect(stderr).toContain('an item of type `todo_list`')
-    expect(results?.records ?? []).toEqual([])
+  it('counts the plans Codex makes, and goes on: its plan tool writes nothing', () => {
+    const { code, results } = runs.codexPlanning as Evaluation
+    expect(code).toBe(0)
+    expect(results.records[0]).toMatchObject({
+      ended: 'answered',
+      lawful: true,
+      planUpdates: 1,
+      toolCalls: { get_system_card: 1 },
+    })
+    expect((runs.codexTwo as Evaluation).results.records[0]).toMatchObject({ planUpdates: 0 })
   })
 
   it('measures the run-time lane as the API runner does, with no time to the first token', () => {
@@ -1872,8 +1804,9 @@ describe('the Codex runner', () => {
           retries: _retries,
           backoffMs: _backoffMs,
           discardedTokens: _discarded,
+          planUpdates: _planUpdates,
           ...rest
-        }) => rest,
+        }: RuntimeRecord & { planUpdates?: number }) => rest,
       )
     const codex = runs.codexRuntime as Evaluation
     expect(timeless(codex)).toEqual(timeless(runs.runtimeEvery as Evaluation))
@@ -2133,413 +2066,464 @@ describe('refusing to start', () => {
 /* The run-time lane                                                          */
 /* -------------------------------------------------------------------------- */
 
-describe('the run-time lane, with the scripted model', () => {
-  const every = () => runs.runtimeEvery as Evaluation
-
-  it('writes a lawful screen that meets every brief, from the card alone', () => {
-    // The requirements read a run-time document as they read a spec, so each brief can be met
-    // in one request, lawfully, by the members the card lists.
-    for (const brief of ALL_BRIEFS) {
-      expect(runtimeRecord(every(), brief), brief).toMatchObject({
-        lawful: true,
-        meetsBrief: true,
-        failedRequirements: [],
-        ended: 'answered',
-        harnessFault: null,
-        fatal: null,
-        faults: [],
-      })
-    }
-  })
-
-  it('records an unlawful answer with what the check reported, in its words', () => {
-    expect(runtimeRecord(every(), 'list-incidents', 2)).toMatchObject({
-      lawful: false,
-      meetsBrief: false,
-      failedRequirements: ['delete-asks-first', 'confirmation-names-the-incident'],
-      fatal: null,
-      faults: expect.arrayContaining([
-        '$.root.props.className: `ListPage` has no prop `className`',
-      ]) as unknown,
-    })
-  })
-
-  it('records no `validate` call, no first shot apart from the answer and no loop', () => {
-    for (const record of runtimeRecords(every())) {
-      for (const field of [
-        'firstShotLawful',
-        'iterations',
-        'toolCalls',
-        'turns',
-        'misses',
-        'violationsSeen',
-      ]) {
-        expect(record).not.toHaveProperty(field)
-      }
-    }
-    const { overall } = every().results.summary
-    for (const field of ['firstShotRate', 'meanIterations', 'lawfulWithoutValidate']) {
-      expect(overall).not.toHaveProperty(field)
-    }
-    // One request cannot reach the iteration cap or the request limit.
-    expect(overall.endings).toEqual({ answered: 16, max_tokens: 0, refusal: 0, harness: 0 })
-    expect(every().results.settings).not.toHaveProperty('maxIterations')
-    expect(every().results.settings).not.toHaveProperty('maxTurns')
-  })
-
-  it('records the tokens as the scripted usage gives them, cached and uncached apart', () => {
-    // The first brief's run writes the card to the cache; every other reads it.
-    expect(runtimeRecord(every(), 'auth-sign-in-up')).toMatchObject({
-      inputTokens: 14_480,
-      uncachedInputTokens: 280,
-      cacheWriteTokens: 14_200,
-      cacheReadTokens: 0,
-      outputTokens: 1_400,
-    })
-    expect(runtimeRecord(every(), 'settings-workspace')).toMatchObject({
-      inputTokens: 14_550,
-      uncachedInputTokens: 350,
-      cacheWriteTokens: 0,
-      cacheReadTokens: 14_200,
-      outputTokens: 1_750,
-    })
-    expect(every().results.summary.overall).toMatchObject({
-      runs: 16,
-      measured: 16,
-      lawfulRate: 0.9375,
-      lawfulInterval: bounds(15, 16),
-      meetsBriefRate: 0.9375,
-      lawfulAndMeetsBriefRate: 0.9375,
-      lawfulAndMeetsBriefInterval: bounds(15, 16),
-      unreadable: 0,
-      failedRequirements: {
-        'list-incidents/confirmation-names-the-incident': 1,
-        'list-incidents/delete-asks-first': 1,
-      },
-      meanInputTokens: 14_515,
-      meanUncachedInputTokens: 315,
-      meanCacheWriteTokens: 1_775,
-      meanCacheReadTokens: 12_425,
-      meanOutputTokens: 1_575,
-    })
-  })
-
-  it('records a time to the first token and a wall time for every run', () => {
-    for (const record of runtimeRecords(every())) {
-      expect(record.firstTokenMs).toEqual(expect.any(Number))
-      expect(record.wallMs).toEqual(expect.any(Number))
-    }
-    const { overall } = every().results.summary as unknown as Record<string, unknown>
-    expect(overall).toMatchObject({
-      meanFirstTokenMs: expect.any(Number) as unknown,
-      firstTokenRangeMs: {
-        low: expect.any(Number) as unknown,
-        high: expect.any(Number) as unknown,
-      },
-      meanWallMs: expect.any(Number) as unknown,
-      wallRangeMs: { low: expect.any(Number) as unknown, high: expect.any(Number) as unknown },
-    })
-  })
-
-  it('records the card it sent: its framework, its members and its length', () => {
-    expect(cardOf(every())).toEqual({
-      framework: 'react',
-      chosen: 'default',
-      members: screen.defaultMembers('react'),
-      characters: screen.runtimeCard({ framework: 'react' }).length,
-    })
-    expect(every().results).toMatchObject({ mode: 'runtime', runner: 'api', fake: true })
-    expect(every().results.settings).toMatchObject({ thinking: 'adaptive', effort: 'default' })
-  })
-
-  it('keeps each document beside the results, as the object it is', () => {
-    const { outputs } = every()
-    expect(outputs.outputs.find(({ brief }) => brief === 'settings-workspace')?.document).toEqual(
-      JSON.parse(LAWFUL),
-    )
-  })
-
-  it('measures the scripted model through the CLI runner exactly as through the API runner', () => {
-    // The CLI does not report when it sends a request, so it has no time to the first token.
-    const timeless = (evaluation: Evaluation) =>
-      runtimeRecords(evaluation).map(
-        ({ wallMs: _wallMs, firstTokenMs: _firstTokenMs, ...rest }) => rest,
-      )
-    const cli = runs.runtimeCli as Evaluation
-    expect(timeless(cli)).toEqual(timeless(every()))
-    expect(cli.outputs).toEqual(every().outputs)
-    expect(runtimeRecords(cli).map(({ firstTokenMs }) => firstTokenMs)).toEqual(
-      runtimeRecords(cli).map(() => null),
-    )
-    expect(cli.results).toMatchObject({ runner: 'cli', cliVersion: 'scripted' })
-    expect(cli.results.settings).toMatchObject({ thinking: null })
-    expect(cli.results.summary.overall).toMatchObject({
-      meanFirstTokenMs: null,
-      firstTokenRangeMs: null,
-    })
-    expect(cardOf(cli)).toEqual(cardOf(every()))
-  })
-
-  it('sends a named subset’s card, and refuses the members the subset leaves out', () => {
-    const small = JSON.parse(readFileSync(resolve(ROOT, 'eval/members/small.json'), 'utf8'))
-    const evaluation = runs.runtimeSmall as Evaluation
-    expect(cardOf(evaluation)).toEqual({
-      framework: 'react',
-      chosen: 'small',
-      members: small,
-      characters: screen.runtimeCard({ framework: 'react', members: small }).length,
-    })
-    expect(cardOf(evaluation).characters).toBeLessThan(cardOf(every()).characters)
-    // The screen is the same one, so it meets its brief, and it is not one this host may draw.
-    expect(runtimeRecord(evaluation, 'settings-workspace')).toMatchObject({
-      lawful: false,
-      meetsBrief: true,
-      faults: expect.arrayContaining([
-        expect.stringContaining('`SettingsPage` is not one of the members this host draws'),
-      ]) as unknown,
-    })
-    expect(evaluation.results.summary.overall).toMatchObject({
-      lawfulRate: 0,
-      meetsBriefRate: 1,
-      lawfulAndMeetsBriefRate: 0,
-    })
-  })
-
-  it('sends a card of the members a list names, once each', () => {
-    expect(cardOf(runs.runtimeList as Evaluation)).toEqual({
-      framework: 'react',
-      chosen: 'list',
-      members: ['Stack', 'Heading', 'Text'],
-      characters: screen.runtimeCard({ framework: 'react', members: ['Stack', 'Heading', 'Text'] })
-        .length,
-    })
-  })
-
-  it('names the subsets only by members the vocabulary has', () => {
-    const names = new Set(screen.names())
-    const directory = resolve(ROOT, 'eval/members')
-    for (const file of readdirSync(directory)) {
-      const members = JSON.parse(readFileSync(resolve(directory, file), 'utf8')) as unknown
-      expect(Array.isArray(members), file).toBe(true)
-      for (const member of members as string[])
-        expect(names.has(member), `${file}: ${member}`).toBe(true)
-    }
-  })
-})
-
-describe('the run-time lane, through the Messages API', () => {
-  const api = () => runs.runtimeApi as Evaluation
-  const bodies = () => runtimeCaptured.map(({ body }) => body as unknown as Record<string, unknown>)
-
-  it('sends the card as the whole system prompt, marked for the cache, and the brief last', () => {
-    // Ten requests for eight runs: two of them were sent again.
-    expect(runtimeCaptured).toHaveLength(10)
-    const card = screen.runtimeCard({ framework: 'react' })
-    for (const body of bodies()) {
-      expect(body).toMatchObject({
-        model: 'local-model',
-        stream: true,
-        thinking: { type: 'disabled' },
-        output_config: { effort: 'low' },
-      })
-      expect(body.system).toEqual([
-        { type: 'text', text: card, cache_control: { type: 'ephemeral' } },
+describe('the run-time lane', () => {
+  // The lane through both runners, a subset and a list of members, the local API with eight
+  // runs of one brief, and the stand-in for the CLI.
+  beforeAll(async () => {
+    const [runtimeCli, runtimeSmall, runtimeList, runtimeApi, runtimeStandIn, runtimeToolful] =
+      await Promise.all([
+        evaluate('runtime-cli', ['--fake', '--runner', 'cli', ...RUNTIME_ARGS, '--runs', '2']),
+        evaluate('runtime-small', [
+          ...['--fake', ...RUNTIME_ARGS, '--members', 'small'],
+          ...SETTINGS_BRIEF,
+        ]),
+        evaluate('runtime-list', [
+          ...['--fake', ...RUNTIME_ARGS, '--members', 'Stack, Heading,Text,Stack'],
+          ...SETTINGS_BRIEF,
+        ]),
+        evaluate(
+          'runtime-api',
+          [
+            ...RUNTIME_ARGS,
+            ...['--model', 'local-model', '--thinking', 'disabled', '--effort', 'low'],
+            ...['--runs', '8', ...SETTINGS_BRIEF],
+          ],
+          { ...LOCAL, ANTHROPIC_BASE_URL: bases.runtime },
+        ),
+        evaluate(
+          'runtime-stand-in',
+          [
+            ...['--runner', 'cli', '--claude', standIn(RUNTIME_STAND_IN_RUNS, RUNTIME_STAND_IN)],
+            ...RUNTIME_ARGS,
+            ...['--model', 'local-model', '--effort', 'high', '--runs', '3', ...SETTINGS_BRIEF],
+          ],
+          { ANTHROPIC_API_KEY: '' },
+        ),
+        attempt('runtime-toolful', [
+          ...['--runner', 'cli', '--claude', toolfulCli(resolve(SCRATCH, 'toolful'))],
+          ...RUNTIME_ARGS,
+          ...SETTINGS_BRIEF,
+        ]),
       ])
-      // One request with no tools: nothing to call, and no breakpoint after the brief.
-      expect(body).not.toHaveProperty('tools')
-      expect(body).not.toHaveProperty('cache_control')
-      expect(body.messages).toEqual([
-        {
-          role: 'user',
-          content: expect.stringMatching(
-            /^<brief>\n# Screen brief — Workspace settings\n[\s\S]+\n<\/brief>\n\nBuild the screen the brief describes\.$/,
-          ) as unknown,
-        },
-      ])
-    }
-  })
+    Object.assign(runs, { runtimeCli, runtimeSmall, runtimeList, runtimeApi, runtimeStandIn })
+    Object.assign(attempts, { runtimeToolful })
+  }, 90_000)
 
-  it('names no member outside the card, and never the requirements', () => {
-    const members = [...REGISTRY.components.map((entry) => entry.name), ...screen.names()]
-    const requirements = requirementsOf('settings-workspace')
-    for (const body of bodies()) {
-      const message = JSON.stringify(body.messages)
-      for (const member of members) expect(message, member).not.toContain(member)
-      const sent = JSON.stringify(body)
-      for (const { id, says } of requirements) {
-        expect(sent).not.toContain(says)
-        expect(sent).not.toContain(`"${id}"`)
+  describe('the run-time lane, with the scripted model', () => {
+    const every = () => runs.runtimeEvery as Evaluation
+
+    it('writes a lawful screen that meets every brief, from the card alone', () => {
+      // The requirements read a run-time document as they read a spec, so each brief can be met
+      // in one request, lawfully, by the members the card lists.
+      for (const brief of ALL_BRIEFS) {
+        expect(runtimeRecord(every(), brief), brief).toMatchObject({
+          lawful: true,
+          meetsBrief: true,
+          failedRequirements: [],
+          ended: 'answered',
+          harnessFault: null,
+          fatal: null,
+          faults: [],
+        })
       }
-    }
-  })
+    })
 
-  it('records the thinking and the effort it sent', () => {
-    expect(api().results.settings).toMatchObject({
-      thinking: 'disabled',
-      effort: 'low',
-      maxTokens: 64_000,
-      runs: 8,
-    })
-  })
-
-  it('reads the document from prose and a fence, or bare, and judges it with the check', () => {
-    expect(runtimeRecord(api(), 'settings-workspace', 1)).toMatchObject({
-      ended: 'answered',
-      lawful: true,
-      meetsBrief: true,
-      fatal: null,
-      faults: [],
-    })
-    expect(runtimeRecord(api(), 'settings-workspace', 3)).toMatchObject({
-      ended: 'answered',
-      lawful: true,
-      meetsBrief: true,
-    })
-    expect(runtimeRecord(api(), 'settings-workspace', 2)).toMatchObject({
-      ended: 'answered',
-      lawful: false,
-      meetsBrief: false,
-      fatal: null,
-      faults: [expect.stringContaining('$.root: no component called `Modal`')],
-    })
-  })
-
-  it('records the cache write, the cache read and the uncached input apart, retries beside them', () => {
-    // The first run's request was refused as overloaded and sent again after its `retry-after`.
-    expect(runtimeRecord(api(), 'settings-workspace', 1)).toMatchObject({
-      inputTokens: 14_300,
-      uncachedInputTokens: 300,
-      cacheWriteTokens: 14_000,
-      cacheReadTokens: 0,
-      outputTokens: 1_500,
-      discardedTokens: 0,
-      retries: 1,
-      backoffMs: 10,
-    })
-    expect(runtimeRecord(api(), 'settings-workspace', 2)).toMatchObject({
-      inputTokens: 14_300,
-      uncachedInputTokens: 300,
-      cacheWriteTokens: 0,
-      cacheReadTokens: 14_000,
-    })
-    // The third run's stream broke off, and its reported usage of 3,000 in and 1 out was billed.
-    expect(runtimeRecord(api(), 'settings-workspace', 3)).toMatchObject({
-      retries: 1,
-      backoffMs: 2_000,
-      discardedTokens: 3_001,
-    })
-  })
-
-  it('times the first token from the request that was answered, thinking left out', () => {
-    // The thinking arrives before the pause and the answer's text after it.
-    const first = runtimeRecord(api(), 'settings-workspace', 1)
-    expect(first.firstTokenMs).toBeGreaterThanOrEqual(THINKING_MS)
-    expect(first.wallMs).toBeGreaterThanOrEqual(THINKING_MS)
-    for (const record of runtimeRecords(api())) {
-      expect(record.firstTokenMs, `#${record.run}`).toEqual(expect.any(Number))
-      expect(record.firstTokenMs as number, `#${record.run}`).toBeLessThanOrEqual(record.wallMs + 1)
-    }
-    const overall = api().results.summary.overall as unknown as {
-      firstTokenRangeMs: { high: number }
-    }
-    expect(overall.firstTokenRangeMs.high).toBeGreaterThanOrEqual(THINKING_MS)
-  })
-
-  it('never judges a refused or cut-off answer', () => {
-    for (const run of [4, 5]) {
-      expect(runtimeRecord(api(), 'settings-workspace', run)).toMatchObject({
-        ended: run === 4 ? 'max_tokens' : 'refusal',
+    it('records an unlawful answer with what the check reported, in its words', () => {
+      expect(runtimeRecord(every(), 'list-incidents', 2)).toMatchObject({
         lawful: false,
         meetsBrief: false,
-        failedRequirements: [],
+        failedRequirements: ['delete-asks-first', 'confirmation-names-the-incident'],
+        fatal: null,
+        faults: expect.arrayContaining([
+          '$.root.props.className: `ListPage` has no prop `className`',
+        ]) as unknown,
+      })
+    })
+
+    it('records no `validate` call, no first shot apart from the answer and no loop', () => {
+      for (const record of runtimeRecords(every())) {
+        for (const field of [
+          'firstShotLawful',
+          'iterations',
+          'toolCalls',
+          'turns',
+          'misses',
+          'violationsSeen',
+        ]) {
+          expect(record).not.toHaveProperty(field)
+        }
+      }
+      const { overall } = every().results.summary
+      for (const field of ['firstShotRate', 'meanIterations', 'lawfulWithoutValidate']) {
+        expect(overall).not.toHaveProperty(field)
+      }
+      // One request cannot reach the iteration cap or the request limit.
+      expect(overall.endings).toEqual({ answered: 16, max_tokens: 0, refusal: 0, harness: 0 })
+      expect(every().results.settings).not.toHaveProperty('maxIterations')
+      expect(every().results.settings).not.toHaveProperty('maxTurns')
+    })
+
+    it('records the tokens as the scripted usage gives them, cached and uncached apart', () => {
+      // The first brief's run writes the card to the cache; every other reads it.
+      expect(runtimeRecord(every(), 'auth-sign-in-up')).toMatchObject({
+        inputTokens: 14_480,
+        uncachedInputTokens: 280,
+        cacheWriteTokens: 14_200,
+        cacheReadTokens: 0,
+        outputTokens: 1_400,
+      })
+      expect(runtimeRecord(every(), 'settings-workspace')).toMatchObject({
+        inputTokens: 14_550,
+        uncachedInputTokens: 350,
+        cacheWriteTokens: 0,
+        cacheReadTokens: 14_200,
+        outputTokens: 1_750,
+      })
+      expect(every().results.summary.overall).toMatchObject({
+        runs: 16,
+        measured: 16,
+        lawfulRate: 0.9375,
+        lawfulInterval: bounds(15, 16),
+        meetsBriefRate: 0.9375,
+        lawfulAndMeetsBriefRate: 0.9375,
+        lawfulAndMeetsBriefInterval: bounds(15, 16),
+        unreadable: 0,
+        failedRequirements: {
+          'list-incidents/confirmation-names-the-incident': 1,
+          'list-incidents/delete-asks-first': 1,
+        },
+        meanInputTokens: 14_515,
+        meanUncachedInputTokens: 315,
+        meanCacheWriteTokens: 1_775,
+        meanCacheReadTokens: 12_425,
+        meanOutputTokens: 1_575,
+      })
+    })
+
+    it('records a time to the first token and a wall time for every run', () => {
+      for (const record of runtimeRecords(every())) {
+        expect(record.firstTokenMs).toEqual(expect.any(Number))
+        expect(record.wallMs).toEqual(expect.any(Number))
+      }
+      const { overall } = every().results.summary as unknown as Record<string, unknown>
+      expect(overall).toMatchObject({
+        meanFirstTokenMs: expect.any(Number) as unknown,
+        firstTokenRangeMs: {
+          low: expect.any(Number) as unknown,
+          high: expect.any(Number) as unknown,
+        },
+        meanWallMs: expect.any(Number) as unknown,
+        wallRangeMs: { low: expect.any(Number) as unknown, high: expect.any(Number) as unknown },
+      })
+    })
+
+    it('records the card it sent: its framework, its members and its length', () => {
+      expect(cardOf(every())).toEqual({
+        framework: 'react',
+        chosen: 'default',
+        members: screen.defaultMembers('react'),
+        characters: screen.runtimeCard({ framework: 'react' }).length,
+      })
+      expect(every().results).toMatchObject({ mode: 'runtime', runner: 'api', fake: true })
+      expect(every().results.settings).toMatchObject({ thinking: 'adaptive', effort: 'default' })
+    })
+
+    it('keeps each document beside the results, as the object it is', () => {
+      const { outputs } = every()
+      expect(outputs.outputs.find(({ brief }) => brief === 'settings-workspace')?.document).toEqual(
+        JSON.parse(LAWFUL),
+      )
+    })
+
+    it('measures the scripted model through the CLI runner exactly as through the API runner', () => {
+      // The CLI does not report when it sends a request, so it has no time to the first token.
+      const timeless = (evaluation: Evaluation) =>
+        runtimeRecords(evaluation).map(
+          ({ wallMs: _wallMs, firstTokenMs: _firstTokenMs, ...rest }) => rest,
+        )
+      const cli = runs.runtimeCli as Evaluation
+      expect(timeless(cli)).toEqual(timeless(every()))
+      expect(cli.outputs).toEqual(every().outputs)
+      expect(runtimeRecords(cli).map(({ firstTokenMs }) => firstTokenMs)).toEqual(
+        runtimeRecords(cli).map(() => null),
+      )
+      expect(cli.results).toMatchObject({ runner: 'cli', cliVersion: 'scripted' })
+      expect(cli.results.settings).toMatchObject({ thinking: null })
+      expect(cli.results.summary.overall).toMatchObject({
+        meanFirstTokenMs: null,
+        firstTokenRangeMs: null,
+      })
+      expect(cardOf(cli)).toEqual(cardOf(every()))
+    })
+
+    it('sends a named subset’s card, and refuses the members the subset leaves out', () => {
+      const small = JSON.parse(readFileSync(resolve(ROOT, 'eval/members/small.json'), 'utf8'))
+      const evaluation = runs.runtimeSmall as Evaluation
+      expect(cardOf(evaluation)).toEqual({
+        framework: 'react',
+        chosen: 'small',
+        members: small,
+        characters: screen.runtimeCard({ framework: 'react', members: small }).length,
+      })
+      expect(cardOf(evaluation).characters).toBeLessThan(cardOf(every()).characters)
+      // The screen is the same one, so it meets its brief, and it is not one this host may draw.
+      expect(runtimeRecord(evaluation, 'settings-workspace')).toMatchObject({
+        lawful: false,
+        meetsBrief: true,
+        faults: expect.arrayContaining([
+          expect.stringContaining('`SettingsPage` is not one of the members this host draws'),
+        ]) as unknown,
+      })
+      expect(evaluation.results.summary.overall).toMatchObject({
+        lawfulRate: 0,
+        meetsBriefRate: 1,
+        lawfulAndMeetsBriefRate: 0,
+      })
+    })
+
+    it('sends a card of the members a list names, once each', () => {
+      expect(cardOf(runs.runtimeList as Evaluation)).toEqual({
+        framework: 'react',
+        chosen: 'list',
+        members: ['Stack', 'Heading', 'Text'],
+        characters: screen.runtimeCard({
+          framework: 'react',
+          members: ['Stack', 'Heading', 'Text'],
+        }).length,
+      })
+    })
+
+    it('names the subsets only by members the vocabulary has', () => {
+      const names = new Set(screen.names())
+      const directory = resolve(ROOT, 'eval/members')
+      for (const file of readdirSync(directory)) {
+        const members = JSON.parse(readFileSync(resolve(directory, file), 'utf8')) as unknown
+        expect(Array.isArray(members), file).toBe(true)
+        for (const member of members as string[])
+          expect(names.has(member), `${file}: ${member}`).toBe(true)
+      }
+    })
+  })
+
+  describe('the run-time lane, through the Messages API', () => {
+    const api = () => runs.runtimeApi as Evaluation
+    const bodies = () =>
+      runtimeCaptured.map(({ body }) => body as unknown as Record<string, unknown>)
+
+    it('sends the card as the whole system prompt, marked for the cache, and the brief last', () => {
+      // Ten requests for eight runs: two of them were sent again.
+      expect(runtimeCaptured).toHaveLength(10)
+      const card = screen.runtimeCard({ framework: 'react' })
+      for (const body of bodies()) {
+        expect(body).toMatchObject({
+          model: 'local-model',
+          stream: true,
+          thinking: { type: 'disabled' },
+          output_config: { effort: 'low' },
+        })
+        expect(body.system).toEqual([
+          { type: 'text', text: card, cache_control: { type: 'ephemeral' } },
+        ])
+        // One request with no tools: nothing to call, and no breakpoint after the brief.
+        expect(body).not.toHaveProperty('tools')
+        expect(body).not.toHaveProperty('cache_control')
+        expect(body.messages).toEqual([
+          {
+            role: 'user',
+            content: expect.stringMatching(
+              /^<brief>\n# Screen brief — Workspace settings\n[\s\S]+\n<\/brief>\n\nBuild the screen the brief describes\.$/,
+            ) as unknown,
+          },
+        ])
+      }
+    })
+
+    it('names no member outside the card, and never the requirements', () => {
+      const members = [...REGISTRY.components.map((entry) => entry.name), ...screen.names()]
+      const requirements = requirementsOf('settings-workspace')
+      for (const body of bodies()) {
+        const message = JSON.stringify(body.messages)
+        for (const member of members) expect(message, member).not.toContain(member)
+        const sent = JSON.stringify(body)
+        for (const { id, says } of requirements) {
+          expect(sent).not.toContain(says)
+          expect(sent).not.toContain(`"${id}"`)
+        }
+      }
+    })
+
+    it('records the thinking and the effort it sent', () => {
+      expect(api().results.settings).toMatchObject({
+        thinking: 'disabled',
+        effort: 'low',
+        maxTokens: 64_000,
+        runs: 8,
+      })
+    })
+
+    it('reads the document from prose and a fence, or bare, and judges it with the check', () => {
+      expect(runtimeRecord(api(), 'settings-workspace', 1)).toMatchObject({
+        ended: 'answered',
+        lawful: true,
+        meetsBrief: true,
         fatal: null,
         faults: [],
       })
-    }
+      expect(runtimeRecord(api(), 'settings-workspace', 3)).toMatchObject({
+        ended: 'answered',
+        lawful: true,
+        meetsBrief: true,
+      })
+      expect(runtimeRecord(api(), 'settings-workspace', 2)).toMatchObject({
+        ended: 'answered',
+        lawful: false,
+        meetsBrief: false,
+        fatal: null,
+        faults: [expect.stringContaining('$.root: no component called `Modal`')],
+      })
+    })
+
+    it('records the cache write, the cache read and the uncached input apart, retries beside them', () => {
+      // The first run's request was refused as overloaded and sent again after its `retry-after`.
+      expect(runtimeRecord(api(), 'settings-workspace', 1)).toMatchObject({
+        inputTokens: 14_300,
+        uncachedInputTokens: 300,
+        cacheWriteTokens: 14_000,
+        cacheReadTokens: 0,
+        outputTokens: 1_500,
+        discardedTokens: 0,
+        retries: 1,
+        backoffMs: 10,
+      })
+      expect(runtimeRecord(api(), 'settings-workspace', 2)).toMatchObject({
+        inputTokens: 14_300,
+        uncachedInputTokens: 300,
+        cacheWriteTokens: 0,
+        cacheReadTokens: 14_000,
+      })
+      // The third run's stream broke off, and its reported usage of 3,000 in and 1 out was billed.
+      expect(runtimeRecord(api(), 'settings-workspace', 3)).toMatchObject({
+        retries: 1,
+        backoffMs: 2_000,
+        discardedTokens: 3_001,
+      })
+    })
+
+    it('times the first token from the request that was answered, thinking left out', () => {
+      // The thinking arrives before the pause and the answer's text after it.
+      const first = runtimeRecord(api(), 'settings-workspace', 1)
+      expect(first.firstTokenMs).toBeGreaterThanOrEqual(THINKING_MS)
+      expect(first.wallMs).toBeGreaterThanOrEqual(THINKING_MS)
+      for (const record of runtimeRecords(api())) {
+        expect(record.firstTokenMs, `#${record.run}`).toEqual(expect.any(Number))
+        expect(record.firstTokenMs as number, `#${record.run}`).toBeLessThanOrEqual(
+          record.wallMs + 1,
+        )
+      }
+      const overall = api().results.summary.overall as unknown as {
+        firstTokenRangeMs: { high: number }
+      }
+      expect(overall.firstTokenRangeMs.high).toBeGreaterThanOrEqual(THINKING_MS)
+    })
+
+    it('never judges a refused or cut-off answer', () => {
+      for (const run of [4, 5]) {
+        expect(runtimeRecord(api(), 'settings-workspace', run)).toMatchObject({
+          ended: run === 4 ? 'max_tokens' : 'refusal',
+          lawful: false,
+          meetsBrief: false,
+          failedRequirements: [],
+          fatal: null,
+          faults: [],
+        })
+      }
+    })
+
+    it('counts an answer with no whole document as not lawful, and meeting nothing', () => {
+      const every = requirementsOf('settings-workspace').map(({ id }) => id)
+      expect(runtimeRecord(api(), 'settings-workspace', 6)).toMatchObject({
+        ended: 'answered',
+        lawful: false,
+        meetsBrief: false,
+        failedRequirements: every,
+        fatal: 'the document is cut short: the answer ends before it closes',
+      })
+      expect(runtimeRecord(api(), 'settings-workspace', 7)).toMatchObject({
+        lawful: false,
+        failedRequirements: every,
+        fatal: expect.stringMatching(
+          /^the document stops being JSON at character \d+, where it needs a value$/,
+        ) as unknown,
+      })
+      expect(runtimeRecord(api(), 'settings-workspace', 8)).toMatchObject({
+        lawful: false,
+        failedRequirements: every,
+        fatal: 'the answer holds no document',
+      })
+      expect(api().results.summary.overall).toMatchObject({
+        runs: 8,
+        measured: 8,
+        endings: { answered: 6, max_tokens: 1, refusal: 1, harness: 0 },
+        lawfulRate: 0.25,
+        meetsBriefRate: 0.25,
+        unreadable: 3,
+      })
+      // What the answer said is kept where there is no document to keep.
+      const kept = api().outputs.outputs.map(({ document }) => document)
+      expect(kept[0]).toEqual(JSON.parse(LAWFUL))
+      expect(kept[7]).toBe('That screen cannot be written.')
+    })
   })
 
-  it('counts an answer with no whole document as not lawful, and meeting nothing', () => {
-    const every = requirementsOf('settings-workspace').map(({ id }) => id)
-    expect(runtimeRecord(api(), 'settings-workspace', 6)).toMatchObject({
-      ended: 'answered',
-      lawful: false,
-      meetsBrief: false,
-      failedRequirements: every,
-      fatal: 'the document is cut short: the answer ends before it closes',
-    })
-    expect(runtimeRecord(api(), 'settings-workspace', 7)).toMatchObject({
-      lawful: false,
-      failedRequirements: every,
-      fatal: expect.stringMatching(
-        /^the document stops being JSON at character \d+, where it needs a value$/,
-      ) as unknown,
-    })
-    expect(runtimeRecord(api(), 'settings-workspace', 8)).toMatchObject({
-      lawful: false,
-      failedRequirements: every,
-      fatal: 'the answer holds no document',
-    })
-    expect(api().results.summary.overall).toMatchObject({
-      runs: 8,
-      measured: 8,
-      endings: { answered: 6, max_tokens: 1, refusal: 1, harness: 0 },
-      lawfulRate: 0.25,
-      meetsBriefRate: 0.25,
-      unreadable: 3,
-    })
-    // What the answer said is kept where there is no document to keep.
-    const kept = api().outputs.outputs.map(({ document }) => document)
-    expect(kept[0]).toEqual(JSON.parse(LAWFUL))
-    expect(kept[7]).toBe('That screen cannot be written.')
-  })
-})
+  describe('the run-time lane, through the CLI', () => {
+    const standInRun = () => runs.runtimeStandIn as Evaluation
 
-describe('the run-time lane, through the CLI', () => {
-  const standInRun = () => runs.runtimeStandIn as Evaluation
-
-  it('passes the card as the system prompt, the brief on stdin, and no tool or MCP server', () => {
-    const args = standInRecord('args', 1, RUNTIME_STAND_IN).split('\0')
-    const after = (flag: string) => args[args.indexOf(flag) + 1]
-    expect(after('--system-prompt')).toBe(screen.runtimeCard({ framework: 'react' }))
-    expect(after('--tools')).toBe('')
-    expect(args).not.toContain('--allowedTools')
-    expect(args).toContain('--strict-mcp-config')
-    expect(after('--model')).toBe('local-model')
-    expect(after('--effort')).toBe('high')
-  })
-
-  it('is held to one request, and records no time to the first token', () => {
-    const [answered, cutOff, refused] = runtimeRecords(standInRun())
-    expect(answered).toMatchObject({
-      ended: 'answered',
-      lawful: true,
-      meetsBrief: true,
-      firstTokenMs: null,
-      inputTokens: 14_300,
-      uncachedInputTokens: 300,
-      cacheReadTokens: 14_000,
-      outputTokens: 1_500,
+    it('passes the card as the system prompt, the brief on stdin, and no tool or MCP server', () => {
+      const args = standInRecord('args', 1, RUNTIME_STAND_IN).split('\0')
+      const after = (flag: string) => args[args.indexOf(flag) + 1]
+      expect(after('--system-prompt')).toBe(screen.runtimeCard({ framework: 'react' }))
+      expect(after('--tools')).toBe('')
+      expect(args).not.toContain('--allowedTools')
+      expect(args).toContain('--strict-mcp-config')
+      expect(after('--model')).toBe('local-model')
+      expect(after('--effort')).toBe('high')
     })
-    expect(answered?.wallMs).toEqual(expect.any(Number))
-    expect(cutOff).toMatchObject({ ended: 'max_tokens', lawful: false, failedRequirements: [] })
-    expect(refused).toMatchObject({ ended: 'refusal', lawful: false, failedRequirements: [] })
-    expect(standInRun().results).toMatchObject({
-      runner: 'cli',
-      partial: false,
-      settings: { thinking: null, effort: 'high' },
-    })
-  })
 
-  it('stops the eval when the CLI starts with a tool to offer', () => {
-    const { code, stderr, results } = attempts.runtimeToolful as Awaited<ReturnType<typeof attempt>>
-    expect(code).toBe(1)
-    expect(stderr).toContain(
-      'the CLI started with Read, and a runtime run offers the model no tool',
-    )
-    expect(results).toMatchObject({
-      partial: true,
-      stopped: { reason: 'cli', brief: 'settings-workspace', run: 1 },
-      records: [],
+    it('is held to one request, and records no time to the first token', () => {
+      const [answered, cutOff, refused] = runtimeRecords(standInRun())
+      expect(answered).toMatchObject({
+        ended: 'answered',
+        lawful: true,
+        meetsBrief: true,
+        firstTokenMs: null,
+        inputTokens: 14_300,
+        uncachedInputTokens: 300,
+        cacheReadTokens: 14_000,
+        outputTokens: 1_500,
+      })
+      expect(answered?.wallMs).toEqual(expect.any(Number))
+      expect(cutOff).toMatchObject({ ended: 'max_tokens', lawful: false, failedRequirements: [] })
+      expect(refused).toMatchObject({ ended: 'refusal', lawful: false, failedRequirements: [] })
+      expect(standInRun().results).toMatchObject({
+        runner: 'cli',
+        partial: false,
+        settings: { thinking: null, effort: 'high' },
+      })
+    })
+
+    it('stops the eval when the CLI starts with a tool to offer', () => {
+      const { code, stderr, results } = attempts.runtimeToolful as Awaited<
+        ReturnType<typeof attempt>
+      >
+      expect(code).toBe(1)
+      expect(stderr).toContain(
+        'the CLI started with Read, and a runtime run offers the model no tool',
+      )
+      expect(results).toMatchObject({
+        partial: true,
+        stopped: { reason: 'cli', brief: 'settings-workspace', run: 1 },
+        records: [],
+      })
     })
   })
 })
@@ -2580,7 +2564,6 @@ function without(document: string, members: string[]) {
   const root = prune(spec.root)
   return { ...spec, root: root === REMOVED ? { component: 'Stack' } : root }
 }
-
 describe('the requirements', () => {
   const members = REGISTRY.components.map((entry) => entry.name)
 

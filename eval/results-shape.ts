@@ -86,7 +86,14 @@ export const HARNESS_RUNNERS = ['cli', 'codex'] as const
 export const PROJECT_ENDINGS = ['answered', 'turns', 'time', 'harness'] as const
 
 /** Why an eval stopped before every run finished. */
-export const STOPS = ['api', 'cli', 'usage-limit', 'tokens-per-run', 'tokens-total'] as const
+export const STOPS = [
+  'api',
+  'cli',
+  'usage-limit',
+  'tokens-per-run',
+  'tokens-total',
+  'tokens-unknown',
+] as const
 
 /** The four tools every run is offered, in the order the request lists them. */
 export const TOOL_NAMES = ['get_system_card', 'search_components', 'get_component', 'validate']
@@ -215,6 +222,11 @@ const SUMMARY_ADDED = [
   'failedRequirements',
 ]
 
+const PLAN_UPDATES = count(
+  'How often Codex started or updated its plan (its `todo_list` items). Its plan tool, which no ' +
+    'setting turns off, writes nothing and calls nothing. Present for the `codex` runner only.',
+)
+
 const RECORD = obj(
   {
     brief: str({ description: 'The brief’s file name in `eval/briefs/`, without `.md`.' }),
@@ -330,8 +342,9 @@ const RECORD = obj(
           'written before this field was kept.',
       },
     ),
+    planUpdates: PLAN_UPDATES,
   },
-  { optional: ['misses', 'meetsBrief', 'failedRequirements'] },
+  { optional: ['misses', 'meetsBrief', 'failedRequirements', 'planUpdates'] },
 )
 
 /* -------------------------------------------------------------------------- */
@@ -373,7 +386,9 @@ const STOPPED = nullable(
           '`api`: the Messages API refused, or kept failing. `cli`: the harness the runner ' +
           'started (Claude Code or Codex) failed, or reported an error, such as one from the ' +
           'API. `usage-limit`: the harness reported a usage or rate limit on the account it is ' +
-          'signed in to. `tokens-per-run`, `tokens-total`: a token ceiling was reached.',
+          'signed in to. `tokens-per-run`, `tokens-total`: a token ceiling was reached. ' +
+          '`tokens-unknown`: `--max-tokens-total` was given, and a run ended before its harness ' +
+          'reported its tokens, so the ceiling could no longer be held.',
       }),
       brief: str({ description: 'The brief whose run was under way.' }),
       run: count('Which run of that brief.'),
@@ -563,97 +578,101 @@ const RUNTIME_SUMMARY_FIELDS: Record<string, Shape> = {
   discardedTokens: SUMMARY_FIELDS.discardedTokens,
 }
 
-const RUNTIME_RECORD = obj({
-  brief: str({ description: 'The brief’s file name in `eval/briefs/`, without `.md`.' }),
-  run: count('Which run of this brief, from 1.'),
-  lawful: bool({
-    description:
-      'Whether the answer holds a whole document and `checkScreen` (`@polymorph/screen`) passes ' +
-      'it with the card’s framework and members. Always false for a run that ended in ' +
-      '`refusal`, `max_tokens` or `harness`.',
-  }),
-  meetsBrief: bool({
-    description:
-      'Whether the document meets every requirement of its brief ' +
-      '(`eval/requirements/<brief>.json`), read as the `spec` mode reads one. Always false for ' +
-      'a run that ended in `refusal`, `max_tokens` or `harness`.',
-  }),
-  failedRequirements: arr(str(), {
-    description:
-      'The requirements the document does not meet, by id, in the brief’s order: every one ' +
-      'when the answer holds no whole document. Empty for a run that ended in `refusal`, ' +
-      '`max_tokens` or `harness`, which is not judged.',
-  }),
-  ended: str({
-    enum: RUNTIME_ENDINGS,
-    description:
-      '`answered`: the model stopped. `max_tokens`: the response was cut off. `refusal`: the ' +
-      'model declined. `harness`: the harness itself failed, so the run measures nothing about ' +
-      'the model.',
-  }),
-  harnessFault: nullable(
-    str({ description: 'What failed when the run ended `harness`; null for every other run.' }),
-  ),
-  fatal: nullable(
-    str({
+const RUNTIME_RECORD = obj(
+  {
+    brief: str({ description: 'The brief’s file name in `eval/briefs/`, without `.md`.' }),
+    run: count('Which run of this brief, from 1.'),
+    lawful: bool({
       description:
-        'Why the answer holds no document `checkScreen` can read: there is none, or it is cut ' +
-        'short. Null when the document is whole, and for a run that was not judged.',
+        'Whether the answer holds a whole document and `checkScreen` (`@polymorph/screen`) passes ' +
+        'it with the card’s framework and members. Always false for a run that ended in ' +
+        '`refusal`, `max_tokens` or `harness`.',
     }),
-  ),
-  faults: arr(str(), {
-    description: 'Every fault `checkScreen` reported, as `path: message`, in its words.',
-  }),
-  inputTokens: nullable(
-    count(
-      'Every input token the request read: uncached, cache writes and cache reads together. ' +
-        'Null when the harness did not report it.',
+    meetsBrief: bool({
+      description:
+        'Whether the document meets every requirement of its brief ' +
+        '(`eval/requirements/<brief>.json`), read as the `spec` mode reads one. Always false for ' +
+        'a run that ended in `refusal`, `max_tokens` or `harness`.',
+    }),
+    failedRequirements: arr(str(), {
+      description:
+        'The requirements the document does not meet, by id, in the brief’s order: every one ' +
+        'when the answer holds no whole document. Empty for a run that ended in `refusal`, ' +
+        '`max_tokens` or `harness`, which is not judged.',
+    }),
+    ended: str({
+      enum: RUNTIME_ENDINGS,
+      description:
+        '`answered`: the model stopped. `max_tokens`: the response was cut off. `refusal`: the ' +
+        'model declined. `harness`: the harness itself failed, so the run measures nothing about ' +
+        'the model.',
+    }),
+    harnessFault: nullable(
+      str({ description: 'What failed when the run ended `harness`; null for every other run.' }),
     ),
-  ),
-  uncachedInputTokens: nullable(
-    count(
-      'The part of `inputTokens` the API reported as `input_tokens`; for Codex, its input less ' +
-        'what it reported as cached.',
+    fatal: nullable(
+      str({
+        description:
+          'Why the answer holds no document `checkScreen` can read: there is none, or it is cut ' +
+          'short. Null when the document is whole, and for a run that was not judged.',
+      }),
     ),
-  ),
-  cacheWriteTokens: nullable(
-    count(
-      'The part of `inputTokens` written to the prompt cache (`cache_creation_input_tokens`). ' +
-        'Null where the harness reports no such part.',
+    faults: arr(str(), {
+      description: 'Every fault `checkScreen` reported, as `path: message`, in its words.',
+    }),
+    inputTokens: nullable(
+      count(
+        'Every input token the request read: uncached, cache writes and cache reads together. ' +
+          'Null when the harness did not report it.',
+      ),
     ),
-  ),
-  cacheReadTokens: nullable(
-    count('The part of `inputTokens` read from the prompt cache (`cache_read_input_tokens`).'),
-  ),
-  outputTokens: nullable(count('Every output token of the answer, thinking included.')),
-  discardedTokens: nullable(
-    count(
-      'Tokens of attempts that broke off mid-stream and were sent again, as far as their usage ' +
-        'was reported. Billed, but in neither `inputTokens` nor `outputTokens`. Null for the ' +
-        '`codex` runner, because Codex does not report them.',
+    uncachedInputTokens: nullable(
+      count(
+        'The part of `inputTokens` the API reported as `input_tokens`; for Codex, its input less ' +
+          'what it reported as cached.',
+      ),
     ),
-  ),
-  firstTokenMs: nullable(
-    count(
-      'Milliseconds from sending the request that was answered to the first text of its ' +
-        'answer. Thinking is not text, so time spent thinking is inside it. Null when the answer ' +
-        'has no text, and for the `cli` and `codex` runners, which do not report when they send a ' +
-        'request.',
+    cacheWriteTokens: nullable(
+      count(
+        'The part of `inputTokens` written to the prompt cache (`cache_creation_input_tokens`). ' +
+          'Null where the harness reports no such part.',
+      ),
     ),
-  ),
-  wallMs: count(
-    'Milliseconds from the first request to the end of the answer, retry waits (`backoffMs`) ' +
-      'left out; for the `cli` and `codex` runners, from the harness’s start-up report.',
-  ),
-  retries: nullable(
-    count('Requests sent again after a transient failure. Null for the `codex` runner.'),
-  ),
-  backoffMs: nullable(
-    count(
-      'Time spent waiting before those requests, in milliseconds. Null for the `codex` runner.',
+    cacheReadTokens: nullable(
+      count('The part of `inputTokens` read from the prompt cache (`cache_read_input_tokens`).'),
     ),
-  ),
-})
+    outputTokens: nullable(count('Every output token of the answer, thinking included.')),
+    discardedTokens: nullable(
+      count(
+        'Tokens of attempts that broke off mid-stream and were sent again, as far as their usage ' +
+          'was reported. Billed, but in neither `inputTokens` nor `outputTokens`. Null for the ' +
+          '`codex` runner, because Codex does not report them.',
+      ),
+    ),
+    firstTokenMs: nullable(
+      count(
+        'Milliseconds from sending the request that was answered to the first text of its ' +
+          'answer. Thinking is not text, so time spent thinking is inside it. Null when the answer ' +
+          'has no text, and for the `cli` and `codex` runners, which do not report when they send a ' +
+          'request.',
+      ),
+    ),
+    wallMs: count(
+      'Milliseconds from the first request to the end of the answer, retry waits (`backoffMs`) ' +
+        'left out; for the `cli` and `codex` runners, from the harness’s start-up report.',
+    ),
+    retries: nullable(
+      count('Requests sent again after a transient failure. Null for the `codex` runner.'),
+    ),
+    backoffMs: nullable(
+      count(
+        'Time spent waiting before those requests, in milliseconds. Null for the `codex` runner.',
+      ),
+    ),
+    planUpdates: PLAN_UPDATES,
+  },
+  { optional: ['planUpdates'] },
+)
 
 const RUNTIME_RESULTS: Shape = obj(
   {
@@ -770,7 +789,8 @@ const PROJECT_SUMMARY_FIELDS: Record<string, Shape> = {
   ...projectRate(
     'meetsBrief',
     'whose screen meets every requirement of its brief',
-    'the measured runs whose screen could be read: a spec, a React module, or no screen at all',
+    'the measured runs whose screen could be read: a spec, a React or Solid module, or no ' +
+      'screen at all',
   ),
   ...projectRate(
     'allThree',
@@ -828,8 +848,9 @@ const PROJECT_RECORD = obj({
     bool({
       description:
         'Whether the screen the harness wrote meets every requirement of its brief ' +
-        '(`eval/requirements/<brief>.json`). False when it wrote none. Null when it wrote one ' +
-        'the requirements cannot read: a single-file component, or an Angular or Solid module.',
+        '(`eval/requirements/<brief>.json`). False when it wrote none, or only modules that ' +
+        'hold none. Null when it wrote one the requirements cannot read: a Vue or Svelte ' +
+        'single-file component, an Angular component, or a page that uses the elements.',
     }),
   ),
   failedRequirements: arr(str(), {
@@ -843,9 +864,10 @@ const PROJECT_RECORD = obj({
         kind: str({
           enum: ['spec', 'tsx', 'unread'],
           description:
-            '`spec`: specs the harness wrote under `src/screens/`, judged as a spec. `tsx`: ' +
-            'React modules it wrote under `src/`, judged together as one module. `unread`: ' +
-            'files the requirements cannot read.',
+            '`spec`: specs the harness wrote under `src/screens/`, judged together. `tsx`: ' +
+            'React or Solid modules it wrote under `src/`, judged together, which name the same ' +
+            'members. `unread`: a Vue or Svelte single-file component, an Angular component or ' +
+            'a page that uses the elements, which the requirements cannot read.',
         }),
         files: arr(str(), { description: 'The files judged, relative to the project.' }),
       },
@@ -974,6 +996,15 @@ const PROJECT_RESULTS: Shape = obj(
         ),
         mcpServers: arr(str(), {
           description: 'The MCP servers the project configures for the harness, by name.',
+        }),
+        harnessHome: str({
+          enum: ['scratch', 'owner'],
+          description:
+            'Where the harness kept its own state. `scratch`: a directory of each run’s own ' +
+            '(Codex’s `CODEX_HOME`, always; Claude Code’s `CLAUDE_CONFIG_DIR`, when it signs in ' +
+            'from its environment). `owner`: the owner’s, because Claude Code signed in with ' +
+            '`/login` keys that sign-in to its configuration directory, so it wrote ' +
+            '`~/.claude.json` and `~/.claude/`.',
         }),
       },
       {

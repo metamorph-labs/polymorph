@@ -61,6 +61,42 @@ export function claudeEnvironment(extra = {}) {
   return { ...Object.fromEntries(kept), ...extra }
 }
 
+/**
+ * The ways Claude Code is signed in from its environment, which work from
+ * any configuration directory: a long-lived token (`claude setup-token`), an
+ * API key or bearer token, or a cloud provider
+ * (https://code.claude.com/docs/en/authentication.md).
+ */
+const CLAUDE_ENVIRONMENT_SIGN_IN = [
+  'CLAUDE_CODE_OAUTH_TOKEN',
+  'ANTHROPIC_API_KEY',
+  'ANTHROPIC_AUTH_TOKEN',
+  'CLAUDE_CODE_USE_BEDROCK',
+  'CLAUDE_CODE_USE_VERTEX',
+  'CLAUDE_CODE_USE_FOUNDRY',
+]
+
+/**
+ * Where Claude Code keeps its state in a run: `scratch`, a configuration
+ * directory of the run's own (`CLAUDE_CONFIG_DIR`, `claudeHome`), when its
+ * sign-in comes from the environment; `owner`, the owner's own
+ * (`~/.claude.json` and `~/.claude/`, or the `CLAUDE_CONFIG_DIR` they set),
+ * when it signed in with `/login`. Claude Code keys that sign-in to its
+ * configuration directory, in the macOS Keychain or in `.credentials.json`,
+ * so a run with another directory would not be signed in
+ * (https://code.claude.com/docs/en/authentication.md, "Credential
+ * management").
+ */
+export function claudeHomeKind(env = process.env) {
+  return CLAUDE_ENVIRONMENT_SIGN_IN.some((name) => (env[name] ?? '') !== '') ? 'scratch' : 'owner'
+}
+
+/** A configuration directory of the run's own for Claude Code, at `directory`, empty. */
+export function claudeHome(directory) {
+  mkdirSync(directory, { recursive: true })
+  return directory
+}
+
 /* -------------------------------------------------------------------------- */
 /* Codex                                                                      */
 /* -------------------------------------------------------------------------- */

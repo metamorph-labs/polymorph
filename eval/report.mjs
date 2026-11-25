@@ -189,6 +189,7 @@ const STOPPED = {
   'usage-limit': 'stopped at a usage limit',
   'tokens-per-run': 'stopped at the per-run token ceiling',
   'tokens-total': 'stopped at the total token ceiling',
+  'tokens-unknown': 'stopped when a run’s tokens went unreported under a total ceiling given',
 }
 
 function version({ polymorph }) {

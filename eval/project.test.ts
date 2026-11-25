@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import {
   existsSync,
   mkdirSync,
@@ -106,6 +106,7 @@ interface ProjectResults {
     installed: boolean
     agents: { ran: boolean; said: string }
     mcpServers: string[]
+    harnessHome: string
   }
   outputs: string
   summary: { overall: Record<string, unknown>; briefs: Record<string, unknown>[] }
@@ -211,6 +212,7 @@ function standIn(script: object) {
     '#!/bin/sh',
     `if [ "$1" = "--version" ]; then exec '${node}' '${FAKE_CLI}' --version; fi`,
     `printf '%s\\0' "$@" > '${STAND_IN}/args'`,
+    `printenv CLAUDE_CONFIG_DIR > '${STAND_IN}/config' || true`,
     `cat > '${STAND_IN}/stdin'`,
     `exec '${node}' '${FAKE_CLI}' --script '${STAND_IN}/run.json' "$@" < '${STAND_IN}/stdin'`,
   ]
@@ -224,7 +226,15 @@ const LANE = ['--fake', '--mode', 'project', ...SETTINGS]
 // The four runs through each stand-in. The evals of the later sections have setups of their own.
 beforeAll(async () => {
   const [cli, codex] = await Promise.all([
-    evaluate('cli', [...LANE, '--runner', 'cli', '--runs', '4', '--max-turns', '8']),
+    // Signed in as `/login` signs in, with nothing in the environment, whatever the machine has.
+    evaluate('cli', [...LANE, '--runner', 'cli', '--runs', '4', '--max-turns', '8'], {
+      CLAUDE_CODE_OAUTH_TOKEN: '',
+      ANTHROPIC_API_KEY: '',
+      ANTHROPIC_AUTH_TOKEN: '',
+      CLAUDE_CODE_USE_BEDROCK: '',
+      CLAUDE_CODE_USE_VERTEX: '',
+      CLAUDE_CODE_USE_FOUNDRY: '',
+    }),
     evaluate('codex', [...LANE, '--runner', 'codex', '--runs', '4', '--max-turns', '8']),
   ])
   Object.assign(runs, { cli, codex })
@@ -376,6 +386,8 @@ describe('the project lane, with the scripted harnesses', () => {
             agents: { ran: true },
             // `.mcp.json` for Claude Code, and `.codex/config.toml` for Codex, which runs trusted.
             mcpServers: ['polymorph'],
+            // Codex always has a home of its own; Claude Code signed in with `/login` keeps the owner's.
+            harnessHome: harness === 'cli' ? 'owner' : 'scratch',
           },
         })
         expect(validate(RESULTS_SHAPE, results)).toEqual([])
@@ -433,7 +445,8 @@ describe('the project lane, through a stand-in for the owner’s Claude Code', (
         ...['--mode', 'project', '--no-install', '--max-minutes', '0.02', ...SETTINGS],
         ...['--model', 'local-model', '--effort', 'high'],
       ],
-      { ANTHROPIC_API_KEY: '' },
+      // A sign-in from the environment, so Claude Code gets a configuration directory of the run's own.
+      { ANTHROPIC_API_KEY: '', CLAUDE_CODE_OAUTH_TOKEN: 'local-token' },
     )
   }, 90_000)
 
@@ -482,7 +495,14 @@ describe('the project lane, through a stand-in for the owner’s Claude Code', (
     expect(settings.sandbox.filesystem.allowWrite.map((path) => path.split('/').at(-1))).toEqual([
       'npm-cache',
       'pnpm-store',
+      'pnpm-cache',
+      'pnpm-state',
     ])
+    // Its state goes to a directory of the run's own, not the owner's `~/.claude.json` and `~/.claude/`.
+    expect(readFileSync(resolve(STAND_IN, 'config'), 'utf8').trim()).toMatch(
+      /polymorph-eval-project-[^/]+\/settings-workspace-1\/claude-home$/,
+    )
+    expect((runs.timed as Evaluation).results.project.harnessHome).toBe('scratch')
     expect(settings.sandbox.filesystem.denyWrite).toEqual([
       expect.stringMatching(/polymorph-eval-project-[^/]+\/template$/),
     ])
@@ -690,6 +710,44 @@ describe('the tools', () => {
     })
   })
 
+  it('are refused when the bin a directory declares is not built', () => {
+    const unbuilt = resolve(SCRATCH, 'unbuilt-tools')
+    mkdirSync(unbuilt, { recursive: true })
+    writeFileSync(
+      resolve(unbuilt, 'package.json'),
+      JSON.stringify({ name: '@polymorph/tools', bin: { polymorph: './dist/polymorph.js' } }),
+    )
+    expect(() => resolveTools(unbuilt, { scratch: SCRATCH })).toThrow(
+      'declares its `polymorph` bin at dist/polymorph.js, which does not exist: the package is ' +
+        'not built',
+    )
+  })
+
+  it('install a tarball with npm, into the eval’s own cache', () => {
+    // A package with no dependencies, so npm installs it with no network.
+    const packed = resolve(SCRATCH, 'packed')
+    mkdirSync(resolve(packed, 'package'), { recursive: true })
+    writeFileSync(
+      resolve(packed, 'package/package.json'),
+      JSON.stringify({
+        name: 'packed-tools',
+        version: '0.0.0-packed',
+        bin: { polymorph: './polymorph.js' },
+      }),
+    )
+    writeFileSync(resolve(packed, 'package/polymorph.js'), '#!/usr/bin/env node\n')
+    const tarball = resolve(packed, 'tools.tgz')
+    execFileSync('tar', ['-czf', tarball, '-C', packed, 'package'])
+    const scratch = resolve(SCRATCH, 'packed-scratch')
+    mkdirSync(scratch, { recursive: true })
+    expect(resolveTools(tarball, { scratch })).toMatchObject({
+      from: 'tarball',
+      path: tarball,
+      version: '0.0.0-packed',
+    })
+    expect(existsSync(resolve(scratch, 'npm-cache'))).toBe(true)
+  }, 60_000)
+
   it('are refused when they hold no bin, or are neither a directory nor a tarball', () => {
     const empty = resolve(SCRATCH, 'empty-tools')
     mkdirSync(empty, { recursive: true })
@@ -803,6 +861,24 @@ describe('the judge', () => {
     expect(judged).toMatchObject({ lawful: false, builds: false, meetsBrief: true })
     expect(judged.buildFault).toContain('`package.json` cannot be read')
     expect(judged.violations).toEqual([expect.stringContaining('package.json: it cannot be read')])
+
+    // One it deleted, or a script it took out, leaves an app that does not build: the run counts.
+    const deleted = fixture('deleted', 'node -e "process.exit(0)"')
+    rmSync(resolve(deleted, 'package.json'))
+    expect(await judge(deleted, true)).toMatchObject({
+      lawful: true,
+      builds: false,
+      buildFault: 'the harness deleted `package.json`, which the app is built from',
+    })
+    const unscripted = fixture('unscripted', 'node -e "process.exit(0)"')
+    writeFileSync(
+      resolve(unscripted, 'package.json'),
+      JSON.stringify({ name: 'unscripted', scripts: { typecheck: 'node -e "process.exit(0)"' } }),
+    )
+    expect(await judge(unscripted, true)).toMatchObject({
+      builds: false,
+      buildFault: 'the harness took the `build` script out of `package.json`',
+    })
   }, 120_000)
 })
 
