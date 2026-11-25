@@ -165,6 +165,38 @@ describe('focusAfterRemoval', () => {
     again()
   })
 
+  it('moves focus once a region that plays a leave animation has left', async () => {
+    const { region, inside, after } = draw(`
+      <div id="region"><button id="inside">Dismiss</button></div>
+      <button id="after">After</button>`)
+    const release = focusAfterRemoval(region)
+    inside?.focus()
+    // Vue's Transition runs the function as the leave starts, and takes the region out when the
+    // animation ends.
+    release()
+    await settled()
+    expect(document.activeElement).toBe(inside)
+    await new Promise((settle) => setTimeout(settle, 20))
+    region?.remove()
+    await settled()
+    expect(document.activeElement).toBe(after)
+  })
+
+  it('leaves focus where the reader put it while the region played its leave animation', async () => {
+    const { region, inside, before } = draw(`
+      <button id="before">Before</button>
+      <div id="region"><button id="inside">Dismiss</button></div>
+      <button>After</button>`)
+    const release = focusAfterRemoval(region)
+    inside?.focus()
+    release()
+    await settled()
+    before?.focus()
+    region?.remove()
+    await settled()
+    expect(document.activeElement).toBe(before)
+  })
+
   it('leaves focus alone once it has moved to another element', async () => {
     const { region, inside, before } = draw(`
       <button id="before">Before</button>

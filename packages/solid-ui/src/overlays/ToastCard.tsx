@@ -20,6 +20,8 @@ import {
   removeToast,
   scope,
   toast,
+  toastClock,
+  toastTimeLeft,
   watchEffect,
   type ToastRecord,
 } from '@polymorph/solid'
@@ -51,6 +53,7 @@ export default function ToastCard(given: ToastCardProps): JSX.Element {
     const icon = createDerived(() =>
       props.record.tone === 'neutral' ? null : TOAST_TONE_ICON[props.record.tone],
     )
+    const clock = createDerived(() => toastClock())
     const dismissible = createDerived(() => props.record.dismissible !== false)
     const dismiss = createDerived(() => (): void => {
       if (dismissible.value) toast.dismiss(props.record.id)
@@ -101,7 +104,7 @@ export default function ToastCard(given: ToastCardProps): JSX.Element {
       false,
     )
     const effect2 = () => {
-      void (present() || removeToast(props.record.id))
+      void (present() || removeToast(props.record.id, props.record.raised))
     }
     watchEffect(
       createMemo(() => present()),
@@ -121,7 +124,14 @@ export default function ToastCard(given: ToastCardProps): JSX.Element {
             toast.dismiss(props.record.id)
           )
         },
-        Number.isFinite(props.record.durationMs) ? props.record.durationMs : 0,
+        Number.isFinite(props.record.durationMs)
+          ? toastTimeLeft(
+              clock.value,
+              props.record.revision,
+              props.record.durationMs,
+              !props.paused && props.record.closing !== true,
+            )
+          : 0,
       )
       release3 = () => clearTimeout(timer)
     }

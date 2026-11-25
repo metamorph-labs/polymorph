@@ -411,6 +411,7 @@ export type { ToastNoticeChoice, ToastNoticeDetail } from './toast/agent'
 /* Where focus goes when a toast that holds it leaves, when a viewport's timers wait, and what
    its live regions say. */
 export { focusAfterToast, followToastFocus } from './toast/focus'
-export { holdToastTimers } from './toast/hold'
+export { holdToastTimers, toastClock, toastTimeLeft } from './toast/hold'
+export type { ToastClock } from './toast/hold'
 export { announceToasts, TOAST_QUIET } from './toast/announce'
 export type { ToastAnnouncements, ToastSaying } from './toast/announce'

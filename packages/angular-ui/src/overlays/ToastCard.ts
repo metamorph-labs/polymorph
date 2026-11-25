@@ -23,6 +23,8 @@ import {
   removeToast,
   setup,
   toast,
+  toastClock,
+  toastTimeLeft,
   useMember,
   watchEffect,
   type IconProps,
@@ -148,6 +150,7 @@ export class ToastCard {
   protected readonly icon = derived(() =>
     this.$p.record.tone === 'neutral' ? null : TOAST_TONE_ICON[this.$p.record.tone],
   )
+  protected readonly clock = derived(() => toastClock())
   protected readonly dismissible = derived(() => this.$p.record.dismissible !== false)
   protected readonly dismiss = derived(() => (): void => {
     if (this.dismissible.value) toast.dismiss(this.$p.record.id)
@@ -383,7 +386,7 @@ export class ToastCard {
   }
 
   private effect2(): void {
-    void (this.present.value() || removeToast(this.$p.record.id))
+    void (this.present.value() || removeToast(this.$p.record.id, this.$p.record.raised))
   }
 
   private effect3(): void {
@@ -398,7 +401,14 @@ export class ToastCard {
           toast.dismiss(this.$p.record.id)
         )
       },
-      Number.isFinite(this.$p.record.durationMs) ? this.$p.record.durationMs : 0,
+      Number.isFinite(this.$p.record.durationMs)
+        ? toastTimeLeft(
+            this.clock.value,
+            this.$p.record.revision,
+            this.$p.record.durationMs,
+            !this.$p.paused && this.$p.record.closing !== true,
+          )
+        : 0,
     )
     this.release3 = () => clearTimeout(timer)
   }

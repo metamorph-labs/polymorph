@@ -213,15 +213,24 @@ export function returnFocusTo(
  * the region stayed, no longer counts.
  *
  * The returned function decides whether focus was in the region, and moves it
- * a microtask later, once the region has left the page, and only if focus is
- * then on the body. A framework that runs the function while the region stays
- * moves nothing: React's StrictMode runs an effect's cleanup and the effect
- * again on a region that stays mounted, and an element that took focus as it
- * mounted keeps it.
+ * once the region has left the page, and only if focus is then on the body.
+ * A microtask after the call it looks at the region again:
+ *
+ * - The region has left: focus moves then.
+ * - The region is still in the page and a later call follows it: the framework
+ *   mounted it again, as React's StrictMode runs an effect's cleanup and the
+ *   effect again on a region that stays mounted. Nothing moves, and an element
+ *   that took focus as it mounted keeps it.
+ * - The region is still in the page and nothing else follows it: the framework
+ *   removes it after a leave animation, as Vue's `Transition` and Angular's
+ *   animations do. Focus moves once the region leaves, unless the reader moves
+ *   focus to an element outside it first.
  */
 export function focusAfterRemoval(region: Element | null | undefined): () => void {
   if (!region) return () => undefined
   const top = region.ownerDocument
+  const self = {}
+  followers.set(region, self)
   let place = region.contains(top.activeElement) ? focusPlace(region) : null
   const enter = (): void => {
     place = focusPlace(region)
@@ -246,10 +255,40 @@ export function focusAfterRemoval(region: Element | null | undefined): () => voi
     const held = place
     place = null
     if (held === null) return
-    queueMicrotask(() => {
-      if (region.isConnected) return
+    const land = (): void => {
       const active = top.activeElement
       if (active === null || active === top.body) nearestFocusable(held, [region])?.focus()
+    }
+    queueMicrotask(() => {
+      if (!region.isConnected) land()
+      else if (followers.get(region) === self) afterLeaving(region, land)
     })
   }
+}
+
+/** The latest call of `focusAfterRemoval` for each region, so a released call knows it was replaced. */
+const followers = new WeakMap<Element, object>()
+
+/**
+ * Calls `land` once `region` has left the page, unless focus lands on an element outside it
+ * first or a new call of `focusAfterRemoval` follows it.
+ */
+function afterLeaving(region: Element, land: () => void): void {
+  const top = region.ownerDocument
+  const self = followers.get(region)
+  const stop = (): void => {
+    observer.disconnect()
+    top.removeEventListener('focusin', moved, true)
+  }
+  const observer = new MutationObserver(() => {
+    if (followers.get(region) !== self) return stop()
+    if (region.isConnected) return
+    stop()
+    land()
+  })
+  const moved = (event: Event): void => {
+    if (!(event.target instanceof Node) || !region.contains(event.target)) stop()
+  }
+  observer.observe(top.documentElement, { childList: true, subtree: true })
+  top.addEventListener('focusin', moved, true)
 }

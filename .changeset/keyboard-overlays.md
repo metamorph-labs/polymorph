@@ -30,15 +30,21 @@ Keyboard and focus fixes for overlays and for members that leave the page.
   - The live regions say a toast when it is raised, and again when an update in place changes
     its words, and say nothing when one leaves. They read the content's text and the action's
     label too, and two toasts with the same words in a row are each said.
-  - The timers wait while the window is in the background, as well as while the reader is on
-    the notifications.
+  - The timers wait while the window is in the background (its page is hidden, or another
+    window or application has focus), as well as while the reader is on the notifications.
+    Focus in a frame on the page does not hold them. When the hold ends, a toast resumes with
+    the time that was left in every framework, as React's did; Vue, Svelte, Solid, Angular and
+    the elements started a whole new window.
+  - A toast raised again under the id of one whose card is still playing its exit stays: the
+    card takes out its own record only (`removeToast(id, raised)`).
 - **Focus return when the trigger is gone.** Dialog, ConfirmDialog, Drawer, Lightbox, Command
   and Tour return focus to the focusable element nearest where their trigger was when the
   trigger has left the page while they were open (a confirm that deletes its row), instead of
   dropping it to the body. The rule is the engine's `focusReturnTarget`.
 - **Alert, Banner and ArtifactPane.** When one of them leaves the page while it holds focus,
   after its own close control for one, focus moves to the focusable element nearest where it
-  was (`focusAfterRemoval`).
+  was (`focusAfterRemoval`), also when the framework removes it only after a leave animation
+  (Vue's `Transition`, Angular's animations).
 - **The phone-width sheet inside a Dialog (React).** Select, Menu and the other members that
   draw the bottom sheet below `30rem` keep focus in the sheet when they open inside a Dialog
   or a Drawer, and Escape and a press on the sheet's scrim close the sheet and leave the Dialog
@@ -53,5 +59,5 @@ Keyboard and focus fixes for overlays and for members that leave the page.
   raised in the same render as the viewport.
 - The engine exports `focusPlace`, `nearestFocusable`, `focusReturnTarget`, `returnFocusTo`,
   `focusAfterRemoval`, `focusAfterToast`, `followToastFocus`, `holdToastTimers`,
-  `announceToasts` and `TOAST_QUIET`, and a toast record carries `raised`, which a toast raised
+  `toastClock`, `toastTimeLeft`, `announceToasts` and `TOAST_QUIET`, and a toast record carries `raised`, which a toast raised
   again under the same id renews.

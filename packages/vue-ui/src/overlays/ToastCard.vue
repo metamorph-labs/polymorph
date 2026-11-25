@@ -15,6 +15,8 @@ import {
   focusAfterToast,
   removeToast,
   toast,
+  toastClock,
+  toastTimeLeft,
   type ToastRecord,
 } from '@polymorph/vue'
 import { usePresence } from '@polymorph/vue/motion'
@@ -44,6 +46,7 @@ const card = useTemplateRef<HTMLElement>('card')
 const icon = computed(() =>
   props.record.tone === 'neutral' ? null : TOAST_TONE_ICON[props.record.tone],
 )
+const clock = computed(() => toastClock())
 const dismissible = computed(() => props.record.dismissible !== false)
 const dismiss = computed(() => (): void => {
   if (dismissible.value) toast.dismiss(props.record.id)
@@ -86,7 +89,7 @@ const effect1 = () => {
 }
 watch(() => props.record.closing, effect1, { flush: 'post' })
 const effect2 = () => {
-  present.value || removeToast(props.record.id)
+  present.value || removeToast(props.record.id, props.record.raised)
 }
 watch(() => present.value, effect2, { flush: 'post' })
 let release3: (() => void) | undefined
@@ -100,7 +103,14 @@ const effect3 = () => {
         Number.isFinite(props.record.durationMs) &&
         toast.dismiss(props.record.id)
     },
-    Number.isFinite(props.record.durationMs) ? props.record.durationMs : 0,
+    Number.isFinite(props.record.durationMs)
+      ? toastTimeLeft(
+          clock.value,
+          props.record.revision,
+          props.record.durationMs,
+          !props.paused && props.record.closing !== true,
+        )
+      : 0,
   )
   release3 = () => clearTimeout(timer)
 }

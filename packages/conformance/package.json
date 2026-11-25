@@ -12,6 +12,7 @@
     "./pager-hold": "./src/pager-hold.ts",
     "./toast-swipe": "./src/toast-swipe.ts",
     "./toast-focus": "./src/toast-focus.ts",
+    "./toast-timer": "./src/toast-timer.ts",
     "./focus-after-removal": "./src/focus-after-removal.ts",
     "./diff": "./src/diff.ts",
     "./highlight": "./src/highlight.ts",

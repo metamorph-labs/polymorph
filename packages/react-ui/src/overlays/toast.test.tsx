@@ -3,6 +3,7 @@ import { page, userEvent } from 'vitest/browser'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { toastFocusLaw } from '@polymorph/conformance/toast-focus'
+import { toastTimerLaw } from '@polymorph/conformance/toast-timer'
 import { Button } from '../controls/Button'
 import { Input } from '../controls/Input'
 import { Select } from '../controls/Select'
@@ -107,6 +108,13 @@ toastFocusLaw({
   mount: async () => render(<Toaster />),
   raise: (options) => toast({ durationMs: Number.POSITIVE_INFINITY, ...options }),
   remove: (id) => removeToast(id),
+  clear: () => getToasts().forEach((record) => removeToast(record.id)),
+})
+
+toastTimerLaw({
+  shell: 'React',
+  mount: async () => render(<Toaster />),
+  raise: (title, durationMs) => void toast({ title, durationMs }),
   clear: () => getToasts().forEach((record) => removeToast(record.id)),
 })
 

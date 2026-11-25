@@ -127,6 +127,18 @@ describe('createToastStore', () => {
     expect(store.get()).toEqual([])
   })
 
+  it('keeps a toast raised again under an id while the card of the one before was leaving', () => {
+    const store = createToastStore()
+    store.toast({ id: 'a', title: 'Saved' })
+    const leaving = store.get()[0]?.raised
+    store.toast.dismiss('a')
+    store.toast({ id: 'a', title: 'Saved again' })
+    // The leaving card has played its exit and takes out its own record only.
+    store.remove('a', leaving)
+    expect(store.get()).toMatchObject([{ id: 'a', title: 'Saved again' }])
+    expect(store.get()[0]?.closing).toBeUndefined()
+  })
+
   it('tells the owner once when its toast is dismissed, and not when the owner removes it', () => {
     const store = createToastStore()
     const dismissed: string[] = []

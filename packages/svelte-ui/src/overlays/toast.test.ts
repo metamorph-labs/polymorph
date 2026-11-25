@@ -3,6 +3,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { toastFocusLaw } from '@polymorph/conformance/toast-focus'
 import { toastSwipeLaw } from '@polymorph/conformance/toast-swipe'
+import { toastTimerLaw } from '@polymorph/conformance/toast-timer'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { getToasts, removeToast, toast, TOAST_DEFAULT_DURATION_MS } from '@polymorph/svelte'
 
@@ -43,6 +44,13 @@ toastSwipeLaw({
   mount: () => render(ToastViewport, {}),
   raise: (title) => void toast({ title, durationMs: Number.POSITIVE_INFINITY }),
   held: () => getToasts().length,
+  clear: () => getToasts().forEach((record) => removeToast(record.id)),
+})
+
+toastTimerLaw({
+  shell: 'Svelte',
+  mount: () => render(ToastViewport, {}),
+  raise: (title, durationMs) => void toast({ title, durationMs }),
   clear: () => getToasts().forEach((record) => removeToast(record.id)),
 })
 

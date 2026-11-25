@@ -217,8 +217,11 @@ export const ENGINE_HELPERS: readonly string[] = [
   'focusAfterRemoval',
   'focusAfterToast',
   'followToastFocus',
-  // When a toast viewport's timers wait, and what its live regions say.
+  // When a toast viewport's timers wait, how much of a card's time is left, and what the
+  // live regions say.
   'holdToastTimers',
+  'toastClock',
+  'toastTimeLeft',
   'announceToasts',
   'TOAST_QUIET',
   'avatarTone',

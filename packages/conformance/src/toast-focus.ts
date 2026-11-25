@@ -369,14 +369,32 @@ export function toastFocusLaw(law: ToastFocusLaw): void {
       await law.mount()
       law.raise({ title: 'Ticket saved', durationMs: 300 })
       await vi.waitFor(() => expect(open()).toHaveLength(1))
+      // Another application took focus: the window sends `blur`, and its document has no focus.
+      const focused = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
       window.dispatchEvent(new FocusEvent('blur'))
       try {
         await sleep(900)
         expect(open(), 'the timer ran while the window was in the background').toHaveLength(1)
       } finally {
+        focused.mockRestore()
         window.dispatchEvent(new FocusEvent('focus'))
       }
       await vi.waitFor(() => expect(open()).toHaveLength(0), { timeout: 3000 })
+    })
+
+    it('runs the timers while focus is in a frame on the page', async () => {
+      await law.mount()
+      law.raise({ title: 'Ticket saved', durationMs: 300 })
+      await vi.waitFor(() => expect(open()).toHaveLength(1))
+      // A frame on the page took focus: the window sends `blur`, and its document still has it.
+      const focused = vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+      window.dispatchEvent(new FocusEvent('blur'))
+      try {
+        await vi.waitFor(() => expect(open()).toHaveLength(0), { timeout: 3000 })
+      } finally {
+        focused.mockRestore()
+        window.dispatchEvent(new FocusEvent('focus'))
+      }
     })
 
     it('runs the timers again when focus falls out of the notifications with no focusout', async () => {

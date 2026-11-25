@@ -17,6 +17,8 @@ import {
   joinSlot,
   removeToast,
   toast,
+  toastClock,
+  toastTimeLeft,
   watchEffect,
   type ToastRecord,
 } from '@polymorph/svelte'
@@ -46,6 +48,7 @@ let startX = $state(0)
 let deltaX = $state(0)
 let card = $state<HTMLElement | null>(null)
 const icon = $derived(record.tone === 'neutral' ? null : TOAST_TONE_ICON[record.tone])
+const clock = $derived(toastClock())
 const dismissible = $derived(record.dismissible !== false)
 const dismiss = $derived((): void => {
   if (dismissible) toast.dismiss(record.id)
@@ -88,7 +91,7 @@ const effect1 = () => {
 }
 watchEffect(effect1, { watch: () => record.closing, mount: false })
 const effect2 = () => {
-  present.current || removeToast(record.id)
+  present.current || removeToast(record.id, record.raised)
 }
 watchEffect(effect2, { watch: () => present.current, mount: false })
 let release3: (() => void) | undefined
@@ -102,7 +105,9 @@ const effect3 = () => {
         Number.isFinite(record.durationMs) &&
         toast.dismiss(record.id)
     },
-    Number.isFinite(record.durationMs) ? record.durationMs : 0,
+    Number.isFinite(record.durationMs)
+      ? toastTimeLeft(clock, record.revision, record.durationMs, !paused && record.closing !== true)
+      : 0,
   )
   release3 = () => clearTimeout(timer)
 }

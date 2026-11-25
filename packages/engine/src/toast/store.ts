@@ -139,8 +139,11 @@ export interface ToastStore<Content = unknown> {
   subscribe: (listener: () => void) => () => void
   /** The records, referentially stable between changes. */
   get: () => readonly ToastStoreRecord<Content>[]
-  /** Step two of dismissal, called by the card once its closed state has been rendered. */
-  remove: (id: string) => void
+  /**
+   * Step two of dismissal, called by the card once its closed state has been rendered, with its
+   * record's `raised`; and the removal of a toast its owner takes away, by its id alone.
+   */
+  remove: (id: string, raised?: number) => void
 }
 
 export const TOAST_DEFAULT_DURATION_MS = 5000
@@ -274,8 +277,16 @@ export function createToastStore<Content = unknown>(): ToastStore<Content> {
     left(closed)
   }
 
-  function remove(id: string): void {
-    publish(records.filter((record) => record.id !== id))
+  /**
+   * Takes the toast out of the store. A card that has played its exit passes its record's
+   * `raised`, so a toast raised again under the same id while the card was leaving stays.
+   */
+  function remove(id: string, raised?: number): void {
+    publish(
+      records.filter(
+        (record) => record.id !== id || (raised !== undefined && record.raised !== raised),
+      ),
+    )
   }
 
   const toned =

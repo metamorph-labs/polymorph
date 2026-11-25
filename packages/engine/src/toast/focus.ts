@@ -91,16 +91,25 @@ export function followToastFocus(list: HTMLElement | null | undefined): () => vo
   let order: HTMLElement[] = []
   /** Set while this moves focus from the body, which is no entry from the page. */
   let moving = false
+  /** The element in the list that took focus last, until focus moves to an element outside. */
+  let last: EventTarget | null = null
 
   const enter = (event: FocusEvent): void => {
-    if (!moving) noteEntry(list, event.relatedTarget)
+    // A window that takes focus back gives it to the element that held it, with no
+    // `relatedTarget`: that is focus coming back, not an entry from nowhere.
+    const back = event.relatedTarget === null && event.target === last
+    if (!moving && !back) noteEntry(list, event.relatedTarget)
+    last = event.target
     held = event.target instanceof Element ? event.target.closest<HTMLElement>(CARD) : null
     order = cardsOf(list)
   }
   const leave = (event: FocusEvent): void => {
     const to = event.relatedTarget
     if (to instanceof Node) {
-      if (!list.contains(to)) held = null
+      if (!list.contains(to)) {
+        held = null
+        last = null
+      }
       return
     }
     // Focus went to the body. If the card is still there a moment later, the reader put it

@@ -208,8 +208,9 @@ hit areas, callbacks and recovery gates remain intact.
   leaves its own `translate` inline on the card.
 - Timer pauses while the viewport is hovered, while any toast is focused, and while the window
   is in the background (it has lost focus to another window or application), because a reader
-  who is not on the page has not read the toast; it resumes when none of the three holds. The
-  rule is the engine's (`holdToastTimers`).
+  who is not on the page has not read the toast; it resumes with the time that was left when
+  none of the three holds. Focus in a frame on the page is on the page. The rule is the
+  engine's (`holdToastTimers`, `toastTimeLeft`).
 - An in-place update (`id` reuse, `toast.promise` settling) never re-enters. The card
   keeps its position and the content swaps without animation, because the springs are
   for cards arriving and leaving, and an update does neither.

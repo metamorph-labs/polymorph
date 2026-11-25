@@ -118,8 +118,8 @@ function ToastCard({
   // closed state once, so the leaving element keeps `data-state="closed"`
   // through its whole exit, whether it timed out or was dismissed.
   useEffect(() => {
-    if (record.closing) removeToast(record.id)
-  }, [record.closing, record.id])
+    if (record.closing) removeToast(record.id, record.raised)
+  }, [record.closing, record.id, record.raised])
 
   /*
    * The timer. An update restarts it, so updated content gets a full reading

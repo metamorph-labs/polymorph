@@ -280,6 +280,8 @@ export default describeMember({
       },
       derived: {
         icon: "record.tone === 'neutral' ? null : TOAST_TONE_ICON[record.tone]",
+        // The card's reading window, kept across the holds.
+        clock: 'toastClock()',
         dismissible: 'record.dismissible !== false',
         dismiss: '(): void => { if (dismissible) toast.dismiss(record.id) }',
         act: '(): void => { record.action?.onClick(); toast.dismiss(record.id) }',
@@ -301,13 +303,20 @@ export default describeMember({
           mount: false,
           run: 'record.closing === true && focusAfterToast(card)',
         },
-        // Step two of dismissal: once the exit has played, the record leaves the store.
-        { watch: 'present', mount: false, run: 'present || removeToast(record.id)' },
-        // The timer: restarted by an update, held while the reader is on the list, and none for
-        // a pinned toast or one that cannot be dismissed.
+        // Step two of dismissal: once the exit has played, the record leaves the store. Its
+        // `raised` keeps a toast raised again under the same id meanwhile.
+        {
+          watch: 'present',
+          mount: false,
+          run: 'present || removeToast(record.id, record.raised)',
+        },
+        // The timer: restarted by an update, held while the viewport holds the timers, when it
+        // resumes with the time that was left (`toastTimeLeft`), and none for a pinned toast or
+        // one that cannot be dismissed.
         {
           watch: '[record.revision, paused, record.closing]',
-          delay: 'Number.isFinite(record.durationMs) ? record.durationMs : 0',
+          delay:
+            'Number.isFinite(record.durationMs) ? toastTimeLeft(clock, record.revision, record.durationMs, !paused && record.closing !== true) : 0',
           run: '!paused && record.closing !== true && dismissible && Number.isFinite(record.durationMs) && toast.dismiss(record.id)',
         },
       ],

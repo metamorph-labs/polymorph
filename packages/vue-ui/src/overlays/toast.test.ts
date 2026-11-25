@@ -4,6 +4,7 @@ import { defineComponent, h, ref } from 'vue'
 
 import { toastFocusLaw } from '@polymorph/conformance/toast-focus'
 import { toastSwipeLaw } from '@polymorph/conformance/toast-swipe'
+import { toastTimerLaw } from '@polymorph/conformance/toast-timer'
 import { createAgentBridge } from '@polymorph/engine/agent'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { getToasts, removeToast, toast, TOAST_DEFAULT_DURATION_MS } from '@polymorph/vue'
@@ -42,6 +43,13 @@ toastSwipeLaw({
   mount: () => mount(() => h(Toast.Viewport)),
   raise: (title) => void toast({ title, durationMs: Number.POSITIVE_INFINITY }),
   held: () => getToasts().length,
+  clear: () => getToasts().forEach((record) => removeToast(record.id)),
+})
+
+toastTimerLaw({
+  shell: 'Vue',
+  mount: () => mount(() => h(Toast.Viewport)),
+  raise: (title, durationMs) => void toast({ title, durationMs }),
   clear: () => getToasts().forEach((record) => removeToast(record.id)),
 })
 

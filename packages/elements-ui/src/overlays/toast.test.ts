@@ -1,5 +1,6 @@
 import { toastFocusLaw } from '@polymorph/conformance/toast-focus'
 import { toastSwipeLaw } from '@polymorph/conformance/toast-swipe'
+import { toastTimerLaw } from '@polymorph/conformance/toast-timer'
 import { getToasts, removeToast, toast } from '@polymorph/elements'
 
 import { mountElement } from '../mount'
@@ -27,5 +28,12 @@ toastSwipeLaw({
   mount: () => mountElement('poly-toast-viewport'),
   raise: (title) => void toast({ title, durationMs: Number.POSITIVE_INFINITY }),
   held: () => getToasts().length,
+  clear: () => getToasts().forEach((record) => removeToast(record.id)),
+})
+
+toastTimerLaw({
+  shell: 'Elements',
+  mount: () => mountElement('poly-toast-viewport'),
+  raise: (title, durationMs) => void toast({ title, durationMs }),
   clear: () => getToasts().forEach((record) => removeToast(record.id)),
 })
