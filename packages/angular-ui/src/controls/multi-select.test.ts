@@ -153,7 +153,11 @@ class InDialog {
 @Component({
   selector: 'test-two-chips',
   imports: [MultiSelect],
-  template: `<pm-multi-select aria-label="Assignees" [options]="options" [defaultValue]="chosen" />`,
+  template: `<pm-multi-select
+    aria-label="Assignees"
+    [options]="options"
+    [defaultValue]="chosen"
+  />`,
 })
 class TwoChips {
   readonly options = PEOPLE
