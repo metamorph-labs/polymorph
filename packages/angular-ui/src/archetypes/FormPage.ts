@@ -36,6 +36,7 @@ export interface FormPageProps {
   imports: [Ref, SlotOutlet, SlotTemplate, Inline, PageHeader],
   // prettier-ignore
   template: `<ng-template pmSlot="actions" [pmSlotOf]="$"><ng-content select="[slot=actions]" /></ng-template>
+<ng-template pmSlot="leadingAction" [pmSlotOf]="$"><ng-content select="[slot=leadingAction]" /></ng-template>
 <ng-template pmSlot="default" [pmSlotOf]="$"><ng-content /></ng-template>
 <div
 [attr.class]="e1()"
@@ -54,19 +55,41 @@ data-member="form-page"
 <!-- actions -->
 <div
 [attr.class]="e7()"
-><pm-inline
-[gap]="e8()"
-justify="end"
-[wrap]="e9()"
-><ng-container [pmSlotOutlet]="'actions'" [pmSlotOf]="$" pmSlotInto="default" /></pm-inline></div></form>} @else {<ng-container [pmSlotOutlet]="'default'" [pmSlotOf]="$" />
-<!-- actions -->
+>@if (e8()) {<!-- split -->
+<div
+[attr.class]="e9()"
+><ng-container [pmSlotOutlet]="'leadingAction'" [pmSlotOf]="$" />
+<!-- trailing -->
 <div
 [attr.class]="e10()"
 ><pm-inline
 [gap]="e11()"
 justify="end"
 [wrap]="e12()"
-><ng-container [pmSlotOutlet]="'actions'" [pmSlotOf]="$" pmSlotInto="default" /></pm-inline></div>}</div>`,
+><ng-container [pmSlotOutlet]="'actions'" [pmSlotOf]="$" pmSlotInto="default" /></pm-inline></div></div>} @else {<pm-inline
+[gap]="e13()"
+justify="end"
+[wrap]="e14()"
+><ng-container [pmSlotOutlet]="'actions'" [pmSlotOf]="$" pmSlotInto="default" /></pm-inline>}</div></form>} @else {<ng-container [pmSlotOutlet]="'default'" [pmSlotOf]="$" />
+<!-- actions -->
+<div
+[attr.class]="e15()"
+>@if (e16()) {<!-- split -->
+<div
+[attr.class]="e17()"
+><ng-container [pmSlotOutlet]="'leadingAction'" [pmSlotOf]="$" />
+<!-- trailing -->
+<div
+[attr.class]="e18()"
+><pm-inline
+[gap]="e19()"
+justify="end"
+[wrap]="e20()"
+><ng-container [pmSlotOutlet]="'actions'" [pmSlotOf]="$" pmSlotInto="default" /></pm-inline></div></div>} @else {<pm-inline
+[gap]="e21()"
+justify="end"
+[wrap]="e22()"
+><ng-container [pmSlotOutlet]="'actions'" [pmSlotOf]="$" pmSlotInto="default" /></pm-inline>}</div>}</div>`,
 })
 export class FormPage {
   readonly description = input<FormPageProps['description']>(undefined)
@@ -124,28 +147,90 @@ export class FormPage {
     return styles.actions
   }
 
-  protected e8(): InlineProps['gap'] {
+  protected e8() {
     if (!this.$.listening(this.onSubmit, 'onSubmit')) return undefined as never
-    return 3
+    return this.$.filled('leadingAction')
   }
 
-  protected e9(): InlineProps['wrap'] {
+  protected e9() {
     if (!this.$.listening(this.onSubmit, 'onSubmit')) return undefined as never
-    return true
+    if (!this.$.filled('leadingAction')) return undefined as never
+    return styles.split
   }
 
   protected e10() {
-    if (this.$.listening(this.onSubmit, 'onSubmit')) return undefined as never
-    return styles.actions
+    if (!this.$.listening(this.onSubmit, 'onSubmit')) return undefined as never
+    if (!this.$.filled('leadingAction')) return undefined as never
+    return styles.trailing
   }
 
   protected e11(): InlineProps['gap'] {
-    if (this.$.listening(this.onSubmit, 'onSubmit')) return undefined as never
+    if (!this.$.listening(this.onSubmit, 'onSubmit')) return undefined as never
+    if (!this.$.filled('leadingAction')) return undefined as never
     return 3
   }
 
   protected e12(): InlineProps['wrap'] {
+    if (!this.$.listening(this.onSubmit, 'onSubmit')) return undefined as never
+    if (!this.$.filled('leadingAction')) return undefined as never
+    return true
+  }
+
+  protected e13(): InlineProps['gap'] {
+    if (!this.$.listening(this.onSubmit, 'onSubmit')) return undefined as never
+    if (this.$.filled('leadingAction')) return undefined as never
+    return 3
+  }
+
+  protected e14(): InlineProps['wrap'] {
+    if (!this.$.listening(this.onSubmit, 'onSubmit')) return undefined as never
+    if (this.$.filled('leadingAction')) return undefined as never
+    return true
+  }
+
+  protected e15() {
     if (this.$.listening(this.onSubmit, 'onSubmit')) return undefined as never
+    return styles.actions
+  }
+
+  protected e16() {
+    if (this.$.listening(this.onSubmit, 'onSubmit')) return undefined as never
+    return this.$.filled('leadingAction')
+  }
+
+  protected e17() {
+    if (this.$.listening(this.onSubmit, 'onSubmit')) return undefined as never
+    if (!this.$.filled('leadingAction')) return undefined as never
+    return styles.split
+  }
+
+  protected e18() {
+    if (this.$.listening(this.onSubmit, 'onSubmit')) return undefined as never
+    if (!this.$.filled('leadingAction')) return undefined as never
+    return styles.trailing
+  }
+
+  protected e19(): InlineProps['gap'] {
+    if (this.$.listening(this.onSubmit, 'onSubmit')) return undefined as never
+    if (!this.$.filled('leadingAction')) return undefined as never
+    return 3
+  }
+
+  protected e20(): InlineProps['wrap'] {
+    if (this.$.listening(this.onSubmit, 'onSubmit')) return undefined as never
+    if (!this.$.filled('leadingAction')) return undefined as never
+    return true
+  }
+
+  protected e21(): InlineProps['gap'] {
+    if (this.$.listening(this.onSubmit, 'onSubmit')) return undefined as never
+    if (this.$.filled('leadingAction')) return undefined as never
+    return 3
+  }
+
+  protected e22(): InlineProps['wrap'] {
+    if (this.$.listening(this.onSubmit, 'onSubmit')) return undefined as never
+    if (this.$.filled('leadingAction')) return undefined as never
     return true
   }
 }

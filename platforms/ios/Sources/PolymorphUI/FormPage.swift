@@ -2,7 +2,9 @@
 // page header, the cards of fields, and the committing row of actions, in a
 // reading column narrower than a list's, because fields wider than the measure
 // are hard to scan. The actions row is anchored: a rule above it connects the
-// commit to the column it commits, under every theme.
+// commit to the column it commits, under every theme. A leading action
+// (`leadingAction`), such as a destructive tertiary "Delete…", is a group of
+// its own at the row's start, and the actions stay together at its end.
 //
 // The load status (`design/native/screen-contract.md`): `loading` draws
 // Skeletons over the cards and disables the actions row; `failed` puts a
@@ -63,6 +65,8 @@ public struct PMFormPage: PMFormPageRendering {
         }
       }
       HStack(spacing: space.s3) {
+        // Absent, it draws nothing and takes no spacing, so the row is the actions alone.
+        props.leadingAction
         Spacer(minLength: 0)
         props.actions
           .environment(\.pmSubmitAction, props.onSubmit)

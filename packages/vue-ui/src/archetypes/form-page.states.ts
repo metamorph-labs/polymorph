@@ -144,8 +144,10 @@ export const states: ComponentStates = {
           FormPage,
           { title: 'Edit ticket', ...overrides },
           {
-            actions: () => [
+            leadingAction: () => [
               h(Button, { variant: 'ghost', tone: 'danger', label: 'Delete ticket…' }),
+            ],
+            actions: () => [
               h(Button, { variant: 'outline', tone: 'neutral', label: 'Cancel' }),
               h(Button, { label: 'Save changes', type: 'submit' }),
             ],

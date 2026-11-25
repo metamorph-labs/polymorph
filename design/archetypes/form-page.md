@@ -10,6 +10,7 @@ NewTicketPage (the new-ticket screen of the workbench's demo product) is built o
   [PageHeader]
   [children — Card(s) of FormFields]
   [actions row — anchored: rule above, then Inline justify end gap 3]
+    — with leadingAction: [leadingAction] at the row's start · [Inline justify end gap 3] at its end
 ```
 
 | Prop | Type | Notes |
@@ -17,17 +18,19 @@ NewTicketPage (the new-ticket screen of the workbench's demo product) is built o
 | `title` / `description` | as PageHeader | |
 | `children` | Cards / FormFields | |
 | `actions` | `ReactNode` required | the committing row |
+| `leadingAction` | `ReactNode` | one action at the start of the actions row, apart from `actions`, which stay at its end: a destructive tertiary action such as "Delete…". Absent, the row is `actions` alone |
 | `onSubmit` | `() => void` | wraps children in a real `<form>`. Enter submits from fields |
 
 **Actions law:** exactly one `solid` Button: the submit, `solid/accent`, or `solid/danger`
 only when the form's whole purpose is deletion. Cancel or back is `ghost`/`outline`
 `neutral`. A destructive tertiary action ("Delete…") goes through ConfirmDialog and sits
-leftmost, separated by the row's `justify`, so the primary stays rightmost.
+leftmost, in `leadingAction`, so the primary stays rightmost.
 
 **Destructive order** (`polymorph/danger-last`): within one group of Buttons placed together, a
 danger Button comes last. A destructive action in a group of its own, apart from the group that
-holds the main Button, may come first. The actions row draws `actions` in one `Inline`, so a
-tertiary action passed beside the other Buttons is in their group, and the rule reports it.
+holds the main Button, may come first. `leadingAction` is that group: the row draws it at its
+start and `actions` at its end. A tertiary action passed in `actions` beside the other Buttons
+is in their group, and the rule reports it.
 
 ## Pattern tokens (declared on root)
 
@@ -48,7 +51,9 @@ The two-field `Grid columns={2}` rows collapse to one column on Grid's own ladde
 edit to this archetype.
 
 The actions row is **anchored**: `border-top 1px solid --pm-border-subtle`,
-`padding-top --pm-space-5`, then the Inline. Without the rule, form actions float under the
+`padding-top --pm-space-5`, then the Inline. With `leadingAction`, the row is a wrapping flex
+row at gap `--pm-space-3`: the action first, then the Inline with `margin-inline-start: auto`,
+so the actions stay at the end of whichever line they land on, in either direction. Without the rule, form actions float under the
 last card with nothing connecting them to the form. The rule connects the committing row to
 the column it commits, under every theme. It lives in the archetype so no screen has to
 remember it.
@@ -73,11 +78,19 @@ flow that runs before the shell exists, such as creating an account, is a step o
 
 ## States
 
-Entries: header + one Card + actions; two-column row; with destructive tertiary; a real
-form; a step of a flow (a Stepper above the step's Card).
+Entries: header + one Card + actions; two-column row; with destructive tertiary (the Delete in
+`leadingAction`); a real form; a step of a flow (a Stepper above the step's Card).
 `requiredSelectors`: —.
 
 ## Motion / Icons — composition's. A11y — real `<form>`; the actions row is inside
 it; Enter-to-submit works from any field; errors surface per FormField (the first
 invalid field receives focus on a failed submit, an archetype behaviour stated here so
 every form ships it).
+
+## Keyboard
+
+The leading action is in the tab order before the actions, as it is drawn before them.
+
+```contract
+key Tab moves-focus-next on leading when with a destructive tertiary, leftmost and quiet
+```

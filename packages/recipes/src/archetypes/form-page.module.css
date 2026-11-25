@@ -49,3 +49,18 @@
   padding-block-start: var(--pm-space-5);
   border-block-start: 1px solid var(--pm-border-subtle);
 }
+
+/* With a leading action the row holds two groups: that action at its start,
+   and the actions at its end. It wraps as the actions do, at the row's gap.
+   The actions' auto margin keeps them at the end of whichever line they land
+   on, and a logical margin is the start's opposite in either direction. */
+.split {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pm-space-3);
+}
+
+.trailing {
+  margin-inline-start: auto;
+}

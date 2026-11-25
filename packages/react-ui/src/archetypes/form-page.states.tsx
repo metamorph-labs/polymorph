@@ -75,9 +75,9 @@ export const states: ComponentStates = {
       render: () => (
         <FormPage
           title="Edit ticket"
+          leadingAction={<Button variant="ghost" tone="danger" label="Delete ticket…" />}
           actions={
             <>
-              <Button variant="ghost" tone="danger" label="Delete ticket…" />
               <Button variant="outline" tone="neutral" label="Cancel" />
               <Button label="Save changes" type="submit" />
             </>

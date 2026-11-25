@@ -36,6 +36,7 @@
     "./month-input": "./src/month-input.ts",
     "./lightbox": "./src/lightbox.ts",
     "./dialog-fit": "./src/dialog-fit.ts",
+    "./form-page-row": "./src/form-page-row.ts",
     "./tree-select": "./src/tree-select.ts",
     "./rating": "./src/rating.ts",
     "./inline-edit": "./src/inline-edit.ts",

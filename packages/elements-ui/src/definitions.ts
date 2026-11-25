@@ -2452,7 +2452,7 @@ export const DEFINITIONS: Readonly<Record<string, ElementDefinition>> = {
     member: 'FormPage',
     props: { description: 'string', title: 'string' },
     events: { onSubmit: { type: 'poly-submit', listened: true } },
-    slots: ['actions', 'children'],
+    slots: ['actions', 'children', 'leadingAction'],
   },
   'poly-settings-page': {
     tag: 'poly-settings-page',

@@ -25,6 +25,7 @@ const emit = defineEmits<{ submit: [] }>()
 defineSlots<{
   actions: (props: Record<string, never>) => unknown
   default: (props: Record<string, never>) => unknown
+  leadingAction?: (props: Record<string, never>) => unknown
 }>()
 const listening = useListening()
 const form = useTemplateRef<HTMLElement>('form')
@@ -53,7 +54,17 @@ const submit = computed(() => (event: Event) => {
       <slot />
       <!-- actions -->
       <div :class="styles.actions">
-        <Inline :gap="3" justify="end" :wrap="true">
+        <!-- split -->
+        <div v-if="$slots.leadingAction" :class="styles.split">
+          <slot name="leadingAction" />
+          <!-- trailing -->
+          <div :class="styles.trailing">
+            <Inline :gap="3" justify="end" :wrap="true">
+              <slot name="actions" />
+            </Inline>
+          </div>
+        </div>
+        <Inline v-else :gap="3" justify="end" :wrap="true">
           <slot name="actions" />
         </Inline>
       </div>
@@ -62,7 +73,17 @@ const submit = computed(() => (event: Event) => {
       <slot />
       <!-- actions -->
       <div :class="styles.actions">
-        <Inline :gap="3" justify="end" :wrap="true">
+        <!-- split -->
+        <div v-if="$slots.leadingAction" :class="styles.split">
+          <slot name="leadingAction" />
+          <!-- trailing -->
+          <div :class="styles.trailing">
+            <Inline :gap="3" justify="end" :wrap="true">
+              <slot name="actions" />
+            </Inline>
+          </div>
+        </div>
+        <Inline v-else :gap="3" justify="end" :wrap="true">
           <slot name="actions" />
         </Inline>
       </div>

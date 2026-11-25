@@ -13,7 +13,7 @@ export const definition: ElementDefinition = {
   member: 'FormPage',
   props: { description: 'string', title: 'string' },
   events: { onSubmit: { type: 'poly-submit', listened: true } },
-  slots: ['actions', 'children'],
+  slots: ['actions', 'children', 'leadingAction'],
 }
 
 /** The `<poly-form-page>` element. */

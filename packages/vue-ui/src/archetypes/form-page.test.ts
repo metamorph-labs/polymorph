@@ -2,6 +2,7 @@ import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { h } from 'vue'
 
+import { FORM_PAGE_LEADING, formPageRowLaw } from '@polymorph/conformance/form-page-row'
 import { installTestTheme } from '@polymorph/engine/testing'
 
 import Button from '../controls/Button.vue'
@@ -10,6 +11,7 @@ import Input from '../controls/Input.vue'
 import { mount } from '../mount'
 import Card from '../structure/Card.vue'
 import FormPage from './FormPage.vue'
+import { states } from './form-page.states'
 
 /**
  * FormPage's own behaviour (`design/archetypes/form-page.md`), as the React
@@ -61,4 +63,18 @@ describe('FormPage', () => {
     const form = document.querySelector('form') as HTMLElement
     expect(form.querySelector('button[type="submit"]')).not.toBeNull()
   })
+})
+
+/**
+ * FormPage's actions row with a leading action, at the row's start in either
+ * direction and wrapping at a narrow width, as `@polymorph/conformance/form-page-row`
+ * states it for every web shell.
+ */
+formPageRowLaw({
+  shell: 'Vue',
+  async mount() {
+    const entry = states.entries.find((candidate) => candidate.name === FORM_PAGE_LEADING)
+    if (entry === undefined) throw new Error(`FormPage's fixture has no "${FORM_PAGE_LEADING}"`)
+    return mount(() => entry.render())
+  },
 })

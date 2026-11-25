@@ -1180,11 +1180,12 @@ fun PMFormPage(
     onRetry: (() -> Unit)? = null,
     actions: PMContent,
     description: String? = null,
+    leadingAction: PMContent? = null,
     onSubmit: (() -> Unit)? = null,
     title: String,
     children: PMContent,
 ) {
-    PMFormPage.Render(PMFormPageProps(loadStatus = loadStatus, onRetry = onRetry, actions = actions, description = description, onSubmit = onSubmit, title = title, children = children))
+    PMFormPage.Render(PMFormPageProps(loadStatus = loadStatus, onRetry = onRetry, actions = actions, description = description, leadingAction = leadingAction, onSubmit = onSubmit, title = title, children = children))
 }
 
 /**

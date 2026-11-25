@@ -2,7 +2,9 @@
 // page header, the cards of fields, and the committing row of actions, in a
 // reading column narrower than a list's, because fields wider than the measure
 // are hard to scan. The actions row is anchored: a rule above it connects the
-// commit to the column it commits, under every theme.
+// commit to the column it commits, under every theme. A leading action
+// (`leadingAction`), such as a destructive tertiary "Delete…", is a group of
+// its own at the row's start, and the actions stay together at its end.
 //
 // The load status (`design/native/screen-contract.md`): `loading` draws
 // Skeletons over the cards and disables the actions row; `failed` puts a
@@ -70,11 +72,25 @@ object PMFormPage : PMFormPageRendering {
                 }
                 Column {
                     PMRule(theme.colors.borderSubtle)
+                    val leading = props.leadingAction
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(top = space.s5),
-                        horizontalArrangement = Arrangement.spacedBy(space.s3, Alignment.End),
+                        horizontalArrangement = if (leading == null) {
+                            Arrangement.spacedBy(space.s3, Alignment.End)
+                        } else {
+                            Arrangement.SpaceBetween
+                        },
                     ) {
-                        CompositionLocalProvider(LocalPMEnabled provides !loading) { props.actions() }
+                        CompositionLocalProvider(LocalPMEnabled provides !loading) {
+                            if (leading == null) {
+                                props.actions()
+                            } else {
+                                leading()
+                                Row(horizontalArrangement = Arrangement.spacedBy(space.s3)) {
+                                    props.actions()
+                                }
+                            }
+                        }
                     }
                 }
             }
