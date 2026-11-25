@@ -103,7 +103,7 @@ export default function NumberInput(given: NumberInputProps): JSX.Element {
       props.value === undefined ? (props.defaultValue ?? null) : props.value,
     )
     const draft = createCell('')
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => control.value)
     const service = useMachine(
       zag.machine,
       () =>

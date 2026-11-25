@@ -52,9 +52,14 @@ export default describeMember({
     // A controlled field is the app's to close, once its save has succeeded.
     commit:
       "() => { if (pending || refused) return; if (draft === value) { setOpen(false); return } emit('commit', draft); if (editing === undefined) setOpen(false) }",
-    // Enter on a Button presses it. Enter that ends an IME composition is the composition's.
+    // Every key an input method is handling is its own (`composingKey`): the Enter that confirms
+    // a candidate saves nothing, and the Escape that abandons a composition keeps the field
+    // open. Enter on a Button presses it.
     onKey:
-      "(event: KeyboardEvent) => { if (event.key === 'Escape') { event.preventDefault(); cancel(); return } if (event.key === 'Enter' && event.target instanceof HTMLInputElement && !event.isComposing) { event.preventDefault(); commit() } }",
+      "(event: KeyboardEvent) => { if (composingKey(event)) return; if (event.key === 'Escape') { event.preventDefault(); cancel(); return } if (event.key === 'Enter' && event.target instanceof HTMLInputElement) { event.preventDefault(); commit() } }",
+    // Escape cancels an open edit, and that Escape is the member's: a Dialog around it stays
+    // open (`holdFieldEscape`). Closed, or with a save in flight, Escape is the Dialog's.
+    cancellable: 'current && !pending',
     leave:
       '(event: FocusEvent) => { const next = event.relatedTarget; if (next instanceof Node && !(root?.contains(next) ?? false)) within = false }',
     // An agent's save: the text goes into the open field and is saved by the rules a person's
@@ -94,6 +99,11 @@ export default describeMember({
     withholds: 'root',
   },
   effects: [
+    {
+      watch: 'cancellable',
+      run: 'cancellable && root ? holdFieldEscape(root) : () => {}',
+      release: 'ran()',
+    },
     // Never on mount: a member that mounts open takes no focus. Each opening starts from the
     // value, with all of it selected; a closing returns focus to the edit control when focus
     // was in the member.

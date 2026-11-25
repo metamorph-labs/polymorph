@@ -86,7 +86,8 @@ same reason: a sheet held off-screen by a transform cannot arrive from nowhere a
 ## A11y
 
 Dialog's, unchanged and tested there: focus trap, initial focus to the panel,
-return focus to the launcher, Escape (when dismissible), `aria-modal`,
+return focus to the launcher, or to the focusable element nearest where it was when the launcher
+has left the page, Escape (when dismissible), `aria-modal`,
 `aria-labelledby`/`aria-describedby` from title/description. Drawer adds nothing, which is why
 it is a Dialog variant.
 
@@ -96,6 +97,7 @@ attr panel aria-modal=true when open end
 key Enter opens
 focus on-open panel
 focus on-close trigger
+focus on-close nearest
 key Escape closes when open end
 dismiss both
 dismiss none when forced choice

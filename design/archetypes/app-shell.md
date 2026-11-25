@@ -76,6 +76,10 @@ mounted while the route changes, so the rail keeps its collapse and its scroll.
   which routes an item covers is the app's routing decision.
 - A new `transitionKey` closes the small-viewport drawer. The drawer is the rail, and the reader
   has chosen a page from it. On iOS and Android the drawer closes the same way.
+- A new `transitionKey` moves focus to the new page and says its title, as §A11y describes. The browser does
+  neither when the app's router changes the page, so focus would stay on the link the reader
+  followed, or fall to the document when that link leaves it. The first page is not an arrival,
+  because the browser loaded it, and a page that is `pending` arrives when it is drawn.
 
 An app whose rail routes through `onSelect` with no `href` keeps working, but its rows cannot be
 opened in a new tab. A route renders a page archetype either way.
@@ -207,10 +211,11 @@ them.
 | rail head | min-height `--pm-shell-topbar-height` · align center · gap `--pm-space-2` · holds the brand slot (`flex: 1`) and the collapse toggle · **collapsed:** stacks to a column |
 | brand row | inside the head · `flex: 1` · align center · padding-x `--pm-space-3` · **collapsed:** centred, no inset |
 | topbar | height `--pm-shell-topbar-height` · bg `--pm-shell-topbar-bg` · border-bottom `1px solid --pm-shell-topbar-border` · shadow `--pm-shadow-raised` · padding-x `--pm-space-6` (shell scope — never `--pm-page-*`, which belongs to page archetypes) · slots split `justify: between` |
-| content | `<main>` · bg `var(--pm-texture-page) var(--pm-bg-app)` · scroll container (`overflow-y: auto`); default attachment keeps the texture still while the page scrolls · `position: relative` *(the region is the containing block of what it scrolls, so an absolutely positioned box in a long page, such as text a member hides from the eye, scrolls with the region and never makes the document scroll under the frame)* · `container-type: size` *(container-first responsiveness, `docs/layout.md`: this is the region the page archetypes measure. It has to be an ancestor of the page, because the nearest ancestor container answers a container query, and a page cannot query its own width. The shell knows how much room is left after the rail. Below the drawer breakpoint, with the rail gone, that is the whole window. See `list-page.md` §In a narrow region. It contains both axes, so a page reads the region's visible height as `100cqb`: DetailPage's aside that stays in view is never taller than it (`detail-page.md`). The region's height is its grid row's, never its content's, so containing its block size changes nothing it draws)* |
+| content | `<main>` · `tabindex="-1"` only while it holds the focus the skip link or a page change moves into it, so a click on the page's empty space leaves focus on the document, and no ring when it has that focus (a ring around the whole region adds no information; the page's heading, focused the same way, has none either) · bg `var(--pm-texture-page) var(--pm-bg-app)` · scroll container (`overflow-y: auto`); default attachment keeps the texture still while the page scrolls · `position: relative` *(the region is the containing block of what it scrolls, so an absolutely positioned box in a long page, such as text a member hides from the eye, scrolls with the region and never makes the document scroll under the frame)* · `container-type: size` *(container-first responsiveness, `docs/layout.md`: this is the region the page archetypes measure. It has to be an ancestor of the page, because the nearest ancestor container answers a container query, and a page cannot query its own width. The shell knows how much room is left after the rail. Below the drawer breakpoint, with the rail gone, that is the whole window. See `list-page.md` §In a narrow region. It contains both axes, so a page reads the region's visible height as `100cqb`: DetailPage's aside that stays in view is never taller than it (`detail-page.md`). The region's height is its grid row's, never its content's, so containing its block size changes nothing it draws)* |
 | collapse toggle | Button `ghost/neutral/sm iconOnly` `icon="previous"`/`"next"` (by state) `label="Collapse sidebar"/"Expand sidebar"` — **the rail head, beside the brand** *(the foot is where the account lives, and a control that resizes the rail belongs beside the mark it resizes. It renders with or without a brand, because the rail can always be narrowed, so the control is anatomy, not content. Below the drawer breakpoint it is `display: none`, because a rail shown as a sheet has nothing to collapse.)* |
 | banner | a grid row of its own (`auto`) above the rail and the topbar, spanning both columns. It is in the grid and not over it, so the rail and the content region keep the whole of what is left and nothing scrolls under it. Without a banner the row has no height. The small-viewport drawer opens over it, as it does over the topbar. In SwiftUI and Compose the row is the frame's first, above the platform's navigation and inside the top safe area |
 | dock | shares the content cell (`grid-area: content`) · `align-self: end` · centred · padding `0 --pm-space-6 --pm-space-5` · `z-index --pm-z-raise` · `pointer-events: none`, children `auto` *(It shares the cell instead of taking its own row, so the page keeps its height, the layer floats over it, and a collapsing rail re-centres it automatically. It is not a child of `<main>`, because an absolutely positioned child of a scroll container scrolls with it, and a dock must not scroll away.)* |
+| announcer | a `role="status"` region after the content region, visually hidden (`conventions/a11y.module.css`), empty until the first page change |
 | skip link | visually hidden until `:focus-visible`; then a `--pm-bg-surface` chip, `text.sm` `--pm-accent-text`, inset `--pm-space-3`, ring per conventions §4 |
 | root, navigation on top | from `48rem`: rows `banner` / `sidebar topbar` / `content content`, columns `auto minmax(min-content, 1fr)` |
 | sidebar, navigation on top | from `48rem`: a row, centred · padding `--pm-space-2` block, `--pm-space-4` at the start, none at the end · bg `--pm-shell-topbar-bg` · border-bottom `1px solid --pm-shell-topbar-border` · shadow `--pm-shadow-resting` · no end border · `overflow: visible`, so the last item's focus ring is not cut where a system draws the ring outside the edge · the head drops its min-height and the collapse toggle, and takes no room without a brand · the nav slot wraps, and is not a scroll container |
@@ -403,10 +408,38 @@ gains a `menu` button to open it; a new `transitionKey` closes it, §Routing).
 ## A11y
 
 Landmarks: `<nav aria-label="Primary">`, `<header>`, `<main id="content">`. Skip link
-first in DOM. Collapse toggle is a real button with a state-dependent label. NavItem
+first in DOM. The skip link moves focus into `<main>` and not only the scroll position: the
+region takes `tabindex="-1"` for the move and gives it back when focus leaves it
+(`focusFromScript` in the engine), so it is never a tab stop, and a click on the page's empty space
+leaves focus on the document, where a page's own keys expect it. Collapse toggle is a real button with a state-dependent label. NavItem
 carries `aria-current="page"` when current, and its visually-hidden label keeps the
 accessible name in collapsed mode (the collapsed tooltip is for sighted pointer users,
 not a second name).
+
+**The drawer.** Below the breakpoint the topbar's `menu` button carries `aria-expanded`, and
+`aria-controls` names the rail. Opening the drawer moves focus into the rail. While it is open,
+the rail and the scrim are the only parts a reader reaches: the skip link, the banner, the topbar,
+the content region and the dock are `inert`, so neither Tab nor a screen reader goes behind the
+drawer. Escape closes it, unless a layer opened from the rail (a menu, a dialog) takes the key
+first. Closing it returns focus to the `menu` button when focus was in the rail or nowhere. A window
+that grows past the breakpoint closes the drawer, because the frame drawn there has no drawer and
+an inert page would be unreachable; the `menu` button is drawn exactly where the drawer exists, so
+its box says which side of the breakpoint the window is on. There is no scroll lock: the content
+region is the frame's only scroll container, and the scrim covers it.
+
+**A new page.** A new `transitionKey` (§Routing) moves focus to the new page's `<h1>`, or to
+`<main>` when the page has none. A screen reader reads the heading that takes focus. When focus
+does not land on a heading, the polite `role="status"` region says the page's title instead: the
+heading's text, or the document's title when there is no heading. Saying the title as well as
+focusing the heading would read it twice. Focus stays where it is when it is already inside the
+new page, because the page put it there or the reader's control is still on the page. It also
+stays where the reader moved it while a `pending` page loaded: focus moves only when it is still
+where it was when the page changed, or has fallen to the document. The heading and the region
+take `tabindex="-1"` for the move and give it back when focus leaves them. The arrival waits a
+frame, so the page is drawn and a drawer that closed for it has made the page reachable. The
+first page is not an arrival, and a page counts as arrived only once its arrival has run, so a
+page that starts loading in the frame after it changed still arrives when it is drawn
+(`arriveAtPage` in the engine).
 
 ## Agent
 

@@ -350,7 +350,7 @@ export class SplitButton {
         : [entry],
     ),
   )
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.primary.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,

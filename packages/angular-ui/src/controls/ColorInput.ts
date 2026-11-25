@@ -17,6 +17,7 @@ import {
   agentMember,
   borrowedHolder,
   cell,
+  composingKey,
   derived,
   elementRef,
   fieldValue,
@@ -346,7 +347,7 @@ export class ColorInput {
         .trim()
         .slice(0, this.$p.alpha ? 8 : 6),
   )
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.root.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,
@@ -670,7 +671,7 @@ export class ColorInput {
   }
 
   protected h5($event: KeyboardEvent): void {
-    if ($event.key === 'Enter') {
+    if ($event.key === 'Enter' && !composingKey($event)) {
       this.commitDraft.value()
     }
   }

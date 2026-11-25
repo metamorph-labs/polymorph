@@ -64,7 +64,7 @@ export default function RadioGroup(given: RadioGroupProps): JSX.Element {
   )
   const uid = createUniqueId()
   const group = elementRef<HTMLElement>()
-  const documentDirection = useDirection()
+  const documentDirection = useDirection(() => group.value)
   const service = useMachine(
     zag.machine,
     () =>

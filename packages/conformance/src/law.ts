@@ -15,6 +15,7 @@ import {
   type ContractFault,
 } from '@polymorph/registry/behaviour'
 
+import { focusAfterRemovalLaw } from './focus-after-removal'
 import {
   AGENT_KEYWORDS,
   AGENT_STATEMENT_KINDS,
@@ -97,6 +98,8 @@ export const FALSE_STATEMENTS: readonly (readonly [
   ['Combobox', 'announces live:polite "Nothing at all" when loading', /no live:polite region/],
   ['Dialog', 'focus on-open close when with a form', /outside the part "close"/],
   ['DatePicker', 'focus on-close previous', /not to the previous/],
+  // Select returns focus to its trigger alone, so with the trigger gone it falls to the page.
+  ['Select', 'focus on-close nearest', /not to the nearest focusable element/],
   ['Dialog', 'dismiss none', /Escape closes it; a press outside closes it/],
   ['Dialog', 'key Escape opens', /the panel did not open/],
   ['Dialog', 'key Tab closes when open md', /the panel did not close/],
@@ -110,6 +113,7 @@ export const FALSE_STATEMENTS: readonly (readonly [
   ['PromptInput', 'key Shift+Enter commits on field when with a prompt', /still holds/],
   ['Slider', 'key ArrowLeft increments on thumb when rest', /the value went from/],
   ['Slider', 'key ArrowRight decrements on thumb when rest', /the value went from/],
+  ['Tabs', 'key F8 focuses tab', /outside the part "tab"/],
   ['Dialog', 'key Escape nothing when open md', /the key changed/],
   ['ProviderButton', 'key Enter nothing on root', /the key called onClick/],
   ['Table', 'click activates on row when basic', /took the click and nothing changed/],
@@ -329,6 +333,7 @@ export function conformanceLaw({ shell, adapter, galleries, ledger, specs }: She
   })
 
   agentConformanceLaw({ shell, adapter, galleries, ledger, specs })
+  focusAfterRemovalLaw(shell, adapter)
 }
 
 /** The statements of `FALSE_STATEMENTS` a contract fence writes. */

@@ -15,6 +15,7 @@ import {
   createDerived,
   createKept,
   elementRef,
+  focusAfterRemoval,
   resolveSlot,
   scope,
   watchEffect,
@@ -122,19 +123,13 @@ export default function ArtifactPane(given: ArtifactPaneProps): JSX.Element {
     let release1: (() => void) | undefined
     const effect1 = () => {
       release1?.()
-      const run = () => {
-        overflowing.value = body.value !== null && body.value.scrollHeight > body.value.clientHeight
-      }
-      const resize = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(run)
-      for (const element of [body.value, body.value?.firstElementChild])
-        if (element) resize?.observe(element)
+      const ran = focusAfterRemoval(pane.value)
       release1 = () => {
-        resize?.disconnect()
+        ran()
       }
-      run()
     }
     watchEffect(
-      createMemo(() => shown.value?.id),
+      createMemo(() => pane.value),
       effect1,
       true,
     )
@@ -142,6 +137,26 @@ export default function ArtifactPane(given: ArtifactPaneProps): JSX.Element {
     let release2: (() => void) | undefined
     const effect2 = () => {
       release2?.()
+      const run = () => {
+        overflowing.value = body.value !== null && body.value.scrollHeight > body.value.clientHeight
+      }
+      const resize = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(run)
+      for (const element of [body.value, body.value?.firstElementChild])
+        if (element) resize?.observe(element)
+      release2 = () => {
+        resize?.disconnect()
+      }
+      run()
+    }
+    watchEffect(
+      createMemo(() => shown.value?.id),
+      effect2,
+      true,
+    )
+    onCleanup(() => release2?.())
+    let release3: (() => void) | undefined
+    const effect3 = () => {
+      release3?.()
       const ran = agentMember({
         member: 'ArtifactPane',
         element: () => pane.value,
@@ -164,12 +179,12 @@ export default function ArtifactPane(given: ArtifactPaneProps): JSX.Element {
         },
         withholds: () => [switcher.value, closer.value],
       })
-      release2 = () => {
+      release3 = () => {
         ran()
       }
     }
-    onMount(effect2)
-    onCleanup(() => release2?.())
+    onMount(effect3)
+    onCleanup(() => release3?.())
     return (
       <section
         class={styles.pane}

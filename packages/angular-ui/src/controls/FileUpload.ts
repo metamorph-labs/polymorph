@@ -15,12 +15,14 @@ import {
   cell,
   derived,
   elementRef,
+  focusAfterListRemoval,
   formatBytes,
   gateFiles,
   mountEffect,
   presence,
   setup,
   useMember,
+  watchEffect,
   type Each,
   type FileRejection,
 } from '@polymorph/angular'
@@ -145,6 +147,7 @@ tabindex="-1"
 @if (e21()) {<!-- list -->
 <ul
 [attr.class]="e22()"
+[pmRef]="rowList"
 >@for (row of e23(); track e24(row)) {<li
 pmFileUploadRow
 [file]="e25(row)"
@@ -314,10 +317,23 @@ export class FileUpload {
   })
   protected readonly $p = this.$.props
   protected readonly dragover = cell(() => false)
+  protected readonly pressed = cell(() => null as { id: string; at: number } | null)
   protected readonly picker = elementRef<HTMLElement>()
   protected readonly root = elementRef<HTMLElement>()
+  protected readonly rowList = elementRef<HTMLElement>()
   protected readonly zone = elementRef<HTMLElement>()
   protected readonly zoneState = derived(() => (this.dragover.value ? 'dragover' : 'idle'))
+  protected readonly rowOf = derived(
+    () => (id: string | undefined) =>
+      id === undefined
+        ? null
+        : (this.rowList.value?.children[this.rows.value().findIndex((row) => row.key === id)] ??
+          null),
+  )
+  protected readonly removeControl = derived(
+    () => (row: Element | null) =>
+      row === null ? null : ([...row.querySelectorAll<HTMLElement>('button')].pop() ?? null),
+  )
   protected readonly add = derived(
     () => (list: FileList | null | undefined) =>
       !this.$p.disabled &&
@@ -340,11 +356,16 @@ export class FileUpload {
       (file: FileUploadItem) => file.id,
     ),
   )
-  private release1: (() => void) | undefined
+  private release2: (() => void) | undefined
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => this.release1?.())
-    mountEffect(() => this.effect1())
+    watchEffect(
+      () => this.$p.files,
+      () => this.effect1(),
+      false,
+    )
+    inject(DestroyRef).onDestroy(() => this.release2?.())
+    mountEffect(() => this.effect2())
   }
 
   protected e1() {
@@ -514,7 +535,11 @@ export class FileUpload {
 
   protected h7(row: Each<ReturnType<FileUpload['e23']>>): void {
     if (!(this.$p.files.length > 0)) return
-    this.$.emit(this.onRemove, 'onRemove', row.item.id)
+    void ((this.pressed.value = {
+      id: row.item.id,
+      at: this.$p.files.findIndex((file) => file.id === row.item.id),
+    }),
+    this.$.emit(this.onRemove, 'onRemove', row.item.id))
   }
 
   protected h8(row: Each<ReturnType<FileUpload['e23']>>): void {
@@ -539,7 +564,17 @@ export class FileUpload {
   }
 
   private effect1(): void {
-    this.release1?.()
+    this.pressed.value = focusAfterListRemoval(
+      this.pressed.value,
+      this.$p.files.map((file) => file.id),
+      (at) => this.removeControl.value(this.rowOf.value(this.$p.files[at]?.id)),
+      this.zone.value,
+      this.pressed.value === null ? null : this.rowOf.value(this.pressed.value.id),
+    )
+  }
+
+  private effect2(): void {
+    this.release2?.()
     const ran = agentMember({
       member: 'FileUpload',
       element: () => this.zone.value,
@@ -565,7 +600,7 @@ export class FileUpload {
       },
       withholds: () => this.root.value,
     })
-    this.release1 = () => {
+    this.release2 = () => {
       ran()
     }
   }

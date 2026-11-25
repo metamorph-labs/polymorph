@@ -11,7 +11,13 @@ import { computed, onBeforeUnmount, onMounted, provide, ref, useId, useTemplateR
 import * as zag from '@zag-js/color-picker'
 import { normalizeProps, useMachine } from '@zag-js/vue'
 
-import { COLOR_INPUT_REST, agentMember, mergeParts, useDirection } from '@polymorph/vue'
+import {
+  COLOR_INPUT_REST,
+  agentMember,
+  composingKey,
+  mergeParts,
+  useDirection,
+} from '@polymorph/vue'
 import styles from '@polymorph/recipes/controls/color-input.module.css'
 import a11y from '@polymorph/recipes/conventions/a11y.module.css'
 import Input from './Input.vue'
@@ -120,7 +126,7 @@ const toDraft = computed(
       .trim()
       .slice(0, props.alpha ? 8 : 6),
 )
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => root.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({
@@ -336,7 +342,11 @@ onBeforeUnmount(() => release1?.())
         </div>
       </template>
     </Popover>
-    <span ref="hexField" :class="styles.field" @keydown="$event.key === 'Enter' && commitDraft()">
+    <span
+      ref="hexField"
+      :class="styles.field"
+      @keydown="$event.key === 'Enter' && !composingKey($event) && commitDraft()"
+    >
       <Input
         :value="draft ?? hex.replace(/^#/, '')"
         prefix="#"

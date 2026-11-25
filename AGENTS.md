@@ -46,7 +46,7 @@ pnpm test                    # vitest: logic (node) + the browser projects (real
 pnpm exec vitest run <path>  # a subset — a file, a directory, or --project <name>
 pnpm test:coverage           # coverage thresholds; they only ever go up
 pnpm gate                    # the web gate: typecheck, lint, inventory, test, coverage, builds, the site, size, the static-page check, the Next.js gate
-pnpm gate:ios                # the iOS gate: contracts, examples, native laws, swift build/test, audit (Xcode)
+pnpm gate:ios                # the iOS gate: contracts, examples, native laws, swift build/test, the package by URL, audit (Xcode)
 pnpm gate:android            # the Android gate: contracts, examples, Kotlin laws, Gradle build and harness (JDK)
 pnpm gate:engines            # the Firefox and WebKit gate: the browser projects and the static-page check again, on both engines
 pnpm gate:next               # the Next.js gate by itself: an App Router app built from the published builds (--no-build, or a stage)
@@ -56,6 +56,7 @@ pnpm registry                # regenerate registry/ and the system card
 pnpm shells                  # regenerate the Vue, Svelte, Solid and Angular members and the elements from their descriptions
 pnpm agents                  # regenerate the plugin for coding agents, its marketplaces and server.json (--check; --icons)
 pnpm native:contracts        # regenerate the Swift and Kotlin contracts (--check: fail if stale)
+pnpm native:version          # write the release's version into the Gradle and Dart manifests (--check); version-packages runs it
 pnpm emit:native             # regenerate the native token sources (--check: fail if stale)
 pnpm emit:examples           # regenerate the native example screens from their specs (--check)
 pnpm emit <spec.json> [out]  # emit a screen for a web framework, SwiftUI or Compose

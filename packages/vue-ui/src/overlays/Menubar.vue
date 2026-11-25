@@ -71,7 +71,7 @@ const panel = useTemplateRef<HTMLElement>('panel')
 const phone = useMediaQuery('phone')
 const stop = computed(() => menubarStop(props.menus, last.value))
 const collapsed = computed(() => menubarEntries(props.menus))
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => bar.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({

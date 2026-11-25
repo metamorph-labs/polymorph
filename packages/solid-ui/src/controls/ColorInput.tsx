@@ -16,6 +16,7 @@ import {
   IDENTITY,
   agentMember,
   claimSlot,
+  composingKey,
   createCell,
   createDerived,
   elementRef,
@@ -141,7 +142,7 @@ export default function ColorInput(given: ColorInputProps): JSX.Element {
           .trim()
           .slice(0, props.alpha ? 8 : 6),
     )
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => root.value)
     const service = useMachine(
       zag.machine,
       () =>
@@ -378,7 +379,9 @@ export default function ColorInput(given: ColorInputProps): JSX.Element {
         </Popover>
         <span
           class={styles.field}
-          onkeydown={($event: KeyboardEvent) => $event.key === 'Enter' && commitDraft.value()}
+          onkeydown={($event: KeyboardEvent) =>
+            $event.key === 'Enter' && !composingKey($event) && commitDraft.value()
+          }
           ref={hexField.attach}
         >
           <Input

@@ -143,12 +143,18 @@ export default describeMember({
     emptyMessage: lit('No results'),
     closeOnSelect: 'true',
   },
-  // The field's text, as the panel reports it, for the Escape that closes.
-  state: { query: "''" },
+  // The field's text, as the panel reports it, for the Escape that closes; and where focus was
+  // as the palette opened, which it returns to as it closes, as Dialog does.
+  state: { query: "''", returnTo: 'null as ReturnType<typeof focusPlace>' },
+  effects: [
+    // Recorded as the palette opens, before the trap moves focus into it.
+    { watch: 'api.open', run: 'api.open && (returnTo = focusPlace(document.activeElement))' },
+  ],
   machine: {
     of: 'dialog',
     context: {
       open: 'open',
+      finalFocusEl: '() => focusReturnTarget(returnTo, [panel])',
       // The panel's name; no title is rendered, so nothing else names it.
       'aria-label': 'label',
       // Escape closes the palette only when the query is empty; the field clears a query itself.
@@ -319,8 +325,14 @@ export default describeMember({
             class: ['input'],
             spread: ['api.getInputProps()'],
             attrs: { 'aria-label': 'placeholder' },
-            // The dialog held itself open for a query; Escape clears it here.
-            on: { keydown: run("api.setInputValue('')", "$event.key === 'Escape'") },
+            // The dialog held itself open for a query; Escape clears it here, unless an input
+            // method is handling the key (`composingKey`).
+            on: {
+              keydown: run(
+                "api.setInputValue('')",
+                "$event.key === 'Escape' && !composingKey($event)",
+              ),
+            },
           }),
           member('Kbd', {}, { slots: { default: [text('escapeHint')] } }),
         ]),

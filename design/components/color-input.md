@@ -52,7 +52,8 @@ does (Slider's attribute, `README-substrates.md` §3.2, from a different
 substrate).
 
 The hex entry accepts three- and six-digit forms, with or without a typed `#`,
-and commits on blur and on Enter. An unparseable draft reverts to the current
+and commits on blur and on Enter. The Enter that confirms an input method's
+candidate is the input method's and commits nothing. An unparseable draft reverts to the current
 value instead of showing an error, because an empty error state is less useful
 than the colour the field already had (Combobox's revert behaviour).
 

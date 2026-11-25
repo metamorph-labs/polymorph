@@ -6,9 +6,9 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
+import { onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
-import { Icon, agentMember, useDeparture, useListening } from '@polymorph/vue'
+import { Icon, agentMember, focusAfterRemoval, useDeparture, useListening } from '@polymorph/vue'
 import styles from '@polymorph/recipes/structure/alert.module.css'
 import Button from '../controls/Button.vue'
 
@@ -61,6 +61,17 @@ onBeforeUnmount(() => release1?.())
 let release2: (() => void) | undefined
 const effect2 = () => {
   release2?.()
+  const ran = focusAfterRemoval(root.value)
+  release2 = () => {
+    ran()
+  }
+}
+onMounted(effect2)
+watch(() => root.value, effect2, { flush: 'post' })
+onBeforeUnmount(() => release2?.())
+let release3: (() => void) | undefined
+const effect3 = () => {
+  release3?.()
   const ran = agentMember({
     member: 'Alert',
     element: () => root.value,
@@ -83,12 +94,12 @@ const effect2 = () => {
     },
     withholds: () => closeRegion.value,
   })
-  release2 = () => {
+  release3 = () => {
     ran()
   }
 }
-onMounted(effect2)
-onBeforeUnmount(() => release2?.())
+onMounted(effect3)
+onBeforeUnmount(() => release3?.())
 </script>
 
 <template>

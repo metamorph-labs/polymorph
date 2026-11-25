@@ -21,8 +21,10 @@
 // Its tone sets how long it stays when the call sets neither `retained` nor
 // `durationMs`, by the rule the web's store applies (`toast.md` §Lifetime):
 // danger and warning are pinned until they are dismissed, and success, info and
-// neutral leave after 5000 milliseconds. A call that sets either takes what it
-// sets, with 5000 for a duration it leaves out. A time is lengthened as the
+// neutral leave after 5000 milliseconds. A toast with an action that sets
+// neither is pinned whatever its tone, so a reader has the time to reach the
+// action, as a Snackbar with an action label is indefinite. A call that sets
+// either takes what it sets, with 5000 for a duration it leaves out. A time is lengthened as the
 // platform's accessibility settings recommend for a notification that holds
 // text, icons and controls, as Material's Snackbar is. The time stops while the
 // card is under the pointer or holds focus (its action or close button), and
@@ -112,11 +114,12 @@ object PMToast : PMToastRendering {
         val strings = PMSpecDefault.strings
         val tone = props.tone ?: PMToastTone.Neutral
         val dismissible = props.dismissible ?: true
-        // The tone's lifetime when the call sets neither `retained` nor
-        // `durationMs` (`toast.md` §Lifetime), otherwise `durationMs`, or the
-        // default where only `retained` is set.
+        // When the call sets neither `retained` nor `durationMs`, pinned for an
+        // action and otherwise the tone's lifetime (`toast.md` §Lifetime);
+        // otherwise `durationMs`, or the default where only `retained` is set.
         val duration = when {
             props.retained != null || props.durationMs != null -> props.durationMs ?: PMSpecDefault.toastDurationMs
+            props.action != null -> Double.POSITIVE_INFINITY
             tone == PMToastTone.Danger || tone == PMToastTone.Warning -> Double.POSITIVE_INFINITY
             else -> PMSpecDefault.toastDurationMs
         }

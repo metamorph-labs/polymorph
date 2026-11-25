@@ -6,12 +6,18 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { computed, onBeforeUnmount, onMounted, useId, useTemplateRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch } from 'vue'
 
 import * as zag from '@zag-js/dialog'
 import { normalizeProps, useMachine } from '@zag-js/vue'
 
-import { agentMember, modalFocusTarget, useDirection } from '@polymorph/vue'
+import {
+  agentMember,
+  focusPlace,
+  focusReturnTarget,
+  modalFocusTarget,
+  useDirection,
+} from '@polymorph/vue'
 import { usePresence } from '@polymorph/vue/motion'
 import styles from '@polymorph/recipes/overlays/drawer.module.css'
 import Button from '../controls/Button.vue'
@@ -61,6 +67,7 @@ defineSlots<{
   footer?: (props: Record<string, never>) => unknown
 }>()
 const uid = useId()
+const returnTo = ref(null as ReturnType<typeof focusPlace>)
 const panel = useTemplateRef<HTMLElement>('panel')
 const scrim = useTemplateRef<HTMLElement>('scrim')
 const documentDirection = useDirection()
@@ -74,6 +81,7 @@ const service = useMachine(
     closeOnEscape: props.dismissible,
     closeOnInteractOutside: props.dismissible,
     initialFocusEl: () => modalFocusTarget(panel.value, props.initialFocus),
+    finalFocusEl: () => focusReturnTarget(returnTo.value, [panel.value]),
     onOpenChange: (details) => {
       emit('openChange', details.open)
     },
@@ -86,9 +94,14 @@ const panelPresent = usePresence(() => api.value.open, panel, 'drawer.panel', {
     return props.side
   },
 })
-let release1: (() => void) | undefined
 const effect1 = () => {
-  release1?.()
+  api.value.open && (returnTo.value = focusPlace(document.activeElement))
+}
+onMounted(effect1)
+watch(() => api.value.open, effect1, { flush: 'post' })
+let release2: (() => void) | undefined
+const effect2 = () => {
+  release2?.()
   const ran = agentMember({
     member: 'Drawer',
     element: () => panel.value,
@@ -102,12 +115,12 @@ const effect1 = () => {
         })(),
     },
   })
-  release1 = () => {
+  release2 = () => {
     ran()
   }
 }
-onMounted(effect1)
-onBeforeUnmount(() => release1?.())
+onMounted(effect2)
+onBeforeUnmount(() => release2?.())
 </script>
 
 <template>

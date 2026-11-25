@@ -102,6 +102,12 @@ by the Spinner's own `role="status"`, named with the file. The error message is
 the app's text in reading order after the name. The danger colour is never the
 only signal.
 
+Where focus goes after a removal is the row's, not the chip's, because a chip
+knows nothing about its neighbours: PromptInput moves it to the next chip's
+remove control, else the previous one's, else its field, once the app has
+removed the attachment. An application that draws its own row of removable
+chips does the same, or focus falls to the page.
+
 ## Agent
 
 An agent reads the file's name and its status (`uploading`, `done` or `error`), and removes the

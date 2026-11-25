@@ -12,12 +12,16 @@ import {
   TOAST_TONE_ICON,
   claimSlot,
   classes,
+  composingKey,
   createCell,
   createDerived,
   elementRef,
+  focusAfterToast,
   removeToast,
   scope,
   toast,
+  toastClock,
+  toastTimeLeft,
   watchEffect,
   type ToastRecord,
 } from '@polymorph/solid'
@@ -49,6 +53,7 @@ export default function ToastCard(given: ToastCardProps): JSX.Element {
     const icon = createDerived(() =>
       props.record.tone === 'neutral' ? null : TOAST_TONE_ICON[props.record.tone],
     )
+    const clock = createDerived(() => toastClock())
     const dismissible = createDerived(() => props.record.dismissible !== false)
     const dismiss = createDerived(() => (): void => {
       if (dismissible.value) toast.dismiss(props.record.id)
@@ -91,16 +96,24 @@ export default function ToastCard(given: ToastCardProps): JSX.Element {
       'toast.enter',
     )
     const effect1 = () => {
-      void (present() || removeToast(props.record.id))
+      void (props.record.closing === true && focusAfterToast(card.value))
     }
     watchEffect(
-      createMemo(() => present()),
+      createMemo(() => props.record.closing),
       effect1,
       false,
     )
-    let release2: (() => void) | undefined
     const effect2 = () => {
-      release2?.()
+      void (present() || removeToast(props.record.id, props.record.raised))
+    }
+    watchEffect(
+      createMemo(() => present()),
+      effect2,
+      false,
+    )
+    let release3: (() => void) | undefined
+    const effect3 = () => {
+      release3?.()
       const timer = setTimeout(
         () => {
           void (
@@ -111,16 +124,23 @@ export default function ToastCard(given: ToastCardProps): JSX.Element {
             toast.dismiss(props.record.id)
           )
         },
-        Number.isFinite(props.record.durationMs) ? props.record.durationMs : 0,
+        Number.isFinite(props.record.durationMs)
+          ? toastTimeLeft(
+              clock.value,
+              props.record.revision,
+              props.record.durationMs,
+              !props.paused && props.record.closing !== true,
+            )
+          : 0,
       )
-      release2 = () => clearTimeout(timer)
+      release3 = () => clearTimeout(timer)
     }
     watchEffect(
       createMemo(() => [props.record.revision, props.paused, props.record.closing]),
-      effect2,
+      effect3,
       true,
     )
-    onCleanup(() => release2?.())
+    onCleanup(() => release3?.())
     return (
       <li
         class={styles.toast}
@@ -135,7 +155,10 @@ export default function ToastCard(given: ToastCardProps): JSX.Element {
         data-swipe-direction="right"
         data-member="toast"
         onkeydown={($event: KeyboardEvent) =>
-          $event.key === 'Escape' && ($event.preventDefault(), dismiss.value())
+          $event.key === 'Escape' &&
+          !$event.defaultPrevented &&
+          !composingKey($event) &&
+          ($event.preventDefault(), dismiss.value())
         }
         onpointerdown={($event: PointerEvent) => press.value($event)}
         onpointermove={($event: PointerEvent) => drag.value($event)}
@@ -162,7 +185,9 @@ export default function ToastCard(given: ToastCardProps): JSX.Element {
             <div class={styles.description}>{props.record.description}</div>
           ) : null}
           {props.record.content !== undefined ? (
-            <div class={styles.content}>{props.record.content}</div>
+            <div class={styles.content} data-toast-content={''}>
+              {props.record.content}
+            </div>
           ) : null}
         </div>
         {props.record.action !== undefined ? (

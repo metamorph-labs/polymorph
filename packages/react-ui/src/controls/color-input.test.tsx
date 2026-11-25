@@ -19,6 +19,26 @@ beforeAll(installTestTheme)
 
 const field = () => screen.getByRole('textbox') as HTMLInputElement
 
+/**
+ * A key an input method is handling, dispatched on `target`: marked `isComposing`, or reported
+ * with key code 229 after the composition has ended, as Safari sends the Enter that confirms it.
+ */
+function inputMethodKey(
+  target: HTMLElement,
+  key: string,
+  how: 'composing' | 'processed',
+): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    bubbles: true,
+    cancelable: true,
+    isComposing: how === 'composing',
+  })
+  if (how === 'processed') Object.defineProperty(event, 'keyCode', { value: 229 })
+  target.dispatchEvent(event)
+  return event
+}
+
 describe('the closed surface', () => {
   it('has no style escape hatch', () => {
     assertGoverned<ColorInputProps>(true)
@@ -39,6 +59,19 @@ describe('the field', () => {
     await userEvent.keyboard('0089EA{Enter}')
     expect(onChange).toHaveBeenLastCalledWith('#0089ea')
     expect(field().value).toBe('0089ea')
+  })
+
+  it('commits nothing on an Enter an input method is handling', async () => {
+    const onChange = vi.fn()
+    render(<ColorInput pickerLabel="Choose accent colour" onChange={onChange} />)
+    await userEvent.tripleClick(field())
+    await userEvent.keyboard('0089EA')
+    inputMethodKey(field(), 'Enter', 'composing')
+    inputMethodKey(field(), 'Enter', 'processed')
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    expect(onChange).not.toHaveBeenCalled()
+    await userEvent.keyboard('{Enter}')
+    expect(onChange).toHaveBeenLastCalledWith('#0089ea')
   })
 
   it('commits on blur, and expands the three-digit shorthand', async () => {

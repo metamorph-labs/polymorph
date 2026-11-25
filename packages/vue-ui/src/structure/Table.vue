@@ -68,6 +68,7 @@ defineSlots<{ default?: (props: Record<string, never>) => unknown }>()
 const overflowing = ref(false)
 const at = ref({ row: 0, column: 0, detail: false })
 const placed = ref(false)
+const holds = ref(false)
 const table = useTemplateRef<HTMLElement>('table')
 const wrapper = useTemplateRef<HTMLElement>('wrapper')
 const stopIn = computed(() => (cell: HTMLTableCellElement): HTMLElement => {
@@ -186,6 +187,7 @@ const rove = computed(
 const focusIn = computed(() => (event: FocusEvent) => {
   const element = table.value as HTMLTableElement | null
   if (element === null) return
+  if (!holds.value) holds.value = true
   const cell = gridCellOf.value(element, event.target)
   if (cell === null) return
   const to = clampCell.value(
@@ -195,6 +197,19 @@ const focusIn = computed(() => (event: FocusEvent) => {
   if (to === null) return
   placed.value = true
   rove.value(element, to)
+})
+const focusOut = computed(() => (event: FocusEvent) => {
+  const element = table.value as HTMLTableElement | null
+  const left = event.target
+  queueMicrotask(() => {
+    if (
+      element !== null &&
+      left instanceof Node &&
+      left.isConnected &&
+      !element.contains(document.activeElement)
+    )
+      holds.value = false
+  })
 })
 const keyDown = computed(() => (event: KeyboardEvent) => {
   const element = table.value as HTMLTableElement | null
@@ -277,7 +292,10 @@ const reclamp = computed(() => () => {
   const element = table.value as HTMLTableElement | null
   if (element === null || !props.grid) return
   const to = clampCell.value(element, whereIn.value(element))
-  if (to !== null) rove.value(element, to)
+  if (to === null) return
+  rove.value(element, to)
+  const fell = document.activeElement === null || document.activeElement === document.body
+  if (holds.value && fell) stopAt.value(element, to)?.focus()
 })
 provide('polymorph:Table', {
   get grid() {
@@ -367,6 +385,7 @@ onBeforeUnmount(() => release3?.())
       :role="grid ? 'grid' : undefined"
       :aria-multiselectable="grid && multiselectable ? 'true' : undefined"
       @focusin="grid && focusIn($event)"
+      @focusout="grid && focusOut($event)"
       @keydown="grid && keyDown($event)"
     >
       <!-- caption -->

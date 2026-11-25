@@ -17,13 +17,17 @@ import { useFilter } from 'react-aria'
 
 import {
   agentFill,
+  composingKey,
   dataAttrs,
   type FileRejection,
   fitTextarea,
+  focusAfterListRemoval,
   gateFiles,
+  holdFieldEscape,
   Icon,
   type IconRole,
   memberAttr,
+  type PressedRemoval,
   promptPick,
   promptToken,
   useAgentMember,
@@ -337,21 +341,14 @@ export function PromptInput(props: PromptInputProps) {
    * The first Escape is the list's while it is open. A dialog's layer, Radix's
    * as Zag's, hears Escape on the document in the capture phase, before the
    * field does, and closes unless the key's default is prevented. So the
-   * composer prevents it on the window, which the event reaches first, and the
-   * field's own handler then closes the list. Combobox keeps its first Escape
-   * the same way through its popover's layer.
+   * composer prevents it on the window, which the event reaches first
+   * (`holdFieldEscape`), and the field's own handler then closes the list.
+   * Combobox keeps its first Escape the same way through its popover's layer.
    */
   useEffect(() => {
     const element = field.current
-    const view = element?.ownerDocument.defaultView
-    if (!open || element === null || view === null || view === undefined) return
-    const hold = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape' && event.target === element && !event.isComposing) {
-        event.preventDefault()
-      }
-    }
-    view.addEventListener('keydown', hold, true)
-    return () => view.removeEventListener('keydown', hold, true)
+    if (!open || element === null) return
+    return holdFieldEscape(element)
   }, [open])
 
   /** The side, measured when the list opens. */
@@ -466,9 +463,9 @@ export function PromptInput(props: PromptInputProps) {
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    // During IME composition every key belongs to the input method: Enter
-    // commits the candidate, because sending would post half a word.
-    if (event.nativeEvent.isComposing) return
+    // Every key an input method is handling is its own: Enter confirms the
+    // candidate, because sending would post half a word (`composingKey`).
+    if (composingKey(event.nativeEvent)) return
     if (listKeys(event)) return
     // Enter sends and Shift+Enter inserts a new line.
     if (event.key !== 'Enter' || event.shiftKey) return
@@ -546,6 +543,22 @@ export function PromptInput(props: PromptInputProps) {
     ],
   })
 
+  /*
+   * Focus after a chip is removed (`focusAfterListRemoval`). The app removes the attachment in its
+   * own time, so the pressed chip is remembered, and once its attachment has left `attachments`
+   * focus moves to the remove control of the chip in its place, else of the chip before it, else
+   * to the field.
+   */
+  const pressed = useRef<PressedRemoval | null>(null)
+  useLayoutEffect(() => {
+    pressed.current = focusAfterListRemoval(
+      pressed.current,
+      attachments.map((attachment) => attachment.id),
+      (at) => chips.current?.children[at]?.querySelector<HTMLElement>('button'),
+      field.current,
+    )
+  }, [attachments])
+
   return (
     <div
       ref={root}
@@ -572,7 +585,7 @@ export function PromptInput(props: PromptInputProps) {
       >
         {attachments.length === 0 ? null : (
           <div ref={chips} className={styles.attachments}>
-            {attachments.map((attachment) => (
+            {attachments.map((attachment, index) => (
               <AttachmentChip
                 key={attachment.id}
                 name={attachment.name}
@@ -584,7 +597,10 @@ export function PromptInput(props: PromptInputProps) {
                 onRemove={
                   onRemoveAttachment === undefined || disabled
                     ? undefined
-                    : () => onRemoveAttachment(attachment.id)
+                    : () => {
+                        pressed.current = { id: attachment.id, at: index }
+                        onRemoveAttachment(attachment.id)
+                      }
                 }
               />
             ))}

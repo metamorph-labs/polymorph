@@ -170,12 +170,14 @@ visually hidden title. It has no description, because a picture's words are its 
 
 Focus on open follows Dialog's policy. The panel has no body control and no footer, so focus
 starts on close. Focus returns to the trigger when the panel closes, or to where it was before
-it opened when the app opened it.
+it opened when the app opened it, and by Dialog's rule to the focusable element nearest where
+it was when it has left the page.
 
 Escape closes, and so does a press on the scrim beside the picture. A press on the picture or a
 control does not.
 
-ArrowLeft and ArrowRight move one picture from anywhere in the panel, by the page's direction:
+ArrowLeft and ArrowRight move one picture from anywhere in the panel, by the page's direction,
+and `onIndexChange` reports the move:
 in a right-to-left page ArrowLeft moves to the next picture and ArrowRight to the previous one,
 and the previous Button sits at the right edge. A key with a modifier is left to the browser. At
 an end the key does nothing. There is no Home and no End, as Carousel has none.
@@ -199,7 +201,10 @@ name panel from label when open
 key Enter opens
 focus on-open close when one picture
 focus on-close trigger
+focus on-close nearest
 key Escape closes when open
+key ArrowRight activates on close when open
+key ArrowLeft activates on close when open
 dismiss both
 announces live:polite "2 of 3" when open
 ```

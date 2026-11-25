@@ -96,7 +96,7 @@ const invalid = $derived(
     : (joined.passed['invalid'] as typeof invalidOwn),
 )
 let group = $state<HTMLElement | null>(null)
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => group)
 const service = useMachine(
   zag.machine,
   () =>

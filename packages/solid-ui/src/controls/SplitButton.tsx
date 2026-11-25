@@ -146,7 +146,7 @@ export default function SplitButton(given: SplitButtonProps): JSX.Element {
           : [entry],
       ),
     )
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => primary.value)
     const service = useMachine(
       zag.machine,
       () =>

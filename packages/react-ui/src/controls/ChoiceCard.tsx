@@ -53,8 +53,10 @@ export type ChoiceCardProps = {
 )
 
 export function ChoiceCard(props: ChoiceCardProps) {
-  // The document's direction, which Radix would otherwise take to be left-to-right.
-  const dir = useDirection()
+  // The direction of the place the member is in, which Radix would otherwise take to be
+  // left-to-right.
+  const rootRef = useRef<HTMLDivElement>(null)
+  const dir = useDirection(rootRef)
   const { options, label, columns = 1, disabled = false } = props
   const generated = useId()
 
@@ -105,7 +107,6 @@ export function ChoiceCard(props: ChoiceCardProps) {
     props.onChange?.(next)
   }
 
-  const rootRef = useRef<HTMLDivElement>(null)
   useAgentMember({
     member: 'ChoiceCard',
     element: () => rootRef.current,

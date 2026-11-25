@@ -169,7 +169,7 @@ export class Switch {
   protected readonly $p = this.$.props
   protected readonly uid = uniqueId()
   protected readonly track = elementRef<HTMLElement>()
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.track.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,

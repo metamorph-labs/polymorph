@@ -141,6 +141,8 @@ const insideWindow = (rect: DOMRect) =>
 let before: HTMLButtonElement | null = null
 /** Space above the page, which puts the targets below the window. */
 let spacer: HTMLElement | null = null
+/** A button just after `before`, which focus goes to when `before` has left the page. */
+let beside: HTMLButtonElement | null = null
 
 function focusBefore(): HTMLButtonElement {
   before = document.createElement('button')
@@ -158,6 +160,8 @@ export function tourLaw({ shell, mount }: TourLaw): void {
     afterEach(() => {
       before?.remove()
       before = null
+      beside?.remove()
+      beside = null
       spacer?.remove()
       spacer = null
       document.documentElement.removeAttribute('dir')
@@ -269,6 +273,22 @@ export function tourLaw({ shell, mount }: TourLaw): void {
       await userEvent.keyboard('{Escape}')
       await vi.waitFor(() => expect(panelOrNull()).toBeNull())
       await vi.waitFor(() => expect(document.activeElement).toBe(outside))
+    })
+
+    it('returns focus to the element nearest where it was when that element has left the page', async () => {
+      const outside = focusBefore()
+      beside = document.createElement('button')
+      beside.type = 'button'
+      beside.textContent = 'Beside the tour'
+      outside.after(beside)
+      await mount({ steps: STEPS, defaultOpen: true })
+      await opened('Create a ticket')
+      await vi.waitFor(() => expect(document.activeElement).toBe(panel()))
+
+      outside.remove()
+      await userEvent.keyboard('{Escape}')
+      await vi.waitFor(() => expect(panelOrNull()).toBeNull())
+      await vi.waitFor(() => expect(document.activeElement).toBe(beside))
     })
 
     it('keeps the page out of reach while a step is open, and a press on it ends nothing', async () => {

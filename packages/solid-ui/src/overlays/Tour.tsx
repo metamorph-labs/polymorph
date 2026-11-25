@@ -19,6 +19,8 @@ import {
   createCell,
   createDerived,
   elementRef,
+  focusPlace,
+  focusReturnTarget,
   mergeParts,
   revealTourTarget,
   scope,
@@ -100,6 +102,7 @@ export default function Tour(given: TourProps): JSX.Element {
     const scrim = elementRef<HTMLElement>()
     const uncontrolledStep = createCell(props.defaultStep ?? 0)
     const ending = createCell(null as 'finished' | 'dismissed' | null)
+    const returnTo = createCell(null as ReturnType<typeof focusPlace>)
     const geometry = createCell(
       null as {
         x: number
@@ -162,6 +165,7 @@ export default function Tour(given: TourProps): JSX.Element {
           preventScroll: false,
           closeOnInteractOutside: false,
           initialFocusEl: () => panel.value,
+          finalFocusEl: () => focusReturnTarget(returnTo.value, [panel.value]),
           onOpenChange: (details) => {
             closed.value(details.open)
           },
@@ -195,39 +199,33 @@ export default function Tour(given: TourProps): JSX.Element {
       },
     )
     const effect1 = () => {
+      void (api.value.open && (returnTo.value = focusPlace(document.activeElement)))
+    }
+    watchEffect(
+      createMemo(() => api.value.open),
+      effect1,
+      true,
+    )
+    const effect2 = () => {
       show.value()
     }
     watchEffect(
       createMemo(() => [api.value.open, index.value]),
-      effect1,
+      effect2,
       true,
     )
-    let release2: (() => void) | undefined
-    const effect2 = () => {
-      release2?.()
+    let release3: (() => void) | undefined
+    const effect3 = () => {
+      release3?.()
       const run = () => {
         place.value()
       }
       const resize = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(run)
       for (const element of [positioner.value]) if (element) resize?.observe(element)
-      release2 = () => {
+      release3 = () => {
         resize?.disconnect()
       }
       run()
-    }
-    watchEffect(
-      createMemo(() => api.value.open),
-      effect2,
-      true,
-    )
-    onCleanup(() => release2?.())
-    let release3: (() => void) | undefined
-    const effect3 = () => {
-      release3?.()
-      const ran = follow.value()
-      release3 = () => {
-        ran()
-      }
     }
     watchEffect(
       createMemo(() => api.value.open),
@@ -235,17 +233,31 @@ export default function Tour(given: TourProps): JSX.Element {
       true,
     )
     onCleanup(() => release3?.())
+    let release4: (() => void) | undefined
     const effect4 = () => {
+      release4?.()
+      const ran = follow.value()
+      release4 = () => {
+        ran()
+      }
+    }
+    watchEffect(
+      createMemo(() => api.value.open),
+      effect4,
+      true,
+    )
+    onCleanup(() => release4?.())
+    const effect5 = () => {
       void (api.value.open && panel.value?.focus())
     }
     watchEffect(
       createMemo(() => index.value),
-      effect4,
+      effect5,
       false,
     )
-    let release5: (() => void) | undefined
-    const effect5 = () => {
-      release5?.()
+    let release6: (() => void) | undefined
+    const effect6 = () => {
+      release6?.()
       const ran = agentMember({
         member: 'Tour',
         element: () => panel.value,
@@ -272,12 +284,12 @@ export default function Tour(given: TourProps): JSX.Element {
         },
         withholds: () => panel.value,
       })
-      release5 = () => {
+      release6 = () => {
         ran()
       }
     }
-    onMount(effect5)
-    onCleanup(() => release5?.())
+    onMount(effect6)
+    onCleanup(() => release6?.())
     return (
       <Portal>
         {afresh(() => (

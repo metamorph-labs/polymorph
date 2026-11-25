@@ -208,7 +208,7 @@ export class ContextMenu {
     const focused = active instanceof HTMLElement && active !== document.body ? active : null
     this.restoreTo.value = pressed ? focused : (focused ?? this.restoreTo.value)
   })
-  protected readonly documentDirection = useDirection()
+  protected readonly documentDirection = useDirection(() => this.surface.value)
   protected readonly service: { readonly value: zag.Service } = setup(() =>
     useMachine(
       zag.machine,

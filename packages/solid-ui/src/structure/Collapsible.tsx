@@ -59,7 +59,7 @@ export default function Collapsible(given: CollapsibleProps): JSX.Element {
   return scope(() => {
     const uid = createUniqueId()
     const trigger = elementRef<HTMLElement>()
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => trigger.value)
     const service = useMachine(
       zag.machine,
       () =>

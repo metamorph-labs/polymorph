@@ -118,7 +118,7 @@ const dayName = $derived((date: zag.DateValue, text: string, today: boolean, sel
   if (maxValue !== undefined && date.compare(maxValue) === 0) return `${said}, Last available date`
   return said
 })
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => root)
 const service = useMachine(
   zag.machine,
   () =>

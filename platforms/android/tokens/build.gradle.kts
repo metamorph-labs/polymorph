@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.polymorph"
-version = "1.0.0"
+version = "1.0.17"
 
 java {
     // 17 is the bytecode level current Android builds accept.

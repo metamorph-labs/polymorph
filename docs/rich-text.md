@@ -208,6 +208,11 @@ A document given to the field is restricted to those formats, and so is what a p
 - Keys: Mod+B, Mod+I, Mod+Shift+X (strikethrough), Mod+E (code), Mod+K (link), Mod+Z and
   Mod+Shift+Z, Shift+Enter for a line break, Mod+Enter to submit, Alt+F10 to reach the toolbar.
   Mod is Command on a Mac and Control elsewhere.
+- Tab nests a list item under the one before it, and Shift+Tab lifts a nested item out of its
+  list. Anywhere else Tab and Shift+Tab move focus, so Shift+Tab from an item of a top-level list
+  leaves the field and changes nothing. Escape, with no suggestion list or selection bar open,
+  releases Tab: the next Tab or Shift+Tab moves focus out of the field from any list item and
+  changes nothing, so a keyboard user can always leave without editing the text.
 - Typing `# `, `- `, `1. ` or `> ` at the start of a line starts that block. Three backticks, an
   optional language name (`ts`, `c++`) and a space or Enter start a code block in that language.
 - Paste keeps the formats the field allows and drops everything else: styles, scripts, images and

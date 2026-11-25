@@ -88,8 +88,10 @@ function asThumbs(value: number | [number, number] | undefined): number[] | unde
 }
 
 export function Slider(props: SliderProps) {
-  // The document's direction, which Radix would otherwise take to be left-to-right.
-  const dir = useDirection()
+  // The direction of the place the member is in, which Radix would otherwise take to be
+  // left-to-right.
+  const rootRef = useRef<HTMLDivElement>(null)
+  const dir = useDirection(rootRef)
   const {
     min = 0,
     max = 100,
@@ -167,7 +169,6 @@ export function Slider(props: SliderProps) {
     report(moved, 'onChange')
     report(moved, 'onCommit')
   }
-  const rootRef = useRef<HTMLDivElement>(null)
   useAgentMember({
     member: 'Slider',
     element: () => rootRef.current?.querySelector('[role="slider"]'),

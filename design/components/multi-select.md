@@ -97,11 +97,15 @@ focus-zoom floor from conventions §13, and only metrics change.
 popup stays open. This is Menu's checkbox rule: users adjust a filter list several ticks at a
 time, and a popup that closed on each tick would have to be reopened n times. Escape and
 outside-press still close it. Escape follows Combobox's APG order: the first press closes, the
-second clears the filter text. Toggling an option off in the listbox and pressing a chip's remove
+second clears the filter text. Inside a Dialog both are the field's and the Dialog stays open;
+with the list closed and no text left, Escape closes the Dialog. A key an input method is
+handling is the input method's: the Enter that confirms a Japanese or Chinese candidate, Safari's
+included, toggles no option. Toggling an option off in the listbox and pressing a chip's remove
 button are the same removal and are announced the same way.
 
 **The Backspace ladder is the same as TagInput's:** Backspace in an empty input removes the last
-chip. ←/→ from the input's start move through the chips. A focused chip's Backspace/Delete and
+chip. The arrows from the input's start move through the chips as TagInput's do, mirrored in a
+right-to-left page. A focused chip's Backspace/Delete and
 its remove button both remove it. Typed text is only a filter. Enter with no highlighted option
 commits nothing, because the closed list defines the values, and creating values from text is
 TagInput's job.
@@ -190,7 +194,7 @@ listbox is `aria-multiselectable="true"`, options `role="option"` +
 `aria-selected`. Arrows navigate without moving DOM focus, and Enter toggles the highlighted
 option. Toggling keeps the popup open
 (above). Escape closes, then clears. Chips are TagInput's chip list unchanged: a simple `<ul>`
-with labelled remove buttons, which ←/→ from the input's start move through. Removal from either
+with labelled remove buttons, which the arrows from the input's start move through. Removal from either
 the chips or the listbox announces through `aria-live="polite"`: "{label} removed, {n}
 selected". A mint announces the same way, "{value} added, {n} selected", because a chip created
 from a row labelled "Add" is a change the user should hear in the same way as its removal. A

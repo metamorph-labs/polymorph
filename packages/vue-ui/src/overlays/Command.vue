@@ -6,12 +6,18 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { computed, onBeforeUnmount, onMounted, ref, useId, useTemplateRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch } from 'vue'
 
 import * as zag from '@zag-js/dialog'
 import { normalizeProps, useMachine } from '@zag-js/vue'
 
-import { agentMember, useDirection, type IconRole } from '@polymorph/vue'
+import {
+  agentMember,
+  focusPlace,
+  focusReturnTarget,
+  useDirection,
+  type IconRole,
+} from '@polymorph/vue'
 import { usePresence } from '@polymorph/vue/motion'
 import styles from '@polymorph/recipes/overlays/command.module.css'
 import CommandPanel from './CommandPanel.vue'
@@ -69,6 +75,7 @@ const props = withDefaults(defineProps<CommandProps>(), {
 const emit = defineEmits<{ openChange: [open: boolean] }>()
 const uid = useId()
 const query = ref('')
+const returnTo = ref(null as ReturnType<typeof focusPlace>)
 const panel = useTemplateRef<HTMLElement>('panel')
 const scrim = useTemplateRef<HTMLElement>('scrim')
 const documentDirection = useDirection()
@@ -78,6 +85,7 @@ const service = useMachine(
     id: uid,
     dir: documentDirection.value,
     open: props.open,
+    finalFocusEl: () => focusReturnTarget(returnTo.value, [panel.value]),
     'aria-label': props.label,
     onEscapeKeyDown: (event) => query.value !== '' && event.preventDefault(),
     onOpenChange: (details) => {
@@ -91,9 +99,14 @@ const panelPresent = usePresence(() => api.value.open, panel, 'command.panel', {
   side: 'bottom',
   align: 'center',
 })
-let release1: (() => void) | undefined
 const effect1 = () => {
-  release1?.()
+  api.value.open && (returnTo.value = focusPlace(document.activeElement))
+}
+onMounted(effect1)
+watch(() => api.value.open, effect1, { flush: 'post' })
+let release2: (() => void) | undefined
+const effect2 = () => {
+  release2?.()
   const ran = agentMember({
     member: 'Command',
     element: () => panel.value,
@@ -117,12 +130,12 @@ const effect1 = () => {
       close: () => api.value.open && api.value.setOpen(false),
     },
   })
-  release1 = () => {
+  release2 = () => {
     ran()
   }
 }
-onMounted(effect1)
-onBeforeUnmount(() => release1?.())
+onMounted(effect2)
+onBeforeUnmount(() => release2?.())
 </script>
 
 <template>

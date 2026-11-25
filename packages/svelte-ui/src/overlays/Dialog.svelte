@@ -17,6 +17,8 @@ import {
   SlotScope,
   agentMember,
   attributes,
+  focusPlace,
+  focusReturnTarget,
   joinSlot,
   modalFocusTarget,
   normalizeProps,
@@ -107,7 +109,8 @@ const slots = {
     return trigger
   },
 }
-let opener = $state(null as HTMLElement | null)
+let pressed = $state(null as HTMLElement | null)
+let returnTo = $state(null as ReturnType<typeof focusPlace>)
 let panel = $state<HTMLElement | null>(null)
 let scrim = $state<HTMLElement | null>(null)
 const phone = useMediaQuery('phone')
@@ -125,7 +128,7 @@ const service = useMachine(
       closeOnEscape: dismissible,
       closeOnInteractOutside: dismissible,
       initialFocusEl: () => modalFocusTarget(panel, initialFocus),
-      finalFocusEl: () => opener,
+      finalFocusEl: () => focusReturnTarget(returnTo, [panel]),
       onOpenChange: (details) => {
         onOpenChange?.(details.open)
       },
@@ -133,7 +136,7 @@ const service = useMachine(
 )
 const api = $derived(zag.connect(service, normalizeProps))
 const openFrom = $derived((event?: Event) => {
-  if (event?.currentTarget instanceof HTMLElement) opener = event.currentTarget
+  if (event?.currentTarget instanceof HTMLElement) pressed = event.currentTarget
   api.setOpen(true)
 })
 const scrimPresent = usePresence(
@@ -154,9 +157,13 @@ const effect1 = () => {
   lender && (lender.element = () => panel)
 }
 watchEffect(effect1)
-let release2: (() => void) | undefined
 const effect2 = () => {
-  release2?.()
+  api.open && ((returnTo = focusPlace(pressed ?? document.activeElement)), (pressed = null))
+}
+watchEffect(effect2, { watch: () => api.open })
+let release3: (() => void) | undefined
+const effect3 = () => {
+  release3?.()
   const ran = lender
     ? () => {}
     : agentMember({
@@ -172,12 +179,12 @@ const effect2 = () => {
             })(),
         },
       })
-  release2 = () => {
+  release3 = () => {
     ran()
   }
 }
-watchEffect(effect2)
-onDestroy(() => release2?.())
+watchEffect(effect3)
+onDestroy(() => release3?.())
 </script>
 
 {@render joined.start?.()

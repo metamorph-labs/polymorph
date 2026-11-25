@@ -38,6 +38,28 @@ beforeAll(installTestTheme)
 
 const field = () => screen.getByRole('textbox', { name: 'Message' }) as HTMLTextAreaElement
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * A key an input method is handling, dispatched on `target`: marked `isComposing`, or reported
+ * with key code 229 after the composition has ended, as Safari sends the Enter that confirms it.
+ */
+function inputMethodKey(
+  target: HTMLElement,
+  key: string,
+  how: 'composing' | 'processed',
+): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    bubbles: true,
+    cancelable: true,
+    isComposing: how === 'composing',
+  })
+  if (how === 'processed') Object.defineProperty(event, 'keyCode', { value: 229 })
+  target.dispatchEvent(event)
+  return event
+}
+
 describe('the closed surface', () => {
   it('has no style escape hatch', () => {
     assertGoverned<PromptInputProps>(true)
@@ -55,6 +77,20 @@ describe('sending', () => {
     expect(field().value).toBe('Hello\n')
     await userEvent.keyboard('{Enter}')
     expect(onSubmit).toHaveBeenCalledWith('Hello\n')
+  })
+
+  it('sends nothing on a key an input method is handling, Safari’s confirming Enter included', async () => {
+    const onSubmit = vi.fn()
+    render(<PromptInput label="Message" onSubmit={onSubmit} />)
+    field().focus()
+    await userEvent.keyboard('にほん')
+    for (const how of ['composing', 'processed'] as const) {
+      expect(inputMethodKey(field(), 'Enter', how).defaultPrevented, how).toBe(false)
+    }
+    await sleep(30)
+    expect(onSubmit).not.toHaveBeenCalled()
+    await userEvent.keyboard('{Enter}')
+    expect(onSubmit).toHaveBeenCalledWith('にほん')
   })
 
   it('does not send an empty prompt from the button or from Enter', async () => {
@@ -165,6 +201,35 @@ describe('files', () => {
     )
     await userEvent.click(screen.getByRole('button', { name: 'Remove spec.pdf' }))
     expect(onRemove).toHaveBeenCalledWith('a')
+  })
+
+  it('moves focus to the next chip’s remove control once a chip is removed, else the previous one, else the field', async () => {
+    function Held() {
+      const [attachments, setAttachments] = useState([
+        { id: 'a', name: 'spec.pdf' },
+        { id: 'b', name: 'notes.txt' },
+        { id: 'c', name: 'shot.png' },
+      ])
+      return (
+        <PromptInput
+          label="Message"
+          attachments={attachments}
+          onAttach={() => {}}
+          onReject={() => {}}
+          onRemoveAttachment={(id) => setAttachments((was) => was.filter((one) => one.id !== id))}
+          onSubmit={() => {}}
+        />
+      )
+    }
+    render(<Held />)
+    const remove = (name: string) => screen.getByRole('button', { name: `Remove ${name}` })
+    remove('notes.txt').focus()
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(document.activeElement).toBe(remove('shot.png')))
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(document.activeElement).toBe(remove('spec.pdf')))
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(document.activeElement).toBe(field()))
   })
 
   it('counts a chip as content, so send is enabled without text', () => {

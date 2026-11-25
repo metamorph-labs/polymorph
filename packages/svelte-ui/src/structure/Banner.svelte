@@ -8,7 +8,7 @@
  */
 import { onDestroy, type Snippet } from 'svelte'
 
-import { Icon, agentMember, joinSlot, watchEffect } from '@polymorph/svelte'
+import { Icon, agentMember, focusAfterRemoval, joinSlot, watchEffect } from '@polymorph/svelte'
 import styles from '@polymorph/recipes/structure/banner.module.css'
 import Button from '../controls/Button.svelte'
 
@@ -62,6 +62,16 @@ let root = $state<HTMLElement | null>(null)
 let release1: (() => void) | undefined
 const effect1 = () => {
   release1?.()
+  const ran = focusAfterRemoval(root)
+  release1 = () => {
+    ran()
+  }
+}
+watchEffect(effect1, { watch: () => root })
+onDestroy(() => release1?.())
+let release2: (() => void) | undefined
+const effect2 = () => {
+  release2?.()
   const ran = agentMember({
     member: 'Banner',
     element: () => root,
@@ -75,12 +85,12 @@ const effect1 = () => {
     },
     withholds: () => closeRegion,
   })
-  release1 = () => {
+  release2 = () => {
     ran()
   }
 }
-watchEffect(effect1)
-onDestroy(() => release1?.())
+watchEffect(effect2)
+onDestroy(() => release2?.())
 </script>
 
 {@render joined.start?.()

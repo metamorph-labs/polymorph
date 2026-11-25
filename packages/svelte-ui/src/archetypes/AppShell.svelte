@@ -12,7 +12,10 @@ import {
   PageTransition,
   Render,
   agentMember,
+  anchorFocusReturns,
+  arriveAtPage,
   currentRailDestination,
+  focusFromScript,
   goToRailDestination,
   joinSlot,
   railDestinations,
@@ -113,6 +116,7 @@ let {
   topbar,
   transitionKey,
 }: AppShellProps = $props()
+const uid = $props.id()
 const joined = joinSlot(undefined, () => ({}))
 const slots = {
   get banner() {
@@ -137,7 +141,9 @@ const slots = {
 // svelte-ignore state_referenced_locally
 let uncontrolled = $state(defaultCollapsed ?? false)
 let drawer = $state(false)
+let announcer = $state<HTMLElement | null>(null)
 let drawerToggle = $state<HTMLElement | null>(null)
+let frame = $state<HTMLElement | null>(null)
 let rail = $state<HTMLElement | null>(null)
 let railToggle = $state<HTMLElement | null>(null)
 const held = $derived(collapsed ?? uncontrolled)
@@ -162,16 +168,64 @@ setContext('polymorph:AppShell', {
   },
 })
 const effect1 = () => {
-  drawer ? rail?.focus() : drawerToggle?.querySelector<HTMLElement>('button')?.focus()
+  drawer
+    ? rail?.focus()
+    : drawerToggle &&
+      anchorFocusReturns(drawerToggle, rail ?? null) &&
+      drawerToggle.querySelector<HTMLElement>('button')?.focus()
 }
 watchEffect(effect1, { watch: () => drawer, mount: false })
+let release2: (() => void) | undefined
 const effect2 = () => {
-  drawer = false
+  release2?.()
+  const listener = (event: DocumentEventMap['keydown']) => {
+    drawer && event.key === 'Escape' && !event.defaultPrevented && (drawer = false)
+  }
+  document.addEventListener('keydown', listener)
+  release2 = () => document.removeEventListener('keydown', listener)
 }
-watchEffect(effect2, { watch: () => transitionKey, mount: false })
+watchEffect(effect2)
+onDestroy(() => release2?.())
 let release3: (() => void) | undefined
 const effect3 = () => {
   release3?.()
+  const run = () => {
+    drawer &&
+      drawerToggle &&
+      window.getComputedStyle(drawerToggle).display === 'none' &&
+      (drawer = false)
+  }
+  const resize = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(run)
+  for (const element of [drawerToggle]) if (element) resize?.observe(element)
+  release3 = () => {
+    resize?.disconnect()
+  }
+  run()
+}
+watchEffect(effect3)
+onDestroy(() => release3?.())
+const effect4 = () => {
+  drawer = false
+}
+watchEffect(effect4, { watch: () => transitionKey, mount: false })
+let release5: (() => void) | undefined
+const effect5 = () => {
+  release5?.()
+  const ran = arriveAtPage(
+    frame?.querySelector<HTMLElement>(':scope > main'),
+    announcer,
+    transitionKey,
+    pending,
+  )
+  release5 = () => {
+    ran()
+  }
+}
+watchEffect(effect5, { watch: () => [transitionKey, pending] })
+onDestroy(() => release5?.())
+let release6: (() => void) | undefined
+const effect6 = () => {
+  release6?.()
   const ran = agentMember({
     member: 'AppShell',
     element: () => rail,
@@ -222,25 +276,37 @@ const effect3 = () => {
     },
     withholds: () => [railToggle, drawerToggle],
   })
-  release3 = () => {
+  release6 = () => {
     ran()
   }
 }
-watchEffect(effect3)
-onDestroy(() => release3?.())
+watchEffect(effect6)
+onDestroy(() => release6?.())
 </script>
 
 {@render joined.start?.()
 }{#if joined.shown
   }<div
+    bind:this={frame}
     class={styles.shell}
     data-collapsed={(isCollapsed) ? '' : undefined}
     data-navigation={(navigation === 'top') ? 'top' : undefined}
     data-drawer={(drawer) ? '' : undefined}
     data-member="app-shell"
-    ><a class={styles.skip} href="#content">{say.skipToContent ?? 'Skip to content'}</a
-    >{#if slots.banner}<div class={styles.banner}>{@render banner?.()}</div>{/if
-    }<nav bind:this={rail} class={styles.sidebar} aria-label={say.primaryNavigation} tabindex="-1"
+    ><a
+      class={styles.skip}
+      href="#content"
+      inert={drawer}
+      onclick={() => { focusFromScript(frame?.querySelector<HTMLElement>(':scope > main')) }}
+      >{say.skipToContent ?? 'Skip to content'
+    }</a
+    >{#if slots.banner}<div class={styles.banner} inert={drawer}>{@render banner?.()}</div>{/if
+    }<nav
+      bind:this={rail}
+      class={styles.sidebar}
+      id={uid}
+      aria-label={say.primaryNavigation}
+      tabindex="-1"
       ><div class={styles.railHead}
         >{#if slots.brand}<div class={styles.brand}>{@render brand?.()}</div>{/if
         }<div bind:this={railToggle} class={styles.toggle}
@@ -259,7 +325,7 @@ onDestroy(() => release3?.())
         }<div class={styles.sidebarFooter}>{@render sidebarFooter?.()}</div
       >{/if
     }</nav
-    ><header class={styles.topbar}
+    ><header class={styles.topbar} inert={drawer}
       ><div class={styles.topbarSlot}
         ><span bind:this={drawerToggle} class={styles.drawerToggle}
           ><Button
@@ -269,6 +335,8 @@ onDestroy(() => release3?.())
             iconOnly={true}
             icon="menu"
             label={drawer ? say.closeNavigation : say.openNavigation}
+            expanded={drawer}
+            aria-controls={uid}
             onClick={() => { drawer = !drawer }}
         /></span
         >{#if topbar?.leading !== undefined}<Render node={topbar?.leading} />{/if
@@ -289,6 +357,7 @@ onDestroy(() => release3?.())
       class={[styles.content, transitionKey !== undefined ? transitions.page : undefined]}
       as="main"
       id="content"
+      inert={drawer}
       {transitionKey}
       {pending}
       ribbon={transitions.indicator}
@@ -298,7 +367,8 @@ onDestroy(() => release3?.())
         }{@render children?.()
       }{/if
     }</PageTransition
-    >{#if slots.dock}<div class={styles.dock}>{@render dock?.()}</div>{/if
-  }</div
+    >{#if slots.dock}<div class={styles.dock} inert={drawer}>{@render dock?.()}</div>{/if
+    }<div bind:this={announcer} class={styles.announcer} role="status"></div
+  ></div
 >{/if
 }{@render joined.end?.()}

@@ -101,7 +101,13 @@ in the tree from the start. Apps that mount Alerts in response to events get the
 politeness automatically. An Alert that renders nothing until its title arrives is one of
 these: its root carries the role from the first render that draws it, with the title already
 in it. Dismiss is a real labelled button, and Enter on it dismisses.
-Focus does not move on dismiss, so the reading position is kept; nothing was modal. The
+Focus stays on it while the row closes, so the reading position is kept; nothing was modal.
+When the application then unmounts the Alert with focus still in it, on the ✕ or on one of its
+actions, focus moves to the first focusable element after where the Alert was, else the last
+one before it, else the page's `main`. Focus left on a removed button falls to the body, where
+a keyboard reader starts again from the top of the page. The rule is the engine's
+(`focusAfterRemoval`, `packages/engine/src/conventions/focus-after-removal.ts`), and Banner and
+ArtifactPane follow it too. The
 document order is the reading and focus order: `action`, then `secondaryAction`, then
 dismiss, so Tab reaches the answers before the button that sets the question aside.
 

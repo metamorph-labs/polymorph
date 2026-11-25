@@ -122,7 +122,7 @@ export default function Select(given: SelectProps): JSX.Element {
       ...(props.emptyOption === undefined ? [] : [emptyChoice.value]),
       ...props.options.flatMap((entry) => ('options' in entry ? entry.options : [entry])),
     ])
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => trigger.value)
     const service = useMachine(
       zag.machine,
       () =>

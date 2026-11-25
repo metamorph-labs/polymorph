@@ -8567,7 +8567,9 @@ public enum PMToastTone: String, CaseIterable, Sendable {
 /// Toast's props (`design/components/toast.md`): Notifications that report the outcome of an
 /// action. On iOS it is adapted: an in-app banner above the home indicator.
 public struct PMToastProps {
-  /// At most one; a shortcut, never the only way to do what it does.
+  /// At most one; a shortcut, never the only way to do what it does. A call with an action that
+  /// sets neither `durationMs` nor `retained` is pinned, so a reader has the time to reach the
+  /// action.
   public var action: PMToastAction?
   /// Content supplied by the host, including current, controller-gated recovery controls.
   public var content: PMContent?

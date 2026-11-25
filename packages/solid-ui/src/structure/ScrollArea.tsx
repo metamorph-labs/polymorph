@@ -14,6 +14,7 @@ import {
   claimSlot,
   classes,
   createDerived,
+  elementRef,
   mergeParts,
   scope,
   useDirection,
@@ -56,8 +57,9 @@ export default function ScrollArea(given: ScrollAreaProps): JSX.Element {
   )
   return scope(() => {
     const uid = createUniqueId()
+    const root = elementRef<HTMLElement>()
     const fades = createDerived(() => props.type === 'hover')
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => root.value)
     const service = useMachine(
       zag.machine,
       () => ({ id: uid, dir: documentDirection() }) as Partial<zag.Props>,
@@ -70,6 +72,7 @@ export default function ScrollArea(given: ScrollAreaProps): JSX.Element {
           class: styles.root,
           'data-member': 'scroll-area',
         })}
+        ref={root.attach}
       >
         <div
           {...mergeParts(api.value.getViewportProps(), {

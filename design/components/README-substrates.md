@@ -258,13 +258,15 @@ Combobox popup is positioned by the repo's Radix-based `Popover`, or rendered in
 Command palette's popup is inside `Dialog`. In both cases exactly one library manages
 focus, and it is Radix.
 
-**React Aria contains focus in one place**: the shared bottom sheet
-(`packages/react-ui/src/overlays/sheet.tsx`, conventions §12). This follows the same rule. The
-sheet renders only on lanes where no Radix overlay root is mounted (the phone forms of
-Menu, ContextMenu, SplitButton, Popover and the list-shaped fields). There it takes
-`FocusScope` and `usePreventScroll` from React Aria, never an overlay hook, so each tree
-still has exactly one focus manager. A combobox-lane sheet takes no focus scope at all,
-for the `aria-activedescendant` reason above.
+**The shared bottom sheet contains focus with Radix's scope**
+(`packages/react-ui/src/overlays/sheet.tsx`, conventions §12). The sheet renders on lanes where
+its member mounts no Radix overlay root of its own (the phone forms of Menu, ContextMenu,
+SplitButton, Popover and the list-shaped fields), but it can open inside a Dialog or a Drawer,
+whose Radix focus scope and layer sit beneath it. So it takes Radix's `FocusScope` and
+`DismissableLayer`, the focus manager and layer stack of the overlay beneath: a new scope pauses
+the Dialog's trap, and the topmost layer takes Escape. It takes `usePreventScroll` from React
+Aria, never an overlay hook. A combobox-lane sheet takes no focus scope at all, for the
+`aria-activedescendant` reason above.
 
 Consequence: a spec may not describe a Combobox popup that traps focus. A review treats
 any `useOverlay`/`useModal`/`usePopover` import in `packages/react-ui` as a defect.

@@ -13,7 +13,8 @@
     "jiti": "^2.7.0"
   },
   "bin": {
-    "polymorph-native-contracts": "./bin/contracts.js"
+    "polymorph-native-contracts": "./bin/contracts.js",
+    "polymorph-native-version": "./bin/version.js"
   },
   "license": "MIT"
 }

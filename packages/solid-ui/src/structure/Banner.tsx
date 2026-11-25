@@ -5,15 +5,17 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { mergeProps, onCleanup, onMount, type JSX } from 'solid-js'
+import { createMemo, mergeProps, onCleanup, onMount, type JSX } from 'solid-js'
 
 import {
   Icon,
   agentMember,
   claimSlot,
   elementRef,
+  focusAfterRemoval,
   resolveSlot,
   scope,
+  watchEffect,
   type Defaults,
 } from '@polymorph/solid'
 import styles from '@polymorph/recipes/structure/banner.module.css'
@@ -54,6 +56,20 @@ export default function Banner(given: BannerProps): JSX.Element {
     let release1: (() => void) | undefined
     const effect1 = () => {
       release1?.()
+      const ran = focusAfterRemoval(root.value)
+      release1 = () => {
+        ran()
+      }
+    }
+    watchEffect(
+      createMemo(() => root.value),
+      effect1,
+      true,
+    )
+    onCleanup(() => release1?.())
+    let release2: (() => void) | undefined
+    const effect2 = () => {
+      release2?.()
       const ran = agentMember({
         member: 'Banner',
         element: () => root.value,
@@ -68,12 +84,12 @@ export default function Banner(given: BannerProps): JSX.Element {
         },
         withholds: () => closeRegion.value,
       })
-      release1 = () => {
+      release2 = () => {
         ran()
       }
     }
-    onMount(effect1)
-    onCleanup(() => release1?.())
+    onMount(effect2)
+    onCleanup(() => release2?.())
     return (
       <div
         class={styles.banner}

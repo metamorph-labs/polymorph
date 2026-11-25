@@ -19,7 +19,7 @@ plugins {
 }
 
 group = "dev.polymorph"
-version = "1.0.0"
+version = "1.0.17"
 
 val composeVersion = "1.12.1"
 

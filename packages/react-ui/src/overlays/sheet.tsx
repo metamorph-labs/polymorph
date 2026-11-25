@@ -5,12 +5,16 @@ import {
   useContext,
   useEffect,
   useRef,
+  useState,
   useSyncExternalStore,
   type KeyboardEvent,
   type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { FocusScope, usePreventScroll } from 'react-aria'
+import { DismissableLayer } from '@radix-ui/react-dismissable-layer'
+import { FocusScope } from '@radix-ui/react-focus-scope'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
+import { usePreventScroll } from 'react-aria'
 
 import { MotionPresence, MotionSurface } from '@polymorph/react/motion'
 import styles from '@polymorph/recipes/overlays/sheet.module.css'
@@ -35,8 +39,23 @@ import styles from '@polymorph/recipes/overlays/sheet.module.css'
  *    That is the `sheet → fade` projection that `values.ts` tests.
  *  - **Dismissal**: a press on the scrim, and Escape from anywhere inside the
  *    panel. Dismissing on selection belongs to the menu lane (`sheet-menu.tsx`).
- *  - **Containment**: `FocusScope contain`, the sheet presentation's
- *    Dialog-lane rule for modal sheets. Menus and Popover contain focus
+ *  - **A layer of its own.** A sheet opened from inside a Dialog or a Drawer
+ *    is portalled out of it, so the panel is a Radix layer and a Radix focus
+ *    scope, as the overlay it sits on is. The topmost layer takes Escape, so
+ *    Escape closes the sheet and not the Dialog beneath it, and a Tooltip or a
+ *    Menu open inside the sheet takes the Escape that closes it, which then
+ *    leaves the sheet open. A new focus scope
+ *    pauses the one beneath, so the Dialog's trap does not pull focus out of
+ *    the sheet. The layer dismisses nothing by itself: the panel's own Escape
+ *    and the scrim do, as below.
+ *  - **Containment**: a trapped focus scope, the sheet presentation's
+ *    Dialog-lane rule for modal sheets. The scope wraps Tab only at the
+ *    panel's first and last controls, as Radix's Dialog does, and Radix's
+ *    Dialog also puts a focusable guard at each end of the page. The sheet
+ *    keeps one on each side of its panel for the same reason: a browser whose
+ *    Tab passes over buttons (Safari's default) moves focus from a field past
+ *    the panel's last button, onto the guard, and the scope takes it back
+ *    into the panel instead of letting it leave the page. Menus and Popover contain focus
  *    (Popover because its sheet form changes its contract to modal,
  *    `design/components/popover.md`). The combobox lane opts out with
  *    `containFocus={false}`, following the sheet presentation's split: a
@@ -47,6 +66,10 @@ import styles from '@polymorph/recipes/overlays/sheet.module.css'
  *    take it.
  *  - **Scroll lock** while open (`usePreventScroll`). The page behind a modal
  *    surface does not scroll, as with the Radix-rooted overlays.
+ *  - **The page hidden** from assistive software while a contained sheet is
+ *    open, as a Dialog hides it: every other element of the body takes
+ *    `aria-hidden` until the exit begins. The combobox lane hides nothing,
+ *    because its field stays in the page.
  *  - **Not focus restore.** Each member decides where focus goes when the
  *    sheet closes. Menu and Popover restore through `TriggerAnchor`,
  *    SplitButton to its chevron, and ContextMenu to where focus was when the
@@ -109,7 +132,7 @@ export interface SheetSurfaceProps {
   holdEscape?: () => boolean
   /**
    * Selects the sheet presentation's lane. `true` (the default) is the Dialog
-   * lane: `FocusScope contain`, and the panel takes focus if its content has
+   * lane: a trapped focus scope, and the panel takes focus if its content has
    * nothing focusable. `false` is the combobox lane: no scope, and focus is
    * never taken. DOM focus stays in the field's input in the page, the listbox
    * uses `aria-activedescendant`, and the scrim dismisses without trapping.
@@ -175,6 +198,22 @@ function SheetPortal({
 }) {
   const state = useContext(SheetStateContext)
   const panelRef = useRef<HTMLElement>(null)
+  const scrimRef = useRef<HTMLElement>(null)
+  const positionerRef = useRef<HTMLDivElement>(null)
+  /**
+   * Whether the lane's content is drawn. A contained sheet draws it once its
+   * focus scope is active (`onMountAutoFocus`), a commit after the panel. A
+   * new scope pauses the one beneath it, so a lane that moves focus into the
+   * sheet as it mounts is not undone by a Dialog's trap beneath the sheet,
+   * which would otherwise put focus back on the trigger before the sheet's
+   * scope is active. The combobox lane has no scope and draws at once.
+   */
+  const [ready, setReady] = useState(!containFocus)
+
+  useEffect(() => {
+    if (!containFocus || state === 'closed') return
+    return hideOutside([scrimRef.current, positionerRef.current])
+  }, [containFocus, state])
 
   // The page behind a modal surface does not scroll. The lock is released as
   // soon as the exit begins. The combobox lane keeps the lock too: its scrim
@@ -183,7 +222,7 @@ function SheetPortal({
   usePreventScroll({ isDisabled: state === 'closed' })
 
   /**
-   * Focus moves into the panel on open. Child effects run first, so a lane
+   * Focus moves into the panel once the content is drawn. Child effects run first, so a lane
    * with its own initial-focus policy (the menu's `autoFocus: 'first'`) has
    * already moved focus when this checks. The fallback only handles a panel
    * whose content has nothing focusable. Without it, DOM focus would stay
@@ -192,13 +231,24 @@ function SheetPortal({
    * focus-management boundary (`design/components/README-substrates.md`).
    */
   useEffect(() => {
-    if (!containFocus) return
+    if (!containFocus || !ready) return
     const panel = panelRef.current
     if (panel && !panel.contains(document.activeElement)) panel.focus()
-  }, [containFocus])
+  }, [containFocus, ready])
+
+  /**
+   * The Escape the sheet's own layer took as the topmost layer. Radix hands a
+   * layer the keydown on the document before any element sees it, and only
+   * the topmost layer's: a Tooltip or a Menu open inside the sheet takes the
+   * Escape that closes it, and the sheet's layer is not handed that one. The
+   * panel's own handler below then runs after the content's, so a member's
+   * substrate has handled the key when `holdEscape` is asked.
+   */
+  const topmost = useRef<Event | null>(null)
 
   function onKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (event.key !== 'Escape' || state === 'closed') return
+    if (topmost.current !== event.nativeEvent) return
     if (holdEscape?.() === true) return
     event.stopPropagation()
     onDismiss()
@@ -218,13 +268,27 @@ function SheetPortal({
       {...(label === undefined ? {} : { 'aria-label': label })}
       {...(modal === undefined ? {} : { 'aria-modal': modal })}
     >
-      {children}
+      {ready ? children : null}
     </MotionSurface>
+  )
+
+  // The layer takes Escape from the layers beneath it and dismisses nothing by
+  // itself: it records the Escape it was handed, and the panel decides.
+  const layered = (
+    <DismissableLayer
+      asChild
+      onEscapeKeyDown={(event) => {
+        topmost.current = event
+      }}
+    >
+      {panel}
+    </DismissableLayer>
   )
 
   return createPortal(
     <>
       <MotionSurface
+        ref={scrimRef}
         binding="dialog.scrim"
         className={styles.scrim}
         data-state={state}
@@ -232,13 +296,52 @@ function SheetPortal({
           if (state === 'open') onDismiss()
         }}
       />
-      <div className={styles.positioner}>
+      <div ref={positionerRef} className={styles.positioner}>
         {/* Containment is released as soon as the exit begins. The member's
             focus restore runs at dismiss time, and a scope still active during
-            the exit would pull focus back into the closing panel. */}
-        {containFocus ? <FocusScope contain={state === 'open'}>{panel}</FocusScope> : panel}
+            the exit would pull focus back into the closing panel. The scope
+            moves focus neither as it mounts nor as it unmounts: the lane and
+            the member decide both. */}
+        {containFocus ? (
+          <>
+            <VisuallyHidden tabIndex={0} data-sheet-guard="" />
+            <FocusScope
+              asChild
+              loop
+              trapped={state === 'open'}
+              onMountAutoFocus={(event) => {
+                event.preventDefault()
+                setReady(true)
+              }}
+              onUnmountAutoFocus={(event) => event.preventDefault()}
+            >
+              {layered}
+            </FocusScope>
+            <VisuallyHidden tabIndex={0} data-sheet-guard="" />
+          </>
+        ) : (
+          layered
+        )}
       </div>
     </>,
     document.body,
   )
+}
+
+/**
+ * Hides every other element of the body from assistive software, as a modal
+ * Dialog does, and returns what shows them again. An element that is already
+ * hidden is left as it is, so a Dialog beneath keeps what it hid.
+ */
+function hideOutside(keep: readonly (Element | null)[]): () => void {
+  const hidden: Element[] = []
+  for (const element of document.body.children) {
+    if (keep.includes(element) || element.getAttribute('aria-hidden') === 'true') continue
+    if (element.matches('script, style, template, link')) continue
+    element.setAttribute('aria-hidden', 'true')
+    hidden.push(element)
+  }
+  return () => {
+    for (const element of hidden) element.removeAttribute('aria-hidden')
+  }
 }

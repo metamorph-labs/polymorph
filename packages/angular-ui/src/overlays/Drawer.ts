@@ -17,8 +17,11 @@ import {
   SlotTemplate,
   Spread,
   agentMember,
+  cell,
   derived,
   elementRef,
+  focusPlace,
+  focusReturnTarget,
   mergeParts,
   modalFocusTarget,
   mountEffect,
@@ -28,6 +31,7 @@ import {
   useDirection,
   useMachine,
   useMember,
+  watchEffect,
 } from '@polymorph/angular'
 import { usePresence } from '@polymorph/angular/motion'
 import styles from '@polymorph/recipes/overlays/drawer.module.css'
@@ -182,6 +186,7 @@ export class Drawer {
   })
   protected readonly $p = this.$.props
   protected readonly uid = uniqueId()
+  protected readonly returnTo = cell(() => null as ReturnType<typeof focusPlace>)
   protected readonly panel = elementRef<HTMLElement>()
   protected readonly scrim = elementRef<HTMLElement>()
   protected readonly documentDirection = useDirection()
@@ -197,6 +202,7 @@ export class Drawer {
           closeOnEscape: this.$p.dismissible,
           closeOnInteractOutside: this.$p.dismissible,
           initialFocusEl: () => modalFocusTarget(this.panel.value, this.$p.initialFocus),
+          finalFocusEl: () => focusReturnTarget(this.returnTo.value, [this.panel.value]),
           onOpenChange: (details) => {
             this.$.emit(this.onOpenChange, 'onOpenChange', details.open)
           },
@@ -221,11 +227,16 @@ export class Drawer {
       () => ({ sheetSide: this.$p.side }),
     ),
   )
-  private release1: (() => void) | undefined
+  private release2: (() => void) | undefined
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => this.release1?.())
-    mountEffect(() => this.effect1())
+    watchEffect(
+      () => this.api.value.open,
+      () => this.effect1(),
+      true,
+    )
+    inject(DestroyRef).onDestroy(() => this.release2?.())
+    mountEffect(() => this.effect2())
   }
 
   protected e1() {
@@ -343,7 +354,11 @@ export class Drawer {
   }
 
   private effect1(): void {
-    this.release1?.()
+    void (this.api.value.open && (this.returnTo.value = focusPlace(document.activeElement)))
+  }
+
+  private effect2(): void {
+    this.release2?.()
     const ran = agentMember({
       member: 'Drawer',
       element: () => this.panel.value,
@@ -357,7 +372,7 @@ export class Drawer {
           })(),
       },
     })
-    this.release1 = () => {
+    this.release2 = () => {
       ran()
     }
   }

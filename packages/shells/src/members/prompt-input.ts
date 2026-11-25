@@ -58,7 +58,10 @@ const control = (variant: string, tone: string) => ({
   iconOnly: 'true',
 })
 
-/** One chip, with or without the remove request: the chip draws its ✕ only for a listener. */
+/**
+ * One chip, with or without the remove request: the chip draws its ✕ only for a listener. A
+ * press is remembered, so focus can move once the app has removed the attachment.
+ */
 const chip = (removable: boolean): Node =>
   member(
     'AttachmentChip',
@@ -70,7 +73,15 @@ const chip = (removable: boolean): Node =>
       removeLabel: 'messages.remove(attachment.name)',
       uploadingLabel: 'messages.uploading(attachment.name)',
     },
-    removable ? { on: { remove: emit('removeAttachment', { args: ['attachment.id'] }) } } : {},
+    removable
+      ? {
+          on: {
+            remove: run(
+              "((pressed = { id: attachment.id, at: attachments.indexOf(attachment) }), emit('removeAttachment', attachment.id))",
+            ),
+          },
+        }
+      : {},
   )
 
 /**
@@ -135,6 +146,8 @@ export default describeMember({
     side: "'top' as 'top' | 'bottom'",
     // The list the app last heard of, by trigger, token and query.
     reported: 'null as string | null',
+    // The chip whose remove control was pressed, until the app has removed its attachment.
+    pressed: 'null as { id: string; at: number } | null',
   },
   derived: {
     text: 'value ?? uncontrolled',
@@ -206,18 +219,6 @@ export default describeMember({
       afterRender(() => (field as HTMLTextAreaElement | null)?.setSelectionRange(next.caret, next.caret))
       by.onSelect?.(option)
     }`,
-    // The first Escape is the list's while it is open. A dialog's layer hears Escape on the
-    // document in the capture phase, before the field does, and closes unless the key's default
-    // is prevented, so the composer prevents it on the window, which the event reaches first.
-    // Returns what removes the listener.
-    holdEscape: `(element: HTMLTextAreaElement) => {
-      const view = element.ownerDocument.defaultView
-      const hold = (event: KeyboardEvent) => {
-        if (event.key === 'Escape' && event.target === element && !event.isComposing) event.preventDefault()
-      }
-      view?.addEventListener('keydown', hold, true)
-      return () => view?.removeEventListener('keydown', hold, true)
-    }`,
     // The list's keys while it is open; returns whether the key was the list's. Enter with no
     // active option does nothing while the options load, because they are about to arrive, and
     // sends when nothing matches, as with the list closed: the empty row has said so.
@@ -266,11 +267,21 @@ export default describeMember({
     {
       run: 'autoFocus && field && (field.focus(), (field as HTMLTextAreaElement).setSelectionRange(text.length, text.length), track(field as HTMLTextAreaElement, text))',
     },
-    // The first Escape is the list's while it is open (`holdEscape`).
+    // The first Escape is the list's while it is open. A dialog's layer hears Escape on the
+    // document in the capture phase, before the field does, and closes unless the key's default
+    // is prevented, so the composer prevents it on the window, which the key reaches first.
     {
       watch: 'open',
-      run: 'open && field ? holdEscape(field as HTMLTextAreaElement) : () => {}',
+      run: 'open && field ? holdFieldEscape(field) : () => {}',
       release: 'ran()',
+    },
+    // Once the app has removed the attachment of a pressed chip, focus moves to the remove
+    // control of the chip in its place, else of the chip before it, else to the field
+    // (`focusAfterListRemoval`).
+    {
+      watch: 'attachments',
+      mount: false,
+      run: "pressed = focusAfterListRemoval(pressed, attachments.map((attachment) => attachment.id), (at) => chips?.children[at]?.querySelector<HTMLElement>('button'), field)",
     },
     // The side, measured when the list opens.
     {
@@ -379,12 +390,12 @@ export default describeMember({
               input: run(
                 '(setText(($event.target as HTMLTextAreaElement).value), track($event.target as HTMLTextAreaElement, ($event.target as HTMLTextAreaElement).value))',
               ),
-              // During IME composition every key is the input method's: Enter commits the
-              // candidate, and sending would post half a word. With the list open its keys come
-              // first; otherwise Enter sends and Shift+Enter is a new line.
+              // Every key an input method is handling is its own (`composingKey`): Enter confirms
+              // the candidate, and sending would post half a word. With the list open its keys
+              // come first; otherwise Enter sends and Shift+Enter is a new line.
               keydown: run(
                 "!listKeys($event) && $event.key === 'Enter' && !$event.shiftKey && ($event.preventDefault(), submit())",
-                '!$event.isComposing',
+                '!composingKey($event)',
               ),
               keyup: run('track($event.currentTarget as HTMLTextAreaElement, text)'),
               pointerup: run('track($event.currentTarget as HTMLTextAreaElement, text)'),

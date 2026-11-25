@@ -57,8 +57,10 @@ export function ScrollArea({
   type = 'always',
   label,
 }: ScrollAreaProps) {
-  // The document's direction, which Radix would otherwise take to be left-to-right.
-  const dir = useDirection()
+  // The direction of the place the member is in, which Radix would otherwise take to be
+  // left-to-right.
+  const root = useRef<HTMLDivElement>(null)
+  const dir = useDirection(root)
   const viewport = useRef<HTMLDivElement>(null)
   const [overflowing, setOverflowing] = useState(false)
 
@@ -102,6 +104,7 @@ export function ScrollArea({
 
   return (
     <ScrollAreaPrimitive.Root
+      ref={root}
       dir={dir}
       type={RADIX_TYPE[type]}
       className={styles.root}

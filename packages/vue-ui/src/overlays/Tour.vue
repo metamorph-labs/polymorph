@@ -13,6 +13,8 @@ import { normalizeProps, useMachine } from '@zag-js/vue'
 
 import {
   agentMember,
+  focusPlace,
+  focusReturnTarget,
   revealTourTarget,
   tourPlacement,
   tourTarget,
@@ -78,6 +80,7 @@ const emit = defineEmits<{ end: [reason: TourEnd]; stepChange: [index: number] }
 const uid = useId()
 const uncontrolledStep = ref(props.defaultStep ?? 0)
 const ending = ref(null as 'finished' | 'dismissed' | null)
+const returnTo = ref(null as ReturnType<typeof focusPlace>)
 const geometry = ref(
   null as {
     x: number
@@ -142,6 +145,7 @@ const service = useMachine(
     preventScroll: false,
     closeOnInteractOutside: false,
     initialFocusEl: () => panel.value,
+    finalFocusEl: () => focusReturnTarget(returnTo.value, [panel.value]),
     onOpenChange: (details) => {
       closed.value(details.open)
     },
@@ -175,44 +179,49 @@ const panelPresent = usePresence(
   },
 )
 const effect1 = () => {
-  show.value()
+  api.value.open && (returnTo.value = focusPlace(document.activeElement))
 }
 onMounted(effect1)
-watch(() => [api.value.open, index.value], effect1, { flush: 'post' })
-let release2: (() => void) | undefined
+watch(() => api.value.open, effect1, { flush: 'post' })
 const effect2 = () => {
-  release2?.()
+  show.value()
+}
+onMounted(effect2)
+watch(() => [api.value.open, index.value], effect2, { flush: 'post' })
+let release3: (() => void) | undefined
+const effect3 = () => {
+  release3?.()
   const run = () => {
     place.value()
   }
   const resize = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(run)
   for (const element of [positioner.value]) if (element) resize?.observe(element)
-  release2 = () => {
+  release3 = () => {
     resize?.disconnect()
   }
   run()
 }
-onMounted(effect2)
-watch(() => api.value.open, effect2, { flush: 'post' })
-onBeforeUnmount(() => release2?.())
-let release3: (() => void) | undefined
-const effect3 = () => {
-  release3?.()
-  const ran = follow.value()
-  release3 = () => {
-    ran()
-  }
-}
 onMounted(effect3)
 watch(() => api.value.open, effect3, { flush: 'post' })
 onBeforeUnmount(() => release3?.())
+let release4: (() => void) | undefined
 const effect4 = () => {
+  release4?.()
+  const ran = follow.value()
+  release4 = () => {
+    ran()
+  }
+}
+onMounted(effect4)
+watch(() => api.value.open, effect4, { flush: 'post' })
+onBeforeUnmount(() => release4?.())
+const effect5 = () => {
   api.value.open && panel.value?.focus()
 }
-watch(() => index.value, effect4, { flush: 'post' })
-let release5: (() => void) | undefined
-const effect5 = () => {
-  release5?.()
+watch(() => index.value, effect5, { flush: 'post' })
+let release6: (() => void) | undefined
+const effect6 = () => {
+  release6?.()
   const ran = agentMember({
     member: 'Tour',
     element: () => panel.value,
@@ -238,12 +247,12 @@ const effect5 = () => {
     },
     withholds: () => panel.value,
   })
-  release5 = () => {
+  release6 = () => {
     ran()
   }
 }
-onMounted(effect5)
-onBeforeUnmount(() => release5?.())
+onMounted(effect6)
+onBeforeUnmount(() => release6?.())
 </script>
 
 <template>

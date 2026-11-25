@@ -80,7 +80,7 @@ const scrim = useTemplateRef<HTMLElement>('scrim')
 const sheetPanel = useTemplateRef<HTMLElement>('sheetPanel')
 const phone = useMediaQuery('phone')
 const sheeting = computed(() => props.presentation === 'sheet' && phone.value)
-const documentDirection = useDirection()
+const documentDirection = useDirection(() => anchor.value)
 const service = useMachine(
   zag.machine,
   computed(() => ({

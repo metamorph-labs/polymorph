@@ -12,6 +12,7 @@ import {
   onMounted,
   provide,
   ref,
+  useId,
   useTemplateRef,
   watch,
   type VNode,
@@ -20,7 +21,10 @@ import {
 import {
   PageTransition,
   agentMember,
+  anchorFocusReturns,
+  arriveAtPage,
   currentRailDestination,
+  focusFromScript,
   goToRailDestination,
   railDestinations,
 } from '@polymorph/vue'
@@ -94,9 +98,12 @@ defineSlots<{
   sidebar: (props: Record<string, never>) => unknown
   sidebarFooter?: (props: Record<string, never>) => unknown
 }>()
+const uid = useId()
 const uncontrolled = ref(props.defaultCollapsed ?? false)
 const drawer = ref(false)
+const announcer = useTemplateRef<HTMLElement>('announcer')
 const drawerToggle = useTemplateRef<HTMLElement>('drawerToggle')
+const frame = useTemplateRef<HTMLElement>('frame')
 const rail = useTemplateRef<HTMLElement>('rail')
 const railToggle = useTemplateRef<HTMLElement>('railToggle')
 const held = computed(() => props.collapsed ?? uncontrolled.value)
@@ -124,16 +131,63 @@ provide('polymorph:AppShell', {
 const effect1 = () => {
   drawer.value
     ? rail.value?.focus()
-    : drawerToggle.value?.querySelector<HTMLElement>('button')?.focus()
+    : drawerToggle.value &&
+      anchorFocusReturns(drawerToggle.value, rail.value ?? null) &&
+      drawerToggle.value.querySelector<HTMLElement>('button')?.focus()
 }
 watch(() => drawer.value, effect1, { flush: 'post' })
+let release2: (() => void) | undefined
 const effect2 = () => {
-  drawer.value = false
+  release2?.()
+  const listener = ($event: DocumentEventMap['keydown']) => {
+    drawer.value && $event.key === 'Escape' && !$event.defaultPrevented && (drawer.value = false)
+  }
+  document.addEventListener('keydown', listener)
+  release2 = () => document.removeEventListener('keydown', listener)
 }
-watch(() => props.transitionKey, effect2, { flush: 'post' })
+onMounted(effect2)
+onBeforeUnmount(() => release2?.())
 let release3: (() => void) | undefined
 const effect3 = () => {
   release3?.()
+  const run = () => {
+    drawer.value &&
+      drawerToggle.value &&
+      window.getComputedStyle(drawerToggle.value).display === 'none' &&
+      (drawer.value = false)
+  }
+  const resize = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(run)
+  for (const element of [drawerToggle.value]) if (element) resize?.observe(element)
+  release3 = () => {
+    resize?.disconnect()
+  }
+  run()
+}
+onMounted(effect3)
+onBeforeUnmount(() => release3?.())
+const effect4 = () => {
+  drawer.value = false
+}
+watch(() => props.transitionKey, effect4, { flush: 'post' })
+let release5: (() => void) | undefined
+const effect5 = () => {
+  release5?.()
+  const ran = arriveAtPage(
+    frame.value?.querySelector<HTMLElement>(':scope > main'),
+    announcer.value,
+    props.transitionKey,
+    props.pending,
+  )
+  release5 = () => {
+    ran()
+  }
+}
+onMounted(effect5)
+watch(() => [props.transitionKey, props.pending], effect5, { flush: 'post' })
+onBeforeUnmount(() => release5?.())
+let release6: (() => void) | undefined
+const effect6 = () => {
+  release6?.()
   const ran = agentMember({
     member: 'AppShell',
     element: () => rail.value,
@@ -184,16 +238,17 @@ const effect3 = () => {
     },
     withholds: () => [railToggle.value, drawerToggle.value],
   })
-  release3 = () => {
+  release6 = () => {
     ran()
   }
 }
-onMounted(effect3)
-onBeforeUnmount(() => release3?.())
+onMounted(effect6)
+onBeforeUnmount(() => release6?.())
 </script>
 
 <template>
   <div
+    ref="frame"
     :class="styles.shell"
     :data-collapsed="isCollapsed ? '' : undefined"
     :data-navigation="navigation === 'top' ? 'top' : undefined"
@@ -201,15 +256,26 @@ onBeforeUnmount(() => release3?.())
     data-member="app-shell"
   >
     <!-- skip -->
-    <a :class="styles.skip" href="#content">
+    <a
+      :class="styles.skip"
+      href="#content"
+      :inert="drawer"
+      @click="focusFromScript(frame?.querySelector<HTMLElement>(':scope > main'))"
+    >
       {{ say.skipToContent ?? 'Skip to content' }}
     </a>
     <!-- banner -->
-    <div v-if="$slots.banner" :class="styles.banner">
+    <div v-if="$slots.banner" :class="styles.banner" :inert="drawer">
       <slot name="banner" />
     </div>
     <!-- sidebar -->
-    <nav ref="rail" :class="styles.sidebar" :aria-label="say.primaryNavigation" tabindex="-1">
+    <nav
+      ref="rail"
+      :class="styles.sidebar"
+      :id="uid"
+      :aria-label="say.primaryNavigation"
+      tabindex="-1"
+    >
       <!-- railHead -->
       <div :class="styles.railHead">
         <!-- brand -->
@@ -239,7 +305,7 @@ onBeforeUnmount(() => release3?.())
       </div>
     </nav>
     <!-- topbar -->
-    <header :class="styles.topbar">
+    <header :class="styles.topbar" :inert="drawer">
       <!-- leading -->
       <div :class="styles.topbarSlot">
         <!-- drawerToggle -->
@@ -251,6 +317,8 @@ onBeforeUnmount(() => release3?.())
             :iconOnly="true"
             icon="menu"
             :label="drawer ? say.closeNavigation : say.openNavigation"
+            :expanded="drawer"
+            :aria-controls="uid"
             @click="drawer = !drawer"
           />
         </span>
@@ -279,6 +347,7 @@ onBeforeUnmount(() => release3?.())
       :class="[styles.content, transitionKey !== undefined ? transitions.page : undefined]"
       as="main"
       id="content"
+      :inert="drawer"
       :transitionKey="transitionKey"
       :pending="pending"
       :ribbon="transitions.indicator"
@@ -292,8 +361,10 @@ onBeforeUnmount(() => release3?.())
       </template>
     </component>
     <!-- dock -->
-    <div v-if="$slots.dock" :class="styles.dock">
+    <div v-if="$slots.dock" :class="styles.dock" :inert="drawer">
       <slot name="dock" />
     </div>
+    <!-- announcer -->
+    <div ref="announcer" :class="styles.announcer" role="status" />
   </div>
 </template>

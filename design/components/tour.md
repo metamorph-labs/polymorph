@@ -177,8 +177,10 @@ When a step opens, the first and every later one, focus moves to the panel. The 
 by the step's title and described by the description, which is the body and then the position,
 so assistive software reads "Narrow the list, dialog, Filter tickets by status, owner or tag.
 Step 2 of 3" once per step. The position is not a live region as well, so it is not said twice.
-Tab then reaches Previous, Next or Done, and Close, in reading order. When the tour ends, focus
-returns to the element that had it when the tour opened.
+Tab then reaches Previous, Next or Done, and Close, in reading order, and Enter and Space press
+each of them as a click does. When the tour ends, focus returns to the element that had it when
+the tour opened, or, when that element has left the page, by Dialog's rule to the focusable
+element nearest where it was.
 
 Escape from anywhere in the panel and the close control end the tour and report `dismissed`;
 the last step's Done reports `finished`. A press on the page ends nothing, because a stray press
@@ -192,6 +194,12 @@ dismiss escape when first step
 click activates on next when first step
 click activates on previous when middle step
 click activates on close when first step
+key Enter activates on next when first step
+key Space activates on next when first step
+key Enter activates on previous when middle step
+key Space activates on previous when middle step
+key Enter activates on close when first step
+key Space activates on close when first step
 ```
 
 Where focus goes when a step opens and when the tour ends, the position said once, what Next,

@@ -77,10 +77,12 @@ has none. A structure or layout member with no behaviour has no fence.
 | `name <part> from <prop>` | the part's accessible name is the value of that prop |
 | `name <part> from children` | the part's accessible name is computed from its content |
 | `key <Key> <effect> [on <part>]` | with focus on the part, pressing the key has the effect |
+| `key <Key> focuses <part>` | with focus on the page outside the member, pressing the key puts focus in the part |
 | `click <effect> on <part>` | a pointer click on the part has the effect |
 | `focus on-open <part>` | opening the member puts focus in the part |
 | `focus on-close trigger` | closing it puts focus back on its trigger |
 | `focus on-close previous` | closing it puts focus back where it was before it opened |
+| `focus on-close nearest` | closing it, once its trigger has left the page, puts focus on the focusable element nearest where the trigger was |
 | `dismiss outside` / `escape` / `both` / `none` | exactly these gestures close it |
 | `announces busy` / `live:polite` / `live:assertive` | in the state, the member carries that channel |
 | `announces live:polite "<message>"` (or `live:assertive`) | in the state, a region of that channel says the message |
@@ -103,7 +105,7 @@ The closed lists are data in `packages/registry/src/behaviour.ts`:
 | --- | --- |
 | Keys | `Enter`, `Space`, `Escape`, `Tab`, `ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight`, `Home`, `End`, `PageUp`, `PageDown`, `Backspace`, `Delete`, `F8`, `F10` |
 | Modifiers | `Shift`, `Control`, `Alt`, `Meta`, written before the key and joined with `+`: `Shift+Tab`, `Alt+ArrowDown` |
-| Key effects | `opens`, `closes`, `activates`, `moves-focus-next`, `moves-focus-previous`, `moves-focus-first`, `moves-focus-last`, `selects`, `clears`, `commits`, `increments`, `decrements`, `nothing` |
+| Key effects | `opens`, `closes`, `activates`, `moves-focus-next`, `moves-focus-previous`, `moves-focus-first`, `moves-focus-last`, `selects`, `clears`, `commits`, `increments`, `decrements`, `focuses`, `nothing` |
 | Click effects | `activates` |
 | Dismissals | `outside`, `escape`, `both`, `none` |
 | Announcement channels | `busy`, `live:polite`, `live:assertive` |
@@ -161,6 +163,7 @@ the contract's first `opens` key names another part (DatePicker opens from a seg
 | `focus on-open` | after opening, focus is inside the part |
 | `focus on-close trigger` | after closing, focus is inside the trigger |
 | `focus on-close previous` | after closing, focus is on the element focused before the opening key |
+| `focus on-close nearest` | the runner puts a Button of its own just after the trigger (the part the member opens from), opens the member, takes the trigger alone out of the document, and closes the member; focus is then on its Button, the first focusable element after where the trigger was. The member stays in the page, so its own close path runs. The trigger goes back before the statement ends |
 | `dismiss` | from the open member, Escape closes it exactly when the statement says, and so does a press outside the member |
 | `announces busy` | an element of the member carries `aria-busy="true"` |
 | `announces live:polite` | an element of the member carries `aria-live="polite"`, or `role="status"` or `role="log"` without `aria-live` |
@@ -199,6 +202,7 @@ page. The same holds for the part a member is opened from.
 | `clears` | the focused field had text and becomes empty, and the panel stays open or closed as it was, unless the contract says the same key `closes` from the same part in the same state |
 | `increments` / `decrements` | the current element's `aria-valuenow`, or its field's number, rises or falls |
 | `nothing` | after a beat, none of the member's handlers has run, and focus, the current item, the panel, the field's text, the current item's state and the number of chosen items are all as they were |
+| `focuses` | the runner puts focus on a Button of its own outside the member and presses the key there; focus is then in the named part (Toast's F8). The Button is removed when the statement ends |
 
 The current item is the focused element, or the element its `aria-activedescendant` names. Its
 set is the enabled items of its role inside the nearest composite (`tablist`, `menu`, `listbox`,
@@ -424,10 +428,7 @@ one divergence, not every way the statement could break. A `dismiss` failure nam
 gesture, joined by `; `, so its reason must be that one gesture alone: an entry for the press
 outside does not also excuse Escape.
 
-The React ledger holds one entry. Toast's `announces live:polite when the viewport` is met by Radix
-outside the member: it announces each toast from a visually hidden status node it portals to the
-end of the body and removes a second later, so the polite channel is never in the viewport or the
-card, and the runner reports that nothing in the member matches.
+The React ledger holds no entry.
 
 The Vue, Svelte, Solid and Angular ledgers each hold the one entry every shell built on Zag's
 machines shares (`ZAG_LEDGER` in `@polymorph/conformance`). The elements' ledger is the same
@@ -446,7 +447,8 @@ open, where Radix closes it.
 | `packages/registry/src/behaviour.test.ts` | every spec's contract parses; the grammar rejects what it does not define, with the rule and the line |
 | `packages/registry/src/registry.test.ts` | the registry carries each member's contract, read from the spec the law reads; every overlay and control has one, and so does every other member that takes keys or focus, dismisses or announces |
 | `packages/react-ui/src/conformance.test.tsx` | every statement holds against the React shell; every state resolves to one entry and every part has a locator that does not assume the statement; every listed handler is declared in its spec's API; every ledger entry still diverges, for its declared reason; and the runner fails a false statement of every kind and every key and click effect |
-| `packages/conformance/src/law.ts` | the law a generated shell calls: every contract parses; every statement of every member the shell ships holds against it; every state resolves to one of its fixture entries; every entry of its ledger still diverges, for its declared reason; and the runner fails a false statement of every kind and every key and click effect through its adapter. Its `agentConformanceLaw` holds the agent fences the same way, for the React shell and the generated ones |
+| `packages/conformance/src/law.ts` | the law a generated shell calls: every contract parses; every statement of every member the shell ships holds against it; every state resolves to one of its fixture entries; every entry of its ledger still diverges, for its declared reason; and the runner fails a false statement of every kind and every key and click effect through its adapter. Its `agentConformanceLaw` holds the agent fences the same way, for the React shell and the generated ones, and it runs `focusAfterRemovalLaw` too |
+| `packages/conformance/src/focus-after-removal.ts` | where focus goes when an Alert, a Banner or an ArtifactPane that holds it leaves the page: each member's fixture entry is mounted through the shell's adapter, focus is put on its close control, and the adapter unmounts the entry, as an application's state change does; focus is then on the element after it. The application removes these members, so no contract statement can say it. `conformanceLaw` calls it, and the React law calls it beside its contract statements |
 | `packages/conformance/src/agent.ts` | the agent statements: what the runner checks for a `state`, an `action`, each `destructive` statement, an undeclared action and a disabled entry |
 | `packages/registry/src/agent.test.ts`, `agent-staleness.test.ts` | every spec's agent fence parses, and the grammar rejects what it does not define; each React member and description registers what its fence declares ([agents.md](agents.md)) |
 | `packages/{vue,svelte,solid,angular}-ui/src/conformance.test.ts` | the law above, for the Vue, Svelte, Solid and Angular shells |
@@ -483,6 +485,15 @@ pnpm exec vitest run src/conformance.test -t "agent"                    # the ag
   page scrolls, in a window shorter than the aside and at the width where the page stacks its
   columns, is held by `detailPageAsideLaw` (`packages/conformance/src/detail-page-aside.ts`),
   which every shell's `detail-page.test` calls with its adapter, and the React member's test too.
+- **Several instances of one member at once.** A statement mounts one fixture entry and reads
+  one member. Where focus goes when a toast that holds it leaves a stack of several, by its
+  close control, its action, Escape, its owner's removal or a newer toast's eviction; that
+  Escape outside the notifications reaches no toast, and an Escape something else handled or an
+  input method is handling dismisses none; what the live regions say as toasts are raised,
+  updated and leave; and that the timers wait while the window is in the background and run
+  again when focus falls out of the notifications with no `focusout`, are held by
+  `toastFocusLaw` (`packages/conformance/src/toast-focus.ts`), which every shell's `toast.test`
+  calls with a mount of its own, the React shell's too.
 - **A prop the application changes after the mount.** A statement starts from a states fixture
   entry, and the runner sets props only as it mounts. Where focus goes when the app holds a
   Pagination or a CursorPagination whose button has focus, and when that hold ends, is held by
@@ -640,10 +651,12 @@ pnpm exec vitest run src/conformance.test -t "agent"                    # the ag
   (`packages/conformance/src/direction.ts`), which every shell's `direction.test` calls with its
   adapter and galleries, renders each states fixture entry in a right-to-left document. No
   element may say `dir="ltr"` there, and Tabs must start at the right edge, move to the next tab
-  on the arrow that points left, and turn when the document does.
+  on the arrow that points left, and turn when the document does. Each shell's `direction.test`
+  also mounts Tabs and Rating in an element that says `dir="rtl"` on a left-to-right page, where
+  the arrow that points left must move to the next item.
 - **When an announcement is made.** `announces` checks the channel in the state, and with a
   message the words the region holds then, not whether a screen reader is told when they change.
-- **A substrate's announcement outside the member.** A region the substrate portals elsewhere
-  (Radix Toast's) is not the member's; the ledger records the one statement that meets it.
+- **A substrate's announcement outside the member.** A region the substrate keeps elsewhere
+  (React Aria's page-wide announcer) is not the member's.
 - **Props an entry hides.** `name … from <prop>` needs the member's element in the entry's tree.
   An entry that renders the member inside a component of its own cannot take a probe value.

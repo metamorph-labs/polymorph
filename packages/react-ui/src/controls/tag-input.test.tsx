@@ -7,6 +7,7 @@ import { PASTE_IS_UNREADABLE } from '@polymorph/conformance/engines'
 import { assertGoverned } from '@polymorph/react'
 import { createAgentBridge } from '@polymorph/engine/agent'
 import { fixedWidthHost, installTestTheme } from '@polymorph/engine/testing'
+import { Dialog } from '../overlays/Dialog'
 import { FormField } from './FormField'
 import { TagInput, type TagInputProps } from './TagInput'
 import styles from '@polymorph/recipes/controls/tag-input.module.css'
@@ -24,7 +25,7 @@ function mount(node: React.ReactElement): HTMLElement {
   return render(node).container.firstElementChild as HTMLElement
 }
 
-const field = () => screen.getByRole('textbox')
+const field = () => screen.getByRole('textbox') as HTMLInputElement
 const chipTexts = () => screen.getAllByRole('listitem').map((chip) => chip.textContent)
 const partOf = (root: HTMLElement, part: string) =>
   root.querySelector(`.${part.split(' ').join('.')}`) as HTMLElement
@@ -45,6 +46,29 @@ function paste(target: HTMLElement, text: string): ClipboardEvent {
     cancelable: true,
     clipboardData: data,
   })
+  target.dispatchEvent(event)
+  return event
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * A key an input method is handling, dispatched on `target`: marked `isComposing`, or reported
+ * with key code 229 after the composition has ended, as Safari sends the Enter that confirms it.
+ * The returned event shows whether the member left its default alone.
+ */
+function inputMethodKey(
+  target: HTMLElement,
+  key: string,
+  how: 'composing' | 'processed',
+): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    bubbles: true,
+    cancelable: true,
+    isComposing: how === 'composing',
+  })
+  if (how === 'processed') Object.defineProperty(event, 'keyCode', { value: 229 })
   target.dispatchEvent(event)
   return event
 }
@@ -161,6 +185,52 @@ describe('committing', () => {
   })
 })
 
+describe('an input method', () => {
+  it('keeps every key it is handling, so no half-typed text becomes a tag', async () => {
+    const onChange = vi.fn()
+    mount(<TagInput defaultValue={['billing']} onChange={onChange} aria-label="Labels" />)
+    await userEvent.click(field())
+    await userEvent.keyboard('にほ')
+    for (const how of ['composing', 'processed'] as const) {
+      for (const key of ['Enter', ',', 'Escape']) {
+        expect(inputMethodKey(field(), key, how).defaultPrevented, `${how} ${key}`).toBe(false)
+      }
+    }
+    await sleep(30)
+    expect(field().value).toBe('にほ')
+    expect(chipTexts()).toEqual(['billing'])
+    expect(onChange).not.toHaveBeenCalled()
+
+    // The Enter after the composition is the field's, and Backspace in the composition of an
+    // empty field removes no chip.
+    await userEvent.keyboard('{Enter}')
+    expect(chipTexts()).toEqual(['billing', 'にほ'])
+    inputMethodKey(field(), 'Backspace', 'composing')
+    await sleep(30)
+    expect(chipTexts()).toEqual(['billing', 'にほ'])
+  })
+})
+
+describe('inside a Dialog', () => {
+  it('clears uncommitted text on Escape with the Dialog still open, and the next Escape closes it', async () => {
+    const onOpenChange = vi.fn()
+    render(
+      <Dialog title="Labels" defaultOpen onOpenChange={onOpenChange}>
+        <TagInput aria-label="Labels" />
+      </Dialog>,
+    )
+    await userEvent.click(field())
+    await userEvent.keyboard('regressio{Escape}')
+    await vi.waitFor(() => expect(field().value).toBe(''))
+    await sleep(60)
+    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog')).toBeTruthy()
+
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+  })
+})
+
 describe('removing', () => {
   it('removes with the chip’s own button', async () => {
     const onChange = vi.fn()
@@ -206,6 +276,39 @@ describe('removing', () => {
     mount(<TagInput defaultValue={['billing']} aria-label="Labels" />)
     await userEvent.click(field())
     await userEvent.keyboard('{ArrowLeft}{ArrowRight}')
+    expect(document.activeElement).toBe(field())
+  })
+
+  it('reads the writing direction for an arrow only, and not for each typed character', async () => {
+    mount(<TagInput defaultValue={['billing']} aria-label="Labels" />)
+    await userEvent.click(field())
+    const read = vi.spyOn(window, 'getComputedStyle')
+    try {
+      await userEvent.keyboard('abc')
+      expect(read.mock.calls.filter(([element]) => element === field())).toEqual([])
+    } finally {
+      read.mockRestore()
+    }
+  })
+
+  it('follows a right-to-left line: → moves back into the chips and ← forward to the field', async () => {
+    render(
+      <div dir="rtl">
+        <TagInput defaultValue={['billing', 'regression']} aria-label="Labels" />
+      </div>,
+    )
+    const chip = (tag: string) => screen.getByRole('button', { name: `Remove ${tag}` })
+    await userEvent.click(field())
+    await userEvent.keyboard('{ArrowLeft}')
+    expect(document.activeElement).toBe(field())
+
+    await userEvent.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(chip('regression'))
+    await userEvent.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(chip('billing'))
+    await userEvent.keyboard('{ArrowLeft}')
+    expect(document.activeElement).toBe(chip('regression'))
+    await userEvent.keyboard('{ArrowLeft}')
     expect(document.activeElement).toBe(field())
   })
 

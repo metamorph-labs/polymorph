@@ -393,21 +393,16 @@ import { Button } from '@polymorph/vue-ui'
       'The components drawn in SwiftUI, for iOS 17 and macOS 14 or later. A few web-only ones, like Tooltip, have a native stand-in instead.',
     add: [
       {
-        title: 'Get the Swift package',
-        help: `It isn't on a registry. Check out the repository at a release tag, or add it as a git submodule.`,
-        code: nativeClone,
-      },
-      {
-        title: 'Add it to your package',
-        help: 'In Xcode you can also use File › Add Package Dependencies… › Add Local…, and pick platforms/ios.',
+        title: 'Add the Swift package',
+        help: `Add it by the repository's URL, and Swift Package Manager picks up each release from its tag. In Xcode, use File › Add Package Dependencies… and paste the URL.`,
         code: `// Package.swift
-dependencies: [.package(path: "../polymorph/platforms/ios")],
+dependencies: [.package(url: "${SITE.repository}", from: "${RELEASE}")],
 targets: [
   .target(
     name: "App",
     dependencies: [
-      .product(name: "PolymorphTokens", package: "ios"),
-      .product(name: "PolymorphUI", package: "ios"),
+      .product(name: "PolymorphTokens", package: "polymorph"),
+      .product(name: "PolymorphUI", package: "polymorph"),
     ]
   )
 ]`,

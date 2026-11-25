@@ -120,7 +120,7 @@ export default function ToolCall(given: ToolCallProps): JSX.Element {
           }) as const
         )[props.status],
     )
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => trigger.value)
     const service = useMachine(
       zag.machine,
       () =>

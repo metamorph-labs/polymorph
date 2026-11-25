@@ -1064,7 +1064,7 @@ describe('it says what an install needs, so the installer does not have to guess
     // states fixture and the source walk does not, and the package list must
     // cover the *files*. Dialog's fixture builds a form, the form's field
     // mounts a ToastNotice, and the Toaster behind it imports
-    // `@radix-ui/react-toast`. The install copies that file, so it must
+    // `@radix-ui/react-visually-hidden`. The install copies that file, so it must
     // declare that package. Otherwise the consumer's typecheck fails on a
     // module that pnpm's hoisting resolved silently here.
     const bare = /(?:^|\n)\s*(?:import|export)[^'"]*?from\s+['"]([^'".][^'"]*)['"]/g

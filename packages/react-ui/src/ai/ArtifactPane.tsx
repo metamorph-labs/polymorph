@@ -1,8 +1,14 @@
 'use client'
 
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
-import { Icon, type IconRole, memberAttr, useAgentMember } from '@polymorph/react'
+import {
+  focusAfterRemoval,
+  Icon,
+  type IconRole,
+  memberAttr,
+  useAgentMember,
+} from '@polymorph/react'
 
 import { Button } from '../controls/Button'
 import { SegmentedControl } from '../controls/SegmentedControl'
@@ -114,6 +120,11 @@ export function ArtifactPane({
   const paneRef = useRef<HTMLElement>(null)
   const switchRef = useRef<HTMLDivElement>(null)
   const closeRef = useRef<HTMLDivElement>(null)
+  // Focus in the pane as the application removes it, the close control's after
+  // `onClose`, moves to the focusable element nearest where it was, not to the
+  // body. A layout effect's cleanup runs while the pane is still in the
+  // document.
+  useLayoutEffect(() => focusAfterRemoval(paneRef.current), [])
   useAgentMember({
     member: 'ArtifactPane',
     element: () => paneRef.current,

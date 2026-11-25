@@ -33,7 +33,7 @@ the application stores as the reader wrote it.
 
 | Prop | Type | Default | Notes |
 | --- | --- | --- | --- |
-| `value` / `defaultValue` / `onChange(value)` | `string` | — | an E.164 string, `+` and up to fifteen digits, or the empty string while the national number has no digits. `onChange` reports **commits, never drafts**, as NumberInput does: when the reader leaves the number or presses Enter in it, chooses a country, or pastes a number written with its calling code. It reports only a value that differs from the one the field holds |
+| `value` / `defaultValue` / `onChange(value)` | `string` | — | an E.164 string, `+` and up to fifteen digits, or the empty string while the national number has no digits. `onChange` reports **commits, never drafts**, as NumberInput does: when the reader leaves the number or presses Enter in it (not the Enter that confirms an input method's candidate), chooses a country, or pastes a number written with its calling code. It reports only a value that differs from the one the field holds |
 | `defaultCountry` | `string` | first of `countries`, else `US` | ISO 3166-1 alpha-2. The country shown before the reader chooses one, while the value names none. Once the value names a country, the value decides |
 | `countries` | `string[]` | every region | the regions offered, in this order. Omitted, every region in the table, sorted by name in `locale`. A code the table lacks is dropped |
 | `locale` | `string` | the page's | the language of the country names (`Intl.DisplayNames`) and of their order |

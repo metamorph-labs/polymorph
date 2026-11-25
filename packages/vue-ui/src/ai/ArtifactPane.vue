@@ -17,7 +17,7 @@ import {
   type VNode,
 } from 'vue'
 
-import { Icon, agentMember, useListening } from '@polymorph/vue'
+import { Icon, agentMember, focusAfterRemoval, useListening } from '@polymorph/vue'
 import styles from '@polymorph/recipes/ai/artifact-pane.module.css'
 import Button from '../controls/Button.vue'
 import SegmentedControl from '../controls/SegmentedControl.vue'
@@ -106,23 +106,34 @@ const choices = computed(() =>
 let release1: (() => void) | undefined
 const effect1 = () => {
   release1?.()
+  const ran = focusAfterRemoval(pane.value)
+  release1 = () => {
+    ran()
+  }
+}
+onMounted(effect1)
+watch(() => pane.value, effect1, { flush: 'post' })
+onBeforeUnmount(() => release1?.())
+let release2: (() => void) | undefined
+const effect2 = () => {
+  release2?.()
   const run = () => {
     overflowing.value = body.value !== null && body.value.scrollHeight > body.value.clientHeight
   }
   const resize = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(run)
   for (const element of [body.value, body.value?.firstElementChild])
     if (element) resize?.observe(element)
-  release1 = () => {
+  release2 = () => {
     resize?.disconnect()
   }
   run()
 }
-onMounted(effect1)
-watch(() => shown.value?.id, effect1, { flush: 'post' })
-onBeforeUnmount(() => release1?.())
-let release2: (() => void) | undefined
-const effect2 = () => {
-  release2?.()
+onMounted(effect2)
+watch(() => shown.value?.id, effect2, { flush: 'post' })
+onBeforeUnmount(() => release2?.())
+let release3: (() => void) | undefined
+const effect3 = () => {
+  release3?.()
   const ran = agentMember({
     member: 'ArtifactPane',
     element: () => pane.value,
@@ -145,12 +156,12 @@ const effect2 = () => {
     },
     withholds: () => [switcher.value, closer.value],
   })
-  release2 = () => {
+  release3 = () => {
     ran()
   }
 }
-onMounted(effect2)
-onBeforeUnmount(() => release2?.())
+onMounted(effect3)
+onBeforeUnmount(() => release3?.())
 </script>
 
 <template>

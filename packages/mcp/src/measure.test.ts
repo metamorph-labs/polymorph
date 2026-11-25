@@ -586,6 +586,22 @@ describe('unseen-focus', () => {
     ])
   })
 
+  // Command's search field: while its modal dialog is open, focus can be nowhere else, and the
+  // caret shows it. The exception holds only while the field is the dialog's one control.
+  it('does not report the one text field of a modal dialog, and reports it beside another control', async () => {
+    const dialog = (inside: string) =>
+      `<style>input:focus-visible { outline: none } button:focus-visible { outline: 2px solid ${BLUE} }</style>` +
+      `<div role="dialog" aria-modal="true" aria-label="Commands" style="padding: 40px">${inside}</div>`
+    const field = '<input type="search" aria-label="Search commands" style="border: 0">'
+    const unseen = (measured: Measurement) =>
+      measured.faults.filter((fault) => fault.kind === 'unseen-focus').map((fault) => fault.element)
+
+    expect(unseen(await measure(dialog(field)))).toEqual([])
+    expect(unseen(await measure(dialog(`${field}<button>Close</button>`)))).toEqual([
+      expect.stringContaining('Search commands'),
+    ])
+  })
+
   it('reports an outline under 2px that is the only mark', async () => {
     const measured = await measure(
       styled(`button:focus-visible { outline: 1px solid ${BLUE} }`, '<button>Save</button>'),

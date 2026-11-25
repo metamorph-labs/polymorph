@@ -105,8 +105,10 @@ export function TabsRoot({
   keepMounted = false,
   children,
 }: TabsProps) {
-  // The document's direction, which Radix would otherwise take to be left-to-right.
-  const dir = useDirection()
+  // The direction of the place the member is in, which Radix would otherwise take to be
+  // left-to-right.
+  const root = useRef<HTMLDivElement>(null)
+  const dir = useDirection(root)
   const [list, setList] = useState<HTMLElement | null>(null)
   const [rule, setRule] = useState<{ x: number; y: number; width: number; height: number }>()
 
@@ -230,6 +232,7 @@ export function TabsRoot({
 
   return (
     <TabsPrimitive.Root
+      ref={root}
       dir={dir}
       className={styles.root}
       orientation={orientation}

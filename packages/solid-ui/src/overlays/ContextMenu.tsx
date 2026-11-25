@@ -106,7 +106,7 @@ export default function ContextMenu(given: ContextMenuProps): JSX.Element {
       const focused = active instanceof HTMLElement && active !== document.body ? active : null
       restoreTo.value = pressed ? focused : (focused ?? restoreTo.value)
     })
-    const documentDirection = useDirection()
+    const documentDirection = useDirection(() => surface.value)
     const service = useMachine(
       zag.machine,
       () =>

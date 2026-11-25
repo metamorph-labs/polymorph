@@ -166,6 +166,10 @@ export const ENGINE_HELPERS: readonly string[] = [
   'chooseMenuEntry',
   'menubarChoices',
   'chooseMenubarEntry',
+  // Where focus goes when an anchored overlay closes, and a new page's arrival (AppShell).
+  'anchorFocusReturns',
+  'arriveAtPage',
+  'focusFromScript',
   // What an agent goes to in AppShell's rail, read from the rail in the document, and how.
   'railDestinations',
   'currentRailDestination',
@@ -198,13 +202,38 @@ export const ENGINE_HELPERS: readonly string[] = [
   'devWarning',
   'spacingAttrs',
   'fitTextarea',
+  // Keys an input method is handling, and Escape held for a text field inside a dialog.
+  'composingKey',
+  'holdFieldEscape',
+  // The arrow key toward a line's start in an element's writing direction (TagInput's chips).
+  'lineStartKey',
+  // Where focus goes once a removed file or attachment has left its list.
+  'focusAfterListRemoval',
   'modalFocusTarget',
+  // Where focus goes when the control an overlay returns to, or a region that holds focus, has
+  // left the page, and when a toast that holds focus leaves.
+  'focusPlace',
+  'focusReturnTarget',
+  'focusAfterRemoval',
+  'focusAfterToast',
+  'followToastFocus',
+  // When a toast viewport's timers wait, how much of a card's time is left, and what the
+  // live regions say.
+  'holdToastTimers',
+  'toastClock',
+  'toastTimeLeft',
+  'announceToasts',
+  'TOAST_QUIET',
   'avatarTone',
   'initialsOf',
   'paginationWindow',
   'PAGINATION_ELLIPSIS',
   'TOOLTIP_DELAY_MS',
   'TOOLTIP_SKIP_DELAY_MS',
+  // A tooltip's close on scroll and on the pointer leaving, held off while the keyboard holds its
+  // control.
+  'closeTooltipOnScroll',
+  'holdTooltipFromPointer',
   'formatBytes',
   'gateFiles',
   'promptToken',

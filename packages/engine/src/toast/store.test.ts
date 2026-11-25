@@ -26,6 +26,7 @@ describe('createToastStore', () => {
         retained: false,
         durationMs: TOAST_DEFAULT_DURATION_MS,
         revision: 0,
+        raised: 1,
       },
     ])
     expect(calls).toBe(1)
@@ -50,6 +51,23 @@ describe('createToastStore', () => {
       retained: false,
       durationMs: TOAST_DEFAULT_DURATION_MS,
     })
+  })
+
+  it('pins a toast with an action until it is dismissed, and lets newer toasts evict it', () => {
+    const store = createToastStore()
+    const undo = { label: 'Undo', onClick: () => undefined }
+    store.toast.success('Archived', { action: undo })
+    store.toast.danger('Could not delete', { action: { label: 'Retry', onClick: () => undefined } })
+    store.toast({ title: 'Brief', action: undo, durationMs: 3000 })
+    expect(store.get().map((record) => [record.title, record.retained, record.durationMs])).toEqual(
+      [
+        ['Archived', false, Infinity],
+        ['Could not delete', true, Infinity],
+        ['Brief', undefined, 3000],
+      ],
+    )
+    for (let index = 1; index <= TOAST_MAX_VISIBLE; index += 1) store.toast.success(`${index}`)
+    expect(store.get().map((record) => record.title)).not.toContain('Archived')
   })
 
   it('keeps what a call says about its lifetime, whatever its tone', () => {
@@ -82,6 +100,17 @@ describe('createToastStore', () => {
     ])
   })
 
+  it('keeps a toast’s raise through an update, and renews it when the id is raised again', () => {
+    const store = createToastStore()
+    store.toast({ id: 'a', title: 'Check your input' })
+    const raised = store.get()[0]?.raised
+    store.toast({ id: 'a', title: 'Check your input' })
+    expect(store.get()[0]?.raised).toBe(raised)
+    store.remove('a')
+    store.toast({ id: 'a', title: 'Check your input' })
+    expect(store.get()[0]?.raised).not.toBe(raised)
+  })
+
   it('evicts the oldest transient toast past the cap, and never a retained one', () => {
     const store = createToastStore()
     store.toast({ title: 'Kept', retained: true, durationMs: Infinity })
@@ -96,6 +125,18 @@ describe('createToastStore', () => {
     expect(store.get()[0]).toMatchObject({ id, tone: 'success', closing: true })
     store.remove(id)
     expect(store.get()).toEqual([])
+  })
+
+  it('keeps a toast raised again under an id while the card of the one before was leaving', () => {
+    const store = createToastStore()
+    store.toast({ id: 'a', title: 'Saved' })
+    const leaving = store.get()[0]?.raised
+    store.toast.dismiss('a')
+    store.toast({ id: 'a', title: 'Saved again' })
+    // The leaving card has played its exit and takes out its own record only.
+    store.remove('a', leaving)
+    expect(store.get()).toMatchObject([{ id: 'a', title: 'Saved again' }])
+    expect(store.get()[0]?.closing).toBeUndefined()
   })
 
   it('tells the owner once when its toast is dismissed, and not when the owner removes it', () => {

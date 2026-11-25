@@ -18,6 +18,8 @@ import {
   cell,
   derived,
   elementRef,
+  focusPlace,
+  focusReturnTarget,
   mergeParts,
   mountEffect,
   normalizeProps,
@@ -26,6 +28,7 @@ import {
   useDirection,
   useMachine,
   useMember,
+  watchEffect,
   type Emitted,
   type IconRole,
 } from '@polymorph/angular'
@@ -181,6 +184,7 @@ export class Command {
   protected readonly $p = this.$.props
   protected readonly uid = uniqueId()
   protected readonly query = cell(() => '')
+  protected readonly returnTo = cell(() => null as ReturnType<typeof focusPlace>)
   protected readonly panel = elementRef<HTMLElement>()
   protected readonly scrim = elementRef<HTMLElement>()
   protected readonly documentDirection = useDirection()
@@ -192,6 +196,7 @@ export class Command {
           id: this.uid,
           dir: this.documentDirection(),
           open: this.$p.open,
+          finalFocusEl: () => focusReturnTarget(this.returnTo.value, [this.panel.value]),
           'aria-label': this.$p.label,
           onEscapeKeyDown: (event) => this.query.value !== '' && event.preventDefault(),
           onOpenChange: (details) => {
@@ -218,11 +223,16 @@ export class Command {
       { side: 'bottom', align: 'center' },
     ),
   )
-  private release1: (() => void) | undefined
+  private release2: (() => void) | undefined
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => this.release1?.())
-    mountEffect(() => this.effect1())
+    watchEffect(
+      () => this.api.value.open,
+      () => this.effect1(),
+      true,
+    )
+    inject(DestroyRef).onDestroy(() => this.release2?.())
+    mountEffect(() => this.effect2())
   }
 
   protected e1() {
@@ -295,7 +305,11 @@ export class Command {
   }
 
   private effect1(): void {
-    this.release1?.()
+    void (this.api.value.open && (this.returnTo.value = focusPlace(document.activeElement)))
+  }
+
+  private effect2(): void {
+    this.release2?.()
     const ran = agentMember({
       member: 'Command',
       element: () => this.panel.value,
@@ -319,7 +333,7 @@ export class Command {
         close: () => this.api.value.open && this.api.value.setOpen(false),
       },
     })
-    this.release1 = () => {
+    this.release2 = () => {
       ran()
     }
   }

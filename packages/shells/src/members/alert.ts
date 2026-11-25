@@ -27,7 +27,12 @@ export default describeMember({
   departures: { departure: { binding: 'alert.dismiss', ref: 'root' } },
   // Ends an agent's dismiss: once `dismiss` has fired, or once the Alert has unmounted first.
   state: { settle: 'undefined as (() => void) | undefined' },
-  effects: [{ run: 'undefined', release: 'settle?.()' }],
+  effects: [
+    { run: 'undefined', release: 'settle?.()' },
+    // Focus in the Alert as it leaves the page, the ✕'s after a dismissal, moves to the focusable
+    // element nearest where it was (`focusAfterRemoval`), not to the body.
+    { watch: 'root', run: 'focusAfterRemoval(root)', release: 'ran()' },
+  ],
   // The spec's `agent` fence. The ✕ is the Alert's own part, so it is withheld and `dismiss`
   // stands in its place; the step ends once the departure has played and `dismiss` has fired.
   // The application's actions are its own and stay an agent's. An Alert with nothing to say

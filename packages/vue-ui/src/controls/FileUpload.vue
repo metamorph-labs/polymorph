@@ -11,6 +11,7 @@ import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, 
 import {
   Icon,
   agentMember,
+  focusAfterListRemoval,
   formatBytes,
   gateFiles,
   useListening,
@@ -106,10 +107,22 @@ const emit = defineEmits<{
 }>()
 const listening = useListening()
 const dragover = ref(false)
+const pressed = ref(null as { id: string; at: number } | null)
 const picker = useTemplateRef<HTMLElement>('picker')
 const root = useTemplateRef<HTMLElement>('root')
+const rowList = useTemplateRef<HTMLElement>('rowList')
 const zone = useTemplateRef<HTMLElement>('zone')
 const zoneState = computed(() => (dragover.value ? 'dragover' : 'idle'))
+const rowOf = computed(
+  () => (id: string | undefined) =>
+    id === undefined
+      ? null
+      : (rowList.value?.children[rows.value.findIndex((row) => row.key === id)] ?? null),
+)
+const removeControl = computed(
+  () => (row: Element | null) =>
+    row === null ? null : ([...row.querySelectorAll<HTMLElement>('button')].pop() ?? null),
+)
 const add = computed(
   () => (list: FileList | null | undefined) =>
     !props.disabled &&
@@ -158,9 +171,19 @@ const rows = computed(() => {
     })
   return entries
 })
-let release1: (() => void) | undefined
 const effect1 = () => {
-  release1?.()
+  pressed.value = focusAfterListRemoval(
+    pressed.value,
+    props.files.map((file) => file.id),
+    (at) => removeControl.value(rowOf.value(props.files[at]?.id)),
+    zone.value,
+    pressed.value === null ? null : rowOf.value(pressed.value.id),
+  )
+}
+watch(() => props.files, effect1, { flush: 'post' })
+let release2: (() => void) | undefined
+const effect2 = () => {
+  release2?.()
   const ran = agentMember({
     member: 'FileUpload',
     element: () => zone.value,
@@ -185,12 +208,12 @@ const effect1 = () => {
     },
     withholds: () => root.value,
   })
-  release1 = () => {
+  release2 = () => {
     ran()
   }
 }
-onMounted(effect1)
-onBeforeUnmount(() => release1?.())
+onMounted(effect2)
+onBeforeUnmount(() => release2?.())
 </script>
 
 <template>
@@ -250,7 +273,7 @@ onBeforeUnmount(() => release1?.())
       "
     />
     <!-- list -->
-    <ul v-if="files.length > 0" :class="styles.list">
+    <ul v-if="files.length > 0" ref="rowList" :class="styles.list">
       <template v-for="row in rows" :key="row.key">
         <FileUploadRow
           :file="row.item"
@@ -261,7 +284,13 @@ onBeforeUnmount(() => release1?.())
           :removeLabel="messages.remove(row.item.name)"
           :progressLabel="messages.progress(row.item.name)"
           @retry="emit('retry', row.item.id)"
-          @remove="emit('remove', row.item.id)"
+          @remove="
+            ((pressed = {
+              id: row.item.id,
+              at: files.findIndex((file) => file.id === row.item.id),
+            }),
+            emit('remove', row.item.id))
+          "
           @done="row.done()"
         />
       </template>
