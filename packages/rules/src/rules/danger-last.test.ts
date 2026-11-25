@@ -28,6 +28,11 @@ jsxRuleTester().run('danger-last', dangerLast, {
                </Inline>
              )`,
     },
+    // FormPage's `leadingAction` is a prop of its own, so the action there is a group of its own.
+    {
+      filename: APP_FILE,
+      code: `export const A = () => <FormPage title="Edit" leadingAction={<Button variant="ghost" tone="danger" label="Delete" />} actions={<><Button variant="outline" tone="neutral" label="Cancel" /><Button label="Save" /></>} />`,
+    },
     // A Separator between Buttons of one element divides them into two groups.
     {
       filename: APP_FILE,
@@ -73,8 +78,7 @@ jsxRuleTester().run('danger-last', dangerLast, {
       code: `export const A = () => <Inline><Button tone="danger" label="Delete" /><Button variant="outline" tone="neutral" label="Cancel" /></Inline>`,
       errors: [{ message: FIRST, column: 32 }],
     },
-    // Passed beside the others in one prop, it is in their group, as FormPage's states fixture
-    // passes its destructive tertiary action.
+    // Passed beside the others in one prop, it is in their group.
     {
       filename: APP_FILE,
       code: `export const A = () => <FormPage title="Edit" actions={<><Button variant="ghost" tone="danger" label="Delete" /><Button variant="outline" tone="neutral" label="Cancel" /><Button label="Save" /></>} />`,

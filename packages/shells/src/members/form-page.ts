@@ -26,18 +26,32 @@ const ACTIONS = [
 
 const card = (...children: FixtureChild[]) => [fx('Card', {}, { default: children })]
 
+/** The actions, packed at the row's end. The row wraps, so actions too wide take a second line. */
+const actionsRow = member(
+  'Inline',
+  { gap: '3', justify: lit('end'), wrap: 'true' },
+  { slots: { default: [slot('actions')] } },
+)
+
 /**
  * The form's body: the caller's cards, then the committing row, anchored to
  * the column it submits. The row wraps, so actions too wide for the column
- * take a second line and stay at the end.
+ * take a second line and stay at the end. A leading action is a group of its
+ * own at the row's start, and the actions stay at the end of whichever line
+ * they land on.
  */
 const body: Node[] = [
   slot(),
   el('div', { part: 'actions', class: ['actions'] }, [
-    member(
-      'Inline',
-      { gap: '3', justify: lit('end'), wrap: 'true' },
-      { slots: { default: [slot('actions')] } },
+    cond(
+      'slots.leadingAction',
+      [
+        el('div', { part: 'split', class: ['split'] }, [
+          slot('leadingAction'),
+          el('div', { part: 'trailing', class: ['trailing'] }, [actionsRow]),
+        ]),
+      ],
+      [actionsRow],
     ),
   ]),
 ]
@@ -142,8 +156,10 @@ export default describeMember({
       name: 'with a destructive tertiary, leftmost and quiet',
       props: { title: 'Edit ticket' },
       slots: {
-        actions: [
+        leadingAction: [
           fx('Button', { variant: 'ghost', tone: 'danger', label: 'Delete ticket…' }),
+        ],
+        actions: [
           fx('Button', { variant: 'outline', tone: 'neutral', label: 'Cancel' }),
           fx('Button', { label: 'Save changes', type: 'submit' }),
         ],

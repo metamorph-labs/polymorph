@@ -442,6 +442,24 @@ describe('the usage rules, told to a spec as the red rules tell code', () => {
     ).toEqual([])
   })
 
+  it('reads FormPage’s leading action as a group of its own, and its actions as one', () => {
+    const page = (props: Record<string, unknown>) =>
+      validateSpec(registry, {
+        ...base(),
+        root: {
+          component: 'FormPage',
+          props: { title: 'Edit ticket', ...props },
+          children: [{ component: 'Card', children: ['Fields'] }],
+        },
+      } as ScreenSpec).faults.filter(({ message }) => message.includes('danger Button'))
+    const danger = button({ variant: 'ghost', tone: 'danger', label: 'Delete ticket' })
+    const cancel = button({ variant: 'outline', tone: 'neutral', label: 'Cancel' })
+    expect(page({ leadingAction: danger, actions: [cancel, button()] })).toEqual([])
+    expect(page({ actions: [danger, cancel, button()] }).map(({ path }) => path)).toEqual([
+      '$.root.props.actions[0]',
+    ])
+  })
+
   it('reports a trailing icon that neither points nor opens, and names the roles that may', () => {
     const faults = faultsOf({
       component: 'Stack',

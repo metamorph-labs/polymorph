@@ -448,6 +448,12 @@ export const PARTS: Readonly<Record<string, Readonly<Record<string, string>>>> =
   // The landmark and the results are found by the page's own hooks, because the contract
   // states the landmark's role and the results' `aria-busy`. The field and the submit Button
   // are the application's members in the landmark.
+  // The leading action is the states fixture's destructive tertiary: the one danger Button on
+  // the page. An Angular Button is a `<button>` inside its `pm-button` host, and an element's
+  // inside its `poly-button`, so the attribute is read on the `<button>` in every renderer.
+  FormPage: {
+    leading: ':scope [data-member="form-page"] button[data-tone="danger"]',
+  },
   SearchPage: {
     search: ':scope [data-search-page-part="search"]',
     field: ':scope [data-search-page-part="search"] input:not([type="hidden"])',

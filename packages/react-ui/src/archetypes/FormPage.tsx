@@ -26,10 +26,22 @@ export interface FormPageProps {
   children: ReactNode
   /** The submit row, with exactly one `solid` Button and quieter variants for the rest. */
   actions: ReactNode
+  /**
+   * One action at the start of the actions row, apart from `actions`, which stay at its end:
+   * a destructive tertiary action such as "Delete…", routed through ConfirmDialog.
+   */
+  leadingAction?: ReactNode
   onSubmit?: () => void
 }
 
-export function FormPage({ title, description, children, actions, onSubmit }: FormPageProps) {
+export function FormPage({
+  title,
+  description,
+  children,
+  actions,
+  leadingAction,
+  onSubmit,
+}: FormPageProps) {
   const form = useRef<HTMLFormElement>(null)
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -54,6 +66,16 @@ export function FormPage({ title, description, children, actions, onSubmit }: Fo
     onSubmit?.()
   }
 
+  /* Wrapping matters most for this row. It is `justify="end"`, so actions too
+     wide for the column overflow to the left, past the reading edge, where they
+     cannot be scrolled into view. Wrapped, the actions take a second line and
+     stay aligned to the end. The row gap is the `gap` it already declares. */
+  const row = (
+    <Inline gap={3} justify="end" wrap>
+      {actions}
+    </Inline>
+  )
+
   const body = (
     <>
       {children}
@@ -61,14 +83,16 @@ export function FormPage({ title, description, children, actions, onSubmit }: Fo
           the card column it submits. The archetype decides this once for every
           form. */}
       <div className={styles.actions}>
-        {/* Wrapping matters most for this row. It is `justify="end"`, so
-            actions too wide for the column overflow to the left, past the
-            reading edge, where they cannot be scrolled into view. Wrapped, the
-            actions take a second line and stay aligned to the end. The row gap
-            is the `gap` it already declares. */}
-        <Inline gap={3} justify="end" wrap>
-          {actions}
-        </Inline>
+        {/* A leading action is a group of its own at the row's start, and the
+            actions stay at its end on whichever line they land. */}
+        {leadingAction === undefined || leadingAction === null ? (
+          row
+        ) : (
+          <div className={styles.split}>
+            {leadingAction}
+            <div className={styles.trailing}>{row}</div>
+          </div>
+        )}
       </div>
     </>
   )
