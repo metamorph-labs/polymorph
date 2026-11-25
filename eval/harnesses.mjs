@@ -208,6 +208,47 @@ export function readToml(text) {
 /* Both                                                                       */
 /* -------------------------------------------------------------------------- */
 
+/** Every harness the eval has running, each with how to stop it at once. */
+const live = new Set()
+
+/**
+ * Keeps `stop` while a harness runs, until `exited` settles, so a signal to
+ * the eval stops the harness too. A harness the project lane starts runs in
+ * a process group of its own, which a signal to the eval's group does not
+ * reach.
+ */
+export function track(stop, exited) {
+  const entry = { stop }
+  live.add(entry)
+  exited.finally(() => live.delete(entry))
+}
+
+/**
+ * On SIGINT or SIGTERM, the eval stops every harness still running, removes
+ * what `cleanup` removes (its scratch directories, the project lane's
+ * template among them), and exits with 130 or 143. The results file holds
+ * the runs that finished, marked partial. A signal that arrives while the
+ * eval waits on a command it runs to the end (`polymorph init`, the judge's
+ * check and build) is acted on when that command returns.
+ */
+export function onInterrupt(cleanup) {
+  for (const [signal, code] of [
+    ['SIGINT', 130],
+    ['SIGTERM', 143],
+  ]) {
+    process.once(signal, () => {
+      for (const entry of live) entry.stop()
+      live.clear()
+      try {
+        cleanup()
+      } finally {
+        console.error(`eval: stopped by ${signal}; every harness it started is stopped`)
+        process.exit(code)
+      }
+    })
+  }
+}
+
 /**
  * A harness's version, as `--version` prints it: the first thing in it that
  * reads as a version number (`2.1.299 (Claude Code)`, `codex-cli 0.98.0`), or

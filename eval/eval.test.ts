@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import {
   existsSync,
   mkdirSync,
@@ -12,7 +12,6 @@ import { createServer, type IncomingHttpHeaders, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
-import { promisify } from 'node:util'
 
 import { buildRegistry } from '@polymorph/registry'
 import { jsonSchema, validate } from '@polymorph/registry/shape'
@@ -23,6 +22,7 @@ import { readResults, renderReport } from './report.mjs'
 import { elementsOf, loadRequirements, resolveRequirements, unmet } from './requirements.mjs'
 import { KINDS_SHAPE, REQUIREMENTS_SHAPE } from './requirements-shape'
 import { RESULTS_SHAPE, TOOL_NAMES } from './results-shape'
+import { evalRunner } from './running'
 import { apart, interval, resolution, smallestGap } from './spread.mjs'
 import { loadScreen } from './toolbox.mjs'
 
@@ -54,7 +54,8 @@ const RESULTS = resolve(ROOT, 'eval/results')
 const FAKE_CLI = resolve(ROOT, 'eval/fake/cli.mjs')
 const FAKE_CODEX = resolve(ROOT, 'eval/fake/codex.mjs')
 
-const execute = promisify(execFile)
+/** Every eval this file starts, a few at a time; any still running when the file ends is stopped. */
+const runner = evalRunner(ROOT)
 
 interface RunRecord {
   brief: string
@@ -70,10 +71,10 @@ interface RunRecord {
   cacheReadTokens: number | null
   cacheWriteTokens: number | null
   outputTokens: number | null
-  discardedTokens: number
+  discardedTokens: number | null
   wallMs: number
-  retries: number
-  backoffMs: number
+  retries: number | null
+  backoffMs: number | null
   turns: number | null
   toolCalls: Record<string, number>
   violationsSeen: Record<string, number>
@@ -142,13 +143,7 @@ interface Evaluation {
 
 /** `eval/run.mjs` into `directory`: its exit code and what it wrote to stderr. */
 const runEval = (directory: string, args: string[], env: NodeJS.ProcessEnv) =>
-  execute('node', ['eval/run.mjs', ...args, '--out', directory], {
-    cwd: ROOT,
-    env: { ...process.env, ...env },
-  }).then(
-    ({ stderr }) => ({ code: 0, stderr }),
-    (error: { code: number; stderr: string }) => ({ code: error.code, stderr: error.stderr }),
-  )
+  runner.run([...args, '--out', directory], env)
 
 /** The results file an eval wrote into `directory`, if it wrote one. */
 const resultsFileIn = (directory: string) =>
@@ -873,11 +868,11 @@ interface RuntimeRecord {
   cacheWriteTokens: number
   cacheReadTokens: number
   outputTokens: number
-  discardedTokens: number
+  discardedTokens: number | null
   firstTokenMs: number | null
   wallMs: number
-  retries: number
-  backoffMs: number
+  retries: number | null
+  backoffMs: number | null
 }
 
 /** The card a run-time results file records. */
@@ -955,40 +950,7 @@ beforeAll(async () => {
     throughStandIn('cli-ahead-denied', AHEAD_DENIED_RUNS, AHEAD_DENIED, ['--max-iterations', '1']),
   ])
 
-  // The Codex runner: the same scripts through its stand-in, and one eval through a stand-in
-  // started as the owner's Codex, with an owner's home and a variable a Codex session sets.
-  mkdirSync(OWNER_CODEX_HOME, { recursive: true })
-  writeFileSync(resolve(OWNER_CODEX_HOME, 'auth.json'), '{ "owner": true }\n')
-  writeFileSync(
-    resolve(OWNER_CODEX_HOME, 'config.toml'),
-    '[mcp_servers.owners]\ncommand = "owners-server"\n',
-  )
-  const codex = ['--fake', '--runner', 'codex']
   const runtime = ['--mode', 'runtime']
-  const codexEvaluated = Promise.all([
-    evaluate('codex-two', [
-      ...codex,
-      ...['--briefs', 'eval/briefs/{list-incidents,settings-workspace}.md'],
-    ]),
-    evaluate('codex-cap', [
-      ...codex,
-      ...['--max-iterations', '1', '--briefs', 'eval/briefs/list-incidents.md'],
-    ]),
-    evaluate('codex-runtime', [...codex, ...runtime, '--runs', '2']),
-    evaluate(
-      'codex-stand-in',
-      [
-        ...['--runner', 'codex', '--codex', codexStandIn(CODEX_STAND_IN_RUNS)],
-        ...['--model', 'local-model', '--effort', 'high', '--runs', '2', ...settingsBrief],
-      ],
-      {
-        ANTHROPIC_API_KEY: '',
-        CODEX_HOME: OWNER_CODEX_HOME,
-        CODEX_API_KEY: 'local-key',
-        CODEX_SANDBOX: 'seatbelt',
-      },
-    ),
-  ])
   // The run-time lane: every brief twice through both runners, a subset and a list of members,
   // the local API with eight runs of one brief, and the stand-in for the CLI.
   const runtimeEvaluated = Promise.all([
@@ -1144,8 +1106,6 @@ beforeAll(async () => {
       'eval/briefs/dashboard-usage.md',
     ]),
   ])
-  const [codexTwo, codexCap, codexRuntime, codexStandInRun] = await codexEvaluated
-  Object.assign(runs, { codexTwo, codexCap, codexRuntime, codexStandInRun })
   const [halfLine, unreadable, ahead, aheadDenied] = await attempted
   Object.assign(attempts, { halfLine, unreadable, ahead, aheadDenied })
   const [
@@ -1184,6 +1144,7 @@ beforeAll(async () => {
 }, 120_000)
 
 afterAll(() => {
+  runner.stopAll()
   server.close()
   faultsServer.close()
   unparsedServer.close()
@@ -1764,9 +1725,76 @@ describe('the CLI runner', () => {
 
 describe('the Codex runner', () => {
   const standInRun = () => runs.codexStandInRun as Evaluation
-  /** A record without what Codex does not report: when a request went out, and how many did. */
+  /** A record without what Codex does not report: its requests and the ones it sent again. */
   const comparable = (evaluation: Evaluation) =>
-    evaluation.results.records.map(({ wallMs: _wallMs, turns: _turns, ...rest }) => rest)
+    evaluation.results.records.map(
+      ({
+        wallMs: _wallMs,
+        turns: _turns,
+        retries: _retries,
+        backoffMs: _backoffMs,
+        discardedTokens: _discarded,
+        ...rest
+      }) => rest,
+    )
+
+  // Its own setup, so neither this one nor the file's first needs long: the same scripts
+  // through the Codex stand-in, one eval through a stand-in started as the owner's Codex, with
+  // an owner's home and a variable a Codex session sets, and one whose model uses the plan tool.
+  beforeAll(async () => {
+    mkdirSync(OWNER_CODEX_HOME, { recursive: true })
+    writeFileSync(resolve(OWNER_CODEX_HOME, 'auth.json'), '{ "owner": true }\n')
+    writeFileSync(
+      resolve(OWNER_CODEX_HOME, 'config.toml'),
+      '[mcp_servers.owners]\ncommand = "owners-server"\n',
+    )
+    const codex = ['--fake', '--runner', 'codex']
+    const settingsBrief = ['--briefs', 'eval/briefs/settings-workspace.md']
+    const planning = [
+      {
+        turns: [
+          {
+            content: [
+              { type: 'plan', items: ['Read the card'] },
+              { type: 'tool_use', name: 'get_system_card', input: {} },
+            ],
+          },
+          scriptedText('end_turn'),
+        ],
+      },
+    ]
+    const [codexTwo, codexCap, codexRuntime, codexStandInRun, codexPlanning] = await Promise.all([
+      evaluate('codex-two', [
+        ...codex,
+        ...['--briefs', 'eval/briefs/{list-incidents,settings-workspace}.md'],
+      ]),
+      // Two runs, so the first, stopped at the cap before Codex reports its tokens, stops the eval.
+      evaluate('codex-cap', [
+        ...codex,
+        ...['--max-iterations', '1', '--runs', '2', '--briefs', 'eval/briefs/list-incidents.md'],
+      ]),
+      evaluate('codex-runtime', [...codex, '--mode', 'runtime', '--runs', '2']),
+      evaluate(
+        'codex-stand-in',
+        [
+          ...['--runner', 'codex', '--codex', codexStandIn(CODEX_STAND_IN_RUNS)],
+          ...['--model', 'local-model', '--effort', 'high', '--runs', '2', ...settingsBrief],
+        ],
+        {
+          ANTHROPIC_API_KEY: '',
+          CODEX_HOME: OWNER_CODEX_HOME,
+          CODEX_API_KEY: 'local-key',
+          CODEX_SANDBOX: 'seatbelt',
+        },
+      ),
+      attempt('codex-planning', [
+        ...['--runner', 'codex', '--model', 'local-model', ...settingsBrief],
+        ...['--codex', codexStandIn(planning, resolve(SCRATCH, 'codex-planning-files'))],
+      ]),
+    ])
+    Object.assign(runs, { codexTwo, codexCap, codexRuntime, codexStandInRun })
+    Object.assign(attempts, { codexPlanning })
+  }, 90_000)
 
   it('measures the scripted model as the API runner does, apart from what Codex does not report', () => {
     expect(comparable(runs.codexTwo as Evaluation)).toEqual(comparable(runs.two as Evaluation))
@@ -1780,7 +1808,8 @@ describe('the Codex runner', () => {
 
   it('records a run it stopped before Codex finished with no token count, never with zero', () => {
     // Codex reports its tokens when its turn ends, and the cap stopped it before then.
-    const [capped] = (runs.codexCap as Evaluation).results.records
+    const { results, code, stderr } = runs.codexCap as Evaluation
+    const [capped] = results.records
     const [api] = (runs.cap as Evaluation).results.records
     expect(capped).toMatchObject({
       ended: 'cap',
@@ -1797,19 +1826,54 @@ describe('the Codex runner', () => {
       cacheReadTokens: _read,
       cacheWriteTokens: _write,
       outputTokens: _output,
+      retries: _retries,
+      backoffMs: _backoffMs,
+      discardedTokens: _discarded,
       ...rest
     }: RunRecord) => rest
     expect(without(capped as RunRecord)).toEqual(without(api as RunRecord))
-    expect((runs.codexCap as Evaluation).results.summary.overall).toMatchObject({
-      meanInputTokens: null,
-      meanOutputTokens: null,
+    expect(results.summary.overall).toMatchObject({ meanInputTokens: null, meanOutputTokens: null })
+    // What the run spent is unknown, so the total ceiling cannot be held for a second run.
+    expect(code).toBe(1)
+    expect(stderr).toContain('can no longer be held')
+    expect(results).toMatchObject({
+      partial: true,
+      stopped: { reason: 'tokens-total', brief: 'list-incidents', run: 2 },
+      settings: { maxTokensPerRun: null },
     })
+    expect(results.records).toHaveLength(1)
+  })
+
+  it('records what Codex does not report, its retries and their cost, as absent', () => {
+    for (const record of (runs.codexTwo as Evaluation).results.records) {
+      expect(record).toMatchObject({ retries: null, backoffMs: null, discardedTokens: null })
+    }
+    expect((runs.codexTwo as Evaluation).results.summary.overall).toMatchObject({
+      retries: null,
+      backoffMs: null,
+      discardedTokens: null,
+    })
+    expect((runs.codexTwo as Evaluation).readme).toContain('| not reported |')
+  })
+
+  it('stops the eval when Codex uses its plan tool, which no setting turns off', () => {
+    const { code, stderr, results } = attempts.codexPlanning as Awaited<ReturnType<typeof attempt>>
+    expect(code).toBe(1)
+    expect(stderr).toContain('an item of type `todo_list`')
+    expect(results?.records ?? []).toEqual([])
   })
 
   it('measures the run-time lane as the API runner does, with no time to the first token', () => {
     const timeless = (evaluation: Evaluation) =>
       runtimeRecords(evaluation).map(
-        ({ wallMs: _wallMs, firstTokenMs: _firstTokenMs, ...rest }) => rest,
+        ({
+          wallMs: _wallMs,
+          firstTokenMs: _firstTokenMs,
+          retries: _retries,
+          backoffMs: _backoffMs,
+          discardedTokens: _discarded,
+          ...rest
+        }) => rest,
       )
     const codex = runs.codexRuntime as Evaluation
     expect(timeless(codex)).toEqual(timeless(runs.runtimeEvery as Evaluation))
@@ -1874,12 +1938,72 @@ describe('the Codex runner', () => {
   })
 })
 
+describe('a signal to the eval', () => {
+  /** A harness that keeps its process id where the test can read it, and then sleeps. */
+  function sleepingHarness(directory: string) {
+    mkdirSync(directory, { recursive: true })
+    const file = resolve(directory, 'harness')
+    const lines = [
+      '#!/bin/sh',
+      `if [ "$1" = "--version" ]; then echo '9.9.9 (Claude Code)'; exit 0; fi`,
+      `echo $$ > '${directory}/pid'`,
+      'exec sleep 60',
+    ]
+    writeFileSync(file, `${lines.join('\n')}\n`, { mode: 0o755 })
+    return file
+  }
+
+  /** What `read` gives once it gives something, checked every tenth of a second. */
+  async function until<T>(read: () => T | undefined, ms: number): Promise<T> {
+    for (const ends = Date.now() + ms; Date.now() < ends;) {
+      const value = read()
+      if (value !== undefined) return value
+      await new Promise((done) => setTimeout(done, 100))
+    }
+    throw new Error('it never came')
+  }
+
+  it('stops the CLI it started, removes its scratch directories and exits non-zero', async () => {
+    const directory = resolve(SCRATCH, 'signalled')
+    // The eval's scratch directories go where `TMPDIR` says, so the test can see they are gone.
+    const temporary = resolve(directory, 'tmp')
+    mkdirSync(temporary, { recursive: true })
+    const harness = sleepingHarness(resolve(directory, 'harness-files'))
+    const child = spawn(
+      process.execPath,
+      [
+        ...['eval/run.mjs', '--runner', 'cli', '--claude', harness, '--model', 'local-model'],
+        ...['--briefs', 'eval/briefs/settings-workspace.md', '--out', resolve(directory, 'out')],
+      ],
+      {
+        cwd: ROOT,
+        env: { ...process.env, TMPDIR: temporary, ANTHROPIC_API_KEY: '' },
+        stdio: 'ignore',
+      },
+    )
+    const exited = new Promise<number | null>((done) => child.on('close', (code) => done(code)))
+    try {
+      const pidFile = resolve(directory, 'harness-files/pid')
+      const pid = await until(
+        () => (existsSync(pidFile) ? Number(readFileSync(pidFile, 'utf8')) : undefined),
+        60_000,
+      )
+      expect(running(pid)).toBe(true)
+      child.kill('SIGTERM')
+      expect(await exited).toBe(143)
+      await until(() => (running(pid) ? undefined : true), 5_000)
+      expect(readdirSync(temporary).filter((entry) => entry.startsWith('polymorph-eval-'))).toEqual(
+        [],
+      )
+    } finally {
+      child.kill('SIGKILL')
+    }
+  }, 90_000)
+})
+
 describe('refusing to start', () => {
   const refusal = (args: string[], env: NodeJS.ProcessEnv = process.env) =>
-    execute('node', ['eval/run.mjs', ...args], { cwd: ROOT, env }).then(
-      () => null,
-      (error: { code: number; stderr: string }) => error,
-    )
+    runner.run(args, env, true).then((ran) => (ran.code === 0 ? null : ran))
 
   it('without a key, and says why', async () => {
     const environment = { ...process.env }
@@ -1921,6 +2045,12 @@ describe('refusing to start', () => {
     expect((await refusal(['--fake', '--runner', 'cli', '--claude', missing]))?.stderr).toContain(
       '`--claude` does not apply',
     )
+  })
+
+  it('a per-run token ceiling for Codex, which reports its tokens only when it finishes', async () => {
+    expect(
+      (await refusal(['--fake', '--runner', 'codex', '--max-tokens-per-run', '1000']))?.stderr,
+    ).toContain('`--max-tokens-per-run` cannot be held for Codex')
   })
 
   it('a Codex runner with no model, a Codex named without its runner, or thinking it does not take', async () => {

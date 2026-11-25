@@ -114,8 +114,13 @@
               "enum": ["default", "low", "medium", "high", "xhigh", "max"]
             },
             "maxTokensPerRun": {
-              "type": "integer",
-              "description": "The token ceiling per run, counted as `inputTokens`, `outputTokens` and `discardedTokens` together. No request starts once a run has reached it."
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "description": "The token ceiling per run, counted as `inputTokens`, `outputTokens` and `discardedTokens` together. No request starts once a run has reached it. Null for the `codex` runner: Codex reports its tokens only when its turn completes, so no ceiling per run can be held."
+                },
+                { "type": "null" }
+              ]
             },
             "maxTokensTotal": {
               "type": "integer",
@@ -339,16 +344,31 @@
                   ]
                 },
                 "retries": {
-                  "type": "integer",
-                  "description": "Requests sent again after a transient failure, summed over every run."
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Requests sent again after a transient failure, summed over the runs that report them. Null when no run does: Codex reports none."
+                    },
+                    { "type": "null" }
+                  ]
                 },
                 "backoffMs": {
-                  "type": "integer",
-                  "description": "Time spent waiting to send a request again, summed over every run."
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Time spent waiting to send a request again, summed over the runs that report it. Null when no run does."
+                    },
+                    { "type": "null" }
+                  ]
                 },
                 "discardedTokens": {
-                  "type": "integer",
-                  "description": "Tokens of attempts that broke off and were retried, summed over every run."
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Tokens of attempts that broke off and were retried, summed over the runs that report them. Null when no run does."
+                    },
+                    { "type": "null" }
+                  ]
                 }
               },
               "required": [
@@ -535,16 +555,31 @@
                     ]
                   },
                   "retries": {
-                    "type": "integer",
-                    "description": "Requests sent again after a transient failure, summed over every run."
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Requests sent again after a transient failure, summed over the runs that report them. Null when no run does: Codex reports none."
+                      },
+                      { "type": "null" }
+                    ]
                   },
                   "backoffMs": {
-                    "type": "integer",
-                    "description": "Time spent waiting to send a request again, summed over every run."
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Time spent waiting to send a request again, summed over the runs that report it. Null when no run does."
+                      },
+                      { "type": "null" }
+                    ]
                   },
                   "discardedTokens": {
-                    "type": "integer",
-                    "description": "Tokens of attempts that broke off and were retried, summed over every run."
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Tokens of attempts that broke off and were retried, summed over the runs that report them. Null when no run does."
+                      },
+                      { "type": "null" }
+                    ]
                   }
                 },
                 "required": [
@@ -657,20 +692,35 @@
                 ]
               },
               "discardedTokens": {
-                "type": "integer",
-                "description": "Tokens of attempts that broke off mid-stream and were sent again, as far as their usage was reported. Billed, but in neither `inputTokens` nor `outputTokens`."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Tokens of attempts that broke off mid-stream and were sent again, as far as their usage was reported. Billed, but in neither `inputTokens` nor `outputTokens`. Null for the `codex` runner, because Codex does not report them."
+                  },
+                  { "type": "null" }
+                ]
               },
               "wallMs": {
                 "type": "integer",
                 "description": "Wall-clock time from the first request to the end of the run, tools included and retry waits (`backoffMs`) left out."
               },
               "retries": {
-                "type": "integer",
-                "description": "Requests sent again after a transient failure."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Requests sent again after a transient failure. Null for the `codex` runner, because Codex does not report them."
+                  },
+                  { "type": "null" }
+                ]
               },
               "backoffMs": {
-                "type": "integer",
-                "description": "Time spent waiting before those requests, in milliseconds."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Time spent waiting before those requests, in milliseconds. Null for the `codex` runner."
+                  },
+                  { "type": "null" }
+                ]
               },
               "turns": {
                 "anyOf": [
@@ -910,8 +960,13 @@
               ]
             },
             "maxTokensPerRun": {
-              "type": "integer",
-              "description": "The token ceiling per run, counted as `inputTokens`, `outputTokens` and `discardedTokens` together. No request starts once a run has reached it."
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "description": "The token ceiling per run, counted as `inputTokens`, `outputTokens` and `discardedTokens` together. No request starts once a run has reached it. Null for the `codex` runner: Codex reports its tokens only when its turn completes, so no ceiling per run can be held."
+                },
+                { "type": "null" }
+              ]
             },
             "maxTokensTotal": {
               "type": "integer",
@@ -1193,16 +1248,31 @@
                   ]
                 },
                 "retries": {
-                  "type": "integer",
-                  "description": "Requests sent again after a transient failure, summed over every run."
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Requests sent again after a transient failure, summed over the runs that report them. Null when no run does: Codex reports none."
+                    },
+                    { "type": "null" }
+                  ]
                 },
                 "backoffMs": {
-                  "type": "integer",
-                  "description": "Time spent waiting to send a request again, summed over every run."
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Time spent waiting to send a request again, summed over the runs that report it. Null when no run does."
+                    },
+                    { "type": "null" }
+                  ]
                 },
                 "discardedTokens": {
-                  "type": "integer",
-                  "description": "Tokens of attempts that broke off and were retried, summed over every run."
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Tokens of attempts that broke off and were retried, summed over the runs that report them. Null when no run does."
+                    },
+                    { "type": "null" }
+                  ]
                 }
               },
               "required": [
@@ -1434,16 +1504,31 @@
                     ]
                   },
                   "retries": {
-                    "type": "integer",
-                    "description": "Requests sent again after a transient failure, summed over every run."
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Requests sent again after a transient failure, summed over the runs that report them. Null when no run does: Codex reports none."
+                      },
+                      { "type": "null" }
+                    ]
                   },
                   "backoffMs": {
-                    "type": "integer",
-                    "description": "Time spent waiting to send a request again, summed over every run."
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Time spent waiting to send a request again, summed over the runs that report it. Null when no run does."
+                      },
+                      { "type": "null" }
+                    ]
                   },
                   "discardedTokens": {
-                    "type": "integer",
-                    "description": "Tokens of attempts that broke off and were retried, summed over every run."
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Tokens of attempts that broke off and were retried, summed over the runs that report them. Null when no run does."
+                      },
+                      { "type": "null" }
+                    ]
                   }
                 },
                 "required": [
@@ -1577,8 +1662,13 @@
                 ]
               },
               "discardedTokens": {
-                "type": "integer",
-                "description": "Tokens of attempts that broke off mid-stream and were sent again, as far as their usage was reported. Billed, but in neither `inputTokens` nor `outputTokens`."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Tokens of attempts that broke off mid-stream and were sent again, as far as their usage was reported. Billed, but in neither `inputTokens` nor `outputTokens`. Null for the `codex` runner, because Codex does not report them."
+                  },
+                  { "type": "null" }
+                ]
               },
               "firstTokenMs": {
                 "anyOf": [
@@ -1594,12 +1684,22 @@
                 "description": "Milliseconds from the first request to the end of the answer, retry waits (`backoffMs`) left out; for the `cli` and `codex` runners, from the harness’s start-up report."
               },
               "retries": {
-                "type": "integer",
-                "description": "Requests sent again after a transient failure."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Requests sent again after a transient failure. Null for the `codex` runner."
+                  },
+                  { "type": "null" }
+                ]
               },
               "backoffMs": {
-                "type": "integer",
-                "description": "Time spent waiting before those requests, in milliseconds."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Time spent waiting before those requests, in milliseconds. Null for the `codex` runner."
+                  },
+                  { "type": "null" }
+                ]
               }
             },
             "required": [
@@ -1761,8 +1861,13 @@
               "enum": ["default", "low", "medium", "high", "xhigh", "max"]
             },
             "maxTokensPerRun": {
-              "type": "integer",
-              "description": "The token ceiling per run, counted as `inputTokens`, `outputTokens` and `discardedTokens` together. No request starts once a run has reached it."
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "description": "The token ceiling per run, counted as `inputTokens`, `outputTokens` and `discardedTokens` together. No request starts once a run has reached it. Null for the `codex` runner: Codex reports its tokens only when its turn completes, so no ceiling per run can be held."
+                },
+                { "type": "null" }
+              ]
             },
             "maxTokensTotal": {
               "type": "integer",
@@ -2065,12 +2170,22 @@
                   }
                 },
                 "denied": {
-                  "type": "integer",
-                  "description": "Tool calls the harnesses refused, summed over the runs."
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Tool calls the harnesses refused, summed over the runs that report them. Null when no run does."
+                    },
+                    { "type": "null" }
+                  ]
                 },
                 "retries": {
-                  "type": "integer",
-                  "description": "Requests sent again after a transient failure, summed over every run."
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "Requests sent again after a transient failure, summed over the runs that report them. Null when no run does: Codex reports none."
+                    },
+                    { "type": "null" }
+                  ]
                 }
               },
               "required": [
@@ -2296,12 +2411,22 @@
                     }
                   },
                   "denied": {
-                    "type": "integer",
-                    "description": "Tool calls the harnesses refused, summed over the runs."
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Tool calls the harnesses refused, summed over the runs that report them. Null when no run does."
+                      },
+                      { "type": "null" }
+                    ]
                   },
                   "retries": {
-                    "type": "integer",
-                    "description": "Requests sent again after a transient failure, summed over every run."
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "description": "Requests sent again after a transient failure, summed over the runs that report them. Null when no run does: Codex reports none."
+                      },
+                      { "type": "null" }
+                    ]
                   }
                 },
                 "required": [
@@ -2505,12 +2630,22 @@
                 "items": { "type": "string" }
               },
               "denied": {
-                "type": "integer",
-                "description": "Tool calls the harness refused: a permission Claude Code denied, a command Codex declined, or an MCP call it denied."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Tool calls the harness refused: a permission Claude Code denied, a command Codex declined, or an MCP call it denied. Null when Claude Code was stopped before it reported its result, which is where it reports what it refused."
+                  },
+                  { "type": "null" }
+                ]
               },
               "retries": {
-                "type": "integer",
-                "description": "Requests the harness reported sending again after a transient failure."
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "description": "Requests the harness reported sending again after a transient failure. Null for Codex, which does not report them."
+                  },
+                  { "type": "null" }
+                ]
               }
             },
             "required": [
