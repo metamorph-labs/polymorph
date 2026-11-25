@@ -33,16 +33,16 @@ export function holdToastTimers(
     held = next
     hold(next)
   }
+  let live = true
   const focusOut = (event: Event): void => {
     const to = (event as FocusEvent).relatedTarget
     if (to instanceof Node && region.contains(to)) return
-    // During `focusout` the document's active element is the body, so an element outside the
-    // region that takes focus next is not counted as the region's.
-    const next = pointer || away
-    if (next !== held) {
-      held = next
-      hold(next)
-    }
+    // Focus is read again once it has landed: during `focusout` the document's active element
+    // is the body. A browser also sends `focusout` from inside a framework's removal of the
+    // focused card, where a framework may not take a change of its state.
+    queueMicrotask(() => {
+      if (live) check()
+    })
   }
   const pointerMove = (): void => {
     pointer = true
@@ -71,6 +71,7 @@ export function holdToastTimers(
   observer.observe(region, { childList: true, subtree: true })
   check()
   return () => {
+    live = false
     region.removeEventListener('focusin', check)
     region.removeEventListener('focusout', focusOut)
     region.removeEventListener('pointermove', pointerMove)

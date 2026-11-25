@@ -4,6 +4,7 @@
 '@polymorph/react-ui': patch
 '@polymorph/vue-ui': patch
 '@polymorph/svelte-ui': patch
+'@polymorph/solid': patch
 '@polymorph/solid-ui': patch
 '@polymorph/angular-ui': patch
 '@polymorph/elements-ui': patch
@@ -46,6 +47,10 @@ Keyboard and focus fixes for overlays and for members that leave the page.
   `@polymorph/react-ui` adds `@radix-ui/react-focus-scope` and
   `@radix-ui/react-dismissable-layer` as dependencies; both already came with
   `@radix-ui/react-dialog`.
+- **Solid's `watchEffect`.** It reads the watched value as the member is set up, as Vue's
+  `watch` does, so a change made between setup and the mount runs the effect again after the
+  mount, once Solid has drawn it. With it, the Solid and elements Toast viewport says a toast
+  raised in the same render as the viewport.
 - The engine exports `focusPlace`, `nearestFocusable`, `focusReturnTarget`, `returnFocusTo`,
   `focusAfterRemoval`, `focusAfterToast`, `followToastFocus`, `holdToastTimers`,
   `announceToasts` and `TOAST_QUIET`, and a toast record carries `raised`, which a toast raised

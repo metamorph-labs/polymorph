@@ -1,5 +1,13 @@
 import * as dialog from '@zag-js/dialog'
-import { createComputed, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
+import {
+  createComputed,
+  createMemo,
+  createSignal,
+  For,
+  onCleanup,
+  onMount,
+  type JSX,
+} from 'solid-js'
 import { hydrate, insert } from 'solid-js/web'
 import { page } from 'vitest/browser'
 import { describe, expect, it, vi } from 'vitest'
@@ -137,6 +145,31 @@ describe('watchEffect', () => {
     unmount()
     await Promise.resolve()
     expect(run).toHaveBeenCalledTimes(1)
+  })
+
+  // Vue reads a watched value as the member is set up, so a mount effect that changes it runs
+  // the watch after the mount. The toast viewport reads the store again as it mounts and says
+  // the toasts it finds once their cards are drawn.
+  it('runs again after the mount for a change made between setup and the mount, once it is drawn', async () => {
+    const [count, setCount] = createSignal(0)
+    const drawn: number[] = []
+    let list: HTMLUListElement | undefined
+    function Probe(): JSX.Element {
+      onMount(() => setCount(2))
+      watchEffect(
+        createMemo(() => count()),
+        () => drawn.push(list?.children.length ?? -1),
+        true,
+      )
+      return (
+        <ul ref={list}>
+          <For each={Array.from({ length: count() }, (_, index) => index)}>{() => <li />}</For>
+        </ul>
+      )
+    }
+    await mount(() => <Probe />)
+    expect(drawn).toHaveLength(2)
+    expect(drawn.at(-1)).toBe(2)
   })
 })
 
