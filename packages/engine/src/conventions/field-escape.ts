@@ -1,3 +1,5 @@
+'use client'
+
 import { composingKey } from './composition'
 
 /**

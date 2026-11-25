@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * Where focus goes once an item a person removed has left its list.
  *
