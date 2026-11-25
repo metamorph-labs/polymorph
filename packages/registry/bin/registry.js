@@ -30,9 +30,9 @@ const { renderSystemCard, estimateTokens } = await jiti.import(
   resolve(ROOT, 'packages/registry/src/card.ts'),
 )
 const { REGISTRY_SHAPE } = await jiti.import(resolve(ROOT, 'packages/registry/src/schema.ts'))
-const { assertResolvable, fontLoaders, renderFontLoaders } = await jiti.import(
-  resolve(ROOT, 'packages/registry/src/fonts-gen.ts'),
-)
+const { assertResolvable, assertWeightsShipped, fontLoaders, renderFontLoaders } =
+  await jiti.import(resolve(ROOT, 'packages/registry/src/fonts-gen.ts'))
+const { readSystems } = await jiti.import(resolve(ROOT, 'packages/registry/src/theme.ts'))
 const { jsonSchema, validate } = await jiti.import(resolve(ROOT, 'packages/registry/src/shape.ts'))
 const { compactTable, renderTableModule } = await jiti.import(
   resolve(ROOT, 'packages/registry/src/screen-table.ts'),
@@ -60,17 +60,19 @@ writeFileSync(
 writeFileSync(resolve(OUT, 'system-card.md'), card)
 
 /*
- * The apps' font-loader maps, derived from the same catalogue (fonts-gen.ts).
+ * The apps' font-loader maps, derived from the same system files (fonts-gen.ts).
  * They are written into each app's src because a bare fontsource specifier
  * resolves from its importer, and only the apps declare the font packages.
- * `assertResolvable` fails here on an uninstalled face and prints the command
- * to run, so the app never falls back to another font silently.
+ * `assertWeightsShipped` fails here on a heading weight a system file sets that
+ * its family does not ship, and `assertResolvable` on an uninstalled face with
+ * the command to run, so the app never falls back to another font silently.
  */
-const loaders = fontLoaders(registry)
+const loaders = fontLoaders(readSystems(ROOT).map(({ system }) => system))
 const fontsModule = renderFontLoaders(loaders)
 for (const app of ['apps/docs', 'apps/workbench']) {
   const dir = resolve(ROOT, app)
   const name = JSON.parse(readFileSync(resolve(dir, 'package.json'), 'utf8')).name
+  assertWeightsShipped(dir, name, loaders)
   assertResolvable(dir, name, loaders)
   writeFileSync(resolve(dir, 'src/fonts.gen.ts'), fontsModule)
 }

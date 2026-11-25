@@ -79,7 +79,7 @@ that state from the view the app passes.
 | Part | Tokens |
 | --- | --- |
 | root | row · `justify: between` · `align: start` · column-gap `--pm-space-5` · padding-bottom `--pm-space-6` · **no border** (the page body's own structure separates it, and a rule here would double up with Table headers) |
-| title | `text.2xl` quartet (gets titleWeight through derivation) · `--pm-text-primary` |
+| title | `text.2xl` quartet (gets the title weight through derivation: the personality's, or the system file's `overrides.type.titleWeight`) · `--pm-text-primary` |
 | description | `text.md` · `--pm-text-secondary` · top gap `--pm-space-2` · max-width `calc(var(--pm-space-10) * 6)` (576, which keeps the line length ≤ ~75ch) |
 | actions | `<Inline gap={3}>`; wraps under title at narrow widths (root wraps, row-gap `--pm-space-4`) |
 | text column, with `titleEdit` | grows from a basis of `calc(var(--pm-space-10) * 3)`, DetailPage's identity column's *(the column's width does not follow its content, so the field that opens in it takes the width the column already has, and the actions keep their place)* |

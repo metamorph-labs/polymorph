@@ -52,6 +52,38 @@ export const LC_FLOORS = {
 } as const
 
 /**
+ * The smallest size, in px, at which text of a weight reads at
+ * `LC_FLOORS.bodyText`: the Lc 75 row of APCA's font lookup table, for the
+ * weights a heading step may take (`HEADING_WEIGHT_RANGE`).
+ *
+ * The colour floors above hold a colour on a background at every size. APCA
+ * also ties the contrast a text needs to its size and weight: lighter strokes
+ * need a larger size to read at the same Lc. Every heading step is drawn in
+ * `text.primary`, which every palette holds to Lc 75 on every background, so
+ * `systemSchema` holds each heading step's weight to the size here at the size
+ * the step derives. The system cannot know its palette, so the floor is the
+ * measure, not the Lc a palette reaches.
+ */
+export const BODY_TEXT_MIN_SIZE_PX: Readonly<Record<300 | 400 | 500 | 600 | 700, number>> = {
+  300: 24,
+  400: 18,
+  500: 16,
+  600: 15,
+  700: 14,
+}
+
+/**
+ * The smallest size, in px, at which text of `weight` reads at the body-text
+ * floor. A weight between two rows is judged by the lighter row, which asks
+ * for the larger size. `undefined` under 300, the lightest weight a heading
+ * step may take.
+ */
+export function minSizeForWeight(weight: number): number | undefined {
+  const row = Math.min(700, Math.floor(weight / 100) * 100)
+  return BODY_TEXT_MIN_SIZE_PX[row as keyof typeof BODY_TEXT_MIN_SIZE_PX]
+}
+
+/**
  * **Delineation is measured in ΔL, not APCA.**
  *
  * An APCA border floor of `Lc 15` fails on the flagship's reference at once

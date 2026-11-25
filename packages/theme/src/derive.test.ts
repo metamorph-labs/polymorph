@@ -11,10 +11,12 @@ import {
 import {
   DENSITY_MULTIPLIER,
   deriveFontStacks,
+  deriveHeadingSteps,
   deriveNonColorTokens,
   EXIT_RATIO,
   focusPx,
   GEOMETRY_RADII,
+  HEADING_WEIGHT_RANGE,
   MOTION_SCALE,
   SPACE_LADDER_PX,
   TYPE_BASE_PX,
@@ -491,7 +493,7 @@ describe('resolveTheme', () => {
   })
 })
 
-describe('system-file overrides: shadow throw, focus ring, type ratio', () => {
+describe('system-file overrides: shadow throw, focus ring, type ratio, heading weights', () => {
   it('a throw of 1 is byte-identical to the axis', () => {
     const plain = deriveNonColorTokens(base)
     const unity = deriveNonColorTokens(base, 'normal', { shadow: { throw: 1 } })
@@ -568,6 +570,51 @@ describe('system-file overrides: shadow throw, focus ring, type ratio', () => {
     expect(small.textEntry.lineHeight).toBe(small.text.md.lineHeight)
     const large = deriveNonColorTokens(base, 'normal', { type: { base: 18 } })
     expect(remPx(large.textEntry.size)).toBe(18)
+  })
+
+  it('the heading weights replace the personality’s on the steps they govern, and nothing else', () => {
+    const plain = deriveNonColorTokens(base)
+    const light = deriveNonColorTokens(base, 'normal', {
+      type: { titleWeight: 300, displayWeight: 400 },
+    })
+    expect(light.text['2xl'].weight).toBe(300)
+    expect(light.text['3xl'].weight).toBe(300)
+    // The display delta still lightens `lg` by 50.
+    expect([light.display.sm.weight, light.display.md.weight, light.display.lg.weight]).toEqual([
+      400, 400, 350,
+    ])
+    // Body, the working sizes and `xl` keep the personality's weights, and no size moves.
+    for (const step of ['xs', 'sm', 'md', 'lg', 'xl'] as const) {
+      expect(light.text[step], step).toEqual(plain.text[step])
+    }
+    for (const step of TEXT_STEPS) expect(light.text[step].size).toBe(plain.text[step].size)
+    for (const step of DISPLAY_STEPS)
+      expect(light.display[step].size).toBe(plain.display[step].size)
+  })
+
+  it('stops the display delta at 300, the lightest heading weight', () => {
+    const lightest = deriveNonColorTokens(base, 'normal', { type: { displayWeight: 300 } })
+    expect(DISPLAY_STEPS.map((step) => lightest.display[step].weight)).toEqual([300, 300, 300])
+    expect(HEADING_WEIGHT_RANGE.min).toBe(300)
+  })
+
+  it('measures the heading steps the schema judges from the same derivation', () => {
+    const tokens = deriveNonColorTokens(base, 'normal', { type: { titleWeight: 300 } })
+    const steps = deriveHeadingSteps(base, { titleWeight: 300 })
+    expect(steps.map((step) => step.step)).toEqual([
+      'text.2xl',
+      'text.3xl',
+      'display.sm',
+      'display.md',
+      'display.lg',
+    ])
+    expect(steps[0]).toEqual({
+      step: 'text.2xl',
+      key: 'titleWeight',
+      px: remPx(tokens.text['2xl'].size),
+      weight: 300,
+    })
+    expect(steps[4]?.weight).toBe(tokens.display.lg.weight)
   })
 
   it('the type ratio changes both scales and the display floor still applies', () => {

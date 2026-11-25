@@ -4,8 +4,10 @@ import { axesSchema } from './axes'
 import {
   CONTROL_HEIGHT_PX,
   DENSITY_MULTIPLIER,
+  deriveHeadingSteps,
   focusPx,
   GEOMETRY_RADII,
+  HEADING_WEIGHT_RANGE,
   LINE_HEIGHTS,
   roundEven,
   SPACE_LADDER_PX,
@@ -13,6 +15,7 @@ import {
   TYPE_RATIO,
   typeSizePx,
 } from './derive'
+import { LC_FLOORS, minSizeForWeight } from './pairings'
 import {
   chromaBudgetSchema,
   fontFamiliesSchema,
@@ -155,7 +158,7 @@ export const assignOverrideSchema = z.strictObject({
 })
 
 /**
- * Four more overrides, each one narrow setting:
+ * More overrides, each one narrow setting:
  *
  * - **`shadow.throw`** scales the distances of every axis-derived layer (y,
  *   blur, spread), never the darkness. `none` has no layers, so flat stays
@@ -172,6 +175,12 @@ export const assignOverrideSchema = z.strictObject({
  *   stays, because a ratio spreads the ladder, not the page. The display floor
  *   still applies. Per-step sizes are not allowed: they would be the
  *   hand-written token sheet the axes replace.
+ * - **`type.titleWeight`** and **`type.displayWeight`** replace the type
+ *   personality's two heading weights, on the steps each already governs:
+ *   `text.2xl` and `text.3xl`, and the display steps. Body, the working sizes
+ *   and `xl` keep theirs. Each is a hundred from 300 to 700
+ *   (`HEADING_WEIGHT_RANGE`), and `systemSchema` holds each step's weight to
+ *   the size it needs at the body-text contrast floor.
  * - **`hover.unfilled`** chooses whether an outline or ghost Button washes
  *   under the pointer. The press and an on toggle keep their wash either way,
  *   because a control must answer the click and an on toggle must look on.
@@ -274,6 +283,24 @@ const typeBasePxSchema = z
     `the base type size stays within ${TYPE_BASE_RANGE_PX.min}–${TYPE_BASE_RANGE_PX.max}px — over that the ladder outgrows the page`,
   )
 
+/**
+ * A heading weight: a hundred, because a static family ships one file per
+ * hundred and the font check (`packages/registry/src/fonts-gen.ts`) looks for
+ * that file.
+ */
+const headingWeightSchema = z
+  .number()
+  .int()
+  .multipleOf(100, 'a heading weight is a hundred — a static family ships one file per hundred')
+  .min(
+    HEADING_WEIGHT_RANGE.min,
+    `a heading weight stays at or above ${HEADING_WEIGHT_RANGE.min} — lighter, the smallest title step stops reading at the body-text contrast floor`,
+  )
+  .max(
+    HEADING_WEIGHT_RANGE.max,
+    `a heading weight stays at or under ${HEADING_WEIGHT_RANGE.max} — the heaviest weight a type personality sets`,
+  )
+
 export const typeOverrideSchema = z.strictObject({
   ratio: z
     .number()
@@ -283,6 +310,10 @@ export const typeOverrideSchema = z.strictObject({
   base: typeBasePxSchema.optional(),
   sm: typeStepPxSchema.optional(),
   xs: typeStepPxSchema.optional(),
+  /** `text.2xl` and `text.3xl`, in place of the personality's title weight. */
+  titleWeight: headingWeightSchema.optional(),
+  /** The display steps, in place of the personality's display weight. */
+  displayWeight: headingWeightSchema.optional(),
 })
 
 /** See `UNFILLED_HOVERS`. */
@@ -513,6 +544,26 @@ export const systemSchema = systemDocumentSchema.superRefine((system, ctx) => {
             `density (${height}px) — lower type.${step} or raise controlHeight.${size}`,
         )
       }
+    }
+  }
+
+  // A heading step's weight reads at the body-text floor at the size the step
+  // derives (`minSizeForWeight`). Measured on the derivation itself, so the
+  // weight judged is the file's where it sets one, and the size is the merged
+  // ladder's. A personality's own weights pass at every lawful base and ratio
+  // (500 needs 16px, and the smallest `text.2xl` the schema allows is 17px),
+  // so only a file's lighter weight is ever refused.
+  for (const heading of deriveHeadingSteps(system.axes, type)) {
+    const needs = minSizeForWeight(heading.weight)
+    if (needs === undefined || heading.px < needs) {
+      const set = type?.[heading.key] !== undefined
+      const reads = needs === undefined ? 'at no heading size' : `from ${needs}px`
+      issue(
+        set ? ['overrides', 'type', heading.key] : ['overrides', 'type'],
+        `${heading.step} is ${heading.px}px at weight ${heading.weight}, and at Lc ` +
+          `${LC_FLOORS.bodyText}, the floor text.primary is held to, weight ${heading.weight} ` +
+          `reads ${reads} — set a heavier ${heading.key}, or raise type.base or type.ratio`,
+      )
     }
   }
 
