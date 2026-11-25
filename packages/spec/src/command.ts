@@ -46,7 +46,13 @@ import type { ScreenSpec } from './schema'
  */
 
 export interface EmitCommand {
-  registry: Registry
+  /**
+   * The registry, or what builds it. An entry point that builds the registry
+   * from a tree passes the builder, so a refusal that needs no registry (a
+   * wrong extension, a missing argument) answers without the seconds a build
+   * takes.
+   */
+  registry: Registry | (() => Registry)
   /** The tree that holds the native member packages. */
   source: string
   /** The directory the spec and the output are named from. */
@@ -84,7 +90,7 @@ const isNative = (value: unknown): value is NativePlatform =>
   typeof value === 'string' && Object.hasOwn(NATIVE, value)
 
 export async function emitCommand(command: EmitCommand): Promise<number> {
-  const { registry, source, cwd, argv, print, complain } = command
+  const { source, cwd, argv, print, complain } = command
   const flag = argv.indexOf('--framework')
   const named = flag === -1 ? undefined : argv[flag + 1]
   const [input, output] =
@@ -145,6 +151,7 @@ export async function emitCommand(command: EmitCommand): Promise<number> {
     )
     return 1
   }
+  const registry = typeof command.registry === 'function' ? command.registry() : command.registry
   const native = platform === undefined ? undefined : readNativePackage(source, platform)
   const { ok, faults } = validateSpec(registry, spec, {
     framework: emitted,

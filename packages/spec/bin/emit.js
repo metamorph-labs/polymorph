@@ -26,7 +26,8 @@ const { emitCommand } = await jiti.import(resolve(SOURCE, 'packages/spec/src/com
 
 // The exit code is set, not forced: a forced exit can cut off a screen printed to a pipe.
 process.exitCode = await emitCommand({
-  registry: buildRegistry(SOURCE),
+  // Built when the command first needs it, after the refusals that need none.
+  registry: () => buildRegistry(SOURCE),
   source: SOURCE,
   cwd: process.cwd(),
   argv: process.argv.slice(2),
