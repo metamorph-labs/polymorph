@@ -18,8 +18,11 @@
  * elements that carry `data-scope`) is passed over, because it is the
  * direction a member was handed and not one the page says. A popup's content
  * part counts: it carries the direction of the member that opened it, so a
- * submenu drawn inside a menu's content takes the menu's. A member built on
- * Radix, whose parts carry no such mark, reads from outside its own root. Given
+ * submenu drawn inside a menu's content takes the menu's. A place that is
+ * itself one of a machine's parts is read from its parent: the `dir` on it is
+ * the one the member handed its machine, which a content part (Calendar's
+ * root) would otherwise give back. A member built on Radix, whose parts carry
+ * no such mark, reads from outside its own root. Given
  * no place, or a place out of the document, the direction is the one `dir`
  * says on `<body>`, or else on `<html>`. A document that sets its direction
  * only in CSS reads as left-to-right here.
@@ -52,7 +55,12 @@ function said(element: Element): ReadingDirection | undefined {
 export function readDirection(within?: Element | null): ReadingDirection {
   if (typeof document === 'undefined') return 'ltr'
   if (within?.isConnected === true) {
-    for (let at = within.closest(SAYS); at !== null; at = at.parentElement?.closest(SAYS) ?? null) {
+    const start = within.hasAttribute('data-scope') ? within.parentElement : within
+    for (
+      let at = start?.closest(SAYS) ?? null;
+      at !== null;
+      at = at.parentElement?.closest(SAYS) ?? null
+    ) {
       const direction = said(at)
       if (direction !== undefined) return direction
     }

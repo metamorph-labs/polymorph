@@ -99,6 +99,20 @@ describe('readDirection reads the place an element is in', () => {
     }
   })
 
+  it("reads around a place that is a machine's content part, whose `dir` is the member's own", () => {
+    // Calendar's root is its machine's content part. The `dir` on it is the one the member handed
+    // its machine, so reading it back would keep the member in the direction it started in.
+    const { outer, inner } = section('rtl')
+    inner.setAttribute('dir', 'ltr')
+    inner.setAttribute('data-scope', 'date-picker')
+    inner.setAttribute('data-part', 'content')
+    try {
+      expect(readDirection(inner)).toBe('rtl')
+    } finally {
+      outer.remove()
+    }
+  })
+
   it('reads the document for an element out of it', () => {
     document.documentElement.setAttribute('dir', 'rtl')
     expect(readDirection(document.createElement('div'))).toBe('rtl')

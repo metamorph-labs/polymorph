@@ -406,8 +406,9 @@ export function walk(
  * `@polymorph/engine`): the first element ref in document order that is drawn
  * in the page with the member, outside a portal and a loop, and one outside a
  * condition before one inside it. An element of the member is enough, because
- * the engine passes over the `dir` a machine writes on its own parts. A member
- * with no such ref reads the document's direction.
+ * the engine passes over the `dir` a machine writes on its own parts, and reads
+ * a place that is itself a machine's part (Calendar's root, its content part)
+ * from its parent. A member with no such ref reads the document's direction.
  */
 export function directionPlace(nodes: readonly Node[]): string | undefined {
   let conditional: string | undefined

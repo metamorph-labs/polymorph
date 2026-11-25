@@ -1,4 +1,4 @@
-import { onBeforeUnmount, onMounted, shallowRef, type ShallowRef } from 'vue'
+import { onBeforeUnmount, onMounted, shallowRef, watch, type ShallowRef } from 'vue'
 
 import { readDirection, watchDirection, type ReadingDirection } from '@polymorph/engine'
 
@@ -12,7 +12,9 @@ import { isHydrating } from './hydration'
  * until it is in the document, the direction is the document's. It is `ltr`
  * on a server render and while the member is being hydrated, so a hydrated
  * member's first render is the server's; it reads its place once the member
- * has mounted and follows it after.
+ * has mounted and follows it after. A place drawn in a branch that appears
+ * later (Menubar's bar, which the phone form does not draw) is read when it
+ * appears.
  */
 export function useDirection(
   within?: () => Element | null | undefined,
@@ -26,6 +28,7 @@ export function useDirection(
     update()
     release = watchDirection(update, within !== undefined)
   })
+  if (within !== undefined) watch(within, update, { flush: 'post' })
   onBeforeUnmount(() => release?.())
   return direction
 }
