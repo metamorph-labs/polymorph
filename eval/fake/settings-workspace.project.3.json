@@ -1,0 +1,17 @@
+{
+  "project": true,
+  "turns": [
+    {
+      "usage": {
+        "input_tokens": 4000,
+        "output_tokens": 50
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "I could not work out how to build this screen."
+        }
+      ]
+    }
+  ]
+}

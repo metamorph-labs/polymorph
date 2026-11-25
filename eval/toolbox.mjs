@@ -5,11 +5,11 @@ import { fileURLToPath } from 'node:url'
 import { createJiti } from 'jiti'
 
 /**
- * The four tools the agent eval offers, shared by its two runners
+ * The four tools the agent eval offers, shared by its runners
  * (`docs/verification.md`, "The agent eval"). `eval/run.mjs` answers the
  * Messages API runner's tool calls with them, and `eval/mcp.mjs` serves the
- * same functions to the Claude Code CLI over MCP, so both runners' models
- * read the same answers and are judged by the same check.
+ * same functions to Claude Code and Codex over MCP, so every runner's model
+ * reads the same answers and is judged by the same check.
  *
  * The `runtime` mode offers no tool. `loadScreen` loads what it uses instead:
  * the run-time card it sends, and the check and the reader it judges with.
@@ -45,7 +45,8 @@ export async function loadToolbox({ registry: built } = {}) {
   const { withClimb } = await load('packages/mcp/src/violations.ts')
   const { emitCheckedScreen, validateSpec } = await load('packages/spec/src/lawful.ts')
   const { SCREEN_SHAPE } = await load('packages/spec/src/schema.ts')
-  const { ENDINGS, RESULTS_SHAPE, RUNTIME_ENDINGS } = await load('eval/results-shape.ts')
+  const { ENDINGS, PROJECT_ENDINGS, RESULTS_SHAPE, RUNTIME_ENDINGS } =
+    await load('eval/results-shape.ts')
   const { KINDS_SHAPE, REQUIREMENTS_SHAPE } = await load('eval/requirements-shape.ts')
 
   const registry = built ?? (await load('packages/registry/src/build.ts')).buildRegistry(ROOT)
@@ -189,6 +190,7 @@ export async function loadToolbox({ registry: built } = {}) {
     call,
     endings: ENDINGS,
     runtimeEndings: RUNTIME_ENDINGS,
+    projectEndings: PROJECT_ENDINGS,
     validateResults: (results) => validateShape(RESULTS_SHAPE, results),
     // The shape checks `loadRequirements` asks for (`eval/requirements.mjs`). The runner
     // judges with the requirements; no tool hands them to the model.

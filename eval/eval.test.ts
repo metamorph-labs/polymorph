@@ -39,7 +39,9 @@ import { loadScreen } from './toolbox.mjs'
  * Messages API's streaming protocol, so the path a real model takes is
  * exercised too, failures included. The CLI runner plays the same scripts
  * through a stand-in for `claude -p` and the eval's real MCP server, and one
- * eval starts that stand-in as it would start the owner's CLI.
+ * eval starts that stand-in as it would start the owner's CLI. The Codex
+ * runner plays them through a stand-in for `codex exec` the same way. The
+ * project lane has a file of its own (`eval/project.test.ts`).
  *
  * The briefs' requirements, the two readers that check a document against
  * them and the intervals beside every rate are tested here as well, against
@@ -50,6 +52,7 @@ const ROOT = resolve(import.meta.dirname, '..')
 const SCRATCH = mkdtempSync(resolve(tmpdir(), 'polymorph-eval-test-'))
 const RESULTS = resolve(ROOT, 'eval/results')
 const FAKE_CLI = resolve(ROOT, 'eval/fake/cli.mjs')
+const FAKE_CODEX = resolve(ROOT, 'eval/fake/codex.mjs')
 
 const execute = promisify(execFile)
 
@@ -63,15 +66,15 @@ interface RunRecord {
   failedRequirements?: string[]
   ended: string
   harnessFault: string | null
-  inputTokens: number
-  cacheReadTokens: number
-  cacheWriteTokens: number
-  outputTokens: number
+  inputTokens: number | null
+  cacheReadTokens: number | null
+  cacheWriteTokens: number | null
+  outputTokens: number | null
   discardedTokens: number
   wallMs: number
   retries: number
   backoffMs: number
-  turns: number
+  turns: number | null
   toolCalls: Record<string, number>
   violationsSeen: Record<string, number>
   misses?: {
@@ -722,6 +725,61 @@ const AHEAD_DENIED_RUNS = [
 ]
 
 /* -------------------------------------------------------------------------- */
+/* A stand-in for Codex                                                       */
+/* -------------------------------------------------------------------------- */
+
+const CODEX_STAND_IN = resolve(SCRATCH, 'codex')
+
+/** The owner's own Codex home, as the eval finds it: a sign-in, and a configuration no run may read. */
+const OWNER_CODEX_HOME = resolve(SCRATCH, 'owner-codex-home')
+
+/**
+ * What `--codex` starts in place of the owner's Codex: a shell script that
+ * keeps the arguments it was given, the names of the variables in its
+ * environment, the Codex home it was given and where that home's sign-in
+ * leads, the instructions file it was given and the prompt on its stdin,
+ * then hands over to `eval/fake/codex.mjs` with the next of `scripts`.
+ */
+function codexStandIn(scripts: object[], directory = CODEX_STAND_IN) {
+  mkdirSync(directory, { recursive: true })
+  scripts.forEach((script, index) =>
+    writeFileSync(resolve(directory, `run-${index + 1}.json`), JSON.stringify(script)),
+  )
+  const node = process.execPath
+  const file = resolve(directory, 'codex')
+  const lines = [
+    '#!/bin/sh',
+    `if [ "$1" = "--version" ]; then exec '${node}' '${FAKE_CODEX}' --version; fi`,
+    `count=$(cat '${directory}/count' 2>/dev/null || echo 0)`,
+    'count=$((count + 1))',
+    `echo "$count" > '${directory}/count'`,
+    `printf '%s\\0' "$@" > '${directory}/args-'"$count"`,
+    `env | cut -d= -f1 > '${directory}/env-'"$count"`,
+    `printenv CODEX_HOME > '${directory}/home-'"$count"`,
+    `readlink "$CODEX_HOME/auth.json" > '${directory}/auth-'"$count"`,
+    'for argument in "$@"; do',
+    '  case "$argument" in',
+    // The value is a TOML string: the path in double quotes.
+    `    model_instructions_file=*) cp "$(printf '%s' "\${argument#*=}" | tr -d '"')" '${directory}/instructions-'"$count" ;;`,
+    '  esac',
+    'done',
+    `cat > '${directory}/stdin-'"$count"`,
+    `exec '${node}' '${FAKE_CODEX}' --script '${directory}/run-'"$count"'.json' "$@" < '${directory}/stdin-'"$count"`,
+  ]
+  writeFileSync(file, `${lines.join('\n')}\n`, { mode: 0o755 })
+  return file
+}
+
+const codexRecord = (name: string, run = 1) =>
+  readFileSync(resolve(CODEX_STAND_IN, `${name}-${run}`), 'utf8')
+
+/** Two runs of one brief through the stand-in: the scripted model's, then a usage limit. */
+const CODEX_STAND_IN_RUNS = [
+  JSON.parse(fixture('settings-workspace.spec.json')) as object,
+  { turns: [{ codex: { failed: 'You’ve hit your usage limit. Try again at 5pm.' } }] },
+]
+
+/* -------------------------------------------------------------------------- */
 /* The run-time lane                                                          */
 /* -------------------------------------------------------------------------- */
 
@@ -897,9 +955,42 @@ beforeAll(async () => {
     throughStandIn('cli-ahead-denied', AHEAD_DENIED_RUNS, AHEAD_DENIED, ['--max-iterations', '1']),
   ])
 
+  // The Codex runner: the same scripts through its stand-in, and one eval through a stand-in
+  // started as the owner's Codex, with an owner's home and a variable a Codex session sets.
+  mkdirSync(OWNER_CODEX_HOME, { recursive: true })
+  writeFileSync(resolve(OWNER_CODEX_HOME, 'auth.json'), '{ "owner": true }\n')
+  writeFileSync(
+    resolve(OWNER_CODEX_HOME, 'config.toml'),
+    '[mcp_servers.owners]\ncommand = "owners-server"\n',
+  )
+  const codex = ['--fake', '--runner', 'codex']
+  const runtime = ['--mode', 'runtime']
+  const codexEvaluated = Promise.all([
+    evaluate('codex-two', [
+      ...codex,
+      ...['--briefs', 'eval/briefs/{list-incidents,settings-workspace}.md'],
+    ]),
+    evaluate('codex-cap', [
+      ...codex,
+      ...['--max-iterations', '1', '--briefs', 'eval/briefs/list-incidents.md'],
+    ]),
+    evaluate('codex-runtime', [...codex, ...runtime, '--runs', '2']),
+    evaluate(
+      'codex-stand-in',
+      [
+        ...['--runner', 'codex', '--codex', codexStandIn(CODEX_STAND_IN_RUNS)],
+        ...['--model', 'local-model', '--effort', 'high', '--runs', '2', ...settingsBrief],
+      ],
+      {
+        ANTHROPIC_API_KEY: '',
+        CODEX_HOME: OWNER_CODEX_HOME,
+        CODEX_API_KEY: 'local-key',
+        CODEX_SANDBOX: 'seatbelt',
+      },
+    ),
+  ])
   // The run-time lane: every brief twice through both runners, a subset and a list of members,
   // the local API with eight runs of one brief, and the stand-in for the CLI.
-  const runtime = ['--mode', 'runtime']
   const runtimeEvaluated = Promise.all([
     evaluate('runtime-every', ['--fake', ...runtime, '--runs', '2']),
     evaluate('runtime-cli', ['--fake', '--runner', 'cli', ...runtime, '--runs', '2']),
@@ -1053,6 +1144,8 @@ beforeAll(async () => {
       'eval/briefs/dashboard-usage.md',
     ]),
   ])
+  const [codexTwo, codexCap, codexRuntime, codexStandInRun] = await codexEvaluated
+  Object.assign(runs, { codexTwo, codexCap, codexRuntime, codexStandInRun })
   const [halfLine, unreadable, ahead, aheadDenied] = await attempted
   Object.assign(attempts, { halfLine, unreadable, ahead, aheadDenied })
   const [
@@ -1669,6 +1762,118 @@ describe('the CLI runner', () => {
   })
 })
 
+describe('the Codex runner', () => {
+  const standInRun = () => runs.codexStandInRun as Evaluation
+  /** A record without what Codex does not report: when a request went out, and how many did. */
+  const comparable = (evaluation: Evaluation) =>
+    evaluation.results.records.map(({ wallMs: _wallMs, turns: _turns, ...rest }) => rest)
+
+  it('measures the scripted model as the API runner does, apart from what Codex does not report', () => {
+    expect(comparable(runs.codexTwo as Evaluation)).toEqual(comparable(runs.two as Evaluation))
+    expect((runs.codexTwo as Evaluation).outputs).toEqual((runs.two as Evaluation).outputs)
+    // Codex reports no request, so a record has no request count.
+    expect((runs.codexTwo as Evaluation).results.records.map(({ turns }) => turns)).toEqual([
+      null,
+      null,
+    ])
+  })
+
+  it('records a run it stopped before Codex finished with no token count, never with zero', () => {
+    // Codex reports its tokens when its turn ends, and the cap stopped it before then.
+    const [capped] = (runs.codexCap as Evaluation).results.records
+    const [api] = (runs.cap as Evaluation).results.records
+    expect(capped).toMatchObject({
+      ended: 'cap',
+      inputTokens: null,
+      cacheReadTokens: null,
+      cacheWriteTokens: null,
+      outputTokens: null,
+      turns: null,
+    })
+    const without = ({
+      wallMs: _wallMs,
+      turns: _turns,
+      inputTokens: _input,
+      cacheReadTokens: _read,
+      cacheWriteTokens: _write,
+      outputTokens: _output,
+      ...rest
+    }: RunRecord) => rest
+    expect(without(capped as RunRecord)).toEqual(without(api as RunRecord))
+    expect((runs.codexCap as Evaluation).results.summary.overall).toMatchObject({
+      meanInputTokens: null,
+      meanOutputTokens: null,
+    })
+  })
+
+  it('measures the run-time lane as the API runner does, with no time to the first token', () => {
+    const timeless = (evaluation: Evaluation) =>
+      runtimeRecords(evaluation).map(
+        ({ wallMs: _wallMs, firstTokenMs: _firstTokenMs, ...rest }) => rest,
+      )
+    const codex = runs.codexRuntime as Evaluation
+    expect(timeless(codex)).toEqual(timeless(runs.runtimeEvery as Evaluation))
+    expect(runtimeRecords(codex).every(({ firstTokenMs }) => firstTokenMs === null)).toBe(true)
+    expect(codex.results.settings).toMatchObject({ thinking: null })
+  })
+
+  it('records which runner and which Codex ran, and names the file for the runner', () => {
+    const { results, directory } = runs.codexTwo as Evaluation
+    expect(results).toMatchObject({ runner: 'codex', cliVersion: 'scripted', fake: true })
+    expect(readdirSync(directory)).toContain(`${results.at.slice(0, 10)}-fake-spec-codex.json`)
+    expect((runs.codexTwo as Evaluation).readme).toContain('| Codex scripted |')
+  })
+
+  it('gives Codex a home of its own with only the owner’s sign-in in it', () => {
+    const home = codexRecord('home').trim()
+    expect(home).not.toBe(OWNER_CODEX_HOME)
+    expect(codexRecord('auth').trim()).toBe(resolve(OWNER_CODEX_HOME, 'auth.json'))
+    const names = codexRecord('env').split('\n')
+    expect(names).toContain('CODEX_API_KEY')
+    expect(names).not.toContain('CODEX_SANDBOX')
+  })
+
+  it('passes the model, the effort, the eval’s prompt and its four tools, and nothing of Codex’s own', () => {
+    const args = codexRecord('args').split('\0')
+    const after = (flag: string) => args[args.indexOf(flag) + 1]
+    const overrides = args.filter((_, index) => args[index - 1] === '-c')
+    expect(args.slice(0, 2)).toEqual(['exec', '--json'])
+    expect(after('--model')).toBe('local-model')
+    expect(after('--sandbox')).toBe('read-only')
+    expect(overrides).toEqual(
+      expect.arrayContaining([
+        'approval_policy="never"',
+        'model_reasoning_effort="high"',
+        'features.shell_tool=false',
+        'web_search="disabled"',
+        'skills.include_instructions=false',
+      ]),
+    )
+    const server = overrides.find((value) => value.startsWith('mcp_servers=')) ?? ''
+    expect(server).toContain('eval/mcp.mjs')
+    expect(server).toContain('required = true')
+    expect(server).toContain('default_tools_approval_mode = "approve"')
+    for (const name of TOOL_NAMES) expect(server).toContain(`${name} = { output_token_limit`)
+    expect(codexRecord('instructions')).toContain('# Screen brief — Workspace settings')
+    expect(codexRecord('instructions')).toContain('Call `validate` before you answer.')
+    expect(codexRecord('stdin')).toBe('Build the screen the brief describes.')
+    expect(standInRun().results.records[0]).toMatchObject({ lawful: true, ended: 'answered' })
+    expect(standInRun().results.settings).toMatchObject({ effort: 'high' })
+  })
+
+  it('stops at a usage limit Codex reports, keeping the runs that finished, marked partial', () => {
+    const { code, stderr, results, readme } = standInRun()
+    expect(code).toBe(1)
+    expect(stderr).toContain('hit your usage limit')
+    expect(results).toMatchObject({
+      partial: true,
+      stopped: { reason: 'usage-limit', brief: 'settings-workspace', run: 2 },
+    })
+    expect(results.records).toHaveLength(1)
+    expect(readme).toContain('(partial: stopped at a usage limit)')
+  })
+})
+
 describe('refusing to start', () => {
   const refusal = (args: string[], env: NodeJS.ProcessEnv = process.env) =>
     execute('node', ['eval/run.mjs', ...args], { cwd: ROOT, env }).then(
@@ -1718,6 +1923,28 @@ describe('refusing to start', () => {
     )
   })
 
+  it('a Codex runner with no model, a Codex named without its runner, or thinking it does not take', async () => {
+    expect((await refusal(['--runner', 'codex']))?.stderr).toContain(
+      '`--runner codex` needs `--model`',
+    )
+    expect((await refusal(['--codex', '/no/such/codex']))?.stderr).toContain('add `--runner codex`')
+    expect(
+      (await refusal(['--fake', '--runner', 'codex', '--codex', '/no/such/codex']))?.stderr,
+    ).toContain('`--codex` does not apply')
+    expect(
+      (
+        await refusal([
+          ...['--runner', 'codex', '--model', 'local-model', '--mode', 'runtime'],
+          ...['--thinking', 'disabled'],
+        ])
+      )?.stderr,
+    ).toContain('Codex chooses its own reasoning')
+    expect(
+      (await refusal(['--runner', 'codex', '--model', 'local-model', '--codex', '/no/such/codex']))
+        ?.stderr,
+    ).toContain('the Codex CLI did not run')
+  })
+
   it('an effort the API does not have, or one the scripted model would ignore', async () => {
     expect((await refusal(['--effort', 'extreme']))?.stderr).toContain('`--effort` is `default`')
     expect((await refusal(['--fake', '--effort', 'high']))?.stderr).toContain(
@@ -1728,17 +1955,19 @@ describe('refusing to start', () => {
   it('a flag of the run-time lane in another mode, or one the lane does not take', async () => {
     const runtime = ['--fake', '--mode', 'runtime', '--briefs', 'eval/briefs/list*.md']
     expect((await refusal(['--mode', 'card']))?.stderr).toContain(
-      '`--mode` is `spec`, `tsx` or `runtime`',
+      '`--mode` is `spec`, `tsx`, `runtime` or `project`',
     )
     for (const flag of [
       ['--thinking', 'disabled'],
       ['--members', 'small'],
-      ['--framework', 'vue'],
     ]) {
       expect((await refusal(flag))?.stderr, flag[0]).toContain(
         `\`${flag[0]}\` belongs to the run-time lane: add \`--mode runtime\``,
       )
     }
+    expect((await refusal(['--framework', 'vue']))?.stderr).toContain(
+      '`--framework` belongs to the run-time and project lanes',
+    )
     expect((await refusal([...runtime, '--max-iterations', '2']))?.stderr).toContain(
       '`--mode runtime` makes none',
     )

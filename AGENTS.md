@@ -62,7 +62,7 @@ pnpm build:packages          # the published builds of the engine, rules, the ru
 pnpm size                    # what a consumer ships, against budgets, a page with no build included (needs build:packages; --why)
 pnpm layout                  # the layout measure over every gallery and sample page, at two widths (needs build)
 pnpm new:member <Name> --tier <tier>   # scaffold a new member and every entry it needs (see CONTRIBUTING.md)
-pnpm eval                    # the agent eval against a real model: ANTHROPIC_API_KEY, or --runner cli with Claude Code signed in (--claude <path> for another CLI; --mode runtime for the run-time lane); costs money or plan usage
+pnpm eval                    # the agent eval against a real model: ANTHROPIC_API_KEY, or --runner cli with Claude Code signed in, or --runner codex --model <id> with Codex signed in (--claude/--codex <path> for another CLI; --mode runtime for the run-time lane; --mode project for a harness in an app the tools set up); costs money or plan usage
 pnpm dev / pnpm dev:docs     # the workbench / the docs site
 pnpm site                    # the docs site as static HTML for a static host; fails on a page error or a dead link (--no-build)
 ```
