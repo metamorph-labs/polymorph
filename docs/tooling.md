@@ -741,8 +741,9 @@ tool a verb names is one the server registers.
   as one line (below), and each drawing with the path of its picture.
 - **Exit codes.** 0 when the answer is clean; 1 when it reports violations, faults or a refusal,
   or the tool refused its arguments (an unknown framework); 2 when the command line cannot be read:
-  a flag the verb does not take, a missing argument, a file that does not exist or a JSON file
-  that does not parse. A verb refuses a flag it does not declare rather than ignore it.
+  a flag the verb does not take, a missing argument, a file that does not exist, a `--data` or
+  `--empty` file that does not parse, or a `.json` file given to `validate` that is some other
+  document than a screen spec (one with neither a `spec` field nor a `root`). A verb refuses a flag it does not declare rather than ignore it.
 - **In this repository** a verb that writes is refused where its tool is refused: `add` refuses a
   checkout, as `install` does, and `emit`, `fix` and `theme propose --save` write here, as
   `emit_screen`, `fix_file` and `save_theme` do ([the project](#the-project)).
@@ -808,8 +809,8 @@ polymorph emit screens/inbox.json src/screens/Inbox.tsx
 
 `fix <file>` is `fix_file`: the file is fixed where it stands, and the reading names how many
 reports each rule's fixes answered and the violations left. `--dry-run`, and `-` for stdin, is
-`fix`: stdout is the fixed code and nothing else, so it can be redirected into a file, and what
-the fix did and what it left go to stderr. `emit <spec.json> <out>` is `emit_screen`: `<out>` is a
+`fix`: stdout is the fixed code, ending in a newline, and nothing else, so it can be redirected
+into a file, and what the fix did and what it left go to stderr. `emit <spec.json> <out>` is `emit_screen`: `<out>` is a
 path in the project, and the file written is the emitter's, byte for byte.
 
 ### Themes: `theme propose`

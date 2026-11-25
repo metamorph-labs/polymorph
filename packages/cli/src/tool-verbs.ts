@@ -307,13 +307,17 @@ async function component(verb: Verb, asked: Asked): Promise<Outcome> {
   const { cli, args, json, ask } = asked
   if (args.positionals.length !== 1) throw new UsageError(verb, 'name one member')
   const framework = args.values.get('framework')
-  // The tool answers for every framework, and the flag narrows the reading,
-  // so a framework the registry does not have is a command line to correct.
+  // The tool answers for every framework, and the flag narrows the reading, so
+  // the verb checks the name. It answers an unknown one as `card` does, where
+  // the tool refuses it: a refusal, with exit code 1.
   if (framework !== undefined && !(FRAMEWORKS as readonly string[]).includes(framework)) {
-    throw new UsageError(
-      verb,
-      `there is no framework called "${framework}" — the frameworks are ${FRAMEWORKS.join(', ')}`,
+    say(
+      asked.cli,
+      asked.json,
+      `polymorph ${verb.name}: there is no framework called "${framework}" — the frameworks ` +
+        `are ${FRAMEWORKS.join(', ')}`,
     )
+    return { code: 1 }
   }
   const answer = await ask('get_component', {
     name: args.positionals[0],
@@ -367,8 +371,36 @@ interface ValidateReading {
   fatal: string | null
 }
 
-/** Whether a submission is a screen spec: a `.json` file, whose document the spec check reads. */
+/** Whether a submission is a `.json` file, which `validate` reads as a screen spec. */
 const isSpec = (submission: Submission): boolean => submission.sent?.endsWith('.json') === true
+
+/**
+ * Refuses a `.json` file that is some other document: a `package.json`, a
+ * theme, a data file. A spec's document is an object with a `spec` field or a
+ * `root`, and the spec check explains one that has either and is still wrong.
+ * Text that is not JSON is sent on, because the spec check says where it stops
+ * parsing. Any other document would be answered with the faults of a spec it
+ * never was, and a list of files that held one would fail for no fault of its
+ * screens.
+ */
+function refuseOtherDocument(verb: Verb, submitted: Submission): void {
+  let document: unknown
+  try {
+    document = JSON.parse(submitted.text)
+  } catch {
+    return
+  }
+  const fields =
+    typeof document === 'object' && document !== null && !Array.isArray(document)
+      ? Object.keys(document)
+      : []
+  if (fields.includes('spec') || fields.includes('root')) return
+  throw new UsageError(
+    verb,
+    `${submitted.shown} is not a screen spec: a spec is a document with a \`spec\` field ` +
+      'and a `root`. `validate` reads code files and screen specs',
+  )
+}
 
 async function validate(verb: Verb, asked: Asked): Promise<Outcome> {
   const { cli, args, json, ask } = asked
@@ -386,6 +418,7 @@ async function validate(verb: Verb, asked: Asked): Promise<Outcome> {
   // command before it prints an answer.
   const submissions: Submission[] = []
   for (const input of inputs) submissions.push(await submission(verb, cli, input, filename))
+  for (const submitted of submissions) if (isSpec(submitted)) refuseOtherDocument(verb, submitted)
 
   const answers: { submission: Submission; answer: ToolAnswer }[] = []
   for (const submitted of submissions) {

@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 
@@ -147,7 +147,6 @@ describe('a command line a verb cannot read', () => {
       [['card', '--framework'], '`--framework` needs a value'],
       [['card', '--json=yes'], '`--json` takes no value'],
       [['component'], 'name one member'],
-      [['component', 'Button', '--framework', 'ember'], 'no framework called "ember"'],
       [['search', '--limit', 'ten'], '`--limit` is a count'],
       [['plan'], 'name at least one'],
       [['validate'], 'name a file'],
@@ -168,6 +167,25 @@ describe('a command line a verb cannot read', () => {
       expect(out, argv.join(' ')).toContain('usage: polymorph ')
       expect(calls, argv.join(' ')).toEqual([])
     }
+  })
+
+  it('answers an unknown framework on `component` as a refusal, as `card` answers one', async () => {
+    const { calls, tools } = recording()
+    const { code, out } = await polymorph(['component', 'Button', '--framework', 'ember'], {
+      tools,
+    })
+    expect(code).toBe(1)
+    expect(out).toContain('no framework called "ember"')
+    expect(calls).toEqual([])
+  })
+
+  it('refuses a `.json` file that is not a screen spec, and asks no tool', async () => {
+    writeFileSync(resolve(PROJECT, 'data.json'), JSON.stringify({ name: 'not-a-spec' }))
+    const { calls, tools } = recording()
+    const { code, out } = await polymorph(['validate', 'data.json'], { tools })
+    expect(code).toBe(2)
+    expect(out).toContain('data.json is not a screen spec')
+    expect(calls).toEqual([])
   })
 
   it('keeps stdout JSON under `--json`', async () => {

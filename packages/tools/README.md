@@ -24,7 +24,8 @@ ran the command. `--registry github` installs from GitHub Packages instead, whic
 
 The other commands: `diff` (what you and the release have changed in the copied files), `update`
 (copy the release's changes where you have not edited), `theme validate | emit | schema` (check a
-system and palette you wrote), and `mcp` (the server, below). `polymorph --help` lists every flag.
+system and palette you wrote), and `mcp` (the server, below). `polymorph --help` lists every
+verb, and `polymorph <verb> --help` its flags.
 
 ## The MCP server
 

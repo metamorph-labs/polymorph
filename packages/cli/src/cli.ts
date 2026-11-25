@@ -314,7 +314,7 @@ function refuseCheckout(cli: Cli, command: 'add' | 'update'): string | null {
   const elsewhere =
     (cli.origin ?? 'checkout') === 'checkout'
       ? `pointing at this checkout: node ../polymorph/packages/cli/bin/polymorph.js ${command} …`
-      : `with the published tools: npx -y ${TOOLS_NAME} ${command} …`
+      : `with the published tools: npx -y ${TOOLS_NAME}@^${cli.registry.version} ${command} …`
   return (
     `polymorph ${command}: ${cli.root} is in a checkout of polymorph (${checkout}), and ` +
     `${command} would vendor the vocabulary into its own source — run it in the repository ` +
