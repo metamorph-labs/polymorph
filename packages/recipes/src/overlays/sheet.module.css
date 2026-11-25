@@ -96,6 +96,12 @@
   pointer-events: auto;
 }
 
+/* An open scrim takes the press that dismisses, also over a modal Dialog that
+   has turned the page's pointer events off. */
+.scrim[data-state='open'] {
+  pointer-events: auto;
+}
+
 /* Glass (`depth: glass`): the pane uses the surface role at the engine's mix
    (`--pm-material-surface`), and the material provides the lift that the
    overlay stacking order provides elsewhere. The backdrop shows through the

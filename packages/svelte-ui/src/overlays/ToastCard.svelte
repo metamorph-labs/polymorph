@@ -12,6 +12,7 @@ import {
   Icon,
   Render,
   TOAST_TONE_ICON,
+  focusAfterToast,
   joinSlot,
   removeToast,
   toast,
@@ -82,12 +83,16 @@ const present = usePresence(
   'toast.enter',
 )
 const effect1 = () => {
+  record.closing === true && focusAfterToast(card)
+}
+watchEffect(effect1, { watch: () => record.closing, mount: false })
+const effect2 = () => {
   present.current || removeToast(record.id)
 }
-watchEffect(effect1, { watch: () => present.current, mount: false })
-let release2: (() => void) | undefined
-const effect2 = () => {
-  release2?.()
+watchEffect(effect2, { watch: () => present.current, mount: false })
+let release3: (() => void) | undefined
+const effect3 = () => {
+  release3?.()
   const timer = setTimeout(
     () => {
       !paused &&
@@ -98,10 +103,10 @@ const effect2 = () => {
     },
     Number.isFinite(record.durationMs) ? record.durationMs : 0,
   )
-  release2 = () => clearTimeout(timer)
+  release3 = () => clearTimeout(timer)
 }
-watchEffect(effect2, { watch: () => [record.revision, paused, record.closing] })
-onDestroy(() => release2?.())
+watchEffect(effect3, { watch: () => [record.revision, paused, record.closing] })
+onDestroy(() => release3?.())
 </script>
 
 {@render joined.start?.()

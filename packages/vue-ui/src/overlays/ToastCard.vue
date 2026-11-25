@@ -8,7 +8,14 @@
  */
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
-import { Icon, TOAST_TONE_ICON, removeToast, toast, type ToastRecord } from '@polymorph/vue'
+import {
+  Icon,
+  TOAST_TONE_ICON,
+  focusAfterToast,
+  removeToast,
+  toast,
+  type ToastRecord,
+} from '@polymorph/vue'
 import { usePresence } from '@polymorph/vue/motion'
 import styles from '@polymorph/recipes/overlays/toast.module.css'
 import Button from '../controls/Button.vue'
@@ -74,12 +81,16 @@ const lift = computed(() => (): void => {
 })
 const present = usePresence(() => props.record.closing !== true, card, 'toast.enter')
 const effect1 = () => {
+  props.record.closing === true && focusAfterToast(card.value)
+}
+watch(() => props.record.closing, effect1, { flush: 'post' })
+const effect2 = () => {
   present.value || removeToast(props.record.id)
 }
-watch(() => present.value, effect1, { flush: 'post' })
-let release2: (() => void) | undefined
-const effect2 = () => {
-  release2?.()
+watch(() => present.value, effect2, { flush: 'post' })
+let release3: (() => void) | undefined
+const effect3 = () => {
+  release3?.()
   const timer = setTimeout(
     () => {
       !props.paused &&
@@ -90,11 +101,11 @@ const effect2 = () => {
     },
     Number.isFinite(props.record.durationMs) ? props.record.durationMs : 0,
   )
-  release2 = () => clearTimeout(timer)
+  release3 = () => clearTimeout(timer)
 }
-onMounted(effect2)
-watch(() => [props.record.revision, props.paused, props.record.closing], effect2, { flush: 'post' })
-onBeforeUnmount(() => release2?.())
+onMounted(effect3)
+watch(() => [props.record.revision, props.paused, props.record.closing], effect3, { flush: 'post' })
+onBeforeUnmount(() => release3?.())
 </script>
 
 <template>

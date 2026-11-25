@@ -82,15 +82,13 @@ describe('application feedback', () => {
     await userEvent.keyboard('{Escape}')
     await settled(1)
     const card = cards()[0]!
-    // The browser does not capture synthetic pointer IDs; the real Radix
-    // handlers still generate their swipe events, including the cancelable
-    // move/end defaults.
+    // The browser does not capture synthetic pointer IDs, so the capture is
+    // stubbed. A card the reader cannot dismiss takes no swipe at all.
     const capture = vi.spyOn(card, 'setPointerCapture').mockImplementation(() => {})
     fireEvent.pointerDown(card, { pointerId: 1, button: 0, clientX: 0, clientY: 0 })
     fireEvent.pointerMove(card, { pointerId: 1, clientX: 20, clientY: 0 })
     fireEvent.pointerMove(card, { pointerId: 1, clientX: 180, clientY: 0 })
     fireEvent.pointerUp(card, { pointerId: 1, clientX: 180, clientY: 0 })
-    expect(capture).toHaveBeenCalled()
     capture.mockRestore()
     expect(card.getAttribute('data-swipe')).toBeNull()
     expect(getToasts().find((record) => record.title === 'Try again')?.closing).not.toBe(true)

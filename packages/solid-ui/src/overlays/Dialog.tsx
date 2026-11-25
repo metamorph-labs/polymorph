@@ -5,7 +5,15 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { createUniqueId, mergeProps, onCleanup, onMount, useContext, type JSX } from 'solid-js'
+import {
+  createMemo,
+  createUniqueId,
+  mergeProps,
+  onCleanup,
+  onMount,
+  useContext,
+  type JSX,
+} from 'solid-js'
 import { Portal } from 'solid-js/web'
 
 import * as zag from '@zag-js/dialog'
@@ -22,6 +30,8 @@ import {
   createCell,
   createDerived,
   elementRef,
+  focusPlace,
+  focusReturnTarget,
   mergeParts,
   modalFocusTarget,
   provide,
@@ -30,6 +40,7 @@ import {
   useDirection,
   useMachine,
   useMediaQuery,
+  watchEffect,
   type Defaults,
 } from '@polymorph/solid'
 import { usePresence } from '@polymorph/solid/motion'
@@ -107,7 +118,8 @@ export default function Dialog(given: DialogProps): JSX.Element {
       () => props.trigger,
       () => ({ onClick: openFrom.value }),
     )
-    const opener = createCell(null as HTMLElement | null)
+    const pressed = createCell(null as HTMLElement | null)
+    const returnTo = createCell(null as ReturnType<typeof focusPlace>)
     const sheet = createDerived(() => props.presentation === 'sheet' && phone())
     const documentDirection = useDirection()
     const service = useMachine(
@@ -122,7 +134,7 @@ export default function Dialog(given: DialogProps): JSX.Element {
           closeOnEscape: props.dismissible,
           closeOnInteractOutside: props.dismissible,
           initialFocusEl: () => modalFocusTarget(panel.value, props.initialFocus),
-          finalFocusEl: () => opener.value,
+          finalFocusEl: () => focusReturnTarget(returnTo.value, [panel.value]),
           onOpenChange: (details) => {
             props.onOpenChange?.(details.open)
           },
@@ -130,7 +142,7 @@ export default function Dialog(given: DialogProps): JSX.Element {
     )
     const api = createDerived(() => zag.connect(service, normalizeProps))
     const openFrom = createDerived(() => (event?: Event) => {
-      if (event?.currentTarget instanceof HTMLElement) opener.value = event.currentTarget
+      if (event?.currentTarget instanceof HTMLElement) pressed.value = event.currentTarget
       api.value.setOpen(true)
     })
     const scrimPresent = usePresence(
@@ -148,9 +160,21 @@ export default function Dialog(given: DialogProps): JSX.Element {
       void (lender && (lender.element = () => panel.value))
     }
     onMount(effect1)
-    let release2: (() => void) | undefined
     const effect2 = () => {
-      release2?.()
+      void (
+        api.value.open &&
+        ((returnTo.value = focusPlace(pressed.value ?? document.activeElement)),
+        (pressed.value = null))
+      )
+    }
+    watchEffect(
+      createMemo(() => api.value.open),
+      effect2,
+      true,
+    )
+    let release3: (() => void) | undefined
+    const effect3 = () => {
+      release3?.()
       const ran = lender
         ? () => {}
         : agentMember({
@@ -166,12 +190,12 @@ export default function Dialog(given: DialogProps): JSX.Element {
                 })(),
             },
           })
-      release2 = () => {
+      release3 = () => {
         ran()
       }
     }
-    onMount(effect2)
-    onCleanup(() => release2?.())
+    onMount(effect3)
+    onCleanup(() => release3?.())
     return (
       <>
         {triggerSlot()}

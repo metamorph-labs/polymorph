@@ -5,7 +5,7 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { createUniqueId, mergeProps, onCleanup, onMount, type JSX } from 'solid-js'
+import { createMemo, createUniqueId, mergeProps, onCleanup, onMount, type JSX } from 'solid-js'
 import { Portal } from 'solid-js/web'
 
 import * as zag from '@zag-js/dialog'
@@ -16,13 +16,17 @@ import {
   afresh,
   agentMember,
   claimSlot,
+  createCell,
   createDerived,
   elementRef,
+  focusPlace,
+  focusReturnTarget,
   mergeParts,
   modalFocusTarget,
   scope,
   useDirection,
   useMachine,
+  watchEffect,
   type Defaults,
 } from '@polymorph/solid'
 import { usePresence } from '@polymorph/solid/motion'
@@ -79,6 +83,7 @@ export default function Drawer(given: DrawerProps): JSX.Element {
     const uid = createUniqueId()
     const panel = elementRef<HTMLElement>()
     const scrim = elementRef<HTMLElement>()
+    const returnTo = createCell(null as ReturnType<typeof focusPlace>)
     const documentDirection = useDirection()
     const service = useMachine(
       zag.machine,
@@ -91,6 +96,7 @@ export default function Drawer(given: DrawerProps): JSX.Element {
           closeOnEscape: props.dismissible,
           closeOnInteractOutside: props.dismissible,
           initialFocusEl: () => modalFocusTarget(panel.value, props.initialFocus),
+          finalFocusEl: () => focusReturnTarget(returnTo.value, [panel.value]),
           onOpenChange: (details) => {
             props.onOpenChange?.(details.open)
           },
@@ -112,9 +118,17 @@ export default function Drawer(given: DrawerProps): JSX.Element {
         },
       },
     )
-    let release1: (() => void) | undefined
     const effect1 = () => {
-      release1?.()
+      void (api.value.open && (returnTo.value = focusPlace(document.activeElement)))
+    }
+    watchEffect(
+      createMemo(() => api.value.open),
+      effect1,
+      true,
+    )
+    let release2: (() => void) | undefined
+    const effect2 = () => {
+      release2?.()
       const ran = agentMember({
         member: 'Drawer',
         element: () => panel.value,
@@ -128,12 +142,12 @@ export default function Drawer(given: DrawerProps): JSX.Element {
             })(),
         },
       })
-      release1 = () => {
+      release2 = () => {
         ran()
       }
     }
-    onMount(effect1)
-    onCleanup(() => release1?.())
+    onMount(effect2)
+    onCleanup(() => release2?.())
     return (
       <Portal>
         {afresh(() => (

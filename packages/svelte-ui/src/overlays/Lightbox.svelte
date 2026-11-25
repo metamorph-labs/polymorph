@@ -17,6 +17,8 @@ import {
   SlotScope,
   agentMember,
   attributes,
+  focusPlace,
+  focusReturnTarget,
   joinSlot,
   mergeParts,
   modalFocusTarget,
@@ -100,7 +102,8 @@ const joined = joinSlot(undefined, () => ({ label: labelOwn }))
 const label = $derived(
   joined.passed['label'] === undefined ? labelOwn : (joined.passed['label'] as typeof labelOwn),
 )
-let opener = $state(null as HTMLElement | null)
+let pressed = $state(null as HTMLElement | null)
+let returnTo = $state(null as ReturnType<typeof focusPlace>)
 // svelte-ignore state_referenced_locally
 let mirror = $state(defaultIndex)
 let panel = $state<HTMLElement | null>(null)
@@ -146,7 +149,7 @@ const service = useMachine(
       open: open === undefined ? undefined : open && images.length > 0,
       defaultOpen: defaultOpen === undefined ? undefined : defaultOpen && images.length > 0,
       initialFocusEl: () => modalFocusTarget(panel, 'primary'),
-      finalFocusEl: () => opener,
+      finalFocusEl: () => focusReturnTarget(returnTo, [panel]),
       onOpenChange: (details) => {
         onOpenChange?.(details.open)
       },
@@ -155,7 +158,7 @@ const service = useMachine(
 const api = $derived(zag.connect(service, normalizeProps))
 const openFrom = $derived((event?: Event) => {
   if (images.length === 0) return
-  if (event?.currentTarget instanceof HTMLElement) opener = event.currentTarget
+  if (event?.currentTarget instanceof HTMLElement) pressed = event.currentTarget
   api.setOpen(true)
 })
 const scrimPresent = usePresence(
@@ -175,9 +178,13 @@ const effect1 = () => {
   focusAfterMove()
 }
 watchEffect(effect1, { watch: () => shown, mount: false })
-let release2: (() => void) | undefined
 const effect2 = () => {
-  release2?.()
+  api.open && ((returnTo = focusPlace(pressed ?? document.activeElement)), (pressed = null))
+}
+watchEffect(effect2, { watch: () => api.open })
+let release3: (() => void) | undefined
+const effect3 = () => {
+  release3?.()
   const ran = agentMember({
     member: 'Lightbox',
     element: () => panel,
@@ -203,12 +210,12 @@ const effect2 = () => {
     },
     withholds: () => panel,
   })
-  release2 = () => {
+  release3 = () => {
     ran()
   }
 }
-watchEffect(effect2)
-onDestroy(() => release2?.())
+watchEffect(effect3)
+onDestroy(() => release3?.())
 </script>
 
 {@render joined.start?.()

@@ -11,13 +11,16 @@ import {
 } from 'react'
 
 import {
+  focusPlace,
   memberAttr,
+  returnFocusTo,
   revealTourTarget,
   useAgentMember,
   tourPlacement,
   tourTarget,
   tourTargetRect,
   tourViewport,
+  type FocusPlace,
   type TourPlacement,
   type TourRect,
 } from '@polymorph/react'
@@ -231,16 +234,18 @@ export function TourRoot({
   }, [open, index])
 
   // Focus returns to where it was when the tour opened. A tour has no trigger,
-  // so Radix's own return has nothing to go back to.
-  const returnTo = useRef<HTMLElement | null>(null)
+  // so Radix's own return has nothing to go back to. When the element that had
+  // focus has left the page, focus goes to the focusable element nearest where
+  // it was (`returnFocusTo`).
+  const returnTo = useRef<FocusPlace | null>(null)
   const onOpenAutoFocus = (event: Event) => {
-    returnTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    returnTo.current = focusPlace(document.activeElement)
     event.preventDefault()
     panel.current?.focus()
   }
   const onCloseAutoFocus = (event: Event) => {
     event.preventDefault()
-    returnTo.current?.focus()
+    returnFocusTo(returnTo.current, [event.currentTarget as Element | null])
   }
 
   const placement = geometry?.placement ?? 'center'

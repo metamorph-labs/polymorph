@@ -18,6 +18,7 @@ import {
   cell,
   derived,
   elementRef,
+  focusAfterRemoval,
   isTemplate,
   mountEffect,
   uniqueId,
@@ -246,16 +247,23 @@ export class ArtifactPane {
   protected readonly template = isTemplate
   private release1: (() => void) | undefined
   private release2: (() => void) | undefined
+  private release3: (() => void) | undefined
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.release1?.())
     watchEffect(
-      () => this.shown.value?.id,
+      () => this.pane.value,
       () => this.effect1(),
       true,
     )
     inject(DestroyRef).onDestroy(() => this.release2?.())
-    mountEffect(() => this.effect2())
+    watchEffect(
+      () => this.shown.value?.id,
+      () => this.effect2(),
+      true,
+    )
+    inject(DestroyRef).onDestroy(() => this.release3?.())
+    mountEffect(() => this.effect3())
   }
 
   protected e1() {
@@ -435,6 +443,14 @@ export class ArtifactPane {
 
   private effect1(): void {
     this.release1?.()
+    const ran = focusAfterRemoval(this.pane.value)
+    this.release1 = () => {
+      ran()
+    }
+  }
+
+  private effect2(): void {
+    this.release2?.()
     const run = () => {
       this.overflowing.value =
         this.body.value !== null && this.body.value.scrollHeight > this.body.value.clientHeight
@@ -442,14 +458,14 @@ export class ArtifactPane {
     const resize = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(run)
     for (const element of [this.body.value, this.body.value?.firstElementChild])
       if (element) resize?.observe(element)
-    this.release1 = () => {
+    this.release2 = () => {
       resize?.disconnect()
     }
     run()
   }
 
-  private effect2(): void {
-    this.release2?.()
+  private effect3(): void {
+    this.release3?.()
     const ran = agentMember({
       member: 'ArtifactPane',
       element: () => this.pane.value,
@@ -474,7 +490,7 @@ export class ArtifactPane {
       },
       withholds: () => [this.switcher.value, this.closer.value],
     })
-    this.release2 = () => {
+    this.release3 = () => {
       ran()
     }
   }

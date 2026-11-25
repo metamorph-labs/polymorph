@@ -15,8 +15,10 @@ import {
   SlotTemplate,
   agentMember,
   elementRef,
+  focusAfterRemoval,
   mountEffect,
   useMember,
+  watchEffect,
   type IconProps,
 } from '@polymorph/angular'
 import styles from '@polymorph/recipes/structure/banner.module.css'
@@ -105,10 +107,17 @@ export class Banner {
   protected readonly closeRegion = elementRef<HTMLElement>()
   protected readonly root = elementRef<HTMLElement>()
   private release1: (() => void) | undefined
+  private release2: (() => void) | undefined
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.release1?.())
-    mountEffect(() => this.effect1())
+    watchEffect(
+      () => this.root.value,
+      () => this.effect1(),
+      true,
+    )
+    inject(DestroyRef).onDestroy(() => this.release2?.())
+    mountEffect(() => this.effect2())
   }
 
   protected e1() {
@@ -180,6 +189,14 @@ export class Banner {
 
   private effect1(): void {
     this.release1?.()
+    const ran = focusAfterRemoval(this.root.value)
+    this.release1 = () => {
+      ran()
+    }
+  }
+
+  private effect2(): void {
+    this.release2?.()
     const ran = agentMember({
       member: 'Banner',
       element: () => this.root.value,
@@ -197,7 +214,7 @@ export class Banner {
       },
       withholds: () => this.closeRegion.value,
     })
-    this.release1 = () => {
+    this.release2 = () => {
       ran()
     }
   }

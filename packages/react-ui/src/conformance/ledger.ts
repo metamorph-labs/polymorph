@@ -23,15 +23,4 @@ export interface ConformanceDivergence {
   fails: string
 }
 
-export const CONFORMANCE_LEDGER: readonly ConformanceDivergence[] = [
-  {
-    member: 'Toast',
-    statement: 'announces live:polite when the viewport',
-    reason:
-      'Radix announces each toast from a visually hidden `role="status"` node it portals to the ' +
-      'end of the body and removes a second later. The polite announcement is real, but it is ' +
-      'never inside the viewport or the card, where the runner looks, and the spec keeps the ' +
-      'claim because the reader hears it.',
-    fails: 'nothing in the member matches',
-  },
-]
+export const CONFORMANCE_LEDGER: readonly ConformanceDivergence[] = []

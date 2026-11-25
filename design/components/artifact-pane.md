@@ -112,7 +112,10 @@ not as a second `region`, because a reader cannot tell apart two landmarks with
 the same name (CodeBlock's rule, with the landmark already above it). The switch
 is SegmentedControl's radio group, named by `viewsLabel`. Streaming is announced
 by the Spinner's status, which includes the title, and the pane is `aria-busy`.
-Close is a real Button with the app's label.
+Close is a real Button with the app's label. When the app removes the pane while focus is in
+it, after its close control for one, focus moves to the first focusable element after where the
+pane was, else the last one before it, else the page's `main`, by Alert's rule
+(`focusAfterRemoval`), and not to the body.
 
 ## Agent
 

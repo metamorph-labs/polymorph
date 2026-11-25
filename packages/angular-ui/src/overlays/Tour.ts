@@ -19,6 +19,8 @@ import {
   classes,
   derived,
   elementRef,
+  focusPlace,
+  focusReturnTarget,
   mergeParts,
   mountEffect,
   normalizeProps,
@@ -194,6 +196,7 @@ export class Tour {
   protected readonly uid = uniqueId()
   protected readonly uncontrolledStep = cell(() => this.$p.defaultStep ?? 0)
   protected readonly ending = cell(() => null as 'finished' | 'dismissed' | null)
+  protected readonly returnTo = cell(() => null as ReturnType<typeof focusPlace>)
   protected readonly geometry = cell(
     () =>
       null as {
@@ -264,6 +267,7 @@ export class Tour {
           preventScroll: false,
           closeOnInteractOutside: false,
           initialFocusEl: () => this.panel.value,
+          finalFocusEl: () => focusReturnTarget(this.returnTo.value, [this.panel.value]),
           onOpenChange: (details) => {
             this.closed.value(details.open)
           },
@@ -301,19 +305,18 @@ export class Tour {
       }),
     ),
   )
-  private release2: (() => void) | undefined
   private release3: (() => void) | undefined
-  private release5: (() => void) | undefined
+  private release4: (() => void) | undefined
+  private release6: (() => void) | undefined
 
   constructor() {
     watchEffect(
-      () => [this.api.value.open, this.index.value],
+      () => this.api.value.open,
       () => this.effect1(),
       true,
     )
-    inject(DestroyRef).onDestroy(() => this.release2?.())
     watchEffect(
-      () => this.api.value.open,
+      () => [this.api.value.open, this.index.value],
       () => this.effect2(),
       true,
     )
@@ -323,13 +326,19 @@ export class Tour {
       () => this.effect3(),
       true,
     )
+    inject(DestroyRef).onDestroy(() => this.release4?.())
+    watchEffect(
+      () => this.api.value.open,
+      () => this.effect4(),
+      true,
+    )
     watchEffect(
       () => this.index.value,
-      () => this.effect4(),
+      () => this.effect5(),
       false,
     )
-    inject(DestroyRef).onDestroy(() => this.release5?.())
-    mountEffect(() => this.effect5())
+    inject(DestroyRef).onDestroy(() => this.release6?.())
+    mountEffect(() => this.effect6())
   }
 
   protected e1() {
@@ -471,36 +480,40 @@ export class Tour {
   }
 
   private effect1(): void {
-    this.show.value()
+    void (this.api.value.open && (this.returnTo.value = focusPlace(document.activeElement)))
   }
 
   private effect2(): void {
-    this.release2?.()
+    this.show.value()
+  }
+
+  private effect3(): void {
+    this.release3?.()
     const run = () => {
       this.place.value()
     }
     const resize = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(run)
     for (const element of [this.positioner.value]) if (element) resize?.observe(element)
-    this.release2 = () => {
+    this.release3 = () => {
       resize?.disconnect()
     }
     run()
   }
 
-  private effect3(): void {
-    this.release3?.()
+  private effect4(): void {
+    this.release4?.()
     const ran = this.follow.value()
-    this.release3 = () => {
+    this.release4 = () => {
       ran()
     }
   }
 
-  private effect4(): void {
+  private effect5(): void {
     void (this.api.value.open && this.panel.value?.focus())
   }
 
-  private effect5(): void {
-    this.release5?.()
+  private effect6(): void {
+    this.release6?.()
     const ran = agentMember({
       member: 'Tour',
       element: () => this.panel.value,
@@ -527,7 +540,7 @@ export class Tour {
       },
       withholds: () => this.panel.value,
     })
-    this.release5 = () => {
+    this.release6 = () => {
       ran()
     }
   }

@@ -109,8 +109,8 @@ the meaning). The hint is a `Kbd`, not an icon.
 
 ## A11y
 
-Dialog owns modality: trap, Escape, scrim and focus return. Opening puts focus in the search
-field. `README-substrates.md` §4 allows
+Dialog owns modality: trap, Escape, scrim and focus return, by Dialog's rule when the launcher
+has left the page. Opening puts focus in the search field. `README-substrates.md` §4 allows
 exactly one focus manager, and it is Radix. Inside, the Combobox pattern applies verbatim:
 `role="combobox"` input, `aria-activedescendant`, `role="listbox"` with grouped
 `role="option"`s (`aria-labelledby` group headers). Escape clears the query if it is not empty,
@@ -130,6 +130,7 @@ key Escape clears on input when open
 key Escape clears on input when open with a query
 key Escape closes on input when open
 focus on-close trigger
+focus on-close nearest
 dismiss both
 announces live:polite when open
 ```

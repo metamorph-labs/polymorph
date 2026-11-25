@@ -99,6 +99,9 @@ export default describeMember({
     choices: '(views ?? []).map((entry) => ({ value: entry.id, label: entry.label }))',
   },
   effects: [
+    // Focus in the pane as the application removes it, the close control's after `close`, moves
+    // to the focusable element nearest where it was (`focusAfterRemoval`), not to the body.
+    { watch: 'pane', run: 'focusAfterRemoval(pane)', release: 'ran()' },
     {
       watch: 'shown?.id',
       resize: ['body', 'body?.firstElementChild'],

@@ -206,6 +206,13 @@ export const ENGINE_HELPERS: readonly string[] = [
   // Where focus goes once a removed file or attachment has left its list.
   'focusAfterRemoval',
   'modalFocusTarget',
+  // Where focus goes when the control an overlay returns to, or a region that holds focus, has
+  // left the page, and when a toast that holds focus leaves.
+  'focusPlace',
+  'focusReturnTarget',
+  'focusAfterRemoval',
+  'focusAfterToast',
+  'noteToastEntry',
   'avatarTone',
   'initialsOf',
   'paginationWindow',

@@ -15,6 +15,7 @@ import {
   createCell,
   createDerived,
   elementRef,
+  focusAfterToast,
   removeToast,
   scope,
   toast,
@@ -91,16 +92,24 @@ export default function ToastCard(given: ToastCardProps): JSX.Element {
       'toast.enter',
     )
     const effect1 = () => {
+      void (props.record.closing === true && focusAfterToast(card.value))
+    }
+    watchEffect(
+      createMemo(() => props.record.closing),
+      effect1,
+      false,
+    )
+    const effect2 = () => {
       void (present() || removeToast(props.record.id))
     }
     watchEffect(
       createMemo(() => present()),
-      effect1,
+      effect2,
       false,
     )
-    let release2: (() => void) | undefined
-    const effect2 = () => {
-      release2?.()
+    let release3: (() => void) | undefined
+    const effect3 = () => {
+      release3?.()
       const timer = setTimeout(
         () => {
           void (
@@ -113,14 +122,14 @@ export default function ToastCard(given: ToastCardProps): JSX.Element {
         },
         Number.isFinite(props.record.durationMs) ? props.record.durationMs : 0,
       )
-      release2 = () => clearTimeout(timer)
+      release3 = () => clearTimeout(timer)
     }
     watchEffect(
       createMemo(() => [props.record.revision, props.paused, props.record.closing]),
-      effect2,
+      effect3,
       true,
     )
-    onCleanup(() => release2?.())
+    onCleanup(() => release3?.())
     return (
       <li
         class={styles.toast}

@@ -2,6 +2,7 @@ import { userEvent } from 'vitest/browser'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
 
+import { toastFocusLaw } from '@polymorph/conformance/toast-focus'
 import { toastSwipeLaw } from '@polymorph/conformance/toast-swipe'
 import { createAgentBridge } from '@polymorph/engine/agent'
 import { installTestTheme } from '@polymorph/engine/testing'
@@ -27,6 +28,13 @@ afterEach(() => {
 
 const cards = () => [...document.querySelectorAll<HTMLElement>('[data-member="toast"]')]
 const list = () => document.querySelector<HTMLElement>('[data-toast-part="list"]')
+
+toastFocusLaw({
+  shell: 'Vue',
+  mount: () => mount(() => h(Toast.Viewport)),
+  raise: (options) => void toast({ ...options, durationMs: Number.POSITIVE_INFINITY }),
+  clear: () => getToasts().forEach((record) => removeToast(record.id)),
+})
 
 toastSwipeLaw({
   shell: 'Vue',

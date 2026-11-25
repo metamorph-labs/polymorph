@@ -96,8 +96,11 @@ const raise = (...buttons: FixtureChild[]) => ({
  * for a pinned toast or one the reader cannot dismiss; Escape, the close
  * button and a swipe to the right dismiss a dismissible card; and a polite
  * and an assertive live region, which announce the newest toast of each
- * politeness: danger and warning interrupt, and the other tones wait. A card
- * that has played its exit is removed from the store.
+ * politeness: danger and warning interrupt, and the other tones wait. Escape
+ * reaches a card only while focus is in it. Focus in a card whose toast leaves
+ * moves to the next toast, else the previous one, else where it came from as
+ * it entered the list. A card that has played its exit is removed from the
+ * store.
  */
 export default describeMember({
   member: 'Toast',
@@ -199,7 +202,9 @@ export default describeMember({
               on: {
                 pointerenter: run('paused = true'),
                 pointerleave: run('paused = false'),
-                focusin: run('paused = true'),
+                // Where focus came from as it enters, so it can go back there when the last
+                // toast it is on leaves.
+                focusin: run('(paused = true, noteToastEntry(list, $event.relatedTarget))'),
                 focusout: run('paused = false'),
               },
             },
@@ -276,6 +281,13 @@ export default describeMember({
         present: { open: 'record.closing !== true', ref: 'card', binding: 'toast.enter' },
       },
       effects: [
+        // Focus in a card whose toast starts to leave moves to the next toast, else the previous
+        // one, else where it came from (`focusAfterToast`), before the card leaves the page.
+        {
+          watch: 'record.closing',
+          mount: false,
+          run: 'record.closing === true && focusAfterToast(card)',
+        },
         // Step two of dismissal: once the exit has played, the record leaves the store.
         { watch: 'present', mount: false, run: 'present || removeToast(record.id)' },
         // The timer: restarted by an update, held while the reader is on the list, and none for

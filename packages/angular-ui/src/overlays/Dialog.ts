@@ -23,6 +23,8 @@ import {
   classes,
   derived,
   elementRef,
+  focusPlace,
+  focusReturnTarget,
   lenderHolder,
   lentIdentity,
   mergeParts,
@@ -35,6 +37,7 @@ import {
   useMachine,
   useMediaQuery,
   useMember,
+  watchEffect,
 } from '@polymorph/angular'
 import { usePresence } from '@polymorph/angular/motion'
 import styles from '@polymorph/recipes/overlays/dialog.module.css'
@@ -203,7 +206,8 @@ export class Dialog {
   protected readonly lent = lentIdentity()
   protected readonly lender = lenderHolder()
   protected readonly uid = uniqueId()
-  protected readonly opener = cell(() => null as HTMLElement | null)
+  protected readonly pressed = cell(() => null as HTMLElement | null)
+  protected readonly returnTo = cell(() => null as ReturnType<typeof focusPlace>)
   protected readonly panel = elementRef<HTMLElement>()
   protected readonly scrim = elementRef<HTMLElement>()
   protected readonly phone = useMediaQuery('phone')
@@ -222,7 +226,7 @@ export class Dialog {
           closeOnEscape: this.$p.dismissible,
           closeOnInteractOutside: this.$p.dismissible,
           initialFocusEl: () => modalFocusTarget(this.panel.value, this.$p.initialFocus),
-          finalFocusEl: () => this.opener.value,
+          finalFocusEl: () => focusReturnTarget(this.returnTo.value, [this.panel.value]),
           onOpenChange: (details) => {
             this.$.emit(this.onOpenChange, 'onOpenChange', details.open)
           },
@@ -233,7 +237,7 @@ export class Dialog {
     zag.connect(this.service.value, normalizeProps),
   )
   protected readonly openFrom = derived(() => (event?: Event) => {
-    if (event?.currentTarget instanceof HTMLElement) this.opener.value = event.currentTarget
+    if (event?.currentTarget instanceof HTMLElement) this.pressed.value = event.currentTarget
     this.api.value.setOpen(true)
   })
   protected readonly scrimPresent = setup(() =>
@@ -251,13 +255,18 @@ export class Dialog {
       { sheetSide: 'bottom' },
     ),
   )
-  private release2: (() => void) | undefined
+  private release3: (() => void) | undefined
 
   constructor() {
     this.$.pass('trigger', () => ({ onClick: this.openFrom.value }))
     mountEffect(() => this.effect1())
-    inject(DestroyRef).onDestroy(() => this.release2?.())
-    mountEffect(() => this.effect2())
+    watchEffect(
+      () => this.api.value.open,
+      () => this.effect2(),
+      true,
+    )
+    inject(DestroyRef).onDestroy(() => this.release3?.())
+    mountEffect(() => this.effect3())
   }
 
   protected e1() {
@@ -374,7 +383,15 @@ export class Dialog {
   }
 
   private effect2(): void {
-    this.release2?.()
+    void (
+      this.api.value.open &&
+      ((this.returnTo.value = focusPlace(this.pressed.value ?? document.activeElement)),
+      (this.pressed.value = null))
+    )
+  }
+
+  private effect3(): void {
+    this.release3?.()
     const ran = this.lender
       ? () => {}
       : agentMember({
@@ -390,7 +407,7 @@ export class Dialog {
               })(),
           },
         })
-    this.release2 = () => {
+    this.release3 = () => {
       ran()
     }
   }

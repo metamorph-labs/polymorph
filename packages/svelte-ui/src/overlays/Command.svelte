@@ -15,6 +15,8 @@ import {
   Portal,
   agentMember,
   attributes,
+  focusPlace,
+  focusReturnTarget,
   joinSlot,
   normalizeProps,
   useDirection,
@@ -85,6 +87,7 @@ const label = $derived(
   joined.passed['label'] === undefined ? labelOwn : (joined.passed['label'] as typeof labelOwn),
 )
 let query = $state('')
+let returnTo = $state(null as ReturnType<typeof focusPlace>)
 let panel = $state<HTMLElement | null>(null)
 let scrim = $state<HTMLElement | null>(null)
 const documentDirection = useDirection()
@@ -95,6 +98,7 @@ const service = useMachine(
       id: uid,
       dir: documentDirection.current,
       open: open,
+      finalFocusEl: () => focusReturnTarget(returnTo, [panel]),
       'aria-label': label,
       onEscapeKeyDown: (event) => query !== '' && event.preventDefault(),
       onOpenChange: (details) => {
@@ -114,9 +118,13 @@ const panelPresent = usePresence(
   'command.panel',
   { side: 'bottom', align: 'center' },
 )
-let release1: (() => void) | undefined
 const effect1 = () => {
-  release1?.()
+  api.open && (returnTo = focusPlace(document.activeElement))
+}
+watchEffect(effect1, { watch: () => api.open })
+let release2: (() => void) | undefined
+const effect2 = () => {
+  release2?.()
   const ran = agentMember({
     member: 'Command',
     element: () => panel,
@@ -140,12 +148,12 @@ const effect1 = () => {
       close: () => api.open && api.setOpen(false),
     },
   })
-  release1 = () => {
+  release2 = () => {
     ran()
   }
 }
-watchEffect(effect1)
-onDestroy(() => release1?.())
+watchEffect(effect2)
+onDestroy(() => release2?.())
 </script>
 
 {@render joined.start?.()

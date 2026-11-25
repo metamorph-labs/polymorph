@@ -17,8 +17,8 @@ import type { IconRole } from '../icon/roles'
  * State-owned error notices persist until resolved or explicitly dismissed;
  * required recovery controls cannot disappear while their owning state remains.
  * A toast's tone sets how long it stays unless the call says (`toneLifetime`),
- * so a toast raised by `toast()`, a declared Toast and React's ToastNotice keep
- * one rule.
+ * and a toast with an action waits to be dismissed, so a toast raised by
+ * `toast()`, a declared Toast and React's ToastNotice keep one rule.
  */
 
 export type ToastTone = 'neutral' | 'success' | 'danger' | 'warning' | 'info'
@@ -43,7 +43,11 @@ export interface ToastStoreOptions<Content = unknown> {
    */
   retained?: boolean
   tone?: ToastTone
-  /** At most one; a shortcut, never the only way to do what it does. */
+  /**
+   * At most one; a shortcut, never the only way to do what it does. A call with
+   * an action that sets neither `durationMs` nor `retained` is pinned, so a
+   * reader has the time to reach the action.
+   */
   action?: ToastAction
   /**
    * `Infinity` pins the toast until it is dismissed. A call that sets neither this nor
@@ -157,13 +161,23 @@ export function toneLifetime(tone: ToastTone): { retained: boolean; durationMs: 
  * The lifetime a call gets: the tone's when it sets neither `retained` nor
  * `durationMs`, and otherwise what it sets, with the default duration and no
  * retention for the one it leaves out, as before the tone decided.
+ *
+ * A toast with an action that sets neither is pinned until it is dismissed,
+ * whatever its tone. A reader who works by keyboard or with a screen reader
+ * hears the toast, then has to reach its action with F8 and Tab, and a timer
+ * that ends first takes the action away (WCAG 2.2.1, timing adjustable). The
+ * tone still decides whether newer toasts may evict it.
  */
 function lifetimeOf(options: ToastStoreOptions<unknown>): {
   retained: boolean | undefined
   durationMs: number
 } {
-  if (options.retained === undefined && options.durationMs === undefined)
-    return toneLifetime(options.tone ?? 'neutral')
+  if (options.retained === undefined && options.durationMs === undefined) {
+    const lifetime = toneLifetime(options.tone ?? 'neutral')
+    return options.action === undefined
+      ? lifetime
+      : { ...lifetime, durationMs: Number.POSITIVE_INFINITY }
+  }
   return {
     retained: options.retained,
     durationMs: options.durationMs ?? TOAST_DEFAULT_DURATION_MS,

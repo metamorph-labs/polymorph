@@ -3,9 +3,10 @@
 Notifications, raised imperatively, that report the outcome of an action.
 Confirmation questions belong in Dialog.
 
-Radix `@radix-ui/react-toast` supplies the viewport and swipe behaviour. The stacking
-choreography is the vocabulary's (the motion engine's `MotionPresence` /
-`MotionSurface`, `@polymorph/react/motion`). An application that reports its errors
+The viewport, its timers, the swipe and the announcements are the vocabulary's own, and every
+web framework draws them alike. No card is a dismissable layer of the page, so a toast raised
+while a Dialog is open never takes Escape from the dialog. The stacking choreography is the
+motion engine's (`MotionPresence` / `MotionSurface`, `@polymorph/react/motion`). An application that reports its errors
 through the viewport uses the state-owned notices below instead of inline error
 surfaces.
 
@@ -76,7 +77,7 @@ toast(options: {
   title: string
   description?: string
   tone?: 'neutral' | 'success' | 'danger' | 'warning' | 'info'   // default 'neutral'
-  action?: { label: string; onClick: () => void }                 // at most one
+  action?: { label: string; onClick: () => void }                 // at most one; pins the toast (Lifetime)
   durationMs?: number                                             // default by tone (Lifetime); Infinity pins
   content?: ReactNode                                             // host-supplied body — recovery controls included (see Notices a screen owns)
   dismissible?: boolean                                           // default true; false ⇒ no timeout, close, Escape or swipe can remove it
@@ -97,10 +98,15 @@ A toast's tone sets how long it stays when the call sets neither `retained` nor
 is dismissed or its owner removes it, and no newer toast evicts it, because it reports
 an outcome the reader may have to act on. A `success`, `info` or `neutral` toast leaves
 after `TOAST_DEFAULT_DURATION_MS` (5000) and may be evicted, because the reader has
-nothing to do about it once it is read. A call that sets either one takes what it sets,
+nothing to do about it once it is read. A toast with an `action` gives the reader something
+to do, so it is pinned until it is dismissed, whatever its tone. A reader who works by
+keyboard or with a screen reader hears the toast, then reaches its action with F8 and Tab, and
+a timer that ends first takes the action away (WCAG 2.2.1, timing adjustable). Its tone still
+decides whether newer toasts may evict it. A call that sets either one takes what it sets,
 with 5000 and no retention for the one it leaves out. The rule is the store's, so a
 raised toast, React's `ToastNotice` and a declared `Toast` in every other web framework
-follow it. The SwiftUI and Compose Toast apply the same rule to their props.
+follow it. The SwiftUI and Compose Toast apply the tone rule to their props, and do not pin a
+toast for its action.
 
 **`toast.promise(promise, { loading, success, error })`** raises the `loading` face
 immediately: a neutral surface, the `loading` glyph (`spin` ambient) in the tone-icon
@@ -119,7 +125,8 @@ contract and is not a special path.
 
 `<ToastHost>` mounts the viewport once at the application root. The store keys records
 by `id`, so an update is one publish rather than a remove and an add. Toast attributes:
-`data-tone`, `data-state="open|closed"`, `data-swipe-*` (Radix).
+`data-tone`, `data-state="open|closed"`, `data-swipe="move|cancel|end"` and
+`data-swipe-direction="right"`.
 
 ## Dimensions & stacking
 
@@ -195,7 +202,7 @@ hit areas, callbacks and recovery gates remain intact.
   the stack above **re-flows via spring** instead of jumping.
 - Exit (timeout or dismiss): `fade` + height `collapse` at `-surface-exit` × `-exit`;
   the remaining toasts move into the gap (the list re-flow animates).
-- Swipe: Radix swipe-to-dismiss (right). Releasing past the threshold exits; otherwise
+- Swipe: swipe-to-dismiss (right). Releasing past the threshold exits; otherwise
   the toast springs back. While it is dragged the card is drawn at the finger's offset, which
   outranks the enter and the exit: the recipe marks that offset important, because the engine
   leaves its own `translate` inline on the card.
@@ -216,16 +223,29 @@ visually.
 
 ## A11y
 
-Radix: `role="status"`/`aria-live="polite"` for neutral/success/info; `danger` and
-`warning` raise as `role="alert"` (assertive). Hotkey F8 focuses the viewport, a labelled
-`region` (Radix default); Escape dismisses a dismissible toast. Imperative transient actions are
-accelerators. An application's sole recovery action instead uses the retained,
-non-dismissible `ToastNotice` described above. Radix's live announcement is separate
-from the visible card; browser assertions should target the card for visible content.
+The viewport holds two live regions: a polite one (`role="status"`) says the newest neutral,
+success or info toast, and an assertive one (`role="alert"`) the newest danger or warning toast.
+The cards are not live regions, because a region that appears with its words already in it is
+not reliably read. F8 focuses the notifications from anywhere on the page: the list, inside a
+labelled `region`. Escape on a focused toast dismisses it when it is dismissible. With focus
+anywhere else Escape is the page's, so a toast never takes it from a field or an open Dialog.
+
+When a toast that holds focus leaves, by its close control, its action, Escape or a call to
+`toast.dismiss`, focus moves to the next toast, else the previous one, so a reader working down
+the stack stays in it. With no toast left, focus goes back to the element it came from as it
+entered the notifications, by F8 or by Tab, while that element is in the document, and
+otherwise to the list. The rule is the engine's (`focusAfterToast`,
+`packages/engine/src/toast/focus.ts`), and the shared law in
+`packages/conformance/src/toast-focus.ts` holds it in every web framework.
+
+Imperative transient actions are accelerators. An application's sole recovery action instead
+uses the retained, non-dismissible `ToastNotice` described above. The live announcement is
+separate from the visible card; browser assertions should target the card for visible content.
 
 ```contract
 role viewport region when the viewport
 announces live:polite when the viewport
+key F8 focuses viewport when the viewport
 ```
 
 ## Agent
