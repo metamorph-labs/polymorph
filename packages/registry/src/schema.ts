@@ -347,6 +347,13 @@ const ICONS = obj({
       group: str(),
     }),
   ),
+  trailing: arr(
+    str({
+      description:
+        "A role a Button's trailing icon may take: one that points onward or shows a disclosure. " +
+        'Every other role leads its text.',
+    }),
+  ),
 })
 
 const LADDER_RUNG = obj({

@@ -114,7 +114,7 @@ export interface Registry {
    * Another framework's packages are ranged in `vendor.frameworks`.
    */
   packages: Record<string, string>
-  icons: { sizes: string[]; roles: { name: string; group: string }[] }
+  icons: { sizes: string[]; roles: { name: string; group: string }[]; trailing: string[] }
   theme: ThemeCatalogue
   exceptions: { ladder: LadderRung[]; primitives: ExceptionPrimitive[] }
   laws: RegistryLaw[]
@@ -283,6 +283,12 @@ export function buildRegistry(root: string): Registry {
       roles: Object.entries(iconSet.roles)
         .map(([name, meta]) => ({ name, group: (meta as { group: string }).group }))
         .sort((a, b) => a.name.localeCompare(b.name)),
+      // The roles a Button's trailing icon may take: a direction or a disclosure. The red rule
+      // `trailing-icon` and the spec validator read this one list.
+      trailing: Object.entries(iconSet.roles)
+        .filter(([, meta]) => (meta as { trailing?: boolean }).trailing === true)
+        .map(([name]) => name)
+        .sort(),
     },
     theme,
     exceptions: { ladder, primitives },

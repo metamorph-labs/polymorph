@@ -34,6 +34,9 @@ export const PARTS: Readonly<Record<string, Readonly<Record<string, string>>>> =
     // inside its `poly-button` element, so the host's place in the footer is read there.
     primary:
       '[data-member="dialog"] [data-dialog-part="footer"] > button:last-child, [data-member="dialog"] [data-dialog-part="footer"] > pm-button:last-child > button, [data-member="dialog"] [data-dialog-part="footer"] > poly-button:last-child > button',
+    // The footer's first Button, the dismiss a panel starts on when its primary is destructive.
+    dismiss:
+      '[data-member="dialog"] [data-dialog-part="footer"] > button:first-child, [data-member="dialog"] [data-dialog-part="footer"] > pm-button:first-child > button, [data-member="dialog"] [data-dialog-part="footer"] > poly-button:first-child > button',
     close: '[data-member="dialog"] [data-dialog-part="close"] button',
   },
   ConfirmDialog: {

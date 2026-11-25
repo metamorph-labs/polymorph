@@ -4,7 +4,7 @@ import { Trash2 } from 'lucide-solid'
 import { createSignal } from 'solid-js'
 import { Motion } from 'solid-motionone'
 
-import { Button, Hero, PageHeader } from '@polymorph/solid-ui'
+import { Button, Card, Hero, PageHeader } from '@polymorph/solid-ui'
 
 import './Inbox.module.css'
 
@@ -27,6 +27,12 @@ export function Inbox() {
       <Motion.div animate={{ opacity: 1 }} />
       <span>{String(scaleLinear)}</span>
       <span>{TOPBAR}</span>
+      {/* A second main Button, a danger Button before a safe one, and a trailing icon that neither points nor opens. */}
+      <Card title="Plan">
+        <Button label="Upgrade" />
+        <Button tone="danger" label="Cancel plan" />
+        <Button trailingIcon="delete" label="Remove seat" />
+      </Card>
     </div>
   )
 }

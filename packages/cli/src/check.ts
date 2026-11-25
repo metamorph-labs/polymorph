@@ -25,6 +25,11 @@ import { UnknownFrameworkError } from './vue'
  * the MCP server's `validate` calls, so it reports what an installed config
  * would report. It writes nothing.
  *
+ * **Errors and warnings.** A report is a violation when its rule is an error,
+ * and a warning when the rule groups report it as one (the usage rules,
+ * `docs/rules.md`). Both are printed, a warning marked as one, and only
+ * violations and unread files make `check` exit 1, as ESLint exits.
+ *
  * **What it reads.** Every `.ts`, `.tsx`, `.vue`, `.svelte`, `.html` and
  * `.css` file below the directory, as application code, outside
  * dot-directories, `node_modules`, `dist`, `build`, `coverage` and `out` (the
@@ -80,17 +85,20 @@ export interface CheckedFile {
   framework: Framework
   /** Why the file could not be read, in which case no rule ran on it. */
   fatal: string | null
+  /** The reports of rules that are errors. */
   violations: CheckViolation[]
+  /** The reports of rules the groups report as warnings, which leave the file lawful. */
+  warnings: CheckViolation[]
 }
 
 export interface CheckReport {
-  /** No violation and no file left unread. */
+  /** No violation and no file left unread. A warning does not make it false. */
   ok: boolean
   /** What was checked, relative to the root: `.` for the root. */
   dir: string
   /** How many files were read. */
   checked: number
-  /** The files with a violation or a fatal error, in path order. */
+  /** The files with a violation, a warning or a fatal error, in path order. */
   files: CheckedFile[]
   /** What was not read, and why. */
   notes: string[]
@@ -283,14 +291,16 @@ export async function check(
     })
     checked += 1
     if (result.fatal === null && result.diagnostics.length === 0) continue
+    const reports = result.diagnostics.map((diagnostic) => ({
+      ...diagnostic,
+      rungs: climb.get(diagnostic.rule) ?? [],
+    }))
     files.push({
       path,
       framework,
       fatal: result.fatal,
-      violations: result.diagnostics.map((diagnostic) => ({
-        ...diagnostic,
-        rungs: climb.get(diagnostic.rule) ?? [],
-      })),
+      violations: reports.filter((report) => report.severity !== 'warning'),
+      warnings: reports.filter((report) => report.severity === 'warning'),
     })
   }
 
@@ -310,7 +320,8 @@ export async function check(
     )
   }
 
-  return { ok: files.length === 0, dir: shown, checked, files, notes }
+  const ok = files.every((file) => file.fatal === null && file.violations.length === 0)
+  return { ok, dir: shown, checked, files, notes }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -328,7 +339,8 @@ function rungLine(registry: Registry, rungs: number[]): string {
 
 /**
  * The report as lines: each file, then each rule it breaks with the rungs
- * that answer it, then each report at its line and column.
+ * that answer it, then each report at its line and column. A rule the groups
+ * report as a warning is marked `(warning)`.
  */
 export function checkLines(registry: Registry, report: CheckReport): string[] {
   const read = `${report.checked} file${report.checked === 1 ? '' : 's'} read`
@@ -338,32 +350,37 @@ export function checkLines(registry: Registry, report: CheckReport): string[] {
   for (const file of report.files) {
     lines.push('', file.path)
     if (file.fatal !== null) lines.push(`  not read: ${file.fatal}`)
-    const rules = [...new Set(file.violations.map((violation) => violation.rule))]
-    for (const rule of rules) {
-      const reports = file.violations.filter((violation) => violation.rule === rule)
-      lines.push(`  ${rule} — ${rungLine(registry, reports[0]?.rungs ?? [])}`)
-      for (const { line, column, message } of reports) {
-        lines.push(`    ${`${line}:${column}`.padEnd(7)} ${message}`)
+    for (const [reports, mark] of [
+      [file.violations, ''],
+      [file.warnings, ' (warning)'],
+    ] as const) {
+      const rules = [...new Set(reports.map((report) => report.rule))]
+      for (const rule of rules) {
+        const own = reports.filter((report) => report.rule === rule)
+        lines.push(`  ${rule}${mark} — ${rungLine(registry, own[0]?.rungs ?? [])}`)
+        for (const { line, column, message } of own) {
+          lines.push(`    ${`${line}:${column}`.padEnd(7)} ${message}`)
+        }
       }
     }
   }
 
-  const violations = report.files.reduce((sum, file) => sum + file.violations.length, 0)
-  const unread = report.files.filter((file) => file.fatal !== null).length
-  lines.push('')
-  if (report.ok) {
-    lines.push('No violations.')
-  } else {
-    const broken = report.files.filter((file) => file.violations.length > 0).length
-    const parts = [
-      ...(violations > 0
-        ? [
-            `${violations} violation${violations === 1 ? '' : 's'} in ${broken} file${broken === 1 ? '' : 's'}`,
-          ]
-        : []),
-      ...(unread > 0 ? [`${unread} file${unread === 1 ? '' : 's'} not read`] : []),
-    ]
-    lines.push(`${parts.join(', ')}.`)
+  const counted = (count: number, word: string, where: (file: CheckedFile) => boolean) => {
+    const files = report.files.filter(where).length
+    return `${count} ${word}${count === 1 ? '' : 's'} in ${files} file${files === 1 ? '' : 's'}`
   }
+  const violations = report.files.reduce((sum, file) => sum + file.violations.length, 0)
+  const warnings = report.files.reduce((sum, file) => sum + file.warnings.length, 0)
+  const unread = report.files.filter((file) => file.fatal !== null).length
+  const parts = [
+    ...(violations > 0
+      ? [counted(violations, 'violation', (file) => file.violations.length > 0)]
+      : []),
+    ...(unread > 0 ? [`${unread} file${unread === 1 ? '' : 's'} not read`] : []),
+  ]
+  const warned =
+    warnings > 0 ? ` ${counted(warnings, 'warning', (file) => file.warnings.length > 0)}.` : ''
+  lines.push('')
+  lines.push(`${parts.length === 0 ? 'No violations' : parts.join(', ')}.${warned}`)
   return lines
 }

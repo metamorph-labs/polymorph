@@ -86,12 +86,15 @@ describe('ESLint fixtures', () => {
 
   it('fails every stage-2 rule', () => {
     expect(lintApp('app-violations.tsx', withOwners(stageTwoRules))).toEqual([
+      'polymorph/danger-last',
       'polymorph/no-external-dataviz',
       'polymorph/no-external-icons',
       'polymorph/no-external-motion',
       'polymorph/no-raw-interactive',
+      'polymorph/one-main-button',
       'polymorph/one-opener',
       'polymorph/scoped-token-owners',
+      'polymorph/trailing-icon',
     ])
   })
 

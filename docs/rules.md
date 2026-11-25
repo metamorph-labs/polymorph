@@ -60,15 +60,51 @@ type checker. Solid TSX is TSX ([below](#in-solid-tsx)).
 | `polymorph/no-external-dataviz` | importing a chart library (`recharts`, `chart.js`, `echarts`, `highcharts`, …) or any `d3-*`, `@visx/*`, `@nivo/*` package | application | 1, 4 |
 | `polymorph/scoped-token-owners` | naming a pattern-scoped token (`--pm-shell-*`, `--pm-page-*`, `--pm-chart-height-*`) in a file that does not own the pattern | application | none |
 | `polymorph/one-opener` | one module that renders both `<PageHeader>` and `<Hero>` — each renders the page's `<h1>`, so the pair puts two on the page | application | 1 |
+| `polymorph/one-main-button` | a second main Button (`variant="solid"`, `tone="accent"`, which are Button's defaults) in one dialog (`Dialog`, `Drawer`, `Popover`) or one section (`Card`, `Dashboard.Panel`) | application | 1, 4 |
+| `polymorph/danger-last` | a Button with `tone="danger"` before a Button without it, within one group of Buttons placed together; a destructive action in a group of its own may come first | application | 1, 4 |
+| `polymorph/trailing-icon` | a Button's `trailingIcon` that is not a direction or a disclosure: any role but the ones `design/icons.json` marks `trailing` | application | 1, 4 |
 | `polymorph/vendorable-imports` | in vendored component source: a relative import that leaves the vendored tree, a deep `@polymorph/<pkg>/src/…` import, or an import of `@polymorph/theme`, `@polymorph/rules`, `@polymorph/registry`, `@polymorph/react-ui`, `@polymorph/spec`, `@polymorph/cli` or `@polymorph/mcp` (another member is imported by relative path). The published surfaces of `@polymorph/engine` and `@polymorph/react` are allowed, because a consumer installs them | vocabulary | none |
 
-Three of the application rules have a second use in this repository. `eslint.config.ts` also applies
+The last three are the usage rules ([below](#the-usage-rules)). Three of the application rules have a second use in this repository. `eslint.config.ts` also applies
 `no-external-icons`, `no-external-motion` and `no-external-dataviz` to
 `packages/{engine,react,react-ui}`, each with an `allowIn` list that names one gateway. The icon set
 (`lucide`) is confined to the role map `packages/react/src/icon/map.tsx` and its test. A motion
 library could enter only `packages/engine/src/motion/`, which imports none, because the engine runs
 on the browser's Web Animations API. The borrowed scale arithmetic is confined to the chart engine.
 The gateways are named in `packages/rules/src/containment.ts`.
+
+### The usage rules
+
+Three rules hold how a screen uses Button. They read what a screen composes, which each syntax
+writes differently, so `packages/rules/src/rules/composition.ts` reads TSX, a Vue template,
+Svelte markup and an Angular template into one tree, and the three rules read the tree. What
+they count is defined once in `packages/rules/src/usage.ts` (`@polymorph/rules/usage`), which
+the validation a screen spec gets reads too ([tooling.md](tooling.md)).
+
+- **`one-main-button`.** A main Button is a `Button` whose `variant` is `solid` and whose
+  `tone` is `accent`. Both are its defaults, so a Button that writes neither is one. A dialog
+  (`Dialog`, `Drawer`, `Popover`) or a section (`Card`, `Dashboard.Panel`) holds one. A Button
+  in a dialog's `trigger` stays on the page and is counted outside it. A scope inside another
+  is counted apart, and a page is not a scope. The report is on each main Button after the
+  first, reading a member's props before its content, so a Dialog's `footer` keeps its main
+  action.
+- **`danger-last`.** Within one group of Buttons placed together, a danger Button comes last. A
+  destructive action in a group of its own, apart from the group that holds the main Button, may
+  come first. A group is the Buttons one element holds side by side, in its content or in one prop
+  that holds several, up to a `Separator` between them: a Button an `Inline` or another member
+  wraps apart from the others is a group of its own. The other half of the rule, that a
+  destructive Button never takes focus first, is the vocabulary's: the engine's
+  `modalFocusTarget` passes over a danger Button in every renderer's modal surfaces, and Button
+  takes no `autoFocus`, so no call site can ask for it.
+- **`trailing-icon`.** An icon leads its text. The roles that may trail it point onward or
+  show a disclosure, the roles `design/icons.json` marks `trailing` (`collapse`, `down`, `expand`,
+  `forward`, `next`, `open-external`). A back arrow leads.
+
+Each reads only what the code writes out. Buttons in different branches of one conditional (a
+ternary, `v-if` and `v-else`, `{#if}` and `{:else}`, `@if` and `@else`, `@switch`'s cases) are
+alternatives. A computed `variant`, `tone` or role, a spread of props, and content written by a
+call such as `items.map(…)`, a loop block or a variable are not read, so the rules say nothing
+about them. A `<Bespoke>` zone lifts all three inside it.
 
 ### In a Vue template
 
@@ -91,6 +127,7 @@ a raw `<option>` is answered with `<Select options={…}>` in either file.
 | `no-external-motion` | an import of `motion-v` or `@vueuse/motion`; Vue's own `<Transition>` and `<TransitionGroup>`, an entrance written at a call site | ``Unexpected <Transition>. It is an entrance and exit: `<Dialog>`, `<Drawer>`, `<Popover>` and `<Toast>` animate their own (rung 1). …`` |
 | `no-external-dataviz` | an import of `vue-chartjs`, `vue-echarts`, `vue3-apexcharts`, `highcharts-vue` or `@unovis/vue` | ``Unexpected charting import `vue-chartjs`. `Bar` is `<BarChart :data="…" :series="…">` (rung 1). …`` |
 | `one-opener` | `<PageHeader>` and `<Hero>` in one template | ``Unexpected <Hero> beside <PageHeader>: …`` |
+| `one-main-button`, `danger-last`, `trailing-icon` | members by the names the tags resolve to, a prop static or bound to a string (`:variant="'solid'"`), a named slot as `<template #footer>`, and a `v-if` chain as one conditional. A `v-for` is not read, and a `v-bind` object makes every prop computed. `trailing-icon` renames `trailing-icon` or `:trailing-icon` to `icon` | `<Button trailing-icon="delete" label="Delete" />` → `<Button icon="delete" label="Delete" />` |
 
 A tag is read as the member a `<script setup>` imports, as Vue's compiler resolves it. A
 kebab-case tag is read in PascalCase: `<data-table>` is `DataTable`. A lowercase tag that is not an
@@ -111,7 +148,8 @@ directives directly. The rules never import the parser. `@polymorph/rules` names
 peer, and `verify` loads it only to read a `.svelte` file. The reports are the same sentences with
 the same answers. An answer is written as JSX writes it, because a Svelte member takes each prop
 under its React name: `<Inline gap={4}>`, `onClick={save}`. Nothing in a `.svelte` file is
-rewritten except a `class` or `style` removed from a member, because the other fixes rewrite JSX.
+rewritten except a `class` or `style` removed from a member and a `trailingIcon` renamed to
+`icon`, because the other fixes rewrite JSX.
 
 | Rule | What it reads in a component | Example |
 | --- | --- | --- |
@@ -123,6 +161,7 @@ rewritten except a `class` or `style` removed from a member, because the other f
 | `no-external-dataviz` | an import of `layerchart`, `svelte-chartjs`, `svelte-apexcharts`, `svelte-frappe-charts`, `@carbon/charts-svelte` or any `@unovis/*` package | ``Unexpected charting import `layerchart`. `BarChart` is `<BarChart data={…} series={…}>` (rung 1). …`` |
 | `scoped-token-owners` | a pattern-scoped token in a static attribute, as in a string | ``"--pm-shell-*" belongs to app-shell.module.css and 1 more, not this file (…).`` |
 | `one-opener` | `<PageHeader>` and `<Hero>` in one component | ``Unexpected <Hero> beside <PageHeader>: …`` |
+| `one-main-button`, `danger-last`, `trailing-icon` | components, a prop static or a string in braces, a named slot as `{#snippet footer()}` or a child with `slot="footer"`, and an `{#if}` with its `{:else if}` and `{:else}` as one conditional. `{#each}` and `{#await}` are not read. `trailing-icon` renames `trailingIcon` to `icon` | ``Unexpected trailing icon "delete" on <Button>: …`` |
 
 A tag is read as Svelte reads it. A capitalised or dotted tag (`<Tabs.Content>`) is a component, a
 lowercase tag is an HTML element, and a tag with a hyphen is a custom element, which is another
@@ -151,7 +190,10 @@ this way only in a Solid file, so a React file reads as React.
 | `no-external-motion` | an import of `solid-motionone`, `@motionone/solid`, `solid-transition-group` or `@solid-primitives/transition-group`. `<Motion.div>`, `<Presence>` and `<Transition>` are read as their React counterparts are | ``Unexpected motion library `solid-motionone`. `Motion.div` animating opacity is an entrance and exit: … (rung 1).`` |
 | `no-external-dataviz` | an import of `solid-chartjs`, `solid-apexcharts` or any `@unovis/*` package | ``Unexpected charting import `solid-chartjs`. `Line` is `<LineChart data={…} series={…}>` (rung 1). …`` |
 
-`no-app-css`, `scoped-token-owners` and `one-opener` read Solid as they read React.
+`no-app-css`, `scoped-token-owners`, `one-opener` and the usage rules read Solid as they read React.
+The usage rules also read Solid's own conditionals: a `<Show>` and its `fallback` are one
+conditional, and so are a `<Switch>`'s `<Match>`es and its `fallback`. A `<For>` or an `<Index>`
+writes its content with a function, which is not read.
 `packages/rules/src/rules/solid.test.ts` runs each rule with the Solid settings, `messages.test.ts`
 holds the Solid reports to the same standard, and `packages/rules/fixtures/solid/` holds a
 violating, a lawful and a zoned screen.
@@ -183,6 +225,7 @@ A rule's fixed sentence is written once, as JSX, as it is for a Vue template.
 | `no-external-dataviz` | an import of `ng2-charts`, `ngx-echarts`, `@swimlane/ngx-charts`, `ng-apexcharts`, `highcharts-angular`, `angular-highcharts`, `ag-charts-angular` or any `@unovis/*` package | ``Unexpected charting import `ng2-charts`. …`` |
 | `scoped-token-owners` | a pattern-scoped token in a static attribute or a bound string of a template, and in a module's strings but its inline template | ``"--pm-shell-*" belongs to app-shell.module.css and 1 more, not this file (…).`` |
 | `one-opener` | `<pm-page-header>` and `<pm-hero>` in one template | ``Unexpected <pm-page-header> beside <pm-hero>: …`` |
+| `one-main-button`, `danger-last`, `trailing-icon` | members by their selectors, a prop static or bound to a string (`[variant]="'solid'"`), a named slot as a child with `slot="footer"`, `@if`/`@else` and `@switch` as one conditional each, and `*ngIf` as its content. `@for`, `*ngFor` and a bare `<ng-template>` are not read. `trailing-icon` renames `trailingIcon` or `[trailingIcon]` to `icon` | ``Unexpected <pm-button tone="danger"> before another Button in its group: …`` |
 
 A template never sees its module's imports, so a tag is read as Angular's compiler matches it, by
 the vocabulary's selectors: `<pm-button>` is the member `Button`, `<pm-tabs-content>` the part
@@ -263,6 +306,11 @@ rungs the ladder has, in ascending order. The reasoning for each rule:
   one instance's spacing or radius (rung 3). A restyled member that no prop answers needs a
   variant, which is a promotion (rung 5). Rung 4 answers none of them: a stylesheet is not
   inside a zone, and a token declared in a zone would still reach the members inside it.
+- **The usage rules** (`one-main-button`, `danger-last`, `trailing-icon`) are answered at rung 1:
+  a Button's `variant`, its place in the row, its `icon` prop. A one-off composition that needs
+  otherwise is a zone (rung 4), which lifts them as it lifts the vocabulary rules. They are about
+  hierarchy and order, not an accessibility law, so a zone may lift them where it may not lift
+  `one-opener`.
 - **Two openers** (`one-opener`) are answered only by rung 1. A zone suspends vocabulary rules but
   never accessibility, and two `<h1>`s are an accessibility fault. The only fix is to pick one
   opener.
@@ -321,6 +369,9 @@ theme.
 | `no-external-motion` | the member that already animates what the file does with the library: an entrance, a collapse, press feedback, a spin, a spring; otherwise the zone. A re-export is answered the same way, from the names it hands out | ``Unexpected motion library `framer-motion`. `motion.div` animating opacity is an entrance and exit: `<Dialog>`, `<Drawer>`, `<Popover>` and `<Toast>` animate their own (rung 1).`` |
 | `no-external-dataviz` | the chart member for the library's own call (`BarChart`, `ResponsivePie`, `type: 'line'`); otherwise the zone. A re-export is answered the same way, from the names it hands out | ``Unexpected charting import `recharts`. `BarChart` is `<BarChart data={…} series={…}>` (rung 1).`` |
 | `one-opener` | which opener to keep: the archetype's own title when the module renders one, otherwise `PageHeader` on a working screen and `Hero` on an opening page | ``<ListPage> renders its PageHeader from `<ListPage title="…">`: keep that and drop both here (rung 1).`` |
+| `one-main-button` | the scope, and the lesser variant | ``Unexpected second main Button in <Card>: a section has one solid accent Button, which marks its next step. Make this one `<Button variant="outline" tone="neutral">` (rung 1).`` |
+| `danger-last` | where the destructive Button goes | ``Unexpected <Button tone="danger"> before another Button in its group: the destructive one comes last, so the safe one is met first. Move it last, or into a group of its own (rung 1).`` |
+| `trailing-icon` | the roles that may trail, and `icon` | ``Unexpected trailing icon "delete" on <Button>: an icon leads its label. Use `icon="delete"` (rung 1). Only collapse, down, expand, forward, next and open-external follow it.`` |
 | `scoped-token-owners` | the file that owns the pattern | ``"--pm-shell-*" belongs to app-shell.module.css and 1 more, not this file (…).`` |
 | `vendorable-imports` | the published import that replaces the path: `@polymorph/react` for the engine, the theme or the role data, a member's relative path, or no import at all for a dev-time tool | ``Import `@polymorph/theme` is not in the boundary a consumer installs. Import it from `@polymorph/react`, which re-exports the engine and the theme.`` |
 | `token-values-only` | the nearest token by value, for a colour, a length or a duration | ``Unexpected raw value "12px" in "padding". It is `var(--pm-space-4)` (12px).`` |
@@ -343,6 +394,7 @@ tools `fix` and `fix_file` ([tooling.md](tooling.md)).
 | --- | --- | --- |
 | `polymorph/no-raw-styles` | removes a `className`, `style` or `css` from a vocabulary component. No member takes one, so the attribute already does nothing | the same prop on a plain element, and every raw colour or length. There the style has an effect, and choosing its replacement is a design decision, so the report names the rewrite it reads as |
 | `polymorph/no-external-icons` | an import from `lucide-react` becomes the gateway, where `design/icons.json` names the role each glyph draws: `<Trash2 />` → `<Icon name="delete" />`. An `aria-label` becomes `label`; an import nothing uses is removed | a glyph no role uses (that is a promotion); a glyph two roles share (`RotateCw` is both `refresh` and `rotate`); a glyph given a `size`, a `color`, a `className` or a handler; a glyph passed as a value; any other icon package; an inline `<svg>` |
+| `polymorph/trailing-icon` | a Button with no `icon` takes the role in `icon`: `<Button trailingIcon="delete" label="Delete" />` → `<Button icon="delete" label="Delete" />`, in every syntax the rules read | a Button that has an `icon` too, because one of the two icons has to go, and which one is a choice |
 | `polymorph/no-raw-interactive` | a `<button>` whose whole content is its text becomes `Button`: `<button type="button" onClick={save}>Save</button>` → `<Button label="Save" onClick={save} />`. `onClick`, `disabled`, `aria-label`, `aria-labelledby` and `aria-describedby` go across as written. An `<input type="checkbox">` and its label become `Checkbox`, whether the label wraps it (`<label><input type="checkbox" name="terms" /> Accept terms</label>` → `<Checkbox label="Accept terms" name="terms" />`) or follows it with `htmlFor` naming its `id`. `checked`, `defaultChecked`, `disabled`, `name`, `value` and `id` go across, and an `onChange` that takes no arguments becomes `onCheckedChange`. A `<textarea>` becomes `Textarea`. `value`, `placeholder`, `disabled`, `readOnly`, `maxLength`, `name`, `id`, `rows`, `autoFocus`, `onBlur` and `onFocus` go across, and an `onChange` that reads only `event.target.value` takes the value instead: `(e) => setNote(e.target.value)` → `(value) => setNote(value)`. Off unless a config switches them on (below) | a `<button>` with any other content or prop (a `className`, a `style`, an `id`); a checkbox with any other prop, label content that is not text, its text before the box, or a handler that reads its event; a textarea with children, any other prop (`defaultValue`, a `className`, a `style`), or a handler that uses the event for more than its value; every other raw control; a handler on a plain element |
 
 Two principles decide which violations get a fix, and they keep the list short.
@@ -436,7 +488,8 @@ The red rules are their own package, `@polymorph/rules`, a dev dependency of a c
 | Export | Contents | Apply it to |
 | --- | --- | --- |
 | `stageOneRules` | `no-raw-styles`, `no-app-css` | application code: the rules about expressing style |
-| `stageTwoRules` | `no-raw-interactive`, `no-external-motion`, `no-external-icons`, `no-external-dataviz`, `scoped-token-owners` (with the owner map), `one-opener` | application code: the rules about rebuilding or reaching past the vocabulary |
+| `stageTwoRules` | `no-raw-interactive`, `no-external-motion`, `no-external-icons`, `no-external-dataviz`, `scoped-token-owners` (with the owner map), `one-opener`, and the usage rules `one-main-button`, `danger-last` and `trailing-icon` as warnings | application code: the rules about rebuilding or reaching past the vocabulary, and about using Button |
+| `usageRulesAsErrors` | the three usage rules as errors | spread after the groups, where the screens hold to them already |
 | `allRules` | both groups above | application code; this is what `polymorph add` applies |
 | `fixableRawControls` | `no-raw-interactive` with `vocabulary: '@polymorph/react-ui'`, which switches its `<button>`, checkbox and textarea fixes on | spread after the groups, where application code imports members from `@polymorph/react-ui` |
 | `solidSettings`, `fixableSolidControls` | the settings that read every TSX file as Solid, and `no-raw-interactive` with `vocabulary: '@polymorph/solid-ui'` | a Solid app: `settings: solidSettings` on the application block, and `fixableSolidControls` spread after the groups |
@@ -461,6 +514,16 @@ The rules are a separate package that only lint configs import. A bundler that f
 entry (`@polymorph/engine`, `@polymorph/react`, `@polymorph/react-ui`) therefore never reaches a
 linter.
 
+Every rule in the groups is an error except the three usage rules, which the groups report as
+warnings. A screen written before them can break them, and none of what they report stops a
+screen working, so an app that upgrades sees the reports and keeps building. It opts in to
+errors with `usageRulesAsErrors` once its screens hold to them. A warning stays a warning past
+ESLint: `verify` gives each diagnostic its `severity`, `polymorph check` exits 1 on errors only,
+and the MCP server's `validate`, `fix`, `fix_file` and `emit_screen` and the screen emitter
+report warnings apart from violations and call a source with only warnings lawful. The
+validation of a screen spec reports the same three as faults, because a screen a model writes
+has no earlier screens to keep building.
+
 ### In this repository
 
 `eslint.config.ts` and `stylelint.config.js` at the root are the reference configuration:
@@ -468,7 +531,7 @@ linter.
 | Config block | Files | Rules |
 | --- | --- | --- |
 | `polymorph/red-rules-stage-1` | `apps/**/*.{ts,tsx}`, minus `apps/*/src/harness/**` | `stageOneRules` |
-| `polymorph/red-rules-stage-2` | the same | `stageTwoRules`, then `fixableRawControls` |
+| `polymorph/red-rules-stage-2` | the same | `stageTwoRules`, then `fixableRawControls` and `usageRulesAsErrors` |
 | `polymorph/vocabulary-containment` | `packages/{react-ui,react,engine}/**/*.{ts,tsx}` | `no-external-icons`, `no-external-motion`, `no-external-dataviz`, each with its gateway in `allowIn` |
 | `polymorph/vendorable-boundary` | `packages/react-ui/**/*.{ts,tsx}`, minus tests | `vendorableRules` |
 | Stylelint override | `packages/{recipes,react-ui,react}/**/*.css` | `token-values-only`, `scoped-token-owners`, `no-theme-selectors`, `no-member-selectors`, `no-ghost-tokens` (token list read from the theme engine at config load) |
@@ -638,6 +701,7 @@ comment or a string does not count. What a zone lifts:
 | `no-raw-interactive` | raw controls and handled elements inside the element |
 | `no-external-icons` | inline `<svg>` inside the element; icon-set imports anywhere in a file that declares a zone |
 | `no-external-motion`, `no-external-dataviz` | imports anywhere in a file that declares a zone, because an import cannot be scoped to an element |
+| `one-main-button`, `danger-last`, `trailing-icon` | the Buttons inside the element: none of them is counted, ordered or read |
 | `no-app-css`, `scoped-token-owners`, `one-opener`, the Stylelint rules | **nothing** |
 
 A zone therefore styles itself with `style` props. A stylesheet import from application code fails
@@ -776,7 +840,7 @@ hosting that library needs, and the rest of the rules still read the file:
 | `no-external-motion`, `no-external-dataviz` | **Lifted:** an import of the library the boundary names, anywhere in the file that declares it. **Kept:** every other banned library, another package of the same npm scope included, and a re-export of any. |
 | `no-raw-interactive` | **Kept.** A control beside the hosted component is a member: a `<Button>` that calls the library's API. |
 | `no-external-icons` | **Kept.** A glyph is `<Icon name="…">`. |
-| `scoped-token-owners`, `one-opener`, the Stylelint rules | **Kept.** |
+| `scoped-token-owners`, `one-opener`, the usage rules, the Stylelint rules | **Kept.** |
 
 The library a boundary names is one package: the package itself and any path inside it
 (`leaflet/dist/leaflet.css`, `chart.js/auto`). Another package of the same npm scope is another

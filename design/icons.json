@@ -107,7 +107,8 @@
       "glyph": "external-link",
       "group": "action",
       "ios": "arrow.up.right.square",
-      "android": "open_in_new"
+      "android": "open_in_new",
+      "trailing": true
     },
     "settings": {
       "glyph": "settings",
@@ -137,7 +138,8 @@
       "glyph": "arrow-right",
       "group": "navigation",
       "ios": "arrow.right",
-      "android": "arrow_forward"
+      "android": "arrow_forward",
+      "trailing": true
     },
     "up": {
       "glyph": "arrow-up",
@@ -149,7 +151,8 @@
       "glyph": "arrow-down",
       "group": "navigation",
       "ios": "arrow.down",
-      "android": "arrow_downward"
+      "android": "arrow_downward",
+      "trailing": true
     },
     "previous": {
       "glyph": "chevron-left",
@@ -161,19 +164,22 @@
       "glyph": "chevron-right",
       "group": "navigation",
       "ios": "chevron.right",
-      "android": "navigate_next"
+      "android": "navigate_next",
+      "trailing": true
     },
     "expand": {
       "glyph": "chevron-down",
       "group": "navigation",
       "ios": "chevron.down",
-      "android": "expand_more"
+      "android": "expand_more",
+      "trailing": true
     },
     "collapse": {
       "glyph": "chevron-up",
       "group": "navigation",
       "ios": "chevron.up",
-      "android": "expand_less"
+      "android": "expand_less",
+      "trailing": true
     },
     "home": {
       "glyph": "house",

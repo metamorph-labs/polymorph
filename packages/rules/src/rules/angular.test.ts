@@ -9,13 +9,16 @@ import { allRules } from '../index'
 import { fixCode, verifyCode } from '../verify'
 import { angularSelector, angularSyntax } from './angular'
 import { noAppCss } from './no-app-css'
+import { dangerLast } from './danger-last'
 import { noExternalIcons } from './no-external-icons'
 import { noExternalMotion } from './no-external-motion'
 import { noRawInteractive } from './no-raw-interactive'
 import { noRawStyles } from './no-raw-styles'
+import { oneMainButton } from './one-main-button'
 import { oneOpener } from './one-opener'
 import { TEST_VALUES } from './rule-tester'
 import { scopedTokenOwners } from './scoped-token-owners'
+import { trailingIcon } from './trailing-icon'
 
 /**
  * The red rules, reading an Angular component.
@@ -315,6 +318,70 @@ tester.run('one-opener in an Angular template', oneOpener, {
             "Unexpected <pm-page-header> beside <pm-hero>: each renders the page's <h1>. Keep `<pm-page-header>` on a working screen or `<pm-hero>` on an opening page (rung 1).",
         },
       ],
+    },
+  ],
+})
+
+tester.run('one-main-button in an Angular template', oneMainButton, {
+  valid: [
+    // `@if` and `@else` are alternatives, a trigger slot stays on the page, and `@for` writes
+    // Buttons the rule cannot count.
+    {
+      filename: FILE,
+      code:
+        '<pm-card title="a">@if (saved) { <pm-button label="Publish" /> } @else { <pm-button label="Save" /> } @for (x of xs; track x) { <pm-button [label]="x" /> }</pm-card>' +
+        '<pm-dialog title="b"><pm-button slot="trigger" label="Open" /><pm-button slot="footer" label="Done" /></pm-dialog>',
+    },
+  ],
+  invalid: [
+    {
+      filename: FILE,
+      code: '<pm-dashboard-panel title="a"><pm-button label="Save" /><pm-button [variant]="\'solid\'" label="Reset" /></pm-dashboard-panel>',
+      errors: [
+        {
+          message:
+            'Unexpected second main Button in <pm-dashboard-panel>: a section has one solid accent Button, which marks its next step. Make this one `<pm-button variant="outline" tone="neutral">` (rung 1).',
+        },
+      ],
+    },
+  ],
+})
+
+tester.run('danger-last in an Angular template', dangerLast, {
+  valid: [
+    {
+      filename: FILE,
+      code: '<pm-inline><pm-button label="Keep" /><pm-button tone="danger" label="Delete" /></pm-inline>',
+    },
+  ],
+  invalid: [
+    {
+      filename: FILE,
+      code: '<pm-inline><pm-button tone="danger" label="Delete" /><pm-button label="Keep" /></pm-inline>',
+      errors: [
+        {
+          message:
+            'Unexpected <pm-button tone="danger"> before another Button in its group: the destructive one comes last, so the safe one is met first. Move it last, or into a group of its own (rung 1).',
+        },
+      ],
+    },
+  ],
+})
+
+tester.run('trailing-icon in an Angular template', trailingIcon, {
+  valid: [{ filename: FILE, code: '<pm-button trailingIcon="next" label="Continue" />' }],
+  invalid: [
+    {
+      filename: FILE,
+      code: '<pm-button trailingIcon="delete" label="Delete" />',
+      output: '<pm-button icon="delete" label="Delete" />',
+      errors: [{ messageId: 'notTrailing' }],
+    },
+    {
+      filename: FILE,
+      code: '<pm-button [trailingIcon]="\'user\'" label="Invite" />',
+      output: '<pm-button [icon]="\'user\'" label="Invite" />',
+      errors: [{ messageId: 'notTrailing' }],
     },
   ],
 })

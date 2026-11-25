@@ -12,7 +12,9 @@ import { noExternalIcons } from './no-external-icons'
 import { noExternalMotion } from './no-external-motion'
 import { noRawInteractive } from './no-raw-interactive'
 import { noRawStyles } from './no-raw-styles'
+import { oneMainButton } from './one-main-button'
 import { oneOpener } from './one-opener'
+import { trailingIcon } from './trailing-icon'
 import { APP_FILE, APP_LANGUAGE_OPTIONS, jsxRuleTester, TEST_VALUES } from './rule-tester'
 import { scopedTokenOwners } from './scoped-token-owners'
 
@@ -392,6 +394,36 @@ jsxRuleTester().run('no-raw-interactive in React TSX, as before', noRawInteracti
       filename: FILE,
       code: 'export const A = () => <div onClick={go} />',
       errors: [{ messageId: 'handledElement' }],
+    },
+  ],
+})
+
+tester.run('one-main-button in Solid TSX', oneMainButton, {
+  valid: [
+    {
+      filename: FILE,
+      code: solid(
+        '<><Card title="a"><Show when={saved()} fallback={<Button label="Save" />}><Button label="Publish" /></Show></Card><Card title="b"><Switch><Match when={a()}><Button label="A" /></Match><Match when={b()}><Button label="B" /></Match></Switch></Card></>',
+      ),
+    },
+  ],
+  invalid: [
+    {
+      filename: FILE,
+      code: solid('<Card title="a"><Button label="Save" /><Button label="Publish" /></Card>'),
+      errors: [{ messageId: 'secondMain' }],
+    },
+  ],
+})
+
+tester.run('trailing-icon in Solid TSX', trailingIcon, {
+  valid: [{ filename: FILE, code: solid('<Button trailingIcon="next" label="Continue" />') }],
+  invalid: [
+    {
+      filename: FILE,
+      code: solid('<Button trailingIcon="delete" label="Delete" />'),
+      output: solid('<Button icon="delete" label="Delete" />'),
+      errors: [{ messageId: 'notTrailing' }],
     },
   ],
 })

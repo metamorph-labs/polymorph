@@ -876,16 +876,18 @@ describe('validate agrees with the local toolchain, on identical input', () => {
   })
 
   it('reports the same rules at the same places', async () => {
-    const served = await callJson<{ violations: Reported[] }>('validate', {
+    const served = await callJson<{ violations: Reported[]; warnings?: Reported[] }>('validate', {
       code,
       filename: PROBE,
     })
 
     // Rule, line and column. Comparing only rule ids would pass even if the two
-    // disagreed about where the problem was.
+    // disagreed about where the problem was. `validate` answers with the groups a consumer
+    // installs, which report the usage rules as warnings, and this repository's config makes
+    // them errors (`usageRulesAsErrors`), so the places are compared across both lists.
     expect(
       ordered(
-        served.violations.map((violation) => ({
+        [...served.violations, ...(served.warnings ?? [])].map((violation) => ({
           rule: violation.rule,
           line: violation.line,
           column: violation.column,

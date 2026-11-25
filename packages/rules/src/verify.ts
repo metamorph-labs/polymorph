@@ -74,6 +74,14 @@ export interface DiagnosticFix {
   text: string
 }
 
+/**
+ * How a rule's report counts: an `error` makes the source unlawful, and a
+ * `warning` is reported beside the errors and does not. The rule groups set
+ * it (`docs/rules.md`, "The exported groups"): every rule is an error except
+ * the usage rules, which the groups report as warnings.
+ */
+export type Severity = 'error' | 'warning'
+
 export interface Diagnostic {
   rule: string
   message: string
@@ -85,7 +93,25 @@ export interface Diagnostic {
   fix: DiagnosticFix | null
   /** The lawful alternatives the message names, with the rung each is on. */
   alternatives: Alternative[]
+  /**
+   * The severity the config gives the rule, from the linter's result. `verify`
+   * always writes it. A diagnostic built elsewhere without it is an error.
+   */
+  severity?: Severity
 }
+
+/** Whether a diagnostic is a warning, which leaves the source lawful. Absent severity is an error. */
+export const isWarning = (diagnostic: Pick<Diagnostic, 'severity'>): boolean =>
+  diagnostic.severity === 'warning'
+
+/** The diagnostics that make a source unlawful: every one that is not a warning. */
+export const errorsOf = <D extends Pick<Diagnostic, 'severity'>>(diagnostics: readonly D[]): D[] =>
+  diagnostics.filter((diagnostic) => !isWarning(diagnostic))
+
+/** The diagnostics reported as warnings. */
+export const warningsOf = <D extends Pick<Diagnostic, 'severity'>>(
+  diagnostics: readonly D[],
+): D[] => diagnostics.filter(isWarning)
 
 /** The answers in a message, structured, by the rule's rungs. */
 function answersIn(rule: string, message: string): Alternative[] {
@@ -410,6 +436,7 @@ function codeResult(messages: LinterNS.LintMessage[]): VerifyResult {
           endColumn: message.endColumn ?? null,
           fix: message.fix ? { range: message.fix.range, text: message.fix.text } : null,
           alternatives: answersIn(rule, message.message),
+          severity: message.severity === 1 ? 'warning' : 'error',
         }
       }),
     ),
@@ -539,6 +566,7 @@ export async function verifyCss(
           // No Stylelint rule has a fix (`fixCss`).
           fix: null,
           alternatives: answersIn(warning.rule, message),
+          severity: warning.severity === 'warning' ? 'warning' : 'error',
         }
       }),
     ),

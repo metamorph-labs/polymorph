@@ -626,8 +626,8 @@ export function MotionPage({ system }: { system: string }) {
           <Button variant="soft" tone="accent" label="Soft" />
           <Button variant="outline" tone="neutral" label="Outline" />
           <Button variant="ghost" tone="neutral" label="Ghost" />
-          <Button variant="solid" tone="danger" label="Danger" />
           <Button variant="outline" tone="neutral" label="Disabled" disabled />
+          <Button variant="solid" tone="danger" label="Danger" />
         </Inline>
       </Section>
 

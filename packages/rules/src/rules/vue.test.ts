@@ -9,11 +9,14 @@ import { describe, expect, it } from 'vitest'
 import { allRules } from '../index'
 import { verifyCode } from '../verify'
 import { noAppCss } from './no-app-css'
+import { dangerLast } from './danger-last'
 import { noExternalIcons } from './no-external-icons'
 import { noExternalMotion } from './no-external-motion'
 import { noRawInteractive } from './no-raw-interactive'
 import { noRawStyles } from './no-raw-styles'
+import { oneMainButton } from './one-main-button'
 import { oneOpener } from './one-opener'
+import { trailingIcon } from './trailing-icon'
 
 /**
  * The red rules, reading a Vue single-file component.
@@ -391,6 +394,74 @@ tester.run('one-opener in a Vue template', oneOpener, {
             'Unexpected <Hero> beside <PageHeader>: each renders the page\'s <h1>. <ListPage> renders its PageHeader from `<ListPage title="…">`: keep that and drop both here (rung 1).',
         },
       ],
+    },
+  ],
+})
+
+tester.run('one-main-button in a Vue template', oneMainButton, {
+  valid: [
+    // A `v-if` and its `v-else` are alternatives, and a dialog's trigger slot stays on the page.
+    {
+      filename: FILE,
+      code: sfc(
+        '<Card title="a"><Button v-if="saved" label="Publish" /><Button v-else label="Save" /></Card>' +
+          '<Dialog title="b"><template #trigger><Button label="Open" /></template><template #footer><Button label="Done" /></template></Dialog>',
+      ),
+    },
+    // A `v-for` writes Buttons the rule cannot count, and a computed variant is not read.
+    {
+      filename: FILE,
+      code: sfc(
+        '<Card title="a"><Button label="Save" /><Button v-for="x in xs" :key="x" :label="x" /><Button :variant="kind" label="b" /></Card>',
+      ),
+    },
+  ],
+  invalid: [
+    {
+      filename: FILE,
+      code: sfc(
+        '<Dialog title="a"><template #footer><Button label="Save" /></template><Button :variant="\'solid\'" label="Reset" /></Dialog>',
+      ),
+      errors: [
+        {
+          message:
+            'Unexpected second main Button in <Dialog>: a dialog has one solid accent Button, which marks its next step. Make this one `<Button variant="outline" tone="neutral">` (rung 1).',
+        },
+      ],
+    },
+  ],
+})
+
+tester.run('danger-last in a Vue template', dangerLast, {
+  valid: [
+    {
+      filename: FILE,
+      code: sfc('<Inline><Button label="Keep" /><Button tone="danger" label="Delete" /></Inline>'),
+    },
+  ],
+  invalid: [
+    {
+      filename: FILE,
+      code: sfc('<Inline><Button tone="danger" label="Delete" /><Button label="Keep" /></Inline>'),
+      errors: [{ messageId: 'dangerFirst' }],
+    },
+  ],
+})
+
+tester.run('trailing-icon in a Vue template', trailingIcon, {
+  valid: [{ filename: FILE, code: sfc('<Button trailing-icon="next" label="Continue" />') }],
+  invalid: [
+    {
+      filename: FILE,
+      code: sfc('<Button trailing-icon="delete" label="Delete" />'),
+      output: sfc('<Button icon="delete" label="Delete" />'),
+      errors: [{ messageId: 'notTrailing' }],
+    },
+    {
+      filename: FILE,
+      code: sfc('<Button :trailingIcon="\'user\'" label="Invite" />'),
+      output: sfc('<Button :icon="\'user\'" label="Invite" />'),
+      errors: [{ messageId: 'notTrailing' }],
     },
   ],
 })

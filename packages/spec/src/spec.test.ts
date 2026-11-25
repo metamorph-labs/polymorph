@@ -374,6 +374,102 @@ describe('a spec is checked against the vocabulary, not only against a shape', (
   })
 })
 
+describe('the usage rules, told to a spec as the red rules tell code', () => {
+  const button = (props: Record<string, unknown> = {}) => ({
+    component: 'Button',
+    props: { label: 'Go', onClick: { $: 'onSave' }, ...props },
+  })
+  const faultsOf = (root: ScreenSpec['root']) =>
+    validateSpec(registry, { ...base(), root }).faults.map(({ path, message }) => ({
+      path,
+      message,
+    }))
+
+  it('reports a second main Button in a dialog, on the one in the body, and not the trigger', () => {
+    const faults = faultsOf({
+      component: 'Dialog',
+      props: {
+        title: 'Rename',
+        trigger: button({ label: 'Rename' }),
+        footer: [button({ variant: 'outline', tone: 'neutral', label: 'Cancel' }), button()],
+      },
+      children: [button({ label: 'Reset' })],
+    } as ScreenSpec['root'])
+    expect(faults).toEqual([
+      {
+        path: '$.root.children[0]',
+        message:
+          'a second main Button in this `Dialog` — a dialog has one solid accent Button, which marks its next step; make this one `"variant": "outline", "tone": "neutral"`',
+      },
+    ])
+  })
+
+  it('counts a Card inside a Dialog apart, and leaves a page alone', () => {
+    expect(
+      faultsOf({
+        component: 'Stack',
+        children: [
+          button(),
+          button(),
+          {
+            component: 'Dialog',
+            props: { title: 'Plans', footer: button() },
+            children: [{ component: 'Card', props: { title: 'Pro' }, children: [button()] }],
+          },
+        ],
+      } as ScreenSpec['root']),
+    ).toEqual([])
+  })
+
+  it('reports a danger Button first in its group, and not last, nor alone in a group of its own', () => {
+    const danger = button({ variant: 'ghost', tone: 'danger', label: 'Delete' })
+    const cancel = button({ variant: 'outline', tone: 'neutral', label: 'Cancel' })
+    const first = faultsOf({
+      component: 'Inline',
+      children: [danger, cancel],
+    } as ScreenSpec['root'])
+    expect(first.map(({ path }) => path)).toEqual(['$.root.children[0]'])
+    expect(first[0]?.message).toContain('the destructive one comes last')
+    expect(
+      faultsOf({ component: 'Inline', children: [cancel, danger] } as ScreenSpec['root']),
+    ).toEqual([])
+    expect(
+      faultsOf({
+        component: 'Inline',
+        props: { justify: 'between' },
+        children: [danger, { component: 'Inline', children: [cancel, button()] }],
+      } as ScreenSpec['root']),
+    ).toEqual([])
+  })
+
+  it('reports a trailing icon that neither points nor opens, and names the roles that may', () => {
+    const faults = faultsOf({
+      component: 'Stack',
+      children: [
+        button({ trailingIcon: 'next' }),
+        button({ variant: 'ghost', trailingIcon: 'delete' }),
+      ],
+    } as ScreenSpec['root'])
+    expect(faults).toEqual([
+      {
+        path: '$.root.children[1].props.trailingIcon',
+        message:
+          '`delete` does not trail its text — an icon leads its text, and only `collapse`, `down`, `expand`, `forward`, `next` and `open-external` trail it; make it `"icon": "delete"`',
+      },
+    ])
+  })
+
+  it('reads no value bound to an input', () => {
+    expect(
+      faultsOf({
+        component: 'Card',
+        props: { title: 'Plan' },
+        children: [button(), button({ variant: { $: 'onSave' } })],
+      } as ScreenSpec['root']).filter(({ message }) => message.includes('main Button')),
+    ).toEqual([])
+  })
+})
+
 describe('the names the emitter has to write', () => {
   /*
    * Three problems the shape check cannot see. In each, the emitter would fail

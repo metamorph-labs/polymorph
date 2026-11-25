@@ -24,6 +24,11 @@ only when the form's whole purpose is deletion. Cancel or back is `ghost`/`outli
 `neutral`. A destructive tertiary action ("Delete…") goes through ConfirmDialog and sits
 leftmost, separated by the row's `justify`, so the primary stays rightmost.
 
+**Destructive order** (`polymorph/danger-last`): within one group of Buttons placed together, a
+danger Button comes last. A destructive action in a group of its own, apart from the group that
+holds the main Button, may come first. The actions row draws `actions` in one `Inline`, so a
+tertiary action passed beside the other Buttons is in their group, and the rule reports it.
+
 ## Pattern tokens (declared on root)
 
 | Token | Value | (std/compact/comfortable) |

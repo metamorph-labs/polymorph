@@ -37,6 +37,8 @@ const SUBPATHS: Record<string, string> = {
   '@polymorph/spec/schema': 'packages/spec/src/schema.ts',
   '@polymorph/spec/validate': 'packages/spec/src/validate.ts',
   '@polymorph/spec/action-type': 'packages/spec/src/action-type.ts',
+  // The usage rules' definitions, which the red rules read too. It imports nothing.
+  '@polymorph/rules/usage': 'packages/rules/src/usage.ts',
 }
 
 const FORBIDDEN = /^(node:|prettier$|typescript$|jiti$)/

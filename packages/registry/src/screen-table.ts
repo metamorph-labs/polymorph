@@ -11,7 +11,7 @@ import { PLATFORMS, type Platform, type PlatformStatus } from './platforms'
  * page that checks a document a model wrote needs neither. It needs each
  * member's name, tier, purpose, props with their printed types, parts, lawful
  * cells, its entry on each platform and in each framework, and the icon
- * roles, which is what `validateSpec` reads (`SpecVocabulary` in
+ * roles with the ones a trailing icon may take, which is what `validateSpec` reads (`SpecVocabulary` in
  * `packages/spec/src/validate.ts`). The walk also reads each member's
  * controlled props (`controlledProps`, the rule the elements follow) and,
  * in React, the function a call site calls in a member's place. The run-time
@@ -115,7 +115,11 @@ export interface ScreenTable {
   readonly version: string
   readonly components: readonly TableMember[]
   readonly exceptions: { readonly primitives: readonly TablePrimitive[] }
-  readonly icons: { readonly roles: readonly { readonly name: string }[] }
+  readonly icons: {
+    readonly roles: readonly { readonly name: string }[]
+    /** The roles a Button's trailing icon may take. */
+    readonly trailing: readonly string[]
+  }
   /**
    * The named data types the members' props take, sorted by name. The
    * generated table always has them; a vocabulary built by hand may leave
@@ -183,6 +187,7 @@ export interface CompactTable {
   readonly members: readonly CompactMember[]
   readonly primitives: readonly CompactPrimitive[]
   readonly roles: readonly string[]
+  readonly trailing: readonly string[]
   readonly dataTypes: readonly CompactDataType[]
 }
 
@@ -240,7 +245,10 @@ export interface TableSource {
       readonly props: readonly SourceProp[]
     })[]
   }
-  readonly icons: { readonly roles: readonly { readonly name: string }[] }
+  readonly icons: {
+    readonly roles: readonly { readonly name: string }[]
+    readonly trailing: readonly string[]
+  }
   readonly dataTypes: readonly {
     readonly name: string
     readonly params: readonly string[]
@@ -365,6 +373,7 @@ export function compactTable(registry: TableSource): CompactTable {
     members,
     primitives,
     roles: registry.icons.roles.map((role) => role.name),
+    trailing: [...registry.icons.trailing],
     dataTypes,
   }
 }
@@ -428,7 +437,7 @@ export function expandTable(compact: CompactTable): ScreenTable {
         }
       }),
     },
-    icons: { roles: compact.roles.map((name) => ({ name })) },
+    icons: { roles: compact.roles.map((name) => ({ name })), trailing: compact.trailing },
     dataTypes: compact.dataTypes.map((type) => ({
       name: type.name,
       params: type.params ?? [],

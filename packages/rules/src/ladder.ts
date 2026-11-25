@@ -83,6 +83,20 @@ export const RULE_CLIMB: Record<string, number[]> = {
   'polymorph/one-opener': [1],
 
   /*
+   * The usage rules: one main Button in a dialog or a section, a danger Button
+   * last in its group of Buttons, and a trailing icon that is a direction or a disclosure.
+   * Each is answered by the vocabulary as it is: a Button's `variant`, its
+   * place in the row, its `icon` prop (1). A one-off composition that needs
+   * otherwise is a declared zone (4), which lifts them as it lifts the
+   * vocabulary rules. They are about hierarchy and order, not about an
+   * accessibility law, so a zone may lift them where it may not lift
+   * `one-opener`.
+   */
+  'polymorph/one-main-button': [1, 4],
+  'polymorph/danger-last': [1, 4],
+  'polymorph/trailing-icon': [1, 4],
+
+  /*
    * A `--pm-*` property declared in application CSS. The theme document owns a
    * token's value, and the report names it, but a theme edit is not an
    * exception. The rungs answer the local need: a member's `tone` or `variant`

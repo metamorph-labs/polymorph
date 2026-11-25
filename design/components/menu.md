@@ -59,7 +59,7 @@ anchored-surface constant, same as Select).
 | item | height `--pm-control-height-sm` · padding-x `--pm-space-3` · radius `--pm-radius-sm` · `text.sm` · text `--pm-text-primary` · icon `sm` at `--pm-text-muted` · icon–label gap `--pm-space-3` |
 | item highlighted | bg `--pm-accent-subtle` · text `--pm-accent-text` · icon inherits |
 | item `tone="danger"` | text `--pm-danger-text` · icon inherits · highlighted: bg `--pm-danger-subtle`, text `--pm-danger-text` (kept quiet: a destructive command stays low-key in the menu, and the ConfirmDialog carries the emphasis) |
-| item disabled | text `--pm-text-disabled` · no highlight |
+| item disabled | text, icon, check and submenu chevron `--pm-text-disabled` · no highlight |
 | checkbox entry | the item recipe, plus Select's check column unchanged (`select.md`): width `--pm-icon-size-sm` + gap `--pm-space-2`, Icon `confirm` `--pm-accent-text` when checked, empty when not. The check uses the leading slot, so a checkbox entry takes no `icon` |
 | kbd hint | `<Kbd>` right-aligned (margin-left auto), only rendered when `kbd` given |
 | separator | 1px `--pm-border-subtle` rule · margin-block `--pm-space-2` |

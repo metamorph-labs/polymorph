@@ -40,7 +40,10 @@ for (const framework of frameworks) {
     for (const fault of faults) console.error(`  ${fault.path}\n    ${fault.message}`)
     process.exit(1)
   }
-  const { code, violations, fatal } = await emitCheckedScreen(spec, { framework, registry })
+  const { code, violations, warnings, fatal } = await emitCheckedScreen(spec, {
+    framework,
+    registry,
+  })
   if (fatal !== null || violations.length > 0) {
     console.error(`${input} emits a ${framework} screen the red rules refuse:\n`)
     if (fatal !== null) console.error(`  ${fatal}`)
@@ -50,6 +53,12 @@ for (const framework of frameworks) {
       )
     }
     process.exit(1)
+  }
+  // A warning does not stop the screen: the rule groups report the usage rules as warnings.
+  for (const warning of warnings) {
+    console.error(
+      `${input} (${framework}) warning ${warning.line}:${warning.column}  ${warning.rule}\n    ${warning.message}`,
+    )
   }
   emitted[framework] = code
 }

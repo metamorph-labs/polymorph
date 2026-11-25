@@ -13,6 +13,18 @@ import {
   type PlatformStatus,
 } from '@polymorph/registry/platforms'
 import { validate as validateShape } from '@polymorph/registry/shape'
+import {
+  actionScope,
+  BUTTON,
+  dangerBeforeOthers,
+  extraMainButtons,
+  GROUP_DIVIDER,
+  groupsOf,
+  isMainButton,
+  isTrailingRole,
+  type ActionScope,
+  type Written,
+} from '@polymorph/rules/usage'
 
 import { isActionType } from './action-type'
 import {
@@ -44,7 +56,8 @@ export { EVENT_HANDLER_ALIAS, isActionType } from './action-type'
  * component exist, and does it render on the screen's platform and in the
  * framework it is emitted for (an option, `SpecOptions`); does every prop
  * exist on it, does the grid have the variant × tone cell, is a declared
- * exception at the right rung with a reason.
+ * exception at the right rung with a reason. The usage rules the red rules
+ * hold code to are held here too (`checkUsage`).
  * All of it is read from the registry, and none from a list here. A validator
  * with its own copy of Button's props would be the second source of truth the
  * registry exists to prevent, and it would go stale the first time a prop was
@@ -122,7 +135,15 @@ export interface SpecPrimitive {
 export interface SpecVocabulary {
   readonly components: readonly SpecMember[]
   readonly exceptions: { readonly primitives: readonly SpecPrimitive[] }
-  readonly icons: { readonly roles: readonly { readonly name: string }[] }
+  readonly icons: {
+    readonly roles: readonly { readonly name: string }[]
+    /**
+     * The roles a Button's trailing icon may take (marked `trailing` in
+     * `design/icons.json`). A vocabulary without the list leaves
+     * `trailingIcon` unchecked.
+     */
+    readonly trailing?: readonly string[]
+  }
 }
 
 export interface SpecValidation {
@@ -441,6 +462,7 @@ export function validateSpec(
   }
 
   walkElement(spec.root, '$.root')
+  checkUsage(spec.root, registry.icons.trailing, faults)
   checkScreenName(spec, screenImports(used, composed, framework), faults)
   if (isNativePlatform(platform)) {
     checkNativeScreen(spec, platform, components, primitives, faults, judges)
@@ -1441,6 +1463,130 @@ function checkIcons(
       `\`${icon}\` is not an icon role — the set is closed` +
       (near.length === 0 ? '' : `, did you mean ${near.map((role) => `\`${role}\``).join(', ')}?`),
   })
+}
+
+/* -------------------------------------------------------------------------- */
+/* The usage rules                                                            */
+/* -------------------------------------------------------------------------- */
+
+/** A prop's value as the usage rules read it: text, absent, or computed (a binding, an element). */
+const writtenOf = (value: SpecValue | undefined): Written =>
+  value === undefined ? undefined : typeof value === 'string' ? value : null
+
+/** One dialog or section, with the paths of the main Buttons it holds, in document order. */
+interface UsageScope {
+  readonly name: string
+  readonly scope: ActionScope
+  readonly buttons: string[]
+}
+
+/**
+ * The usage rules a screen is held to, as the red rules hold application code
+ * to them (`one-main-button`, `danger-last`, `trailing-icon`), from the same
+ * definitions (`@polymorph/rules/usage`):
+ *
+ * - One main Button (`solid`, `accent`, Button's defaults) in a dialog or a
+ *   section. A Dialog's or a Popover's `trigger` stays on the page, so it is
+ *   counted outside. Props are read before children, as the rule reads a
+ *   member's props before its content, so a Dialog's `footer` keeps its main
+ *   action. A spec has no conditional, so every Button in a scope renders.
+ * - Within one group of Buttons placed together, a danger Button comes last,
+ *   and one in a group of its own may come first (`DANGER_ORDER`). A group is
+ *   one list, an element's children or a prop that holds several, up to a
+ *   `Separator`.
+ * - A trailing icon is one of the roles the vocabulary lists in `icons.trailing`.
+ *
+ * A value bound to an input is computed, and none of them reads it. A
+ * `Bespoke` zone lifts them inside it, as it lifts the rules.
+ */
+function checkUsage(
+  root: SpecElement,
+  trailing: readonly string[] | undefined,
+  faults: SpecFault[],
+): void {
+  const scopes: UsageScope[] = []
+
+  /**
+   * A list of siblings, divided into its groups at each `Separator`: in a group, a danger
+   * Button before a Button that is surely not one. A Button an element wraps apart from the
+   * others is in that element's list, a group of its own.
+   */
+  const row = (items: readonly SpecValue[], path: string): void => {
+    const indexed = items.map((item, index) => ({ item, at: `${path}[${index}]` }))
+    const divider = ({ item }: { item: SpecValue }) =>
+      isElement(item) && item.component === GROUP_DIVIDER
+    for (const group of groupsOf(indexed, divider)) {
+      const places = group.flatMap(({ item, at }) =>
+        isElement(item) && item.component === BUTTON
+          ? [{ tone: writtenOf(item.props?.['tone']), at }]
+          : [],
+      )
+      for (const index of dangerBeforeOthers(places.map(({ tone }) => [tone]))) {
+        faults.push({
+          path: places[index]?.at ?? path,
+          message:
+            'a danger Button before another Button in its group — the destructive one comes ' +
+            'last, so the safe one is met first; move it last, or into a group of its own',
+        })
+      }
+    }
+  }
+
+  const value = (written: SpecValue, path: string, scope: UsageScope | null): void => {
+    if (Array.isArray(written)) {
+      row(written, path)
+      written.forEach((item, index) => value(item, `${path}[${index}]`, scope))
+    } else if (isObjectValue(written)) {
+      for (const [key, field] of Object.entries(written.$object))
+        value(field, `${path}.${key}`, scope)
+    } else if (isElement(written)) {
+      element(written, path, scope)
+    }
+  }
+
+  const element = (written: SpecElement, path: string, scope: UsageScope | null): void => {
+    if (written.component === 'Bespoke') return
+    const props = written.props ?? {}
+    if (written.component === BUTTON) {
+      const main = isMainButton(writtenOf(props['variant']), writtenOf(props['tone']))
+      if (main === true && scope !== null) scope.buttons.push(path)
+      const role = props['trailingIcon']
+      if (trailing !== undefined && typeof role === 'string' && !isTrailingRole(role, trailing)) {
+        faults.push({
+          path: `${path}.props.trailingIcon`,
+          message:
+            `\`${role}\` does not trail its text — an icon leads its text, and only ` +
+            `${listed(trailing.map((name) => `\`${name}\``))} trail it; ` +
+            (props['icon'] === undefined
+              ? `make it \`"icon": "${role}"\``
+              : `drop it, or make it \`"icon": "${role}"\` in place of the other`),
+        })
+      }
+    }
+    const opened = actionScope(written.component)
+    const inner: UsageScope | null =
+      opened === null ? scope : { name: opened.name, scope: opened.scope, buttons: [] }
+    if (opened !== null && inner !== null) scopes.push(inner)
+    for (const [name, held] of Object.entries(props)) {
+      const outside = opened !== null && opened.scope.outside.includes(name)
+      value(held, `${path}.props.${name}`, outside ? scope : inner)
+    }
+    if (written.children !== undefined) value(written.children, `${path}.children`, inner)
+  }
+
+  element(root, '$.root', null)
+
+  for (const scope of scopes) {
+    for (const index of extraMainButtons(scope.buttons.map(() => []))) {
+      faults.push({
+        path: scope.buttons[index] ?? '$.root',
+        message:
+          `a second main Button in this \`${scope.name}\` — a ${scope.scope.kind} has one solid ` +
+          'accent Button, which marks its next step; make this one ' +
+          '`"variant": "outline", "tone": "neutral"`',
+      })
+    }
+  }
 }
 
 /* -------------------------------------------------------------------------- */

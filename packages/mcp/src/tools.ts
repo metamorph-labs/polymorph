@@ -10,8 +10,10 @@ import {
 } from '@polymorph/cli'
 import {
   DEFAULT_PATHS,
+  errorsOf,
   fix as applyFixes,
   verify,
+  warningsOf,
   type Diagnostic,
   type Surface,
 } from '@polymorph/rules/verify'
@@ -484,6 +486,11 @@ export interface ValidateAnswer {
   surface?: Surface
   filename?: string
   violations?: Violation[]
+  /**
+   * Reports of rules the groups report as warnings (the usage rules,
+   * `docs/rules.md`). They do not make `ok` false.
+   */
+  warnings?: Violation[]
   /** Spec faults, each with the path in the document that produced it. */
   faults?: SpecFault[]
   /** Set when the submission could not be parsed, in which case nothing ran. */
@@ -524,10 +531,11 @@ export async function validate(context: ToolContext, args: ValidateArgs): Promis
     code,
   })
   const result = await verify(source, { surface, filename, framework, vocabulary })
-  const violations = withClimb(
+  const reports = withClimb(
     context.registry,
     wrapped ? result.diagnostics.map(unwrapped) : result.diagnostics,
   )
+  const violations = errorsOf(reports)
 
   return {
     ok: result.fatal === null && violations.length === 0,
@@ -535,6 +543,7 @@ export async function validate(context: ToolContext, args: ValidateArgs): Promis
     surface,
     filename,
     violations,
+    warnings: warningsOf(reports),
     fatal: result.fatal,
   }
 }
@@ -729,6 +738,8 @@ export interface FixAnswer {
   filename: string
   /** What no fix could answer: these are decisions, each with its rungs. */
   violations: Violation[]
+  /** Reports of rules the groups report as warnings, which do not make `ok` false. */
+  warnings: Violation[]
   /** Set when the submission could not be parsed, in which case nothing changed. */
   fatal: string | null
 }
@@ -761,10 +772,11 @@ export async function fix(context: ToolContext, args: FixArgs): Promise<FixAnswe
 
   const result = await applyFixes(source, { surface, filename, framework, vocabulary })
   const code = wrapped ? unwrappedCode(result.output, args.code) : result.output
-  const violations = withClimb(
+  const reports = withClimb(
     context.registry,
     wrapped ? result.diagnostics.map(unwrapped) : result.diagnostics,
   )
+  const violations = errorsOf(reports)
 
   return {
     ok: result.fatal === null && violations.length === 0,
@@ -774,6 +786,7 @@ export async function fix(context: ToolContext, args: FixArgs): Promise<FixAnswe
     surface,
     filename,
     violations,
+    warnings: warningsOf(reports),
     fatal: result.fatal,
   }
 }

@@ -41,6 +41,9 @@ describe('@polymorph/rules', () => {
       'polymorph/no-external-dataviz',
       'polymorph/scoped-token-owners',
       'polymorph/one-opener',
+      'polymorph/one-main-button',
+      'polymorph/danger-last',
+      'polymorph/trailing-icon',
     ])
     expect(new Set([...stageOne, ...stageTwo]).size).toBe(stageOne.length + stageTwo.length)
     expect(Object.keys(allRules).sort()).toEqual([...stageOne, ...stageTwo].sort())

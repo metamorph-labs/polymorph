@@ -3,6 +3,7 @@ import polymorph, {
   fixableRawControls,
   stageOneRules,
   stageTwoRules,
+  usageRulesAsErrors,
   vendorableRules,
 } from '@polymorph/rules/eslint'
 import {
@@ -206,8 +207,9 @@ export default tseslint.config(
     ignores: HARNESS,
     plugins: { polymorph },
     // The apps here import members from the package, so a text-only `<button>`
-    // has one module to be rewritten against, and its fix is enabled.
-    rules: { ...stageTwoRules, ...fixableRawControls },
+    // has one module to be rewritten against, and its fix is enabled. The apps
+    // hold to the usage rules, so they are errors here.
+    rules: { ...stageTwoRules, ...fixableRawControls, ...usageRulesAsErrors },
   },
   prettier,
 )

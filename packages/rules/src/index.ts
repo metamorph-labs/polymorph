@@ -8,9 +8,12 @@ import { noExternalDataviz } from './rules/no-external-dataviz'
 import { noExternalIcons } from './rules/no-external-icons'
 import { noExternalMotion } from './rules/no-external-motion'
 import { noRawInteractive } from './rules/no-raw-interactive'
+import { dangerLast } from './rules/danger-last'
 import { noRawStyles } from './rules/no-raw-styles'
+import { oneMainButton } from './rules/one-main-button'
 import { oneOpener } from './rules/one-opener'
 import { scopedTokenOwners } from './rules/scoped-token-owners'
+import { trailingIcon } from './rules/trailing-icon'
 import { vendorableImports } from './rules/vendorable-imports'
 
 /**
@@ -40,6 +43,9 @@ export const rules = {
   'no-external-dataviz': noExternalDataviz,
   'scoped-token-owners': scopedTokenOwners,
   'one-opener': oneOpener,
+  'one-main-button': oneMainButton,
+  'danger-last': dangerLast,
+  'trailing-icon': trailingIcon,
   'vendorable-imports': vendorableImports,
 } satisfies Record<string, Rule.RuleModule>
 
@@ -154,6 +160,23 @@ export const stageOneRules: Linter.RulesRecord = {
   [q('no-app-css')]: 'error',
 }
 
+/** The usage rules, each at a severity. */
+const usageRules = (severity: 'warn' | 'error'): Linter.RulesRecord => ({
+  [q('one-main-button')]: severity,
+  [q('danger-last')]: severity,
+  [q('trailing-icon')]: severity,
+})
+
+const USAGE_RULES_AS_WARNINGS = usageRules('warn')
+
+/**
+ * The usage rules as errors. Spread it after the rule groups in a config whose
+ * screens hold to them already, as `fixableRawControls` is spread: the groups
+ * report the usage rules as warnings, so an app that upgrades is not stopped by
+ * screens it wrote before the rules existed.
+ */
+export const usageRulesAsErrors: Linter.RulesRecord = usageRules('error')
+
 /**
  * Rules that need the vocabulary and the exception ladder to exist first.
  *
@@ -180,6 +203,18 @@ export const stageTwoRules: Linter.RulesRecord = {
   [q('no-external-dataviz')]: 'error',
   [q('scoped-token-owners')]: ['error', { owners }],
   [q('one-opener')]: 'error',
+  /**
+   * The usage rules (`docs/rules.md`): one main Button in a dialog or a
+   * section, a danger Button last in its group of Buttons, and a trailing icon that is a
+   * direction or a disclosure. Like `one-opener`, they limit what a screen
+   * composes, and they need the vocabulary's Button and scopes to exist.
+   *
+   * They are warnings here, because this is the group an install applies, and
+   * screens written before the rules existed break them: an app that upgrades
+   * sees the reports without a failing build. `usageRulesAsErrors`, spread
+   * after the groups, makes them errors, as this repository's config does.
+   */
+  ...USAGE_RULES_AS_WARNINGS,
 }
 
 /**

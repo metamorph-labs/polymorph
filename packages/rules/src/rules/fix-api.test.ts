@@ -269,6 +269,7 @@ describe('every member a report names is in the vocabulary', () => {
       `import { motion } from 'framer-motion'\nexport const A = () => <motion.button whileTap={{ scale: 0.9 }} />`,
       `export { AnimatePresence } from 'framer-motion'\nexport { BarChart } from 'recharts'`,
       `export const A = () => <><Hero title="a" /><PageHeader title="b" /></>`,
+      `export const A = () => <Card><Button label="a" /><Button tone="danger" label="b" /><Button icon="add" trailingIcon="user" label="c" /></Card>`,
     ].flatMap((code) => verifyCode(code).diagnostics)
     expect(reports.length).toBeGreaterThan(10)
     let checked = 0

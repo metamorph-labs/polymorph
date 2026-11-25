@@ -100,6 +100,40 @@ const INSTALLS: Record<Framework, string[]> = {
 }
 
 /**
+ * The ten usage rules a designer set for Button and icons, each marked by what
+ * holds it: the system (held), a red rule that the validation of a screen
+ * spec repeats (checked), or nothing (guidance). An agent reads the card
+ * before it writes a screen, and the two rules about meaning are ones no tool
+ * can check, so the card is where it is told them. The trailing roles are
+ * read from the registry, which reads them from `design/icons.json`.
+ */
+function usageLines(registry: Registry): string[] {
+  const trailing = registry.icons.trailing
+  const roles = `${trailing.slice(0, -1).join(', ')} and ${trailing[trailing.length - 1] ?? ''}`
+  return [
+    '## Button and icon usage',
+    '',
+    'Held by the system, checked by a rule and by a screen spec’s validation, or guidance',
+    'nothing checks:',
+    '',
+    '1. Guidance: an icon’s role means the action it stands for.',
+    '2. Held: a glyph takes its text’s colour, so red text has a red icon.',
+    '3. Held: an icon is a role, never a glyph, so one action draws one icon everywhere.',
+    '4. Held: an icon-only Button shows its `label` as a tooltip on hover and focus.',
+    `5. Checked (\`trailing-icon\`): an icon leads its text; only ${roles} trail it.`,
+    '6. Held: a disabled control fades its icon with its text.',
+    '7. Checked (`danger-last`): within one group of Buttons placed together, a danger Button',
+    '   comes last. A destructive action in a group of its own, apart from the group that holds',
+    '   the main Button, may come first. Held: no member gives it focus when a dialog opens.',
+    '8. Checked (`one-main-button`): one solid accent Button, the default, per Dialog, Drawer,',
+    '   Popover, Card or Dashboard.Panel; another action there is `outline` or `ghost`.',
+    '9. Guidance: a label says what happens ("Delete volume", not "OK").',
+    '10. Guidance: a status has a word, never colour alone. Badge takes its text, Progress a',
+    '    `label` that says it, and a field in error FormField’s `error`.',
+  ]
+}
+
+/**
  * How another library's component is hosted, which an agent needs before it
  * reaches for a map or an editor: the boundary by the name the framework
  * writes it, what it lifts, and the two ways the theme reaches the library.
@@ -405,6 +439,8 @@ export function renderSystemCard(registry: Registry, options: CardOptions = {}):
   write(
     '',
     ...MEMBER_CONTRACT[framework],
+    '',
+    ...usageLines(registry),
     '',
     '## When the vocabulary has no word for it',
     '',

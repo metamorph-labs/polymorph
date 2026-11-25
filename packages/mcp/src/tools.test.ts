@@ -310,6 +310,22 @@ describe('validate', () => {
     expect(answer.ok).toBe(true)
   })
 
+  it('reports a warning apart from the violations, and calls the source lawful', async () => {
+    const answer = await validate(context, {
+      code:
+        "import { Button, Inline } from '@polymorph/react-ui'\n\n" +
+        screen(
+          '<Inline><Button tone="danger" label="Delete" /><Button variant="outline" tone="neutral" label="Keep" /></Inline>',
+        ),
+    })
+    expect(answer.ok).toBe(true)
+    expect(answer.violations).toEqual([])
+    expect(answer.warnings?.map((warning) => [warning.rule, warning.severity])).toEqual([
+      ['polymorph/danger-last', 'warning'],
+    ])
+    expect(answer.warnings?.[0]?.climb.map((rung) => rung.rung)).toEqual([1, 4])
+  })
+
   it('reports a style decision with the rungs that answer it', async () => {
     const answer = await validate(context, {
       code: screen("<div style={{ padding: 12, color: 'rebeccapurple' }} />"),

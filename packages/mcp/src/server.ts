@@ -388,7 +388,9 @@ export function createServer(context: ToolContext): McpServer {
       description:
         'Submit code, get the red-rule violations the repository’s own lint run would report — the ' +
         'same diagnostics, from the same rules — each with the exception-ladder rung that answers ' +
-        'it. The code is parsed, never executed. Or submit a screen spec and get it checked ' +
+        'it. A rule the groups report as a warning (the usage rules) comes back in `warnings`, ' +
+        'apart from `violations`, and does not make `ok` false. ' +
+        'The code is parsed, never executed. Or submit a screen spec and get it checked ' +
         'against the vocabulary: does the component exist and render on the spec’s `platform`, ' +
         'does the prop exist, is the variant × tone cell lawful, is the exception declared at the ' +
         'right rung — and, with `framework`, does that framework’s vocabulary ship it. Use it ' +

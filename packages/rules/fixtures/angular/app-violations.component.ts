@@ -4,14 +4,14 @@ import { trigger, transition, style, animate } from '@angular/animations'
 import { scaleLinear } from 'd3-scale'
 import { LucideAngularModule, Trash2 } from 'lucide-angular'
 
-import { Button, Hero, PageHeader } from '@polymorph/angular-ui'
+import { Button, Card, Hero, PageHeader } from '@polymorph/angular-ui'
 
 const BRAND = '#4087de'
 const TOPBAR = 'var(--pm-shell-topbar-height)'
 
 @Component({
   selector: 'app-inbox',
-  imports: [Button, Hero, PageHeader, LucideAngularModule],
+  imports: [Button, Card, Hero, PageHeader, LucideAngularModule],
   animations: [trigger('fade', [transition(':enter', [style({ opacity: 0 }), animate('200ms')])])],
   styleUrl: './inbox.component.css',
   template: `
@@ -27,6 +27,12 @@ const TOPBAR = 'var(--pm-shell-topbar-height)'
       <lucide-icon [img]="trash" />
       <p @fade>{{ scale }}</p>
       <span>{{ topbar }}</span>
+      <!-- A second main Button, a danger Button before a safe one, and a trailing icon that neither points nor opens. -->
+      <pm-card title="Plan">
+        <pm-button label="Upgrade" />
+        <pm-button tone="danger" label="Cancel plan" />
+        <pm-button trailingIcon="delete" label="Remove seat" />
+      </pm-card>
     </div>
   `,
 })

@@ -28,6 +28,7 @@ export {
   solidSettings,
   stageOneRules,
   stageTwoRules,
+  usageRulesAsErrors,
   vendorableRules,
 } from './index'
 export type { PolymorphPlugin, PolymorphRuleName } from './index'

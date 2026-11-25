@@ -310,7 +310,8 @@
   color: inherit;
 }
 
-.item[data-disabled] .description {
+.item[data-disabled] .description,
+.item[data-disabled] .check {
   color: var(--pm-text-disabled);
 }
 

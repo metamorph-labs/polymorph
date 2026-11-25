@@ -54,6 +54,7 @@ describe('a spec for the elements', () => {
     expect(await emitCheckedScreen(inbox, { framework: 'elements', registry })).toEqual({
       code: '',
       violations: [],
+      warnings: [],
       fatal: ELEMENTS_UNEMITTED,
     })
   })
