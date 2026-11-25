@@ -36,13 +36,16 @@
 }
 
 /* Transparent, borderless, with the container's type, copied from Input's inner
-   element. Digits keep their width as they change. */
+   element. Digits keep their width as they change. In a narrow field the value
+   gives way, as in Input: the affixes and the steppers keep their width, and a
+   value cut short ends in an ellipsis while the field is not focused. */
 .input {
   flex: 1;
   min-inline-size: 0;
   padding: 0;
   font: inherit;
   color: inherit;
+  text-overflow: ellipsis;
   background: transparent;
   border: 0;
   outline: none;

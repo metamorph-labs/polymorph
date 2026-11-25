@@ -366,7 +366,7 @@ key End moves-focus-last on control
 | --- | --- |
 | root | column · gap `--pm-space-2` · `position: relative` |
 | frame | column · gap `--pm-space-2` · padding `--pm-space-3` · bg `--pm-bg-surface` · border `1px solid --pm-border-field` · radius `--pm-radius-control` · shadow `--pm-shadow-seat` · `stateFeedback` |
-| frame, text focused | the composite-field focus convention (conventions §4) via `:has(.surface:focus-visible)`: outline `--pm-focus-width` `--pm-border-focus` at `--pm-focus-offset`, `--pm-glow-focus`, border `--pm-border-focus-solid` except while invalid; under `--pm-focus-field: border` the outline moves inside the edge in `--pm-border-focus-solid` and the seat stays |
+| frame, text focused | the composite-field focus convention (conventions §4) via `:has(.surface:focus-visible)`: outline `--pm-focus-width` `--pm-border-focus-solid` at `--pm-focus-offset`, inside the frame's edge by default, border `--pm-border-focus-solid` except while invalid; while invalid the outline lies inside the danger border, 1px further in; under `--pm-focus-field: border` the outline lies inside the edge whatever the system's offset |
 | frame hover | border `--pm-border-strong`, not while disabled, read-only or invalid |
 | frame invalid | border `--pm-danger-border` |
 | frame disabled | bg `--pm-bg-subtle` · border `--pm-border-subtle` · no seat · `cursor: not-allowed` |

@@ -127,7 +127,7 @@ fun Modifier.pmFieldBox(
         .then(if (disabled) Modifier else Modifier.pmShadow(theme.shadows.seat, shape))
         .background(fill, shape)
         .border(PMGeometry.hairline, border, shape)
-        .pmFocusRing(focused && !disabled, theme.radius.control.dp)
+        .pmFocusRing(focused && !disabled, theme.radius.control.dp, stateBorder = invalid)
 }
 
 /**

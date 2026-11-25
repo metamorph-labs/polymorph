@@ -301,7 +301,7 @@ internal object Pop_Orchid {
                 dark = PMRgba(28, 20, 26, 1f),
             ),
         ),
-        focus = PMFocus(width = 3f, offset = 2f),
+        focus = PMFocus(width = 2f, offset = -2f),
         icon = PMIcons(
             sm = PMIconScale(size = 14f, stroke = 2f),
             md = PMIconScale(size = 16f, stroke = 1.75f),

@@ -98,10 +98,11 @@ keeps itself survive the way back. A narrow page loses the split, never the cont
 | root | column · `row-gap --pm-content-gutter` · `block-size: 100%` · `min-block-size: 0` · `max-inline-size --pm-page-max-width` · centred · padding from the scope · `container-type: inline-size` |
 | body | `flex: 1` · `min-block-size: 0`. The split or the one pane fills it |
 | list pane | `block-size: 100%` · `overflow-y: auto` · `overscroll-behavior: contain`. No surface of its own *(see below)* |
-| list pane, focused from a script | the shared ring (`--pm-focus-width` · `--pm-border-focus`), drawn inside the pane's edge, because SplitPane's pane clips what is drawn outside it |
+| list pane, focused from a script | the shared ring (`--pm-focus-width` · `--pm-border-focus-solid`), drawn inside the pane's edge by its width at every system's offset, because SplitPane's pane clips what is drawn outside it |
 | detail pane | column · `block-size: 100%`; in the split, `padding-inline-start --pm-content-gutter` off the seam |
 | back | `Button ghost/neutral/sm icon="back"` · `padding-block-end --pm-space-3`; it stays in view while the detail scrolls under it |
 | detail | `flex: 1` · `overflow-y: auto` · `overscroll-behavior: contain` |
+| room in the panes | the list pane and the detail clip what they hold, so each has `--pm-space-2` of padding that negative margins take back where the page owns the space past it: every side with one pane (inside the page's padding and the back row's), and in the split the list pane's side at the seam (where SplitPane's pane has the same room) and the detail's start side (inside its gutter). A field or Button there draws its whole seat shadow, a control's focus mark (a 2px line a `--pm-space-1` gap outside it) fits, and nothing moves. The split's outer sides are its panes' edges, which have none (`split-pane.md`) |
 | empty | EmptyState centred in the detail pane, as ListPage centres its empty state in the table's place |
 
 **The panes draw no surface.** SplitPane's separator already divides them. A panel's edge

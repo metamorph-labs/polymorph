@@ -392,8 +392,15 @@
   background: var(--pm-danger-subtle-hover);
 }
 
-/* The focus glow is deliberately not restated. The selectors law requires every component to show
-   focus through the composed ring, and that requirement takes priority over the halo. Solid cells
-   set `box-shadow`, so on them the shared rule's glow loses the cascade and keyboard focus shows
-   only the shared ring. On a solid the glow appears on hover instead (above). Every variant
-   without a rest shadow gets the ring *and* the halo from the composed rule. */
+/* focus -------------------------------------------------------------------- */
+
+/* The focus mark is the composed convention's: a line inside the edge in the focus colour. A solid
+   fill takes the mark inside the fill with a gap (`conventions/focus.module.css`): in its label
+   colour, which the label laws hold on the fill at rest, hovered, pressed and on, and one width in
+   from the edge, so the fill shows on both sides of the line. At the edge the label colour would
+   sit against the page. The hooks are set on the focused state only, because a custom property
+   inherits. */
+.button[data-variant='solid'][data-tone]:focus-visible {
+  --pm-focus-mark: currentcolor;
+  --pm-focus-inset: var(--pm-focus-width);
+}

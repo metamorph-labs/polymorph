@@ -69,7 +69,7 @@ writes one function for its router and passes it to each
 | `standalone` rest | color `--pm-accent-text` · no underline · `text.sm` quartet unless inheriting |
 | `standalone` hover | underline per inline's metrics |
 | `button` costume | Button's recipe cells by reference (`button.md`), never re-derived. `buttonVariant` × `tone` × `size` select the exact cells: rest/hover/active/focus, press feedback, §2 sizing, the lawful grid. Cells with no meaning for navigation are not used: no `loading`, no `disabled` (an `<a>` that cannot be followed is not rendered as a link), no underline (the frame already shows it is clickable). `external`'s glyph uses Button's trailing-icon slot |
-| focus | ring per conventions §4 |
+| focus | ring per conventions §4, around the text box with a gap (`focusAround`): `outline-offset` `--pm-space-1`, or the system's own where it is larger. A line inside an inline box would cross the first and last letters, and a line on its edge would touch them. The `button` costume keeps Button's ring inside its edge |
 | external icon | `sm`, `currentColor`, gap `--pm-space-1`, decorative (when the new-tab behaviour matters, `rel` or the surrounding text announces it) |
 
 Visited links are unstyled. Product tools revisit pages constantly, and a purple visited state

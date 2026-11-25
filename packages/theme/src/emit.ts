@@ -382,9 +382,11 @@ export function emitThemeCSS(theme: ResolvedTheme, options: EmitThemeOptions = {
     declare('texture.page', theme.tokens.texture.page[fallbackMode]),
     declare('focus.width', theme.tokens.focus.width),
     declare('focus.offset', theme.tokens.focus.offset),
-    // Two system choices, written as flags a recipe branches on with a style
-    // query. A value cannot carry them: each switches which role a rule reads,
-    // and a reference token would not follow `[data-tone="inverse"]`.
+    // Flags a recipe branches on with a style query: where the focus mark
+    // sits, read from the offset, and two system choices. A value cannot carry
+    // them: each switches which role a rule reads, and a reference token would
+    // not follow `[data-tone="inverse"]`.
+    declare('focus.place', theme.tokens.focus.place),
     declare('focus.field', theme.tokens.focus.field),
     declare('hover.unfilled', theme.tokens.hover.unfilled),
     // The same at every density, so the base block is its only declaration.

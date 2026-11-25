@@ -15,6 +15,7 @@ import {
   paletteNameSchema,
   paletteSchema,
   pairingId,
+  pairingMeasure,
   resolveTheme,
   systemNameSchema,
   systemSchema,
@@ -188,9 +189,10 @@ export function deriveDraft(draft: Draft): Derivation {
     for (const result of auditPairings(theme.color[mode])) {
       checked += 1
       if (result.passes) continue
+      // Each pair's fault is stated in the measure its floor is: Lc, ΔL or the WCAG ratio.
       faults.push(
-        `${theme.name} (${mode}): ${pairingId(result.pairing)} reached Lc ` +
-          `${result.lc.toFixed(1)}, floor is ${result.pairing.minLc}.`,
+        `${theme.name} (${mode}): ${pairingId(result.pairing)} reached ` +
+          `${pairingMeasure(result.pairing, result)}.`,
       )
     }
 

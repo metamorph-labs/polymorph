@@ -5,7 +5,7 @@ import { auditCoherence, coherenceMessage } from './coherence'
 import { auditGlassPairings, auditGradientPairings, auditPairings } from './color/resolve'
 import { buildRoleMap } from './color/role-map'
 import { emitThemeCSS } from './emit'
-import { gradientPairingId, isDelineation, pairingId } from './pairings'
+import { gradientPairingId, pairingId, pairingMeasure } from './pairings'
 import { resolveTheme } from './resolve-theme'
 import { GRADIENT_BASE, type ColorRole } from './roles'
 import { fontPackage, FONT_ROLES, type FontFamilies, type FontRole } from './seeds'
@@ -158,10 +158,9 @@ export function auditResolvedTheme(theme: ResolvedTheme): AdmissionFault[] {
   for (const mode of MODES) {
     for (const result of auditPairings(theme.color[mode])) {
       if (result.passes) continue
-      // A delineation pair is stated in ΔL, so its fault is too: its Lc floor is 0.
-      const measure = isDelineation(result.pairing)
-        ? `ΔL ${result.deltaL.toFixed(3)}, floor is ${result.pairing.minDeltaL}`
-        : `Lc ${result.lc.toFixed(1)}, floor is ${result.pairing.minLc}`
+      // A delineation pair is stated in ΔL and a focus pair in the WCAG ratio,
+      // so its fault is too: its Lc floor is 0.
+      const measure = pairingMeasure(result.pairing, result)
       faults.push({
         law: 'contrast',
         message:

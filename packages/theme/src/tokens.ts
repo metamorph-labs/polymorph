@@ -115,14 +115,28 @@ export interface CubicBezier {
 }
 
 /**
- * How a focused field shows focus. `ring` is the shared ring around the field,
- * the default. `border` draws the same outline inside the field's edge in
- * `border.focusSolid` and keeps the field's seat shadow. A system chooses it
- * (`overrides.focus.field`), the emitter writes it as the flag `--pm-focus-field`,
- * and `focus.module.css` branches on the flag.
+ * How a focused field shows focus. `ring` is the shared mark every part draws,
+ * the default. `border` draws the outline inside the field's edge whatever the
+ * system's offset, so it differs from `ring` only in a system that moves the
+ * mark outside. A system chooses it (`overrides.focus.field`), the emitter
+ * writes it as the flag `--pm-focus-field`, and `focus.module.css` branches on
+ * the flag.
  */
 export const FIELD_FOCUS_STYLES = ['ring', 'border'] as const
 export type FieldFocusStyle = (typeof FIELD_FOCUS_STYLES)[number]
+
+/**
+ * Where the focus mark is drawn, read from the offset: `inside` the part's
+ * edge for a negative offset, the derived default, and `outside` it for 0 or
+ * more. The emitter writes it as the flag `--pm-focus-place`, and
+ * `focus.module.css` branches on it. Inside, a filled part draws the mark in
+ * its own text colour, and a part whose border carries state moves the mark in
+ * past that border. Outside, the mark is drawn on the surface behind the part,
+ * in the focus colour, and covers no border. A value token cannot carry the
+ * choice, because it switches which colour a rule reads.
+ */
+export const FOCUS_PLACES = ['inside', 'outside'] as const
+export type FocusPlace = (typeof FOCUS_PLACES)[number]
 
 /**
  * Whether a control with no rest fill (Button's `outline` and `ghost`) takes a
@@ -350,10 +364,11 @@ export interface NonColorTokens {
     railBorder: ColorRole
   }
   /**
-   * Ring width/offset, tunable per system. The ring is one global convention.
-   * `field` is how a focused field draws it (see `FIELD_FOCUS_STYLES`).
+   * The focus mark's width and offset, tunable per system. The mark is one
+   * global convention. `place` is read from the offset (see `FOCUS_PLACES`),
+   * and `field` is how a focused field draws it (see `FIELD_FOCUS_STYLES`).
    */
-  focus: { width: string; offset: string; field: FieldFocusStyle }
+  focus: { width: string; offset: string; place: FocusPlace; field: FieldFocusStyle }
   /** Whether an unfilled control washes under the pointer (see `UNFILLED_HOVERS`). */
   hover: { unfilled: UnfilledHover }
   /**

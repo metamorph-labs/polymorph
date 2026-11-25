@@ -134,13 +134,13 @@
   color: var(--pm-text-disabled);
 }
 
-/* The focus ring on the row, with the shared rule's tokens. Restated because
-   the focusable element is the item, which holds the rows under it too, and
-   the ring belongs around one row. It is drawn inside the row's edge: rows
-   share their edges, and an outer ring would be cut by the surface around the
-   tree. */
+/* The focus mark on the row, with the shared convention's tokens. Restated
+   because the focusable element is the item, which holds the rows under it
+   too, and the mark belongs to one row. It is drawn inside the row's edge by
+   its width at every system's offset: rows share their edges, and a mark
+   outside would be cut by the surface around the tree. */
 .item:focus-visible > .row {
-  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline: var(--pm-focus-width) solid var(--pm-border-focus-solid);
   outline-offset: calc(var(--pm-focus-width) * -1);
 }
 

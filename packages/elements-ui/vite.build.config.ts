@@ -6,6 +6,7 @@ import { defineConfig, type Plugin, type UserConfig } from 'vite'
 import solid from 'vite-plugin-solid'
 
 import { admitTheme, PREPAINT_SCRIPT } from '../theme/src/index'
+import { dedupeStylesheet } from './dedupe-stylesheet'
 import { reachThroughPlugin } from './reach-through'
 
 const path = (file: string) => fileURLToPath(new URL(file, import.meta.url))
@@ -157,6 +158,25 @@ function noBuildAssets(): Plugin {
   }
 }
 
+/**
+ * Writes each repeated rule of `polymorph.css` once (`dedupe-stylesheet.ts`).
+ * It runs after the bundler has minified the stylesheet, so two copies of a
+ * rule have the same text.
+ */
+function dedupedStylesheet(): Plugin {
+  return {
+    name: 'polymorph:deduped-stylesheet',
+    apply: 'build',
+    enforce: 'post',
+    generateBundle(_, bundle) {
+      for (const [name, output] of Object.entries(bundle)) {
+        if (output.type !== 'asset' || !name.endsWith('.css')) continue
+        output.source = dedupeStylesheet(String(output.source))
+      }
+    },
+  }
+}
+
 /** Every class name a stylesheet declares. */
 const classNames = (css: string): Set<string> =>
   new Set([...css.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)].map((match) => match[1] as string))
@@ -208,7 +228,7 @@ function noBuild(all: boolean): UserConfig {
     plugins: [
       reachThroughPlugin(),
       solid({ hot: false }),
-      ...(all ? [sharedStylesheet()] : [noBuildAssets()]),
+      ...(all ? [sharedStylesheet()] : [noBuildAssets(), dedupedStylesheet()]),
     ],
     resolve: { dedupe: ['solid-js'] },
     build: {

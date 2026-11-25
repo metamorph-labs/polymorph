@@ -12,6 +12,7 @@
   --pm-page-padding-y: var(--pm-space-6);
   --pm-page-max-width: calc(var(--pm-space-10) * 15);
   --pm-content-gutter: var(--pm-space-5);
+  --pm-master-detail-reach: var(--pm-space-2);
 
   container-type: inline-size;
   display: flex;
@@ -62,11 +63,12 @@
   display: none;
 }
 
-/* The pane takes focus from a script only, when nothing in it does. The ring
-   is the shared rule's, drawn inside the pane's edge, because the split's pane
-   clips what is drawn outside it. */
+/* The pane takes focus from a script only, when nothing in it does. The mark
+   is the shared convention's, drawn inside the pane's edge by its width at
+   every system's offset, because the split's pane clips what is drawn outside
+   it. */
 .list:focus-visible {
-  outline: var(--pm-focus-width) solid var(--pm-border-focus);
+  outline: var(--pm-focus-width) solid var(--pm-border-focus-solid);
   outline-offset: calc(var(--pm-focus-width) * -1);
 }
 
@@ -98,6 +100,37 @@
   min-block-size: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+/* Room for what the panes' content draws outside itself. The list and the
+   detail's scroll clip what they hold at their padding edge: a field's or a
+   Button's seat shadow against their side, and a control's focus mark, drawn a
+   `space-1` gap outside it. Each is larger than its content by `space-2` where
+   the page owns the space past it, and its margins take that back, so nothing
+   moves. With one pane that is every side, inside the page's padding and the
+   way back's. In the split it is the list's side at the seam, where SplitPane's
+   pane has the same room, and the detail's start side, inside its gutter. The
+   split's outer sides are its panes' edges, which have no room
+   (`split-pane.module.css`). The reach is declared on the page. */
+.page[data-layout='single'] .list {
+  block-size: calc(100% + var(--pm-master-detail-reach) * 2);
+  margin: calc(var(--pm-master-detail-reach) * -1);
+  padding: var(--pm-master-detail-reach);
+}
+
+.page[data-layout='single'] .scroll {
+  margin: calc(var(--pm-master-detail-reach) * -1);
+  padding: var(--pm-master-detail-reach);
+}
+
+.page[data-layout='split'] .list {
+  margin-inline-end: calc(var(--pm-master-detail-reach) * -1);
+  padding-inline-end: var(--pm-master-detail-reach);
+}
+
+.page[data-layout='split'] .scroll {
+  margin-inline-start: calc(var(--pm-master-detail-reach) * -1);
+  padding-inline-start: var(--pm-master-detail-reach);
 }
 
 /* The empty form in the split: EmptyState centred in the pane, in the place

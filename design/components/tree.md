@@ -134,7 +134,7 @@ application's.
 | row, hover | bg `--pm-bg-subtle` |
 | selected row | bg `--pm-selection-surface` · with hover, `--pm-selection-surface-hover`, which is the same colour in an achromatic system · the text keeps its colours, because a row holds a label and a description, and the contrast law holds every text role on the selected surface. Selection takes precedence over hover (`README.md`, Selection treatment) |
 | disabled row | label, description and chevron `--pm-text-disabled` · `cursor: not-allowed` · no hover fill |
-| focus | the shared ring's tokens on the row of the focused item, drawn inside its edge (`outline-offset: calc(var(--pm-focus-width) * -1)`), because rows share their edges and an open branch's item also holds the rows under it |
+| focus | the shared ring's tokens on the row of the focused item, drawn inside its edge at every system's offset (`outline-offset: calc(var(--pm-focus-width) * -1)`), because rows share their edges and an open branch's item also holds the rows under it |
 
 **On Android**: a row that takes a press is at least the 48dp hit target tall, where the recipe's
 least height is `--pm-control-height-sm`, and the toggle column is 48dp wide, so the chevron's touch

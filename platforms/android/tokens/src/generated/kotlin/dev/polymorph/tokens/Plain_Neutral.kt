@@ -253,7 +253,7 @@ internal object Plain_Neutral {
                 dark = PMRgba(23, 23, 23, 1f),
             ),
         ),
-        focus = PMFocus(width = 3f, offset = 0f),
+        focus = PMFocus(width = 2f, offset = -2f),
         icon = PMIcons(
             sm = PMIconScale(size = 14f, stroke = 2f),
             md = PMIconScale(size = 16f, stroke = 1.75f),
@@ -544,12 +544,12 @@ internal object Plain_Neutral {
                 dark = PMRgba(255, 255, 255, 0.15f),
             ),
             borderFocus = PMDynamicColor(
-                light = PMRgba(161, 161, 161, 0.5f),
-                dark = PMRgba(115, 115, 115, 0.5f),
+                light = PMRgba(115, 115, 115, 0.5f),
+                dark = PMRgba(161, 161, 161, 0.5f),
             ),
             borderFocusSolid = PMDynamicColor(
-                light = PMRgba(161, 161, 161, 1f),
-                dark = PMRgba(115, 115, 115, 1f),
+                light = PMRgba(115, 115, 115, 1f),
+                dark = PMRgba(161, 161, 161, 1f),
             ),
             dangerSolid = PMDynamicColor(
                 light = PMRgba(182, 112, 107, 1f),

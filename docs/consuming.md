@@ -363,7 +363,8 @@ documents instead:
 
 - exact accent fills, their label and the focus colours are the palette's `pins`
   ([theming.md](theming.md#pins));
-- a scale step, a focus width, a field's focus drawn at its border, outline and ghost Buttons
+- a scale step, a focus width, a focus ring moved outside the control, a field's focus kept inside
+  its edge, outline and ghost Buttons
   without a hover wash, and one member's exception go in the system's `overrides`
   ([theming.md](theming.md#scale-amendments-overrides));
 - the palette a reader who asks for more contrast gets is the palette's `moreContrast`

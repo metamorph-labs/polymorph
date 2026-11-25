@@ -482,13 +482,14 @@ exports[`the quiet example > matches its snapshot 1`] = `
     },
     "material.saturate": 1,
     "focus.width": {
-      "value": 3,
+      "value": 2,
       "unit": "px"
     },
     "focus.offset": {
-      "value": 0,
+      "value": -2,
       "unit": "px"
     },
+    "focus.place": "inside",
     "focus.field": "ring",
     "hover.unfilled": "wash",
     "icon.size.sm": {

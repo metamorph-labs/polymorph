@@ -169,7 +169,7 @@ private struct PMOTPCell: View {
         .pmShadow(disabled ? PMShadow(layers: []) : theme.shadows.control)
     }
     .overlay { shape.strokeBorder(border.color, lineWidth: 1) }
-    .pmFocusRing(caret && !disabled, cornerRadius: theme.radius.control)
+    .pmFocusRing(caret && !disabled, cornerRadius: theme.radius.control, stateBorder: invalid)
     .animation(motion.easing.standard.animation(duration: motion.duration.control), value: digit)
   }
 }

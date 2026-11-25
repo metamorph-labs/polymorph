@@ -153,8 +153,9 @@
 
 /* states ------------------------------------------------------------------- */
 
-/* A pending drop is as active as focus, so it uses the focus halo. A theme with ornament `none`
-   derives no glow, and the border alone shows the state. */
+/* A pending drop is as active as focus, so it takes the focus glow (`--pm-glow-focus`), a halo the
+   focus mark itself does not draw. A theme with ornament `none` derives no glow, and the border
+   alone shows the state. */
 .zone[data-state='dragover'] {
   color: var(--pm-accent-text);
   background: var(--pm-accent-subtle);

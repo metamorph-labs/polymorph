@@ -97,6 +97,13 @@
   background: var(--pm-bg-subtle);
 }
 
+/* The current item is the selection fill, so the focus mark lies inside the fill with a gap, in
+   its text colour, the one the contrast law holds on that fill (`conventions/focus.module.css`). */
+.link[aria-current='location']:focus-visible {
+  --pm-focus-mark: currentcolor;
+  --pm-focus-inset: var(--pm-focus-width);
+}
+
 /* Fixture boxes ------------------------------------------------------------- */
 
 /* The states fixture's page: the list beside a box that scrolls, holding the

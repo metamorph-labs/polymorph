@@ -317,7 +317,7 @@ extension PMTheme {
       saturate: 1,
       surface: PMDynamicColor(light: PMRGBA(246, 251, 255), dark: PMRGBA(18, 24, 28))
     ),
-    focus: PMFocus(width: 2, offset: 0),
+    focus: PMFocus(width: 2, offset: -2),
     icon: PMIconScale(
       size: PMSizeSteps(sm: 14, md: 16, lg: 20),
       stroke: PMSizeSteps(sm: 1.71, md: 1.5, lg: 1.2)
@@ -357,7 +357,7 @@ extension PMTheme {
       borderStrong: PMDynamicColor(light: PMRGBA(217, 220, 222), dark: PMRGBA(255, 255, 255, 0.1)),
       borderField: PMDynamicColor(light: PMRGBA(233, 235, 238), dark: PMRGBA(255, 255, 255, 0.1)),
       borderFocus: PMDynamicColor(PMRGBA(0, 143, 210, 0.5)),
-      borderFocusSolid: PMDynamicColor(PMRGBA(0, 143, 210)),
+      borderFocusSolid: PMDynamicColor(PMRGBA(0, 133, 196)),
       dangerSolid: PMDynamicColor(PMRGBA(209, 92, 86)),
       dangerSolidHover: PMDynamicColor(PMRGBA(198, 82, 77)),
       dangerSolidActive: PMDynamicColor(PMRGBA(169, 88, 82)),

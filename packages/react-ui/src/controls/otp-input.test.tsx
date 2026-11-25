@@ -149,15 +149,28 @@ describe('the single input', () => {
     )
   })
 
-  it('draws the caret cell’s focus inside its edge where the system chooses the field border style', async () => {
-    // A nested pairing whose system sets `overrides.focus.field`, read by the recipe's style
-    // query, as Input's field reads it through the focus convention.
+  it('draws the caret cell’s mark inside a wrong code’s danger border, so both show', async () => {
+    // The mark lies inside the cell's edge, and a wrong code draws its state in the border, so the
+    // mark moves in past the border, as the focus convention moves it on an invalid field.
+    const root = mount(<OTPInput invalid aria-label="Verification code" />)
+    await userEvent.click(input(root))
+    const caret = getComputedStyle(cells(root)[0] as HTMLElement)
+    expect(caret.outlineStyle).toBe('solid')
+    expect(-Number.parseFloat(caret.outlineOffset)).toBe(
+      Number.parseFloat(caret.outlineWidth) + Number.parseFloat(caret.borderTopWidth),
+    )
+  })
+
+  it('draws the caret cell’s focus inside its edge where a system that moves the mark outside chooses the field border style', async () => {
+    // A nested pairing whose system moves every mark outside (an offset of 0) and sets
+    // `overrides.focus.field`, read by the recipe's style query, as Input's field reads it
+    // through the focus convention.
     const theme = resolveTheme(
       composeTheme(
         {
           ...exampleQuietSystem,
           name: 'example-otp-border',
-          overrides: { focus: { field: 'border' } },
+          overrides: { focus: { offset: 0, field: 'border' } },
         },
         exampleVioletPalette,
       ),

@@ -8,6 +8,11 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { assertGoverned, DATA_ATTRS } from '@polymorph/react'
 import { createAgentBridge } from '@polymorph/engine/agent'
 import { installTestTheme } from '@polymorph/engine/testing'
+import { Button } from '../controls/Button'
+import { FormField } from '../controls/FormField'
+import { Input } from '../controls/Input'
+import { reachCuts, shadowCuts, shadowReach, tokenLength } from '../controls/token-probe'
+import { Stack } from '../layout/Stack'
 import { Accordion, type AccordionProps } from './Accordion'
 
 /**
@@ -321,6 +326,66 @@ describe('the keyboard model from Radix', () => {
 
     await userEvent.keyboard('{End}')
     expect(document.activeElement).toBe(screen.getAllByRole('button').at(-1))
+  })
+})
+
+/**
+ * Room at the panel's sides. The panel clips, because its height animates, and a box that clips
+ * cuts what is drawn outside its content at its padding edge: a field's or a Button's seat shadow,
+ * and a control's focus mark, a 2px line drawn a `space-1` gap outside it.
+ */
+describe('room at the panel’s sides', () => {
+  const sides = (cuts: string[]) => cuts.filter((cut) => /^(left|right),/.test(cut))
+
+  it('cuts neither a seat nor a focus mark at its sides, and moves nothing', () => {
+    // Inside a padded host, so the window's edge is not the panel's.
+    render(
+      <div style={{ padding: 40 }}>
+        <Accordion
+          defaultValue="hosting"
+          items={[
+            {
+              value: 'hosting',
+              label: 'Hosting',
+              content: (
+                <Stack gap={3}>
+                  <Input aria-label="Region" defaultValue="eu-west" />
+                  <FormField label="Retries">
+                    <Input defaultValue="3" />
+                  </FormField>
+                  <Button variant="solid" tone="accent" label="Save" />
+                </Stack>
+              ),
+            },
+          ]}
+        />
+      </div>,
+    )
+    const mark = Number.parseFloat(tokenLength('--pm-space-1')) + 2
+    const controls = [
+      ...document.querySelectorAll<HTMLElement>('[data-member="input"], [data-member="button"]'),
+    ]
+    expect(controls).toHaveLength(3)
+    for (const control of controls) {
+      const name = control.textContent || control.querySelector('input')?.value
+      expect(shadowReach(control).bottom, `${name}: no seat`).toBeGreaterThan(0)
+      expect(sides(shadowCuts(control)), `${name}: its seat`).toEqual([])
+      expect(sides(reachCuts(control, mark)), `${name}: a focus mark`).toEqual([])
+    }
+
+    // The content stays under the trigger's label, and the room adds nothing to the height Radix
+    // measures, which the open and close animations run to.
+    const region = document.querySelector('[role="region"]') as HTMLElement
+    const inner = region.firstElementChild as HTMLElement
+    const label = screen.getByRole('button', { name: 'Hosting' })
+    expect((controls[0] as HTMLElement).getBoundingClientRect().left).toBeCloseTo(
+      label.getBoundingClientRect().left,
+      1,
+    )
+    expect(region.getBoundingClientRect().height).toBeCloseTo(
+      inner.getBoundingClientRect().height,
+      1,
+    )
   })
 })
 

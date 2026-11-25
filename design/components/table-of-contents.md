@@ -125,7 +125,7 @@ links do not overlap. iOS reserves its 44-point hit target the same way.
 | sublist | column · gap `--pm-space-1` · margin-block-start `--pm-space-1` · padding-inline-start `--pm-space-4` |
 | link | min-block-size `--pm-control-height-sm` · padding `--pm-space-2` `--pm-space-3` · `text.sm` quartet · `--pm-text-secondary` · radius `--pm-radius-md` · no underline · wraps · the shared focus ring |
 | link, hover | `--pm-text-primary` on `--pm-bg-subtle`, not on the current link |
-| link, current | `--pm-selection-text` on `--pm-selection-bg`: SectionNav's and the AppShell rail's selection treatment (`README.md`), so a current location looks the same at every level |
+| link, current | `--pm-selection-text` on `--pm-selection-bg`: SectionNav's and the AppShell rail's selection treatment (`README.md`), so a current location looks the same at every level · focused, the ring lies inside the fill with a gap, in `--pm-selection-text` (§4, inside a fill) |
 
 ## States
 

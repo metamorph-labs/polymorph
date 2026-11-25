@@ -362,7 +362,12 @@ object PMTree : PMTreeRendering {
         }
     }
 
-    /** A row's press, a ripple of its active fill, and its focus ring inside its edge, because rows share their edges. */
+    /**
+     * A row's press, a ripple of its active fill, and its focus mark inside its
+     * edge at every system's offset, because rows share their edges: the box the
+     * mark is drawn on is inset by the offset and the width, which is 0 where
+     * the mark already lies inside.
+     */
     @Composable
     private fun BoxScope.RowFeedback(interaction: MutableInteractionSource, selected: Boolean, focused: Boolean) {
         val theme = PM.theme

@@ -607,7 +607,9 @@ final class PMMaterial {
   final PMDynamicColor surface;
 }
 
-/// The focus ring's width and offset, in logical pixels.
+/// The focus mark's width and offset, in logical pixels. Its colour is
+/// `colors.borderFocusSolid`. A negative offset lies inside the part's edge,
+/// the derived default at minus the width; 0 or more lies outside it.
 final class PMFocus {
   const PMFocus({required this.width, required this.offset});
 

@@ -1,73 +1,149 @@
-/* The one focus convention. Every focusable part composes `focusRing`. No
-   component defines its own ring, and none uses `:focus`, because `:focus` also
-   matches on mouse press and teaches people to ignore the ring.
+/* The one focus convention. Every focusable part composes exactly one of its
+   two classes, chosen by the part's shape. No component defines its own mark,
+   and none uses `:focus`, because `:focus` also matches on mouse press and
+   teaches people to ignore the mark.
 
-   Width, offset and colour are tokens derived from the system, so a system
-   tunes the ring once for every component.
+   The mark is an outline at `--pm-focus-width` in the focus colour, which the
+   contrast law holds to 3:1 on every background and wash. It is placed in one
+   of three ways (`design/components/README.md`, the focus ring):
 
-   The second selector applies the same convention to composite fields (Input).
-   There the focusable element is a native control inside the styled container,
-   and a ring around the inner box would sit inset from the border people read
-   as the field. It matches only a direct native-field child, so an embedded
-   button such as Input's clear keeps its own ring and does not light up the
-   whole field. It is still one class and one ring. */
+   - `focusRing`, inside the edge: a part with padding around its content (a
+     field, an unfilled Button, a row, a card). `--pm-focus-offset`, which the
+     theme derives as minus the width, lays the line over the border and the
+     pixels inside it, so a field's border reads as taking the focus colour and
+     thickening inward and nothing is drawn outside the part.
+   - `focusRing` with the fill hooks, inside a fill with a gap: a part with a
+     solid fill and room for the line (below).
+   - `focusAround`, around with a gap: a part that cannot hold the line inside
+     it. That is a control too small for it (a checkbox, a switch, a slider's
+     thumb) and a part whose box is its text, with no padding (a link, a tab, a
+     disclosure's trigger), where a line inside the box would cross the first
+     and last letters and a line on its edge would touch them. The line lies
+     outside the box, `--pm-space-1` from it, in the focus colour, in every
+     state of the part. It is the one placement that draws outside the part,
+     and a container that clips such a part leaves room for it.
+
+   A system may move every mark outside with an offset of 0 or more, and the
+   theme writes where the mark sits as the flag `--pm-focus-place`. Width,
+   offset and colour are tokens derived from the system, so a system tunes the
+   mark once for every component. The outline is the accessibility surface:
+   forced colours keep it, and no box-shadow is part of focus.
+
+   The second selector of each rule applies the convention to composite fields
+   (Input). There the focusable element is a native control inside the styled
+   container, and a mark on the inner box would sit inset from the border
+   people read as the field. It matches only a direct native-field child, so an
+   embedded button such as Input's clear keeps its own mark and does not light
+   up the whole field. */
+
+/* The fill hooks. A part with a solid fill sets both on its own focused state:
+   `--pm-focus-mark: currentcolor`, so the line takes the part's label colour,
+   which the label laws hold on the fill, and `--pm-focus-inset:
+   var(--pm-focus-width)`, so the line moves in by one more width and the fill
+   shows on both sides of it. At the fill's edge the label colour would sit
+   against the page, which it is not held to. A recipe sets the hooks only on
+   the focused state and never at rest, because a custom property inherits.
+   These rest values keep a part from taking the hooks from a part around it.
+   Outside the edge neither hook applies: the mark is drawn on the surface
+   behind the part, in the focus colour. */
+.focusRing {
+  --pm-focus-mark: initial;
+  --pm-focus-inset: 0px;
+}
 
 .focusRing:focus-visible,
 .focusRing:has(> input:focus-visible) {
-  outline: var(--pm-focus-width) solid var(--pm-border-focus);
-  outline-offset: var(--pm-focus-offset);
-
-  /* The glow half of focus: a halo under the ring, in the accent. It is
-     decorative by law. The outline above is the accessibility surface and stands
-     alone wherever the theme derives `none`. Recipes whose rest state sets its
-     own `box-shadow` (Button's lit solid) let this glow lose the cascade and
-     show only the ring. They do not restate the glow, because the solid fill
-     already marks the control. A lost glow is acceptable; a missing ring is not. */
-  box-shadow: var(--pm-glow-focus);
+  outline: var(--pm-focus-width) solid var(--pm-focus-mark, var(--pm-border-focus-solid));
+  outline-offset: calc(var(--pm-focus-offset) - var(--pm-focus-inset));
 }
 
-/* The recolor half of focus. The reference shows focus as the border changing
-   to the ring's colour with the half-alpha halo around it, and the halo alone
-   looks lighter than the reference. A part with no border is unaffected. A
-   bordered part takes the exact colour its halo is made from, so the edge and
-   the halo match in every system.
+@container style(--pm-focus-place: outside) {
+  .focusRing:focus-visible,
+  .focusRing:has(> input:focus-visible) {
+    outline-color: var(--pm-border-focus-solid);
+    outline-offset: var(--pm-focus-offset);
+  }
+}
 
-   This rule is separate from the ring's rule because the recolor yields to an
-   invalid state: a danger border must survive focus, as the reference's
-   `aria-invalid` outranks its `focus-visible`. The ring itself never yields.
-   Selection yields for the same reason. A range endpoint's border carries the
-   selection treatment (`design/components/README.md`), and a border that
-   carries state outranks decoration, so the ring alone shows focus. The guard
+/* A border that carries state shows while the part is focused. An invalid field
+   draws `--pm-danger-border`, and a selected or range-endpoint cell draws the
+   selection treatment (`design/components/README.md`), in its border. A mark
+   inside the edge would cover it, so there the mark moves in past the border,
+   after any fill gap, and both show. Every recipe draws its border as the 1px
+   hairline, so the mark moves in by 1px more. Outside the edge and around the
+   part the mark covers no border and keeps its place. The guard
    uses only vocabulary-level state attributes, never a recipe's classes. */
-.focusRing:focus-visible:not(
-    [data-invalid],
-    [aria-invalid='true'],
-    [data-selected],
-    [data-range-start],
-    [data-range-end]
-  ),
-.focusRing:has(> input:focus-visible):not([data-invalid]) {
-  border-color: var(--pm-border-focus-solid);
+@container style(--pm-focus-place: inside) {
+  .focusRing:is(
+      [data-invalid],
+      [aria-invalid='true'],
+      [data-selected],
+      [data-range-start],
+      [data-range-end]
+    ):focus-visible,
+  .focusRing[data-invalid]:has(> input:focus-visible) {
+    outline-offset: calc(var(--pm-focus-offset) - var(--pm-focus-inset) - 1px);
+  }
 }
 
-/* The field style. A system may draw a focused field's focus inside its edge instead of around
-   it (`overrides.focus.field: border` in the system file, written as the flag `--pm-focus-field`).
-   The outline is still the accessibility surface: it keeps the system's width, moves inside the
-   border box by that width, and takes the solid focus colour, which the contrast law holds to the
-   focus floor on every surface. The field keeps its own seat shadow instead of the halo. An outline
-   also survives forced colours, where a box-shadow does not.
+/* Around, with a gap: a control too small to hold the line inside its edge, or
+   a part whose box is its text. The gap is `--pm-space-1`, or the system's
+   offset where it moves every mark further out. The line is the focus colour
+   in every state, so a checked control does not change where or how focus is
+   drawn, and it leaves the control's border, which carries the checked or
+   invalid state, uncovered. */
+.focusAround:focus-visible,
+.focusAround:has(> input:focus-visible) {
+  outline: var(--pm-focus-width) solid var(--pm-border-focus-solid);
+  outline-offset: max(var(--pm-space-1), var(--pm-focus-offset));
+}
 
-   A field is the composite form above, a textarea, or a combobox trigger (Select). An invalid
-   field keeps the ring, because an outline inside the edge would cover the danger border that
-   must survive focus. The flag is a style query, so a nested pairing answers for its own fields. */
+/* The recolor. Where a system moves the mark outside, a bordered part takes
+   the focus colour on its border while focused, so the edge and the mark
+   match. Inside the edge the mark covers the border, and a fill's gap shows
+   the fill up to its edge, so the rule applies only outside. A part the mark
+   goes around keeps its border, because on a small control the border carries
+   the checked state, and a text-only part has none.
+
+   This rule is separate from the mark's rule because the recolor yields to a
+   border that carries state: a danger border must survive focus, as the
+   reference's `aria-invalid` outranks its `focus-visible`, and a range
+   endpoint's border carries the selection treatment. The mark itself never
+   yields. */
+@container style(--pm-focus-place: outside) {
+  .focusRing:focus-visible:not(
+      [data-invalid],
+      [aria-invalid='true'],
+      [data-selected],
+      [data-range-start],
+      [data-range-end]
+    ),
+  .focusRing:has(> input:focus-visible):not([data-invalid]) {
+    border-color: var(--pm-border-focus-solid);
+  }
+}
+
+/* The field style. A system that moves the mark outside may still draw a focused
+   field's mark inside its edge (`overrides.focus.field: border` in the system
+   file, written as the flag `--pm-focus-field`): the outline keeps the system's
+   width and moves inside the border box by that width, as the derived default
+   does for every part. An invalid field draws it inside its danger border, so
+   both show. Under the derived default the branch changes nothing.
+
+   A field is the composite form above, a textarea, or a combobox trigger
+   (Select). The flag is a style query, so a nested pairing answers for its own
+   fields. */
 @container style(--pm-focus-field: border) {
-  .focusRing:has(> input:focus-visible):not([data-invalid]),
-  .focusRing:is(textarea, [role='combobox']):focus-visible:not(
+  .focusRing:has(> input:focus-visible),
+  .focusRing:is(textarea, [role='combobox']):focus-visible {
+    outline-offset: calc(var(--pm-focus-width) * -1);
+  }
+
+  .focusRing[data-invalid]:has(> input:focus-visible),
+  .focusRing:is(textarea, [role='combobox']):is(
       [data-invalid],
       [aria-invalid='true']
-    ) {
-    outline-color: var(--pm-border-focus-solid);
-    outline-offset: calc(var(--pm-focus-width) * -1);
-    box-shadow: var(--pm-shadow-seat);
+    ):focus-visible {
+    outline-offset: calc(var(--pm-focus-width) * -1 - 1px);
   }
 }

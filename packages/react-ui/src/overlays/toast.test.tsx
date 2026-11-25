@@ -1,10 +1,18 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { page, userEvent } from 'vitest/browser'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { Button } from '../controls/Button'
 import { Select } from '../controls/Select'
-import { tokenColor, tokenLength } from '../controls/token-probe'
+import { shadowCuts, shadowReach, tokenColor, tokenLength } from '../controls/token-probe'
+import {
+  appendThemeCSS,
+  composeTheme,
+  emitThemeCSS,
+  parsePalette,
+  parseSystem,
+  resolveTheme,
+} from '@polymorph/engine'
 import { createAgentBridge } from '@polymorph/engine/agent'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { Toaster } from './Toaster'
@@ -26,6 +34,34 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 const cards = () => [...document.querySelectorAll('li')] as HTMLElement[]
 const settled = async (count: number) =>
   vi.waitFor(() => expect(cards()).toHaveLength(count), { timeout: 3000 })
+const frame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)))
+
+/** The cards once their entrance has ended: every box the same on two frames in a row. */
+async function resting(count: number): Promise<HTMLElement[]> {
+  await settled(count)
+  return vi.waitFor(
+    async () => {
+      const before = cards().map((card) => card.getBoundingClientRect().toJSON())
+      await frame()
+      await frame()
+      expect(cards().map((card) => card.getBoundingClientRect().toJSON())).toEqual(before)
+      return cards()
+    },
+    { timeout: 3000 },
+  )
+}
+
+/** The shipped systems and palettes, so a law about a shadow holds for every shadow they derive. */
+const SYSTEMS = import.meta.glob<string>('../../../../design/systems/*.json', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+})
+const PALETTES = import.meta.glob<string>('../../../../design/palettes/*.json', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+})
 
 /**
  * Every state a card takes from here on, each with the card's `pointer-events`
@@ -478,18 +514,18 @@ describe('recipe', () => {
 
   it('sits in the corner, at the width the spec gives it', async () => {
     render(<Toaster />)
-    toast({ title: 'Ticket created' })
-    await settled(1)
+    toast({ title: 'Ticket created', durationMs: Number.POSITIVE_INFINITY })
+    const [card] = await resting(1)
     const viewport = document.querySelector('ol') as HTMLElement
-    const style = getComputedStyle(viewport)
-    expect(style.position).toBe('fixed')
-    expect(viewport.offsetWidth).toBeCloseTo(
-      Math.min(
-        Number.parseFloat(tokenLength('--pm-space-10')) * 4,
-        window.innerWidth - Number.parseFloat(tokenLength('--pm-space-6')) * 2,
-      ),
+    expect(getComputedStyle(viewport).position).toBe('fixed')
+    const inset = Number.parseFloat(tokenLength('--pm-space-6'))
+    const box = (card as HTMLElement).getBoundingClientRect()
+    expect(box.width).toBeCloseTo(
+      Math.min(Number.parseFloat(tokenLength('--pm-space-10')) * 4, window.innerWidth - inset * 2),
       0,
     )
+    expect(box.right).toBeCloseTo(window.innerWidth - inset, 0)
+    expect(box.bottom).toBeCloseTo(window.innerHeight - inset, 0)
   })
 
   it('is a tab stop with the one focus ring', async () => {
@@ -500,6 +536,148 @@ describe('recipe', () => {
     expect(card.tabIndex).toBe(0)
     card.focus({ focusVisible: true } as FocusOptions)
     expect(getComputedStyle(card).outlineStyle).toBe('solid')
+  })
+})
+
+/**
+ * The list scrolls when the cards are taller than the window, and a scroll container cuts what it
+ * holds at its padding edge, on both axes. So the list is larger than its cards by the room their
+ * shadow takes, and it takes no pointer events, so the room takes no click meant for the page.
+ */
+describe('the room around the cards', () => {
+  const CORNER = { width: 1280, height: 800 }
+  const PHONE = { width: 420, height: 800 }
+
+  afterEach(async () => {
+    await page.viewport(CORNER.width, CORNER.height)
+  })
+
+  const list = () => document.querySelector('ol') as HTMLElement
+
+  /** Two pinned cards, the second with a description, as in a stack a reader sees. */
+  async function stack(container?: HTMLElement): Promise<HTMLElement[]> {
+    render(<Toaster />, container === undefined ? {} : { container })
+    toast({ title: 'Continua is in use', durationMs: Number.POSITIVE_INFINITY })
+    toast({
+      title: 'Support',
+      description: 'Write to support, or ask in the help panel.',
+      durationMs: Number.POSITIVE_INFINITY,
+    })
+    return resting(2)
+  }
+
+  /**
+   * Every part of each card's shadow that falls inside the window is drawn: the list, which cuts
+   * what it holds at its padding box, cuts none of it. Past the window's edge nothing is drawn.
+   */
+  function expectWholeShadows(what: string) {
+    for (const card of cards()) {
+      const name = `${what}, ${card.textContent?.slice(0, 12) ?? ''}`
+      expect(shadowReach(card).bottom, `${name}: the card draws no shadow`).toBeGreaterThan(0)
+      expect(shadowCuts(card), `${name}: its shadow is cut`).toEqual([])
+    }
+  }
+
+  for (const [layout, size] of [
+    ['the corner', CORNER],
+    ['the phone register', PHONE],
+  ] as const) {
+    it(`cuts none of a card's shadow in ${layout}, in every shipped system`, async () => {
+      await page.viewport(size.width, size.height)
+      for (const [path, source] of Object.entries(SYSTEMS)) {
+        const system = parseSystem(JSON.parse(source))
+        const palette = PALETTES[`../../../../design/palettes/${system.defaultPalette}.json`]
+        expect(palette, `${path}: its default palette`).toBeDefined()
+        const theme = resolveTheme(composeTheme(system, parsePalette(JSON.parse(palette ?? ''))))
+        appendThemeCSS(emitThemeCSS(theme), theme.name)
+        const host = document.createElement('div')
+        host.setAttribute('data-system', theme.system)
+        host.setAttribute('data-palette', theme.palette)
+        document.body.append(host)
+        await stack(host)
+        expectWholeShadows(`${theme.system} in ${layout}`)
+        toast.dismiss()
+        await settled(0)
+        cleanup()
+        host.remove()
+      }
+    })
+  }
+
+  it('keeps each card where it was in the phone register: full width, at the bottom inset', async () => {
+    await page.viewport(PHONE.width, PHONE.height)
+    const [, last] = await stack()
+    const edge = Number.parseFloat(tokenLength('--pm-space-4'))
+    const box = (last as HTMLElement).getBoundingClientRect()
+    expect(box.left).toBeCloseTo(edge, 0)
+    expect(box.right).toBeCloseTo(window.innerWidth - edge, 0)
+    expect(box.bottom).toBeCloseTo(
+      window.innerHeight - Number.parseFloat(tokenLength('--pm-space-6')),
+      0,
+    )
+  })
+
+  for (const [layout, size] of [
+    ['the corner', CORNER],
+    ['the phone register', PHONE],
+  ] as const) {
+    it(`takes no click meant for the page around the cards or between them, in ${layout}`, async () => {
+      await page.viewport(size.width, size.height)
+      const underneath = document.createElement('div')
+      underneath.style.cssText = 'position:fixed;inset:0'
+      document.body.append(underneath)
+      const [first, second] = (await stack()).map((card) => card.getBoundingClientRect()) as [
+        DOMRect,
+        DOMRect,
+      ]
+      const points = {
+        'between the cards': [first.left + first.width / 2, (first.bottom + second.top) / 2],
+        'beside the start side': [first.left - 4, first.top + first.height / 2],
+        'above the stack': [first.left + first.width / 2, first.top - 4],
+        'beside the end side': [second.right + 4, second.top + second.height / 2],
+        'below the stack': [second.left + second.width / 2, second.bottom + 4],
+      } as const
+      for (const [where, [x, y]] of Object.entries(points)) {
+        expect(document.elementFromPoint(x, y), where).toBe(underneath)
+      }
+      for (const card of cards()) {
+        const box = card.getBoundingClientRect()
+        const at = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+        expect(card.contains(at), 'a card takes its own clicks').toBe(true)
+      }
+      underneath.remove()
+    })
+  }
+
+  it('scrolls when the cards are taller than the window, under the pointer too', async () => {
+    await page.viewport(CORNER.width, 360)
+    render(<Toaster />)
+    for (let index = 1; index <= TOAST_MAX_VISIBLE; index += 1) {
+      toast({
+        title: `Export ${index} is ready`,
+        description: 'The file is in your downloads, and a copy is attached to the ticket.',
+        durationMs: Number.POSITIVE_INFINITY,
+      })
+    }
+    const all = await resting(TOAST_MAX_VISIBLE)
+    const inset = Number.parseFloat(tokenLength('--pm-space-6'))
+    expect(getComputedStyle(list()).overflowY).toBe('auto')
+    expect(list().scrollHeight, 'the list does not scroll').toBeGreaterThan(list().clientHeight)
+
+    list().scrollTop = 0
+    await vi.waitFor(() =>
+      expect((all[0] as HTMLElement).getBoundingClientRect().top).toBeCloseTo(inset, 0),
+    )
+    await userEvent.wheel(all[1] as HTMLElement, { delta: { y: 120 } })
+    await vi.waitFor(() => expect(list().scrollTop, 'a wheel over a card').toBeGreaterThan(0))
+
+    list().scrollTop = list().scrollHeight
+    await vi.waitFor(() =>
+      expect((all.at(-1) as HTMLElement).getBoundingClientRect().bottom).toBeCloseTo(
+        window.innerHeight - inset,
+        0,
+      ),
+    )
   })
 })
 

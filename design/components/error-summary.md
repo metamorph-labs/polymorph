@@ -63,7 +63,7 @@ Alert's danger recipe, row for row (`alert.md`), plus the list:
 | list | top gap `--pm-space-2` · column · gap `--pm-space-2` · markers suppressed, because the links are the rows and a bullet before each adds nothing |
 | link | `text.sm` quartet · `--pm-danger-text` · underline `1px`, offset `2px` (Link's inline metrics, `link.md`). It uses the danger text role, not accent, because an accent link inside a danger wash would mix two tones. Always underlined, because colour is never the only signal (Link's law). `danger.text` on `danger.subtle` is the checked pairing Alert already uses |
 | link hover | `text-decoration-thickness: 2px`: weight, not colour (Link's exact rule; there is deliberately no danger text-hover role) |
-| focus | the shared focus ring (conventions §4) on each anchor |
+| focus | the shared focus ring (conventions §4) around each anchor's text box with a `--pm-space-1` gap, as Link draws it (`link.md`) |
 
 ## States
 

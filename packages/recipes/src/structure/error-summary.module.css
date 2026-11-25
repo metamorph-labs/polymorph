@@ -54,7 +54,7 @@
    Always underlined, so colour is never the only signal, with Link's metrics.
    `danger.text` on `danger.subtle` is the law-checked pairing Alert uses. */
 .link {
-  composes: focusRing from '../conventions/focus.module.css';
+  composes: focusAround from '../conventions/focus.module.css';
   font-family: var(--pm-text-sm-family);
   font-size: var(--pm-text-sm-size);
   font-weight: var(--pm-text-sm-weight);

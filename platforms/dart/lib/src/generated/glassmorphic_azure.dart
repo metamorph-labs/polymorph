@@ -282,7 +282,7 @@ const PMTheme theme = PMTheme(
     saturate: 1.5,
     surface: PMDynamicColor(light: PMRgba(246, 251, 255, 0.96), dark: PMRgba(17, 24, 31, 0.91)),
   ),
-  focus: PMFocus(width: 2.0, offset: 2.0),
+  focus: PMFocus(width: 2.0, offset: -2.0),
   icon: PMIcons(
     sm: PMIcon(size: 14.0, stroke: 1.71),
     md: PMIcon(size: 16.0, stroke: 1.5),

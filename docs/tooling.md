@@ -690,6 +690,8 @@ document and not only the part in the picture. Each names its element as an auth
 | `clipped-text` | Text its own box cuts with no ellipsis, or text drawn outside a box too narrow for it. |
 | `small-target` | A control whose hit area is under 24px, with another control inside the 24px circle centred on it. This is WCAG 2.2's target size, with its spacing exception ([layout.md](layout.md) has the floor). The hit area is asked of the page point by point, so a checkbox's label row and a text field's frame count. |
 | `cut-off` | Text or a control hidden by a box that clips it, or lying past an edge of the page, where nothing scrolls to it. |
+| `no-gap` | A member that touches another member with nothing between them, in a box that lays its children out in flow (a field directly above a table in a Card), or whose border lies against the inside of a box's border with no inset. A member that paints nothing (a Table, an Image's frame), a member's own parts, members in a flex or grid container, and a bar that runs edge to edge are not reported. |
+| `unseen-focus` | A control that, with keyboard focus, draws no mark, draws only an outline under 2px, or draws an outline under 3:1 against what it is drawn on or cut by a box that cannot scroll to it (WCAG 2.4.13 and 1.4.11). A mark on the box around the control, such as a field's frame, counts. The page gives each control focus as the keyboard does, after the picture is taken. |
 
 Three decisions shape the tool.
 

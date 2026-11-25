@@ -250,7 +250,7 @@ const PMTheme theme = PMTheme(
     saturate: 1.0,
     surface: PMDynamicColor(light: PMRgba(255, 255, 255, 1.0), dark: PMRgba(23, 23, 23, 1.0)),
   ),
-  focus: PMFocus(width: 3.0, offset: 0.0),
+  focus: PMFocus(width: 2.0, offset: -2.0),
   icon: PMIcons(
     sm: PMIcon(size: 14.0, stroke: 2.0),
     md: PMIcon(size: 16.0, stroke: 1.75),
@@ -433,12 +433,12 @@ const PMTheme theme = PMTheme(
       dark: PMRgba(255, 255, 255, 0.15),
     ),
     borderFocus: PMDynamicColor(
-      light: PMRgba(161, 161, 161, 0.5),
-      dark: PMRgba(115, 115, 115, 0.5),
+      light: PMRgba(115, 115, 115, 0.5),
+      dark: PMRgba(161, 161, 161, 0.5),
     ),
     borderFocusSolid: PMDynamicColor(
-      light: PMRgba(161, 161, 161, 1.0),
-      dark: PMRgba(115, 115, 115, 1.0),
+      light: PMRgba(115, 115, 115, 1.0),
+      dark: PMRgba(161, 161, 161, 1.0),
     ),
     dangerSolid: PMDynamicColor(
       light: PMRgba(182, 112, 107, 1.0),

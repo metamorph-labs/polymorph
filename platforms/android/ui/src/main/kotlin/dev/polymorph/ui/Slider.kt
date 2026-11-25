@@ -316,7 +316,7 @@ object PMSlider : PMSliderRendering {
                     scaleX = grab
                     scaleY = grab
                 }
-                .pmFocusRing(focused && !disabled, theme.radius.pill.dp)
+                .pmFocusRing(focused && !disabled, theme.radius.pill.dp, around = true)
                 .size(theme.defaultDensity.spacing.s5)
                 .pmShadow(
                     when {

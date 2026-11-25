@@ -283,6 +283,22 @@ describe('the system choices', () => {
     expect(section(chosen, `${pair(quiet)} {`)).toContain('--pm-focus-field: border;')
     expect(section(chosen, `${pair(quiet)} {`)).toContain('--pm-hover-unfilled: none;')
   })
+
+  it('writes where the focus mark sits as a flag read from the offset, inside by default', () => {
+    // The derived offset is minus the width, so the mark is inside the edge. An offset of 0 or
+    // more moves it outside, and the flag follows, because the focus convention branches on it.
+    expect(css).toContain('--pm-focus-place: inside;')
+    const outside = emitThemeCSS(
+      resolveTheme(
+        composeTheme(
+          { ...exampleQuietSystem, overrides: { focus: { offset: 0 } } },
+          exampleVioletPalette,
+        ),
+      ),
+    )
+    expect(section(outside, `${pair(quiet)} {`)).toContain('--pm-focus-offset: 0px;')
+    expect(section(outside, `${pair(quiet)} {`)).toContain('--pm-focus-place: outside;')
+  })
 })
 
 describe('the more-contrast block', () => {

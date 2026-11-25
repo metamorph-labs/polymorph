@@ -285,7 +285,7 @@ internal object Glassmorphic_Azure {
                 dark = PMRgba(17, 24, 31, 0.91f),
             ),
         ),
-        focus = PMFocus(width = 2f, offset = 2f),
+        focus = PMFocus(width = 2f, offset = -2f),
         icon = PMIcons(
             sm = PMIconScale(size = 14f, stroke = 1.71f),
             md = PMIconScale(size = 16f, stroke = 1.5f),

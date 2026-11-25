@@ -58,7 +58,7 @@ vocabulary emits it from the pointer interaction it owns, as Slider does
 | Part | Tokens |
 | --- | --- |
 | root | `display: grid` · tracks `minmax(--pm-split-start-min, --pm-split-start) auto minmax(--pm-split-end-min, --pm-split-end)`. The `--pm-split-*` pattern tokens are data-driven (as chart-tip's are): the component writes the ratio as `fr` pairs and the minimums as px, and the stylesheet declares the rest defaults |
-| pane | `min-inline-size: 0` / `min-block-size: 0` on the split axis · `overflow: hidden`. A pane that cannot shrink would block the divider; scrolling inside is up to the pane's content |
+| pane | `min-inline-size: 0` / `min-block-size: 0` on the split axis · `overflow: hidden`. A pane that cannot shrink would block the divider; scrolling inside is up to the pane's content. At the seam the pane has `--pm-space-2` of padding that a negative margin takes back, inside the divider's column, so a field or Button against the seam draws its whole seat shadow and a control's focus mark (a 2px line a `--pm-space-1` gap outside it) fits, and the content stays in its track. The outer sides have none: they are the edges of the region the split fills, and a pane drawn past them would make that region scroll |
 | divider | thickness `--pm-space-2` · `background: transparent` · cursor `col-resize` / `row-resize` by orientation |
 | divider line | centred 1px pseudo, full length · `--pm-border-default` |
 | divider hover | line `--pm-border-strong` |

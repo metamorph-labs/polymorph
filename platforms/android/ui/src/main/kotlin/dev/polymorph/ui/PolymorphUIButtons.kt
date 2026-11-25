@@ -161,8 +161,13 @@ fun PMButtonFrame(
             }
             .then(if (hitWidth) Modifier.pmHitTarget() else Modifier.pmHitHeight())
             .pmPressFeedback(pressed && live)
-            // Outside the clip, so the ring draws beyond the part's edge.
-            .pmFocusRing(focused && !disabled, radius)
+            // Outside the clip, so a mark a system draws outside the edge is
+            // not cut. A solid fill gives the mark its label colour.
+            .pmFocusRing(
+                focused && !disabled,
+                radius,
+                onFill = if (!tertiary && appearance.variant == PMButtonVariant.Solid) text else null,
+            )
             .pmShadow(shadow, shape)
             .clip(shape)
             .background(fill)

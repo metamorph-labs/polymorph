@@ -50,7 +50,7 @@ not a chosen row (the selection family stays with Calendar/Command/rails; conven
 | label | `text.sm` quartet · completed/active `--pm-text-primary` · upcoming `--pm-text-secondary` (emphasis by colour, the mono-personality rule) |
 | description | `text.xs` · `--pm-text-muted` · top gap `2px` |
 | connector | `1px` line `--pm-border-default`; the segment *behind* the active step (i.e. after each completed step) is `--pm-accent-bg`, so the line fills as the reader progresses · horizontal: flex-grow between steps, min length `--pm-space-6`; vertical: block, min height `--pm-space-6`, aligned under the indicator center |
-| interactive completed step | cursor pointer · hover: label `--pm-accent-text` · the shared focus ring (conventions §4) on the step button |
+| interactive completed step | cursor pointer · hover: label `--pm-accent-text` · the shared focus ring around the step button with a `--pm-space-1` gap (conventions §4, around), because its marker and label reach its edge |
 | copy gap | indicator ↔ copy `--pm-space-3`; horizontal steps gap `--pm-space-4` |
 | row, narrow container | the horizontal row wraps: a step is at least as wide as its indicator, the longest word of its copy and its connector's minimum, and the steps that do not fit move to the next line, in order, `--pm-space-4` below. A label of several words takes a second line inside its step first *(container-first, `docs/layout.md`: a narrow container changes where the steps sit and never cuts a label or draws a step over the next. The row needs no breakpoint, because what fits depends on how many steps there are and how long their labels are, which only the row can measure)* |
 

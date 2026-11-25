@@ -4,7 +4,10 @@ import { contrast, deltaL } from './color/contrast'
 import {
   DELINEATION_MIN_DELTA_L,
   FOCUS_MIN_DELTA_L,
+  FOCUS_MIN_RATIO,
+  FOCUS_WASHES,
   isDelineation,
+  isFocus,
   isExemptFromContrast,
   LAWFUL_PAIRINGS,
   LC_FLOORS,
@@ -28,15 +31,21 @@ describe('lawful pairings', () => {
   })
 
   it('states a positive floor and a reason for every pair, in its own measure', () => {
-    // Text pairs state an APCA floor. Delineation pairs state a ΔL floor and no
-    // APCA floor, because APCA reports 0 for a hairline.
+    // Text pairs state an APCA floor. Delineation pairs state a ΔL floor and focus pairs a WCAG
+    // ratio, and neither states an APCA floor, because APCA reports 0 for a line.
     for (const p of LAWFUL_PAIRINGS) {
       if (isDelineation(p)) {
         expect(p.minDeltaL, pairingId(p)).toBeGreaterThan(0)
         expect(p.minLc, pairingId(p)).toBe(0)
+        expect(p.minRatio, pairingId(p)).toBeUndefined()
+      } else if (isFocus(p)) {
+        expect(p.minRatio, pairingId(p)).toBeGreaterThan(1)
+        expect(p.minLc, pairingId(p)).toBe(0)
+        expect(p.minDeltaL, pairingId(p)).toBeUndefined()
       } else {
         expect(p.minLc, pairingId(p)).toBeGreaterThan(0)
         expect(p.minDeltaL, pairingId(p)).toBeUndefined()
+        expect(p.minRatio, pairingId(p)).toBeUndefined()
       }
       expect(p.reason.length, pairingId(p)).toBeGreaterThan(0)
     }
@@ -77,20 +86,48 @@ describe('lawful pairings', () => {
     expect(pair?.minLc).toBe(LC_FLOORS.bodyText)
   })
 
-  it('holds both focus colours on every text-bearing background, at twice the hairline floor', () => {
-    // A focus indicator is measured like a hairline and must stand out from one.
-    expect(FOCUS_MIN_DELTA_L).toBe(DELINEATION_MIN_DELTA_L * 2)
-    for (const role of ['border.focus', 'border.focusSolid'] as const) {
-      const pairs = LAWFUL_PAIRINGS.filter((p) => p.foreground === role)
-      expect(
-        pairs.map((p) => p.background),
-        role,
-      ).toEqual([...TEXT_BEARING_BACKGROUNDS])
-      for (const p of pairs) {
-        expect(p.kind, pairingId(p)).toBe('delineation')
-        expect(p.minDeltaL, pairingId(p)).toBe(FOCUS_MIN_DELTA_L)
-      }
+  it('holds the focus ring’s colour to 3:1 by the WCAG ratio on every background and wash', () => {
+    // The ring is a 2px line in this colour, so the colour carries it: WCAG 1.4.11's non-text
+    // floor, which the layout measure reports against too. It is drawn inside the part's edge,
+    // so it is held on the part's own wash as well: a soft or hovered Button, a checked choice,
+    // a selected row.
+    expect(FOCUS_MIN_RATIO).toBe(3)
+    const pairs = LAWFUL_PAIRINGS.filter((p) => p.foreground === 'border.focusSolid')
+    expect(pairs.map((p) => p.background)).toEqual([...TEXT_BEARING_BACKGROUNDS, ...FOCUS_WASHES])
+    for (const p of pairs) {
+      expect(p.kind, pairingId(p)).toBe('focus')
+      expect(p.minRatio, pairingId(p)).toBe(FOCUS_MIN_RATIO)
     }
+  })
+
+  it('holds the half-alpha focus colour on every text-bearing background, at twice the hairline floor', () => {
+    // Nothing in the vocabulary draws in it, but it stays a token and a pin, so it keeps a floor:
+    // a translucent line is measured like a hairline and must stand out from one.
+    expect(FOCUS_MIN_DELTA_L).toBe(DELINEATION_MIN_DELTA_L * 2)
+    const pairs = LAWFUL_PAIRINGS.filter((p) => p.foreground === 'border.focus')
+    expect(pairs.map((p) => p.background)).toEqual([...TEXT_BEARING_BACKGROUNDS])
+    for (const p of pairs) {
+      expect(p.kind, pairingId(p)).toBe('delineation')
+      expect(p.minDeltaL, pairingId(p)).toBe(FOCUS_MIN_DELTA_L)
+    }
+  })
+
+  it('names every accent and status wash and both selected surfaces as a focus wash', () => {
+    // A wash missing here is a fill the mark is drawn on that no law measures.
+    expect(FOCUS_WASHES).toEqual(
+      expect.arrayContaining([
+        'accent.subtle',
+        'accent.subtleHover',
+        'accent.subtleActive',
+        ...STATUS_TONES.flatMap((tone) => [
+          `${tone}.subtle`,
+          `${tone}.subtleHover`,
+          `${tone}.subtleActive`,
+        ]),
+        ...SELECTION_SURFACES,
+      ]),
+    )
+    expect(FOCUS_WASHES).toHaveLength(3 + STATUS_TONES.length * 3 + SELECTION_SURFACES.length)
   })
 
   it('marks borders as delineation, held to a ΔL floor rather than an Lc one', () => {
