@@ -11,7 +11,9 @@ import { TOOLTIP_DELAY_MS, TOOLTIP_SKIP_DELAY_MS } from './tooltip'
  * It is not the Tooltip member. A Tooltip's machinery (Radix's positioner in
  * React, Zag's machine and popper elsewhere) would reach every bundle that
  * draws a Button, so the tip is this one small behaviour, which every web
- * renderer's Button calls on its `<button>`.
+ * renderer's Button calls on its `<button>`, as do the members that draw
+ * Button's icon-only box without the Button member (SplitButton's chevron,
+ * CopyButton, AvatarButton and Pagination's arrows drawn as links).
  *
  * - **What it shows.** The `label` the Button would have drawn, in the class
  *   the Button's recipe gives it, which composes the Tooltip's bubble. The
