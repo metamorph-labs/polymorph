@@ -7,7 +7,7 @@ import {
   dataAttrs,
   type FileRejection,
   type FileRejectionReason,
-  focusAfterRemoval,
+  focusAfterListRemoval,
   formatBytes,
   gateFiles,
   Icon,
@@ -199,7 +199,7 @@ export function FileUpload({
   })
 
   /*
-   * Focus after a removal (`focusAfterRemoval`). The app removes the file in its own time, so the
+   * Focus after a removal (`focusAfterListRemoval`). The app removes the file in its own time, so the
    * pressed row is remembered, and once its file has left `files` focus moves to the remove
    * control of the row in its place, else of the row before it, else to the zone. A leaving row
    * stays in the document while it plays its exit, so it is found by its file's id.
@@ -208,7 +208,7 @@ export function FileUpload({
   const rows = useRef(new Map<string, HTMLElement>())
   useLayoutEffect(() => {
     const removal = pressed.current
-    pressed.current = focusAfterRemoval(
+    pressed.current = focusAfterListRemoval(
       removal,
       files.map((file) => file.id),
       (at) => removeControl(rows.current.get(files[at]?.id ?? '')),

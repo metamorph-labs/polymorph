@@ -48,7 +48,7 @@ const control = { variant: lit('ghost'), tone: lit('neutral'), size: lit('sm'), 
  * `reject` with its reason. A removed row stays where it was while it plays
  * its exit. Once the app has removed the file of a row whose remove control
  * was pressed, focus moves to the remove control of the row in its place, else
- * of the row before it, else to the zone (`focusAfterRemoval`).
+ * of the row before it, else to the zone (`focusAfterListRemoval`).
  */
 export default describeMember({
   member: 'FileUpload',
@@ -92,7 +92,7 @@ export default describeMember({
     {
       watch: 'files',
       mount: false,
-      run: 'pressed = focusAfterRemoval(pressed, files.map((file) => file.id), (at) => removeControl(rowOf(files[at]?.id)), zone, pressed === null ? null : rowOf(pressed.id))',
+      run: 'pressed = focusAfterListRemoval(pressed, files.map((file) => file.id), (at) => removeControl(rowOf(files[at]?.id)), zone, pressed === null ? null : rowOf(pressed.id))',
     },
   ],
   // The spec's `agent` fence. An agent reads the files the application lists, and removes or

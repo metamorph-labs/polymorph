@@ -28,7 +28,7 @@ export interface PressedRemoval {
  * removed item's element while it is still in the document. Returns the
  * removal still waited for: `pressed` while its item is listed, else `null`.
  */
-export function focusAfterRemoval(
+export function focusAfterListRemoval(
   pressed: PressedRemoval | null,
   ids: readonly string[],
   control: (at: number) => HTMLElement | null | undefined,

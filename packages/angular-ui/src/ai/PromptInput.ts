@@ -21,7 +21,7 @@ import {
   elementRef,
   fieldValue,
   fitTextarea,
-  focusAfterRemoval,
+  focusAfterListRemoval,
   gateFiles,
   holdFieldEscape,
   mountEffect,
@@ -1283,7 +1283,7 @@ export class PromptInput {
   }
 
   private effect4(): void {
-    this.pressed.value = focusAfterRemoval(
+    this.pressed.value = focusAfterListRemoval(
       this.pressed.value,
       this.$p.attachments.map((attachment) => attachment.id),
       (at) => this.chips.value?.children[at]?.querySelector<HTMLElement>('button'),

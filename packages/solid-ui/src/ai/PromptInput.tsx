@@ -20,7 +20,7 @@ import {
   createDerived,
   elementRef,
   fitTextarea,
-  focusAfterRemoval,
+  focusAfterListRemoval,
   gateFiles,
   holdFieldEscape,
   itemOf,
@@ -415,7 +415,7 @@ export default function PromptInput(given: PromptInputProps): JSX.Element {
     )
     onCleanup(() => release3?.())
     const effect4 = () => {
-      pressed.value = focusAfterRemoval(
+      pressed.value = focusAfterListRemoval(
         pressed.value,
         props.attachments.map((attachment) => attachment.id),
         (at) => chips.value?.children[at]?.querySelector<HTMLElement>('button'),

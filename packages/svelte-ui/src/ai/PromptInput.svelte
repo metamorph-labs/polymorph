@@ -15,7 +15,7 @@ import {
   agentMember,
   composingKey,
   fitTextarea,
-  focusAfterRemoval,
+  focusAfterListRemoval,
   gateFiles,
   holdFieldEscape,
   joinSlot,
@@ -395,7 +395,7 @@ const effect3 = () => {
 watchEffect(effect3, { watch: () => open })
 onDestroy(() => release3?.())
 const effect4 = () => {
-  pressed = focusAfterRemoval(
+  pressed = focusAfterListRemoval(
     pressed,
     attachments.map((attachment) => attachment.id),
     (at) => chips?.children[at]?.querySelector<HTMLElement>('button'),

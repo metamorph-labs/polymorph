@@ -15,7 +15,7 @@ import {
   agentMember,
   composingKey,
   fitTextarea,
-  focusAfterRemoval,
+  focusAfterListRemoval,
   gateFiles,
   holdFieldEscape,
   promptPick,
@@ -359,7 +359,7 @@ onMounted(effect3)
 watch(() => open.value, effect3, { flush: 'post' })
 onBeforeUnmount(() => release3?.())
 const effect4 = () => {
-  pressed.value = focusAfterRemoval(
+  pressed.value = focusAfterListRemoval(
     pressed.value,
     props.attachments.map((attachment) => attachment.id),
     (at) => chips.value?.children[at]?.querySelector<HTMLElement>('button'),

@@ -204,7 +204,7 @@ export const ENGINE_HELPERS: readonly string[] = [
   // The arrow key toward a line's start in an element's writing direction (TagInput's chips).
   'lineStartKey',
   // Where focus goes once a removed file or attachment has left its list.
-  'focusAfterRemoval',
+  'focusAfterListRemoval',
   'modalFocusTarget',
   // Where focus goes when the control an overlay returns to, or a region that holds focus, has
   // left the page, and when a toast that holds focus leaves.

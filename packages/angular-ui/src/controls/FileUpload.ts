@@ -15,7 +15,7 @@ import {
   cell,
   derived,
   elementRef,
-  focusAfterRemoval,
+  focusAfterListRemoval,
   formatBytes,
   gateFiles,
   mountEffect,
@@ -564,7 +564,7 @@ export class FileUpload {
   }
 
   private effect1(): void {
-    this.pressed.value = focusAfterRemoval(
+    this.pressed.value = focusAfterListRemoval(
       this.pressed.value,
       this.$p.files.map((file) => file.id),
       (at) => this.removeControl.value(this.rowOf.value(this.$p.files[at]?.id)),

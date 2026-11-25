@@ -32,7 +32,7 @@ engine exports the key as `lineStartKey`.
 FileUpload and PromptInput move focus once the app has removed a file or an attachment whose
 remove control was pressed: to the next item's remove control, else the previous one's, else the
 dropzone or the field. Focus no longer falls to the page. The engine exports the rule as
-`focusAfterRemoval`.
+`focusAfterListRemoval`.
 
 In RichTextInput, Shift+Tab on an item of a top-level list moves focus out of the field and no
 longer turns the item into a paragraph, and after an Escape with nothing to close, the next Tab or

@@ -21,7 +21,7 @@ import {
   dataAttrs,
   type FileRejection,
   fitTextarea,
-  focusAfterRemoval,
+  focusAfterListRemoval,
   gateFiles,
   holdFieldEscape,
   Icon,
@@ -544,14 +544,14 @@ export function PromptInput(props: PromptInputProps) {
   })
 
   /*
-   * Focus after a chip is removed (`focusAfterRemoval`). The app removes the attachment in its
+   * Focus after a chip is removed (`focusAfterListRemoval`). The app removes the attachment in its
    * own time, so the pressed chip is remembered, and once its attachment has left `attachments`
    * focus moves to the remove control of the chip in its place, else of the chip before it, else
    * to the field.
    */
   const pressed = useRef<PressedRemoval | null>(null)
   useLayoutEffect(() => {
-    pressed.current = focusAfterRemoval(
+    pressed.current = focusAfterListRemoval(
       pressed.current,
       attachments.map((attachment) => attachment.id),
       (at) => chips.current?.children[at]?.querySelector<HTMLElement>('button'),

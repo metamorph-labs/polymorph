@@ -11,7 +11,7 @@ import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, 
 import {
   Icon,
   agentMember,
-  focusAfterRemoval,
+  focusAfterListRemoval,
   formatBytes,
   gateFiles,
   useListening,
@@ -172,7 +172,7 @@ const rows = computed(() => {
   return entries
 })
 const effect1 = () => {
-  pressed.value = focusAfterRemoval(
+  pressed.value = focusAfterListRemoval(
     pressed.value,
     props.files.map((file) => file.id),
     (at) => removeControl.value(rowOf.value(props.files[at]?.id)),

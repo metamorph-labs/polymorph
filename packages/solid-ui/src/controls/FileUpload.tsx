@@ -24,7 +24,7 @@ import {
   createCell,
   createDerived,
   elementRef,
-  focusAfterRemoval,
+  focusAfterListRemoval,
   formatBytes,
   gateFiles,
   itemOf,
@@ -211,7 +211,7 @@ export default function FileUpload(given: FileUploadProps): JSX.Element {
       return entries
     })
     const effect1 = () => {
-      pressed.value = focusAfterRemoval(
+      pressed.value = focusAfterListRemoval(
         pressed.value,
         props.files.map((file) => file.id),
         (at) => removeControl.value(rowOf.value(props.files[at]?.id)),

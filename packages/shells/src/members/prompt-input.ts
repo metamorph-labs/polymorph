@@ -277,11 +277,11 @@ export default describeMember({
     },
     // Once the app has removed the attachment of a pressed chip, focus moves to the remove
     // control of the chip in its place, else of the chip before it, else to the field
-    // (`focusAfterRemoval`).
+    // (`focusAfterListRemoval`).
     {
       watch: 'attachments',
       mount: false,
-      run: "pressed = focusAfterRemoval(pressed, attachments.map((attachment) => attachment.id), (at) => chips?.children[at]?.querySelector<HTMLElement>('button'), field)",
+      run: "pressed = focusAfterListRemoval(pressed, attachments.map((attachment) => attachment.id), (at) => chips?.children[at]?.querySelector<HTMLElement>('button'), field)",
     },
     // The side, measured when the list opens.
     {

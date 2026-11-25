@@ -11,7 +11,7 @@ import { onDestroy } from 'svelte'
 import {
   Icon,
   agentMember,
-  focusAfterRemoval,
+  focusAfterListRemoval,
   formatBytes,
   gateFiles,
   joinSlot,
@@ -201,7 +201,7 @@ const rows = useListPresence(
   (file: FileUploadItem) => file.id,
 )
 const effect1 = () => {
-  pressed = focusAfterRemoval(
+  pressed = focusAfterListRemoval(
     pressed,
     files.map((file) => file.id),
     (at) => removeControl(rowOf(files[at]?.id)),
