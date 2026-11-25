@@ -252,7 +252,7 @@ A release ships every package, each the way its kind is shipped:
 | --- | --- | --- |
 | The published web packages: `@polymorph/engine`, `@polymorph/rules`, `@polymorph/recipes`, `@polymorph/screen`, and the foundation and vocabulary of each web framework (`@polymorph/react`, `@polymorph/react-ui`, `@polymorph/vue`, `@polymorph/vue-ui`, `@polymorph/svelte`, `@polymorph/svelte-ui`, `@polymorph/solid`, `@polymorph/solid-ui`, `@polymorph/elements`, `@polymorph/elements-ui`, `@polymorph/angular`, `@polymorph/angular-ui`) | changesets: the release's version, in each `package.json` | `pnpm publish:packages`, to GitHub Packages, and with `--to npmjs` to npmjs.com, as `@metamorph-labs/polymorph-<name>` |
 | The internal packages: `@polymorph/theme`, `@polymorph/registry`, `@polymorph/cli`, `@polymorph/mcp`, `@polymorph/spec`, `@polymorph/shells`, `@polymorph/conformance`, `@polymorph/native` | changesets: the same version, with their changelogs | nothing: they run from a checkout |
-| The native packages: `platforms/ios`, `platforms/android`, `platforms/dart` | the repository's release tag | the tag: an app pins its checkout or submodule to it |
+| The native packages: `platforms/ios`, `platforms/android`, `platforms/dart` | the release's version: `pnpm version-packages` writes it into the Android builds and the Dart package (`pnpm native:version`), and SwiftPM reads it from the tag | the tag: an iOS app adds the repository's URL at it, through the root `Package.swift`; an Android app pins its checkout or submodule to it, and a Dart app its path or git dependency |
 
 A release has one version. Changesets moves every package to it together (`fixed` in
 `.changeset/config.json`), and the tag is `v` and that version, so a consumer pins the npm
@@ -263,7 +263,7 @@ Releases are cut from a clean `main`, locally:
 ```sh
 pnpm eval                                 # the owner's step, with ANTHROPIC_API_KEY set or with --runner cli and Claude Code signed in; commit eval/results and eval/README.md
 pnpm changeset status --verbose           # the version the release gives every package
-pnpm version-packages                     # apply pending changesets: the version and CHANGELOGs
+pnpm version-packages                     # apply pending changesets: the version and CHANGELOGs, and the version in the native manifests
 git commit -am "Release <version>"        # the version bump is a commit like any other
 pnpm gate:ios && pnpm gate:android        # the gates for the native packages, which ship at the tag
 pnpm gate:engines                         # the browser tests on Firefox and WebKit, which pnpm gate runs on Chromium only

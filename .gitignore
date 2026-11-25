@@ -40,9 +40,12 @@ packages/*/.dist-lock.break
 # `pnpm proof` writes its evidence here; it is regenerated, not versioned.
 /proof/shots/
 
-# SwiftPM's build products and Xcode's package state for `platforms/ios`.
+# SwiftPM's build products and Xcode's package state, for `platforms/ios` and
+# for the root `Package.swift` that apps add by URL.
 platforms/*/.build/
 platforms/*/.swiftpm/
+/.build/
+/.swiftpm/
 
 # Gradle's and Dart's build state for `platforms/android` and `platforms/dart`.
 # Listed here rather than in each platform's directory, because Prettier reads

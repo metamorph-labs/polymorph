@@ -36,7 +36,7 @@ Terms used on this page:
 | `pnpm size` | what a consumer ships stays under its budget | yes |
 | `pnpm gate:no-build` | a page with no build, served as plain files, loads the elements' no-build files and works: before and after the tags are defined, from markup, in a form, through an overlay, through htmx-style and morphing swaps and page snapshots, and drawing a run-time screen ([The static-page check](#the-static-page-check)) | yes, on Chromium, on the builds `pnpm build:packages` made; `pnpm gate:engines` runs it on Firefox and WebKit |
 | `pnpm gate:next` | a Next.js App Router application built from the published builds, on Turbopack, on webpack and on the development server: the members' stylesheets reach each page, the pages hydrate, the theme installs, and the red rules run ([The Next.js gate](#the-nextjs-gate)) | yes, last, on the builds `pnpm build:packages` made |
-| `pnpm gate:ios` | the SwiftUI members: contracts, example screens, native laws, `swift build` and `swift test`, the simulator type check, and the accessibility audit on an iPhone simulator ([The iOS gate](#the-ios-gate)) | no: its own gate, which needs Xcode, and an iOS simulator runtime for the audit |
+| `pnpm gate:ios` | the SwiftUI members: contracts, example screens, native laws, `swift build`, the package added by URL, `swift test`, the simulator type check, and the accessibility audit on an iPhone simulator ([The iOS gate](#the-ios-gate)) | no: its own gate, which needs Xcode, and an iOS simulator runtime for the audit |
 | `pnpm gate:android` | the Compose members: contracts, example screens, Kotlin laws, the JVM build and harness, the Android library, and the accessibility audit under Robolectric ([The Android gate](#the-android-gate)) | no: its own gate, which needs a JDK, and an Android SDK for the Android library and the audit |
 | `pnpm gate:engines` | the browser projects again, on Firefox and on WebKit ([The engines gate](#the-engines-gate)) | no: its own gate, which needs Playwright's builds of Firefox and WebKit |
 | `pnpm proof` | the ten guarantees, run and captured as screenshots | no, run by hand |
@@ -1438,8 +1438,10 @@ accessibility. It is separate from `pnpm gate` because it needs Xcode.
 | --- | --- |
 | `pnpm native:contracts --check` | the generated contracts in `Sources/PolymorphUI/Generated/` are what the registry gives |
 | `pnpm emit:examples --check` | each platform's example holds the screen the emitter writes from its spec (`platforms/ios/Examples/Relay`, `platforms/android/examples/relay`) |
-| `vitest run --project logic packages/native` | the contracts' tests and the laws over the Swift sources |
-| `swift build`, `swift test` (in `platforms/ios`) | the libraries and the Relay example compile on macOS; the rendering harness, the example's renders and focus test, and every other Swift test pass |
+| `vitest run --project logic packages/native` | the contracts' tests, the laws over the Swift sources, the law that holds the root `Package.swift` to `platforms/ios/Package.swift` (`swift-package.test.ts`) and the native manifests' version law (`version.test.ts`) |
+| `swift build` (in `platforms/ios`) | the libraries and the Relay example compile on macOS |
+| `node scripts/ios-by-url.mjs` | an app that adds the package by a git URL at the release's tag resolves the root `Package.swift` and builds both libraries; the check copies the working tree into a repository of its own and tags it, so it runs before a commit |
+| `swift test` (in `platforms/ios`) | the rendering harness, the example's renders and focus test, and every other Swift test pass |
 | `node scripts/ios-audit.mjs` | every target `xcodebuild test` builds type-checks for the iOS Simulator; where a simulator runtime is installed, `PolymorphUITests` runs on an iPhone simulator and the accessibility audit finds no more defects, and records no more system controls, than `scripts/native-audits/thresholds.json` allows |
 
 ### The contracts
@@ -1821,6 +1823,7 @@ Android SDK for its last step. It runs Gradle through the project's wrapper,
 | Step | What it checks |
 | --- | --- |
 | `pnpm native:contracts --check` | the generated contracts are what the registry gives, the Kotlin ones in `ui/src/generated/kotlin/` and the Swift ones |
+| `pnpm native:version --check` | the Android builds and the Dart package declare the release's version |
 | `pnpm emit:examples --check` | each platform's example holds the screen the emitter writes from its spec (`platforms/android/examples/relay`, `platforms/ios/Examples/Relay`) |
 | `vitest run --project logic packages/native/src/kotlin` | the Kotlin contracts' tests (`kotlin.test.ts`) and the laws over the Kotlin sources (`kotlin-laws.test.ts`) |
 | `platforms/android/gradlew -p platforms/android :tokens:build :ui:jvmTest :examples:relay:jvmTest` | the token module compiles and its tests pass; the member module's JVM target compiles and the rendering harness passes; the example's emitted inbox compiles against the member module and renders in its four load states |

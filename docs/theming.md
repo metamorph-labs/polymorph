@@ -771,10 +771,12 @@ the web's default pairing, the system `design/defaults.json` names with its defa
 are the stylesheet's decisions with iOS's floor applied: the hit target is 44 points, and control
 heights are the density's.
 
-An app depends on the package by path, to a checkout of this repository or a git submodule of it:
-`.package(path: "../polymorph/platforms/ios")` in `Package.swift`, or **Add Local…** in Xcode's
-package dialog. SwiftPM resolves a git URL only to a repository with `Package.swift` at its root,
-which this repository does not have. A view reads tokens as values:
+An app adds the package by this repository's URL, at a release tag:
+`.package(url: "https://github.com/metamorph-labs/polymorph", from: "1.0.18")` in `Package.swift`,
+or the URL in Xcode's package dialog. SwiftPM resolves a git URL only to a repository with
+`Package.swift` at its root, so the root manifest declares the libraries over the sources in
+`platforms/ios`. An app with a checkout can depend on `platforms/ios` by path instead
+([consuming.md](consuming.md#an-ios-app)). A view reads tokens as values:
 
 ```swift
 import PolymorphTokens

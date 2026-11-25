@@ -12,7 +12,7 @@ How an app in another repository uses polymorph, for each web framework and nati
 | an Angular app | [An Angular app](#an-angular-app) | `@polymorph/angular-ui` on `@polymorph/angular` |
 | a page written in HTML: no build, server-rendered, htmx or Turbo | [A page with no build](#a-page-with-no-build) | the `poly-*` elements of `@polymorph/elements-ui`, as files its static directory serves |
 | a screen a model writes while your product runs | [run-time-screens.md](run-time-screens.md) | `@polymorph/screen`, drawn by `@polymorph/react/screen` in React or by `<poly-screen>` in any web framework and on a page with no build |
-| an iOS app | [An iOS app](#an-ios-app) | `PolymorphUI` on `PolymorphTokens`, from `platforms/ios` |
+| an iOS app | [An iOS app](#an-ios-app) | `PolymorphUI` on `PolymorphTokens`, added by this repository's URL |
 | an Android app | [An Android app](#an-android-app) | `dev.polymorph:ui` on `dev.polymorph:tokens`, from `platforms/android` |
 | a Flutter or Dart app | [Dart tokens](#dart-tokens) | `polymorph_tokens`, the tokens only |
 
@@ -1341,29 +1341,37 @@ elements ([frameworks.md](frameworks.md#the-tools-in-elements)).
 
 ## An iOS app
 
-The SwiftUI members ship in one Swift package, `platforms/ios`, with two libraries for iOS 17 and
-macOS 14 or later: `PolymorphTokens`, every house pairing as a `PMTheme`, and `PolymorphUI`, the
-members. The package is not published to a registry. An app depends on it by path, through a
-checkout of this repository or a git submodule of it, pinned to a release tag. SwiftPM names a
-path dependency after its directory, so the package is `ios`:
+The SwiftUI members ship in one Swift package with two libraries for iOS 17 and macOS 14 or
+later: `PolymorphTokens`, every house pairing as a `PMTheme`, and `PolymorphUI`, the members. The
+package is not on a registry. An app adds it by this repository's URL, and SwiftPM takes the
+version from the release tag (`v1.0.18` is version 1.0.18). SwiftPM names a URL dependency after
+the repository, so the package is `polymorph`:
 
 ```swift
 // Package.swift
-dependencies: [.package(path: "../polymorph/platforms/ios")],
+dependencies: [.package(url: "https://github.com/metamorph-labs/polymorph", from: "1.0.18")],
 targets: [
   .target(
     name: "App",
     dependencies: [
-      .product(name: "PolymorphTokens", package: "ios"),
-      .product(name: "PolymorphUI", package: "ios"),
+      .product(name: "PolymorphTokens", package: "polymorph"),
+      .product(name: "PolymorphUI", package: "polymorph"),
     ]
   )
 ]
 ```
 
-In Xcode, choose **File › Add Package Dependencies…**, then **Add Local…**, and pick
-`platforms/ios`. The app installs one pairing at its root and composes members, which read it from
-the environment:
+In Xcode, choose **File › Add Package Dependencies…**, enter the repository's URL and pick a
+version rule. SwiftPM clones the whole repository and builds only the two libraries, from the
+`Package.swift` at its root. The tags before `v1.0.18` have no `Package.swift` at the root.
+
+An app that already holds a checkout of this repository, or a git submodule of it, can depend on
+`platforms/ios` by path instead: `.package(path: "../polymorph/platforms/ios")`, or **Add Local…**
+in Xcode. SwiftPM names a path dependency after its directory, so that package is `ios`. Both
+offer the same libraries over the same sources.
+
+The app installs one pairing at its root and composes members, which read it from the
+environment:
 
 ```swift
 import PolymorphUI

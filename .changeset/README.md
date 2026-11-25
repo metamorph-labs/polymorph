@@ -33,7 +33,7 @@ not change it adds a heading with no notes under it.
 | --- | --- | --- |
 | The published web packages: `@polymorph/engine`, `@polymorph/rules`, `@polymorph/recipes`, `@polymorph/screen`, and each web framework's foundation and vocabulary (`@polymorph/react` and `@polymorph/react-ui`, and the same pair for `vue`, `svelte`, `solid`, `elements` and `angular`) | by changesets, at the release's version in each `package.json`, with a `CHANGELOG.md` | to GitHub Packages by `pnpm publish:packages` |
 | The internal packages: `@polymorph/theme`, `@polymorph/registry`, `@polymorph/cli`, `@polymorph/mcp`, `@polymorph/spec`, `@polymorph/shells`, `@polymorph/conformance`, `@polymorph/native` | by changesets, the same way, for the tools' release notes | nowhere: they run from a checkout |
-| The native packages: `platforms/ios`, `platforms/android`, `platforms/dart` | by the repository's release tag | with the tag |
+| The native packages: `platforms/ios`, `platforms/android`, `platforms/dart` | at the release's version: the tag, and the version line of each Gradle and Dart manifest | with the tag |
 
 Every package stays `"private": true` in the workspace, and the publish script writes the
 registry manifest. `privatePackages: { version: true, tag: false }` lets changesets version them
@@ -45,13 +45,16 @@ command with the version filled in, so the tag's number is never typed from memo
 anyone installs.
 
 **The native packages are not npm packages**, and not workspace packages, so changesets does
-not version them. They are versioned with the repository: an app depends on them through a
-checkout or a git submodule of it, and moves to a release by checking out that release's tag.
-SwiftPM, Gradle's `includeBuild` and a Dart path dependency all build what the checkout holds,
-so the `version` in `platforms/android/{tokens,ui}/build.gradle.kts` and in
-`platforms/dart/pubspec.yaml` is not what an app resolves, and the Swift package declares none.
-A change to them that an app sees is described in a changeset with no packages in its front
-matter (as `native-platforms.md` is), for the release notes of the tag.
+not version them itself. They ship at the release's tag. An iOS app adds the Swift package by
+this repository's URL, and SwiftPM reads the version from the tag. An Android app moves to a
+release by checking out that tag, and a Dart app by pinning its path or git dependency to it.
+`pnpm version-packages` runs `changeset version`, then `pnpm native:version`, which writes the
+release's version into `platforms/android/{tokens,ui}/build.gradle.kts` and
+`platforms/dart/pubspec.yaml`, so what an app builds from the tag names the same number as the
+npm packages. A law refuses a native manifest at another version
+(`packages/native/src/version.test.ts`). The Swift package declares no version, because SwiftPM
+takes it from the tag. A change to them that an app sees is described in a changeset that names
+`@polymorph/native`, whose changelog records what ships at the tag.
 
 Add a changeset when a change alters what a consumer sees: a package's `exports`, a member's
 props, a token name, a rule's behaviour. Write it for someone upgrading: what changed and what
