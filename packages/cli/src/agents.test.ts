@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 
 import { buildRegistry, FRAMEWORKS, type Framework, type Registry } from '@polymorph/registry'
+import { parse as parseToml } from 'smol-toml'
 import { afterAll, describe, expect, it } from 'vitest'
 
 import {
@@ -21,14 +22,17 @@ import {
   DEFAULT_HARNESSES,
   HARNESSES,
   planAgents,
+  projectLint,
   readAgentRecord,
   type AgentOptions,
+  type ProjectLint,
 } from './agents'
-import { run } from './cli'
+import { freshEslintConfig } from './apply'
+import { newerRelease, run } from './cli'
 import { planInit, publishedTools, TOOLS_NAME } from './init'
 import type { Origin, Program } from './init-app'
 import { pinnedTools, pluginFiles } from './plugin'
-import { SKILL_NAMES, skillFiles } from './skills'
+import { SKILL_NAMES, SkillFactError, skillFiles } from './skills'
 import { synopsis, verbNamed, VERBS } from './verbs'
 
 /**
@@ -65,10 +69,13 @@ const PUBLISHED = {
   polymorph: publishedTools(registry),
 }
 
+/** A project's lint that loads the red rules, as an app `init` writes has. */
+const RULES_LINT: ProjectLint = { command: 'npm run lint', redRules: true }
+
 const options = (
   framework: Framework,
   origin: Origin,
-  lint: string | null = 'npm run lint',
+  lint: ProjectLint | null = RULES_LINT,
 ): AgentOptions => {
   const programs = origin === 'checkout' ? CHECKOUT : PUBLISHED
   return {
@@ -92,7 +99,7 @@ function texts(): { where: string; text: string; run: string }[] {
     for (const framework of FRAMEWORKS) {
       const plan = planAgents(
         registry,
-        options(framework, origin, framework === 'elements' ? null : 'npm run lint'),
+        options(framework, origin, framework === 'elements' ? null : RULES_LINT),
       )
       for (const step of plan.steps) {
         if (step.path.endsWith('.md') && step.path !== 'polymorph/system-card.md') {
@@ -273,6 +280,169 @@ describe('every command a text names', () => {
 })
 
 /* -------------------------------------------------------------------------- */
+/* Every member, prop and part a text names                                   */
+/* -------------------------------------------------------------------------- */
+
+/** Every member and primitive by name, with its props and its parts' props. */
+const MEMBERS = new Map<string, { props: Set<string>; parts: Map<string, Set<string>> }>(
+  [...registry.components, ...registry.exceptions.primitives].map((member) => {
+    const parts = (member as { parts?: { name: string; props: { name: string }[] }[] }).parts
+    return [
+      member.name,
+      {
+        props: new Set(member.props.map((prop) => prop.name)),
+        parts: new Map(
+          (Array.isArray(parts) ? parts : []).map((part) => [
+            part.name,
+            new Set(part.props.map((prop) => prop.name)),
+          ]),
+        ),
+      },
+    ]
+  }),
+)
+
+/** The props of a member or of `Member.Part`, or `null` when the registry has neither. */
+function propsOf(name: string): Set<string> | null {
+  const [member, part] = name.split('.')
+  const found = MEMBERS.get(member as string)
+  if (found === undefined) return null
+  if (part === undefined) return found.props
+  return found.parts.get(part) ?? null
+}
+
+/** The keys of the data type a member's prop takes, when the type is one the registry declares. */
+function fieldsOf(member: string, prop: string): Set<string> | null {
+  const type = [...registry.components, ...registry.exceptions.primitives]
+    .find((entry) => entry.name === member)
+    ?.props.find((entry) => entry.name === prop)
+    ?.type.split('|')[0]
+    ?.trim()
+  const declared = registry.dataTypes.find((entry) => entry.name === type)
+  return declared === undefined ? null : new Set(declared.fields.map((field) => field.name))
+}
+
+/**
+ * What a text says that the registry does not hold: a member, part or prop
+ * in code font, in JSX or in a JSON spec that it lacks, a patch key its patch
+ * type lacks, and an exception at a rung its member is not. A tag imported
+ * from another package in the same block is that package's, not a member.
+ */
+function factFaults(text: string): string[] {
+  const faults: string[] = []
+  const tagged = (code: string, foreign: Set<string>) => {
+    for (const [, name, attributes] of code.matchAll(
+      /<([A-Z][A-Za-z0-9]*(?:\.[A-Z][A-Za-z0-9]*)?)\b([^<>]*)>/g,
+    )) {
+      if (foreign.has(name as string)) continue
+      const props = propsOf(name as string)
+      if (props === null) {
+        faults.push(`<${name}>: no such member or part`)
+        continue
+      }
+      for (const [, prop] of (attributes as string).matchAll(/([A-Za-z][\w-]*)=/g)) {
+        if (!props.has(prop as string)) faults.push(`<${name} ${prop}>: no such prop`)
+      }
+      for (const [, keys] of (attributes as string).matchAll(/patch=\{\{([^}]*)\}\}/g)) {
+        const fields = fieldsOf(name as string, 'patch')
+        for (const [, key] of (keys as string).matchAll(/([A-Za-z]\w*):/g)) {
+          if (fields === null || !fields.has(key as string))
+            faults.push(`<${name} patch.${key}>: no such key`)
+        }
+      }
+    }
+  }
+  const spec = (node: unknown): void => {
+    if (Array.isArray(node)) return node.forEach(spec)
+    if (node === null || typeof node !== 'object') return
+    const element = node as Record<string, unknown>
+    if (typeof element['component'] === 'string') {
+      const name = element['component']
+      const props = propsOf(name)
+      if (props === null) faults.push(`"${name}": no such member or part`)
+      for (const prop of Object.keys((element['props'] as object | undefined) ?? {})) {
+        if (props !== null && !props.has(prop)) faults.push(`"${name}".${prop}: no such prop`)
+      }
+      const exception = element['exception'] as { rung?: number } | undefined
+      const primitive = registry.exceptions.primitives.find((entry) => entry.name === name)
+      if (exception !== undefined && primitive?.rung !== exception.rung) {
+        faults.push(`"${name}": no exception at rung ${exception.rung}`)
+      }
+    }
+    Object.values(element).forEach(spec)
+  }
+  const fences = [...text.matchAll(/```(\w*)\n([\s\S]*?)```/g)]
+  for (const [, language, code] of fences) {
+    if (language === 'tsx') {
+      const foreign = new Set(
+        [...(code as string).matchAll(/import \{([^}]+)\} from '(?!@polymorph\/)[^']+'/g)].flatMap(
+          ([, names]) => (names as string).split(',').map((each) => each.trim()),
+        ),
+      )
+      tagged(code as string, foreign)
+    }
+    if (language === 'json') spec(JSON.parse(code as string))
+  }
+  const prose = text.replace(/```[\s\S]*?```/g, '')
+  for (const [, code] of prose.matchAll(/`([^`]+)`/g)) {
+    if (/^[A-Z][A-Za-z0-9]*(?:\.[A-Z][A-Za-z0-9]*)?$/.test(code as string)) {
+      if (propsOf(code as string) === null) faults.push(`\`${code}\`: no such member or part`)
+    }
+    if ((code as string).startsWith('<') && /^<[A-Z]/.test(code as string))
+      tagged(code as string, new Set())
+  }
+  return faults
+}
+
+/** The verbs whose answer depends on the app's framework, so a text names it. */
+const FRAMEWORK_VERBS = ['card', 'search', 'component', 'plan', 'validate', 'fix', 'emit']
+
+describe('every member, prop and part a text names', () => {
+  const all = texts()
+
+  it('is in the registry, in code font, in JSX and in a spec', () => {
+    expect(
+      all.flatMap(({ where, text }) => factFaults(text).map((fault) => `${where}: ${fault}`)),
+    ).toEqual([])
+  })
+
+  it('reads a member, a prop or a patch key the registry lacks as a fault', () => {
+    expect(factFaults('`Card.Header`')).not.toEqual([])
+    expect(factFaults('`TextField`')).not.toEqual([])
+    expect(factFaults('```tsx\n<Heading tone="secondary">x</Heading>\n```')).not.toEqual([])
+    expect(factFaults('```tsx\n<Card patch={{ gap: 2 }}>x</Card>\n```')).not.toEqual([])
+    expect(
+      factFaults('```json\n{ "component": "Heading", "props": { "size": "lg" } }\n```'),
+    ).not.toEqual([])
+    expect(factFaults("```tsx\nimport { Map } from 'maps'\n<Map center={c} />\n```")).toEqual([])
+    expect(factFaults('`Button` and `Table.Row`')).toEqual([])
+  })
+
+  it('stops the texts being written when the registry lacks what a sentence names', () => {
+    const heading = registry.components.find((member) => member.name === 'Heading')
+    const without = {
+      ...registry,
+      components: registry.components.map((member) =>
+        member === heading
+          ? { ...member, props: member.props.filter((prop) => prop.name !== 'level') }
+          : member,
+      ),
+    }
+    expect(() => skillFiles(without, 'npx -y x')).toThrow(SkillFactError)
+  })
+
+  it('names the framework on every command whose answer depends on it', () => {
+    const missing = all.flatMap(({ where, text, run }) =>
+      commandsIn(text, run)
+        .filter((command) => FRAMEWORK_VERBS.includes(words(command)[0] as string))
+        .filter((command) => !/--framework \S+/.test(command))
+        .map((command) => `${where}: \`${command}\``),
+    )
+    expect(missing).toEqual([])
+  })
+})
+
+/* -------------------------------------------------------------------------- */
 /* The skills, in the Agent Skills format                                     */
 /* -------------------------------------------------------------------------- */
 
@@ -374,7 +544,7 @@ describe('the always-loaded text', () => {
     for (const framework of FRAMEWORKS) {
       const plan = planAgents(
         registry,
-        options(framework, 'published', framework === 'elements' ? null : 'npm run lint'),
+        options(framework, 'published', framework === 'elements' ? null : RULES_LINT),
       )
       const block = plan.steps.find((step) => step.path === 'AGENTS.md')?.piece ?? ''
       expect(block.split('\n').length, framework).toBeLessThanOrEqual(45)
@@ -383,11 +553,41 @@ describe('the always-loaded text', () => {
     }
   })
 
-  it('names the project’s own lint, or `check` where there is none', () => {
-    const npm = planAgents(registry, options('react', 'published', 'npm run lint'))
-    expect(npm.steps[0]?.piece).toContain('`npm run lint` runs the same red rules')
-    const none = planAgents(registry, options('react', 'published', null))
-    expect(none.steps[0]?.piece).toContain(`${commandLine(PUBLISHED.polymorph)} check src`)
+  it('says the project’s lint runs the red rules only when its config loads them', () => {
+    const check = `${commandLine(PUBLISHED.polymorph)} check src`
+    const rules = planAgents(registry, options('react', 'published', RULES_LINT)).steps[0]?.piece
+    expect(rules).toContain('`npm run lint` runs the same red rules')
+    expect(rules).toContain(check)
+    const own = planAgents(
+      registry,
+      options('react', 'published', { command: 'npm run lint', redRules: false }),
+    ).steps[0]?.piece
+    expect(own).not.toContain('runs the same red rules')
+    expect(own?.replace(/\s+/g, ' ')).toContain("`npm run lint` is the project's own lint")
+    expect(own).toContain(check)
+    const none = planAgents(registry, options('react', 'published', null)).steps[0]?.piece
+    expect(none).toContain(check)
+  })
+
+  it('finds the evidence that a project’s lint loads the red rules in its ESLint config', () => {
+    const script = { 'package.json': '{ "scripts": { "lint": "eslint src" } }\n' }
+    expect(projectLint(project(script), 'npm')).toEqual({
+      command: 'npm run lint',
+      redRules: false,
+    })
+    const fragment = project({
+      ...script,
+      'pnpm-lock.yaml': '',
+      'eslint.config.js':
+        "import polymorph from './polymorph.eslint.js'\nexport default [...polymorph]\n",
+    })
+    expect(projectLint(fragment, 'npm')).toEqual({ command: 'pnpm lint', redRules: true })
+    const plugin = project({
+      ...script,
+      'eslint.config.mjs': "import { rules } from '@polymorph/rules'\nexport default []\n",
+    })
+    expect(projectLint(plugin, 'npm')?.redRules).toBe(true)
+    expect(projectLint(project(), 'npm')).toBeNull()
   })
 })
 
@@ -571,6 +771,117 @@ describe('polymorph agents', () => {
     expect(read(dir, kept)).toBe('old, and ours now\n')
   })
 
+  it('reads a file with CRLF line endings as the one it wrote, and keeps its endings', () => {
+    const dir = project({ 'AGENTS.md': '# Ours\r\n\r\nOur own rules.\r\n' })
+    expect(agents(dir).code).toBe(0)
+    // A checkout with Git's `core.autocrlf` gives every text file CRLF endings.
+    const written = ['AGENTS.md', '.claude/skills/polymorph-screen/SKILL.md', '.mcp.json']
+    for (const path of written) {
+      writeFileSync(resolve(dir, path), read(dir, path).replace(/\r?\n/g, '\r\n'))
+    }
+    const rerun = agents(dir)
+    expect(rerun.output).toContain('are as polymorph wrote them')
+    expect(rerun.output).not.toContain('kept yours')
+
+    const upgrade = agents(dir, [], { ...registry, version: '99.0.0' })
+    expect(upgrade.output).not.toContain('kept yours')
+    for (const path of written) {
+      const text = read(dir, path)
+      expect(text, path).toContain(`${TOOLS_NAME}@^99.0.0`)
+      expect(text.replace(/\r\n/g, ''), path).not.toContain('\n')
+    }
+    expect(read(dir, 'AGENTS.md').startsWith('# Ours\r\n\r\nOur own rules.\r\n')).toBe(true)
+  })
+
+  it('leaves a Codex config that declares the server in any form, and writes one that parses', () => {
+    const forms = {
+      'a table': '[mcp_servers.polymorph]\ncommand = "mine"\n',
+      'a quoted table': '[mcp_servers."polymorph".env]\nA = "b"\n',
+      'a key under mcp_servers': '[mcp_servers]\npolymorph = { command = "mine" }\n',
+      'a dotted key': 'mcp_servers.polymorph.command = "mine"\n',
+      'a dotted key under mcp_servers': '[mcp_servers]\npolymorph.command = "mine" # ours\n',
+      'an inline mcp_servers': 'mcp_servers = { other = { command = "other" } }\n',
+    }
+    for (const [form, toml] of Object.entries(forms)) {
+      const dir = project({ '.codex/config.toml': toml })
+      const outcome = agents(dir)
+      expect(outcome.output, form).toContain('kept yours .codex/config.toml')
+      expect(read(dir, '.codex/config.toml'), form).toBe(toml)
+      expect(() => parseToml(toml), form).not.toThrow()
+    }
+    const fine = {
+      'another server': '[mcp_servers.other]\ncommand = "other"\n',
+      'another server by a dotted key': 'model = "x"\nmcp_servers.other.command = "other"\n',
+      'a string that names it': 'note = "[mcp_servers.polymorph] is ours"\n',
+      'a comment that names it': '# [mcp_servers.polymorph]\nmodel = "x"\n',
+      'a multi-line string that names it': 'note = """\n[mcp_servers.polymorph]\n"""\n',
+    }
+    for (const [form, toml] of Object.entries(fine)) {
+      const dir = project({ '.codex/config.toml': toml })
+      agents(dir)
+      const written = read(dir, '.codex/config.toml')
+      expect(written, form).toContain('# polymorph:start')
+      const parsed = parseToml(written) as { mcp_servers: Record<string, unknown> }
+      expect(parsed.mcp_servers['polymorph'], form).toBeDefined()
+    }
+  })
+
+  it('refuses to write an older release’s files over a newer one’s, unless forced', () => {
+    const dir = project()
+    expect(agents(dir, [], { ...registry, version: '99.1.0' }).code).toBe(0)
+    const before = snapshot(dir)
+    const older = agents(dir)
+    expect(older.code).toBe(1)
+    expect(older.output).toContain('polymorph 99.1.0 wrote these agent files')
+    expect(older.output).toContain(`this is polymorph ${registry.version}, an older release`)
+    expect(snapshot(dir)).toEqual(before)
+    expect(agents(dir, ['--force']).code).toBe(0)
+    expect(readAgentRecord(dir)?.version).toBe(registry.version)
+  })
+
+  it('reads releases in order, a release above its prerelease', () => {
+    expect(newerRelease('1.0.18', '1.0.17')).toBe(true)
+    expect(newerRelease('1.0.17', '1.0.17')).toBe(false)
+    expect(newerRelease('1.0.9', '1.0.17')).toBe(false)
+    expect(newerRelease('2.0.0', '1.9.9')).toBe(true)
+    expect(newerRelease('1.1.0', '1.1.0-next.2')).toBe(true)
+    expect(newerRelease('1.1.0-next.10', '1.1.0-next.2')).toBe(true)
+    expect(newerRelease('1.1.0-next.1', '1.1.0')).toBe(false)
+  })
+
+  it('removes a harness’s files when asked, keeping what another harness reads and what was edited', () => {
+    const dir = project()
+    expect(agents(dir).code).toBe(0)
+    writeFileSync(
+      resolve(dir, '.cursor/mcp.json'),
+      read(dir, '.cursor/mcp.json').replace('"stdio"', '"stdio", "env": {}'),
+    )
+    const outcome = agents(dir, ['--remove', 'cursor,claude'])
+    expect(outcome.code, outcome.output).toBe(0)
+    expect(readAgentRecord(dir)?.harnesses).toEqual(['codex'])
+    expect(existsSync(resolve(dir, '.claude'))).toBe(false)
+    expect(existsSync(resolve(dir, '.mcp.json'))).toBe(false)
+    // Codex reads `.agents/skills/` too, and the Cursor entry was edited.
+    expect(existsSync(resolve(dir, '.agents/skills/polymorph-screen/SKILL.md'))).toBe(true)
+    expect(outcome.output).toContain('kept yours .cursor/mcp.json')
+    expect(read(dir, 'CLAUDE.md')).toBe('@AGENTS.md\n')
+    // A rerun brings back none of them.
+    agents(dir)
+    expect(existsSync(resolve(dir, '.claude'))).toBe(false)
+    expect(agents(dir, ['--remove', 'codex']).code).toBe(2)
+    expect(agents(dir, ['--harness', 'claude', '--remove', 'claude']).code).toBe(2)
+  })
+
+  it('writes no record through a link out of the project', () => {
+    const outside = project()
+    const dir = project()
+    symlinkSync(outside, resolve(dir, 'polymorph'), 'dir')
+    const outcome = agents(dir)
+    expect(outcome.code).toBe(1)
+    expect(outcome.output).toContain(`refused    ${AGENT_RECORD}`)
+    expect(readdirSync(outside)).toEqual([])
+  })
+
   it('leaves a Codex config that already has the server, and says so', () => {
     const toml = '[mcp_servers.polymorph]\ncommand = "polymorph-mcp"\n'
     const dir = project({ '.codex/config.toml': toml })
@@ -653,19 +964,18 @@ describe('init and agents', () => {
     expect(written.map((step) => step.path).sort()).toEqual([...agentPaths].sort())
 
     // The project `init` writes, with the files that decide the lint line and the framework.
-    const fromInit = project({
+    const decide = {
       'package.json': '{ "name": "app", "scripts": { "lint": "eslint src" } }\n',
       'package-lock.json': '{}\n',
-    })
+      'eslint.config.js': freshEslintConfig(),
+    }
+    const fromInit = project(decide)
     for (const step of written) {
       if (step.kind !== 'write') throw new Error(`${step.path} is not written`)
       mkdirSync(dirname(resolve(fromInit, step.path)), { recursive: true })
       writeFileSync(resolve(fromInit, step.path), step.contents)
     }
-    const fromAgents = project({
-      'package.json': '{ "name": "app", "scripts": { "lint": "eslint src" } }\n',
-      'package-lock.json': '{}\n',
-    })
+    const fromAgents = project(decide)
     expect(agents(fromAgents).code).toBe(0)
     expect(snapshot(fromAgents)).toEqual(snapshot(fromInit))
 

@@ -404,7 +404,7 @@ The skills and the server run the published tools of release ${registry.version}
 \`${TOOLS_NAME}\`:
 
 \`\`\`sh
-${run} card
+${run} card --framework react
 ${server}
 \`\`\`
 

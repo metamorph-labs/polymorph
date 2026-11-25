@@ -6,7 +6,7 @@ description: Change how an app built with polymorph looks, its colours, type, de
 # Change the theme
 
 In polymorph, how an app looks is two JSON documents. A **system** decides how the product is
-built: eight design axes (density, shape, type, motion and the rest), three font slots and their
+built: its design axes (`geometry`, `depth`, `density`, `contrastTemperament`, `typePersonality`, `colorStrategy`, `motionTemperament` and `ornament`), its fonts and its
 defaults. A **palette** decides its colours, in a light and a dark mode. One system worn with one
 palette is a **pairing**, chosen by `data-system` and `data-palette` on `<html>`. The members
 read every value from the theme as `--pm-*` tokens, so the look changes when the documents change
@@ -23,7 +23,8 @@ and `save_theme`.
   builds.
 - A vendoring project: `src/polymorph/themes/systems/` and `src/polymorph/themes/palettes/`,
   compiled by `add` into the sheets beside them.
-- A page with no build: `public/polymorph/theme.css`, compiled from a catalogue system.
+- A page with no build: `public/polymorph/theme.css`, compiled from a catalogue
+  system.
 
 ## 2. See what can move
 
@@ -44,14 +45,14 @@ npx -y @metamorph-labs/polymorph@1.0.17 theme propose "denser and cooler" --save
 ```
 
 The answer lists what each word moved, the words the table does not know, and the verdict of the
-theme's laws (contrast, legibility, the scales). `--based-on` starts from a shipped pairing, such
+theme's laws. `--based-on` starts from a shipped pairing, such
 as `desktop/azure`, `dew/verdigris`, `flint/cobalt`; either half may be left out. `--save` writes the two documents into
 `<dir>/systems/` and `<dir>/palettes/` (the directory `design` when `--dir` is left out), and
 `--overwrite` replaces files already saved under the same names. Then point the app at them: in an
 app `init` wrote, name the two files in `polymorphTheme` in `vite.config`.
 
 Words the table does not know move nothing. Say what should change in the words of the axes `axes`
-lists, such as denser, rounder, quieter motion, or a warmer accent.
+lists, such as denser, rounder, calmer or warmer.
 
 ## 4. Edit a document by hand, then check it
 

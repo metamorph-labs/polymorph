@@ -40,13 +40,14 @@ installs nothing.
 ## An existing app: vendoring
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 plan button dialog theme:pastel
+npx -y @metamorph-labs/polymorph@1.0.17 plan button dialog theme:pastel --framework <framework>
 npx -y @metamorph-labs/polymorph@1.0.17 add button dialog theme:pastel
 npx -y @metamorph-labs/polymorph@1.0.17 diff
 npx -y @metamorph-labs/polymorph@1.0.17 update
 ```
 
-`plan` prints what `add` would copy and install, and writes nothing. `add` copies the members you
+`<framework>` is the framework the project's members are in (`react` unless `polymorph.json`
+records another). `plan` prints what `add` would copy and install, and writes nothing. `add` copies the members you
 name, and every member they need, as source into `src/polymorph/` (`--dir` changes it), installs a
 theme (`theme:<system>`, or `palette:<name>` for a palette alone), adds the packages the members
 import to `package.json`, and links the red rules into the project's ESLint and Stylelint configs.
@@ -93,7 +94,7 @@ members. In a packages project, raise the ranges of the `@polymorph/*` aliases a
 
 ```sh
 npx -y @metamorph-labs/polymorph@1.0.17 check src
-npx -y @metamorph-labs/polymorph@1.0.17 card --framework react
+npx -y @metamorph-labs/polymorph@1.0.17 card --framework <framework>
 ```
 
 `check` runs the red rules over a directory with no lint config and exits 1 on any violation. The

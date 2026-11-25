@@ -13,6 +13,7 @@ import {
   FRAMEWORK_FOUNDATION,
   FRAMEWORK_VOCABULARY,
   FRAMEWORKS,
+  PUBLISHED_NAMES,
   renderSystemCard,
   type Framework,
   type Registry,
@@ -20,6 +21,7 @@ import {
 
 import type { Origin, Program } from './init-app'
 import { digest, readManifest } from './manifest'
+import { ESLINT_FRAGMENT } from './patch'
 import { escapes } from './plan'
 import { row } from './readings'
 import { SKILL_NAMES, skillFiles } from './skills'
@@ -115,8 +117,19 @@ export interface AgentOptions {
   tools: Program
   /** The MCP server, run against the project with `--project`. */
   mcp: Program
-  /** The command that runs the project's lint, such as `npm run lint`, or `null`. */
-  lint: string | null
+  /** The project's lint, or `null` when its `package.json` has no `lint` script. */
+  lint: ProjectLint | null
+}
+
+/** A project's lint command, and whether there is evidence that it runs the red rules. */
+export interface ProjectLint {
+  /** `npm run lint`, in the project's package manager. */
+  command: string
+  /**
+   * The project's ESLint config loads the red rules: it imports `@polymorph/rules` or spreads
+   * the fragment `init` and `add` write. Without that evidence, `check` is the check for them.
+   */
+  redRules: boolean
 }
 
 export interface AgentPlan {
@@ -327,7 +340,7 @@ const FRAMEWORK_NOTES: Readonly<Record<Framework, FrameworkNotes>> = {
   },
   vue: {
     built: `Vue, with the vocabulary \`${FRAMEWORK_VOCABULARY.vue}\``,
-    forbids: `CSS files or \`<style>\` blocks, \`class\` or \`style\` on a member, ${RAW_CONTROLS}, ${LIBRARIES}`,
+    forbids: `CSS files or \`<style>\` blocks, \`class\` or \`style\` on a member or a plain element, ${RAW_CONTROLS}, ${LIBRARIES}`,
     props:
       'A prop keeps its React name. A React `onFoo` is the event `@foo`, a node-typed prop is ' +
       'the slot `#foo`, and `children` is the default slot.',
@@ -338,7 +351,7 @@ const FRAMEWORK_NOTES: Readonly<Record<Framework, FrameworkNotes>> = {
   },
   svelte: {
     built: `Svelte 5, with the vocabulary \`${FRAMEWORK_VOCABULARY.svelte}\``,
-    forbids: `CSS files or \`<style>\` blocks, \`class\` or \`style\` on a member, \`transition:\` directives, ${RAW_CONTROLS}, ${LIBRARIES}`,
+    forbids: `CSS files or \`<style>\` blocks, \`class\` or \`style\` on a member or a plain element, \`transition:\` directives, ${RAW_CONTROLS}, ${LIBRARIES}`,
     props:
       'A prop keeps its React name and type. A callback is the prop `onFoo`, and a node-typed ' +
       'prop is the snippet `foo`.',
@@ -360,7 +373,7 @@ const FRAMEWORK_NOTES: Readonly<Record<Framework, FrameworkNotes>> = {
   },
   angular: {
     built: `Angular, with the vocabulary \`${FRAMEWORK_VOCABULARY.angular}\``,
-    forbids: `CSS files, \`styles\` or \`styleUrl\`, \`class\` or \`style\` on a member, Angular animations, ${RAW_CONTROLS}, ${LIBRARIES}`,
+    forbids: `CSS files, \`styles\` or \`styleUrl\`, \`class\` or \`style\` on a member or a plain element, Angular animations, ${RAW_CONTROLS}, ${LIBRARIES}`,
     props:
       'A member is a standalone component written by its selector (`<pm-button>`). A prop is an ' +
       'input of the same name, and a callback `onFoo` is the output `(foo)`.',
@@ -428,7 +441,7 @@ function agentsText(
   where: { run: string; skillDirs: string[]; servers: string[] },
 ): string {
   const notes = FRAMEWORK_NOTES[options.framework]
-  const framework = options.framework === 'react' ? '' : ` --framework ${options.framework}`
+  const framework = ` --framework ${options.framework}`
   const ladder = registry.exceptions.ladder.map((rung) => rung.name.toLowerCase())
   const lines: string[] = [
     '## Polymorph',
@@ -462,28 +475,31 @@ function agentsText(
       ),
     )
   }
+  const lint =
+    options.framework === 'elements' || options.lint === null
+      ? ''
+      : options.lint.redRules
+        ? ` \`${options.lint.command}\` runs the same red rules, through the project's ESLint config.`
+        : ` \`${options.lint.command}\` is the project's own lint, and its ESLint config loads no ` +
+          'polymorph rules, so `check` is the check for them.'
   const check =
-    options.lint === null
-      ? options.framework === 'elements'
-        ? ''
-        : ' `check` runs the red rules over a directory with no lint config.'
-      : ` \`${options.lint}\` runs the same red rules.`
-  lines.push(bullet(`The tools run from a shell, and answer for this release.${check}`), '')
+    options.framework === 'elements'
+      ? ''
+      : ' `check` runs the red rules over a directory whatever the lint config holds.'
+  lines.push(bullet(`The tools run from a shell, and answer for this release.${check}${lint}`), '')
   const commands = [
     [`card${framework}`, 'the card'],
     [`search <words>${framework}`, 'find a member; `component <Name>` reads one'],
     ...(options.framework === 'elements'
       ? []
       : [
-          ['validate <file>', 'each violation with its lawful fix'],
+          [`validate <file>${framework}`, 'each violation with its lawful fix'],
           [
             `render <spec.json> --system <name>`,
             'draw a spec at two widths, with its layout faults',
           ],
         ]),
-    ...(options.lint === null && options.framework !== 'elements'
-      ? [['check src', 'the red rules over a directory']]
-      : []),
+    ...(options.framework === 'elements' ? [] : [['check src', 'the red rules over a directory']]),
   ]
   const width = Math.max(...commands.map(([command]) => `${where.run} ${command}`.length))
   lines.push(
@@ -574,6 +590,9 @@ export class AgentRecordError extends Error {
 export function readAgentRecord(root: string): AgentRecord | null {
   const path = resolve(root, AGENT_RECORD)
   if (!existsSync(path)) return null
+  if (!insideOnDisk(root, AGENT_RECORD)) {
+    throw new AgentRecordError(`polymorph agents: ${AGENT_RECORD} resolves outside the project`)
+  }
   let parsed: Partial<AgentRecord>
   try {
     parsed = JSON.parse(readFileSync(path, 'utf8')) as Partial<AgentRecord>
@@ -720,6 +739,90 @@ function insideOnDisk(root: string, path: string): boolean {
   return real === base || real.startsWith(`${base}${sep}`)
 }
 
+/** A TOML key, dotted or not, as its parts: `mcp_servers."polymorph"` is `mcp_servers`, `polymorph`. */
+function tomlKey(written: string): string[] {
+  const parts: string[] = []
+  for (const match of written.matchAll(
+    /\s*(?:"((?:[^"\\]|\\.)*)"|'([^']*)'|([A-Za-z0-9_-]+))\s*(?:\.|$)/g,
+  )) {
+    const part = match[1] ?? match[2] ?? match[3]
+    if (part !== undefined) parts.push(part)
+  }
+  return parts
+}
+
+/** Where in a TOML line its comment starts, or its end: a `#` outside a string. */
+function tomlCode(line: string): string {
+  let quote: string | null = null
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index] as string
+    if (quote !== null) {
+      if (char === '\\' && quote === '"') index += 1
+      else if (char === quote) quote = null
+    } else if (char === '"' || char === "'") quote = char
+    else if (char === '#') return line.slice(0, index)
+  }
+  return line
+}
+
+/** Where a TOML line's key ends: its first `=` outside a string, or -1. */
+function tomlEquals(line: string): number {
+  let quote: string | null = null
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index] as string
+    if (quote !== null) {
+      if (char === quote) quote = null
+    } else if (char === '"' || char === "'") quote = char
+    else if (char === '=') return index
+  }
+  return -1
+}
+
+/**
+ * Why a Codex config cannot take the block, or `null`. The block adds the
+ * table `[mcp_servers.polymorph]`, which TOML refuses when the document
+ * already defines that server in any form (a table header, a key under
+ * `[mcp_servers]`, a dotted key) or defines `mcp_servers` as an inline table,
+ * which no table header may extend. The reading follows table headers and the
+ * keys under them, line by line, and skips the inside of multi-line strings.
+ */
+function tomlRefusal(text: string): string | null {
+  let table: string[] = []
+  let inString = false
+  const server = (path: string[]) => path[0] === 'mcp_servers' && path[1] === SERVER_NAME
+  for (const raw of text.split('\n')) {
+    const fences = raw.split('"""').length - 1 + (raw.split("'''").length - 1)
+    if (inString) {
+      if (fences % 2 === 1) inString = false
+      continue
+    }
+    if (fences % 2 === 1) inString = true
+    const line = tomlCode(raw).trim()
+    if (line === '') continue
+    const header = /^\[\[?(.+?)\]\]?$/.exec(line)
+    if (header !== null) {
+      table = tomlKey(header[1] as string)
+      if (server(table)) return 'it already configures the polymorph server, outside the block'
+      continue
+    }
+    const equals = tomlEquals(line)
+    if (equals < 0) continue
+    const path = [...table, ...tomlKey(line.slice(0, equals))]
+    if (server(path)) return 'it already configures the polymorph server, outside the block'
+    if (
+      path.length === 1 &&
+      path[0] === 'mcp_servers' &&
+      line
+        .slice(equals + 1)
+        .trim()
+        .startsWith('{')
+    ) {
+      return 'it defines `mcp_servers` as an inline table, which `[mcp_servers.polymorph]` cannot extend'
+    }
+  }
+  return null
+}
+
 /** Why a part cannot be written into the file it is in, whatever the record says, or `null`. */
 function blocked(step: AgentStep, text: string | null): string | null {
   if (text === null) return null
@@ -728,10 +831,7 @@ function blocked(step: AgentStep, text: string | null): string | null {
   }
   if (step.part === 'block' && step.path.endsWith('.toml')) {
     const found = findBlock(text, 'toml')
-    const outside = found === null ? text : text.slice(0, found.from) + text.slice(found.to)
-    if (/^\s*\[\s*mcp_servers\s*\.\s*("?)polymorph\1\s*\]/m.test(outside)) {
-      return 'it already configures `[mcp_servers.polymorph]` outside the block'
-    }
+    return tomlRefusal(found === null ? text : text.slice(0, found.from) + text.slice(found.to))
   }
   return null
 }
@@ -745,6 +845,11 @@ function blocked(step: AgentStep, text: string | null): string | null {
  * the plan no longer has is removed if nobody edited it.
  *
  * With `dryRun` nothing is written, and the outcomes say what would be.
+ *
+ * A file whose lines end in CRLF, as Git's `core.autocrlf` checks text out on
+ * Windows, is read with its endings as LF, so its parts compare and hash as
+ * the plan's do. A part written into it keeps the file's CRLF endings, so the
+ * file stays in the form its checkout gave it and Git sees only the change.
  */
 export function applyAgents(
   root: string,
@@ -755,9 +860,15 @@ export function applyAgents(
 ): AgentsResult {
   const outcomes: AgentOutcome[] = []
   const files: AgentRecord['files'] = {}
+  // The files that end their lines with CRLF, as a checkout with Git's `core.autocrlf` has them.
+  const crlf = new Set<string>()
   const read = (path: string): string | null => {
     const full = resolve(root, path)
-    return existsSync(full) ? readFileSync(full, 'utf8') : null
+    if (!existsSync(full)) return null
+    const text = readFileSync(full, 'utf8')
+    if (!text.includes('\r\n')) return text
+    crlf.add(path)
+    return text.replace(/\r\n/g, '\n')
   }
   const write = (path: string, text: string | null): void => {
     if (options.dryRun) return
@@ -768,7 +879,7 @@ export function applyAgents(
       return
     }
     mkdirSync(dirname(full), { recursive: true })
-    writeFileSync(full, text)
+    writeFileSync(full, crlf.has(path) ? text.replace(/\n/g, '\r\n') : text)
   }
 
   for (const step of plan.steps) {
@@ -842,7 +953,15 @@ export function applyAgents(
     harnesses: plan.harnesses,
     files,
   }
-  if (!options.dryRun) {
+  // The record is held to the project as every part is.
+  if (escapes(AGENT_RECORD) || !insideOnDisk(root, AGENT_RECORD)) {
+    outcomes.push({
+      path: AGENT_RECORD,
+      part: 'file',
+      action: 'refused',
+      why: 'it resolves outside the project',
+    })
+  } else if (!options.dryRun) {
     const full = resolve(root, AGENT_RECORD)
     mkdirSync(dirname(full), { recursive: true })
     writeFileSync(full, renderRecord(record))
@@ -922,12 +1041,45 @@ export function runScript(manager: PackageManagerName, script: string): string {
     : `${manager} ${script}`
 }
 
+/** The ESLint configs a project may have, flat and legacy, at its root. */
+const ESLINT_CONFIGS = [
+  'eslint.config.js',
+  'eslint.config.mjs',
+  'eslint.config.cjs',
+  'eslint.config.ts',
+  'eslint.config.mts',
+  'eslint.config.cts',
+  '.eslintrc.js',
+  '.eslintrc.cjs',
+  '.eslintrc.json',
+  '.eslintrc.yml',
+  '.eslintrc.yaml',
+  '.eslintrc',
+]
+
 /**
- * The command that runs the project's lint, or `null` when its `package.json`
- * has no `lint` script. The package manager is the one its lockfile or its
- * `packageManager` field names, else `fallback`.
+ * Whether the project's ESLint config loads the red rules: it names
+ * `@polymorph/rules` (or its published name) or the fragment `init` and
+ * `add` write and spread (`ESLINT_FRAGMENT`).
  */
-export function projectLint(root: string, fallback: PackageManagerName): string | null {
+function eslintLoadsRedRules(root: string): boolean {
+  const names = ['@polymorph/rules', PUBLISHED_NAMES['@polymorph/rules'] ?? '', ESLINT_FRAGMENT]
+  return ESLINT_CONFIGS.some((file) => {
+    const path = resolve(root, file)
+    if (!existsSync(path)) return false
+    const text = readFileSync(path, 'utf8')
+    return names.some((name) => name !== '' && text.includes(name))
+  })
+}
+
+/**
+ * The project's lint, or `null` when its `package.json` has no `lint` script.
+ * The package manager is the one its lockfile or its `packageManager` field
+ * names, else `fallback`. The texts say the lint runs the red rules only when
+ * the project's ESLint config shows it loads them; a lint script alone is no
+ * evidence, because a project's own lint may load none of them.
+ */
+export function projectLint(root: string, fallback: PackageManagerName): ProjectLint | null {
   const manifest = packageManifest(root)
   const scripts = manifest?.['scripts'] as Record<string, unknown> | undefined
   if (typeof scripts?.['lint'] !== 'string') return null
@@ -935,7 +1087,7 @@ export function projectLint(root: string, fallback: PackageManagerName): string 
   const declared = String(manifest?.['packageManager'] ?? '').split('@')[0] as PackageManagerName
   const manager =
     locked ?? (['npm', 'pnpm', 'yarn', 'bun'].includes(declared) ? declared : fallback)
-  return runScript(manager, 'lint')
+  return { command: runScript(manager, 'lint'), redRules: eslintLoadsRedRules(root) }
 }
 
 /* -------------------------------------------------------------------------- */

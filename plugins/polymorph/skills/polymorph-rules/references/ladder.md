@@ -8,16 +8,16 @@ its vendored directory and adds one with `add` (`add bespoke`, `add third-party`
 
 ## Rung 1: variant selection
 
-Every member exposes its range as typed props: `variant`, `tone`, `size` and the spacing steps.
-A value off the scale is a type error. Read the member first:
+Every member exposes its range as typed props, such as a variant, a tone, a size and the spacing
+steps. A value off the scale is a type error. Read the member first:
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 component Button
+npx -y @metamorph-labs/polymorph@1.0.17 component Button --framework <framework>
 ```
 
 The answer lists each prop's values and the variant and tone pairs that are lawful. Most needs end
-here: a quieter button is `variant="ghost"`, a warning is `tone="warning"`, more room is a larger
-`gap`.
+here: a quieter button is `variant="ghost"`, a destructive one
+`tone="danger"`, and more room is a larger `gap`.
 
 ## Rung 2: `DensityScope` and `ToneScope`
 
@@ -36,30 +36,31 @@ import { DensityScope, ToneScope } from '@polymorph/react-ui'
 </ToneScope>
 ```
 
-- `DensityScope` takes `compact`, `standard` or `comfortable`. It changes space and the size of
-  controls, never the type scale.
-- `ToneScope` takes `inverse`: the surface, text and border roles of the opposite mode.
-- `as` is `div` (the default), `section` or `span`. A scope draws nothing of its own.
+- `DensityScope`'s `value` is `compact`, `standard` or `comfortable`.
+  It changes space and the size of controls, never the type scale.
+- `ToneScope`'s `value` is `inverse`: the
+  surface, text and border roles of the opposite mode.
+- `as` is `div`, `section` or `span`. A scope draws nothing of its own.
 
 ## Rung 3: an instance patch
 
-One instance re-assigns token steps. The keys are the spacing props the member already has, and the
-values are steps of the scale, never lengths.
+One instance re-assigns token steps through its `patch` prop. Each value is a step
+of a scale, never a length.
 
 ```tsx
 <Stack gap={6} patch={{ gap: 2 }}>…</Stack>
 <Card patch={{ p: 4, radius: 'sm' }}>…</Card>
 ```
 
-`Stack`, `Inline` and `Grid` take `gap`, `p`, `px` and `py`. `Card` takes `p`, `px`, `py` and
-`radius`.
+`Stack`, `Inline` and `Grid` take `gap`, `p`, `px` and `py`. `Card` take `p`, `px`, `py` and `radius`.
 
 ## Rung 4: a `Bespoke` zone or a `ThirdParty` boundary
 
-`Bespoke` declares a one-off composition the vocabulary has no member for. Its `reason` is
-required and is read by whoever reviews the code. Inside it the application rules are lifted:
-`style`, raw values, raw controls and inline `<svg>` are allowed. It draws nothing itself, and the
-theme's tokens reach inside it, so write values as `var(--pm-…)`.
+`Bespoke` declares a one-off composition the vocabulary has no member for. Its
+`reason` is required and is read by whoever reviews the code. Inside it the
+application rules are lifted for plain elements: `style`, a `className`, raw values, raw controls
+and inline `<svg>` are allowed there. A member inside it still takes no `className`. It draws
+nothing itself, and the theme's tokens reach inside it, so write values as `var(--pm-…)`.
 
 ```tsx
 import { Bespoke } from '@polymorph/react-ui'
@@ -69,10 +70,11 @@ import { Bespoke } from '@polymorph/react-ui'
 </Bespoke>
 ```
 
-`ThirdParty` hosts a component another library draws, such as a map, a rich-text editor or a data
-grid. The file that declares it may import that library and its stylesheet, and what it holds may
-take a `style`. Give the library the theme as `var(--pm-…)`, or as values from `useThemeValues()`
-in the framework's foundation package. Controls and icons around it stay members.
+`ThirdParty` hosts a component another library draws, such as a map, a rich-text editor or
+a data grid. It takes `library` and `reason`. The file
+that declares it may import that library and its stylesheet, and what it holds may take a
+`style`. Give the library the theme as `var(--pm-…)`, or as values from `useThemeValues()` in
+the framework's foundation package. Controls and icons around it stay members.
 
 ```tsx
 import { ThirdParty } from '@polymorph/react-ui'

@@ -1,6 +1,7 @@
 import { FRAMEWORKS, type Framework, type Registry } from '@polymorph/registry'
 
 import {
+  AGENT_RECORD,
   agentLines,
   AgentRecordError,
   applyAgents,
@@ -279,6 +280,7 @@ interface Flags {
   framework?: string
   registry?: string
   harness?: string
+  remove?: string
   install: boolean
   force: boolean
   dryRun: boolean
@@ -307,6 +309,9 @@ function parse(argv: string[]): { flags: Flags; rest: string[] } {
     } else if (argument === '--harness') {
       index += 1
       flags.harness = argv[index]
+    } else if (argument === '--remove') {
+      index += 1
+      flags.remove = argv[index]
     } else if (argument === '--dir') {
       index += 1
       flags.dir = argv[index]
@@ -524,14 +529,21 @@ function agents(cli: Cli, items: string[], flags: Flags): Outcome {
     return { code: 2 }
   }
   let asked
+  let removed
   try {
     asked = flags.harness === undefined ? [] : readHarnesses(flags.harness)
+    removed = flags.remove === undefined ? [] : readHarnesses(flags.remove)
   } catch (error) {
     if (error instanceof HarnessError) {
       cli.out(error.message)
       return { code: 2 }
     }
     throw error
+  }
+  const both = asked.filter((harness) => removed.includes(harness))
+  if (both.length > 0) {
+    cli.out(`polymorph agents: ${both.join(', ')} is both added and removed — ${AGENTS_USAGE}`)
+    return { code: 2 }
   }
   // A dry run writes nothing, so it may show a plan anywhere, this checkout included.
   if (!flags.dryRun) {
@@ -547,11 +559,27 @@ function agents(cli: Cli, items: string[], flags: Flags): Outcome {
 
   const origin = cli.origin ?? 'checkout'
   const previous = readAgentRecord(cli.root)
+  // An older release would replace a newer one's files with older text.
+  if (previous !== null && newerRelease(previous.version, cli.registry.version) && !flags.force) {
+    cli.out(
+      `polymorph agents: polymorph ${previous.version} wrote these agent files, and this is ` +
+        `polymorph ${cli.registry.version}, an older release. Run ${previous.version} or later, ` +
+        `or \`--force\` to write ${cli.registry.version}'s files over them.`,
+    )
+    return { code: 1 }
+  }
   const harnesses = orderHarnesses([
     ...(previous?.harnesses ?? []),
     ...asked,
     ...(asked.length === 0 && (previous?.harnesses.length ?? 0) === 0 ? DEFAULT_HARNESSES : []),
-  ])
+  ]).filter((harness) => !removed.includes(harness))
+  if (harnesses.length === 0) {
+    cli.out(
+      'polymorph agents: `--remove` leaves no harness to write for. Name the ones to keep, or ' +
+        `delete the agent files and ${AGENT_RECORD} by hand.`,
+    )
+    return { code: 2 }
+  }
   const framework =
     (flags.framework as Framework | undefined) ?? previous?.framework ?? projectFramework(cli.root)
   const plan = planAgents(cli.registry, {
@@ -581,7 +609,24 @@ function agents(cli: Cli, items: string[], flags: Flags): Outcome {
 }
 
 const AGENTS_USAGE =
-  '`polymorph agents [--harness <list>] [--framework <name>] [--force] [--dry-run]`'
+  '`polymorph agents [--harness <list>] [--remove <list>] [--framework <name>] [--force] [--dry-run]`'
+
+/** Whether release `a` is newer than release `b`: by major, minor and patch, then a release over its prerelease. */
+export function newerRelease(a: string, b: string): boolean {
+  const parse = (version: string) => {
+    const [core = '', pre] = version.split('-', 2)
+    return { parts: core.split('.').map((part) => Number.parseInt(part, 10) || 0), pre }
+  }
+  const left = parse(a)
+  const right = parse(b)
+  for (let index = 0; index < 3; index += 1) {
+    const difference = (left.parts[index] ?? 0) - (right.parts[index] ?? 0)
+    if (difference !== 0) return difference > 0
+  }
+  if (left.pre === undefined || right.pre === undefined)
+    return left.pre === undefined && right.pre !== undefined
+  return left.pre.localeCompare(right.pre, 'en', { numeric: true }) > 0
+}
 
 /* -------------------------------------------------------------------------- */
 /* update                                                                     */

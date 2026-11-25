@@ -1,6 +1,6 @@
 import { FRAMEWORKS, type Registry } from '@polymorph/registry'
 
-import { DEFAULT_SYSTEM } from './plan'
+import { DEFAULT_SYSTEM, ELEMENTS_DIR, ELEMENTS_THEME_SHEET } from './plan'
 
 /**
  * The texts of the four agent skills, in the Agent Skills format
@@ -19,6 +19,124 @@ import { DEFAULT_SYSTEM } from './plan'
  * shell. `agents.test.ts` holds every command they name to the verb list, and
  * each skill to the format's limits.
  */
+
+/** A skill names a member, a prop, a part or a value the registry does not have. */
+export class SkillFactError extends Error {
+  constructor(message: string) {
+    super(`skills: ${message}`)
+    this.name = 'SkillFactError'
+  }
+}
+
+/**
+ * What the texts say about members, read from the registry. Every member,
+ * prop, part and value a sentence names comes through here, and one the
+ * registry lacks throws, so a renamed prop stops the texts from being written
+ * rather than reaching a model.
+ */
+class Facts {
+  constructor(private readonly registry: Registry) {}
+
+  private member(name: string) {
+    const found = [...this.registry.components, ...this.registry.exceptions.primitives].find(
+      (member) => member.name === name,
+    )
+    if (found === undefined) throw new SkillFactError(`no member called ${name}`)
+    return found
+  }
+
+  /** `name` in code font, once the registry has the member. */
+  m(name: string): string {
+    this.member(name)
+    return `\`${name}\``
+  }
+
+  /** The type of a member's prop, which must exist. */
+  private type(member: string, prop: string): string {
+    const found = this.member(member).props.find((entry) => entry.name === prop)
+    if (found === undefined) throw new SkillFactError(`${member} has no prop ${prop}`)
+    return found.type
+  }
+
+  /** `prop` in code font, once `member` has it. */
+  p(member: string, prop: string): string {
+    this.type(member, prop)
+    return `\`${prop}\``
+  }
+
+  /** The string values a prop's type allows, in its order. */
+  values(member: string, prop: string): string[] {
+    return [...this.type(member, prop).matchAll(/"([^"]+)"/g)].map((match) => match[1] as string)
+  }
+
+  /** `prop="value"` in code font, once the prop takes the value. */
+  v(member: string, prop: string, value: string): string {
+    if (!this.values(member, prop).includes(value)) {
+      throw new SkillFactError(`${member}'s ${prop} takes no "${value}"`)
+    }
+    return `\`${prop}="${value}"\``
+  }
+
+  /** `Member.Part` in code font, once the member has the part. */
+  part(member: string, part: string): string {
+    const parts = (this.member(member) as { parts?: unknown }).parts
+    if (!Array.isArray(parts) || !parts.some((entry: { name?: string }) => entry.name === part)) {
+      throw new SkillFactError(`${member} has no part ${part}`)
+    }
+    return `\`${member}.${part}\``
+  }
+
+  /** The props every one of `members` has, among `wanted`, in code font. */
+  shared(members: string[], wanted: string[]): string[] {
+    const found = wanted.filter((prop) =>
+      members.every((member) => this.member(member).props.some((entry) => entry.name === prop)),
+    )
+    if (found.length === 0)
+      throw new SkillFactError(`${members.join(', ')} share none of ${wanted}`)
+    return found.map((prop) => `\`${prop}\``)
+  }
+
+  /** The prop of `member` whose type lists the icon roles. */
+  roleProp(member: string): string {
+    const role = this.registry.icons.roles[0]?.name
+    const found = this.member(member).props.find((entry) => entry.type.includes(`"${role}"`))
+    if (role === undefined || found === undefined) {
+      throw new SkillFactError(`${member} has no prop that takes an icon role`)
+    }
+    return `\`${found.name}\``
+  }
+
+  /** Each type a member's `patch` takes, with the members that take it and its keys. */
+  patches(): { type: string; members: string[]; keys: string[] }[] {
+    const byType = new Map<string, string[]>()
+    for (const member of this.registry.components) {
+      const patch = member.props.find((entry) => entry.name === 'patch')
+      if (patch === undefined) continue
+      const type = patch.type.split('|')[0]?.trim() ?? ''
+      byType.set(type, [...(byType.get(type) ?? []), member.name])
+    }
+    return [...byType].map(([type, members]) => {
+      const declared = this.registry.dataTypes.find((entry) => entry.name === type)
+      if (declared === undefined) throw new SkillFactError(`no data type called ${type}`)
+      return { type, members, keys: declared.fields.map((field) => field.name) }
+    })
+  }
+
+  /** The names of the theme's design axes. */
+  axes(): string[] {
+    return this.registry.theme.axes.map((axis) => axis.name)
+  }
+
+  /** The members of a tier, in the registry's order. */
+  tier(name: string): string[] {
+    return this.registry.components.filter((member) => member.tier === name).map((m) => m.name)
+  }
+}
+
+/** Words in code font in a sentence: `a`, `a and b`, `a, b and c`. */
+function all(words: readonly string[]): string {
+  return words.length <= 1 ? words.join('') : `${words.slice(0, -1).join(', ')} and ${words.at(-1)}`
+}
 
 /** One file of a skill, at its path below the skills directory. */
 export interface SkillFile {
@@ -68,6 +186,12 @@ function frameworkTable(): string {
 /* -------------------------------------------------------------------------- */
 
 function screenSkill(registry: Registry, run: string): SkillFile[] {
+  const f = new Facts(registry)
+  const spacing = all(f.shared(['Stack', 'Inline', 'Grid'], ['gap', 'p', 'px', 'py']))
+  const pages = f
+    .tier('archetypes')
+    .slice(0, 3)
+    .map((name) => f.m(name))
   const body = `
 # Build a screen with polymorph
 
@@ -77,12 +201,13 @@ size, font and motion. A screen composes members, sets their props and binds con
 
 You reach the tools from a shell. Every command in this skill starts with the same words:
 
-${commands(run, 'card')}
+${commands(run, 'card --framework <framework>')}
 
-If the session also has an MCP server named \`polymorph\`, its tools give the same answers:
+If the session also has an MCP server named \`polymorph\`, its tools do the same jobs:
 \`get_system_card\` for \`card\`, \`search_components\` for \`search\`, \`get_component\` for
-\`component\`, \`validate\`, \`emit_screen\` for \`emit\` and \`render_screen\` for \`render\`. Use
-whichever you have.
+\`component\`, \`validate\`, \`fix\`, \`emit_screen\` for \`emit\` and \`render_screen\` for \`render\`.
+Pass the app's framework as \`framework\` to every one that takes it. A server started for no
+project, as a plugin's is, cannot read the framework from the project, and reads code as React's.
 
 ## 1. Find the framework and how the app writes screens
 
@@ -91,9 +216,9 @@ published name, \`@metamorph-labs/polymorph-<name>\`.
 
 ${frameworkTable()}
 
-A project that vendors members has their source under the \`dir\` that \`polymorph.json\` names,
-usually \`src/polymorph/\`, and imports them from there. Those files are the vocabulary: do not edit
-them to make a screen work.
+That is \`<framework>\` in every command below. A project that vendors members has their source under
+the \`dir\` that \`polymorph.json\` names, usually \`src/polymorph/\`, and imports them from there.
+Those files are the vocabulary: do not edit them to make a screen work.
 
 Then look for screen specs: JSON files with \`"spec": "polymorph-screen/1"\`, usually in
 \`src/screens/\`, each beside the component emitted from it. If the app has them, write the new
@@ -101,44 +226,46 @@ screen as a spec (step 4). Otherwise write it in the framework's own code (step 
 
 ## 2. Read the card
 
-${commands(run, 'card --framework vue')}
+${commands(run, 'card --framework <framework>')}
 
-Name the app's framework. The card lists every member with its props, the variants and tones each
-takes, its compound parts (\`Card.Header\`), the icon roles, the token families, the red rules and
-the exception ladder. \`polymorph/system-card.md\` holds the card as it was when the project was set
-up. The command answers for the release the command names.
+The card lists every member with its props, the variants and tones each takes, its compound parts
+(such as ${f.part('Table', 'Row')}), the icon roles, the token families, the red rules and the
+exception ladder. \`polymorph/system-card.md\` holds the card as it was when the project was set up.
+The command answers for the release it names.
 
 A member or a prop that is not in the card does not exist. Do not invent one, and do not bring in
 components from another interface library.
 
 ## 3. Choose the members
 
-${commands(run, 'search date picker --framework vue', 'component DatePicker --framework vue')}
+${commands(run, 'search date picker --framework <framework>', 'component DatePicker --framework <framework>')}
 
 \`search\` takes plain words and finds members by name, purpose, prop or variant. With no words it
 lists every member. \`component\` prints one member: each prop with its type and default, the
 lawful variant and tone pairs, its states, its parts and what it depends on. A wrong name is
 answered with suggestions and exit code 1.
 
-- Lay out with \`Stack\`, \`Inline\` and \`Grid\` and their spacing props (\`gap\`, \`p\`, \`px\`,
-  \`py\`), which take steps of the space scale, never lengths.
-- Start a page from a page archetype or from \`PageHeader\` when the card lists one that fits.
-- Show an icon with \`Icon\` and a role from the card's icon roles.
-- Put text in \`Heading\` and \`Text\`. Their \`tone\` and \`size\` props take the place of a colour or
-  a font size.
+- Lay out with ${f.m('Stack')}, ${f.m('Inline')} and ${f.m('Grid')} and their spacing props
+  (${spacing}), which take steps of the space scale, never lengths.
+- Start a page from a page archetype (${all(pages)} and the others the card lists) or from
+  ${f.m('PageHeader')}.
+- Show an icon with ${f.m('Icon')}, its ${f.roleProp('Icon')} one of the card's icon roles.
+- Put text in ${f.m('Text')}, whose ${f.p('Text', 'tone')} and ${f.p('Text', 'size')} take the
+  place of a colour or a font size, and a heading in ${f.m('Heading')}, whose
+  ${f.p('Heading', 'level')} sets its rank.
 
 ## 4. Write a spec, then emit it
 
 The format is in [references/screen-spec.md](references/screen-spec.md). Check the spec, then
 compile it into a component:
 
-${commands(run, 'validate src/screens/inbox.json', 'emit src/screens/inbox.json src/screens/Inbox.tsx')}
+${commands(run, 'validate src/screens/inbox.json --framework <framework>', 'emit src/screens/inbox.json <out> --framework <framework>')}
 
 \`validate\` lists each fault at its path, such as \`$.root.children[1]\`, with suggestions for a
 wrong name, and exits 0 when the spec is lawful. \`emit\` validates again, compiles the spec, checks
-the output against the red rules, and writes nothing when either fails. The output path decides the
-framework: \`.tsx\` for React, \`.vue\`, \`.svelte\`, and \`.ts\` for an Angular standalone component.
-Add \`--framework solid\` for Solid's TSX.
+the output against the red rules, and writes nothing when either fails. \`<out>\` is the component
+to write, with the framework's extension: \`.tsx\` for React and Solid, \`.vue\`, \`.svelte\`, and
+\`.ts\` for an Angular standalone component.
 
 The emitted component holds no state and no logic. A container you write renders it, owns the
 state, and passes the data and the callbacks the spec declares as \`inputs\`. Never edit an emitted
@@ -149,9 +276,10 @@ file: change the spec and emit it again.
 Import members from the framework's vocabulary package, or from the vendored directory in a project
 that vendors. Then check the file:
 
-${commands(run, 'validate src/pages/Settings.tsx')}
+${commands(run, 'validate src/pages/Settings.tsx --framework <framework>')}
 
-\`validate\` takes several files. For a whole directory, use \`check\`:
+\`validate\` takes several files. For a whole directory, use \`check\`, which reads each file in its
+own framework:
 
 ${commands(run, 'check src')}
 
@@ -165,14 +293,14 @@ lawful answers:
 
 - \`fix\`: a rewrite with exactly one lawful answer. The \`fix\` command below applies them.
 - \`use\`: the members, props or tokens the message names. A colour, size or spacing becomes a prop
-  of a member (\`tone\`, \`size\`, \`gap\`). A clickable \`<div>\` becomes a \`Button\`. A glyph from
-  an icon set becomes \`Icon\` with a role.
+  of a member, as \`component\` lists them. A clickable \`<div>\` becomes a ${f.m('Button')}. A
+  glyph from an icon set becomes ${f.m('Icon')} with a role as its ${f.roleProp('Icon')}.
 - \`climb\`: the rungs of the exception ladder that answer the rule. When no member, variant or prop
   fits, follow the \`polymorph-rules\` skill.
 
 Apply every rewrite that has one answer, then work through what is left:
 
-${commands(run, 'fix src/pages/Settings.tsx')}
+${commands(run, 'fix src/pages/Settings.tsx --framework <framework>')}
 
 With \`--dry-run\`, \`fix\` prints the fixed code and writes nothing. Never add an \`eslint-disable\`
 comment for a polymorph rule. Run \`validate\` again until it exits 0.
@@ -190,11 +318,11 @@ over those.
 
 | Fault | What to change |
 | --- | --- |
-| \`sideways-scroll\` | Something is wider than the window. Let an \`Inline\` wrap, move actions into a menu, or use a member built to scroll. |
+| \`sideways-scroll\` | Something is wider than the window. Let an ${f.m('Inline')} wrap (${f.p('Inline', 'wrap')}), move actions into a menu, or use a member built to scroll. |
 | \`clipped-text\` | Text does not fit its box. Shorten it, or give its container room. |
-| \`small-target\` | Controls are too small or too close together. Use a larger \`size\` or more \`gap\`. |
+| \`small-target\` | Controls are too small or too close together. Use a larger size or more space between them. |
 | \`cut-off\` | Content lies where nothing scrolls to it. Change the composition. |
-| \`no-gap\` | Two members touch. Put them in a \`Stack\` or \`Inline\` with a \`gap\`. |
+| \`no-gap\` | Two members touch. Put them in a ${f.m('Stack')} or ${f.m('Inline')} with a ${f.p('Stack', 'gap')}. |
 | \`unseen-focus\` | A control's focus mark is hidden. Do not put the control in a box that clips it. |
 
 Change the composition or a prop to fix a fault, never a style. \`--system\` names a shipped system:
@@ -205,15 +333,21 @@ command once, then render again.
 \`render\` draws specs only. For a screen written in code, run the app and look at it in a browser
 when the session can.
 
-## 8. Run the project's own checks
+## 8. Run the checks
 
-Run the project's lint and typecheck, as \`package.json\` names them (\`npm run lint\`). The red rules
-run inside its ESLint and Stylelint configs, so a clean lint is the last word.
+${commands(run, 'check src')}
+
+\`check\` runs the red rules over the directory whatever the project's lint config holds, and exits 1
+on any violation. Then run the project's own lint and typecheck, as \`package.json\` names them. Its
+lint runs the red rules too only when its ESLint config loads them: it imports \`@polymorph/rules\`
+or spreads the fragment \`polymorph.eslint.js\` that \`init\` and \`add\` write.
 
 ## What application code may not contain
 
 - CSS files, \`<style>\` blocks, CSS-in-JS, or a stylesheet import other than a font package's.
-- \`style\`, \`className\`, \`class\` or \`css\` on a member.
+- A \`style\`, \`className\` or \`css\` prop, on a member or a plain element, and a \`class\` on either
+  in a framework that writes one. A declared zone lifts this for a plain element (the
+  \`polymorph-rules\` skill).
 - A colour (\`#7c3aed\`, \`rgb()\`, \`oklch()\`) or a length (\`12px\`, \`1.5rem\`) in a string.
 - A raw \`<button>\`, \`<input>\`, \`<select>\`, \`<textarea>\` or \`<option>\`, or a click, key or pointer
   handler on a \`<div>\`, \`<span>\`, \`<li>\` or \`<a>\`.
@@ -290,7 +424,8 @@ framework.
 ## Elements and values
 
 An element is \`{ "component", "props"?, "children"?, "exception"? }\`. \`component\` is a member or
-one of its parts (\`Card.Header\`), as the card lists them for the app's framework.
+one of its parts (such as ${new Facts(registry).part('Table', 'Row')}), as the card lists them for the
+app's framework.
 
 A value, as a prop or a child, is a string, a number, a boolean, \`null\`, an element, a list, a
 binding \`{ "$": "inputName" }\`, or a structured object \`{ "$object": { … } }\` for data a prop
@@ -334,6 +469,7 @@ primitive, and rung 3 as a \`patch\` prop) with the reason:
 /* -------------------------------------------------------------------------- */
 
 function rulesSkill(registry: Registry, run: string): SkillFile[] {
+  const f = new Facts(registry)
   const ladder = registry.exceptions.ladder
     .map((rung) => {
       const declared =
@@ -356,17 +492,18 @@ function rulesSkill(registry: Registry, run: string): SkillFile[] {
 # Answer a red rule
 
 The red rules are lint rules that keep design decisions out of application code. Exceptions are
-allowed when they are declared: a declared exception names its reason, and the project can list
-every one. A silenced rule is not allowed. Never add \`eslint-disable\`, \`eslint-disable-next-line\`
+allowed when they are declared: a declared exception names its reason, where a reviewer can read
+it. A silenced rule is not allowed. Never add \`eslint-disable\`, \`eslint-disable-next-line\`
 or \`stylelint-disable\` for a polymorph rule, and never change a lint config to turn one off.
 
-Every command in this skill starts with the same words, the polymorph tools run from a shell. An
-MCP server named \`polymorph\` gives the same answers through \`validate\`, \`fix\` and
-\`get_component\`.
+Every command in this skill starts with the same words, the polymorph tools run from a shell.
+\`<framework>\` is the app's: the \`polymorph-screen\` skill says how to tell it. An MCP server
+named \`polymorph\` does the same jobs through \`validate\`, \`fix\` and \`get_component\`, given
+the framework as \`framework\`.
 
 ## 1. Read what the rule says
 
-${commands(run, 'validate src/App.tsx')}
+${commands(run, 'validate src/App.tsx --framework <framework>')}
 
 Each violation is a line with the file, the position, the rule and its message. Under it:
 
@@ -376,7 +513,7 @@ Each violation is a line with the file, the position, the rule and its message. 
 
 ## 2. Take the rewrite when there is one
 
-${commands(run, 'fix src/App.tsx --dry-run', 'fix src/App.tsx')}
+${commands(run, 'fix src/App.tsx --dry-run --framework <framework>', 'fix src/App.tsx --framework <framework>')}
 
 The first prints the fixed code, and the second writes it. The project's own \`eslint --fix\`
 applies the same rewrites. A violation left after the fix is a decision: take the next step.
@@ -397,19 +534,23 @@ ${rules.join('\n')}
 
 Common cases:
 
-- A colour, length or style on a member: find the prop that decides it (\`tone\`, \`variant\`,
-  \`size\`, \`gap\`) with \`component <Name>\`. A spacing the scale lacks for one instance is a
-  \`patch\` (rung 3). A one-off illustration is a \`Bespoke\` zone (rung 4).
-- A raw control, or a click handler on a plain element: the member that is that control (\`Button\`,
-  \`Checkbox\`, \`Select\`, \`TextField\`). \`search\` finds it by what it does.
-- An icon set or an inline \`<svg>\`: \`Icon\` with a role from the card. A glyph no role names is a
-  \`Bespoke\` zone until the vocabulary adds a role.
-- A chart library: the chart members. A chart they cannot draw goes in a \`Bespoke\` zone.
+- A colour, length or style on a member: find the prop that decides it with \`component <Name>\`,
+  such as ${f.m('Button')}'s ${f.p('Button', 'variant')} and ${f.p('Button', 'tone')} or
+  ${f.m('Stack')}'s ${f.p('Stack', 'gap')}. A spacing the scale lacks for one instance is a
+  \`patch\` (rung 3). A one-off illustration is a ${f.m('Bespoke')} zone (rung 4).
+- A raw control, or a click handler on a plain element: the member that is that control, such as
+  ${all(['Button', 'Checkbox', 'Select', 'Input', 'Textarea'].map((name) => f.m(name)))}.
+  \`search\` finds it by what it does.
+- An icon set or an inline \`<svg>\`: ${f.m('Icon')} with a role from the card as its
+  ${f.roleProp('Icon')}. A glyph no role names is a ${f.m('Bespoke')} zone until the vocabulary adds
+  a role.
+- A chart library: the chart members. A chart they cannot draw goes in a ${f.m('Bespoke')} zone.
 - A motion library: members animate their own states. Motion the vocabulary has no member for goes
-  in a \`Bespoke\` zone.
+  in a ${f.m('Bespoke')} zone.
 - A stylesheet import: delete it. Another library's own stylesheet is imported in the file that
-  hosts the library inside \`ThirdParty\`.
-- Another library's component, such as a map, an editor or a data grid: \`ThirdParty\` (rung 4).
+  hosts the library inside ${f.m('ThirdParty')}.
+- Another library's component, such as a map, an editor or a data grid: ${f.m('ThirdParty')}
+  (rung 4).
 
 ## 5. When the same exception keeps coming back
 
@@ -432,12 +573,25 @@ and their reasons. Do not build a private copy of a member.
         body,
       ),
     },
-    { path: 'polymorph-rules/references/ladder.md', contents: ladderReference(run) },
+    { path: 'polymorph-rules/references/ladder.md', contents: ladderReference(registry, run) },
   ]
 }
 
-/** Each rung's procedure, which does not change with the vocabulary. */
-function ladderReference(run: string): string {
+/**
+ * Each rung's procedure. The procedure does not change with the vocabulary;
+ * the members, props and values it names are read from the registry.
+ */
+function ladderReference(registry: Registry, run: string): string {
+  const f = new Facts(registry)
+  const values = (member: string, prop: string) =>
+    either(f.values(member, prop).map((value) => `\`${value}\``))
+  const patches = f
+    .patches()
+    .map(
+      ({ members, keys }) =>
+        `${all(members.map((name) => f.m(name)))} take ${all(keys.map((key) => `\`${key}\``))}.`,
+    )
+    .join(' ')
   return `# The exception ladder, rung by rung
 
 The examples are React. In Vue, Svelte and Solid the members have the same names and props. In
@@ -448,16 +602,16 @@ its vendored directory and adds one with \`add\` (\`add bespoke\`, \`add third-p
 
 ## Rung 1: variant selection
 
-Every member exposes its range as typed props: \`variant\`, \`tone\`, \`size\` and the spacing steps.
-A value off the scale is a type error. Read the member first:
+Every member exposes its range as typed props, such as a variant, a tone, a size and the spacing
+steps. A value off the scale is a type error. Read the member first:
 
-${commands(run, 'component Button')}
+${commands(run, 'component Button --framework <framework>')}
 
 The answer lists each prop's values and the variant and tone pairs that are lawful. Most needs end
-here: a quieter button is \`variant="ghost"\`, a warning is \`tone="warning"\`, more room is a larger
-\`gap\`.
+here: a quieter button is ${f.v('Button', 'variant', 'ghost')}, a destructive one
+${f.v('Button', 'tone', 'danger')}, and more room is a larger ${f.p('Stack', 'gap')}.
 
-## Rung 2: \`DensityScope\` and \`ToneScope\`
+## Rung 2: ${f.m('DensityScope')} and ${f.m('ToneScope')}
 
 A subtree re-assigns a decision the theme already makes for the whole page. Every value still comes
 from the theme.
@@ -474,30 +628,31 @@ import { DensityScope, ToneScope } from '@polymorph/react-ui'
 </ToneScope>
 \`\`\`
 
-- \`DensityScope\` takes \`compact\`, \`standard\` or \`comfortable\`. It changes space and the size of
-  controls, never the type scale.
-- \`ToneScope\` takes \`inverse\`: the surface, text and border roles of the opposite mode.
-- \`as\` is \`div\` (the default), \`section\` or \`span\`. A scope draws nothing of its own.
+- ${f.m('DensityScope')}'s ${f.p('DensityScope', 'value')} is ${values('DensityScope', 'value')}.
+  It changes space and the size of controls, never the type scale.
+- ${f.m('ToneScope')}'s ${f.p('ToneScope', 'value')} is ${values('ToneScope', 'value')}: the
+  surface, text and border roles of the opposite mode.
+- ${f.p('DensityScope', 'as')} is ${values('DensityScope', 'as')}. A scope draws nothing of its own.
 
 ## Rung 3: an instance patch
 
-One instance re-assigns token steps. The keys are the spacing props the member already has, and the
-values are steps of the scale, never lengths.
+One instance re-assigns token steps through its ${f.p('Stack', 'patch')} prop. Each value is a step
+of a scale, never a length.
 
 \`\`\`tsx
 <Stack gap={6} patch={{ gap: 2 }}>…</Stack>
 <Card patch={{ p: 4, radius: 'sm' }}>…</Card>
 \`\`\`
 
-\`Stack\`, \`Inline\` and \`Grid\` take \`gap\`, \`p\`, \`px\` and \`py\`. \`Card\` takes \`p\`, \`px\`, \`py\` and
-\`radius\`.
+${patches}
 
-## Rung 4: a \`Bespoke\` zone or a \`ThirdParty\` boundary
+## Rung 4: a ${f.m('Bespoke')} zone or a ${f.m('ThirdParty')} boundary
 
-\`Bespoke\` declares a one-off composition the vocabulary has no member for. Its \`reason\` is
-required and is read by whoever reviews the code. Inside it the application rules are lifted:
-\`style\`, raw values, raw controls and inline \`<svg>\` are allowed. It draws nothing itself, and the
-theme's tokens reach inside it, so write values as \`var(--pm-…)\`.
+${f.m('Bespoke')} declares a one-off composition the vocabulary has no member for. Its
+${f.p('Bespoke', 'reason')} is required and is read by whoever reviews the code. Inside it the
+application rules are lifted for plain elements: \`style\`, a \`className\`, raw values, raw controls
+and inline \`<svg>\` are allowed there. A member inside it still takes no \`className\`. It draws
+nothing itself, and the theme's tokens reach inside it, so write values as \`var(--pm-…)\`.
 
 \`\`\`tsx
 import { Bespoke } from '@polymorph/react-ui'
@@ -507,10 +662,11 @@ import { Bespoke } from '@polymorph/react-ui'
 </Bespoke>
 \`\`\`
 
-\`ThirdParty\` hosts a component another library draws, such as a map, a rich-text editor or a data
-grid. The file that declares it may import that library and its stylesheet, and what it holds may
-take a \`style\`. Give the library the theme as \`var(--pm-…)\`, or as values from \`useThemeValues()\`
-in the framework's foundation package. Controls and icons around it stay members.
+${f.m('ThirdParty')} hosts a component another library draws, such as a map, a rich-text editor or
+a data grid. It takes ${f.p('ThirdParty', 'library')} and ${f.p('ThirdParty', 'reason')}. The file
+that declares it may import that library and its stylesheet, and what it holds may take a
+\`style\`. Give the library the theme as \`var(--pm-…)\`, or as values from \`useThemeValues()\` in
+the framework's foundation package. Controls and icons around it stay members.
 
 \`\`\`tsx
 import { ThirdParty } from '@polymorph/react-ui'
@@ -571,9 +727,10 @@ installs nothing.
 
 ## An existing app: vendoring
 
-${commands(run, 'plan button dialog theme:pastel', 'add button dialog theme:pastel', 'diff', 'update')}
+${commands(run, 'plan button dialog theme:pastel --framework <framework>', 'add button dialog theme:pastel', 'diff', 'update')}
 
-\`plan\` prints what \`add\` would copy and install, and writes nothing. \`add\` copies the members you
+\`<framework>\` is the framework the project's members are in (\`react\` unless \`polymorph.json\`
+records another). \`plan\` prints what \`add\` would copy and install, and writes nothing. \`add\` copies the members you
 name, and every member they need, as source into \`src/polymorph/\` (\`--dir\` changes it), installs a
 theme (\`theme:<system>\`, or \`palette:<name>\` for a palette alone), adds the packages the members
 import to \`package.json\`, and links the red rules into the project's ESLint and Stylelint configs.
@@ -614,7 +771,7 @@ members. In a packages project, raise the ranges of the \`@polymorph/*\` aliases
 
 ## Check the setup
 
-${commands(run, 'check src', 'card --framework react')}
+${commands(run, 'check src', 'card --framework <framework>')}
 
 \`check\` runs the red rules over a directory with no lint config and exits 1 on any violation. The
 card should list the members the app uses.
@@ -641,6 +798,7 @@ card should list the members the app uses.
 /* -------------------------------------------------------------------------- */
 
 function themeSkill(registry: Registry, run: string): SkillFile[] {
+  const f = new Facts(registry)
   const pairings = registry.theme.systems
     .slice(0, 3)
     .map((system) => `\`${system.name}/${system.defaultPalette}\``)
@@ -651,7 +809,7 @@ function themeSkill(registry: Registry, run: string): SkillFile[] {
 # Change the theme
 
 In polymorph, how an app looks is two JSON documents. A **system** decides how the product is
-built: eight design axes (density, shape, type, motion and the rest), three font slots and their
+built: its design axes (${all(f.axes().map((axis) => `\`${axis}\``))}), its fonts and its
 defaults. A **palette** decides its colours, in a light and a dark mode. One system worn with one
 palette is a **pairing**, chosen by \`data-system\` and \`data-palette\` on \`<html>\`. The members
 read every value from the theme as \`--pm-*\` tokens, so the look changes when the documents change
@@ -668,7 +826,8 @@ and \`save_theme\`.
   builds.
 - A vendoring project: \`src/polymorph/themes/systems/\` and \`src/polymorph/themes/palettes/\`,
   compiled by \`add\` into the sheets beside them.
-- A page with no build: \`public/polymorph/theme.css\`, compiled from a catalogue system.
+- A page with no build: \`${ELEMENTS_DIR}/${ELEMENTS_THEME_SHEET}\`, compiled from a catalogue
+  system.
 
 ## 2. See what can move
 
@@ -682,14 +841,14 @@ scales. \`--values\` adds each system's token values with its own palette.
 ${commands(run, 'theme propose "calmer, warmer paper, more editorial"', `theme propose "denser and cooler" --based-on ${basis}`, 'theme propose "denser and cooler" --save --dir design')}
 
 The answer lists what each word moved, the words the table does not know, and the verdict of the
-theme's laws (contrast, legibility, the scales). \`--based-on\` starts from a shipped pairing, such
+theme's laws. \`--based-on\` starts from a shipped pairing, such
 as ${pairings}; either half may be left out. \`--save\` writes the two documents into
 \`<dir>/systems/\` and \`<dir>/palettes/\` (the directory \`design\` when \`--dir\` is left out), and
 \`--overwrite\` replaces files already saved under the same names. Then point the app at them: in an
 app \`init\` wrote, name the two files in \`polymorphTheme\` in \`vite.config\`.
 
 Words the table does not know move nothing. Say what should change in the words of the axes \`axes\`
-lists, such as denser, rounder, quieter motion, or a warmer accent.
+lists, such as denser, rounder, calmer or warmer.
 
 ## 4. Edit a document by hand, then check it
 
@@ -720,7 +879,7 @@ ${commands(run, 'theme propose "as shipped" --based-on journal/umber --save --di
   the app. A value the theme does not derive belongs in the system or palette document.
 - No stylesheet that overrides a member. A member's look is the theme's.
 - No branching on which theme is active. A subtree that needs another density or the inverse tone
-  uses \`DensityScope\` or \`ToneScope\` (the \`polymorph-rules\` skill).
+  uses ${f.m('DensityScope')} or ${f.m('ToneScope')} (the \`polymorph-rules\` skill).
 `
   return [
     {
