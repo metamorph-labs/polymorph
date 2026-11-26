@@ -34,6 +34,7 @@ import type { Origin, Program } from './init-app'
 import { pinnedTools, pluginFiles } from './plugin'
 import { SKILL_NAMES, SkillFactError, skillFiles } from './skills'
 import { NAMED } from './skills/facts'
+import { ADDRESS_KEYS } from './skills/runtime'
 import { synopsis, verbNamed, VERBS } from './verbs'
 
 /**
@@ -536,6 +537,16 @@ describe('every name a text takes from a package or a native source', () => {
         [...sources].flatMap((from) => nameFault(name, from) ?? []),
       ),
     ).toEqual([])
+  })
+
+  it('reads the address keys the run-time core reads', () => {
+    const source = readFileSync(resolve(ROOT, 'packages/screen/src/urls.ts'), 'utf8')
+    const declared = /export const ADDRESS_KEYS[^=]*= new Set(?:<[^>]*>)?\(\[([^\]]*)\]/.exec(
+      source,
+    )
+    const keys = [...(declared?.[1] ?? '').matchAll(/'([^']+)'/g)].map((match) => match[1])
+    expect(keys.length).toBeGreaterThan(0)
+    expect([...ADDRESS_KEYS].sort()).toEqual([...keys].sort())
   })
 
   it('reads a name its source lacks, and a source that is not there, as a fault', () => {
