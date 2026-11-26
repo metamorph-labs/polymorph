@@ -28,6 +28,10 @@ export interface FileUploadRowProps {
    * The app handles a retry, so a failed row offers one.
    */
   retryable: boolean
+  /**
+   * The field is disabled, and the row’s controls with it.
+   */
+  disabled: boolean
   retryLabel: string
   removeLabel: string
   progressLabel: string
@@ -46,6 +50,7 @@ let {
   open,
   size,
   retryable,
+  disabled,
   retryLabel,
   removeLabel,
   progressLabel,
@@ -53,7 +58,7 @@ let {
   onRemove,
   onDone,
 }: FileUploadRowProps = $props()
-const joined = joinSlot(undefined, () => ({ size: size }))
+const joined = joinSlot(undefined, () => ({ size: size, disabled: disabled }))
 let row = $state<HTMLElement | null>(null)
 const present = usePresence(
   () => open,
@@ -94,6 +99,7 @@ watchEffect(effect1, { watch: () => present.current, mount: false })
         iconOnly={true}
         icon="refresh"
         label={retryLabel}
+        {disabled}
         onClick={() => { onRetry?.() }}
     />{/if
     }<Button
@@ -103,6 +109,7 @@ watchEffect(effect1, { watch: () => present.current, mount: false })
       iconOnly={true}
       icon="close"
       label={removeLabel}
+      {disabled}
       onClick={() => { onRemove?.() }}
   /></li
 >{/if

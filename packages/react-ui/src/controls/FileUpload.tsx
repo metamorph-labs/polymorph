@@ -334,6 +334,7 @@ export function FileUpload({
                     iconOnly
                     icon="refresh"
                     label={messages.retry}
+                    disabled={disabled}
                     onClick={() => onRetry(file.id)}
                   />
                 ) : null}
@@ -347,6 +348,7 @@ export function FileUpload({
                   iconOnly
                   icon="close"
                   label={messages.remove(file.name)}
+                  disabled={disabled}
                   onClick={() => requestRemoval(file.id)}
                 />
               </MotionSurface>

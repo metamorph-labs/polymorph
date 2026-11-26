@@ -37,6 +37,10 @@ export interface FileUploadRowProps {
    * The app handles a retry, so a failed row offers one.
    */
   retryable: boolean
+  /**
+   * The field is disabled, and the row’s controls with it.
+   */
+  disabled: boolean
   retryLabel: string
   removeLabel: string
   progressLabel: string
@@ -98,15 +102,17 @@ size="sm"
 [iconOnly]="e23()"
 icon="refresh"
 [label]="e24()"
+[disabled]="e25()"
 (click)="h1()"
 ></pm-button>}
 <pm-button
 variant="ghost"
 tone="neutral"
 size="sm"
-[iconOnly]="e25()"
+[iconOnly]="e26()"
 icon="close"
-[label]="e26()"
+[label]="e27()"
+[disabled]="e28()"
 (click)="h2()"
 ></pm-button>`,
 })
@@ -124,6 +130,10 @@ export class FileUploadRow {
    * The app handles a retry, so a failed row offers one.
    */
   readonly retryable = input.required<FileUploadRowProps['retryable']>()
+  /**
+   * The field is disabled, and the row’s controls with it.
+   */
+  readonly disabled = input.required<FileUploadRowProps['disabled']>()
   readonly retryLabel = input.required<FileUploadRowProps['retryLabel']>()
   readonly removeLabel = input.required<FileUploadRowProps['removeLabel']>()
   readonly progressLabel = input.required<FileUploadRowProps['progressLabel']>()
@@ -141,6 +151,7 @@ export class FileUploadRow {
       open: () => this.open(),
       size: () => this.size(),
       retryable: () => this.retryable(),
+      disabled: () => this.disabled(),
       retryLabel: () => this.retryLabel(),
       removeLabel: () => this.removeLabel(),
       progressLabel: () => this.progressLabel(),
@@ -276,17 +287,26 @@ export class FileUploadRow {
     return this.$p.retryLabel
   }
 
+  protected e25(): ButtonProps['disabled'] {
+    if (!(this.$p.file.status === 'error' && this.$p.retryable)) return undefined as never
+    return this.$p.disabled
+  }
+
   protected h1(): void {
     if (!(this.$p.file.status === 'error' && this.$p.retryable)) return
     this.$.emit(this.onRetry, 'onRetry')
   }
 
-  protected e25(): ButtonProps['iconOnly'] {
+  protected e26(): ButtonProps['iconOnly'] {
     return true
   }
 
-  protected e26(): ButtonProps['label'] {
+  protected e27(): ButtonProps['label'] {
     return this.$p.removeLabel
+  }
+
+  protected e28(): ButtonProps['disabled'] {
+    return this.$p.disabled
   }
 
   protected h2(): void {

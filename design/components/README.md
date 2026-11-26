@@ -194,9 +194,34 @@ beside its own ring.
 
 - **Disabled:** text and icons use `--pm-text-disabled`. Fills collapse to
   `--pm-bg-subtle` and borders to `--pm-border-subtle`. Ghost and soft fills become
-  transparent. The root gets `cursor: not-allowed` and has no hover or active response. A
-  disabled control is **never** still focusable (native `disabled`). The exception is
-  Toast/Tooltip triggers, which cannot be disabled-but-focusable.
+  transparent. The root gets `cursor: not-allowed` and has no hover or active response.
+- **Disabled and focus:** a disabled control is **never** a tab stop, and takes no key and no
+  press, as a platform's own disabled control does on the web, in SwiftUI and in Compose. A
+  native control carries the native `disabled` attribute. A part that is not a native control (a
+  role on a `div`, a contenteditable surface) carries `aria-disabled="true"` and no tab stop.
+  Nothing inside a disabled member is a tab stop either: its parts are disabled with it. No member
+  has a mode that keeps a disabled control focusable. The rules that follow from it:
+  - In a member with one tab stop that the arrows move in (a menu, a menubar, a listbox, tabs, a
+    tree, a radio group, a toolbar), the arrows pass over a disabled item, and it is never the
+    tab stop.
+  - A position the arrows must cross keeps its place: a day an application's
+    `isDateUnavailable` refuses is `aria-disabled` and cannot be chosen, and the arrows still
+    reach it, because a calendar's grid is walked by its geometry. A day outside
+    `minValue`/`maxValue`, and every day of a disabled calendar, is no stop.
+  - A field that takes no more input and must stay labelled and reachable is `readOnly`, not
+    disabled: TagInput and MultiSelect at their `max`.
+  - The reason a control is disabled is stated in text beside it (FormField's description, an
+    Alert), never only in a Tooltip on it, because a disabled control takes no focus and the
+    Tooltip could not be reached. Where the person must be able to reach the control to learn
+    what is missing, the control stays enabled and says so when it is pressed, as a form's
+    submit Button does through its fields' errors and ErrorSummary.
+  - A member that disables its own control while that control holds focus moves focus to a
+    stated place, because the browser would give it to the page: Pagination and
+    CursorPagination to their root, Lightbox to its other direction.
+
+  `disabledLaw` (`packages/conformance/src/disabled.ts`) holds the first paragraph in every web
+  shell: in every entry of every states fixture, no tab stop says it is disabled or sits inside a
+  member that does.
 - **Loading:** `data-state="loading"` + `aria-busy="true"`. Pointer events are off. Layout
   width must not change: the spinner replaces the leading icon slot or joins the label.
   Spinner = `<Icon name="loading" />` bound to the `spin` pattern (§7).

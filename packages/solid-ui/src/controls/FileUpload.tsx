@@ -329,6 +329,7 @@ export default function FileUpload(given: FileUploadProps): JSX.Element {
                       : props.messages.formatSize(row.item.size)
                   }
                   retryable={(props.onRetry !== undefined) === true}
+                  disabled={props.disabled}
                   retryLabel={props.messages.retry}
                   removeLabel={props.messages.remove(row.item.name)}
                   progressLabel={props.messages.progress(row.item.name)}

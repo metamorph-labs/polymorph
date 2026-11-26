@@ -1,6 +1,7 @@
 import axeCore, { type RunOptions } from 'axe-core'
 import { beforeAll, describe, expect, it } from 'vitest'
 
+import { disabledLaw } from '@polymorph/conformance/disabled'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { gallerySlug, type StateEntry } from '@polymorph/solid'
 
@@ -145,6 +146,17 @@ describe('axe — every fixture entry, zero violations', () => {
       })
     }
   }
+})
+
+/*
+ * A disabled control is not a tab stop, and nothing inside a disabled member is one
+ * (`design/components/README.md`, Disabled), in every entry of every fixture
+ * (`@polymorph/conformance/disabled`).
+ */
+disabledLaw({
+  shell: 'Solid',
+  galleries: GALLERIES,
+  mount: (_states, entry) => mount(() => entry.render()),
 })
 
 describe('the axe pass detects faults', () => {

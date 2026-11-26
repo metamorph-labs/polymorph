@@ -207,6 +207,7 @@ export default describeMember({
                 open: 'row.open',
                 size: 'row.item.size === undefined ? undefined : messages.formatSize(row.item.size)',
                 retryable: 'listening.retry === true',
+                disabled: 'disabled',
                 retryLabel: 'messages.retry',
                 removeLabel: 'messages.remove(row.item.name)',
                 progressLabel: 'messages.progress(row.item.name)',
@@ -244,6 +245,10 @@ export default describeMember({
         },
         size: { type: 'string', optional: true, doc: 'The size, formatted by the messages.' },
         retryable: { type: 'boolean', doc: 'The app handles a retry, so a failed row offers one.' },
+        disabled: {
+          type: 'boolean',
+          doc: 'The field is disabled, and the row’s controls with it.',
+        },
         retryLabel: { type: 'string' },
         removeLabel: { type: 'string' },
         progressLabel: { type: 'string' },
@@ -292,14 +297,14 @@ export default describeMember({
           cond("file.status === 'error' && retryable", [
             member(
               'Button',
-              { ...control, icon: lit('refresh'), label: 'retryLabel' },
+              { ...control, icon: lit('refresh'), label: 'retryLabel', disabled: 'disabled' },
               { on: { click: emit('retry') } },
             ),
           ]),
           // Every status: cancelling an upload and removing a finished file are one request.
           member(
             'Button',
-            { ...control, icon: lit('close'), label: 'removeLabel' },
+            { ...control, icon: lit('close'), label: 'removeLabel', disabled: 'disabled' },
             { on: { click: emit('remove') } },
           ),
         ],

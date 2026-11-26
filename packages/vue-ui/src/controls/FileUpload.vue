@@ -280,6 +280,7 @@ onBeforeUnmount(() => release2?.())
           :open="row.open"
           :size="row.item.size === undefined ? undefined : messages.formatSize(row.item.size)"
           :retryable="listening.retry === true"
+          :disabled="disabled"
           :retryLabel="messages.retry"
           :removeLabel="messages.remove(row.item.name)"
           :progressLabel="messages.progress(row.item.name)"

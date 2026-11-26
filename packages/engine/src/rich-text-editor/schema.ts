@@ -393,7 +393,13 @@ function drawing(classes: RichTextEditorClasses | null, headingLevel: number) {
     italic: (): DOMOutputSpec => ['em', attrs({ class: cls((c) => c.italic) }), 0],
     strike: (): DOMOutputSpec => ['s', attrs({ class: cls((c) => c.strike) }), 0],
     code: (): DOMOutputSpec => ['code', attrs({ class: cls((c) => c.code) }), 0],
-    link: (href: string): DOMOutputSpec => ['a', attrs({ class: cls((c) => c.link), href }), 0],
+    // A link in the field is text to edit and is never followed, so it is no tab stop. A
+    // browser makes one of it once the surface is not editable, in a disabled field.
+    link: (href: string): DOMOutputSpec => [
+      'a',
+      attrs({ class: cls((c) => c.link), href, tabindex: classes ? '-1' : null }),
+      0,
+    ],
   }
 }
 

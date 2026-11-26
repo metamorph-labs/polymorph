@@ -29,6 +29,10 @@ export interface FileUploadRowProps {
    * The app handles a retry, so a failed row offers one.
    */
   retryable: boolean
+  /**
+   * The field is disabled, and the row’s controls with it.
+   */
+  disabled: boolean
   retryLabel: string
   removeLabel: string
   progressLabel: string
@@ -90,6 +94,7 @@ watch(() => present.value, effect1, { flush: 'post' })
       :iconOnly="true"
       icon="refresh"
       :label="retryLabel"
+      :disabled="disabled"
       @click="emit('retry')"
     />
     <Button
@@ -99,6 +104,7 @@ watch(() => present.value, effect1, { flush: 'post' })
       :iconOnly="true"
       icon="close"
       :label="removeLabel"
+      :disabled="disabled"
       @click="emit('remove')"
     />
   </li>

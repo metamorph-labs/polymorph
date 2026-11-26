@@ -154,18 +154,19 @@ pmFileUploadRow
 [open]="e26(row)"
 [size]="e27(row)"
 [retryable]="e28()"
-[retryLabel]="e29()"
-[removeLabel]="e30(row)"
-[progressLabel]="e31(row)"
+[disabled]="e29()"
+[retryLabel]="e30()"
+[removeLabel]="e31(row)"
+[progressLabel]="e32(row)"
 (retry)="h6(row)"
 (remove)="h7(row)"
 (done)="h8(row)"
 ></li>}</ul>}
 <!-- reader -->
 <span
-[attr.class]="e32()"
+[attr.class]="e33()"
 aria-live="polite"
->@for (file of e33(); track e34(file)) {<span>{{ e35(file) }}</span>}</span></div>`,
+>@for (file of e34(); track e35(file)) {<span>{{ e36(file) }}</span>}</span></div>`,
 })
 export class FileUpload {
   static readonly controlKind = 'group'
@@ -513,17 +514,22 @@ export class FileUpload {
     return this.$.listening(this.onRetry, 'onRetry') === true
   }
 
-  protected e29(): FileUploadRowProps['retryLabel'] {
+  protected e29(): FileUploadRowProps['disabled'] {
+    if (!(this.$p.files.length > 0)) return undefined as never
+    return this.$p.disabled
+  }
+
+  protected e30(): FileUploadRowProps['retryLabel'] {
     if (!(this.$p.files.length > 0)) return undefined as never
     return this.$p.messages.retry
   }
 
-  protected e30(row: Each<ReturnType<FileUpload['e23']>>): FileUploadRowProps['removeLabel'] {
+  protected e31(row: Each<ReturnType<FileUpload['e23']>>): FileUploadRowProps['removeLabel'] {
     if (!(this.$p.files.length > 0)) return undefined as never
     return this.$p.messages.remove(row.item.name)
   }
 
-  protected e31(row: Each<ReturnType<FileUpload['e23']>>): FileUploadRowProps['progressLabel'] {
+  protected e32(row: Each<ReturnType<FileUpload['e23']>>): FileUploadRowProps['progressLabel'] {
     if (!(this.$p.files.length > 0)) return undefined as never
     return this.$p.messages.progress(row.item.name)
   }
@@ -547,19 +553,19 @@ export class FileUpload {
     row.done()
   }
 
-  protected e32() {
+  protected e33() {
     return styles.reader
   }
 
-  e33() {
+  e34() {
     return this.$p.files
   }
 
-  protected e34(file: Each<ReturnType<FileUpload['e33']>>) {
+  protected e35(file: Each<ReturnType<FileUpload['e34']>>) {
     return file.id
   }
 
-  protected e35(file: Each<ReturnType<FileUpload['e33']>>) {
+  protected e36(file: Each<ReturnType<FileUpload['e34']>>) {
     return this.$p.messages.announcement(file)
   }
 

@@ -59,7 +59,7 @@ Attributes: dropzone `data-state="idle|dragover"`, `data-disabled?`,
 | done | Icon `success` `md` `--pm-success-text` |
 | error | row border `--pm-danger-border` · `message` `text.xs` `--pm-danger-text` under the name · retry Button `ghost/neutral/sm iconOnly icon="refresh" label="Retry"` |
 | remove | Button `ghost/neutral/sm iconOnly icon="close" label="Remove {name}"` on every status (cancelling during upload is `onRemove`) |
-| disabled | zone text/icon `--pm-text-disabled` · border `--pm-border-subtle` · no hover/drop |
+| disabled | zone text/icon `--pm-text-disabled` · border `--pm-border-subtle` · no hover/drop · every row's retry and remove Button disabled, because removing a file changes the field's value |
 | invalid | zone border `1px dashed --pm-danger-border` (FormField's error carries the message) |
 
 ## FormField integration

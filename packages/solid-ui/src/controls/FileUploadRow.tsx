@@ -28,6 +28,10 @@ export interface FileUploadRowProps {
    * The app handles a retry, so a failed row offers one.
    */
   retryable: boolean
+  /**
+   * The field is disabled, and the row’s controls with it.
+   */
+  disabled: boolean
   retryLabel: string
   removeLabel: string
   progressLabel: string
@@ -95,6 +99,7 @@ export default function FileUploadRow(given: FileUploadRowProps): JSX.Element {
             iconOnly={true}
             icon="refresh"
             label={props.retryLabel}
+            disabled={props.disabled}
             onClick={() => props.onRetry?.()}
           />
         ) : null}
@@ -105,6 +110,7 @@ export default function FileUploadRow(given: FileUploadRowProps): JSX.Element {
           iconOnly={true}
           icon="close"
           label={props.removeLabel}
+          disabled={props.disabled}
           onClick={() => props.onRemove?.()}
         />
       </li>
