@@ -364,7 +364,7 @@ setPalette(admission.palette.name)
 ```
 
 That path ships the theme engine to every visitor: `zod`, `culori` and the derivation code, which
-`pnpm size` holds to the `runtime-engine` fixture's ceiling of 53 kB of gzipped JavaScript
+`pnpm size` holds to the `runtime-engine` fixture's ceiling of 54 kB of gzipped JavaScript
 (`scripts/size/budgets.json`). Use it for themes a build
 cannot know, alongside compiled ones if you have both. On this path, inline `PREPAINT_SCRIPT` in
 `<head>` yourself, so the theme and light/dark mode resolve before first paint.

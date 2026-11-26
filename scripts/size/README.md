@@ -55,18 +55,31 @@ the bridge.
 fixtures (`pnpm size vue-button dialog`) measures only those. A ceiling is raised only with the
 reason in the same commit.
 
-`button`'s JavaScript ceiling is 67 kB, and the fixture measures 66.4 kB. React's runtime is most of
+`button`'s JavaScript ceiling is 67 kB, and the fixture measures 66.5 kB. React's runtime is most of
 it. About 0.87 kB is the name tip, with which every icon-only Button shows its label on hover and
 keyboard focus (`nameTip` in `@polymorph/engine`, `design/components/button.md`): the behaviour,
 the Button's call to it and the class its bubble is drawn with. Without the tip the fixture is
 65.5 kB, 0.48 kB under 66 kB, which is less than the tip, so the ceiling is the next kilobyte.
 
-`elements-button`'s JavaScript ceiling is 44 kB, and the fixture measures 43.02 kB, for the same
+`elements-button`'s JavaScript ceiling is 44 kB, and the fixture measures 43.1 kB, for the same
 tip. Five elements call it (Button, SplitButton, CopyButton, AvatarButton and Pagination), so the
 build writes it as a chunk of its own, which compresses about 0.1 kB larger than the same code
 inside Button's chunk. Without the tip the fixture is 41.75 kB. Keeping the tip in Button's chunk
 would fit 43 kB, and would make a page with only a CopyButton fetch Button's chunk. The Vue, Svelte,
 Solid and Angular Button fixtures carry the same behaviour under their ceilings.
+
+Four more fixtures draw an icon-only Button and carry the same tip, and each was within a kilobyte
+of its ceiling without it. `dialog` (the close Button) measures 87.6 kB against 86.7 kB without the
+tip, and its ceiling is 88 kB. `agent-bridge` measures 76.9 kB against 76.0 kB, and its ceiling is
+77 kB. `elements-agent` and `elements-screen` are the `elements-button` page with more on it, so
+they grow by what that page grows by: 45.2 kB against 43.8 kB, with a ceiling of 46 kB, and 86.1 kB
+against 84.9 kB, with a ceiling of 87 kB.
+
+`runtime-engine`'s JavaScript ceiling is 54 kB, and the fixture measures 53.6 kB against 52.6 kB
+before three choices a system or a palette may state: the pin for the accent gradient's second
+colour, the heading weights and the alignment of numeric columns (`docs/theming.md`). Each adds to
+the schema an admitted system is read with and to what derives its tokens, and all of it is in the
+bundled theme a page that admits a system at run time ships.
 
 The ceilings of `vue-button`, `svelte-button`, `solid-button` and `angular-button` are each set
 to a measurement of the fixture, rounded up to the next kilobyte, with ten percent added.
@@ -126,8 +139,8 @@ Culori, from the theme engine, and Zag's date picker (`pnpm size --why elements-
 that loads `polymorph.js` fetches the editor only when it uses `poly-rich-text-input`, because the
 editor is in that element's chunk.
 
-`elements-screen`'s ceilings are set as `elements-button`'s are, from its measurement, 84.9 kB,
-rounded up to the next kilobyte with a kilobyte added: 86 kB. About two fifths of its JavaScript is
+`elements-screen`'s ceilings are set as `elements-button`'s are, from its measurement, 86.1 kB,
+rounded up to the next kilobyte: 87 kB. About two fifths of its JavaScript is
 the run-time screen: the vocabulary table with the core's shared modules, which name every member's
 props, parts and lawful cells and hold the checks every document passes (addresses, the depth
 limit, and which prop or field receives a callback; about 27 kB, the largest part), the walk with the renderer and `parsePartial` (about 8 kB),

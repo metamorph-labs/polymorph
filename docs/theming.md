@@ -582,7 +582,7 @@ theme engine's derivation code (no zod, no culori). See [consuming.md](consuming
   sheet. `hasPairingCSS(pairId)` checks whether it is already there.
 
 This path ships the theme engine to the browser: `zod`, `culori` and the derivation code. The
-`runtime-engine` size fixture holds that cost under 53 kB of gzipped JavaScript (`pnpm size`,
+`runtime-engine` size fixture holds that cost under 54 kB of gzipped JavaScript (`pnpm size`,
 [verification.md](verification.md#size-budgets)). The workbench and docs apps use it. The workbench
 needs it because its studio re-derives a pairing while it is edited. Both apps install the eager
 sheet (`emitThemesCSS`) before React mounts and append a cross-pairing through an app-level

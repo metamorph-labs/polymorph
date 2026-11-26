@@ -12,11 +12,11 @@
     "css": 8
   },
   "dialog": {
-    "js": 87,
+    "js": 88,
     "css": 7
   },
   "runtime-engine": {
-    "js": 53,
+    "js": 54,
     "css": 1
   },
   "vue-button": {
@@ -36,7 +36,7 @@
     "css": 5
   },
   "agent-bridge": {
-    "js": 76,
+    "js": 77,
     "css": 7
   },
   "elements-button": {
@@ -48,11 +48,11 @@
     "css": 49
   },
   "elements-agent": {
-    "js": 45,
+    "js": 46,
     "css": 49
   },
   "elements-screen": {
-    "js": 86,
+    "js": 87,
     "css": 49
   }
 }
