@@ -288,7 +288,8 @@ export const TOOLS: readonly ToolEntry[] = [
     name: 'get_component',
     title: 'Get a component',
     description:
-      'One component: its prop surface with printed types, its lawful variant × tone cells, the ' +
+      'One component: its prop surface with printed types, the fields of each data type a prop ' +
+      'names (`types`), its lawful variant × tone cells, the ' +
       'states its fixture renders, the `data-*` attributes it surfaces, and its dependencies. ' +
       'Pass `source: true` for the actual files.',
     inputSchema: {

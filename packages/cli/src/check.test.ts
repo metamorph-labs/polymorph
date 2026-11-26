@@ -323,6 +323,15 @@ describe('the command', () => {
     expect(text.endsWith('No violations.')).toBe(true)
   })
 
+  it('says that no file was read, and does not call that lawful', async () => {
+    const root = app({ 'package.json': REACT, 'ios/OrdersView.swift': 'import SwiftUI\n' })
+    const { code, text } = await polymorph(root, [])
+    expect(code).toBe(0)
+    expect(text).toContain('— 0 files read')
+    expect(text).not.toContain('No violations')
+    expect(text.endsWith('none was read here.')).toBe(true)
+  })
+
   it('prints a warning marked as one, and exits 0 when the reports are warnings alone', async () => {
     const root = app({ 'package.json': REACT, 'src/Row.tsx': DANGER_FIRST })
     const { code, text } = await polymorph(root, [])

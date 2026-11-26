@@ -584,7 +584,9 @@ Afterwards, install the new dependencies. A file you had already edited is kept 
 path and that the manifest has no record of, such as your own `Button.tsx` under a `--dir` you
 already use, unless it already matches what would be written. Running `add` again is additive and
 does not duplicate any patch. The vendored system and palette JSON are yours to edit. Run
-`polymorph update` after an edit to recompile the sheets.
+`polymorph add theme:<system>` again after an edit to recompile the sheets from your copies.
+`polymorph update` reports nothing to update while no file has changed upstream, so it does not
+recompile them.
 
 ### `polymorph.json`
 
@@ -672,8 +674,8 @@ the report says where the partner is looked for.
   not apply to a guest theme.
 - `emit` prints the emitted stylesheet. It is for handoff and inspection, not for installing. A
   product keeps the two JSON documents and compiles them in its build (`@polymorph/engine/vite`) or
-  its install (`add`, then `update` after an edit), so the sheet is re-derived when a decision
-  changes. A banner in the file marks it as a handoff.
+  its install (`add`, then `add theme:<system>` again after an edit), so the sheet is re-derived
+  when a decision changes. A banner in the file marks it as a handoff.
 - `schema` prints the JSON Schema for a system or a palette document, for an editor.
 
 [theming.md](theming.md) covers bringing your own theme in full.
@@ -710,7 +712,9 @@ application code, through `verify` from `@polymorph/rules/verify`, the function 
   rungs of the exception ladder that answer that rule (from the registry's law catalogue), then
   each report at its line and column. A rule the groups report as a warning (the usage rules,
   [rules.md](rules.md#the-usage-rules)) is marked `(warning)`. A file that does not parse is
-  listed as not read. The last line counts the violations, then the warnings.
+  listed as not read. The last line counts the violations, then the warnings. When no file was
+  read, the last line says so and does not say there are no violations: a directory of Swift or
+  Kotlin holds nothing the red rules read.
 - **`--json`** prints `{ ok, dir, checked, files, notes }`. Each file has its `path`, the
   `framework` it was read in, `fatal`, `violations` and `warnings`; each is a `verify` diagnostic
   (`rule`, `message`, `line`, `column`, `fix`, `alternatives`, `severity`) with the rule's
@@ -780,6 +784,10 @@ polymorph plan button theme:pastel          # what `add` would copy; writes noth
 ```
 
 `plan` prints what `add --dry-run` prints for the same items, from the tool `get_install_plan`.
+
+`component` prints, under `## Types`, the fields of each data type the member's props name and of
+the types those name: a prop typed `PromptTrigger[]` is written from the fields of `PromptTrigger`.
+The tool's answer holds them as `types`.
 
 ### Checking: `validate` and `render`
 

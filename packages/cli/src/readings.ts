@@ -1,6 +1,7 @@
 import type {
   Framework,
   RegistryComponent,
+  RegistryDataType,
   RegistryPalette,
   RegistrySystem,
   SearchHit,
@@ -202,6 +203,7 @@ export function searchLines(hits: readonly SearchHit[], query: string | undefine
 
 export interface ComponentReading {
   component: RegistryComponent
+  types?: RegistryDataType[]
   files?: { path: string; contents: string }[]
 }
 
@@ -211,9 +213,24 @@ const code = (text: string): string => {
   return `${fence}${fence.length > 1 ? ' ' : ''}${text}${fence.length > 1 ? ' ' : ''}${fence}`
 }
 
+/** The longest note a field prints whole. */
+const FIELD_DOC_MAX = 320
+
+/**
+ * A field's note as the types section prints it: whole, or its first sentence
+ * when it is long. A few fields carry the reasoning for a decision, which the
+ * source keeps and a reader choosing a value does not need.
+ */
+function fieldDoc(doc: string): string {
+  if (doc.length <= FIELD_DOC_MAX) return doc
+  const end = doc.search(/\.\s+[A-Z`]/)
+  return end === -1 ? doc : doc.slice(0, end + 1)
+}
+
 /**
  * A member as Markdown, as the system card is: its purpose, its props (a
- * trailing `?` marks an optional one), its parts, its lawful cells, its
+ * trailing `?` marks an optional one), its parts, the fields of the data types
+ * its props name, its lawful cells, its
  * states, its data attributes, where it renders, and what it depends on.
  * `framework` narrows the frameworks line to that one framework.
  */
@@ -239,6 +256,22 @@ export function componentLines(answer: ComponentReading, framework?: Framework):
     for (const part of member.parts) {
       const props = part.props.map((prop) => `${prop.name}${prop.optional ? '?' : ''}`)
       lines.push(`- ${code(`${member.name}.${part.name}`)}: ${props.join(', ') || 'no props'}`)
+    }
+  }
+
+  // The fields of each data type a prop names, so that a prop typed
+  // `PromptTrigger[]` can be written from this one reading.
+  const types = answer.types ?? []
+  if (types.length > 0) lines.push('', '## Types')
+  for (const type of types) {
+    const params = type.params.length === 0 ? '' : `<${type.params.join(', ')}>`
+    lines.push('', `### ${type.name}${params}`, '')
+    if (type.union !== undefined) lines.push(`One of ${type.union.map(code).join(', ')}.`)
+    for (const field of type.fields) {
+      lines.push(
+        `- ${code(`${field.name}${field.optional ? '?' : ''}`)}: ${code(field.type)}` +
+          (field.doc === undefined ? '' : ` — ${fieldDoc(field.doc)}`),
+      )
     }
   }
 

@@ -381,6 +381,16 @@ export function checkLines(registry: Registry, report: CheckReport): string[] {
   const warned =
     warnings > 0 ? ` ${counted(warnings, 'warning', (file) => file.warnings.length > 0)}.` : ''
   lines.push('')
+  // A directory with nothing the rules read is not a lawful app: a native
+  // repository's Swift and Kotlin are held by other laws, and "No violations"
+  // over no file reads as a pass.
+  if (report.checked === 0) {
+    lines.push(
+      'No file read: the red rules read .ts, .tsx, .vue, .svelte, .html and .css files, and ' +
+        'none was read here.',
+    )
+    return lines
+  }
   lines.push(`${parts.length === 0 ? 'No violations' : parts.join(', ')}.${warned}`)
   return lines
 }

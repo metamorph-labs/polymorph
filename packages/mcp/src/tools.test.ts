@@ -112,6 +112,20 @@ describe('search_components', () => {
 })
 
 describe('get_component', () => {
+  it('answers with the fields of each data type a prop names, and the types those name', () => {
+    const { types } = getComponent(context, { name: 'PromptInput' })
+    const names = types.map((type) => type.name)
+    // `triggers` is typed `PromptTrigger[]`, whose `options` is typed `PromptTriggerOption[]`.
+    expect(names).toContain('PromptTrigger')
+    expect(names).toContain('PromptTriggerOption')
+    const trigger = types.find((type) => type.name === 'PromptTrigger')
+    expect(trigger?.fields.map((field) => field.name)).toContain('char')
+    // Each type is the registry's own entry, and a member whose props name none has none.
+    for (const type of types) expect(registry.dataTypes).toContain(type)
+    expect(new Set(names).size).toBe(names.length)
+    expect(getComponent(context, { name: 'Separator' }).types).toEqual([])
+  })
+
   it('answers with the description, not the files', () => {
     const { component, files } = getComponent(context, { name: 'Button' })
     expect(files).toBeUndefined()

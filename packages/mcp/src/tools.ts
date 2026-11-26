@@ -26,6 +26,7 @@ import {
   type Platform,
   type Registry,
   type RegistryComponent,
+  type RegistryDataType,
   type RegistrySystem,
 } from '@polymorph/registry'
 import { readNativePackage, validateSpec, type SpecFault } from '@polymorph/spec'
@@ -251,6 +252,13 @@ export interface ComponentArgs {
 
 export interface ComponentAnswer {
   component: RegistryComponent
+  /**
+   * The named data types the member's props and its parts' props take, and
+   * the types those name, each with its fields. A prop typed `PromptTrigger[]`
+   * says nothing a model can write until the fields of `PromptTrigger` are
+   * beside it.
+   */
+  types: RegistryDataType[]
   files?: { path: string; contents: string }[]
 }
 
@@ -290,8 +298,34 @@ export function getComponent(context: ToolContext, args: ComponentArgs): Compone
 
   if (!component) throw new UnknownComponentError(args.name, suggestionsFor(context, wanted))
 
-  if (!args.source) return { component }
-  return { component, files: sourceOf(context, component) }
+  const types = typesOf(context, component)
+  if (!args.source) return { component, types }
+  return { component, types, files: sourceOf(context, component) }
+}
+
+/**
+ * The data types a member's printed prop types name, in the order they are
+ * first named, followed through each type's fields and each union's members.
+ */
+function typesOf(context: ToolContext, component: RegistryComponent): RegistryDataType[] {
+  const catalogue = new Map(context.registry.dataTypes.map((type) => [type.name, type]))
+  const reached = new Map<string, RegistryDataType>()
+  const queue: RegistryDataType[] = []
+  const read = (printed: string) => {
+    for (const name of printed.match(/\b[A-Z][A-Za-z0-9]*\b/g) ?? []) {
+      const type = catalogue.get(name)
+      if (type === undefined || reached.has(name)) continue
+      reached.set(name, type)
+      queue.push(type)
+    }
+  }
+  for (const prop of component.props) read(prop.type)
+  for (const part of component.parts) for (const prop of part.props) read(prop.type)
+  for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
+    for (const name of next.union ?? []) read(name)
+    for (const field of next.fields) read(field.type)
+  }
+  return [...reached.values()]
 }
 
 /**

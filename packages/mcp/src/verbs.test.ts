@@ -269,6 +269,16 @@ describe('`--json` prints exactly the tool’s answer', () => {
     }
   }, 120_000)
 
+  it('prints the fields of each data type a prop names under the props', async () => {
+    const { code, out } = await polymorph(root, ['component', 'PromptInput'])
+    expect(code).toBe(0)
+    expect(out).toContain('\n## Types\n')
+    expect(out).toContain('\n### PromptTrigger\n\n')
+    expect(out).toMatch(/\n- `char`: `string` — /)
+    // A member whose props name no data type has no such section.
+    expect((await polymorph(root, ['component', 'Separator'])).out).not.toContain('## Types')
+  })
+
   it('for a refusal, as `{ "error" }`, with exit code 1', async () => {
     const { code, out } = await polymorph(root, ['component', 'Modal', '--json'])
     expect(code).toBe(1)
