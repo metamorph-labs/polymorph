@@ -845,7 +845,7 @@ export interface FontRequirement {
  * fact. It is still checked here: `registry.test.ts` asserts that every
  * package it produces is one the workbench installs.
  */
-import { fontPackage } from '@polymorph/theme'
+import { FONT_ROLES, fontPackage, fontSlot, type FontFamilies } from '@polymorph/theme'
 
 export { fontPackage }
 
@@ -856,12 +856,15 @@ export { fontPackage }
  *
  * Entries are deduplicated because pastel and terminal set body and display to
  * the same family, and listing it twice would write a duplicate dependency.
- * The roles are kept, so merging the entries loses nothing.
+ * The roles are kept, so merging the entries loses nothing. A heading slot the
+ * system leaves out is the body slot (`fontSlot`), so the body family lists
+ * the `heading` role.
  */
-export function fontsFor(fonts: Record<string, { family: string }>): FontRequirement[] {
+export function fontsFor(fonts: FontFamilies): FontRequirement[] {
   const byPackage = new Map<string, FontRequirement>()
+  const roles = [...FONT_ROLES].sort((a, b) => a.localeCompare(b))
 
-  for (const [role, spec] of Object.entries(fonts).sort(([a], [b]) => a.localeCompare(b))) {
+  for (const [role, spec] of roles.map((role) => [role, fontSlot(fonts, role)] as const)) {
     const pkg = fontPackage(spec.family)
     const existing = byPackage.get(pkg)
     if (existing) existing.roles.push(role)

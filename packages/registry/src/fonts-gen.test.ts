@@ -64,7 +64,7 @@ describe('the font loaders', () => {
     expect(loaderOf(loaders, 'JetBrains Mono').specifiers).toHaveLength(3)
   })
 
-  it('ask the title weight of the body family and the display weight of the display family', () => {
+  it('ask the title weight of the body family, in a system with no heading slot, and the display weight of the display family', () => {
     const loaders = fontLoaders([
       guest(
         { body: { family: 'Space Grotesk Variable' }, display: { family: 'Lora Variable' } },
@@ -79,6 +79,28 @@ describe('the font loaders', () => {
     ])
     // A variable face imports its package whole, whatever the weights.
     expect(loaderOf(loaders, 'Lora Variable').specifiers).toEqual(['@fontsource-variable/lora'])
+  })
+
+  it('ask the title weight of the heading family when a system states one', () => {
+    const loaders = fontLoaders([
+      guest(
+        {
+          body: { family: 'Space Grotesk Variable' },
+          heading: { family: 'Lora Variable' },
+        },
+        { titleWeight: 300 },
+      ),
+    ])
+    expect(loaderOf(loaders, 'Lora Variable').demands).toEqual([
+      { weight: 300, system: 'light-headings', key: 'titleWeight' },
+    ])
+    // The body family draws no heading step, so the weight is not asked of it.
+    expect(loaderOf(loaders, 'Space Grotesk Variable').demands).toEqual([])
+    // Lora's weight axis is 400–700 in the package the workbench installs, so 300 is refused.
+    expect(() => assertWeightsShipped(WORKBENCH, '@polymorph/workbench', loaders)).toThrow(
+      'system "light-headings" sets overrides.type.titleWeight 300, and "Lora Variable" ' +
+        'draws weights 400–700 only',
+    )
   })
 
   it('name every static file in the module the apps import', () => {

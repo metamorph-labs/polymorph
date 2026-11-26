@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 
-import { FONT_ROLES, fontPackage, type FontRole, type System } from '@polymorph/theme'
+import { FONT_ROLES, fontPackage, fontSlot, type FontRole, type System } from '@polymorph/theme'
 
 /**
  * The apps' font-loader maps, generated instead of maintained by hand.
@@ -34,12 +34,12 @@ import { FONT_ROLES, fontPackage, type FontRole, type System } from '@polymorph/
 const STATIC_WEIGHTS = [400, 500, 600] as const
 
 /**
- * The font slot each heading weight is drawn in. The title steps are text
- * steps, which every recipe sets in the body family, and the display steps are
- * set in the display family.
+ * The font slot each heading weight is drawn in. The title steps are heading
+ * steps, drawn in the heading slot, which is the body slot in a system that
+ * states none (`fontSlot`). The display steps are drawn in the display slot.
  */
 const HEADING_SLOTS = {
-  titleWeight: 'body',
+  titleWeight: 'heading',
   displayWeight: 'display',
 } as const satisfies Record<string, FontRole>
 
@@ -68,13 +68,13 @@ export function fontLoaders(systems: readonly System[]): Loader[] {
   const byFamily = new Map<string, WeightDemand[]>()
   for (const system of systems) {
     for (const role of FONT_ROLES) {
-      const family = system.fonts[role].family
+      const family = fontSlot(system.fonts, role).family
       if (!byFamily.has(family)) byFamily.set(family, [])
     }
     for (const key of Object.keys(HEADING_SLOTS) as HeadingKey[]) {
       const weight = system.overrides?.type?.[key]
       if (weight === undefined) continue
-      byFamily.get(system.fonts[HEADING_SLOTS[key]].family)?.push({
+      byFamily.get(fontSlot(system.fonts, HEADING_SLOTS[key]).family)?.push({
         weight,
         system: system.name,
         key,
