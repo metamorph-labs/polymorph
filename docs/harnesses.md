@@ -39,10 +39,10 @@ npx -y @metamorph-labs/polymorph@latest agents --harness claude,codex --dry-run
 | `polymorph-screen` | Building or changing a screen: the card, the members, a spec or code, `validate`, `fix`, `emit`, `render`. Its references hold a screen written in code and its container, a conversation with a model, charts and formatted text |
 | `polymorph-rules` | A red-rule violation, rung by rung up the exception ladder |
 | `polymorph-setup` | A new app, the vendoring route, the packages route step by step, the agent files |
-| `polymorph-theme` | The theme documents, `axes`, `theme propose`, `theme validate`, `theme emit` |
+| `polymorph-theme` | The theme documents, `axes`, `theme propose`, `theme hue`, `theme validate`, `theme emit` |
 | `polymorph-runtime-screen` | A screen a model writes while the product runs: the run-time card, the check, drawing while it streams, actions |
 | `polymorph-agent-bridge` | An agent on the page that reads and operates the members: the bridge, its policy, tools and WebMCP |
-| `polymorph-native` | A SwiftUI or Compose screen: installing the packages, writing members, the theme on a device |
+| `polymorph-native` | A SwiftUI or Compose screen: installing the packages, emitting a screen from a spec, writing members, the theme on a device |
 
 A skill's `SKILL.md` is the procedure, and its `references/` files hold what one branch of the
 procedure needs, so a harness loads a reference only when a step sends it there. Each skill

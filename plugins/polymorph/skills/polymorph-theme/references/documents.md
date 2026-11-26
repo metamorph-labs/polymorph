@@ -181,10 +181,10 @@ this palette:
   the pinned `accent.bg`.
 - Pin the same values in `dark`. The engine draws a hued accent fill the same in both modes, and a
   mode with no pins draws the fill `accentHue` derives, not the brand's.
-- Set `accentHue` to the colour's OKLCH hue, the `h` of `oklch(L C h)`, which any colour
-  converter prints: `#1F4FD8` is `oklch(0.49 0.216 264.5)`. A few degrees off is lawful.
-  `accentHue` colours what surrounds the button: the washes, links, selection, focus ring and
-  chart colours.
+- Set `accentHue` to the colour's OKLCH hue in whole degrees, which
+  `npx -y @metamorph-labs/polymorph@1.0.18 theme hue "#1F4FD8"` prints: `#1F4FD8` is `oklch(0.491 0.216 264.5)`, and its
+  `accentHue` is 265. `accentHue` colours what surrounds the button: the washes, links,
+  selection, focus ring and chart colours.
 - Under `chromaBudget` `none`, which `neutral` has, the pins hold and the links,
   washes and focus ring stay grey. Raise it for them to take the hue.
 
