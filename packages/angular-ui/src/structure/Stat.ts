@@ -17,6 +17,7 @@ import {
 } from '@polymorph/angular'
 import styles from '@polymorph/recipes/structure/stat.module.css'
 import { Badge, type BadgeProps } from './Badge'
+import { Skeleton, type SkeletonProps } from './Skeleton'
 import { Sparkline, type SparklineProps } from '../charts/Sparkline'
 
 export type DeltaDirection = 'up' | 'down'
@@ -51,6 +52,18 @@ export interface StatProps {
   icon?: IconRole
   label: string
   /**
+   * The number has not arrived. The label row stays, and the value and each part the caller
+   * passes that states the number is a Skeleton of that part's size. `value` stays required, as
+   * a chart's rows do with its `loading`: pass what there is, `''` or the last value, and it is
+   * not drawn.
+   */
+  loading?: boolean
+  /**
+   * What a screen reader hears in the value's place while `loading`, the value's Skeleton's
+   * name. Default "Loading".
+   */
+  loadingLabel?: string
+  /**
    * Tabular figures, so a column of these lines up.
    */
   numeric?: boolean
@@ -81,83 +94,111 @@ export interface StatProps {
   encapsulation: ViewEncapsulation.None,
   host: { style: 'display: contents' },
   providers: [...MEMBER_PROVIDERS],
-  imports: [Badge, Icon, Sparkline],
+  imports: [Badge, Icon, Skeleton, Sparkline],
   // prettier-ignore
   template: `<!-- stat -->
 <div
 [attr.class]="e1()"
 data-member="stat"
+[attr.data-loading]="e2()"
+[attr.aria-busy]="e3()"
 ><!-- labelRow -->
 <div
-[attr.class]="e2()"
+[attr.class]="e4()"
 ><!-- label -->
 <span
-[attr.class]="e3()"
->{{ e4() }}</span>
-@if (e5()) {<!-- labelEnd -->
-<span
-[attr.class]="e6()"
->@if (e7()) {<!-- glyph -->
+[attr.class]="e5()"
+>{{ e6() }}</span>
+@if (e7()) {<!-- labelEnd -->
 <span
 [attr.class]="e8()"
+>@if (e9()) {<!-- glyph -->
+<span
+[attr.class]="e10()"
 ><pm-icon
-[name]="e9()"
+[name]="e11()"
 ></pm-icon></span>}
-@if (e10()) {<pm-badge
+@if (e12()) {<!-- trendPlaceholder -->
+<span
+[attr.class]="e13()"
+><pm-skeleton
+textStep="xs"
+[width]="e14()"
+></pm-skeleton></span>} @else if (e15()) {<pm-badge
 variant="outline"
-[icon]="e11()"
->{{ e12() }}</pm-badge>}</span>}</div>
+[icon]="e16()"
+>{{ e17() }}</pm-badge>}</span>}</div>
 <!-- valueRow -->
 <div
-[attr.class]="e13()"
-><!-- value -->
-<span
-[attr.class]="e14()"
-[attr.data-numeric]="e15()"
->{{ e16() }}</span>
-@if (e17()) {<!-- spark -->
-<span
 [attr.class]="e18()"
-><pm-sparkline
-[data]="e19()"
-[label]="e20()"
-></pm-sparkline></span>}</div>
-@if (e21()) {<!-- delta -->
+>@if (e19()) {<pm-skeleton
+textStep="3xl"
+[width]="e20()"
+[label]="e21()"
+></pm-skeleton>} @else {<!-- value -->
 <span
 [attr.class]="e22()"
-[attr.data-direction]="e23()"
-[attr.data-positive]="e24()"
+[attr.data-numeric]="e23()"
+>{{ e24() }}</span>}
+@if (e25()) {<!-- spark -->
+<span
+[attr.class]="e26()"
+>@if (e27()) {<pm-skeleton
+shape="rect"
+[size]="e28()"
+[width]="e29()"
+></pm-skeleton>} @else {<pm-sparkline
+[data]="e30()"
+[label]="e31()"
+></pm-sparkline>}</span>}</div>
+@if (e32()) {<pm-skeleton
+textStep="sm"
+[width]="e33()"
+></pm-skeleton>} @else if (e34()) {<!-- delta -->
+<span
+[attr.class]="e35()"
+[attr.data-direction]="e36()"
+[attr.data-positive]="e37()"
 ><pm-icon
-[name]="e25()"
+[name]="e38()"
 size="sm"
 ></pm-icon>
 <span
 aria-hidden="true"
->{{ e26() }}</span>
+>{{ e39() }}</span>
 <!-- spoken -->
 <span
-[attr.class]="e27()"
->{{ e28() }}</span></span>} @else if (e29()) {<!-- description -->
+[attr.class]="e40()"
+>{{ e41() }}</span></span>} @else if (e42()) {<pm-skeleton
+textStep="xs"
+[width]="e43()"
+></pm-skeleton>} @else if (e44()) {<!-- description -->
 <span
-[attr.class]="e30()"
->{{ e31() }}</span>}
-@if (e32()) {<!-- footer -->
+[attr.class]="e45()"
+>{{ e46() }}</span>}
+@if (e47()) {<!-- footer -->
 <div
-[attr.class]="e33()"
-><!-- footerPrimary -->
+[attr.class]="e48()"
+>@if (e49()) {<pm-skeleton
+textStep="sm"
+></pm-skeleton>
+<pm-skeleton
+textStep="sm"
+[width]="e50()"
+></pm-skeleton>} @else {<!-- footerPrimary -->
 <span
-[attr.class]="e34()"
->{{ e35() }}@if (e36()) {<!-- footerGlyph -->
+[attr.class]="e51()"
+>{{ e52() }}@if (e53()) {<!-- footerGlyph -->
 <span
-[attr.class]="e37()"
+[attr.class]="e54()"
 ><pm-icon
-[name]="e38()"
+[name]="e55()"
 size="sm"
 ></pm-icon></span>}</span>
 <!-- footerSecondary -->
 <span
-[attr.class]="e39()"
->{{ e40() }}</span></div>}</div>`,
+[attr.class]="e56()"
+>{{ e57() }}</span>}</div>}</div>`,
 })
 export class Stat {
   readonly delta = input<StatProps['delta']>(undefined)
@@ -171,6 +212,25 @@ export class Stat {
   readonly footer = input<StatProps['footer']>(undefined)
   readonly icon = input<StatProps['icon']>(undefined)
   readonly label = input.required<StatProps['label']>()
+  /**
+   * The number has not arrived. The label row stays, and the value and each part the caller
+   * passes that states the number is a Skeleton of that part's size. `value` stays required, as
+   * a chart's rows do with its `loading`: pass what there is, `''` or the last value, and it is
+   * not drawn.
+   */
+  readonly loading = input<Exclude<StatProps['loading'], undefined>, StatProps['loading']>(false, {
+    transform: (value: StatProps['loading']) => (value === undefined ? false : value),
+  })
+  /**
+   * What a screen reader hears in the value's place while `loading`, the value's Skeleton's
+   * name. Default "Loading".
+   */
+  readonly loadingLabel = input<
+    Exclude<StatProps['loadingLabel'], undefined>,
+    StatProps['loadingLabel']
+  >('Loading', {
+    transform: (value: StatProps['loadingLabel']) => (value === undefined ? 'Loading' : value),
+  })
   /**
    * Tabular figures, so a column of these lines up.
    */
@@ -210,6 +270,8 @@ export class Stat {
       footer: () => this.footer(),
       icon: () => this.icon(),
       label: () => this.label(),
+      loading: () => this.loading(),
+      loadingLabel: () => this.loadingLabel(),
       numeric: () => this.numeric(),
       spark: () => this.spark(),
       sparkLabel: () => this.sparkLabel(),
@@ -229,194 +291,312 @@ export class Stat {
   }
 
   protected e2() {
-    return styles.labelRow
+    return this.$p.loading ? '' : undefined
   }
 
   protected e3() {
-    return styles.label
+    return this.$p.loading ? true : undefined
   }
 
   protected e4() {
-    return this.$p.label
+    return styles.labelRow
   }
 
   protected e5() {
-    return this.$p.icon !== undefined || this.$p.trend !== undefined
+    return styles.label
   }
 
   protected e6() {
+    return this.$p.label
+  }
+
+  protected e7() {
+    return this.$p.icon !== undefined || this.$p.trend !== undefined
+  }
+
+  protected e8() {
     if (!(this.$p.icon !== undefined || this.$p.trend !== undefined)) return undefined as never
     return styles.labelEnd
   }
 
-  protected e7() {
+  protected e9() {
     if (!(this.$p.icon !== undefined || this.$p.trend !== undefined)) return undefined as never
     return this.$p.icon !== undefined
   }
 
-  protected e8() {
+  protected e10() {
     if (!(this.$p.icon !== undefined || this.$p.trend !== undefined)) return undefined as never
     if (!(this.$p.icon !== undefined)) return undefined as never
     return styles.glyph
   }
 
-  protected e9(): IconProps['name'] {
+  protected e11(): IconProps['name'] {
     if (!(this.$p.icon !== undefined || this.$p.trend !== undefined)) return undefined as never
     if (!(this.$p.icon !== undefined)) return undefined as never
     return this.$p.icon
   }
 
-  protected e10() {
+  protected e12() {
     if (!(this.$p.icon !== undefined || this.$p.trend !== undefined)) return undefined as never
+    return this.$p.trend !== undefined && this.$p.loading
+  }
+
+  protected e13() {
+    if (!(this.$p.icon !== undefined || this.$p.trend !== undefined)) return undefined as never
+    if (!(this.$p.trend !== undefined && this.$p.loading)) return undefined as never
+    return styles.trendPlaceholder
+  }
+
+  protected e14(): SkeletonProps['width'] {
+    if (!(this.$p.icon !== undefined || this.$p.trend !== undefined)) return undefined as never
+    if (!(this.$p.trend !== undefined && this.$p.loading)) return undefined as never
+    return 7
+  }
+
+  protected e15() {
+    if (!(this.$p.icon !== undefined || this.$p.trend !== undefined)) return undefined as never
+    if (this.$p.trend !== undefined && this.$p.loading) return undefined as never
     return this.$p.trend !== undefined
   }
 
-  protected e11(): BadgeProps['icon'] {
+  protected e16(): BadgeProps['icon'] {
     if (!(this.$p.icon !== undefined || this.$p.trend !== undefined)) return undefined as never
+    if (this.$p.trend !== undefined && this.$p.loading) return undefined as never
     if (!(this.$p.trend !== undefined)) return undefined as never
     return this.$p.trend.direction
   }
 
-  protected e12() {
+  protected e17() {
     if (!(this.$p.icon !== undefined || this.$p.trend !== undefined)) return undefined as never
+    if (this.$p.trend !== undefined && this.$p.loading) return undefined as never
     if (!(this.$p.trend !== undefined)) return undefined as never
     return this.$p.trend.label
   }
 
-  protected e13() {
+  protected e18() {
     return styles.valueRow
   }
 
-  protected e14() {
+  protected e19() {
+    return this.$p.loading
+  }
+
+  protected e20(): SkeletonProps['width'] {
+    if (!this.$p.loading) return undefined as never
+    return 10
+  }
+
+  protected e21(): SkeletonProps['label'] {
+    if (!this.$p.loading) return undefined as never
+    return this.$p.loadingLabel
+  }
+
+  protected e22() {
+    if (this.$p.loading) return undefined as never
     return styles.value
   }
 
-  protected e15() {
+  protected e23() {
+    if (this.$p.loading) return undefined as never
     return this.$p.numeric ? '' : undefined
   }
 
-  protected e16() {
+  protected e24() {
+    if (this.$p.loading) return undefined as never
     return this.$p.value
   }
 
-  protected e17() {
+  protected e25() {
     return this.$p.spark !== undefined
   }
 
-  protected e18() {
+  protected e26() {
     if (!(this.$p.spark !== undefined)) return undefined as never
     return styles.spark
   }
 
-  protected e19(): SparklineProps['data'] {
+  protected e27() {
     if (!(this.$p.spark !== undefined)) return undefined as never
+    return this.$p.loading
+  }
+
+  protected e28(): SkeletonProps['size'] {
+    if (!(this.$p.spark !== undefined)) return undefined as never
+    if (!this.$p.loading) return undefined as never
+    return 6
+  }
+
+  protected e29(): SkeletonProps['width'] {
+    if (!(this.$p.spark !== undefined)) return undefined as never
+    if (!this.$p.loading) return undefined as never
+    return 9
+  }
+
+  protected e30(): SparklineProps['data'] {
+    if (!(this.$p.spark !== undefined)) return undefined as never
+    if (this.$p.loading) return undefined as never
     return this.$p.spark
   }
 
-  protected e20(): SparklineProps['label'] {
+  protected e31(): SparklineProps['label'] {
     if (!(this.$p.spark !== undefined)) return undefined as never
+    if (this.$p.loading) return undefined as never
     return this.$p.sparkLabel(this.$p.label)
   }
 
-  protected e21() {
+  protected e32() {
+    return this.$p.delta !== undefined && this.$p.loading
+  }
+
+  protected e33(): SkeletonProps['width'] {
+    if (!(this.$p.delta !== undefined && this.$p.loading)) return undefined as never
+    return 9
+  }
+
+  protected e34() {
+    if (this.$p.delta !== undefined && this.$p.loading) return undefined as never
     return this.$p.delta !== undefined
   }
 
-  protected e22() {
+  protected e35() {
+    if (this.$p.delta !== undefined && this.$p.loading) return undefined as never
     if (!(this.$p.delta !== undefined)) return undefined as never
     return styles.delta
   }
 
-  protected e23() {
+  protected e36() {
+    if (this.$p.delta !== undefined && this.$p.loading) return undefined as never
     if (!(this.$p.delta !== undefined)) return undefined as never
     return this.$p.delta.direction
   }
 
-  protected e24() {
+  protected e37() {
+    if (this.$p.delta !== undefined && this.$p.loading) return undefined as never
     if (!(this.$p.delta !== undefined)) return undefined as never
     return this.positive.value ? '' : undefined
   }
 
-  protected e25(): IconProps['name'] {
+  protected e38(): IconProps['name'] {
+    if (this.$p.delta !== undefined && this.$p.loading) return undefined as never
     if (!(this.$p.delta !== undefined)) return undefined as never
     return this.$p.delta.direction
   }
 
-  protected e26() {
+  protected e39() {
+    if (this.$p.delta !== undefined && this.$p.loading) return undefined as never
     if (!(this.$p.delta !== undefined)) return undefined as never
     return this.$p.delta.value
   }
 
-  protected e27() {
+  protected e40() {
+    if (this.$p.delta !== undefined && this.$p.loading) return undefined as never
     if (!(this.$p.delta !== undefined)) return undefined as never
     return styles.spoken
   }
 
-  protected e28() {
+  protected e41() {
+    if (this.$p.delta !== undefined && this.$p.loading) return undefined as never
     if (!(this.$p.delta !== undefined)) return undefined as never
     return `${this.$p.delta.direction} ${this.$p.delta.value} — ${this.positive.value ? 'positive' : 'negative'}`
   }
 
-  protected e29() {
+  protected e42() {
+    if (this.$p.delta !== undefined && this.$p.loading) return undefined as never
     if (this.$p.delta !== undefined) return undefined as never
+    return this.$p.description !== undefined && this.$p.loading
+  }
+
+  protected e43(): SkeletonProps['width'] {
+    if (this.$p.delta !== undefined && this.$p.loading) return undefined as never
+    if (this.$p.delta !== undefined) return undefined as never
+    if (!(this.$p.description !== undefined && this.$p.loading)) return undefined as never
+    return 10
+  }
+
+  protected e44() {
+    if (this.$p.delta !== undefined && this.$p.loading) return undefined as never
+    if (this.$p.delta !== undefined) return undefined as never
+    if (this.$p.description !== undefined && this.$p.loading) return undefined as never
     return this.$p.description !== undefined
   }
 
-  protected e30() {
+  protected e45() {
+    if (this.$p.delta !== undefined && this.$p.loading) return undefined as never
     if (this.$p.delta !== undefined) return undefined as never
+    if (this.$p.description !== undefined && this.$p.loading) return undefined as never
     if (!(this.$p.description !== undefined)) return undefined as never
     return styles.description
   }
 
-  protected e31() {
+  protected e46() {
+    if (this.$p.delta !== undefined && this.$p.loading) return undefined as never
     if (this.$p.delta !== undefined) return undefined as never
+    if (this.$p.description !== undefined && this.$p.loading) return undefined as never
     if (!(this.$p.description !== undefined)) return undefined as never
     return this.$p.description
   }
 
-  protected e32() {
+  protected e47() {
     return this.$p.footer !== undefined
   }
 
-  protected e33() {
+  protected e48() {
     if (!(this.$p.footer !== undefined)) return undefined as never
     return styles.footer
   }
 
-  protected e34() {
+  protected e49() {
     if (!(this.$p.footer !== undefined)) return undefined as never
+    return this.$p.loading
+  }
+
+  protected e50(): SkeletonProps['width'] {
+    if (!(this.$p.footer !== undefined)) return undefined as never
+    if (!this.$p.loading) return undefined as never
+    return 10
+  }
+
+  protected e51() {
+    if (!(this.$p.footer !== undefined)) return undefined as never
+    if (this.$p.loading) return undefined as never
     return styles.footerPrimary
   }
 
-  protected e35() {
+  protected e52() {
     if (!(this.$p.footer !== undefined)) return undefined as never
+    if (this.$p.loading) return undefined as never
     return this.$p.footer.primary
   }
 
-  protected e36() {
+  protected e53() {
     if (!(this.$p.footer !== undefined)) return undefined as never
+    if (this.$p.loading) return undefined as never
     return this.$p.trend !== undefined
   }
 
-  protected e37() {
+  protected e54() {
     if (!(this.$p.footer !== undefined)) return undefined as never
+    if (this.$p.loading) return undefined as never
     if (!(this.$p.trend !== undefined)) return undefined as never
     return styles.footerGlyph
   }
 
-  protected e38(): IconProps['name'] {
+  protected e55(): IconProps['name'] {
     if (!(this.$p.footer !== undefined)) return undefined as never
+    if (this.$p.loading) return undefined as never
     if (!(this.$p.trend !== undefined)) return undefined as never
     return this.$p.trend.direction
   }
 
-  protected e39() {
+  protected e56() {
     if (!(this.$p.footer !== undefined)) return undefined as never
+    if (this.$p.loading) return undefined as never
     return styles.footerSecondary
   }
 
-  protected e40() {
+  protected e57() {
     if (!(this.$p.footer !== undefined)) return undefined as never
+    if (this.$p.loading) return undefined as never
     return this.$p.footer.secondary
   }
 }

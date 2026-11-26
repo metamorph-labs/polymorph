@@ -65,18 +65,20 @@ data-member="dashboard"
 [sparkLabel]="e18(stat)"
 [description]="e19(stat)"
 [footer]="e20(stat)"
+[loading]="e21(stat)"
+[loadingLabel]="e22(stat)"
 ></pm-stat></pm-card>}</div>}
 <!-- body -->
 <div
-[attr.class]="e21()"
-[attr.data-secondary]="e22()"
+[attr.class]="e23()"
+[attr.data-secondary]="e24()"
 ><!-- primary -->
 <div
-[attr.class]="e23()"
-><ng-container [pmSlotOutlet]="'primary'" [pmSlotOf]="$" /></div>
-@if (e24()) {<!-- secondary -->
-<div
 [attr.class]="e25()"
+><ng-container [pmSlotOutlet]="'primary'" [pmSlotOf]="$" /></div>
+@if (e26()) {<!-- secondary -->
+<div
+[attr.class]="e27()"
 ><ng-container [pmSlotOutlet]="'secondary'" [pmSlotOf]="$" /></div>}</div></div>`,
 })
 export class Dashboard {
@@ -193,23 +195,33 @@ export class Dashboard {
     return stat.footer
   }
 
-  protected e21() {
-    return styles.body
+  protected e21(stat: Each<ReturnType<Dashboard['e9']>>): StatProps['loading'] {
+    if (!(this.$p.stats !== undefined && this.$p.stats.length > 0)) return undefined as never
+    return stat.loading
   }
 
-  protected e22() {
-    return this.$.filled('secondary') ? '' : undefined
+  protected e22(stat: Each<ReturnType<Dashboard['e9']>>): StatProps['loadingLabel'] {
+    if (!(this.$p.stats !== undefined && this.$p.stats.length > 0)) return undefined as never
+    return stat.loadingLabel
   }
 
   protected e23() {
-    return styles.primary
+    return styles.body
   }
 
   protected e24() {
-    return this.$.filled('secondary')
+    return this.$.filled('secondary') ? '' : undefined
   }
 
   protected e25() {
+    return styles.primary
+  }
+
+  protected e26() {
+    return this.$.filled('secondary')
+  }
+
+  protected e27() {
     if (!this.$.filled('secondary')) return undefined as never
     return styles.secondary
   }

@@ -46,6 +46,18 @@ const VOLUME: FixtureChild = fx('LineChart', {
   label: 'Tickets opened and resolved by day',
 })
 
+/** The same chart before its rows arrive: its first-load skeleton. */
+const VOLUME_LOADING: FixtureChild = fx('LineChart', {
+  data: [],
+  loading: true,
+  series: [
+    { key: 'opened', label: 'Opened' },
+    { key: 'resolved', label: 'Resolved' },
+  ],
+  x: { key: 'day', scale: 'time', label: 'Day' },
+  label: 'Tickets opened and resolved by day',
+})
+
 const row = (ticket: string, updated: string): FixtureChild =>
   fx(
     'TableRow',
@@ -161,6 +173,8 @@ export default describeMember({
                         sparkLabel: 'stat.sparkLabel',
                         description: 'stat.description',
                         footer: 'stat.footer',
+                        loading: 'stat.loading',
+                        loadingLabel: 'stat.loadingLabel',
                       }),
                     ],
                   },
@@ -242,6 +256,11 @@ export default describeMember({
         ],
         primary: [panel('Recent tickets', TICKETS)],
       },
+    },
+    {
+      name: 'the numbers loading — each card keeps its label and its height',
+      props: { title: 'Overview', stats: STATS.map((stat) => ({ ...stat, loading: true })) },
+      slots: { primary: [panel('Ticket volume', [VOLUME_LOADING])] },
     },
   ],
 })

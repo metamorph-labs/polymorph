@@ -147,6 +147,34 @@ export const states: ComponentStates = {
         />
       ),
     },
+
+    /*
+     * The page before its numbers: each stat keeps its card and its label, and
+     * the chart draws its first-load skeleton.
+     */
+    {
+      name: 'the numbers loading — each card keeps its label and its height',
+      render: () => (
+        <Dashboard
+          title="Overview"
+          stats={STATS.map((stat) => ({ ...stat, loading: true }))}
+          primary={
+            <Dashboard.Panel title="Ticket volume">
+              <LineChart
+                data={[]}
+                loading
+                series={[
+                  { key: 'opened', label: 'Opened' },
+                  { key: 'resolved', label: 'Resolved' },
+                ]}
+                x={{ key: 'day', scale: 'time', label: 'Day' }}
+                label="Tickets opened and resolved by day"
+              />
+            </Dashboard.Panel>
+          }
+        />
+      ),
+    },
   ],
 
   requiredSelectors: [],

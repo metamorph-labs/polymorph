@@ -65,6 +65,8 @@ defineSlots<{
             :sparkLabel="stat.sparkLabel"
             :description="stat.description"
             :footer="stat.footer"
+            :loading="stat.loading"
+            :loadingLabel="stat.loadingLabel"
           />
         </Card>
       </template>

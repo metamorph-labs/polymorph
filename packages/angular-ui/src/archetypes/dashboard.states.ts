@@ -252,6 +252,19 @@ pmTableCell
 pmTableCell
 [numeric]="e24()"
 >26m ago</td></tr></tbody></pm-table></pm-dashboard-panel></ng-container></pm-dashboard>}
+@case (5) {<pm-dashboard
+title="Overview"
+[stats]="e25()"
+[pmOverrides]="overrides()"
+><ng-container ngProjectAs="[slot=primary]"><pm-dashboard-panel
+title="Ticket volume"
+><pm-line-chart
+[data]="e26()"
+[loading]="e27()"
+[series]="e28()"
+[x]="e29()"
+label="Tickets opened and resolved by day"
+></pm-line-chart></pm-dashboard-panel></ng-container></pm-dashboard>}
 }`,
 })
 export class DashboardStates {
@@ -406,6 +419,44 @@ export class DashboardStates {
   protected e24(): TableCellProps['numeric'] {
     return true
   }
+
+  protected e25(): DashboardProps['stats'] {
+    return [
+      {
+        label: 'Open tickets',
+        value: '128',
+        delta: { value: '8%', direction: 'down', positive: true },
+        spark: [141, 138, 144, 136, 132, 135, 129, 131, 126, 128],
+        loading: true,
+      },
+      { label: 'First response', value: '14m', icon: 'time', loading: true },
+      {
+        label: 'Satisfaction',
+        value: '91%',
+        delta: { value: '3pts', direction: 'down' },
+        loading: true,
+      },
+    ]
+  }
+
+  protected e26(): LineChartProps['data'] {
+    return []
+  }
+
+  protected e27(): LineChartProps['loading'] {
+    return true
+  }
+
+  protected e28(): LineChartProps['series'] {
+    return [
+      { key: 'opened', label: 'Opened' },
+      { key: 'resolved', label: 'Resolved' },
+    ]
+  }
+
+  protected e29(): LineChartProps['x'] {
+    return { key: 'day', scale: 'time', label: 'Day' }
+  }
 }
 
 export const states: ComponentStates = {
@@ -417,5 +468,6 @@ export const states: ComponentStates = {
     { name: 'no second column — the primary takes the width' },
     { name: 'a panel with no title, and no stats at all' },
     { name: 'a title edited in place — the overview of one environment the reader names' },
+    { name: 'the numbers loading — each card keeps its label and its height' },
   ],
 }

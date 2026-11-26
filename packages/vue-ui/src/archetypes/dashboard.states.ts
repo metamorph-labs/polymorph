@@ -637,5 +637,54 @@ export const states: ComponentStates = {
           },
         ),
     },
+    {
+      name: 'the numbers loading — each card keeps its label and its height',
+      render: (overrides = {}) =>
+        h(
+          Dashboard,
+          {
+            title: 'Overview',
+            stats: [
+              {
+                label: 'Open tickets',
+                value: '128',
+                delta: { value: '8%', direction: 'down', positive: true },
+                spark: [141, 138, 144, 136, 132, 135, 129, 131, 126, 128],
+                loading: true,
+              },
+              { label: 'First response', value: '14m', icon: 'time', loading: true },
+              {
+                label: 'Satisfaction',
+                value: '91%',
+                delta: { value: '3pts', direction: 'down' },
+                loading: true,
+              },
+            ],
+            ...overrides,
+          },
+          {
+            primary: () => [
+              h(
+                DashboardPanel,
+                { title: 'Ticket volume' },
+                {
+                  default: () => [
+                    h(LineChart, {
+                      data: [],
+                      loading: true,
+                      series: [
+                        { key: 'opened', label: 'Opened' },
+                        { key: 'resolved', label: 'Resolved' },
+                      ],
+                      x: { key: 'day', scale: 'time', label: 'Day' },
+                      label: 'Tickets opened and resolved by day',
+                    }),
+                  ],
+                },
+              ),
+            ],
+          },
+        ),
+    },
   ],
 }

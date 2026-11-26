@@ -1,4 +1,4 @@
-import { cond, describeMember, el, flag, identity, lit, member, text } from '../dsl'
+import { cond, describeMember, el, flag, identity, lit, member, text, when } from '../dsl'
 
 /**
  * Stat (`design/components/stat.md`): a key number with its label and its
@@ -6,7 +6,9 @@ import { cond, describeMember, el, flag, identity, lit, member, text } from '../
  * `value` arrives formatted. `delta` is the sentiment line, coloured by
  * whether the change is good, with the direction and the sentiment spoken in
  * words; `trend` is the neutral movement chip, which the footer's glyph
- * repeats; `spark` is the path as a Sparkline at the value row's end.
+ * repeats; `spark` is the path as a Sparkline at the value row's end. While
+ * `loading`, the label row stays and each part that states the number is a
+ * Skeleton of that part's size, the value's named by `loadingLabel`.
  */
 export default describeMember({
   member: 'Stat',
@@ -21,80 +23,132 @@ export default describeMember({
   defaults: {
     numeric: 'true',
     sparkLabel: '(label: string) => `${label}, recent trend`',
+    loading: 'false',
+    loadingLabel: "'Loading'",
   },
   derived: {
     // Direction is not sentiment: open tickets going down is good news.
     positive: "delta === undefined ? undefined : (delta.positive ?? delta.direction === 'up')",
   },
-  template: el('div', { part: 'stat', class: ['stat'], attrs: identity('Stat') }, [
-    el('div', { part: 'labelRow', class: ['labelRow'] }, [
-      el('span', { part: 'label', class: ['label'] }, [text('label')]),
-      cond('icon !== undefined || trend !== undefined', [
-        el('span', { part: 'labelEnd', class: ['labelEnd'] }, [
-          cond('icon !== undefined', [
-            el('span', { part: 'glyph', class: ['glyph'] }, [member('Icon', { name: 'icon' })]),
-          ]),
-          cond('trend !== undefined', [
-            member(
-              'Badge',
-              { variant: lit('outline'), icon: 'trend.direction' },
-              { slots: { default: [text('trend.label')] } },
+  template: el(
+    'div',
+    {
+      part: 'stat',
+      class: ['stat'],
+      attrs: {
+        ...identity('Stat'),
+        'data-loading': flag('loading'),
+        'aria-busy': when('loading', 'true'),
+      },
+    },
+    [
+      el('div', { part: 'labelRow', class: ['labelRow'] }, [
+        el('span', { part: 'label', class: ['label'] }, [text('label')]),
+        cond('icon !== undefined || trend !== undefined', [
+          el('span', { part: 'labelEnd', class: ['labelEnd'] }, [
+            cond('icon !== undefined', [
+              el('span', { part: 'glyph', class: ['glyph'] }, [member('Icon', { name: 'icon' })]),
+            ]),
+            // While loading, the chip's box holds a Skeleton of its line and states no movement.
+            cond(
+              'trend !== undefined && loading',
+              [
+                el('span', { part: 'trendPlaceholder', class: ['trendPlaceholder'] }, [
+                  member('Skeleton', { textStep: lit('xs'), width: '7' }),
+                ]),
+              ],
+              'trend !== undefined',
+              [
+                member(
+                  'Badge',
+                  { variant: lit('outline'), icon: 'trend.direction' },
+                  { slots: { default: [text('trend.label')] } },
+                ),
+              ],
             ),
           ]),
         ]),
       ]),
-    ]),
-    el('div', { part: 'valueRow', class: ['valueRow'] }, [
-      el('span', { part: 'value', class: ['value'], attrs: { 'data-numeric': flag('numeric') } }, [
-        text('value'),
-      ]),
-      // The one chart with no table twin, so its name carries the trend in this Stat's words.
-      cond('spark !== undefined', [
-        el('span', { part: 'spark', class: ['spark'] }, [
-          member('Sparkline', { data: 'spark', label: 'sparkLabel(label)' }),
-        ]),
-      ]),
-    ]),
-    cond(
-      'delta !== undefined',
-      [
-        el(
-          'span',
-          {
-            part: 'delta',
-            class: ['delta'],
-            attrs: { 'data-direction': 'delta.direction', 'data-positive': flag('positive') },
-          },
+      el('div', { part: 'valueRow', class: ['valueRow'] }, [
+        // The value's line box, and the one placeholder a screen reader hears.
+        cond(
+          'loading',
+          [member('Skeleton', { textStep: lit('3xl'), width: '10', label: 'loadingLabel' })],
           [
-            member('Icon', { name: 'delta.direction', size: lit('sm') }),
-            el('span', { attrs: { 'aria-hidden': lit('true') } }, [text('delta.value')]),
-            // Colour and the arrow are not read aloud, so the direction and the sentiment are words.
-            el('span', { part: 'spoken', class: ['spoken'] }, [
-              text("`${delta.direction} ${delta.value} — ${positive ? 'positive' : 'negative'}`"),
-            ]),
+            el(
+              'span',
+              { part: 'value', class: ['value'], attrs: { 'data-numeric': flag('numeric') } },
+              [text('value')],
+            ),
           ],
         ),
-      ],
-      'description !== undefined',
-      [el('span', { part: 'description', class: ['description'] }, [text('description')])],
-    ),
-    cond('footer !== undefined', [
-      el('div', { part: 'footer', class: ['footer'] }, [
-        el('span', { part: 'footerPrimary', class: ['footerPrimary'] }, [
-          text('footer.primary'),
-          // The chip's glyph again, derived from `trend`, so the two cannot disagree.
-          cond('trend !== undefined', [
-            el('span', { part: 'footerGlyph', class: ['footerGlyph'] }, [
-              member('Icon', { name: 'trend.direction', size: lit('sm') }),
-            ]),
+        // The one chart with no table twin, so its name carries the trend in this Stat's words.
+        cond('spark !== undefined', [
+          el('span', { part: 'spark', class: ['spark'] }, [
+            cond(
+              'loading',
+              [member('Skeleton', { shape: lit('rect'), size: '6', width: '9' })],
+              [member('Sparkline', { data: 'spark', label: 'sparkLabel(label)' })],
+            ),
           ]),
         ]),
-        el('span', { part: 'footerSecondary', class: ['footerSecondary'] }, [
-          text('footer.secondary'),
+      ]),
+      cond(
+        // No direction, value or sentiment for a number that has not arrived.
+        'delta !== undefined && loading',
+        [member('Skeleton', { textStep: lit('sm'), width: '9' })],
+        'delta !== undefined',
+        [
+          el(
+            'span',
+            {
+              part: 'delta',
+              class: ['delta'],
+              attrs: { 'data-direction': 'delta.direction', 'data-positive': flag('positive') },
+            },
+            [
+              member('Icon', { name: 'delta.direction', size: lit('sm') }),
+              el('span', { attrs: { 'aria-hidden': lit('true') } }, [text('delta.value')]),
+              // Colour and the arrow are not read aloud, so the direction and the sentiment are words.
+              el('span', { part: 'spoken', class: ['spoken'] }, [
+                text("`${delta.direction} ${delta.value} — ${positive ? 'positive' : 'negative'}`"),
+              ]),
+            ],
+          ),
+        ],
+        'description !== undefined && loading',
+        [member('Skeleton', { textStep: lit('xs'), width: '10' })],
+        'description !== undefined',
+        [el('span', { part: 'description', class: ['description'] }, [text('description')])],
+      ),
+      cond('footer !== undefined', [
+        el('div', { part: 'footer', class: ['footer'] }, [
+          // While loading, two lines of the footer's step: its words come with the number.
+          cond(
+            'loading',
+            [
+              member('Skeleton', { textStep: lit('sm') }),
+              member('Skeleton', { textStep: lit('sm'), width: '10' }),
+            ],
+            [
+              el('span', { part: 'footerPrimary', class: ['footerPrimary'] }, [
+                text('footer.primary'),
+                // The chip's glyph again, derived from `trend`, so the two cannot disagree.
+                cond('trend !== undefined', [
+                  el('span', { part: 'footerGlyph', class: ['footerGlyph'] }, [
+                    member('Icon', { name: 'trend.direction', size: lit('sm') }),
+                  ]),
+                ]),
+              ]),
+              el('span', { part: 'footerSecondary', class: ['footerSecondary'] }, [
+                text('footer.secondary'),
+              ]),
+            ],
+          ),
         ]),
       ]),
-    ]),
-  ]),
+    ],
+  ),
   states: [
     { name: 'a number and its name', props: { label: 'Open tickets', value: '128' } },
     { name: 'with a glyph', props: { label: 'Response time', value: '2h 14m', icon: 'time' } },
@@ -162,6 +216,36 @@ export default describeMember({
     {
       name: 'a trend with no footer — the whole card is the number',
       props: { label: 'Urgent', value: '1', trend: { direction: 'down', label: '2 fewer' } },
+    },
+    {
+      name: 'loading — the label stays and the number holds its place',
+      props: { label: 'Response time', value: '', icon: 'time', loading: true },
+      expect: { 'data-loading': '', 'aria-busy': 'true' },
+    },
+    {
+      name: 'loading with a delta — no sentiment before the number',
+      props: {
+        label: 'Resolved',
+        value: '342',
+        delta: { value: '12%', direction: 'up' },
+        loading: true,
+      },
+      expect: { 'data-loading': '', 'aria-busy': 'true' },
+    },
+    {
+      name: 'loading a dashboard card — the chip, the spark and the footer hold their places',
+      props: {
+        label: 'Solved this week',
+        value: '1,204',
+        trend: { direction: 'up', label: '+12.5%' },
+        spark: [180, 195, 190, 210, 220, 216, 240, 251, 248, 262, 270, 284],
+        footer: {
+          primary: 'Trending up this month',
+          secondary: 'Against the same week last month',
+        },
+        loading: true,
+      },
+      expect: { 'data-loading': '', 'aria-busy': 'true' },
     },
   ],
 })

@@ -17,6 +17,8 @@ export const definition: ElementDefinition = {
     footer: 'json',
     icon: 'string',
     label: 'string',
+    loading: 'boolean',
+    loadingLabel: 'string',
     numeric: 'boolean',
     spark: 'json',
     sparkLabel: 'property',
@@ -35,6 +37,8 @@ export type PolyStatElement = MemberElement<
   | 'footer'
   | 'icon'
   | 'label'
+  | 'loading'
+  | 'loadingLabel'
   | 'numeric'
   | 'spark'
   | 'sparkLabel'

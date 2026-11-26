@@ -17,6 +17,7 @@ import {
 } from '@polymorph/solid'
 import styles from '@polymorph/recipes/structure/stat.module.css'
 import Badge from './Badge'
+import Skeleton from './Skeleton'
 import Sparkline from '../charts/Sparkline'
 
 export type DeltaDirection = 'up' | 'down'
@@ -50,6 +51,18 @@ export interface StatProps {
   icon?: IconRole
   label: string
   /**
+   * The number has not arrived. The label row stays, and the value and each part the caller
+   * passes that states the number is a Skeleton of that part's size. `value` stays required, as
+   * a chart's rows do with its `loading`: pass what there is, `''` or the last value, and it is
+   * not drawn.
+   */
+  loading?: boolean
+  /**
+   * What a screen reader hears in the value's place while `loading`, the value's Skeleton's
+   * name. Default "Loading".
+   */
+  loadingLabel?: string
+  /**
    * Tabular figures, so a column of these lines up.
    */
   numeric?: boolean
@@ -77,10 +90,12 @@ export interface StatProps {
 /** A key number with its label and direction of change. */
 export default function Stat(given: StatProps): JSX.Element {
   const props = mergeProps(
-    { numeric: true, sparkLabel: (label: string) => `${label}, recent trend` } as Defaults<
-      StatProps,
-      'numeric' | 'sparkLabel'
-    >,
+    {
+      numeric: true,
+      sparkLabel: (label: string) => `${label}, recent trend`,
+      loading: false,
+      loadingLabel: 'Loading',
+    } as Defaults<StatProps, 'numeric' | 'sparkLabel' | 'loading' | 'loadingLabel'>,
     claimSlot(given),
   )
   return scope(() => {
@@ -90,7 +105,12 @@ export default function Stat(given: StatProps): JSX.Element {
         : (props.delta.positive ?? props.delta.direction === 'up'),
     )
     return (
-      <div class={styles.stat} data-member="stat">
+      <div
+        class={styles.stat}
+        data-member="stat"
+        data-loading={props.loading ? '' : undefined}
+        aria-busy={props.loading ? true : undefined}
+      >
         {/* labelRow */}
         <div class={styles.labelRow}>
           {/* label */}
@@ -102,7 +122,11 @@ export default function Stat(given: StatProps): JSX.Element {
                   <Icon name={props.icon} />
                 </span>
               ) : null}
-              {props.trend !== undefined ? (
+              {props.trend !== undefined && props.loading ? (
+                <span class={styles.trendPlaceholder}>
+                  <Skeleton textStep="xs" width={7} />
+                </span>
+              ) : props.trend !== undefined ? (
                 <Badge variant="outline" icon={props.trend.direction}>
                   {props.trend.label}
                 </Badge>
@@ -112,17 +136,26 @@ export default function Stat(given: StatProps): JSX.Element {
         </div>
         {/* valueRow */}
         <div class={styles.valueRow}>
-          {/* value */}
-          <span class={styles.value} data-numeric={props.numeric ? '' : undefined}>
-            {props.value}
-          </span>
+          {props.loading ? (
+            <Skeleton textStep="3xl" width={10} label={props.loadingLabel} />
+          ) : (
+            <span class={styles.value} data-numeric={props.numeric ? '' : undefined}>
+              {props.value}
+            </span>
+          )}
           {props.spark !== undefined ? (
             <span class={styles.spark}>
-              <Sparkline data={props.spark} label={props.sparkLabel(props.label)} />
+              {props.loading ? (
+                <Skeleton shape="rect" size={6} width={9} />
+              ) : (
+                <Sparkline data={props.spark} label={props.sparkLabel(props.label)} />
+              )}
             </span>
           ) : null}
         </div>
-        {props.delta !== undefined ? (
+        {props.delta !== undefined && props.loading ? (
+          <Skeleton textStep="sm" width={9} />
+        ) : props.delta !== undefined ? (
           <span
             class={styles.delta}
             data-direction={props.delta.direction}
@@ -135,22 +168,33 @@ export default function Stat(given: StatProps): JSX.Element {
               {`${props.delta.direction} ${props.delta.value} — ${positive.value ? 'positive' : 'negative'}`}
             </span>
           </span>
+        ) : props.description !== undefined && props.loading ? (
+          <Skeleton textStep="xs" width={10} />
         ) : props.description !== undefined ? (
           <span class={styles.description}>{props.description}</span>
         ) : null}
         {props.footer !== undefined ? (
           <div class={styles.footer}>
-            {/* footerPrimary */}
-            <span class={styles.footerPrimary}>
-              {props.footer.primary}
-              {props.trend !== undefined ? (
-                <span class={styles.footerGlyph}>
-                  <Icon name={props.trend.direction} size="sm" />
+            {props.loading ? (
+              <>
+                <Skeleton textStep="sm" />
+                <Skeleton textStep="sm" width={10} />
+              </>
+            ) : (
+              <>
+                {/* footerPrimary */}
+                <span class={styles.footerPrimary}>
+                  {props.footer.primary}
+                  {props.trend !== undefined ? (
+                    <span class={styles.footerGlyph}>
+                      <Icon name={props.trend.direction} size="sm" />
+                    </span>
+                  ) : null}
                 </span>
-              ) : null}
-            </span>
-            {/* footerSecondary */}
-            <span class={styles.footerSecondary}>{props.footer.secondary}</span>
+                {/* footerSecondary */}
+                <span class={styles.footerSecondary}>{props.footer.secondary}</span>
+              </>
+            )}
           </div>
         ) : null}
       </div>

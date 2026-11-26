@@ -90,6 +90,29 @@ value="1"
 [trend]="e11()"
 [pmOverrides]="overrides()"
 ></pm-stat>}
+@case (12) {<pm-stat
+label="Response time"
+[value]="e12()"
+icon="time"
+[loading]="e13()"
+[pmOverrides]="overrides()"
+></pm-stat>}
+@case (13) {<pm-stat
+label="Resolved"
+value="342"
+[delta]="e14()"
+[loading]="e15()"
+[pmOverrides]="overrides()"
+></pm-stat>}
+@case (14) {<pm-stat
+label="Solved this week"
+value="1,204"
+[trend]="e16()"
+[spark]="e17()"
+[footer]="e18()"
+[loading]="e19()"
+[pmOverrides]="overrides()"
+></pm-stat>}
 }`,
 })
 export class StatStates {
@@ -139,6 +162,38 @@ export class StatStates {
   protected e11(): StatProps['trend'] {
     return { direction: 'down', label: '2 fewer' }
   }
+
+  protected e12(): StatProps['value'] {
+    return ''
+  }
+
+  protected e13(): StatProps['loading'] {
+    return true
+  }
+
+  protected e14(): StatProps['delta'] {
+    return { value: '12%', direction: 'up' }
+  }
+
+  protected e15(): StatProps['loading'] {
+    return true
+  }
+
+  protected e16(): StatProps['trend'] {
+    return { direction: 'up', label: '+12.5%' }
+  }
+
+  protected e17(): StatProps['spark'] {
+    return [180, 195, 190, 210, 220, 216, 240, 251, 248, 262, 270, 284]
+  }
+
+  protected e18(): StatProps['footer'] {
+    return { primary: 'Trending up this month', secondary: 'Against the same week last month' }
+  }
+
+  protected e19(): StatProps['loading'] {
+    return true
+  }
 }
 
 export const states: ComponentStates = {
@@ -157,5 +212,17 @@ export const states: ComponentStates = {
     { name: 'trend down — the same chip, the other way' },
     { name: 'a footer with no trend — the glyph goes with the chip' },
     { name: 'a trend with no footer — the whole card is the number' },
+    {
+      name: 'loading — the label stays and the number holds its place',
+      expect: { 'data-loading': '', 'aria-busy': 'true' },
+    },
+    {
+      name: 'loading with a delta — no sentiment before the number',
+      expect: { 'data-loading': '', 'aria-busy': 'true' },
+    },
+    {
+      name: 'loading a dashboard card — the chip, the spark and the footer hold their places',
+      expect: { 'data-loading': '', 'aria-busy': 'true' },
+    },
   ],
 }

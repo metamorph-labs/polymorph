@@ -17,7 +17,7 @@ canvas builder (a non-goal; see `docs/concepts.md`), not an archetype.
 | --- | --- | --- |
 | `title` / `description` / `actions` | as PageHeader | the actions law applies (at most one solid, and usually none, because dashboards are for observing) |
 | `titleEdit` | `ReactNode` | PageHeader's: an InlineEdit of the title, for an overview of one thing the reader names, such as an environment. Passed to the PageHeader only when given |
-| `stats` | `StatProps[]` (2–4) | each rendered in a Card. More than 4 is a table in tile form |
+| `stats` | `StatProps[]` (2–4) | each rendered in a Card. More than 4 is a table in tile form. A stat whose number has not arrived takes Stat's `loading` (`stat.md`), so the row keeps its cards, their labels and their height while the numbers load |
 | `primary` | `ReactNode` required | the main Cards/Table column |
 | `secondary` | `ReactNode` | the narrow column; omit ⇒ primary spans full |
 
@@ -66,10 +66,18 @@ box (`table.md`'s bare-table rule applies inside the padding, not against it).
 ## States
 
 Entries: 3 stats + primary table Panel + secondary Panels; 4 stats; no secondary;
-Panel without title; a title edited in place (`titleEdit`). `requiredSelectors`: —.
+Panel without title; a title edited in place (`titleEdit`); the numbers loading (each stat's
+`loading`, and the chart's in its Panel). `requiredSelectors`: —.
 
 The native renderings take `titleEdit` and draw nothing for it (`packages/native/src/undrawn.ts`),
 for PageHeader's reason (`page-header.md`).
 
 ## Motion — composed only. Icons — composed only. A11y — Panels' titles are `h2`s;
 the stat row comes before the panels in DOM order, matching the visual scan.
+
+Each Stat whose `loading` is set is busy, as `stat.md` states, so a page loading its numbers
+says so in every card.
+
+```contract
+announces busy when the numbers loading
+```
