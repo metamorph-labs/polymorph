@@ -5,8 +5,9 @@
 //
 // A column `space.5` apart, with `space.8` above it and `space.7` below,
 // because a display block brings its own room: the title in the display
-// family's `display.lg`, in `text.primary`; the lede in `text.lg`, secondary;
-// the actions, the app's Buttons, in a wrapping Inline `space.3` apart.
+// family's `display.lg`, in `text.primary`; the lede at `text.lg` in the body
+// face, secondary; the actions, the app's Buttons, in a wrapping Inline
+// `space.3` apart.
 // `center` centres the text and the actions. In a Hero narrower than the
 // recipe's breakpoint (26rem), as on a phone, the title takes the whole
 // `display.md` step instead: the Hero's own width decides, not the window's,
@@ -60,9 +61,10 @@ object PMHero : PMHeroRendering {
                     modifier = Modifier.fillMaxWidth().semantics { heading() },
                 )
                 props.lede?.let {
+                    // A lede is a paragraph, so it keeps the body face at `text.lg`'s size.
                     Text(
                         text = it,
-                        style = theme.text.lg.textStyle,
+                        style = theme.text.lg.inBodyFace(theme).textStyle,
                         color = theme.colors.textSecondary.color,
                         textAlign = textAlign,
                         modifier = Modifier.fillMaxWidth(),

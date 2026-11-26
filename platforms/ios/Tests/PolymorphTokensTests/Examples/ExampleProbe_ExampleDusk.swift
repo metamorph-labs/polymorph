@@ -46,6 +46,14 @@ extension PMTheme {
         italic: false,
         weights: [400, 500],
         opsz: []
+      ),
+      heading: PMFont(
+        family: "Source Serif 4",
+        variable: true,
+        fallback: .serif,
+        italic: false,
+        weights: [400, 500],
+        opsz: []
       )
     ),
     numeric: PMNumeric(tabular: true, slashedZero: true, align: .start),
@@ -85,8 +93,8 @@ extension PMTheme {
         lineHeight: 1.45,
         wght: 400,
         tracking: -0.2,
-        family: "Public Sans",
-        fallback: .sans,
+        family: "Source Serif 4",
+        fallback: .serif,
         italic: false,
         opsz: nil
       ),
@@ -95,8 +103,8 @@ extension PMTheme {
         lineHeight: 1.35,
         wght: 500,
         tracking: -0.25,
-        family: "Public Sans",
-        fallback: .sans,
+        family: "Source Serif 4",
+        fallback: .serif,
         italic: false,
         opsz: nil
       ),
@@ -105,8 +113,8 @@ extension PMTheme {
         lineHeight: 1.25,
         wght: 500,
         tracking: -0.63,
-        family: "Public Sans",
-        fallback: .sans,
+        family: "Source Serif 4",
+        fallback: .serif,
         italic: false,
         opsz: nil
       ),
@@ -115,8 +123,8 @@ extension PMTheme {
         lineHeight: 1.2,
         wght: 500,
         tracking: -0.78,
-        family: "Public Sans",
-        fallback: .sans,
+        family: "Source Serif 4",
+        fallback: .serif,
         italic: false,
         opsz: nil
       )

@@ -12,7 +12,7 @@
 // `text.muted`: `terminal`, `document`, `table`, `browser`, and `artifact`
 // with no kind; the `sm` Spinner while the artifact is still written, named
 // "{title}: still being written"), the heading (the title in `text.md` at the
-// `text.xl` weight, Heading level 4's cell, on one line, then `meta` in
+// `text.xl` weight and face, Heading level 4's cell, on one line, then `meta` in
 // `text.xs`, muted), the switch between readings when there are two or more,
 // the app's actions, and the close Button (`ghost/neutral/sm`, icon-only
 // `close`, named by `closeLabel`) when `onClose` is set. The heading grows from
@@ -63,7 +63,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 
 object PMArtifactPane : PMArtifactPaneRendering {
@@ -115,7 +114,7 @@ object PMArtifactPane : PMArtifactPaneRendering {
                 Column(Modifier.weight(1f).widthIn(min = space.s10 * PMRecipe.artifactHeadingBasis)) {
                     Text(
                         text = props.title,
-                        style = theme.text.md.textStyle.copy(fontWeight = FontWeight(theme.text.xl.weight)),
+                        style = theme.text.md.heading(like = theme.text.xl).textStyle,
                         color = colors.textPrimary.color,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,

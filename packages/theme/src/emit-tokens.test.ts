@@ -27,6 +27,7 @@ import {
   DURATION_ROLES,
   EASING_ROLES,
   GLOW_STEPS,
+  HEADING_TEXT_STEPS,
   SHADOW_STEPS,
   SPACE_STEPS,
   SPRING_ROLES,
@@ -169,6 +170,44 @@ describe('emitTokenDocument', () => {
       expect(size.px).toBe(size.value * 16)
     }
     expect(document.invariant['text.md.family']).toEqual({ ref: 'font.body', family: 'Inter' })
+    expect(document.invariant['text.lg.family']).toEqual({ ref: 'font.heading', family: 'Inter' })
+  })
+
+  it('gives a system with no heading slot the body slot as its heading slot', () => {
+    expect(exampleQuietSystem.fonts.heading).toBeUndefined()
+    expect(document.fonts.heading).toEqual(document.fonts.body)
+  })
+
+  it('gives a heading slot a system states the heading steps and their weights', () => {
+    const headed = resolveTheme(
+      composeTheme(
+        {
+          ...exampleQuietSystem,
+          fonts: { ...exampleQuietSystem.fonts, heading: { family: 'Source Serif 4 Variable' } },
+        },
+        exampleVioletPalette,
+      ),
+    )
+    const doc = emitTokenDocument(headed)
+    expect(doc.fonts.heading).toEqual({
+      family: 'Source Serif 4',
+      variable: true,
+      fallback: 'sans',
+      style: 'normal',
+      weights: [...new Set(HEADING_TEXT_STEPS.map((step) => headed.tokens.text[step].weight))].sort(
+        (a, b) => a - b,
+      ),
+    })
+    for (const step of TEXT_STEPS) {
+      const heading = (HEADING_TEXT_STEPS as readonly string[]).includes(step)
+      expect(doc.invariant[`text.${step}.family`], step).toEqual(
+        heading
+          ? { ref: 'font.heading', family: 'Source Serif 4' }
+          : { ref: 'font.body', family: 'Inter' },
+      )
+    }
+    // The other slots are the ones the system without a heading slot has.
+    expect({ ...doc.fonts, heading: undefined }).toEqual({ ...document.fonts, heading: undefined })
   })
 
   it('names the families without the Variable suffix, with their weights and fallback', () => {

@@ -2,7 +2,8 @@
 // workspace: the picture, else the initials, else the `user` glyph. Round at
 // every geometry, as Switch's thumb is: both depict round things, and the
 // geometry axis governs surfaces. `space.6`, `space.7` or `space.8` across
-// (`sm`, `md`, `lg`), the initials at `text.xs`, `text.sm` or `text.lg`.
+// (`sm`, `md`, `lg`), the initials at `text.xs`, `text.sm` or `text.lg`, in
+// the body face.
 //
 // The picture is the app's image loader's (`PMRemoteImage`, through
 // `LocalPMImageLoader`): it fades in over the initials already drawn, inside a
@@ -58,7 +59,8 @@ object PMAvatar : PMAvatarRendering {
         val step = when (size) {
             PMControlSize.Sm -> theme.text.xs
             PMControlSize.Md -> theme.text.sm
-            PMControlSize.Lg -> theme.text.lg
+            // Initials keep the body face at every size: `text.lg` is a heading step.
+            PMControlSize.Lg -> theme.text.lg.inBodyFace(theme)
         }
         val initials = initials(props.name)
         val tone = if (initials.isEmpty()) null else tone(props.name)

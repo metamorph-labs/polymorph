@@ -24,11 +24,12 @@
   letter-spacing: var(--pm-text-lg-tracking);
 }
 
-/* Level 4 matches Text's `strong` cell: below `text.lg` the sizes are body
-   sizes, so weight marks the level, using `xl`'s weight from the scale (the
-   type-usage law, `design/components/README.md`). */
+/* Level 4 is `text.md` sized: below `text.lg` the sizes are body sizes, so
+   weight marks the level, using `xl`'s weight from the scale (the type-usage
+   law, `design/components/README.md`). It takes `xl`'s family with the weight,
+   the heading slot, so every level is in one face. */
 .heading[data-level='4'] {
-  font-family: var(--pm-text-md-family);
+  font-family: var(--pm-text-xl-family);
   font-size: var(--pm-text-md-size);
   font-weight: var(--pm-text-xl-weight);
   line-height: var(--pm-text-md-line-height);

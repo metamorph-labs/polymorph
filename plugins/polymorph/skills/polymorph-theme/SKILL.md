@@ -83,7 +83,7 @@ values each takes.
 | To change | Edit |
 | --- | --- |
 | Corners, shadows, density, contrast, type voice, tinted surfaces, motion, ornament | the system's `axes` |
-| Typefaces | the system's `fonts`: `body` draws all text, headings included, and `display` only `Hero`'s title |
+| Typefaces | the system's `fonts`: `body` draws text, `heading` the headings and titles from `text.lg` up (in `body` when the system has no `heading`), and `display` only `Hero`'s title |
 | Text sizes, heading weights, one radius, space or control height step | the system's `overrides` |
 | The accent hue, a gradient, the tint of the greys, how loud colour is | the palette's `accentHue`, `gradientHue`, `neutralHue`, `neutralTint`, `chromaBudget` |
 | The exact colour of the main button, its label or the focus ring | the palette's `pins`, per mode |

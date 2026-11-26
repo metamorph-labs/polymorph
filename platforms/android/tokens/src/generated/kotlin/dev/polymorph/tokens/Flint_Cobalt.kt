@@ -48,6 +48,14 @@ internal object Flint_Cobalt {
                 weights = listOf(400, 500, 600),
                 opsz = listOf(),
             ),
+            heading = PMFont(
+                family = "Public Sans",
+                variable = true,
+                fallback = "sans",
+                style = "normal",
+                weights = listOf(400, 500, 600),
+                opsz = listOf(),
+            ),
         ),
         numeric = listOf("tnum"),
         numericAlign = "end",
@@ -91,7 +99,7 @@ internal object Flint_Cobalt {
                 weight = 400,
                 tracking = 0f,
                 family = "Public Sans",
-                slot = "body",
+                slot = "heading",
             ),
             xl = PMTextStyle(
                 size = 25f,
@@ -99,7 +107,7 @@ internal object Flint_Cobalt {
                 weight = 500,
                 tracking = 0f,
                 family = "Public Sans",
-                slot = "body",
+                slot = "heading",
             ),
             text2xl = PMTextStyle(
                 size = 31.5f,
@@ -107,7 +115,7 @@ internal object Flint_Cobalt {
                 weight = 600,
                 tracking = -0.02f,
                 family = "Public Sans",
-                slot = "body",
+                slot = "heading",
             ),
             text3xl = PMTextStyle(
                 size = 39f,
@@ -115,7 +123,7 @@ internal object Flint_Cobalt {
                 weight = 600,
                 tracking = -0.02f,
                 family = "Public Sans",
-                slot = "body",
+                slot = "heading",
             ),
         ),
         display = PMDisplayScale(

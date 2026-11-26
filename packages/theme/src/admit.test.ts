@@ -79,15 +79,36 @@ describe('admitting a guest pairing', () => {
   it('tells the guest what to install, static cuts included', () => {
     const admission = admitTheme({ system: GUEST_SYSTEM, palette: GUEST_PALETTE })
     if (!admission.lawful) throw new Error('expected lawful')
+    // The system states no heading slot, so the body family fills it.
     expect(admission.fonts).toEqual([
       {
-        roles: ['body'],
+        roles: ['body', 'heading'],
         family: 'Public Sans Variable',
         package: '@fontsource-variable/public-sans',
       },
       { roles: ['display'], family: 'Fraunces Variable', package: '@fontsource-variable/fraunces' },
       { roles: ['mono'], family: 'IBM Plex Mono', package: '@fontsource/ibm-plex-mono' },
     ])
+  })
+
+  it('tells the guest to install a heading family the system states', () => {
+    const admission = admitTheme({
+      system: {
+        ...GUEST_SYSTEM,
+        fonts: { ...GUEST_SYSTEM.fonts, heading: { family: 'Source Serif 4 Variable' } },
+      },
+      palette: GUEST_PALETTE,
+    })
+    if (!admission.lawful) throw new Error('expected lawful')
+    expect(admission.fonts.map((font) => [font.family, font.roles])).toEqual([
+      ['Public Sans Variable', ['body']],
+      ['Fraunces Variable', ['display']],
+      ['IBM Plex Mono', ['mono']],
+      ['Source Serif 4 Variable', ['heading']],
+    ])
+    expect(admission.fonts[3]?.package).toBe('@fontsource-variable/source-serif-4')
+    expect(admission.css).toContain('--pm-font-heading: "Source Serif 4 Variable", ')
+    expect(admission.css).toContain('--pm-text-xl-family: var(--pm-font-heading);')
   })
 
   it('names the catalogue laws that deliberately do not run', () => {
@@ -140,6 +161,7 @@ describe('refusal returns a report and never throws', () => {
     expect(admission.lawful).toBe(false)
     expect(admission.system?.name).toBe('meridian-desk')
     expect(admission.fonts?.length).toBe(3)
+    expect(admission.fonts?.[0]?.roles).toEqual(['body', 'heading'])
   })
 
   it('checks the merged-ladder laws, so an override cannot break its scale’s order', () => {

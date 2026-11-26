@@ -11,7 +11,7 @@ A theme is a **pairing** of two independent halves:
 
 | Noun | What it decides | Lives in |
 | --- | --- | --- |
-| **System** | Structure and presentation: the eight design axes, three font slots and presentation defaults | `design/systems/<name>.json` |
+| **System** | Structure and presentation: the eight design axes, the font slots and presentation defaults | `design/systems/<name>.json` |
 | **Palette** | Colour inputs: accent, gradient and neutral hues, neutral tint, chroma budget | `design/palettes/<name>.json` |
 | **Pairing** | One system × one palette: the unit that is resolved, emitted as CSS and applied to the DOM | `<html data-system="…" data-palette="…">` |
 
@@ -58,7 +58,7 @@ The engine path is `parseSystem` / `parsePalette` (zod schemas) → `composeThem
 | --- | --- |
 | `name` | kebab-case; must equal the file name |
 | `axes` | all eight axes, below |
-| `fonts` | the three font slots, below |
+| `fonts` | the font slots, below: `body`, `display` and `mono`, and an optional `heading` |
 | `defaultPalette` | the palette used with the system unless another is chosen |
 | `defaultMode` | `light`, `dark` or `system`: the mode of a reader who has not chosen one, on every platform. `system` follows the device. In CSS it is also the mode the pairing's block applies where nothing sets `data-mode`, with `system` read as light |
 | `kind` | `designed` (default) or `tenant`. A tenant has a designed system's axes with a different palette and is exempt from the divergence law |
@@ -147,17 +147,45 @@ choices in `overrides` (`--pm-focus-field`, `--pm-hover-unfilled`) and where the
 (`--pm-focus-place`, read from the offset) are flags of the same kind, each read by the one
 convention it belongs to.
 
-### The three font slots
+### The font slots
 
-`fonts.body`, `fonts.display` and `fonts.mono` each take `{ family, fallback?, style? }`:
+`fonts.body`, `fonts.display` and `fonts.mono` are required, and `fonts.heading` is optional. Each
+takes `{ family, fallback?, style? }`:
 
 - `family` — a Fontsource family name. `fontPackage()` maps `"Inter Variable"` to
   `@fontsource-variable/inter` and a name without the `Variable` suffix to the static
   `@fontsource/…` package.
 - `fallback` — `sans`, `serif` or `mono`, the system font stack used until the webfont loads.
-  When it is omitted, body and display follow the type personality, and the mono slot always falls
-  back to a monospace stack so code does not reflow.
+  When it is omitted, body, heading and display follow the type personality, and the mono slot
+  always falls back to a monospace stack so code does not reflow.
 - `style` — `normal` or `italic`. Only the display slot reads it.
+
+Each type step draws in one slot, and the step's `--pm-text-<step>-family` token references the
+slot's `--pm-font-<slot>`:
+
+| Slot | Steps | Draws |
+| --- | --- | --- |
+| `body` | `text.xs`, `text.sm`, `text.md` | paragraphs, controls, labels, table cells |
+| `heading` | `text.lg`, `text.xl`, `text.2xl`, `text.3xl` | section headings, Heading's levels, dialog and page titles, Stat's value |
+| `display` | `display.sm`, `display.md`, `display.lg` | Hero's title |
+| `mono` | none; recipes set it at a text step's size | code, keys, JSON |
+
+A system that leaves `fonts.heading` out draws its heading steps in the body slot, so a system
+file written without it resolves to the same type. The stylesheet then writes
+`--pm-font-heading: var(--pm-font-body)`, as it writes a display stack equal to the body stack,
+and the token document carries the body slot's values under `fonts.heading`. A part that borrows
+a heading step's weight at a body size borrows its family too when it is a heading or a title:
+Heading's level 4 and ArtifactPane's title draw at `text.md` in `text.xl`'s weight and family. A
+part at a heading step that is not a heading keeps the body slot's family: Hero's lede and
+Avatar's `lg` initials take `text.md`'s. `FONT_ROLES` lists the roles, `heading` last, and
+`fontSlot(fonts, role)` gives the slot a role draws in, the body slot for a heading the file
+leaves out.
+
+Stat's value (`text.3xl`) and DonutChart's centre figure (`text.2xl`) are at heading steps, so a
+heading face draws them too. Both still set `font-variant-numeric: var(--pm-font-numeric)`. That
+token asks for tabular figures (`tnum`, and a slashed zero under `mono`), not for lining figures,
+so a heading face whose default figures are old-style draws old-style figures there, and a face
+without tabular figures draws its proportional ones.
 
 Applications load webfonts. The library never bundles them. `admitTheme` reports the packages a
 pairing needs. The build-time plugin and a CLI theme install import them from the theme module. In
@@ -211,8 +239,8 @@ the title steps: a 12px base at the standard ratio puts `text.2xl` at 23.5px, so
 The personalities' own weights pass at every base and ratio the schema allows.
 
 A font must ship the weight. In this repository, `pnpm registry` checks each weight against the
-family that draws it, the body family for `titleWeight` and the display family for
-`displayWeight`, in the package each app installs. A static family's loader imports the weight's
+family that draws it, the heading family for `titleWeight` (the body family in a system with no
+heading slot) and the display family for `displayWeight`, in the package each app installs. A static family's loader imports the weight's
 file beside the three it always loads (400, 500, 600), and generation fails when the package has
 no such file. A variable family's weight must lie inside the weight axis its package's
 `metadata.json` declares, so Lora (400–700) cannot draw a display weight of 300. `display.lg`'s
@@ -854,7 +882,7 @@ document; both read the resolved theme.
 | `format` | `polymorph-tokens/1` |
 | `platform` | `web`, `ios`, `android` or `dart` |
 | `pairing` | name, system, palette, kind, all eight axes, default mode, chart cap |
-| `fonts` | per slot: the family without Fontsource's `Variable` suffix, whether the seed is the variable build, the fallback class, the style, every weight a type step sets, and for display every optical size |
+| `fonts` | per slot, `heading` included (the body slot's values in a system that states none): the family without Fontsource's `Variable` suffix, whether the seed is the variable build, the fallback class, the style, every weight a type step sets, and for display every optical size |
 | `floor` | the platform's floors, `controlHeight` (the web's 24, on every platform) and `hitTarget` (the platform's minimum hit area), and `raised`: each value a floor raised, by density, with the derived and raised values |
 | `invariant` | every token no scope changes: type, radii and their classes, shadows and their classes, the top highlight, material, focus ring and where it sits, the field focus and unfilled hover choices, icons, z-ladder |
 | `density` | per density: space, control heights, hit target, container insets |
@@ -1230,6 +1258,7 @@ the same admission, and so does `save_theme` before it writes the two documents 
 
 Axes in order: geometry · depth · density · contrastTemperament · typePersonality · colorStrategy ·
 motionTemperament · ornament. Fonts: body / display / mono (all Fontsource `Variable` families).
+No house system states a heading slot, so each draws its headings in its body face.
 
 | System | Character | Axes | Fonts | Palette · mode |
 | --- | --- | --- | --- | --- |
@@ -1295,7 +1324,8 @@ file, with no change in `apps/`.
 
 ## Adding a system or palette
 
-**A system:** add `design/systems/<name>.json` (name = file name; all eight axes; three font slots; a
+**A system:** add `design/systems/<name>.json` (name = file name; all eight axes; the three
+required font slots, and a heading slot if its headings have a face of their own; a
 `defaultPalette` that exists; `defaultMode`; `kind`; a `register` paragraph) and, by convention, a
 `design/systems/<name>.md` rationale. If the apps do not load a font family, add its
 Fontsource package to `apps/workbench` and `apps/docs`, then run `pnpm registry` to regenerate the

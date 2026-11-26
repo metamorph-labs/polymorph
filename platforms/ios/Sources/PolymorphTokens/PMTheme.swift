@@ -304,16 +304,21 @@ public struct PMAxes: Sendable, Hashable {
   }
 }
 
-/// The three font slots.
+/// The font slots. `heading` is the face of the heading steps, `text.lg` to
+/// `text.3xl`; in a system that states no heading slot it is the body slot.
 public struct PMFonts: Sendable, Hashable {
   public let body: PMFont
   public let display: PMFont
   public let mono: PMFont
+  public let heading: PMFont
 
-  public init(body: PMFont, display: PMFont, mono: PMFont) {
+  /// `heading` defaults to `body`, as a system without a heading slot draws
+  /// its headings in the body slot.
+  public init(body: PMFont, display: PMFont, mono: PMFont, heading: PMFont? = nil) {
     self.body = body
     self.display = display
     self.mono = mono
+    self.heading = heading ?? body
   }
 }
 

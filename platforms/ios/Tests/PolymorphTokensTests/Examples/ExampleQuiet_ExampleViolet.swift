@@ -46,6 +46,14 @@ extension PMTheme {
         italic: false,
         weights: [400, 500, 600],
         opsz: []
+      ),
+      heading: PMFont(
+        family: "Inter",
+        variable: false,
+        fallback: .sans,
+        italic: false,
+        weights: [400, 500, 600],
+        opsz: []
       )
     ),
     numeric: PMNumeric(tabular: true, slashedZero: false, align: .end),

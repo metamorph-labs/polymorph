@@ -48,6 +48,14 @@ internal object Journal_Umber {
                 weights = listOf(400, 500, 600),
                 opsz = listOf(),
             ),
+            heading = PMFont(
+                family = "Source Sans 3",
+                variable = true,
+                fallback = "sans",
+                style = "normal",
+                weights = listOf(400, 500, 600),
+                opsz = listOf(),
+            ),
         ),
         numeric = listOf("tnum"),
         numericAlign = "end",
@@ -91,7 +99,7 @@ internal object Journal_Umber {
                 weight = 400,
                 tracking = 0f,
                 family = "Source Sans 3",
-                slot = "body",
+                slot = "heading",
             ),
             xl = PMTextStyle(
                 size = 27f,
@@ -99,7 +107,7 @@ internal object Journal_Umber {
                 weight = 500,
                 tracking = 0f,
                 family = "Source Sans 3",
-                slot = "body",
+                slot = "heading",
             ),
             text2xl = PMTextStyle(
                 size = 35f,
@@ -107,7 +115,7 @@ internal object Journal_Umber {
                 weight = 600,
                 tracking = -0.01f,
                 family = "Source Sans 3",
-                slot = "body",
+                slot = "heading",
             ),
             text3xl = PMTextStyle(
                 size = 45.5f,
@@ -115,7 +123,7 @@ internal object Journal_Umber {
                 weight = 600,
                 tracking = -0.01f,
                 family = "Source Sans 3",
-                slot = "body",
+                slot = "heading",
             ),
         ),
         display = PMDisplayScale(

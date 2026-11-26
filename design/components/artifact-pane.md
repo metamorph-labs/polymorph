@@ -66,7 +66,7 @@ the shown reading's id.
 | pane | Card's surface exactly: bg `--pm-bg-surface` · border `1px solid --pm-border-subtle` · radius `--pm-radius-surface` · shadow `--pm-shadow-resting, --pm-shadow-inset-top` · column · `block-size: 100%` · `overflow: hidden` |
 | header | wrapping row · gap `--pm-space-2` `--pm-space-3` · padding `--pm-space-3` `--pm-space-4` · `border-block-end 1px solid --pm-border-subtle` · the heading grows from a basis of `calc(--pm-space-10 * 2)`, so in a narrow pane the controls wrap under the title instead of the title being truncated beside them |
 | mark | `sm` glyph by kind (`terminal`, `document`, `table`, `browser`; `artifact` with no kind) · `--pm-text-muted`; while streaming `Spinner size="sm"` named `"{title}: still being written"` |
-| title | `<h2>` · `text.md` at `--pm-text-xl-weight` (Heading level 4's cell, because it is a section title beside a thread, not a page title) · `--pm-text-primary` · ellipsis |
+| title | `<h2>` · `text.md` at `--pm-text-xl-weight` in `--pm-text-xl-family` (Heading level 4's cell, because it is a section title beside a thread, not a page title) · `--pm-text-primary` · ellipsis |
 | meta | `text.xs` · `--pm-text-muted` |
 | views | `SegmentedControl size="sm" label={viewsLabel}` |
 | actions, close | `ghost/neutral/sm` Buttons · gap `--pm-space-1` |

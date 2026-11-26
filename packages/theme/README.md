@@ -8,7 +8,7 @@ web, as Swift, Kotlin and Dart sources for the native token packages under `plat
 same decisions as JSON. No token sheet is written by hand.
 
 A **system** is a JSON document of eight design **axes** (geometry, depth, density, contrast
-temperament, type personality, colour strategy, motion temperament, ornament) plus three font
+temperament, type personality, colour strategy, motion temperament, ornament) plus its font
 slots. A **palette** sets the colour: accent hue, neutral tint, chroma budget. A **pairing** is
 one system with one palette, resolved as one theme. Any palette is lawful on any system. The
 house catalogue is in [`design/systems/`](../../design/systems) and

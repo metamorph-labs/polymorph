@@ -118,18 +118,33 @@ export function tokenValuesOf(system: string): Partial<TokenValues> {
   return REGISTRY.theme.systems.find((entry) => entry.name === system)?.tokenValues ?? {}
 }
 
-/** A system's fonts in words: "Geist for text, Fraunces for headings and Geist Mono for code". */
+/** Words joined as a sentence lists them: "a", "a and b", "a, b and c". */
+function listed(words: readonly string[]): string {
+  if (words.length <= 1) return words.join('')
+  return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
+}
+
+/**
+ * A system's fonts in words: "Geist for text and headings, Fraunces for display titles and Geist
+ * Mono for code". A system with no heading face of its own lists headings with its text face.
+ */
 export function fontsOf(system: string): string {
   const fonts = REGISTRY.theme.systems.find((entry) => entry.name === system)?.fonts ?? []
-  const words: Record<string, string> = { body: 'text', display: 'headings', mono: 'code' }
-  const order = ['body', 'display', 'mono']
+  const words: Record<string, string> = {
+    body: 'text',
+    heading: 'headings',
+    display: 'display titles',
+    mono: 'code',
+  }
+  const order = ['body', 'heading', 'display', 'mono']
+  const slots = (roles: readonly string[]) =>
+    [...roles].sort((a, b) => order.indexOf(a) - order.indexOf(b))
   const rank = (roles: readonly string[]) => Math.min(...roles.map((slot) => order.indexOf(slot)))
   const parts = [...fonts]
     .sort((a, b) => rank(a.roles) - rank(b.roles))
     .map(
       (font) =>
-        `${font.family.replace(/ Variable$/, '')} for ${font.roles.map((slot) => words[slot] ?? slot).join(' and ')}`,
+        `${font.family.replace(/ Variable$/, '')} for ${listed(slots(font.roles).map((slot) => words[slot] ?? slot))}`,
     )
-  if (parts.length <= 1) return parts.join('')
-  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+  return listed(parts)
 }

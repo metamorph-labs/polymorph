@@ -2,7 +2,8 @@
 // 4. Never level 1: PageHeader owns the page's title, so the type cannot ask for
 // another. Level 2 is `text.xl`, level 3 `text.lg`; level 4 is `text.md` at the
 // `text.xl` weight, because below `text.lg` the sizes are body sizes and weight
-// marks the level. No margins: the Stack around it owns the rhythm.
+// marks the level, and in `text.xl`'s face, so every level is in the heading
+// slot's face. No margins: the Stack around it owns the rhythm.
 //
 // On iOS a heading is a header trait with its level, so VoiceOver's headings
 // rotor lists it at the level the web's `<h2>`–`<h4>` give.
@@ -37,7 +38,7 @@ public struct PMHeading: PMHeadingRendering {
     switch level {
     case .level2: theme.text.xl
     case .level3: theme.text.lg
-    case .level4: theme.text.md.weighted(like: theme.text.xl)
+    case .level4: theme.text.md.heading(like: theme.text.xl)
     }
   }
 
@@ -58,6 +59,15 @@ extension PMTextStyle {
     PMTextStyle(
       size: size, lineHeight: lineHeight, wght: other.wght, tracking: tracking, family: family,
       fallback: fallback, italic: italic, opsz: opsz)
+  }
+
+  /// This step drawn as a heading: another step's weight and its face. A
+  /// heading at a body size (level 4) borrows both from `text.xl`, so every
+  /// heading is in the heading slot's face.
+  func heading(like other: PMTextStyle) -> PMTextStyle {
+    PMTextStyle(
+      size: size, lineHeight: lineHeight, wght: other.wght, tracking: tracking,
+      family: other.family, fallback: other.fallback, italic: italic, opsz: opsz)
   }
 }
 

@@ -295,7 +295,12 @@ data class PMFont(
     val opsz: List<Float>,
 )
 
-data class PMFonts(val body: PMFont, val display: PMFont, val mono: PMFont)
+/**
+ * The font slots. `heading` is the face of the heading steps, `text.lg` to
+ * `text.3xl`; in a system that states no heading slot it is the body slot,
+ * which is also its default here.
+ */
+data class PMFonts(val body: PMFont, val display: PMFont, val mono: PMFont, val heading: PMFont = body)
 
 /* Shape and depth --------------------------------------------------------- */
 

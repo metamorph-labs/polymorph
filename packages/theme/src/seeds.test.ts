@@ -33,7 +33,7 @@ describe('seeds', () => {
     expect(seedsSchema.safeParse({ ...seeds, neutralTint: -0.001 }).success).toBe(false)
   })
 
-  it('requires all three font roles', () => {
+  it('requires the body, display and mono roles', () => {
     expect(
       seedsSchema.safeParse({ ...seeds, fonts: { body: 'Inter', display: 'Inter' } }).success,
     ).toBe(false)

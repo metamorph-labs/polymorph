@@ -356,7 +356,11 @@ private struct TokenDocumentReader {
       ),
       defaultMode: pairing["defaultMode"].oneOf(),
       chartCap: pairing["chartCap"].int(),
-      fonts: PMFonts(body: font("body"), display: font("display"), mono: font("mono")),
+      // A document written before the heading slot has no `fonts.heading`. Its
+      // heading steps name `font.body`, so its headings are the body slot.
+      fonts: PMFonts(
+        body: font("body"), display: font("display"), mono: font("mono"),
+        heading: root["fonts"].has("heading") ? font("heading") : nil),
       numeric: numeric(invariant["font.numeric"], align: invariant["numeric.align"]),
       text: PMTextStyles(
         xs: textStyle("text.xs"),

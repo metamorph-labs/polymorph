@@ -5,6 +5,7 @@ import {
   CONTROL_HEIGHT_PX,
   focusPx,
   FONT_ROLES,
+  fontSlot,
   GEOMETRY_RADII,
   INSET_ASSIGNMENT_CLASSES,
   INSET_ASSIGNMENT_DEFAULT,
@@ -197,7 +198,7 @@ export function StudioPage() {
    * costs nothing when the draft uses shipped font slots.
    */
   useEffect(() => {
-    loadFontFamilies(FONT_ROLES.map((role) => draft.system.fonts[role].family))
+    loadFontFamilies(FONT_ROLES.map((role) => fontSlot(draft.system.fonts, role).family))
   }, [draft.system.fonts])
 
   const names = existingNames()
@@ -218,16 +219,21 @@ export function StudioPage() {
     }))
   }
 
-  function setFont(role: FontRole, family: string): void {
-    updateDraft((current) => ({
-      ...current,
-      system: {
-        ...current.system,
-        // Spread, so a slot's fallback class and its `style` survive a change of family. An italic
-        // display is a decision about the slot, not about the face in it.
-        fonts: { ...current.system.fonts, [role]: { ...current.system.fonts[role], family } },
-      },
-    }))
+  /**
+   * `null` removes the heading slot, the only optional one, so the headings draw in the body slot
+   * again and the saved file has no `fonts.heading`.
+   */
+  function setFont(role: FontRole, family: string | null): void {
+    updateDraft((current) => {
+      const { heading: _heading, ...required } = current.system.fonts
+      const fonts =
+        family === null
+          ? required
+          : // Spread, so a slot's fallback class and its `style` survive a change of family. An
+            // italic display is a decision about the slot, not about the face in it.
+            { ...current.system.fonts, [role]: { ...current.system.fonts[role], family } }
+      return { ...current, system: { ...current.system, fonts } }
+    })
   }
 
   function setSeed(patch: Partial<Draft['palette']>): void {
@@ -915,17 +921,32 @@ export function StudioPage() {
                 Fonts are system, never palette — a serif display is personality, not paint. The
                 list is the families this app loads, so a draft can only choose type that renders.
               </Text>
-              {FONT_ROLES.map((role) => (
-                <FormField key={role} label={role}>
-                  <Select
-                    options={FAMILY_OPTIONS}
-                    value={draft.system.fonts[role].family}
-                    onChange={(family) => {
-                      if (family !== null) setFont(role, family)
-                    }}
-                  />
-                </FormField>
-              ))}
+              {FONT_ROLES.map((role) =>
+                role === 'heading' ? (
+                  <FormField
+                    key={role}
+                    label={role}
+                    description="The face of text.lg to text.3xl. Without one, headings are in the body face."
+                  >
+                    <Select
+                      options={FAMILY_OPTIONS}
+                      emptyOption="The body face"
+                      value={draft.system.fonts.heading?.family ?? null}
+                      onChange={(family) => setFont(role, family)}
+                    />
+                  </FormField>
+                ) : (
+                  <FormField key={role} label={role}>
+                    <Select
+                      options={FAMILY_OPTIONS}
+                      value={draft.system.fonts[role].family}
+                      onChange={(family) => {
+                        if (family !== null) setFont(role, family)
+                      }}
+                    />
+                  </FormField>
+                ),
+              )}
             </Stack>
           </Card>
 

@@ -48,6 +48,14 @@ const PMTheme theme = PMTheme(
       weights: [400, 500, 700],
       opsz: [],
     ),
+    heading: PMFont(
+      family: 'Source Serif 4',
+      variable: true,
+      fallback: 'serif',
+      style: 'normal',
+      weights: [400, 500, 700],
+      opsz: [],
+    ),
   ),
   numeric: ['tnum'],
   numericAlign: 'end',
@@ -91,7 +99,7 @@ const PMTheme theme = PMTheme(
       weight: 400,
       tracking: 0.005,
       family: 'Source Serif 4',
-      slot: 'body',
+      slot: 'heading',
     ),
     xl: PMTextStyle(
       size: 25.0,
@@ -99,7 +107,7 @@ const PMTheme theme = PMTheme(
       weight: 500,
       tracking: 0.005,
       family: 'Source Serif 4',
-      slot: 'body',
+      slot: 'heading',
     ),
     text2xl: PMTextStyle(
       size: 31.5,
@@ -107,7 +115,7 @@ const PMTheme theme = PMTheme(
       weight: 700,
       tracking: -0.015,
       family: 'Source Serif 4',
-      slot: 'body',
+      slot: 'heading',
     ),
     text3xl: PMTextStyle(
       size: 39.0,
@@ -115,7 +123,7 @@ const PMTheme theme = PMTheme(
       weight: 700,
       tracking: -0.015,
       family: 'Source Serif 4',
-      slot: 'body',
+      slot: 'heading',
     ),
   ),
   display: PMDisplayScale(

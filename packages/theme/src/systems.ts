@@ -43,7 +43,7 @@ import {
  * `resolveTheme` takes axes and seeds as independent inputs, and the files keep
  * them separate:
  *
- * - A **system** holds the structure: the eight axes, the three font slots and
+ * - A **system** holds the structure: the eight axes, the font slots and
  *   the presentation defaults. Of colour, it sets only a `defaultPalette`.
  * - A **palette** holds the colour and belongs to no system. Every palette is
  *   lawful on every system, so any cross-pairing is safe.

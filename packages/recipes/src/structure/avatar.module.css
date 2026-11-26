@@ -86,10 +86,12 @@
   letter-spacing: var(--pm-text-sm-tracking);
 }
 
+/* Initials are a mark, not a heading, so they keep the body slot's family at
+   every size: `text.lg` draws in the heading slot. */
 .avatar[data-size='lg'] {
   inline-size: var(--pm-space-8);
   block-size: var(--pm-space-8);
-  font-family: var(--pm-text-lg-family);
+  font-family: var(--pm-text-md-family);
   font-size: var(--pm-text-lg-size);
   font-weight: var(--pm-text-lg-weight);
   line-height: var(--pm-text-lg-line-height);

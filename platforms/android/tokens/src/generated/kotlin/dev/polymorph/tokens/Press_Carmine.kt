@@ -48,6 +48,14 @@ internal object Press_Carmine {
                 weights = listOf(400, 500, 700),
                 opsz = listOf(),
             ),
+            heading = PMFont(
+                family = "Source Serif 4",
+                variable = true,
+                fallback = "serif",
+                style = "normal",
+                weights = listOf(400, 500, 700),
+                opsz = listOf(),
+            ),
         ),
         numeric = listOf("tnum"),
         numericAlign = "end",
@@ -91,7 +99,7 @@ internal object Press_Carmine {
                 weight = 400,
                 tracking = 0.005f,
                 family = "Source Serif 4",
-                slot = "body",
+                slot = "heading",
             ),
             xl = PMTextStyle(
                 size = 25f,
@@ -99,7 +107,7 @@ internal object Press_Carmine {
                 weight = 500,
                 tracking = 0.005f,
                 family = "Source Serif 4",
-                slot = "body",
+                slot = "heading",
             ),
             text2xl = PMTextStyle(
                 size = 31.5f,
@@ -107,7 +115,7 @@ internal object Press_Carmine {
                 weight = 700,
                 tracking = -0.015f,
                 family = "Source Serif 4",
-                slot = "body",
+                slot = "heading",
             ),
             text3xl = PMTextStyle(
                 size = 39f,
@@ -115,7 +123,7 @@ internal object Press_Carmine {
                 weight = 700,
                 tracking = -0.015f,
                 family = "Source Serif 4",
-                slot = "body",
+                slot = "heading",
             ),
         ),
         display = PMDisplayScale(

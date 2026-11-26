@@ -44,6 +44,14 @@ extension PMTheme {
         italic: false,
         weights: [400, 500, 700],
         opsz: []
+      ),
+      heading: PMFont(
+        family: "Source Serif 4",
+        variable: true,
+        fallback: .serif,
+        italic: false,
+        weights: [400, 500, 700],
+        opsz: []
       )
     ),
     numeric: PMNumeric(tabular: true, slashedZero: false, align: .end),

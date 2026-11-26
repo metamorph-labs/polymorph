@@ -9,7 +9,7 @@ A few terms used throughout:
 - The **vocabulary** is the closed set of components polymorph ships; a **member** is one
   component in it. Members are grouped into **tiers**: `structure`, `controls`, `overlays`,
   `layout`, `charts`, `ai` (the conversation), `archetypes` (whole-page layouts), plus `Icon`.
-- A **system** decides how a product is built (eight design axes, three font slots, defaults). A
+- A **system** decides how a product is built (eight design axes, the font slots, defaults). A
   **palette** decides its colours. A **pairing** is one of each, set on `<html>` as `data-system`
   and `data-palette`. [theming.md](theming.md) covers them.
 - A **red rule** is a lint rule (ESLint or Stylelint) that fails the gate. A **law** is a test that

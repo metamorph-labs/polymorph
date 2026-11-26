@@ -422,6 +422,16 @@ A document names its font families but does not carry the fonts. `admission.font
 the app bundles the files. Until it does, each type step falls back to the system font in its
 slot's fallback design, as for a catalogue pairing.
 
+A system's heading slot, `fonts.heading` ([theming.md](theming.md#the-font-slots)), reaches every
+platform as `theme.fonts.heading`, and the heading steps, `text.lg` to `text.3xl`, carry its
+family (and, in Kotlin and Dart, the `slot` `heading`). In a system that states none it is the
+body slot. A document written before the slot existed has no `fonts.heading`, and its heading
+steps name `font.body`: `PMTheme(tokenDocument:)` reads it with the body slot as its heading slot,
+and `PMFonts(body:display:mono:)` without a heading does the same. The SwiftUI and Compose
+Heading at level 4 and ArtifactPane's title draw at `text.md` in `text.xl`'s weight and face
+(`heading(like:)` on a `PMTextStyle`), and Hero's lede and Avatar's `lg` initials draw at
+`text.lg` in the body face, as on the web.
+
 The Kotlin and Dart token packages hold the catalogue pairings only and read no documents at run
 time.
 
@@ -465,11 +475,14 @@ checks:
 - every catalogue pairing's document decodes to its static in `Generated/`;
 - the engine's quiet example and its probe (`exampleProbeSystem` with `exampleDuskPalette` in
   `packages/theme/src/examples.ts`, the pairing the emitters' tests read too), which holds a
-  tenant, an italic display face, glass, a gradient partner, numeric columns aligned to the start
-  and an exception of each family, decode to their statics. These two are not in the catalogue, so
-  their statics are test sources in `Tests/PolymorphTokensTests/Examples/`, written by
+  tenant, an italic display face, a heading face of its own, glass, a gradient partner, numeric
+  columns aligned to the start and an exception of each family, decode to their statics. These two
+  are not in the catalogue, so their statics are test sources in
+  `Tests/PolymorphTokensTests/Examples/`, written by
   `node platforms/ios/Tests/fixtures/token-documents.mjs --write-statics`. The test fails,
   naming that command, when they differ from what the emitter writes;
+- a document with no `fonts.heading`, as one written before the heading slot is, decodes with
+  the body slot as its heading slot, to the same theme as today's document for the pairing;
 - the loader rounds as the emitter does, over several hundred numbers the script rounds with the
   emitter's own `swiftNumber`;
 - another format, a format that is not a string, another platform, a malformed value, a

@@ -2,7 +2,8 @@
 // 4. Never level 1: PageHeader owns the page's title, so the type cannot ask for
 // another. Level 2 is `text.xl`, level 3 `text.lg`; level 4 is `text.md` at the
 // `text.xl` weight, because below `text.lg` the sizes are body sizes and weight
-// marks the level. No margins: the Stack around it owns the rhythm.
+// marks the level, and in `text.xl`'s face, so every level is in the heading
+// slot's face. No margins: the Stack around it owns the rhythm.
 //
 // On Android a heading is the `heading` semantics, so TalkBack's headings
 // navigation stops at it. Android's semantics carry no level, so the level is
@@ -37,7 +38,7 @@ object PMHeading : PMHeadingRendering {
     internal fun style(theme: PMTheme, level: PMHeadingLevel): PMTextStyle = when (level) {
         PMHeadingLevel.Level2 -> theme.text.xl
         PMHeadingLevel.Level3 -> theme.text.lg
-        PMHeadingLevel.Level4 -> theme.text.md.weighted(like = theme.text.xl)
+        PMHeadingLevel.Level4 -> theme.text.md.heading(like = theme.text.xl)
     }
 }
 

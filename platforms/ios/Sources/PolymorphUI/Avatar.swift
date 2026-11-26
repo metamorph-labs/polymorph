@@ -41,7 +41,8 @@ public struct PMAvatar: PMAvatarRendering {
       switch size {
       case .sm: theme.text.xs
       case .md: theme.text.sm
-      case .lg: theme.text.lg
+      // Initials keep the body face at every size: `text.lg` is a heading step.
+      case .lg: theme.text.lg.set(in: theme.fonts.body)
       }
     let initials = Self.initials(of: props.name)
     let tone = initials.isEmpty ? nil : Self.tone(of: props.name)

@@ -1,4 +1,4 @@
-import { CHROMA_BUDGETS } from '@polymorph/theme'
+import { CHROMA_BUDGETS, FONT_ROLES } from '@polymorph/theme'
 
 import { AGENT_SHAPE } from './agent'
 import { BEHAVIOUR_SHAPE } from './behaviour'
@@ -202,7 +202,7 @@ const AXIS = obj({
 })
 
 const FONT = obj({
-  roles: arr(str({ enum: ['body', 'display', 'mono'] })),
+  roles: arr(str({ enum: [...FONT_ROLES] })),
   family: str(),
   package: str({
     description:
@@ -240,7 +240,7 @@ const TOKEN_VALUES = obj(
 )
 
 /**
- * The structural half of a pairing: the eight axes, the three font slots
+ * The structural half of a pairing: the eight axes, the font slots
  * and the presentation defaults. It pins a `defaultPalette` and nothing else.
  * Every palette is lawful on every system, so a pairing outside this table is
  * not chosen by default but is still allowed.

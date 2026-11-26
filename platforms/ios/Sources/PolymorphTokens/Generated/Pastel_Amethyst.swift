@@ -44,6 +44,14 @@ extension PMTheme {
         italic: false,
         weights: [400, 500, 600],
         opsz: []
+      ),
+      heading: PMFont(
+        family: "Plus Jakarta Sans",
+        variable: true,
+        fallback: .sans,
+        italic: false,
+        weights: [400, 500, 600],
+        opsz: []
       )
     ),
     numeric: PMNumeric(tabular: true, slashedZero: false, align: .end),

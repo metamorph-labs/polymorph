@@ -51,13 +51,13 @@
   min-inline-size: 0;
 }
 
-/* Body size at the emphasis weight, matching Heading level 4. A pane's name is
-   a section title, not a page title, and the thread beside it already carries
-   strong visual weight. */
+/* Body size at the emphasis weight in the heading slot, matching Heading level
+   4. A pane's name is a section title, not a page title, and the thread beside
+   it already carries strong visual weight. */
 .title {
   margin: 0;
   overflow: hidden;
-  font-family: var(--pm-text-md-family);
+  font-family: var(--pm-text-xl-family);
   font-size: var(--pm-text-md-size);
   font-weight: var(--pm-text-xl-weight);
   line-height: var(--pm-text-md-line-height);

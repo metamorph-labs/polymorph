@@ -241,6 +241,13 @@ beside its own ring.
 | Page titles (PageHeader) | `text.2xl` |
 | Hero/display moments only | `display.*` |
 
+`text.xs` to `text.md` draw in the body slot, `text.lg` to `text.3xl` in the heading slot (the body
+slot in a system that states none) and `display.*` in the display slot, each through its step's
+`--pm-text-<step>-family` (`docs/theming.md`, the font slots). A heading or title drawn at a body
+size with a heading step's weight takes that step's family too, as Heading's level 4 does. A part
+at a heading step that is not a heading or a title takes `text.md`'s family, as Hero's lede and
+Avatar's `lg` initials do.
+
 Emphasis at small sizes uses **case and tracking, never an invented weight**.
 Overline-style labels (Badge, Table header) use `text.xs` + `text-transform: uppercase` +
 the step's own tracking token. `font-weight` may only be `var(--pm-text-*-weight)` /

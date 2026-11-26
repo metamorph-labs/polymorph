@@ -5,8 +5,9 @@
 //
 // A column `space.5` apart, with `space.8` above it and `space.7` below,
 // because a display block brings its own room: the title in the display
-// family's `display.lg`, in `text.primary`; the lede in `text.lg`, secondary;
-// the actions, the app's Buttons, in a wrapping Inline `space.3` apart.
+// family's `display.lg`, in `text.primary`; the lede at `text.lg` in the body
+// face, secondary; the actions, the app's Buttons, in a wrapping Inline
+// `space.3` apart.
 // `center` centres the text and the actions. In a Hero narrower than 26rem, as
 // on a phone, the title takes the whole `display.md` step instead: the Hero's
 // own width decides, not the screen's, because a Hero in a narrow column needs
@@ -44,8 +45,9 @@ public struct PMHero: PMHeroRendering {
           .frame(maxWidth: .infinity, alignment: edge)
       }
       if let lede = props.lede {
+        // A lede is a paragraph, so it keeps the body face at `text.lg`'s size.
         Text(lede)
-          .pmTextStyle(theme.text.lg)
+          .pmTextStyle(theme.text.lg.set(in: theme.fonts.body))
           .foregroundStyle(theme.colors.textSecondary.color)
           .fixedSize(horizontal: false, vertical: true)
           .frame(maxWidth: .infinity, alignment: edge)

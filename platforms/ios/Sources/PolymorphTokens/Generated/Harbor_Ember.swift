@@ -44,6 +44,14 @@ extension PMTheme {
         italic: false,
         weights: [400, 500],
         opsz: []
+      ),
+      heading: PMFont(
+        family: "Space Grotesk",
+        variable: true,
+        fallback: .sans,
+        italic: false,
+        weights: [400, 500],
+        opsz: []
       )
     ),
     numeric: PMNumeric(tabular: true, slashedZero: true, align: .end),

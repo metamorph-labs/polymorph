@@ -9,6 +9,7 @@ import {
   DATA_ATTRS,
   emitThemeCSS,
   FONT_ROLES,
+  fontSlot,
   GLASS_SURFACE_MIX,
   gradientPairingId,
   MODES,
@@ -92,7 +93,9 @@ function issueLine(issue: SchemaIssue, half?: 'system' | 'palette'): string {
  * disagree. A draft can therefore only choose fonts that will render.
  */
 export const FONT_FAMILIES: readonly string[] = [
-  ...new Set(SYSTEMS.flatMap((system) => FONT_ROLES.map((role) => system.fonts[role].family))),
+  ...new Set(
+    SYSTEMS.flatMap((system) => FONT_ROLES.map((role) => fontSlot(system.fonts, role).family)),
+  ),
 ].sort()
 
 /**

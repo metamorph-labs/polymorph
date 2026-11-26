@@ -339,12 +339,14 @@ not in the packages. On iOS a theme outside the catalogue arrives as a token doc
 admits ([references/swiftui.md](references/swiftui.md)). The Kotlin and Dart token packages read
 no documents, so Android and Flutter wear catalogue pairings only.
 
-A pairing names three font families and carries no font files: \`theme.fonts.body\`, \`.display\`
-and \`.mono\`, each with its \`family\`. Each is the web's family without the web's "Variable"
-suffix, so read it from the pairing, not from the card. The app bundles the files: on iOS it adds
-them to the app target and lists them under \`<key>UIAppFonts</key>\` in its Info.plist, and on
-Android it provides ${x(f, 'LocalPMFontFamilies', KOTLIN_UI)}. Until it does, each type step uses
-the system font in its slot's design.
+A pairing names its font families and carries no font files: \`theme.fonts.body\`, \`.heading\`,
+\`.display\` and \`.mono\`, each with its \`family\`. \`heading\` is the face of \`text.lg\` to
+\`text.3xl\`, and in a system with no heading slot it is the body slot. Each is the web's family
+without the web's "Variable" suffix, so read it from the pairing, not from the card. The app
+bundles the files: on iOS it adds them to the app target and lists them under
+\`<key>UIAppFonts</key>\` in its Info.plist, and on Android it provides
+${x(f, 'LocalPMFontFamilies', KOTLIN_UI)}. Until it does, each type step uses the system font in
+its slot's design.
 
 The app sets the pairing, the mode, its fonts and its translations of the words the members write
 by default, such as a dialog's "Close". It never overrides a member's colour, size or font, and
@@ -907,8 +909,8 @@ page's "Try again", are looked up in the app's string catalog, so the app transl
 
 A pairing's fonts are drawn when they are installed: the app adds the font files to its target and
 lists each under \`<key>UIAppFonts</key>\` in its Info.plist. The family a file declares must equal
-the pairing's \`theme.fonts.body.family\` (and \`.display\`, \`.mono\`). Until then each type step
-uses the system font in its slot's design.
+the pairing's \`theme.fonts.body.family\` (and \`.heading\`, \`.display\`, \`.mono\`). Until then
+each type step uses the system font in its slot's design.
 
 ## What no member draws
 

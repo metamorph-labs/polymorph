@@ -48,6 +48,14 @@ internal object Terminal_Petrol {
                 weights = listOf(400, 500),
                 opsz = listOf(),
             ),
+            heading = PMFont(
+                family = "Space Grotesk",
+                variable = true,
+                fallback = "sans",
+                style = "normal",
+                weights = listOf(400, 500),
+                opsz = listOf(),
+            ),
         ),
         numeric = listOf("tnum", "zero"),
         numericAlign = "end",
@@ -91,7 +99,7 @@ internal object Terminal_Petrol {
                 weight = 400,
                 tracking = -0.01f,
                 family = "Space Grotesk",
-                slot = "body",
+                slot = "heading",
             ),
             xl = PMTextStyle(
                 size = 23f,
@@ -99,7 +107,7 @@ internal object Terminal_Petrol {
                 weight = 500,
                 tracking = -0.01f,
                 family = "Space Grotesk",
-                slot = "body",
+                slot = "heading",
             ),
             text2xl = PMTextStyle(
                 size = 27.5f,
@@ -107,7 +115,7 @@ internal object Terminal_Petrol {
                 weight = 500,
                 tracking = -0.01f,
                 family = "Space Grotesk",
-                slot = "body",
+                slot = "heading",
             ),
             text3xl = PMTextStyle(
                 size = 33f,
@@ -115,7 +123,7 @@ internal object Terminal_Petrol {
                 weight = 500,
                 tracking = -0.02f,
                 family = "Space Grotesk",
-                slot = "body",
+                slot = "heading",
             ),
         ),
         display = PMDisplayScale(

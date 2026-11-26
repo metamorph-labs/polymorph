@@ -2,6 +2,7 @@ import {
   composeTheme,
   emitThemeCSS,
   FONT_ROLES,
+  fontSlot,
   pairId,
   parsePalette,
   parseSystem,
@@ -157,5 +158,5 @@ export function bootDraft(): DraftRuntime | null {
 export function draftFontFamilies(): readonly string[] | null {
   if (runtime === null) return null
   const { fonts } = runtime.system
-  return FONT_ROLES.map((role) => fonts[role].family)
+  return FONT_ROLES.map((role) => fontSlot(fonts, role).family)
 }

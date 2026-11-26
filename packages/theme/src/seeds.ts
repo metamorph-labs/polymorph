@@ -24,7 +24,11 @@ export const CHROMA_BUDGETS = ['none', 'ink', 'low', 'medium', 'high'] as const
 export type ChromaBudget = (typeof CHROMA_BUDGETS)[number]
 export const chromaBudgetSchema = z.enum(CHROMA_BUDGETS)
 
-export const FONT_ROLES = ['body', 'display', 'mono'] as const
+/**
+ * The font roles. `heading` is last because a system file may leave it out:
+ * the heading steps then draw in the body slot (`fontSlot`).
+ */
+export const FONT_ROLES = ['body', 'display', 'mono', 'heading'] as const
 export type FontRole = (typeof FONT_ROLES)[number]
 
 /**
@@ -50,7 +54,7 @@ export const fontSpecSchema = z.strictObject({
   /**
    * The slot's font-style, a property of the chosen face like its fallback
    * class. Only the display derivation reads it. Body and mono stay upright by
-   * convention, not by schema.
+   * convention, not by schema, and so does the heading slot.
    */
   style: z.enum(['normal', 'italic']).optional(),
 })
@@ -60,9 +64,24 @@ export const fontFamiliesSchema = z.strictObject({
   body: fontSpecSchema,
   display: fontSpecSchema,
   mono: fontSpecSchema,
+  /**
+   * The face of the heading steps (`HEADING_TEXT_STEPS`). Optional: a system
+   * that leaves it out draws its headings in the body slot, so every system
+   * file written without it resolves to the type it had.
+   */
+  heading: fontSpecSchema.optional(),
 })
 
 export type FontFamilies = z.infer<typeof fontFamiliesSchema>
+
+/**
+ * The slot a role draws in: the one the system file states, and for a
+ * `heading` it leaves out, the body slot. Every reader of a role goes through
+ * it, so an absent heading slot is the body slot everywhere.
+ */
+export function fontSlot(fonts: FontFamilies, role: FontRole): FontSpec {
+  return role === 'heading' ? (fonts.heading ?? fonts.body) : fonts[role]
+}
 
 /**
  * Exported because a palette seeds three hues and a pairing's seeds are the
