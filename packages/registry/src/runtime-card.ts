@@ -1,25 +1,45 @@
 import { CONVENTION_PROPS, TIER_ORDER, TIER_TITLE, wrapped } from './card-parts'
-import { shippedParts, unionParts, type Framework, type PartsOwner } from './frameworks'
+import {
+  DEFAULT_FRAMEWORK,
+  shippedParts,
+  unionParts,
+  type Framework,
+  type PartsOwner,
+} from './frameworks'
 import { DEFAULT_PLATFORM } from './platforms'
+import {
+  ADDRESS_KEYS,
+  ADDRESS_SCHEMES,
+  allowedMembers,
+  type AddressPolicy,
+  type MemberOptions,
+} from './runtime-members'
+import type { ScreenTable } from './screen-table'
 
 /**
- * The run-time card: the members a model may compose in a screen a host draws
- * at run time, each with what the model needs to write it lawfully without a
- * tool call.
+ * The run-time card: what a host puts in a model's system prompt so the model
+ * writes a screen the host can draw, in one call, with no tool. It has three
+ * parts: an opening that says what the model is doing, the members section,
+ * and the output contract.
  *
- * It is the system card's vocabulary section (`card.ts`) with the prop types
- * written out, because a model with no tool to look a prop up must know what
- * a prop takes: an enum's literals, whether it is text or a node, and the
- * signature of a callback it binds to an action. Everything a screen document
- * cannot use is left out: tokens, the red rules, the ladder beyond the rungs a
- * document declares, install facts, platforms and frameworks other than the
- * one drawing.
+ * The members section lists the members a model may compose, each with what
+ * the model needs to write it lawfully without a tool call. It is the system
+ * card's vocabulary section (`card.ts`) with the prop types written out,
+ * because a model with no tool to look a prop up must know what a prop takes:
+ * an enum's literals, whether it is text or a node, and the signature of a
+ * callback it binds to an action. Everything a screen document cannot use is
+ * left out: tokens, the red rules, the ladder beyond the rungs a document
+ * declares, install facts, platforms and frameworks other than the one
+ * drawing, and, for a host that refuses addresses, every prop and field that
+ * takes one.
  *
  * It reads a vocabulary, not the registry: the registry is one, and the
- * run-time table (`screen-table.ts`) another, so `@polymorph/screen` renders
- * the card from the table a host installed. `packages/screen/src/card.test.ts`
- * holds the two renderings equal. The output contract that follows the card
- * in a model's prompt is the screen package's (`packages/screen/src/card.ts`).
+ * run-time table (`screen-table.ts`) another. `@polymorph/screen` composes
+ * the card from the table a host installed (`runtimeCard`), and the MCP tool
+ * `get_system_card` from the table it builds from the registry, so the two
+ * print one text. `packages/screen/src/parity.test.ts` holds the members
+ * section rendered from both equal, and `packages/mcp/src/verbs.test.ts` the
+ * tool's card to `runtimeCard`'s.
  *
  * This module reads no file, so the browser can import it
  * (`@polymorph/registry/runtime-card`).
@@ -73,6 +93,11 @@ export interface RuntimeCardOptions {
   readonly framework: Framework
   /** The members and exception primitives the host allows, by name. Every other is left out. */
   readonly members: ReadonlySet<string>
+  /**
+   * `refused` leaves out every prop, part's prop and data type field that takes
+   * an address (`ADDRESS_KEYS`). `allowed` when absent.
+   */
+  readonly addresses?: AddressPolicy
 }
 
 /**
@@ -208,19 +233,23 @@ const NOTHING =
 
 /**
  * `name: type`, `*` marking a required one; the four ARIA hooks as `aria-*`
- * where all four are taken. A ref is left out, as a document cannot hold one.
- * With `questions`, a function that returns a value is written `fn`: a
- * data type's field of that kind cannot be given by a document at all, so its
- * signature says nothing a document can use.
+ * where all four are taken. A ref is left out, as a document cannot hold one,
+ * and so is a prop named in `omitted`. With `questions`, a function that
+ * returns a value is written `fn`: a data type's field of that kind cannot be
+ * given by a document at all, so its signature says nothing a document can
+ * use.
  */
 function propList(
   props: readonly CardProp[],
   roles: ReadonlySet<string>,
+  omitted: ReadonlySet<string>,
   questions = false,
 ): string[] {
   const own = props.filter(
     (prop) =>
-      !prop.name.includes('.') && !unionParts(prop.type).every((part) => REF_TYPE.test(part)),
+      !prop.name.includes('.') &&
+      !omitted.has(prop.name) &&
+      !unionParts(prop.type).every((part) => REF_TYPE.test(part)),
   )
   const names = new Set(own.map((prop) => prop.name))
   const allAria = ARIA.every((name) => names.has(name))
@@ -239,8 +268,9 @@ function memberLines(
   member: RuntimeCardMember,
   framework: Framework,
   roles: ReadonlySet<string>,
+  omitted: ReadonlySet<string>,
 ): string[] {
-  const segments = propList(member.props, roles)
+  const segments = propList(member.props, roles, omitted)
   if (member.grid !== null) {
     segments.push(
       `cells: ${Object.entries(member.grid)
@@ -254,7 +284,7 @@ function memberLines(
     // A part whose props the registry does not record cannot be checked, so a document cannot compose it.
     const recorded = member.parts.find((candidate) => candidate.name === part.name)
     if (recorded === undefined) continue
-    const props = propList(recorded.props, roles)
+    const props = propList(recorded.props, roles, omitted)
     lines.push(
       `  - **${member.name}.${part.name}**${props.length === 0 ? '' : ` · ${props.join(' · ')}`}`,
     )
@@ -288,6 +318,7 @@ function dataTypeLines(
   primitives: readonly RuntimeCardPrimitive[],
   framework: Framework,
   roles: ReadonlySet<string>,
+  omitted: ReadonlySet<string>,
 ): string[] {
   const catalogue = new Map((vocabulary.dataTypes ?? []).map((type) => [type.name, type]))
   if (catalogue.size === 0) return []
@@ -303,17 +334,21 @@ function dataTypeLines(
     }
   }
   for (const member of listed) {
-    for (const prop of member.props) if (!prop.name.includes('.')) read(prop.type)
+    for (const prop of member.props) {
+      if (!prop.name.includes('.') && !omitted.has(prop.name)) read(prop.type)
+    }
     for (const part of shippedParts(member, DEFAULT_PLATFORM, framework)) {
       const recorded = member.parts.find((candidate) => candidate.name === part.name)
-      for (const prop of recorded?.props ?? []) read(prop.type)
+      for (const prop of recorded?.props ?? []) if (!omitted.has(prop.name)) read(prop.type)
     }
   }
-  for (const primitive of primitives) for (const prop of primitive.props) read(prop.type)
+  for (const primitive of primitives) {
+    for (const prop of primitive.props) if (!omitted.has(prop.name)) read(prop.type)
+  }
   for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
     const type = catalogue.get(next)
     for (const member of type?.union ?? []) read(member)
-    for (const field of type?.fields ?? []) read(field.type)
+    for (const field of type?.fields ?? []) if (!omitted.has(field.name)) read(field.type)
   }
   if (reached.size === 0) return []
 
@@ -325,7 +360,7 @@ function dataTypeLines(
       if (type.union !== undefined) return `- ${name} = ${type.union.join(' | ')}`
       const owner = type.name.endsWith('Props') ? type.name.slice(0, -'Props'.length) : ''
       if (members.has(owner)) return `- ${name} · the props of \`${owner}\``
-      return `- ${name}${propList(type.fields, roles, true)
+      return `- ${name}${propList(type.fields, roles, omitted, true)
         .map((field) => ` · ${field}`)
         .join('')}`
     })
@@ -357,6 +392,7 @@ export function renderRuntimeCard(
   options: RuntimeCardOptions,
 ): string {
   const { framework, members } = options
+  const omitted: ReadonlySet<string> = options.addresses === 'refused' ? ADDRESS_KEYS : new Set()
   const roles = new Set(vocabulary.icons.roles.map((role) => role.name))
   const listed = vocabulary.components.filter((member) => members.has(member.name))
   const out: string[] = [
@@ -380,7 +416,7 @@ export function renderRuntimeCard(
     const inTier = listed.filter((member) => member.tier === tier)
     if (inTier.length === 0) continue
     out.push(`### ${TIER_TITLE[tier] ?? tier}`, '')
-    for (const member of inTier) out.push(...memberLines(member, framework, roles))
+    for (const member of inTier) out.push(...memberLines(member, framework, roles, omitted))
     out.push('')
   }
 
@@ -390,7 +426,7 @@ export function renderRuntimeCard(
   if (primitives.length > 0) {
     out.push('### Declared exceptions', '')
     for (const primitive of primitives) {
-      const props = propList(primitive.props, roles)
+      const props = propList(primitive.props, roles, omitted)
       out.push(
         `- **${primitive.name}** (rung ${primitive.rung}) — ${primitive.purpose}` +
           props.map((prop) => ` · ${prop}`).join(''),
@@ -399,7 +435,7 @@ export function renderRuntimeCard(
     out.push('')
   }
 
-  out.push(...dataTypeLines(vocabulary, listed, primitives, framework, roles))
+  out.push(...dataTypeLines(vocabulary, listed, primitives, framework, roles, omitted))
 
   if (out.some((line) => line.includes('IconRole'))) {
     out.push(
@@ -414,4 +450,116 @@ export function renderRuntimeCard(
     )
   }
   return out.join('\n')
+}
+
+/* -------------------------------------------------------------------------- */
+/* The whole card                                                             */
+/* -------------------------------------------------------------------------- */
+
+/** What the whole card is composed for: the members a host allows, its address policy, and the format. */
+export interface ComposedCardOptions extends MemberOptions {
+  /**
+   * The screen format's id, `SPEC_ID` from `@polymorph/spec/schema`. The spec
+   * package depends on the registry, so the registry cannot import it, and
+   * every caller hands it in.
+   */
+  readonly spec: string
+}
+
+/** `a`, `a and b`, `a, b and c`, or with `or`. */
+const listedText = (items: readonly string[], last = 'and'): string =>
+  items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} ${last} ${items.at(-1)}`
+
+const code = (text: string) => `\`${text}\``
+
+/** The opening: what the model is asked to do, and what it cannot do. */
+const OPENING = [
+  '# Writing a screen',
+  '',
+  'You write one screen as a document that names members of a closed vocabulary, their props and',
+  'what they hold. The host draws it at once, in its own theme: every colour, space, size and motion',
+  'is the theme’s, so a document has no field for a style, a class or an expression. Choose members',
+  'and variants; bind content to the inputs the host hands the screen.',
+  '',
+].join('\n')
+
+/**
+ * The output contract, for the members a host allows: what the answer is, and
+ * what the host does with each part of it at run time.
+ */
+export function composeOutputContract(
+  vocabulary: ScreenTable,
+  options: ComposedCardOptions,
+): string {
+  const allowed = allowedMembers(vocabulary, options)
+  const scopes = vocabulary.exceptions.primitives.filter((primitive) => allowed.has(primitive.name))
+  const patched = vocabulary.components
+    .filter((member) => allowed.has(member.name))
+    .filter((member) => member.props.some((prop) => prop.name === 'patch'))
+    .map((member) => code(member.name))
+  const rungs = [
+    ...scopes.map((primitive) => `${code(primitive.name)} is rung ${primitive.rung}`),
+    ...(patched.length === 0
+      ? []
+      : [`a ${code('patch')} prop (on ${listedText(patched)}) is rung 3`]),
+  ]
+  const addresses = listedText([...ADDRESS_KEYS].map(code))
+  const schemes = ADDRESS_SCHEMES.map(code)
+
+  const lines = [
+    '## What you write',
+    '',
+    `Answer with one document in the ${code(options.spec)} format, as JSON in one fenced \`json\``,
+    'block. The host draws it while it arrives, so write its keys in this order: `spec`, `name`,',
+    '`purpose`, `inputs`, and `root` last.',
+    '',
+    `- ${code('spec')} is ${code(JSON.stringify(options.spec))}. ${code('name')} is a PascalCase name for the screen that no member has.`,
+    `  ${code('purpose')} is one sentence.`,
+    '- `inputs` lists what the host hands the screen, each `{ "name": …, "type": … }`. A data input is',
+    '  named for a key of the host’s data, and its `type` is a TypeScript type (`string`, `Order[]`);',
+    '  an input the host has no value for is empty. An input whose type is a function that returns',
+    '  nothing (`(id: string) => void`) is an action: when a member calls it, the host is told its',
+    '  name, its arguments and the value of every named control. Bind each callback prop the person',
+    '  acts through to an action input of the callback’s type. A function that returns a value',
+    '  (`(row: Row) => string`) is answered with an empty answer and the host is never told.',
+    '- `root` is an element: `{ "component": …, "props": { … }, "children": [ … ] }`, `props` and',
+    '  `children` left out when empty. `component` is a member or a part (`Member.Part`) listed',
+    '  above. Every prop goes inside `props`, and a member takes no prop and no child it does not list.',
+    '  Write an element’s plain props before its props that hold elements, and `props` before',
+    '  `children`: the screen is drawn as it is written, and an element is drawn once its plain',
+    '  props are whole.',
+    '- A value is a string, a number, a boolean, `null`, an element, a list of values, a binding',
+    '  `{ "$": "input" }` or `{ "$": "input.field" }`, or a structured object `{ "$object": { … } }`',
+    '  (an option, a column). A binding names a declared input and is never an expression.',
+    '- There is no condition and no loop: every element is drawn whenever the screen is. Content that',
+    '  is sometimes absent is a prop bound to an input that is empty while there is nothing to show.',
+    '- A control with a `name` reports its current value under that name with every action, so name',
+    '  each field a person fills in. A name is used once in a screen: two forms on one screen name',
+    '  their fields apart (`signInEmail`, `signUpEmail`), because one name holds one value.',
+    options.addresses === 'refused'
+      ? `- This host shows no link and loads nothing from an address: write no ${listedText([...ADDRESS_KEYS].map(code), 'or')}, in a prop or a field.`
+      : `- An address (${addresses}) is relative, a fragment, or ${schemes.slice(0, -1).join(', ')} or ${schemes.at(-1) ?? ''}.`,
+  ]
+  if (rungs.length > 0) {
+    lines.push(
+      `- A declared exception: ${listedText(rungs)}. An element that is one carries`,
+      '  `"exception": { "rung": …, "because": "…" }`, the reason in four words or more; no other',
+      '  element has `exception`.',
+    )
+  }
+  return `${lines.join('\n')}\n`
+}
+
+/**
+ * The whole run-time card for the members a host allows: the opening, the
+ * members section and the output contract. Its default is every member the
+ * framework draws but those that host another library's code.
+ */
+export function composeRuntimeCard(vocabulary: ScreenTable, options: ComposedCardOptions): string {
+  const members = renderRuntimeCard(vocabulary, {
+    framework: options.framework ?? DEFAULT_FRAMEWORK,
+    members: allowedMembers(vocabulary, options),
+    ...(options.addresses === undefined ? {} : { addresses: options.addresses }),
+  })
+  return `${OPENING}\n${members}\n${composeOutputContract(vocabulary, options)}`
 }
