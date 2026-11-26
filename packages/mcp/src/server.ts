@@ -583,7 +583,9 @@ export const TOOLS: readonly ToolEntry[] = [
       'to a `.swift` file instead, and one whose `platform` is `android` to a `.kt` file: a ' +
       'model, an actions record and a stateless SwiftUI or Compose view built from the ' +
       'platform’s members (design/native/screen-contract.md); a member the platform does not ' +
-      'draw is a fault, and `framework` is refused. `framework: "elements"` is refused: HTML ' +
+      'draw is a fault, and `framework` is refused. A project with no `package.json` that is a ' +
+      'Swift package or an Xcode project takes only `ios` screens, and one that is a Gradle ' +
+      'build only `android` screens. `framework: "elements"` is refused: HTML ' +
       'has no way to bind a screen’s callbacks and node renderers. The spec is ' +
       'checked exactly as `validate` checks one, and an unlawful spec writes nothing and ' +
       'comes back with its faults. A lawful one lands as a presentational component — ' +

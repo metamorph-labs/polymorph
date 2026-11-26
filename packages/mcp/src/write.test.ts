@@ -483,6 +483,110 @@ describe('emit_screen, for Android', () => {
   })
 })
 
+/**
+ * A native repository: a directory with no `package.json` that holds what
+ * the platform's own tools write at a repository's root.
+ */
+function nativeProject(marker: string, directory = false): ToolContext & { project: string } {
+  const path = mkdtempSync(resolve(tmpdir(), 'polymorph-mcp-native-'))
+  temporaries.push(path)
+  if (directory) mkdirSync(resolve(path, marker))
+  else writeFileSync(resolve(path, marker), '')
+  return { registry, root: ROOT, project: path }
+}
+
+describe('emit_screen, in a native repository', () => {
+  it('writes a SwiftUI screen into a Swift package, and refuses a web or a Compose screen', async () => {
+    const context = nativeProject('Package.swift')
+    const answer = await emitScreen(context, {
+      spec: JSON.stringify(IOS_SPEC),
+      path: 'Sources/App/AlertsView.swift',
+    })
+    expect(answer).toMatchObject({ ok: true, outcome: 'written', language: 'swift' })
+    expect(read(context, 'Sources/App/AlertsView.swift')).toContain('struct AlertsModel {')
+
+    // A web screen names its framework and its dependencies in a package.json,
+    // which this repository does not have.
+    await expect(emitScreen(context, { spec: spec(), path: 'src/SaveBar.tsx' })).rejects.toThrow(
+      /holds Package\.swift and no package\.json or polymorph\.json, so it takes only a screen emitted for `ios` — a web screen/,
+    )
+    await expect(
+      emitScreen(context, { spec: JSON.stringify(ANDROID_SPEC), path: 'AlertsScreen.kt' }),
+    ).rejects.toThrow(/this spec is for `android`, whose screens a Gradle build holds/)
+    expect(tree(context.project)).toEqual([
+      'Package.swift',
+      'Sources',
+      'Sources/App',
+      'Sources/App/AlertsView.swift',
+    ])
+  })
+
+  it('reads an Xcode project or workspace as a Swift project', async () => {
+    for (const bundle of ['Relay.xcodeproj', 'Relay.xcworkspace']) {
+      const context = nativeProject(bundle, true)
+      const answer = await emitScreen(context, {
+        spec: JSON.stringify(IOS_SPEC),
+        path: 'Relay/AlertsView.swift',
+      })
+      expect(answer.ok, bundle).toBe(true)
+    }
+  })
+
+  it('writes a Compose screen into a Gradle build, and refuses a web or a SwiftUI screen', async () => {
+    for (const marker of ['settings.gradle.kts', 'settings.gradle', 'build.gradle.kts']) {
+      const context = nativeProject(marker)
+      const path = 'app/src/main/kotlin/dev/acme/alerts/AlertsScreen.kt'
+      const answer = await emitScreen(context, { spec: JSON.stringify(ANDROID_SPEC), path })
+      expect(answer, marker).toMatchObject({ ok: true, outcome: 'written', language: 'kotlin' })
+      expect(read(context, path)).toContain('\npackage dev.acme.alerts\n')
+
+      await expect(emitScreen(context, { spec: spec(), path: 'src/SaveBar.tsx' })).rejects.toThrow(
+        RefusedWriteError,
+      )
+      await expect(
+        emitScreen(context, { spec: JSON.stringify(IOS_SPEC), path: 'AlertsView.swift' }),
+      ).rejects.toThrow(/takes only a screen emitted for `android`, and this spec is for `ios`/)
+    }
+  })
+
+  it('stays inside the native project, through a link too', async () => {
+    const context = nativeProject('Package.swift')
+    const elsewhere = mkdtempSync(resolve(tmpdir(), 'polymorph-mcp-elsewhere-'))
+    temporaries.push(elsewhere)
+    symlinkSync(elsewhere, resolve(context.project, 'linked'))
+    for (const path of [
+      '../AlertsView.swift',
+      '/tmp/AlertsView.swift',
+      'linked/AlertsView.swift',
+    ]) {
+      await expect(
+        emitScreen(context, { spec: JSON.stringify(IOS_SPEC), path }),
+        path,
+      ).rejects.toThrow(EscapingDirError)
+    }
+    expect(tree(elsewhere)).toEqual([])
+  })
+
+  it('takes no install, theme or fix, which belong in a web project', async () => {
+    const context = nativeProject('settings.gradle.kts')
+    writeFileSync(
+      resolve(context.project, 'App.tsx'),
+      'export const A = () => <button>Go</button>\n',
+    )
+    const { system, palette } = proposal()
+    expect(() => install(context, { items: ['button'] })).toThrow(
+      /holds settings\.gradle\.kts and no package\.json.*an install of web members belongs in a web project/,
+    )
+    expect(() => saveTheme(context, { system, palette })).toThrow(
+      /a system and a palette belongs in a web project/,
+    )
+    await expect(fixFile(context, { path: 'App.tsx' })).rejects.toThrow(
+      /a fix of web source belongs in a web project/,
+    )
+    expect(tree(context.project)).toEqual(['App.tsx', 'settings.gradle.kts'])
+  })
+})
+
 /* -------------------------------------------------------------------------- */
 /* install                                                                    */
 /* -------------------------------------------------------------------------- */
@@ -1023,6 +1127,21 @@ describe('a write tool with nowhere to write', () => {
     expect(() => install(context, { items: ['button'] })).toThrow('--project')
     expect(() => saveTheme(context, { system, palette })).toThrow('no package.json')
     expect(tree(path)).toEqual([])
+  })
+
+  it('reads the directory itself, not one inside it', async () => {
+    // A repository that holds an iOS app in a directory is that directory's
+    // project, not the parent's: a marker below the project names nothing.
+    const path = mkdtempSync(resolve(tmpdir(), 'polymorph-mcp-parent-'))
+    temporaries.push(path)
+    mkdirSync(resolve(path, 'ios'))
+    writeFileSync(resolve(path, 'ios/Package.swift'), '')
+    const context: ToolContext = { registry, root: ROOT, project: path }
+
+    await expect(
+      emitScreen(context, { spec: JSON.stringify(IOS_SPEC), path: 'ios/AlertsView.swift' }),
+    ).rejects.toThrow('no Package.swift, Xcode project or Gradle build')
+    expect(tree(path)).toEqual(['ios', 'ios/Package.swift'])
   })
 })
 

@@ -420,6 +420,26 @@ describe('polymorph emit', () => {
     expect(outside.code).toBe(1)
     expect(outside.out).toContain('must stay inside your repository')
   })
+
+  it('writes a SwiftUI screen in a Swift package, which has no package.json', async () => {
+    const root = mkdtempSync(resolve(tmpdir(), 'polymorph-verbs-swift-'))
+    temporaries.push(root)
+    writeFileSync(resolve(root, 'Package.swift'), '// swift-tools-version: 5.9\n')
+    mkdirSync(resolve(root, 'screens'))
+    const spec = readFileSync(resolve(ROOT, 'platforms/ios/Examples/Relay/Screens/settings.json'))
+    writeFileSync(resolve(root, 'screens/settings.json'), spec)
+
+    const out = 'Sources/App/SettingsView.swift'
+    const written = await polymorph(root, ['emit', 'screens/settings.json', out])
+    expect(written.code).toBe(0)
+    expect(written.out).toContain(`written    ${out} (SettingsView, swift)`)
+
+    writeFileSync(resolve(root, 'screens/inbox.json'), JSON.stringify(SPEC))
+    const web = await polymorph(root, ['emit', 'screens/inbox.json', 'src/Inbox.tsx'])
+    expect(web.code).toBe(1)
+    expect(web.out).toContain('so it takes only a screen emitted for `ios` — a web screen')
+    expect(existsSync(resolve(root, 'src'))).toBe(false)
+  })
 })
 
 describe('polymorph plan', () => {
