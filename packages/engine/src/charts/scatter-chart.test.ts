@@ -395,3 +395,34 @@ describe('the scatter readout and selection', () => {
     expect(scatterChartModel(chart()).summary).not.toContain('Enter or Space')
   })
 })
+
+/** A scatter chart's two measures, `y.label` and `x.label`, said together in the summary. */
+describe('the measures', () => {
+  it('says y.label against x.label in the summary sentence', () => {
+    const both = chart({
+      x: { key: 'minutes', label: 'Handle time (min)' },
+      y: { label: 'Satisfaction' },
+    })
+    expect(scatterChartModel(both).summary).toBe(
+      'Correlation showing CSAT, 4 points. Values: Satisfaction against Handle time (min). The same data is available as a table.',
+    )
+    expect(scatterChartModel(chart({ y: { label: 'Satisfaction' } })).summary).toContain(
+      '4 points. Values: Satisfaction. The same',
+    )
+    expect(
+      scatterChartModel(chart({ x: { key: 'minutes', label: 'Handle time (min)' } })).summary,
+    ).toContain('4 points. Values against Handle time (min). The same')
+    expect(scatterChartModel(chart()).summary).not.toContain('Values')
+  })
+
+  it('keeps x.label at the head of the twin’s first column', () => {
+    const both = chart({
+      x: { key: 'minutes', label: 'Handle time (min)' },
+      y: { label: 'Satisfaction' },
+    })
+    expect(scatterChartModel(both).twin.columns.map((column) => column.label)).toEqual([
+      'Handle time (min)',
+      'CSAT',
+    ])
+  })
+})

@@ -122,6 +122,30 @@ describe('formatting with Intl, not d3-format', () => {
     expect(say.summary({ label: 'Latency', series: [], points: 200 })).toBe(
       'Latency, 200 points. The same data is available as a table.',
     )
+    // The measure the values are in, said once for every series.
+    expect(
+      say.summary({
+        label: 'Tickets by weekday',
+        series: ['Opened', 'Resolved'],
+        points: 5,
+        measure: 'Tickets',
+      }),
+    ).toBe(
+      'Tickets by weekday showing Opened and Resolved, 5 points. Values: Tickets. The same data is available as a table.',
+    )
+    // A scatter chart's two measures, the vertical against the horizontal.
+    expect(
+      say.summary({
+        label: 'Handle time and satisfaction',
+        series: ['Agents'],
+        points: 24,
+        measure: 'Satisfaction',
+        xMeasure: 'Handle time (min)',
+      }),
+    ).toContain('24 points. Values: Satisfaction against Handle time (min).')
+    expect(
+      say.summary({ label: 'Agents', series: ['Agents'], points: 24, xMeasure: 'Handle time' }),
+    ).toContain('24 points. Values against Handle time.')
     expect(say.donutSummary({ label: 'Channels', segments: 1 })).toContain('Channels, 1 segment.')
     expect(say.heatmapSummary({ label: 'Load' })).toBe(
       'Load. The same data is available as a table.',

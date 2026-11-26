@@ -10,6 +10,7 @@ import {
 } from '@polymorph/react'
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
 import { scatterChartReadingLaw } from '@polymorph/conformance/chart-reading'
+import { scatterChartMeasureLaw } from '@polymorph/conformance/chart-measure'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { reactAdapter } from '../conformance/react'
 import { ScatterChart, type ScatterChartProps } from './ScatterChart'
@@ -185,6 +186,12 @@ chartBoxLaw({
 
 /* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
 scatterChartReadingLaw({
+  shell: 'React',
+  mount: async (props) => render(<ScatterChart {...props} />),
+})
+
+/* The measure it names, said once in its summary (`@polymorph/conformance/chart-measure`). */
+scatterChartMeasureLaw({
   shell: 'React',
   mount: async (props) => render(<ScatterChart {...props} />),
 })

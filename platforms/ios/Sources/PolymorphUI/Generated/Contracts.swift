@@ -7166,7 +7166,9 @@ public struct PMSelectProps {
   /// a bottom sheet on a wide pointer screen is the wrong pattern (`docs/layout.md`).
   public var presentation: PMSelectPresentation?
   public var size: PMControlSize?
-  /// `null` is the empty choice, which is allowed only when `emptyOption` is set.
+  /// The chosen option's value. Controlled when given. `null` is nothing chosen: the trigger shows
+  /// the placeholder, or the empty choice when `emptyOption` is set. A caller clears the choice
+  /// with `null`, because `undefined` is no value, which hands the choice back to the member.
   public var value: String??
 
   public init(
@@ -9322,7 +9324,9 @@ public struct PMChartLineAnnotation {
 
 /// The web's `ChartMessages`, field for field (`SHAPES` in `packages/native/src/mapping.ts`).
 public struct PMChartMessages {
-  /// The summary sentence of a series chart and of Histogram, whose `series` is empty.
+  /// The summary sentence of a series chart and of Histogram, whose `series` is empty. `measure` is
+  /// the `y.label` the values are in, and `xMeasure` a ScatterChart’s `x.label`; each is absent
+  /// while the chart names none.
   public var summary: @MainActor (PMChartSummaryFacts) -> String
   public var donutSummary: @MainActor (PMDonutSummaryFacts) -> String
   /// `grid` is absent when there is no data.
@@ -9514,15 +9518,21 @@ public struct PMChartSummaryFacts {
   public var label: String
   public var series: [String]
   public var points: Double
+  public var measure: String?
+  public var xMeasure: String?
 
   public init(
     label: String,
     series: [String],
-    points: Double
+    points: Double,
+    measure: String? = nil,
+    xMeasure: String? = nil
   ) {
     self.label = label
     self.series = series
     self.points = points
+    self.measure = measure
+    self.xMeasure = xMeasure
   }
 }
 

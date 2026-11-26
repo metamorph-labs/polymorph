@@ -23,7 +23,7 @@ visible.
 | `placeholder` | `string` | — | shown in `--pm-text-muted`; mutually exclusive with `emptyOption`. When both are given, `emptyOption` wins and a dev warning fires (see below) |
 | `emptyOption` | `string` | — | renders a selectable empty choice as the **first** item, labelled with this string (see "The empty choice") |
 | `invalid` / `disabled` | `boolean` | `false` | |
-| `value` / `defaultValue` / `onChange(value)` | `string \| null` | — | `null` is the empty choice; lawful only with `emptyOption` set (dev warning otherwise) |
+| `value` / `defaultValue` / `onChange(value)` | `string \| null` | — | `null` is nothing chosen: the trigger shows the placeholder, or the empty choice when `emptyOption` is set. An application clears a choice with `null` (see "The value") |
 | `name`, `id` | native passthrough | — | for forms/FormField |
 | `presentation` | `'auto' \| 'popover'` | `'auto'` | `'auto'` shows the content panel as a sheet below `30rem` (see below; conventions §12). `'popover'` keeps the popper at every width, for pointer-first embeds that need precision. There is no always-`'sheet'` value: a bottom sheet is wrong on a wide pointer screen, and the closed union rules it out (`docs/layout.md`) |
 
@@ -40,6 +40,25 @@ Trigger attributes: `data-size`, `data-invalid?`, `data-disabled?`,
 `data-state="open|closed"` (Radix), `data-placeholder?`. Items: `data-state`
 (`checked|unchecked`), `data-highlighted`, `data-disabled`. Content panel:
 `data-presentation="sheet"` while drawn as a sheet (conventions §12's contract).
+
+## The value
+
+One option is chosen, or none. `value` makes the choice the application's: the trigger, the list
+and the hidden field show what the application holds, and a pick is reported through `onChange`
+and shown only once the application passes it back. Without `value`, the member holds the
+choice, starting from `defaultValue`.
+
+`null` is nothing chosen, as it is for Combobox, TreeSelect, DatePicker, NumberInput and
+Rating. Without `emptyOption` the trigger then shows the placeholder,
+with `data-placeholder`, in the anchored list and in the sheet; with it, the empty choice. An
+application clears a choice by setting `null`, as a form does when it resets after a save, and
+holds an unchosen Select's value as `string | null`.
+
+`undefined` is not a value. React reads a `value` of `undefined` as no `value` at all, so a
+caller that held a value and then passes `undefined` hands the choice back to the member, which
+shows its own last pick. The React member warns in development when that happens, and names
+`null`. `''` is not a value either: Radix reserves it for nothing selected, so no option may
+have it, and nothing chosen is `null`.
 
 ## The empty choice
 
@@ -114,6 +133,7 @@ the sheet, as in the popper form).
 | --- | --- | --- |
 | closed rest | options + placeholder | trigger `data-state="closed"` |
 | with value | `defaultValue` | — |
+| nothing chosen | `value={null}` + placeholder | trigger `data-placeholder`, the placeholder shown |
 | sizes | sm/lg | `data-size` |
 | open | `defaultOpen` | trigger `data-state="open"`; panel present |
 | open with selection | `defaultOpen defaultValue` | selected item `data-state="checked"` |
@@ -165,7 +185,13 @@ key Enter commits on option when open
 key Escape closes when open
 focus on-close trigger
 attr trigger aria-invalid=true when invalid
+attr trigger data-placeholder when nothing chosen
 ```
+
+The contract reads a fresh mount. What the trigger, the list and the hidden field show after the
+application changes the value it holds, `null` after a value in both forms included, is
+`selectValueLaw` (`@polymorph/conformance/select-value`), which every web shell's Select test
+calls.
 
 ## Agent
 

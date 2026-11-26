@@ -425,7 +425,10 @@ export function scatterChartModel(input: ScatterChartInput): ScatterChartModel {
     painted,
     visible,
     categories,
-    summary: summaryFor(messages, label, painted, data.length, selectable),
+    summary: summaryFor(messages, label, painted, data.length, selectable, {
+      measure: y?.label,
+      xMeasure: x.label,
+    }),
     warnings,
     legend: legendFor(painted) !== null,
     twin: {

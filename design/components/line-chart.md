@@ -24,7 +24,7 @@ It uses the shared `ChartFrame`, and its grammar types are the tier's
 | `data` | `readonly ChartDatum[]` | required | rows in the given order; `null` is a **gap**: the line breaks instead of dropping to zero |
 | `series` | `readonly ChartSeries[]` | required | 1–8; slots by declaration order |
 | `x` | `ChartXAxis` | required | `band`, `time` (ISO strings; date-only strings are calendar dates with no timezone shift) or `linear` |
-| `y` | `ChartYAxis` | — | `domain` defaults to `'auto'`, so lines fit the data; `'zero'` anchors the axis at zero |
+| `y` | `ChartYAxis` | — | `domain` defaults to `'auto'`, so lines fit the data; `'zero'` anchors the axis at zero. `label` names the measure the values are in, which the summary sentence says once (`docs/charts.md`); no axis title is drawn |
 | `variant` | `'line' \| 'area'` | `'line'` | `area` adds a fill in the series hue at ~10% alpha, light enough not to read as a solid block |
 | `markers` | `boolean` | `false` | ≥ 8px point dots with the 2px surface ring; a second channel besides colour, for CVD readers and print |
 | `curve` | `'monotone' \| 'step'` | `'monotone'` | step is **`curveStepAfter`**, because a measurement holds until the next one. `'linear'` stays engine-internal |

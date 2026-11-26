@@ -160,6 +160,7 @@ import { DonutChart, Heatmap, Histogram, LineChart } from '${VOCABULARY}'
     { key: 'resolved', label: 'Resolved' },
   ]}
   x={{ key: 'day', scale: 'time', label: 'Day' }}
+  y={{ label: 'Tickets' }}
   label="Tickets opened and resolved by day"
 />
 
@@ -241,7 +242,7 @@ ${f.p('BarChart', 'messages')} is set as a property from script:
 | --- | --- | --- |
 | ${f.p('BarChart', 'label')} | Required. The chart's accessible name and the start of its summary sentence. It is not drawn: the panel's title names the chart on screen. | ${having('label')} |
 | ${f.p('BarChart', 'size')} | The height, \`sm\`, \`md\` or \`lg\`. The width is always the container's. | ${having('size')} |
-| ${f.p('BarChart', 'x')}, ${f.p('LineChart', 'y')} | \`x.label\` heads the first column of the chart's table of values (a ${f.m('Heatmap')}'s is \`y.label\`); no axis title is drawn. \`format\` is ${styles}: \`percent\` takes ratios, and \`currency\` takes a \`currency\` code. \`y.domain: 'zero'\` anchors a line at zero. | ${having('x')} |
+| ${f.p('BarChart', 'x')}, ${f.p('LineChart', 'y')} | No axis title is drawn, so a label is read as words. \`x.label\` heads the first column of the chart's table of values (a ${f.m('Heatmap')}'s is \`y.label\`). \`y.label\` names the measure the values are in, such as "Requests" or "Latency (ms)": the summary sentence says it once, and the tooltip and the table name each value by its series. A ${f.m('ScatterChart')}'s summary says its \`x.label\` too, and a ${f.m('Histogram')}'s \`y.label\` heads its count column. \`format\` is ${styles}: \`percent\` takes ratios, and \`currency\` takes a \`currency\` code. \`y.domain: 'zero'\` anchors a line at zero. | ${having('x')} |
 | ${f.p('BarChart', 'series')} | A ${series('key')} and a ${series('label')} for each series; ${series('slot')} and ${series('tone')} set its colour (section 4). Two or more series draw a legend, whose keys hide and show a series. The legend is not a prop. | ${having('series')} |
 | ${f.p('BarChart', 'tooltip')} | How the reading's tooltip looks. \`false\` removes it for print and keeps the keyboard reading and the table. | ${having('tooltip')} |
 | ${f.p('BarChart', 'onSelect')} | Called on Enter, Space or a click at the reading position, with what is there: \`{ index, key, datum }\` on a bar. \`component\` prints each member's payload. | ${having('onSelect')} |

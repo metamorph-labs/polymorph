@@ -618,7 +618,9 @@ export function barChartModel(input: BarChartInput): BarChartModel {
     visible,
     lineKeys: paintedLines.map((entry) => entry.key),
     categories,
-    summary: summaryFor(messages, input.label, painted, data.length, selectable),
+    summary: summaryFor(messages, input.label, painted, data.length, selectable, {
+      measure: y?.label,
+    }),
     warnings,
     legend: legendFor(painted) !== null,
     twin: {

@@ -1,6 +1,8 @@
+import { createSignal } from 'solid-js'
 import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
+import { selectValueLaw, SELECT_VALUE_LAW_OPTIONS } from '@polymorph/conformance/select-value'
 import { installTestTheme } from '@polymorph/engine/testing'
 
 import { mount } from '../mount'
@@ -49,4 +51,31 @@ describe('Select with an empty choice', () => {
     expect(trigger()?.textContent).toContain('All statuses')
     expect(trigger()?.hasAttribute('data-placeholder')).toBe(false)
   })
+})
+
+/**
+ * The value the application holds, `null` for nothing chosen, as
+ * `@polymorph/conformance/select-value` states it for every web shell.
+ */
+selectValueLaw({
+  shell: 'Solid',
+  async mount({ value, placeholder, emptyOption, name, onChange }) {
+    const [held, setHeld] = createSignal<string | null>(value)
+    await mount(() => (
+      <Select
+        aria-label="Priority"
+        options={SELECT_VALUE_LAW_OPTIONS}
+        placeholder={placeholder}
+        emptyOption={emptyOption}
+        name={name}
+        value={held()}
+        onChange={onChange}
+      />
+    ))
+    return {
+      set(next) {
+        setHeld(next)
+      },
+    }
+  },
 })

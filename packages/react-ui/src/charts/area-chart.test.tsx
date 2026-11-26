@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
 import { areaChartReadingLaw } from '@polymorph/conformance/chart-reading'
+import { areaChartMeasureLaw } from '@polymorph/conformance/chart-measure'
 import { assertGoverned, type ChartDatum } from '@polymorph/react'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { reactAdapter } from '../conformance/react'
@@ -291,6 +292,12 @@ chartBoxLaw({ shell: 'React', member: 'AreaChart', entries: states.entries, adap
 
 /* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
 areaChartReadingLaw({
+  shell: 'React',
+  mount: async (props) => render(<AreaChart {...props} />),
+})
+
+/* The measure it names, said once in its summary (`@polymorph/conformance/chart-measure`). */
+areaChartMeasureLaw({
   shell: 'React',
   mount: async (props) => render(<AreaChart {...props} />),
 })

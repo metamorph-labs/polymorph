@@ -1,5 +1,6 @@
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
 import { scatterChartReadingLaw } from '@polymorph/conformance/chart-reading'
+import { scatterChartMeasureLaw } from '@polymorph/conformance/chart-measure'
 
 import { elementsAdapter } from '../conformance/elements'
 import { mountElement } from '../mount'
@@ -24,6 +25,12 @@ chartBoxLaw({
 
 /* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
 scatterChartReadingLaw({
+  shell: 'Elements',
+  mount: (props) => mountElement('poly-scatter-chart', props),
+})
+
+/* The measure it names, said once in its summary (`@polymorph/conformance/chart-measure`). */
+scatterChartMeasureLaw({
   shell: 'Elements',
   mount: (props) => mountElement('poly-scatter-chart', props),
 })

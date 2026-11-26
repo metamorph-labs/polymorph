@@ -6,6 +6,7 @@ import { h, nextTick } from 'vue'
 import { barLinesLaw } from '@polymorph/conformance/bar-lines'
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
 import { barChartReadingLaw } from '@polymorph/conformance/chart-reading'
+import { barChartMeasureLaw } from '@polymorph/conformance/chart-measure'
 import { installTestTheme } from '@polymorph/engine/testing'
 
 import { mount } from '../mount'
@@ -190,6 +191,16 @@ chartBoxLaw({ shell: 'Vue', member: 'BarChart', entries: states.entries, adapter
 
 /* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
 barChartReadingLaw({
+  shell: 'Vue',
+  async mount(props) {
+    const mounted = await mount(() => h(BarChart, { ...props }))
+    await nextTick()
+    return mounted
+  },
+})
+
+/* The measure it names, said once in its summary (`@polymorph/conformance/chart-measure`). */
+barChartMeasureLaw({
   shell: 'Vue',
   async mount(props) {
     const mounted = await mount(() => h(BarChart, { ...props }))

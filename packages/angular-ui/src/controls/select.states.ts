@@ -30,100 +30,107 @@ defaultValue="high"
 aria-label="Priority"
 [pmOverrides]="overrides()"
 ></pm-select>}
-@case (2) {<pm-inline
-[gap]="e6()"
+@case (2) {<pm-select
+[options]="e3()"
+placeholder="Choose a priority"
+[value]="e4()"
+aria-label="Priority"
+[pmOverrides]="overrides()"
+></pm-select>}
+@case (3) {<pm-inline
+[gap]="e8()"
 ><pm-select
 size="sm"
-[options]="e3()"
+[options]="e5()"
 defaultValue="normal"
 aria-label="Priority (sm)"
 [pmOverrides]="overrides()"
 ></pm-select>
 <pm-select
 size="md"
-[options]="e4()"
+[options]="e6()"
 defaultValue="normal"
 aria-label="Priority (md)"
 ></pm-select>
 <pm-select
 size="lg"
-[options]="e5()"
+[options]="e7()"
 defaultValue="normal"
 aria-label="Priority (lg)"
 ></pm-select></pm-inline>}
-@case (3) {<pm-select
-size="sm"
-[options]="e7()"
-defaultValue="normal"
-aria-label="Priority"
-[pmOverrides]="overrides()"
-></pm-select>}
 @case (4) {<pm-select
-size="lg"
-[options]="e8()"
+size="sm"
+[options]="e9()"
 defaultValue="normal"
 aria-label="Priority"
 [pmOverrides]="overrides()"
 ></pm-select>}
 @case (5) {<pm-select
-[defaultOpen]="e9()"
+size="lg"
 [options]="e10()"
-placeholder="Choose a priority"
-aria-label="Priority, open"
+defaultValue="normal"
+aria-label="Priority"
 [pmOverrides]="overrides()"
 ></pm-select>}
 @case (6) {<pm-select
 [defaultOpen]="e11()"
 [options]="e12()"
+placeholder="Choose a priority"
+aria-label="Priority, open"
+[pmOverrides]="overrides()"
+></pm-select>}
+@case (7) {<pm-select
+[defaultOpen]="e13()"
+[options]="e14()"
 defaultValue="high"
 aria-label="Priority, open with a selection"
 [pmOverrides]="overrides()"
 ></pm-select>}
-@case (7) {<pm-select
-[options]="e13()"
-emptyOption="All statuses"
-[defaultValue]="e14()"
-aria-label="Status"
-[pmOverrides]="overrides()"
-></pm-select>}
 @case (8) {<pm-select
-[defaultOpen]="e15()"
-[options]="e16()"
+[options]="e15()"
 emptyOption="All statuses"
-aria-label="Status, open on the empty choice"
+[defaultValue]="e16()"
+aria-label="Status"
 [pmOverrides]="overrides()"
 ></pm-select>}
 @case (9) {<pm-select
 [defaultOpen]="e17()"
 [options]="e18()"
-defaultValue="high"
-aria-label="Priority, with a disabled option"
+emptyOption="All statuses"
+aria-label="Status, open on the empty choice"
 [pmOverrides]="overrides()"
 ></pm-select>}
 @case (10) {<pm-select
 [defaultOpen]="e19()"
 [options]="e20()"
-placeholder="Choose a queue"
-aria-label="Queue, grouped"
+defaultValue="high"
+aria-label="Priority, with a disabled option"
 [pmOverrides]="overrides()"
 ></pm-select>}
 @case (11) {<pm-select
 [defaultOpen]="e21()"
 [options]="e22()"
+placeholder="Choose a queue"
+aria-label="Queue, grouped"
+[pmOverrides]="overrides()"
+></pm-select>}
+@case (12) {<pm-select
+[defaultOpen]="e23()"
+[options]="e24()"
 defaultValue="high"
 aria-label="Priority, with descriptions"
 [pmOverrides]="overrides()"
 ></pm-select>}
-@case (12) {<pm-select
-[invalid]="e23()"
-[options]="e24()"
+@case (13) {<pm-select
+[invalid]="e25()"
+[options]="e26()"
 placeholder="Required"
 aria-label="Priority"
 [pmOverrides]="overrides()"
 ></pm-select>}
-@case (13) {<pm-select
-[disabled]="e25()"
-[options]="e26()"
+@case (14) {<pm-select
+[disabled]="e27()"
+[options]="e28()"
 defaultValue="normal"
 aria-label="Priority"
 [pmOverrides]="overrides()"
@@ -161,13 +168,8 @@ export class SelectStates {
     ]
   }
 
-  protected e4(): SelectProps['options'] {
-    return [
-      { value: 'urgent', label: 'Urgent' },
-      { value: 'high', label: 'High' },
-      { value: 'normal', label: 'Normal' },
-      { value: 'low', label: 'Low' },
-    ]
+  protected e4(): SelectProps['value'] {
+    return null
   }
 
   protected e5(): SelectProps['options'] {
@@ -179,8 +181,13 @@ export class SelectStates {
     ]
   }
 
-  protected e6(): InlineProps['gap'] {
-    return 3
+  protected e6(): SelectProps['options'] {
+    return [
+      { value: 'urgent', label: 'Urgent' },
+      { value: 'high', label: 'High' },
+      { value: 'normal', label: 'Normal' },
+      { value: 'low', label: 'Low' },
+    ]
   }
 
   protected e7(): SelectProps['options'] {
@@ -192,17 +199,17 @@ export class SelectStates {
     ]
   }
 
-  protected e8(): SelectProps['options'] {
+  protected e8(): InlineProps['gap'] {
+    return 3
+  }
+
+  protected e9(): SelectProps['options'] {
     return [
       { value: 'urgent', label: 'Urgent' },
       { value: 'high', label: 'High' },
       { value: 'normal', label: 'Normal' },
       { value: 'low', label: 'Low' },
     ]
-  }
-
-  protected e9(): SelectProps['defaultOpen'] {
-    return true
   }
 
   protected e10(): SelectProps['options'] {
@@ -227,30 +234,30 @@ export class SelectStates {
     ]
   }
 
-  protected e13(): SelectProps['options'] {
-    return [
-      { value: 'urgent', label: 'Urgent' },
-      { value: 'high', label: 'High' },
-      { value: 'normal', label: 'Normal' },
-      { value: 'low', label: 'Low' },
-    ]
-  }
-
-  protected e14(): SelectProps['defaultValue'] {
-    return null
-  }
-
-  protected e15(): SelectProps['defaultOpen'] {
+  protected e13(): SelectProps['defaultOpen'] {
     return true
   }
 
-  protected e16(): SelectProps['options'] {
+  protected e14(): SelectProps['options'] {
     return [
       { value: 'urgent', label: 'Urgent' },
       { value: 'high', label: 'High' },
       { value: 'normal', label: 'Normal' },
       { value: 'low', label: 'Low' },
     ]
+  }
+
+  protected e15(): SelectProps['options'] {
+    return [
+      { value: 'urgent', label: 'Urgent' },
+      { value: 'high', label: 'High' },
+      { value: 'normal', label: 'Normal' },
+      { value: 'low', label: 'Low' },
+    ]
+  }
+
+  protected e16(): SelectProps['defaultValue'] {
+    return null
   }
 
   protected e17(): SelectProps['defaultOpen'] {
@@ -261,7 +268,8 @@ export class SelectStates {
     return [
       { value: 'urgent', label: 'Urgent' },
       { value: 'high', label: 'High' },
-      { value: 'archived', label: 'Archived', disabled: true },
+      { value: 'normal', label: 'Normal' },
+      { value: 'low', label: 'Low' },
     ]
   }
 
@@ -270,6 +278,18 @@ export class SelectStates {
   }
 
   protected e20(): SelectProps['options'] {
+    return [
+      { value: 'urgent', label: 'Urgent' },
+      { value: 'high', label: 'High' },
+      { value: 'archived', label: 'Archived', disabled: true },
+    ]
+  }
+
+  protected e21(): SelectProps['defaultOpen'] {
+    return true
+  }
+
+  protected e22(): SelectProps['options'] {
     return [
       {
         label: 'Queues',
@@ -288,11 +308,11 @@ export class SelectStates {
     ]
   }
 
-  protected e21(): SelectProps['defaultOpen'] {
+  protected e23(): SelectProps['defaultOpen'] {
     return true
   }
 
-  protected e22(): SelectProps['options'] {
+  protected e24(): SelectProps['options'] {
     return [
       { value: 'urgent', label: 'Urgent', description: 'Answer within the hour' },
       { value: 'high', label: 'High', description: 'Same business day' },
@@ -300,11 +320,11 @@ export class SelectStates {
     ]
   }
 
-  protected e23(): SelectProps['invalid'] {
+  protected e25(): SelectProps['invalid'] {
     return true
   }
 
-  protected e24(): SelectProps['options'] {
+  protected e26(): SelectProps['options'] {
     return [
       { value: 'urgent', label: 'Urgent' },
       { value: 'high', label: 'High' },
@@ -313,11 +333,11 @@ export class SelectStates {
     ]
   }
 
-  protected e25(): SelectProps['disabled'] {
+  protected e27(): SelectProps['disabled'] {
     return true
   }
 
-  protected e26(): SelectProps['options'] {
+  protected e28(): SelectProps['options'] {
     return [
       { value: 'urgent', label: 'Urgent' },
       { value: 'high', label: 'High' },
@@ -336,6 +356,7 @@ export const states: ComponentStates = {
       expect: { 'data-state': 'closed', 'data-size': 'md', 'data-placeholder': '' },
     },
     { name: 'with value', expect: { 'data-placeholder': null } },
+    { name: 'nothing chosen, held as null', expect: { 'data-placeholder': '' } },
     { name: 'sizes side by side' },
     { name: 'size sm', expect: { 'data-size': 'sm' } },
     { name: 'size lg', expect: { 'data-size': 'lg' } },

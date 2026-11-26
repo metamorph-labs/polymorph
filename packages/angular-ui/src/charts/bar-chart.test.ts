@@ -3,6 +3,7 @@ import { Component, signal } from '@angular/core'
 import { barLinesLaw } from '@polymorph/conformance/bar-lines'
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
 import { barChartReadingLaw, type BarReadingLawProps } from '@polymorph/conformance/chart-reading'
+import { barChartMeasureLaw } from '@polymorph/conformance/chart-measure'
 
 import { mountComponent } from '../mount'
 import { angularAdapter } from '../conformance/angular'
@@ -72,4 +73,11 @@ barChartReadingLaw({
     await new Promise<void>((settle) => requestAnimationFrame(() => settle()))
     return mounted
   },
+})
+
+/* The measure it names, said once in its summary (`@polymorph/conformance/chart-measure`). */
+barChartMeasureLaw({
+  shell: 'Angular',
+  // A prop the law leaves out is an input the test does not set.
+  mount: async (props) => (await mountComponent(BarChart, { ...props })).host,
 })

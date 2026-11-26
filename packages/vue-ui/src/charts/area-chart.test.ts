@@ -5,6 +5,7 @@ import { h, nextTick } from 'vue'
 
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
 import { areaChartReadingLaw } from '@polymorph/conformance/chart-reading'
+import { areaChartMeasureLaw } from '@polymorph/conformance/chart-measure'
 import { installTestTheme } from '@polymorph/engine/testing'
 
 import { mount } from '../mount'
@@ -247,6 +248,16 @@ chartBoxLaw({ shell: 'Vue', member: 'AreaChart', entries: states.entries, adapte
 
 /* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
 areaChartReadingLaw({
+  shell: 'Vue',
+  async mount(props) {
+    const mounted = await mount(() => h(AreaChart, { ...props }))
+    await nextTick()
+    return mounted
+  },
+})
+
+/* The measure it names, said once in its summary (`@polymorph/conformance/chart-measure`). */
+areaChartMeasureLaw({
   shell: 'Vue',
   async mount(props) {
     const mounted = await mount(() => h(AreaChart, { ...props }))

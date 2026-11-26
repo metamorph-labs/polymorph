@@ -231,3 +231,18 @@ describe('areaChartSelection and the brush', () => {
     expect(span?.to).toBe(model.positions[2])
   })
 })
+
+/** `y.label` names the measure every band is in, said once in the summary. */
+describe('the measure', () => {
+  it('says y.label once in the summary sentence, and not at a reading position', () => {
+    const named = input({ y: { label: 'Open tickets' } })
+    const model = areaChartModel(named)
+    expect(model.summary).toBe(
+      'Backlog showing Urgent, High and Normal, 3 points. Values: Open tickets. The same data is available as a table.',
+    )
+    const plain = areaChartModel(input())
+    expect(areaChartReadout(named, model, read(1)).announcement).toBe(
+      areaChartReadout(input(), plain, read(1)).announcement,
+    )
+  })
+})

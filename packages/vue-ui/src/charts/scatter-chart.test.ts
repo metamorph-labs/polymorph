@@ -5,6 +5,7 @@ import { h, nextTick, ref } from 'vue'
 
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
 import { scatterChartReadingLaw } from '@polymorph/conformance/chart-reading'
+import { scatterChartMeasureLaw } from '@polymorph/conformance/chart-measure'
 import { installTestTheme } from '@polymorph/engine/testing'
 
 import { mount } from '../mount'
@@ -270,6 +271,16 @@ chartBoxLaw({ shell: 'Vue', member: 'ScatterChart', entries: states.entries, ada
 
 /* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
 scatterChartReadingLaw({
+  shell: 'Vue',
+  async mount(props) {
+    const mounted = await mount(() => h(ScatterChart, { ...props }))
+    await nextTick()
+    return mounted
+  },
+})
+
+/* The measure it names, said once in its summary (`@polymorph/conformance/chart-measure`). */
+scatterChartMeasureLaw({
   shell: 'Vue',
   async mount(props) {
     const mounted = await mount(() => h(ScatterChart, { ...props }))

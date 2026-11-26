@@ -406,8 +406,11 @@ export function cartesianGeometry(input: CartesianInput): CartesianGeometry | nu
 
 /**
  * The visually hidden summary sentence for a reader who cannot see the plot.
- * The host's catalog composes it from the chart's name, its series' names and
- * its row count.
+ * The host's catalog composes it from the chart's name, its series' names, its
+ * row count and the measures the chart names: `measure` is the `y.label` its
+ * values are in, and `xMeasure` a scatter chart's `x.label`. A measure is
+ * passed only when the chart names it, so a catalog's sentence can tell a
+ * measure from none.
  */
 export function summaryFor(
   messages: ChartMessages,
@@ -415,9 +418,17 @@ export function summaryFor(
   series: readonly ResolvedSeries[],
   rowCount: number,
   selectable: boolean,
+  measures: { measure?: string | undefined; xMeasure?: string | undefined } = {},
 ): string {
+  const { measure, xMeasure } = measures
   return spokenSummary(
-    messages.summary({ label, series: series.map((entry) => entry.label), points: rowCount }),
+    messages.summary({
+      label,
+      series: series.map((entry) => entry.label),
+      points: rowCount,
+      ...(measure === undefined ? {} : { measure }),
+      ...(xMeasure === undefined ? {} : { xMeasure }),
+    }),
     messages,
     selectable,
   )

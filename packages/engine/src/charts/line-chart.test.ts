@@ -368,3 +368,18 @@ describe('the sync group', () => {
     expect(syncIndexOf(banded, 0), 'a band x has no row to put it on').toBeUndefined()
   })
 })
+
+/** `y.label` names the measure every line is in, said once in the summary. */
+describe('the measure', () => {
+  it('says y.label once in the summary sentence, and not at a reading position', () => {
+    const named = input({ y: { label: 'Tickets opened' } })
+    const model = lineChartModel(named)
+    expect(model.summary).toBe(
+      'Tickets showing Opened and Resolved, 3 points. Values: Tickets opened. The same data is available as a table.',
+    )
+    const plain = lineChartModel(input())
+    expect(lineChartReadout(named, model, read(1)).announcement).toBe(
+      lineChartReadout(input(), plain, read(1)).announcement,
+    )
+  })
+})

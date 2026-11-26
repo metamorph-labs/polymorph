@@ -8,6 +8,7 @@ import {
   type BarChartInput,
   type BarMark,
 } from './bar-chart'
+import { DEFAULT_CHART_MESSAGES } from './messages'
 import { readingView } from './reading'
 import type { ChartDatum } from './types'
 
@@ -596,5 +597,47 @@ describe('barChartModel: lines', () => {
     expect(model.lineKeys).toEqual([])
     expect(model.painted.map((entry) => entry.key)).toEqual(['opened'])
     expect(model.warnings).toEqual([expect.stringContaining('vertical bars only')])
+  })
+})
+
+/**
+ * `y.label` names the measure every series is in. The summary says it once, and the readings at
+ * a position name each value by its series, as they do without it.
+ */
+describe('the measure', () => {
+  const view = (index: number, series: number | null = null) =>
+    readingView({ index, series }, ROWS.length, PAIR.length)
+
+  it('says y.label once in the summary sentence', () => {
+    expect(barChartModel(input({ y: { label: 'Tickets opened' } })).summary).toBe(
+      'Tickets showing Opened and Resolved, 3 points. Values: Tickets opened. The same data is available as a table.',
+    )
+    expect(barChartModel(input()).summary).not.toContain('Values')
+  })
+
+  it('leaves the readings at a position and the twin as they are without it', () => {
+    const named = input({ y: { label: 'Tickets opened' } })
+    const model = barChartModel(named)
+    const plain = barChartModel(input())
+    expect(barChartReadout(named, model, view(1)).announcement).toBe(
+      barChartReadout(input(), plain, view(1)).announcement,
+    )
+    expect(model.twin).toEqual(plain.twin)
+  })
+
+  it('hands the measure to a host catalog as a fact, which a sentence may leave out', () => {
+    const facts: unknown[] = []
+    // A catalog whose sentence is typed without the measure still is a catalog.
+    const summary = (chart: { label: string; series: readonly string[]; points: number }) => {
+      facts.push(chart)
+      return `${chart.label}: ${chart.points}`
+    }
+    const model = barChartModel(
+      input({ y: { label: 'Tickets opened' }, messages: { ...DEFAULT_CHART_MESSAGES, summary } }),
+    )
+    expect(model.summary).toBe('Tickets: 3')
+    expect(facts).toEqual([
+      { label: 'Tickets', series: ['Opened', 'Resolved'], points: 3, measure: 'Tickets opened' },
+    ])
   })
 })

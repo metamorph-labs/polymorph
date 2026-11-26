@@ -6,6 +6,7 @@ import { assertGoverned, type ChartDatum } from '@polymorph/react'
 import { barLinesLaw } from '@polymorph/conformance/bar-lines'
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
 import { barChartReadingLaw } from '@polymorph/conformance/chart-reading'
+import { barChartMeasureLaw } from '@polymorph/conformance/chart-measure'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { reactAdapter } from '../conformance/react'
 import { BarChart, type BarChartProps } from './BarChart'
@@ -480,6 +481,12 @@ describe('BarChart mode="diverging" (the Likert form)', () => {
 
 /* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
 barChartReadingLaw({
+  shell: 'React',
+  mount: async (props) => render(<BarChart {...props} />),
+})
+
+/* The measure it names, said once in its summary (`@polymorph/conformance/chart-measure`). */
+barChartMeasureLaw({
   shell: 'React',
   mount: async (props) => render(<BarChart {...props} />),
 })

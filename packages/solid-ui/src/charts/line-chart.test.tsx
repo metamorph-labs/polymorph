@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
 import { lineChartReadingLaw } from '@polymorph/conformance/chart-reading'
+import { lineChartMeasureLaw } from '@polymorph/conformance/chart-measure'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { syncGroupSize } from '@polymorph/solid'
 
@@ -250,6 +251,12 @@ chartBoxLaw({ shell: 'Solid', member: 'LineChart', entries: states.entries, adap
 
 /* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
 lineChartReadingLaw({
+  shell: 'Solid',
+  mount: (props) => mount(() => <LineChart {...props} />),
+})
+
+/* The measure it names, said once in its summary (`@polymorph/conformance/chart-measure`). */
+lineChartMeasureLaw({
   shell: 'Solid',
   mount: (props) => mount(() => <LineChart {...props} />),
 })

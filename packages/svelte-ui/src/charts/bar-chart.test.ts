@@ -6,6 +6,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { barLinesLaw } from '@polymorph/conformance/bar-lines'
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
 import { barChartReadingLaw } from '@polymorph/conformance/chart-reading'
+import { barChartMeasureLaw } from '@polymorph/conformance/chart-measure'
 import { installTestTheme } from '@polymorph/engine/testing'
 
 import { render } from '../mount'
@@ -198,6 +199,16 @@ chartBoxLaw({
 
 /* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
 barChartReadingLaw({
+  shell: 'Svelte',
+  async mount(props) {
+    const mounted = await render(BarChart, props)
+    await tick()
+    return mounted
+  },
+})
+
+/* The measure it names, said once in its summary (`@polymorph/conformance/chart-measure`). */
+barChartMeasureLaw({
   shell: 'Svelte',
   async mount(props) {
     const mounted = await render(BarChart, props)

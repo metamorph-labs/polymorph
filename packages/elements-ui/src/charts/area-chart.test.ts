@@ -1,5 +1,6 @@
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
 import { areaChartReadingLaw } from '@polymorph/conformance/chart-reading'
+import { areaChartMeasureLaw } from '@polymorph/conformance/chart-measure'
 
 import { elementsAdapter } from '../conformance/elements'
 import { mountElement } from '../mount'
@@ -24,6 +25,12 @@ chartBoxLaw({
 
 /* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
 areaChartReadingLaw({
+  shell: 'Elements',
+  mount: (props) => mountElement('poly-area-chart', props),
+})
+
+/* The measure it names, said once in its summary (`@polymorph/conformance/chart-measure`). */
+areaChartMeasureLaw({
   shell: 'Elements',
   mount: (props) => mountElement('poly-area-chart', props),
 })

@@ -5,6 +5,7 @@ import {
   scatterChartReadingLaw,
   type ScatterReadingLawProps,
 } from '@polymorph/conformance/chart-reading'
+import { scatterChartMeasureLaw } from '@polymorph/conformance/chart-measure'
 
 import { mountComponent } from '../mount'
 import { angularAdapter } from '../conformance/angular'
@@ -66,4 +67,11 @@ scatterChartReadingLaw({
     await new Promise<void>((settle) => requestAnimationFrame(() => settle()))
     return mounted
   },
+})
+
+/* The measure it names, said once in its summary (`@polymorph/conformance/chart-measure`). */
+scatterChartMeasureLaw({
+  shell: 'Angular',
+  // A prop the law leaves out is an input the test does not set.
+  mount: async (props) => (await mountComponent(ScatterChart, { ...props })).host,
 })

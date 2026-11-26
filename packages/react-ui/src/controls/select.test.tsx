@@ -1,10 +1,11 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { useState } from 'react'
 import axeCore, { type RunOptions } from 'axe-core'
 import { page, userEvent } from 'vitest/browser'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { assertGoverned } from '@polymorph/react'
+import { selectValueLaw, SELECT_VALUE_LAW_OPTIONS } from '@polymorph/conformance/select-value'
 import { createAgentBridge } from '@polymorph/engine/agent'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { Input } from './Input'
@@ -459,10 +460,19 @@ describe('the dev warnings', () => {
     warn.mockRestore()
   })
 
-  it('rejects null from a Select that offers no empty choice', () => {
+  it('warns when a caller that held a value hands the choice back with undefined', () => {
     const warn = captureWarnings()
-    mount(<Select options={OPTIONS} value={null} onChange={() => {}} aria-label="Priority" />)
-    expect(warn.mock.calls.flat().join(' ')).toContain('`emptyOption`')
+    let hold: (value: string | null | undefined) => void = () => {}
+    function Held() {
+      const [value, setValue] = useState<string | null | undefined>(undefined)
+      hold = setValue
+      return <Select options={OPTIONS} placeholder="Choose" value={value} aria-label="Priority" />
+    }
+    render(<Held />)
+    act(() => hold('high'))
+    expect(warn).not.toHaveBeenCalled()
+    act(() => hold(undefined))
+    expect(warn.mock.calls.flat().join(' ')).toContain('`null`')
     warn.mockRestore()
   })
 
@@ -470,9 +480,43 @@ describe('the dev warnings', () => {
     const warn = captureWarnings()
     mount(<Select options={OPTIONS} emptyOption="Any status" aria-label="Status" />)
     mount(<Select options={OPTIONS} placeholder="Choose" aria-label="Priority" />)
+    // `null` is nothing chosen, with or without an empty choice to show for it.
+    mount(<Select options={OPTIONS} placeholder="Choose" value={null} aria-label="Priority" />)
+    mount(
+      <Select options={OPTIONS} placeholder="Choose" defaultValue={null} aria-label="Priority" />,
+    )
     expect(warn).not.toHaveBeenCalled()
     warn.mockRestore()
   })
+})
+
+/**
+ * The value an application holds: `null` is nothing chosen, shown as the placeholder or the
+ * empty choice, in the popper and in the sheet. `@polymorph/conformance/select-value` states it
+ * for every web shell.
+ */
+selectValueLaw({
+  shell: 'React',
+  mount({ value, placeholder, emptyOption, name, onChange }) {
+    let hold: (next: string | null) => void = () => {}
+    function Held() {
+      const [held, setHeld] = useState<string | null>(value)
+      hold = setHeld
+      return (
+        <Select
+          aria-label="Priority"
+          options={SELECT_VALUE_LAW_OPTIONS}
+          {...(placeholder === undefined ? {} : { placeholder })}
+          {...(emptyOption === undefined ? {} : { emptyOption })}
+          name={name}
+          value={held}
+          onChange={onChange}
+        />
+      )
+    }
+    render(<Held />)
+    return Promise.resolve({ set: (next) => act(() => hold(next)) })
+  },
 })
 
 describe('the panel', () => {

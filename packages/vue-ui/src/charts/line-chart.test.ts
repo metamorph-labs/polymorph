@@ -5,6 +5,7 @@ import { h, nextTick } from 'vue'
 
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
 import { lineChartReadingLaw } from '@polymorph/conformance/chart-reading'
+import { lineChartMeasureLaw } from '@polymorph/conformance/chart-measure'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { syncGroupSize } from '@polymorph/vue'
 
@@ -258,6 +259,16 @@ chartBoxLaw({ shell: 'Vue', member: 'LineChart', entries: states.entries, adapte
 
 /* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
 lineChartReadingLaw({
+  shell: 'Vue',
+  async mount(props) {
+    const mounted = await mount(() => h(LineChart, { ...props }))
+    await nextTick()
+    return mounted
+  },
+})
+
+/* The measure it names, said once in its summary (`@polymorph/conformance/chart-measure`). */
+lineChartMeasureLaw({
   shell: 'Vue',
   async mount(props) {
     const mounted = await mount(() => h(LineChart, { ...props }))
