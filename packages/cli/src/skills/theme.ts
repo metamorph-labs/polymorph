@@ -1,7 +1,7 @@
 import type { Registry } from '@polymorph/registry'
 
 import { DEFAULT_SYSTEM, ELEMENTS_DIR, ELEMENTS_THEME_SHEET } from '../plan'
-import { all, commands, Facts, skill, type SkillFile } from './facts'
+import { all, commands, Facts, skill, SkillFactError, type SkillFile } from './facts'
 import { documentsReference } from './theme-documents'
 
 export function themeSkill(registry: Registry, run: string): SkillFile[] {
@@ -12,6 +12,14 @@ export function themeSkill(registry: Registry, run: string): SkillFile[] {
     .join(', ')
   const plain = registry.theme.systems.find((system) => system.name === DEFAULT_SYSTEM)
   const basis = `${DEFAULT_SYSTEM}/${plain?.defaultPalette ?? ''}`.replace(/\/$/, '')
+  // The default system's geometry sits one step under the roundest, which `rounder` sets: the
+  // example of a base whose own value may already answer "slightly rounded".
+  const geometry = registry.theme.axes.find((axis) => axis.name === 'geometry')?.values ?? []
+  const held = plain?.axes['geometry'] ?? ''
+  const roundest = geometry.at(-1) ?? ''
+  if (geometry.indexOf(held) !== geometry.length - 2) {
+    throw new SkillFactError(`${DEFAULT_SYSTEM}'s geometry is no longer one step under ${roundest}`)
+  }
   // The Vite plugin's function, recorded once and named in code font and in a call.
   const plugin = f.x('polymorphTheme', '@polymorph/engine/vite')
   const call = `\`${plugin.slice(1, -1)}({ systems, palettes })\``
@@ -35,9 +43,9 @@ and \`save_theme\`.
   \`vite.config\` by ${call}, which compiles them when the app
   builds and again on each edit in development.
 - A vendoring project: \`src/polymorph/themes/systems/\` and \`src/polymorph/themes/palettes/\`,
-  compiled by \`add\` into the sheets beside them. After a hand edit, run
-  \`add theme:<system> --framework <framework>\` again: it keeps the edited file and compiles the
-  sheet from it. \`update\` does not compile a theme no release changed.
+  compiled by \`add\` into the sheets beside them. After a hand edit, run \`update\`: it keeps the
+  edited file and compiles the sheet from it. \`update --force\` puts the shipped document back and
+  compiles from that.
 - A page with no build: \`${ELEMENTS_DIR}/${ELEMENTS_THEME_SHEET}\`, compiled from a catalogue
   system.
 
@@ -53,15 +61,27 @@ scales. \`--values\` adds each system's token values with its own palette.
 ${commands(run, 'theme propose "calmer, warmer paper, more editorial"', `theme propose "denser and cooler" --based-on ${basis}`, 'theme propose "denser and cooler" --save --dir design')}
 
 The answer lists what each word moved, the words the table does not know, and the verdict of the
-theme's laws. \`--based-on\` starts from a shipped pairing, such
-as ${pairings}; either half may be left out. \`--save\` writes the two documents into
+theme's laws. Each move is a proposal: check it against the axis's values in \`axes\`.
+
+- A word for a direction, such as denser, airier, calmer or bolder, moves its axes one step each,
+  along the order \`axes\` prints. The same word again moves one more step, until the end.
+- A word for a place, such as rounder, sharper, flat or stark, sets the axis to that value, often
+  its end: rounder is \`${roundest}\`, the roundest geometry.
+- Words of degree (slightly, somewhat, very, more, less) are skipped. No word, form or flag names a
+  value or a number of steps: \`geometry=soft\` is two words the table does not know.
+- The starting pairing's own value may already be the answer. \`${DEFAULT_SYSTEM}\` has \`${held}\` geometry, one
+  step under \`${roundest}\`, so "slightly rounded" may mean no change.
+
+When a move overshoots, or a word moves nothing, set the axis by hand to the value meant (step 4).
+A typeface the app chooses and an exact colour are always hand edits.
+
+\`--based-on\` starts from a shipped pairing, such as ${pairings}; either half may be left out. It
+takes a shipped name, not the app's own document: a change to a document the app already has is a
+hand edit. \`--save\` writes the two documents into
 \`<dir>/systems/\` and \`<dir>/palettes/\` (the directory \`design\` when \`--dir\` is left out), and
 \`--overwrite\` replaces files already saved under the same names. \`--save\` writes only in a
 project: a directory with a \`package.json\` or a \`polymorph.json\`. Then point the app at them: in an
 app \`init\` wrote, name the two files in ${plugin} in \`vite.config\`.
-
-Words the table does not know move nothing. Say what should change in the words of the axes \`axes\`
-lists, such as denser, rounder, calmer or warmer.
 
 ## 4. Edit a document by hand
 
@@ -71,7 +91,7 @@ values each takes.
 | To change | Edit |
 | --- | --- |
 | Corners, shadows, density, contrast, type voice, tinted surfaces, motion, ornament | the system's \`axes\` |
-| Typefaces | the system's \`fonts\`: Fontsource family names |
+| Typefaces | the system's \`fonts\`: \`body\` draws all text, headings included, and \`display\` only ${f.m('Hero')}'s title |
 | Text sizes, heading weights, one radius, space or control height step | the system's \`overrides\` |
 | The accent hue, a gradient, the tint of the greys, how loud colour is | the palette's \`accentHue\`, \`gradientHue\`, \`neutralHue\`, \`neutralTint\`, \`chromaBudget\` |
 | The exact colour of the main button, its label or the focus ring | the palette's \`pins\`, per mode |
@@ -88,11 +108,14 @@ ${commands(run, 'theme validate src/theme/<system>.json src/theme/<palette>.json
 
 \`theme validate\` admits a system and a palette under the laws every shipped pairing passes, in
 both modes. A lawful pair prints \`lawful\`, the chart cap, the font packages to install and the
-catalogue laws a guest is exempt from. A third path is the more-contrast partner the palette names;
+catalogue laws a guest is exempt from. Install each font package it names with the app's package
+manager: the build imports them. A third path is the more-contrast partner the palette names;
 without it, the partner is read from \`<name>.json\` beside the palette. \`theme emit\` prints the
 stylesheet the pair compiles to, or writes it with \`--out\`, to read or hand to someone. It is not
 how the app wears a theme: the build compiles the documents (step 1), and a copied sheet stops
-following them. \`theme schema\` writes the JSON Schema of a system or a palette, for an editor.
+following them. \`theme schema\` writes the JSON Schema of a system or a palette, for an editor,
+which checks a document whose \`$schema\` key names it. \`theme validate\` and the Vite plugin
+accept that key in either document and ignore it.
 
 A refusal exits 1 and lists each fault with its law:
 
@@ -135,12 +158,17 @@ ${commands(run, 'theme propose "as shipped" --based-on journal/umber --save --di
 ## 7. Light and dark
 
 Every pairing has a light and a dark mode, both derived from the one palette, so there is no dark
-palette to write. The mode is \`data-mode\` on \`<html>\`. A first visit follows the operating
-system's setting, and a choice the reader makes is stored and applied before the first paint.
+palette to write. The mode is \`data-mode\` on \`<html>\`, which the pre-paint script sets
+before the first paint: to the reader's stored choice, or on a first visit to the operating
+system's mode. The system's \`defaultMode\` does not change a first visit. It gives the colours of a
+page where nothing sets \`data-mode\`, and no setting opens a first visit in one mode whatever the
+operating system says.
 
-- Let the reader choose with ${f.m('ModeSwitch')}: \`<ModeSwitch label="Appearance" />\` shows
-  light, dark and system, and applies the choice itself. In a page with no build it is
-  \`<poly-mode-switch label="Appearance">\`.
+- A light and dark toggle is ${f.m('ModeSwitch')}: \`<ModeSwitch label="Appearance" />\` offers
+  light, dark and system, and applies and stores the choice itself. It sits in a toolbar, a menu's
+  header or a settings row: in an ${f.m('AppShell')}, the \`trailing\` slot of its ${f.p('AppShell', 'topbar')},
+  not ${f.m('PageHeader')}'s ${f.p('PageHeader', 'actions')}, which hold the page's own actions. In a
+  page with no build it is \`<poly-mode-switch label="Appearance">\`.
 - From code, ${f.x('setMode', '@polymorph/engine/runtime')} from \`@polymorph/engine/runtime\`
   applies \`'light'\`, \`'dark'\` or \`'system'\`, which follows the operating system again.
   ${f.x('useMode', '@polymorph/react')}, from the framework's foundation package, reads the current

@@ -35,6 +35,7 @@ import { pinnedTools, pluginFiles } from './plugin'
 import { SKILL_NAMES, SkillFactError, skillFiles } from './skills'
 import { NAMED } from './skills/facts'
 import { ADDRESS_KEYS } from './skills/runtime'
+import { VITE_FLOOR } from './skills/setup-packages'
 import { synopsis, verbNamed, VERBS } from './verbs'
 
 /**
@@ -570,6 +571,13 @@ describe('every name a text takes from a package or a native source', () => {
     const keys = [...(declared?.[1] ?? '').matchAll(/'([^']+)'/g)].map((match) => match[1])
     expect(keys.length).toBeGreaterThan(0)
     expect([...ADDRESS_KEYS].sort()).toEqual([...keys].sort())
+  })
+
+  it('states the lowest vite the engine takes as the engine declares it', () => {
+    const engine = JSON.parse(
+      readFileSync(resolve(ROOT, 'packages/engine/package.json'), 'utf8'),
+    ) as { peerDependencies: Record<string, string> }
+    expect(engine.peerDependencies['vite']).toBe(`>=${VITE_FLOOR}`)
   })
 
   it('reads a name its source lacks, and a source that is not there, as a fault', () => {

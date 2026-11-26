@@ -7,13 +7,16 @@ import {
   type Registry,
 } from '@polymorph/registry'
 
-import { APP_TOOLING } from '../init'
+import { APP_TOOLING, REACT_RANGE } from '../init'
 import { ANGULAR_TOOLING } from '../init-angular'
 import { SVELTE_TOOLING } from '../init-svelte'
 import { VUE_TOOLING } from '../init-vue'
 import { DEFAULT_SYSTEM } from '../plan'
 import { frameworkRanges } from '../vue'
 import { commands, Facts, SkillFactError } from './facts'
+
+/** The lowest major of `vite` the engine's plugin takes, which a law holds to the engine's peer range. */
+export const VITE_FLOOR = 6
 
 /**
  * The packages route of the setup skill, for a model adding polymorph to an app that already
@@ -74,8 +77,8 @@ package is installed under that name, as an npm alias of \`@metamorph-labs/polym
 
 | The app builds with | Do |
 | --- | --- |
-| Vite (\`vite.config.*\`), in React, Vue, Svelte, Solid or Angular | Steps 1 to 8 |
-| Next.js (\`next.config.*\`), in React | Step 2, then "Next.js" below, then steps 7 and 8 |
+| Vite (\`vite.config.*\`), in React, Vue, Svelte, Solid or Angular | Steps 1 to 9 |
+| Next.js (\`next.config.*\`), in React | Step 2, then "Next.js" below, then steps 7 to 9 |
 | Anything else | "Other builds" below |
 
 \`<framework>\` is \`react\`, \`vue\`, \`svelte\`, \`solid\` or \`angular\`. A page with no build is not
@@ -86,9 +89,13 @@ this route: it is \`init\` with \`--framework elements\`.
 ${commands(run, 'init ../polymorph-reference --framework <framework> --no-install')}
 
 \`init\` writes a whole app, in the app's framework, into a new directory beside the project, and
-\`--no-install\` installs nothing. Its files hold the exact lines the steps below copy.
-\`--system <name>\` writes another catalogue system than \`${DEFAULT_SYSTEM}\`, and \`${run} axes\` lists
-them. Delete \`../polymorph-reference\` when the app is set up.
+\`--no-install\` installs nothing. Copy from it only \`src/theme/*.json\` (step 3) and
+\`polymorph.eslint.js\` and \`polymorph.stylelint.js\` (step 6). Read its \`package.json\` and
+\`vite.config.ts\` for the lines steps 2 and 4 name. Copy nothing else: the app keeps its own
+\`tsconfig.json\`, \`.prettierrc.json\`, \`index.html\`, \`src/vite-env.d.ts\` and screens, and step 7
+writes the agent files. \`--system <name>\` writes another catalogue system than
+\`${DEFAULT_SYSTEM}\`, and \`${run} axes\` lists them. Delete \`../polymorph-reference\` when the app
+is set up.
 
 ## 2. Install the packages
 
@@ -107,6 +114,12 @@ npm install -D ${alias('@polymorph/rules')}
 - the parser the red rules read the framework's files with, as a dev dependency: ${lintTools(VUE_TOOLING)} for Vue,
   ${lintTools(SVELTE_TOOLING)} for Svelte, ${lintTools(ANGULAR_TOOLING)} for Angular, and none for
   React and Solid.
+
+The install checks the packages' peer ranges: \`vite\` ${VITE_FLOOR} or later for the engine's plugin, and the
+framework's own, \`react@${REACT_RANGE}\` for React. The app's \`vite\`, its framework and the
+framework's Vite plugin (\`@vitejs/plugin-react\` for React) stay at the versions the app has when
+the install reports no peer conflict. The reference app's versions are what a new app starts on, not
+a requirement.
 
 npmjs.com holds every release, with no configuration and no token. To install from GitHub Packages
 instead, add these lines to the project's \`.npmrc\`, and set \`NODE_AUTH_TOKEN\` to a GitHub token
@@ -163,12 +176,17 @@ first paint wears the theme. Do not write them by hand.
 import 'virtual:polymorph/theme'
 \`\`\`
 
-An Angular entry imports \`@polymorph/angular-ui/base.css\` on the next line. Then add
-\`src/vite-env.d.ts\`, which types the module:
+An Angular entry imports \`@polymorph/angular-ui/base.css\` on the next line. Then add this line to
+\`src/vite-env.d.ts\`, which types the module, and create the file if the app has none:
 
 \`\`\`ts
 /// <reference types="@polymorph/engine/vite-env" />
 \`\`\`
+
+Keep the app's \`vite/client\` reference, in that file or in its \`tsconfig\`'s \`types\`: the
+reference app's file lacks it. \`tsconfig.json\` needs no change while each config the app has sets
+\`moduleResolution\` to \`bundler\`, as Vite's templates do, or to \`node16\` or \`nodenext\`. The
+packages declare their types only in \`exports\`, which \`node\` resolution does not read.
 
 The root also mounts the toast viewport, and in React a ${f.x('TooltipProvider', '@polymorph/react-ui')}.
 The \`polymorph-screen\` skill's \`references/app.md\` has those lines.
@@ -196,6 +214,11 @@ which a report names the nearest token by. They read every file the lint is give
 app's source: the reference app's \`lint\` script is \`eslint src && stylelint "src/**/*.css"
 --allow-empty-input\`. Never turn a polymorph rule off in a config.
 
+The token values in \`polymorph.eslint.js\` are those of \`${DEFAULT_SYSTEM}\` with \`${palette}\`, the
+reference app's theme. They choose only which token a report names as nearest a raw value, never what a rule refuses. No
+command rewrites them in this route, so after a rebrand a report can name a colour, radius, size or
+duration token that is not the nearest in the app's theme.
+
 ## 7. Write the agent files
 
 ${commands(run, 'agents')}
@@ -207,6 +230,22 @@ ${commands(run, 'check src', 'card --framework <framework>')}
 \`check\` runs the red rules with no lint config and exits 1 on any violation. The card lists the
 framework's members. Then run the project's lint, typecheck and build, and start it: a member
 renders in the theme's fonts and colours.
+
+## 9. Brand it
+
+The \`polymorph-theme\` skill changes the look. In this route:
+
+- Replace the two copied documents in \`src/theme/\` with the app's own system and palette. The
+  system's \`defaultPalette\` names the palette.
+- Name both files in ${f.x('polymorphTheme', '@polymorph/engine/vite')} in \`vite.config\`, the
+  system in \`systems\` and the palette in \`palettes\`. The build fails when a system's
+  \`defaultPalette\` is not among \`palettes\`.
+- \`${run} theme validate src/theme/<system>.json src/theme/<palette>.json\` names the font packages
+  the system needs. Install them, and remove the font packages no document names any more.
+
+In an app whose theme \`add\` compiled (Next.js, or React on another bundler), the documents are
+under \`src/polymorph/themes/\`. Edit them in place and run \`${run} update\`, which compiles the sheet
+again and rewrites the lint fragments' values from it.
 
 ## Next.js
 

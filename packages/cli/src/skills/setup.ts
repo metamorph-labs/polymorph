@@ -24,8 +24,15 @@ name: the unscoped \`polymorph\` package on npm is someone else's.
 | \`@polymorph/*\` packages in \`package.json\`, often as npm aliases of \`@metamorph-labs/polymorph-*\` | Packages: the app installs the vocabulary |
 | \`polymorph.json\` with \`files\`, and member source under its \`dir\` (\`src/polymorph/\`) | Vendoring: the members are copied into the repository as source the team owns |
 | \`polymorph.json\` with \`"framework": "elements"\` | A page with no build: the elements are copied into a static directory |
-| An app with none of these | An existing app without polymorph: vendoring is one command; the packages route is a few manual steps |
+| An app with none of these | An existing app without polymorph: packages or vendoring, by the table below |
 | \`Package.swift\` or an Xcode project with PolymorphUI, a Gradle build with \`dev.polymorph\` or \`com.github.metamorph-labs.polymorph\`, or a \`pubspec.yaml\` that names polymorph_tokens | A native app: the \`polymorph-native\` skill |
+
+An existing app takes one of two routes:
+
+| The team wants | Route |
+| --- | --- |
+| No member source in the repository, with fixes taken by raising the packages' version | Packages: a few manual steps |
+| The members as source it can read and edit, with upstream changes taken by \`update\` | Vendoring: one command |
 
 ## A new app
 
@@ -73,12 +80,20 @@ ${commands(run, 'agents', 'agents --harness claude,codex', 'agents --dry-run')}
 \`CLAUDE.md\` that includes it), these skills in \`.claude/skills/\` and \`.agents/skills/\`, the MCP
 server's entry for each harness (\`.mcp.json\`, \`.cursor/mcp.json\`, \`.codex/config.toml\`), and the
 system card in \`polymorph/system-card.md\`. \`--harness\` takes \`claude\`, \`codex\`, \`cursor\`,
-\`generic\` or \`all\`. It records what it wrote in \`polymorph/agents.json\`. Run it again at any
-time: a file it wrote and nobody edited is brought up to date, a file someone edited is kept and
-named, and text outside its block in \`AGENTS.md\` and other servers in an MCP config are left as
-they are. \`--force\` overwrites edited files. \`--remove <harness>\` stops writing for a harness
-and removes the files only it reads that nobody edited. An older release refuses to write over a
-newer one's files.
+\`generic\` or \`all\`. It records what it wrote in \`polymorph/agents.json\`.
+
+Run it again at any time, in a project that has these files already. Each file, block or server
+entry is written where it is absent and replaced where it is as \`agents\` recorded writing it. One
+someone edited, or one \`agents\` did not write, is kept and named as \`kept yours\`, and
+\`--force\` replaces it. \`unchanged\` counts the parts already as this release writes them. Text
+outside its block in \`AGENTS.md\` and other servers in an MCP config are left as they are.
+\`--remove <harness>\` stops writing for a harness and removes the files only it reads that nobody
+edited. An older release refuses to write over a newer one's files.
+
+With Codex among the harnesses, the report ends with a \`codex mcp add\` line. It is for the
+person to run once in their own shell: Codex reads \`.codex/config.toml\` only in a project it
+trusts, and the line gives the server to Codex in every project. The project's files are complete
+without it.
 
 Each MCP entry runs \`${run} mcp --project <path>\`, which starts the server over stdio for the
 harness's client. Run it by hand only to see that it starts. With \`--read-only\` in place of the

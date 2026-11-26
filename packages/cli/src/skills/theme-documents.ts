@@ -36,13 +36,27 @@ function accepts(schema: Schema, path: string): string {
   return node.type ?? ''
 }
 
+/**
+ * JSON as a person writes a document: two-space indents, and an object that holds no other object
+ * on one line when that line fits in 80 characters.
+ */
+function pretty(value: unknown): string {
+  return JSON.stringify(value, null, 2).replace(
+    /^( *)(.*)\{\n([^{}]*?)\n *\}/gm,
+    (whole: string, indent: string, head: string, inner: string) => {
+      const line = `${indent}${head}{ ${inner.trim().split(/,\n */).join(', ')} }`
+      return line.length <= 80 ? line : whole
+    },
+  )
+}
+
 /** What each design axis decides. An axis this list lacks is listed with its values only. */
 const AXES: Record<string, string> = {
   geometry: 'corner radii',
   depth: 'how surfaces separate: shadows, borders, translucent panes',
   density: 'space, control heights and the type ratio',
   contrastTemperament: 'how strong edges and supporting text are',
-  typePersonality: 'type weights and tracking; `editorial` falls back to serif',
+  typePersonality: 'weights, tracking, icon stroke and a font slot’s fallback (below)',
   colorStrategy: '`tinted` washes surfaces with the neutral hue',
   motionTemperament: 'durations and springs; `none` stops motion',
   ornament: 'halos and page texture',
@@ -94,13 +108,18 @@ export function documentsReference(registry: Registry, run: string): string {
     if (found === undefined) throw new SkillFactError(`${DEFAULT_SYSTEM} has no ${role} font`)
     return found.family
   }
+  // A serif display face from the catalogue: the editorial system's, which `propose` also uses.
+  const serif = registry.theme.systems
+    .find((entry) => entry.axes['typePersonality'] === 'editorial')
+    ?.fonts.find((font) => font.roles.includes('display'))?.family
+  if (serif === undefined) throw new SkillFactError('no editorial system has a display face')
   const example = {
     $schema: './system.schema.json',
     name: 'acme',
     axes: plain.axes,
     fonts: {
       body: { family: family('body') },
-      display: { family: family('display') },
+      display: { family: serif, fallback: 'serif' },
       mono: { family: family('mono') },
     },
     defaultPalette: 'acme-blue',
@@ -121,6 +140,28 @@ export function documentsReference(registry: Registry, run: string): string {
     const range = node.properties === undefined ? accepts(palette, field) : 'object'
     return `| \`${field}\` | ${range} | ${holds} |`
   })
+  // One brand colour pinned in both modes, as `theme validate` admits it with any system. The
+  // hover and pressed fills are the brand's fill at an OKLCH lightness 0.032 and 0.064 lower, the
+  // step the derived fills take, and the hue is the brand's OKLCH hue, rounded.
+  const fills = {
+    'accent.bg': '#1f4fd8',
+    'accent.bgHover': '#1744cd',
+    'accent.bgActive': '#0f39c2',
+    'accent.contrast': '#ffffff',
+  }
+  const brand = {
+    $schema: './palette.schema.json',
+    name: 'acme-blue',
+    accentHue: 265,
+    neutralTint: 0.006,
+    chromaBudget: 'high',
+    pins: { light: fills, dark: fills },
+  }
+  // The default system's own palette, whose budget leaves a pinned brand's surroundings grey.
+  const grey = registry.theme.palettes.find((entry) => entry.name === plain.defaultPalette)
+  if (grey?.chromaBudget !== 'none') {
+    throw new SkillFactError(`${plain.defaultPalette} no longer has a chromaBudget of none`)
+  }
   const pinnable = Object.keys(at(palette, 'pins.light').properties ?? {})
   if (pinnable.length === 0) throw new SkillFactError('the palette schema pins no role')
   const roles = Object.keys(registry.theme.colorRoles)
@@ -129,7 +170,7 @@ export function documentsReference(registry: Registry, run: string): string {
 
 A theme is two JSON documents. This file covers the fields a hand edit usually touches. The JSON
 Schema is the whole contract. Write it beside the documents, and an editor checks each field of a
-document whose \`$schema\` names it:
+document whose \`$schema\` names it. \`theme validate\` and the Vite plugin ignore that key:
 
 ${commands(run, 'theme schema system --out src/theme/system.schema.json', 'theme schema palette --out src/theme/palette.schema.json')}
 
@@ -138,12 +179,15 @@ Check every edit with \`theme validate\` (the skill's step 5).
 ## The system
 
 \`\`\`json
-${JSON.stringify(example, null, 2)}
+${pretty(example)}
 \`\`\`
 
 \`name\` is kebab-case and becomes \`data-system\`. \`defaultPalette\` is the palette worn with the
-system unless another is chosen. \`defaultMode\` (\`light\`, \`dark\` or \`system\`) applies only
-where nothing sets \`data-mode\`. \`kind\` is \`designed\`. A system holds no colour: a colour seed
+system unless another is chosen. \`defaultMode\` (\`light\`, \`dark\` or \`system\`) gives the colours
+of a page where nothing sets \`data-mode\`, with \`system\` read as light. On the web the pre-paint
+script sets \`data-mode\` before the first paint, to the reader's stored choice or on a first visit
+to the operating system's mode, so \`defaultMode\` does not decide a first visit. \`kind\` is
+\`designed\`. A system holds no colour: a colour seed
 in it is refused.
 
 | Axis | Values | Decides |
@@ -151,6 +195,17 @@ in it is refused.
 ${axes.join('\n')}
 
 \`fonts\` has three slots, \`body\`, \`display\` and \`mono\`, each \`{ family, fallback?, style? }\`.
+\`body\` draws every text step, \`text.xs\` to \`text.3xl\`: paragraphs, controls and headings,
+${f.m('PageHeader')}'s title included. \`display\` draws only the display steps, which
+${f.m('Hero')}'s title uses. \`mono\` draws code. No slot draws headings alone, so a serif for
+headings is one of two edits: a serif \`display\` changes ${f.m('Hero')}'s title only, and a serif
+\`body\` changes every heading and every paragraph. Say which one the request gets.
+
+\`typePersonality\` picks no typeface. It sets the weights (\`editorial\` draws titles at 700), the
+tracking, the icon stroke, and the fallback of a \`body\` or \`display\` slot that names none: serif
+under \`editorial\`, sans under the others. Give a serif slot \`"fallback": "serif"\`, so the page
+shows a serif while the font loads.
+
 \`family\` is a Fontsource family name: \`Inter Variable\` is the package
 \`@fontsource-variable/inter\`, and a name that does not end in Variable is \`@fontsource/<name>\`. \`fallback\`
 is \`sans\`, \`serif\` or \`mono\`, and \`style\` \`italic\` applies to \`display\` only.
@@ -167,17 +222,7 @@ ${overrides.join('\n')}
 
 ## The palette
 
-\`\`\`json
-{
-  "name": "acme-blue",
-  "accentHue": 255,
-  "neutralTint": 0.006,
-  "chromaBudget": "high",
-  "pins": {
-    "light": { "accent.bg": "#1a73e8", "accent.bgHover": "#1765cc", "accent.bgActive": "#185abc" }
-  }
-}
-\`\`\`
+"One brand colour in both modes", below, is a whole palette document.
 
 | Field | Accepts | Holds |
 | --- | --- | --- |
@@ -206,12 +251,37 @@ its main button or its focus ring by value. They live in the palette's \`pins\`,
 
 - A value is an opaque \`#rrggbb\`. \`border.focus\` may be \`rgb(r g b / a)\`.
 - A mode the palette does not name keeps every derived colour.
-- The contrast law holds a pin and never moves it. Pin the family together: a light
-  \`accent.bg\` with derived \`accent.bgHover\` and \`accent.bgActive\` is refused.
-- The washes, links and selection still derive from \`accentHue\`, so set it near the pinned fill.
+- The contrast law holds a pin and never moves it. A pinned fill answers to the label on it:
+  \`accent.contrast\` reaches Lc 60 on \`accent.bg\`, \`accent.bgHover\` and \`accent.bgActive\`, in
+  each mode. A pinned focus colour answers to its floor on each surface. No law reads a pin's hue,
+  or how far apart the three fills are.
 - \`accent.gradientTo\` is the gradient's second stop. Pin it when a refusal names the \`'to'\`
   stop. A palette that derives no second stop (no \`gradientHue\`, or \`chromaBudget\` \`none\`)
   pins it in both modes or in neither.
+
+### One brand colour in both modes
+
+The brand's blue \`#1F4FD8\` on the main button, in light and dark mode. \`theme validate\` admits
+this palette:
+
+\`\`\`json
+${pretty(brand)}
+\`\`\`
+
+- Pin the three fills together. Hover and pressed derive from \`accentHue\`, not from the pin, so
+  they keep the lightness its ladder gives them: beside \`#1F4FD8\` they are lighter. The derived fills step OKLCH lightness down
+  by about 0.03 (0.62, 0.588, 0.556): \`#1744cd\` and \`#0f39c2\` are \`#1F4FD8\` with its lightness
+  0.032 and 0.064 lower.
+- Pin \`accent.contrast\` when the brand states the label's colour. Unpinned, it is chosen against
+  the pinned \`accent.bg\`.
+- Pin the same values in \`dark\`. The engine draws a hued accent fill the same in both modes, and a
+  mode with no pins draws the fill \`accentHue\` derives, not the brand's.
+- Set \`accentHue\` to the colour's OKLCH hue, the \`h\` of \`oklch(L C h)\`, which any colour
+  converter prints: \`#1F4FD8\` is \`oklch(0.49 0.216 264.5)\`. A few degrees off is lawful.
+  \`accentHue\` colours what surrounds the button: the washes, links, selection, focus ring and
+  chart colours.
+- Under \`chromaBudget\` \`none\`, which \`${plain.defaultPalette}\` has, the pins hold and the links,
+  washes and focus ring stay grey. Raise it for them to take the hue.
 
 ## The more-contrast partner
 
