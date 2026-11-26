@@ -65,6 +65,35 @@ export class Facts {
     return `\`${prop}\``
   }
 
+  /** The type of a data type's field, which must exist. */
+  private fieldType(type: string, name: string): string {
+    const declared = this.registry.dataTypes.find((entry) => entry.name === type)
+    if (declared === undefined) throw new SkillFactError(`no data type called ${type}`)
+    const found = declared.fields.find((entry) => entry.name === name)
+    if (found === undefined) throw new SkillFactError(`${type} has no field ${name}`)
+    return found.type
+  }
+
+  /** `name` in code font, once the data type `type` has the field. */
+  field(type: string, name: string): string {
+    this.fieldType(type, name)
+    return `\`${name}\``
+  }
+
+  /** The string values a data type's field allows, in its order. */
+  fieldValues(type: string, name: string): string[] {
+    return [...this.fieldType(type, name).matchAll(/"([^"]+)"/g)].map((match) => match[1] as string)
+  }
+
+  /** What the registry says a member is for, in the member's own words. */
+  purpose(name: string): string {
+    const purpose = (this.member(name) as { purpose?: string }).purpose
+    if (purpose === undefined || purpose === '') {
+      throw new SkillFactError(`${name} states no purpose`)
+    }
+    return purpose
+  }
+
   /** The string values a prop's type allows, in its order. */
   values(member: string, prop: string): string[] {
     return [...this.type(member, prop).matchAll(/"([^"]+)"/g)].map((match) => match[1] as string)

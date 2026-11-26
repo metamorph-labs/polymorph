@@ -207,12 +207,9 @@ or spreads the fragment \`polymorph.eslint.js\` that \`init\` and \`add\` write.
     },
     { path: 'polymorph-screen/references/screen-spec.md', contents: specReference(registry) },
     { path: 'polymorph-screen/references/code.md', contents: codeReference(registry, run) },
-    { path: 'polymorph-screen/references/chat.md', contents: chatReference(registry, run) },
+    { path: 'polymorph-screen/references/chat.md', contents: chatReference(registry) },
     { path: 'polymorph-screen/references/charts.md', contents: chartsReference(registry, run) },
-    {
-      path: 'polymorph-screen/references/rich-text.md',
-      contents: richTextReference(registry, run),
-    },
+    { path: 'polymorph-screen/references/rich-text.md', contents: richTextReference(registry) },
   ]
 }
 

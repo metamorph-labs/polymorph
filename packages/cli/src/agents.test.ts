@@ -335,7 +335,8 @@ function factFaults(text: string): string[] {
   const faults: string[] = []
   const tagged = (code: string, foreign: Set<string>) => {
     for (const [, name, attributes] of code.matchAll(
-      /<([A-Z][A-Za-z0-9]*(?:\.[A-Z][A-Za-z0-9]*)?)\b([^<>]*)>/g,
+      // A `<` straight after a name opens a type argument (`useState<Turn>`), not an element.
+      /(?<![\w$])<([A-Z][A-Za-z0-9]*(?:\.[A-Z][A-Za-z0-9]*)?)\b([^<>]*)>/g,
     )) {
       if (foreign.has(name as string) || NAMED.has(name as string)) continue
       const props = propsOf(name as string)
@@ -344,7 +345,9 @@ function factFaults(text: string): string[] {
         continue
       }
       for (const [, prop] of (attributes as string).matchAll(/([A-Za-z][\w-]*)=/g)) {
-        if (!props.has(prop as string)) faults.push(`<${name} ${prop}>: no such prop`)
+        // `key` is React's own, on any element a list renders.
+        if (prop !== 'key' && !props.has(prop as string))
+          faults.push(`<${name} ${prop}>: no such prop`)
       }
       for (const [, keys] of (attributes as string).matchAll(/patch=\{\{([^}]*)\}\}/g)) {
         const fields = fieldsOf(name as string, 'patch')
@@ -420,6 +423,10 @@ describe('every member, prop and part a text names', () => {
     ).not.toEqual([])
     expect(factFaults("```tsx\nimport { Map } from 'maps'\n<Map center={c} />\n```")).toEqual([])
     expect(factFaults('`Button` and `Table.Row`')).toEqual([])
+    expect(factFaults('```tsx\nconst [open, setOpen] = useState<Detail>()\n```')).toEqual([])
+    expect(
+      factFaults('```tsx\n{items.map((item) => <Badge key={item.id}>{item.name}</Badge>)}\n```'),
+    ).toEqual([])
   })
 
   it('stops the texts being written when the registry lacks what a sentence names', () => {
