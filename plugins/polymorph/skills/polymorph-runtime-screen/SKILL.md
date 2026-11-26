@@ -1,6 +1,6 @@
 ---
 name: polymorph-runtime-screen
-description: Let a product answer with real interface while it runs. A model writes a polymorph-screen/1 document, the server checks it with checkScreen, the page draws it as it streams with ScreenView from @polymorph/react/screen or the <poly-screen> element from @polymorph/elements-ui/screen, and each press or submit becomes an action the product handles. Use when asked for generative UI, to render a model or agent response as components, to let an assistant show a form, a choice or a confirmation, or when code imports @polymorph/screen, runtimeCard, parsePartial, ScreenView or loadScreen. Covers the members a model may use and refusing links and images, the card and the host’s rules in the system prompt, checking and asking again, drawing the prose and the screen while they stream, actions and values, confirming an action with consequences, and what a request costs.
+description: Let a product answer with real interface while it runs. A model writes a polymorph-screen/1 document, the server checks it with checkAnswer, the page draws it as it streams with ScreenView from @polymorph/react/screen or the <poly-screen> element from @polymorph/elements-ui/screen, and each press or submit becomes an action the product handles. Use when asked for generative UI, to render a model or agent response as components, to let an assistant show a form, a choice or a confirmation, or when code imports @polymorph/screen, runtimeCard, checkAnswer, parsePartial, ScreenView or loadScreen. Covers the members a model may use and refusing links and images, the card and the host’s rules in the system prompt, checking and asking again, drawing the prose and the screen while they stream, actions and values, confirming an action with consequences, and what a request costs.
 ---
 
 # Draw a screen a model writes while the product runs
@@ -14,7 +14,7 @@ the form's values as data. Nothing is compiled.
 The work is in two places, and both are given the same list of members:
 
 - **The server that calls the model** builds the run-time card, sends it with the host's own
-  rules, checks each whole answer with `checkScreen` and asks once more when it has faults.
+  rules, checks each whole answer with `checkAnswer` and asks once more when it has faults.
 - **The page** draws the answer while it streams, with `ScreenView` or `<poly-screen>`.
   The renderer applies the member list and the run-time rules itself, so the page treats the
   document as untrusted whatever the server checked.
@@ -72,11 +72,12 @@ the `ChatThread` around the screen, the `ConfirmDialog` that confirms an action.
 - With no list, every member the framework draws is allowed but `ThirdParty`, which holds
   whatever the host puts in it, and, in React, `Toast`.
 
-To refuse links and remote pictures, leave out every member that takes an address. No option of
-the card, the check or the renderers refuses an address and keeps its member. The members are
-`RichTextContent`, `AvatarButton`, `ImageEditor`, `Link`, `Lightbox`, `Card`, `Avatar`, `Image`, `AudioPlayer`, `List`, `CommentThread`, `CursorPagination`, `Breadcrumbs`, `SectionNav`, `AttachmentChip`, `ChatMessage`, `Citation`, `SourceList` and `AppShell`, and `Markdown`, which draws the links and pictures its text writes and has
-no prop that refuses them. `Card` is one for its `href`: group content
-under a title with `Stack` and `Heading`, as the list above does.
+To refuse links and remote pictures, pass `addresses: 'refused'` beside the list: to the card and
+the check, as `addresses` on `ScreenView`, and as the `addresses` attribute of
+`<poly-screen>`. The card then lists no prop that takes an address, the check reports each one a
+document writes, and the renderer passes none: `Card` and `List.Item` are
+drawn without their `href`. A member that cannot be drawn without an address is left out of the
+card and refused: `Link`, `Lightbox`, `Image`, `AudioPlayer`, `SectionNav`, `Markdown`, `Citation` and `SourceList`. The host's own data, bound whole, is passed as the host gave it.
 
 ## 4. Build the system prompt: the card, then the host's rules
 
@@ -161,8 +162,7 @@ The model answers with prose, a document, or both:
 
 ```ts
 // ask.ts, on the server that calls the model.
-import { checkScreen } from '@polymorph/screen/check'
-import { parsePartial } from '@polymorph/screen/partial'
+import { checkAnswer } from '@polymorph/screen/check'
 
 // Stand-in: your call to the model. It sends CARD and RULES as the system prompt and `turns` as
 // the conversation, calls `onText` with the answer so far each time more arrives, and resolves
@@ -170,17 +170,13 @@ import { parsePartial } from '@polymorph/screen/partial'
 import { askModel, type Turn } from './model'
 import { MEMBERS } from './screen-members'
 
-/** Answers the conversation, and asks once more, with the faults, when its document is not lawful. */
+/** Answers the conversation, and asks once more, with the faults, when the answer is not lawful. */
 export async function answer(turns: Turn[], onText: (text: string) => void): Promise<Turn[]> {
   const first = await askModel(turns, onText)
   const answered: Turn[] = [...turns, { role: 'assistant', content: first }]
-  const read = parsePartial(first)
-  // No fence and no object: the answer is prose only. It is lawful, and there is no screen.
-  if (read.document === undefined) return answered
-  const { ok, faults } = checkScreen(read.document, { members: MEMBERS })
-  if (ok && read.complete) return answered
+  const { ok, faults } = checkAnswer(first, { members: MEMBERS })
+  if (ok) return answered
   const lines = faults.map((fault) => `${fault.path}: ${fault.message}`)
-  if (!read.complete) lines.push('$: the answer ended before the document closed')
   const retry: Turn[] = [
     ...answered,
     { role: 'user', content: `Your screen has these faults. Answer with the corrected document.\n${lines.join('\n')}` },
@@ -190,15 +186,18 @@ export async function answer(turns: Turn[], onText: (text: string) => void): Pro
 }
 ```
 
-- `parsePartial` reads the document from the first fence marked `json` or unmarked, or from the
-  first brace that opens an object when the answer has no fence. For an answer with neither,
-  `document` is `undefined`: the answer is prose, which is lawful and needs no retry.
-- `complete` is whether the document's outermost brace has closed. An answer that ends inside the
-  document, at a token limit or a dropped stream, is cut short. The check reads only what arrived,
-  which can be lawful as far as it goes, so the host names the cut itself.
-- `checkScreen` returns `{ ok, faults }`, each fault `{ path, message }` in words a model corrects from
-  (``no component called `Modal` — did you mean `Dialog`, …?``). It reads what the renderer
-  does not: variant and tone cells, icon roles and the usage rules.
+- `checkAnswer` takes the whole answer as text and the host's options, and returns `ok`, `faults`,
+  `document`, `complete` and `prose`. It reads the document as the renderer does
+  (`parsePartial`): the first fence marked `json` or unmarked, or the first brace that opens an
+  object. An answer with neither is prose, which is lawful: `document` is `undefined`.
+- An answer that ends before its document does, at a token limit or a dropped stream, is one fault
+  at `$`: `the answer ends before its document does`, in words that ask for the whole document
+  again. Call it once the answer has ended; while it streams, a document that has not closed is
+  normal.
+- Each fault is `{ path, message }` in words a model corrects from
+  (``no component called `Modal` — did you mean `Dialog`, …?``). The check reads what the
+  renderer does not: variant and tone cells, icon roles and the usage rules. `checkScreen` checks a
+  document object the host already holds.
 
 ## 7. On the page: draw the prose and the screen while they stream
 
@@ -207,7 +206,6 @@ import { useState } from 'react'
 import * as members from '@polymorph/react-ui'
 import { parsePartial, ScreenView, type ScreenAction } from '@polymorph/react/screen'
 
-import { proseOf } from './prose'
 import { MEMBERS } from './screen-members'
 // Stand-in: posts the person's message, or an action, to your server, which adds it to the
 // conversation and calls `answer` (step 6). It calls `onText` with the answer so far as it
@@ -230,14 +228,11 @@ export function Assistant({ data }: { data: Record<string, unknown> }) {
     void send(`An action from the screen: ${JSON.stringify(action)}`)
   }
 
-  const { document } = parsePartial(answer)
-  const prose = proseOf(answer, document)
+  const { document, prose, fence } = parsePartial(answer)
 
   return (
     <Stack gap={4}>
-      {prose !== '' && (
-        <StreamingText streaming={!done && document === undefined}>{prose}</StreamingText>
-      )}
+      {prose !== '' && <StreamingText streaming={!done && fence !== 'open'}>{prose}</StreamingText>}
       {document !== undefined && (
         <ScreenView
           text={answer}
@@ -259,9 +254,10 @@ export function Assistant({ data }: { data: Record<string, unknown> }) {
   list, a prop the member lacks, a refused address and a value where a function goes are left out
   and reported. Without `allow` it draws every member React draws but `ThirdParty` and
   `Toast`, so the page gets the server's list.
-- No export returns the prose. `proseOf` in [references/api.md](references/api.md) takes the
-  text outside the fence. `StreamingText` draws it as it is. `Markdown` draws the
-  links its text writes, so it is for a host that allows links.
+- `prose` is the text outside the fenced block that holds the document, as the reader finds it:
+  the text before the block, and after it once the block closes. `fence` is `open` from the
+  block's first backtick to its closing line. `StreamingText` draws the prose as it is.
+  `Markdown` draws the links its text writes, so it is for a host that allows links.
 - Draw `ScreenView` only when the answer holds a document. Given none, with `streaming`
   off, it reports `the document has no root element` at `$.root`.
 - `streaming` is on while the answer arrives and off when it ends, so an answer cut short reports
@@ -331,7 +327,7 @@ run-time document differs from a spec `emit` compiles.
 
 | Part | What it costs |
 | --- | --- |
-| The card | input on every request: over 1,000 tokens for the list in step 3, over 10,000 with every member React draws, at four characters to a token. After the first request a prompt cache holds it (step 4) |
+| The card | input on every request: measure it with the command below. After the first request a prompt cache holds it (step 4) |
 | The host's rules | input on every request, held in the cache with the card |
 | The conversation | input on every request: each earlier message and answer, documents included |
 | The answer | output: the prose and the document the model writes |
@@ -339,12 +335,17 @@ run-time document differs from a spec `emit` compiles.
 | An action | nothing, unless the host sends it to the model. One the host handles itself, such as `requestRefund`, costs no model call; telling the model the outcome is one request |
 
 A request's price is these counts at the provider's rates for input, cached input and output; the
-provider's response reports each count. Measure the card for your list from a directory where
-`@polymorph/screen` is installed (step 2), as the import fails anywhere else:
+provider's response reports each count. The card's length depends on the release, the framework,
+the members and `--addresses`. This prints the card for the list in step 3, the text
+`runtimeCard` returns for the same options, and its length in characters on stderr; a provider's
+tokenizer reads about four characters to a token:
 
 ```sh
-node --input-type=module -e "import { runtimeCard } from '@polymorph/screen/card'; console.log(runtimeCard({ members: ['Stack', 'Heading', 'Text', 'Button', 'FormField', 'NumberInput', 'Textarea'] }).length)"
+npx -y @metamorph-labs/polymorph@1.0.18 card --runtime --framework react --members Stack,Heading,Text,Button,FormField,NumberInput,Textarea
 ```
+
+Its standard output is the whole card, so a server that runs no JavaScript writes it to a file
+once for each release (`> card.md`) and sends that.
 
 The page pays once, in what it loads:
 

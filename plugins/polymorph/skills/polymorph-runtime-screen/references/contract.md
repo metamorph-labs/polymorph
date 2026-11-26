@@ -206,6 +206,9 @@ not arrived is a fault.
 | A shared or inherited control name | `values` holds one control, or none |
 | A member that threw as it rendered | Its node is drawn as nothing; the rest of the screen draws |
 | Text that stops being JSON, at `$` | The answer broke off; the document holds what came before it |
+| `the answer ends before its document does`, at `$` | `checkAnswer` only: the answer was cut off. Ask again with the fault |
+| `… takes an address, and this host takes none` | Under `addresses: 'refused'`: not passed; the element is drawn without it |
+| `… requires an address at …`, `… draws the links and pictures its text writes` | Under `addresses: 'refused'`: drawn as nothing |
 | `the document has no root element`, at `$.root` | The answer ended with no document, or none that holds a root. Draw the renderer only for an answer that holds one |
 
 A fault in the root element leaves nothing to draw. `faults="inline"` draws each fault in its
@@ -219,8 +222,13 @@ A string at a prop or object key that takes an address (`avatar`, `href`, `nextH
 fault and is not passed. An address with a control character anywhere is refused whole, and spaces
 at either end are stripped before the scheme is read. Each address in a `srcSet` is held to the
 same rule. The rule covers the document's values and a value a binding puts directly at an address;
-it does not reach into an object the host binds whole. No option refuses every address: a host
-that allows no link and no picture leaves out the members that take one (the skill's step 3).
+it does not reach into an object the host binds whole.
+
+With `addresses: 'refused'` (the skill's step 3), any value the document writes or binds at those
+keys is a fault and is not passed, whatever its scheme, and the element is drawn without it. A
+member that requires an address, in a prop or in a required field of the data type a prop takes,
+and `Markdown`, which draws the links and pictures its text writes, are left out of the card
+and drawn as nothing. A host that names one in its list is refused it all the same.
 
 ## Limits
 
@@ -239,7 +247,7 @@ proportion to what it reads.
 - The host's data inside a bound value: a list of the host's objects is passed as the host gave it.
 - Where a link leads, and where a picture or a recording loads from.
 - What `Markdown` draws from its text: links and pictures at `http:`, `https:`, `mailto:`
-  or no scheme. No other member draws Markdown.
+  or no scheme. No other member draws Markdown, and a host that refuses addresses draws none.
 - Ids and names, which can match the host's own. A control inside the host's `<form>` posts under
   the document's name.
 - Who called an action (the skill's step 8).
