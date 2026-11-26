@@ -48,8 +48,8 @@ and the hidden field show what the application holds, and a pick is reported thr
 and shown only once the application passes it back. Without `value`, the member holds the
 choice, starting from `defaultValue`.
 
-`null` is nothing chosen, as it is for every value-holding member (Combobox, TreeSelect,
-DatePicker, NumberInput, Rating). Without `emptyOption` the trigger then shows the placeholder,
+`null` is nothing chosen, as it is for Combobox, TreeSelect, DatePicker, NumberInput and
+Rating. Without `emptyOption` the trigger then shows the placeholder,
 with `data-placeholder`, in the anchored list and in the sheet; with it, the empty choice. An
 application clears a choice by setting `null`, as a form does when it resets after a save, and
 holds an unchosen Select's value as `string | null`.

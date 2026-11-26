@@ -401,9 +401,9 @@ member as a child. Composing *inside* a chart is not supported.
 </Dashboard.Panel>
 ```
 
-The bar chart's summary reads "Requests by hour showing Web and API, 24 points. Values:
-Requests. The same data is available as a table." for a day of hourly rows, and the line
-chart's names `Latency (ms)` the same way.
+For a day of hourly rows, the bar chart's summary reads "Requests by hour showing Web and API,
+24 points. Values: Requests. The same data is available as a table.", and the line chart's
+says "Values: Latency (ms)." in the same place.
 
 ## The shared grammar
 
@@ -660,7 +660,9 @@ spec must say what it is *not* and which member to use instead. The general proc
 9. **Hold its keys with a law.** A member whose keys walk a reading position states that walk,
    its words and its `onSelect` payload in a law of its own in
    `packages/conformance/src/chart-reading.ts`, and the member's test in every web framework
-   calls it with a mount of its own.
+   calls it with a mount of its own. A series chart that takes `y` says its measure in its
+   summary through `summaryFor`, and adds a law to `packages/conformance/src/chart-measure.ts`
+   the same way.
 10. Run the member's tests and the laws: `pnpm exec vitest run packages/react-ui/src/charts` for
    React, and `pnpm exec vitest run packages/vue-ui packages/svelte-ui packages/solid-ui
    packages/angular-ui packages/elements-ui` for the generated members and the elements.
