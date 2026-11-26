@@ -73,7 +73,7 @@ of its ceiling without it. `dialog` (the close Button) measures 87.6 kB against 
 tip, and its ceiling is 88 kB. `agent-bridge` measures 76.9 kB against 76.0 kB, and its ceiling is
 77 kB. `elements-agent` and `elements-screen` are the `elements-button` page with more on it, so
 they grow by what that page grows by: 45.2 kB against 43.8 kB, with a ceiling of 46 kB, and 86.1 kB
-against 84.9 kB, with a ceiling of 87 kB.
+against 84.9 kB.
 
 `runtime-engine`'s JavaScript ceiling is 54 kB, and the fixture measures 53.6 kB against 52.6 kB
 before three choices a system or a palette may state: the pin for the accent gradient's second
@@ -139,8 +139,12 @@ Culori, from the theme engine, and Zag's date picker (`pnpm size --why elements-
 that loads `polymorph.js` fetches the editor only when it uses `poly-rich-text-input`, because the
 editor is in that element's chunk.
 
-`elements-screen`'s ceilings are set as `elements-button`'s are, from its measurement, 86.1 kB,
-rounded up to the next kilobyte: 87 kB. About two fifths of its JavaScript is
+`elements-screen`'s ceilings are set as `elements-button`'s are, from its measurement, 87.3 kB,
+rounded up to the next kilobyte: 88 kB. Of that, 1.2 kB is three things the run-time screen does on
+the page: the reader returns the model's prose and the state of the document's fence, the walk and
+the shared checks refuse every address for a host that takes none, and the vocabulary table names
+the measures a chart's summary receives. `pnpm size --why elements-screen` shows no package the
+page did not already fetch. About two fifths of its JavaScript is
 the run-time screen: the vocabulary table with the core's shared modules, which name every member's
 props, parts and lawful cells and hold the checks every document passes (addresses, the depth
 limit, and which prop or field receives a callback; about 27 kB, the largest part), the walk with the renderer and `parsePartial` (about 8 kB),
