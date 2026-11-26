@@ -23,6 +23,6 @@
     }
   },
   "defaultPalette": "cobalt",
-  "defaultMode": "light",
+  "defaultMode": "system",
   "kind": "designed"
 }

@@ -20,7 +20,7 @@ internal object Press_Carmine {
                 motionTemperament = "standard",
                 ornament = "minimal",
             ),
-            defaultMode = "light",
+            defaultMode = "system",
             chartCap = 2,
         ),
         fonts = PMFonts(

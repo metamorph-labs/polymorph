@@ -23,6 +23,6 @@
     }
   },
   "defaultPalette": "amethyst",
-  "defaultMode": "light",
+  "defaultMode": "system",
   "kind": "designed"
 }

@@ -20,7 +20,7 @@ internal object Dew_Verdigris {
                 motionTemperament = "subtle",
                 ornament = "none",
             ),
-            defaultMode = "light",
+            defaultMode = "system",
             chartCap = 3,
         ),
         fonts = PMFonts(

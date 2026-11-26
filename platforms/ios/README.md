@@ -36,7 +36,9 @@ struct SaveButton: View {
 
 A colour's `color` resolves by the colour scheme of the environment it is drawn in, so the same
 value serves light and dark mode. `theme.preferredColorScheme` is the system's default mode, for
-`.preferredColorScheme(_:)`.
+`.preferredColorScheme(_:)`: the mode of a reader who has not chosen one, as the web opens a
+first visit. It is `nil` for a system whose `defaultMode` is `system`, which follows the device:
+every house pairing but `terminal_petrol`, which is `.dark`.
 
 With `PolymorphUI`, an app installs one pairing at its root and composes members, which read it
 from the environment:

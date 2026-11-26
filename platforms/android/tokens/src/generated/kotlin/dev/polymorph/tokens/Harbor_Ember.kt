@@ -20,7 +20,7 @@ internal object Harbor_Ember {
                 motionTemperament = "subtle",
                 ornament = "grid",
             ),
-            defaultMode = "light",
+            defaultMode = "system",
             chartCap = 3,
         ),
         fonts = PMFonts(

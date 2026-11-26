@@ -38,7 +38,8 @@ journal's colour seeds are in `design/palettes/umber.json`.
   needed.
 - **No `gradientHue`**: `bg.wash` resolves to the paper and the primary button stays a
   plain ink fill.
-- **defaultMode: `light`.** Dark re-derives to warm dark surfaces with the same ink logic
+- **defaultMode: `system`.** A first visit wears the device's mode and follows it until the
+  reader chooses one. Dark re-derives to warm dark surfaces with the same ink logic
   and unchanged status colours.
 
 ## Fonts

@@ -44,6 +44,14 @@ Compose, `Modifier.pmHitTarget()`, which reserves the area as Material's
 `minimumInteractiveComponentSize()` does, at the theme's size), as a web member extends its own to
 `--pm-hit-target`.
 
+The mode a pairing opens in is one decision on every platform: the system's `defaultMode`, the
+mode of a reader who has not chosen one ([theming.md](theming.md)). `theme.preferredColorScheme`
+hands it to SwiftUI's `.preferredColorScheme(_:)`, and `theme.preferredDark` to Compose's
+`ProvidePMTheme(theme, dark = theme.preferredDark)`. Each is `nil` or null for `system`, which
+follows the device. Every house system but `terminal` says `system`, so an app that passes the
+preferred mode follows the device for those pairings, and opens `terminal` dark. An app that
+offers the reader a choice passes the reader's choice instead, as the web stores it.
+
 A member keeps every prop on every platform, and some props have nothing to do on a phone: a
 form control's `name`, the ids in `aria-labelledby`, an image's `referrerPolicy`. A rendering
 reads every field of its contract, or the field is listed with its reason in
@@ -495,7 +503,8 @@ The foundation (`PolymorphUI.kt`) is the Compose counterpart of the SwiftUI one:
   through `PM.theme` and `PM.dark`, and a colour role through `.color`, which resolves it in the
   mode. `ProvidePMTheme(theme)` provides both and the Material bridge at an app's root;
   `ProvidePMTheme(theme, dark = theme.preferredDark)` draws the pairing in its own mode, as the
-  web does where nothing sets one.
+  web draws a first visit: dark for `terminal`, and the device's mode for a pairing whose
+  `defaultMode` is `system`.
 - **The Material bridge.** `PMMaterialTheme { … }` is a `MaterialTheme` built from the pairing:
   its colour scheme from the colour roles (the accent as primary and secondary, info as tertiary,
   the surface as its own tint, so a tonal elevation does not shift a surface's colour), its

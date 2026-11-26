@@ -18,7 +18,7 @@ extension PMTheme {
       motionTemperament: .subtle,
       ornament: "grid"
     ),
-    defaultMode: .light,
+    defaultMode: .system,
     chartCap: 3,
     fonts: PMFonts(
       body: PMFont(

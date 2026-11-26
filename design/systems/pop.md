@@ -38,7 +38,8 @@ pop's colour seeds are in `design/palettes/orchid.json`.
   high budget the fills are fully saturated consumer colour.
 - **`neutralTint: 0.014`**: the tinted page. `tinted` puts the wash on surfaces so even
   empty states are warm.
-- **defaultMode: `light`.** Dark derives to saturated mode-pinned fills over deep plum
+- **defaultMode: `system`.** A first visit wears the device's mode and follows it until the
+  reader chooses one. Dark derives to saturated mode-pinned fills over deep plum
   neutrals, and it is lawful.
 
 ## Fonts

@@ -23,6 +23,6 @@
     }
   },
   "defaultPalette": "azure",
-  "defaultMode": "light",
+  "defaultMode": "system",
   "kind": "designed"
 }

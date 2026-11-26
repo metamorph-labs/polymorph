@@ -46,7 +46,8 @@ plain's seeds are in `design/palettes/neutral.json`, the shortest palette in the
   and near-white in dark. This is the only budget where the solid ladder's light-pinning gives
   way, because an ink fill acts as a foreground, and foregrounds invert. Status families keep
   their chroma floor (`STATUS_CHROMA_FLOOR`), so status colours stay saturated.
-- **defaultMode: `light`.**
+- **defaultMode: `system`.** A first visit wears the device's mode and follows it until the
+  reader chooses one.
 
 ## Fonts
 

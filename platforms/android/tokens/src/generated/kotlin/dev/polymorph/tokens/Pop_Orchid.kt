@@ -20,7 +20,7 @@ internal object Pop_Orchid {
                 motionTemperament = "expressive",
                 ornament = "minimal",
             ),
-            defaultMode = "light",
+            defaultMode = "system",
             chartCap = 2,
         ),
         fonts = PMFonts(

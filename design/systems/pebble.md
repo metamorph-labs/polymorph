@@ -56,7 +56,8 @@ pebble's colour seeds are in `design/palettes/azure.json`, shared with desktop.
 - **`chromaBudget: high`**: the blue is meant to be bright. A system whose only
   colour is one accent can spend the whole budget on it. At `medium` the blue
   looks dull.
-- **defaultMode: `light`.** Dark re-derives (`bg.app #090a0b`,
+- **defaultMode: `system`.** A first visit wears the device's mode and follows it
+  until the reader chooses one. Dark re-derives (`bg.app #090a0b`,
   `bg.surface #161719`, the same pinned `accent.bg`) and is lawful on both
   standards. As a still it reads as the same system, which passes the
   two-theme test.

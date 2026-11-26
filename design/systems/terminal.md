@@ -46,7 +46,8 @@ terminal's colour seeds are in `design/palettes/petrol.json`.
   so where it appears it is at full strength. Status fills are saturated (#ea3c3f / #b37900
   / #00a149 / #008fd2 on dark), like instrument lamps.
 - **No `gradientHue`**: the accent gradient resolves to the plain `accent.bg`.
-- **defaultMode: `dark`.**
+- **defaultMode: `dark`.** A first visit opens dark whatever the device's mode, until the
+  reader chooses one.
 
 ## Fonts
 

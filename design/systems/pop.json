@@ -23,6 +23,6 @@
     }
   },
   "defaultPalette": "orchid",
-  "defaultMode": "light",
+  "defaultMode": "system",
   "kind": "designed"
 }

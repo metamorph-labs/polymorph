@@ -1294,7 +1294,8 @@ extension PMTheme: Identifiable {
   /// The motion temperament the system's axes select.
   public var defaultMotion: PMMotion { motion[axes.motionTemperament] }
 
-  /// For `.preferredColorScheme(_:)`.
+  /// For `.preferredColorScheme(_:)`: the mode the pairing draws in unless the reader chooses
+  /// one, as the web applies it on a first visit. `nil` follows the device.
   public var preferredColorScheme: ColorScheme? { defaultMode.colorScheme }
 }
 

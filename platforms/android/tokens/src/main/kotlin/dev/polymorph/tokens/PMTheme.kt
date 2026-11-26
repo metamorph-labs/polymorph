@@ -67,10 +67,10 @@ data class PMTheme(
         }
 
     /**
-     * The mode the pairing draws in unless the app chooses one, as the web
-     * applies it where nothing sets `data-mode`: true for dark, false for
-     * light, and null for `system`, which follows the device. An app passes
-     * it as `ProvidePMTheme(theme, dark = theme.preferredDark)`; the Swift
+     * The mode the pairing draws in unless the reader chooses one, as the web
+     * applies it on a first visit: true for dark, false for light, and null
+     * for `system`, which follows the device. An app passes it as
+     * `ProvidePMTheme(theme, dark = theme.preferredDark)`; the Swift
      * package's counterpart is `preferredColorScheme`.
      */
     val preferredDark: Boolean?

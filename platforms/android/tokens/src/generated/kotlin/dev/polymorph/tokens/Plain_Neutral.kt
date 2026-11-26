@@ -20,7 +20,7 @@ internal object Plain_Neutral {
                 motionTemperament = "standard",
                 ornament = "minimal",
             ),
-            defaultMode = "light",
+            defaultMode = "system",
             chartCap = 3,
         ),
         fonts = PMFonts(
