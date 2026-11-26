@@ -1,6 +1,6 @@
 {
   "name": "@polymorph/tools",
-  "version": "1.0.17",
+  "version": "1.0.18",
   "description": "The Polymorph design system's command line and MCP server in one package: write a new app, vendor members and themes, run the red rules over a repository, and give a coding agent the system as tools. Needs no checkout of the repository.",
   "keywords": [
     "polymorph",

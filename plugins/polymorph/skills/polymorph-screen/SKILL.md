@@ -12,7 +12,7 @@ size, font and motion. A screen composes members, sets their props and binds con
 You reach the tools from a shell. Every command in this skill starts with the same words:
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 card --framework <framework>
+npx -y @metamorph-labs/polymorph@1.0.18 card --framework <framework>
 ```
 
 If the session also has an MCP server named `polymorph`, its tools do the same jobs:
@@ -46,7 +46,7 @@ screen as a spec (step 4). Otherwise write it in the framework's own code (step 
 ## 2. Read the card
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 card --framework <framework>
+npx -y @metamorph-labs/polymorph@1.0.18 card --framework <framework>
 ```
 
 The card lists every member with its props, the variants and tones each takes, its compound parts
@@ -60,8 +60,8 @@ components from another interface library.
 ## 3. Choose the members
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 search date picker --framework <framework>
-npx -y @metamorph-labs/polymorph@1.0.17 component DatePicker --framework <framework>
+npx -y @metamorph-labs/polymorph@1.0.18 search date picker --framework <framework>
+npx -y @metamorph-labs/polymorph@1.0.18 component DatePicker --framework <framework>
 ```
 
 `search` takes plain words and finds members by name, purpose, prop or variant. With no words it
@@ -83,8 +83,8 @@ The format is in [references/screen-spec.md](references/screen-spec.md). Check t
 compile it into a component:
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 validate src/screens/inbox.json --framework <framework>
-npx -y @metamorph-labs/polymorph@1.0.17 emit src/screens/inbox.json <out> --framework <framework>
+npx -y @metamorph-labs/polymorph@1.0.18 validate src/screens/inbox.json --framework <framework>
+npx -y @metamorph-labs/polymorph@1.0.18 emit src/screens/inbox.json <out> --framework <framework>
 ```
 
 `validate` lists each fault at its path, such as `$.root.children[1]`, with suggestions for a
@@ -103,14 +103,14 @@ Import members from the framework's vocabulary package, or from the vendored dir
 that vendors. Then check the file:
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 validate src/pages/Settings.tsx --framework <framework>
+npx -y @metamorph-labs/polymorph@1.0.18 validate src/pages/Settings.tsx --framework <framework>
 ```
 
 `validate` takes several files. For a whole directory, use `check`, which reads each file in its
 own framework:
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 check src
+npx -y @metamorph-labs/polymorph@1.0.18 check src
 ```
 
 The red rules do not read an HTML page. In an `elements` project, check a page by reading it
@@ -131,7 +131,7 @@ lawful answers:
 Apply every rewrite that has one answer, then work through what is left:
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 fix src/pages/Settings.tsx --framework <framework>
+npx -y @metamorph-labs/polymorph@1.0.18 fix src/pages/Settings.tsx --framework <framework>
 ```
 
 With `--dry-run`, `fix` prints the fixed code and writes nothing. Never add an `eslint-disable`
@@ -140,7 +140,7 @@ comment for a polymorph rule. Run `validate` again until it exits 0.
 ## 7. Look at the screen
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 render src/screens/inbox.json --system plain
+npx -y @metamorph-labs/polymorph@1.0.18 render src/screens/inbox.json --system plain
 ```
 
 `render` draws a spec in a browser at a phone width (375 by 812) and a desktop width (1440 by
@@ -170,7 +170,7 @@ when the session can.
 ## 8. Run the checks
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 check src
+npx -y @metamorph-labs/polymorph@1.0.18 check src
 ```
 
 `check` runs the red rules over the directory whatever the project's lint config holds, and exits 1

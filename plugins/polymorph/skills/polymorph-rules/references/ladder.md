@@ -12,7 +12,7 @@ Every member exposes its range as typed props, such as a variant, a tone, a size
 steps. A value off the scale is a type error. Read the member first:
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 component Button --framework <framework>
+npx -y @metamorph-labs/polymorph@1.0.18 component Button --framework <framework>
 ```
 
 The answer lists each prop's values and the variant and tone pairs that are lawful. Most needs end

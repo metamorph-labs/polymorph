@@ -1,5 +1,132 @@
 # @polymorph/cli
 
+## 1.0.18
+
+### Patch Changes
+
+- 5a4e457: **`polymorph agents` writes the files a coding agent reads in a project, and `init` writes the
+  same ones.** A marked block in `AGENTS.md` (created when absent, and the rest of an existing file
+  kept), a `CLAUDE.md` that includes it, the polymorph skills in the Agent Skills format
+  (`polymorph-screen`, `polymorph-rules`, `polymorph-setup`, `polymorph-theme`) in
+  `.claude/skills/` and `.agents/skills/`, the MCP server's entry for Claude Code (`.mcp.json`,
+  merged with the servers already there), Cursor (`.cursor/mcp.json`) and Codex
+  (`.codex/config.toml`, which Codex reads in a trusted project; the output prints the
+  `codex mcp add` command for every other project), and the system card. `--harness` takes
+  `claude`, `codex`, `cursor`, `generic` or `all`; with none it writes for the three most projects use,
+  or the ones it wrote before.
+
+  `polymorph/agents.json` records what it wrote. Run it again after an upgrade: a file nobody edited
+  is brought up to the new release, an edited one is kept and named, `--force` replaces it, and
+  `--dry-run` writes nothing. `--remove <harness>` stops writing for a harness and removes the files
+  only it reads. A file with CRLF line endings compares as the text it holds, and an older release
+  refuses to write over files a newer one wrote. The texts say the project's lint runs the red
+  rules only when its ESLint config loads them, and give `check src` either way. Every command the texts name is the tools' own, at the release that
+  wrote them: `npx -y @metamorph-labs/polymorph@^<version> <verb>` from the published tools, the
+  checkout's bin from a checkout.
+
+  An app `init` writes now holds the skills, the Cursor and Codex entries and the record too, and
+  its `AGENTS.md` is the short block, which names the app's own package manager's lint command. An
+  app written by an earlier `init` keeps its `AGENTS.md` text above the new block; its card and
+  `.mcp.json` were not written by `agents`, so `polymorph agents --force` once replaces them.
+
+  For a caller of the functions: `InitPrograms` takes an optional `polymorph`, the CLI as the
+  texts name it, and `planInit` an optional `manager`. `FrameworkApp` no longer has `agents`.
+
+- f5c3a2b: Every MCP tool is now a CLI verb, so an agent with a shell and no MCP client can do all an agent
+  with the server can. `card`, `search`, `component`, `axes` and `plan` look things up;
+  `validate <file...|->` checks code, or a `.json` screen spec, and prints each violation as
+  `file:line:column  rule  message` with the lawful answer and the ladder's rungs under it;
+  `render <spec.json> --system <name>` draws a spec and writes its pictures into `<spec>.render/`;
+  `fix <file>` rewrites what has one lawful rewrite (`--dry-run`, or `-` for stdin, prints the fixed
+  code); `emit <spec.json> <out>` compiles a spec into the project; `theme propose "<intent>"`
+  proposes a theme and `--save` writes it; `mcp` starts the MCP server, with the flags
+  `polymorph-mcp` takes. Each verb is the tool of the same job and gives the same answer: `--json`
+  prints exactly the tool's answer, and the exit code is 0 when the answer is clean, 1 when it
+  reports violations, faults or a refusal, and 2 when the command line cannot be read.
+  `polymorph <verb> --help` prints a verb's flags, and the help lists every verb in groups.
+
+  An entry point that calls `main` supplies the tools as `cli.tools` (`toolCaller` from
+  `@polymorph/mcp`) and the server as `cli.serve` (`serveStdio`); without them those verbs refuse
+  with one line. `VERBS` exports the verb list as data. An unknown command now exits 2.
+
+- 2186c5c: **`polymorph init` writes an app that works on any machine when it runs from the published
+  tools.** Its `.mcp.json` runs `npx -y @metamorph-labs/polymorph@^<version> mcp --project .`, the app
+  lists the tools as a dev dependency at the release, and its `AGENTS.md` names no path of the
+  machine that ran `init`. From a checkout both stay as they were.
+
+  `--registry npmjs|github` chooses where the app installs the packages from. From the published
+  tools the default is npmjs.com, which needs no `.npmrc` and no token. From a checkout it stays
+  GitHub Packages, the registry a release reaches first. The install runs with the package manager
+  that ran the command (read from `npm_config_user_agent`), or pnpm from a checkout and npm from the
+  published tools when none can be told; pnpm still installs with `--ignore-workspace`.
+
+  For a caller of the functions: `InitPrograms` holds two commands (`{ command, args }`) where it
+  held two paths, `Cli` takes an `origin` (`'checkout'`, the default, or `'published'`), and
+  `installApp` takes the registry and the package manager as options. The outcome `no-pnpm` is now
+  `no-package-manager`.
+
+- 49eed56: A search of several words finds members. `search_components`, `polymorph search` and the
+  workbench's Components page read `date picker` or `date-picker` as the name `DatePicker`, then as
+  a phrase, then word by word: a member is found when one of the words is in its name or when every
+  word is in its name or its purpose, and one that answers some of the words ranks below one that answers all
+  of them. Before, a query of several words matched only where a purpose or a
+  prop's doc held the phrase exactly, so `date picker` found nothing.
+- ddbd1d4: **Three usage rules for Button, and a destructive Button never takes focus first.**
+
+  - `@polymorph/rules` gains three red rules, in `stageTwoRules` and so in `allRules`, which
+    `polymorph add` applies. An app that upgrades may see new reports from them:
+    - `polymorph/one-main-button`: a second main Button (`solid`/`accent`, the defaults) in one
+      Dialog, Drawer, Popover, Card or `Dashboard.Panel`.
+    - `polymorph/danger-last`: within one group of Buttons placed together, a danger Button
+      before another Button.
+    - `polymorph/trailing-icon`: a `trailingIcon` that is not a direction or a disclosure. The fix
+      moves the role to `icon` when the Button has none.
+
+    The groups report them as warnings, so a build that passed still passes. Spread the new
+    `usageRulesAsErrors` after the groups to make them errors. The rules read TSX, Vue, Svelte,
+    Solid and Angular. `@polymorph/rules/usage` holds what they count.
+
+  - A warning stays a warning past ESLint. `verify`'s `Diagnostic` gains an optional `severity`
+    (`error` or `warning`), which `verify` always writes from the linter's result, with
+    `isWarning`, `errorsOf` and `warningsOf` beside it. `polymorph check` marks a warning, counts it
+    apart and exits 1 on errors only. The MCP server's `validate`, `fix` and `fix_file` return
+    warnings in `warnings`, apart from `violations`, and `ok` reads the violations alone.
+    `emitCheckedScreen` returns `warnings` beside `violations`, and `emit_screen`, `pnpm emit` and
+    the screen scripts write a screen whose code has only warnings. Every existing rule is an
+    error, so nothing else changes.
+  - `danger-last` reads the Buttons one element holds side by side, up to a `Separator`, as one
+    group. A destructive action in a group of its own, apart from the group that holds the main
+    Button, may come first.
+  - `design/icons.json` marks the roles a trailing icon may take `trailing`: `collapse`, `down`,
+    `expand`, `forward`, `next` and `open-external`. The registry publishes it as `icons.trailing`.
+  - The validation of a screen spec (`@polymorph/spec/validate`, and `checkScreen` in
+    `@polymorph/screen`) reports the same three as faults.
+  - `@polymorph/engine`: `modalFocusTarget` never puts focus on a destructive Button when a
+    Dialog or a Drawer opens, in any framework. A footer whose rightmost action is destructive
+    starts on its leftmost safe action. A footer whose every action is destructive starts in the
+    body, else on close. A Dialog with a `tone="danger"` primary used to start on it.
+  - `@polymorph/recipes`: a disabled control fades its glyph with its label where it did not:
+    Accordion's chevron at rest, a checked and disabled entry's check in Menu, ContextMenu,
+    Menubar, SplitButton, Select, Combobox and MultiSelect, a disabled submenu row's chevron, and
+    the text of ImageEditor's and FileUpload's drop zones. A danger row's icon in Menu,
+    ContextMenu, Menubar and SplitButton takes the row's danger colour, as its spec says.
+
+- f5661ea: `polymorph validate` refuses a `.json` file that is some other document than a screen spec (one
+  with neither a `spec` field nor a `root`), with exit code 2, where it answered a `package.json`
+  with the faults of a spec. `polymorph component <name> --framework <unknown>` is a refusal with
+  exit code 1, as `card` answers an unknown framework. The published tools' refusal to vendor into a
+  checkout names the release in the command it suggests.
+- Updated dependencies [b40ece2]
+- Updated dependencies [786c025]
+- Updated dependencies [5b73195]
+- Updated dependencies [41606c8]
+- Updated dependencies [2186c5c]
+- Updated dependencies [49eed56]
+- Updated dependencies [ddbd1d4]
+  - @polymorph/theme@1.0.18
+  - @polymorph/registry@1.0.18
+  - @polymorph/rules@1.0.18
+
 ## 1.0.17
 
 ### Patch Changes

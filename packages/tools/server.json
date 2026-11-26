@@ -9,7 +9,7 @@
     "source": "github",
     "subfolder": "packages/tools"
   },
-  "version": "1.0.17",
+  "version": "1.0.18",
   "icons": [
     {
       "src": "https://raw.githubusercontent.com/metamorph-labs/polymorph/main/plugins/polymorph/assets/logo.png",
@@ -22,7 +22,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@metamorph-labs/polymorph",
-      "version": "1.0.17",
+      "version": "1.0.18",
       "transport": {
         "type": "stdio"
       },

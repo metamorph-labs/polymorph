@@ -1,5 +1,106 @@
 # @polymorph/react
 
+## 1.0.18
+
+### Patch Changes
+
+- ee95409: **Every icon-only Button shows its label on hover and keyboard focus.** A Button with `iconOnly`
+  shows its `label` in a bubble that looks like a Tooltip's: after the Tooltip's delay when the mouse
+  rests on it, and at once when the reader moves focus to it with Tab or an arrow key. Touch, pen and
+  focus a script gives after Enter or a press do not open it, so a Dialog that focuses its icon-only
+  close button shows no tip there. It is a name tip, not a Tooltip: the bubble is hidden from
+  assistive technology, adds no `aria-describedby`, and the button's name is unchanged. It is drawn
+  in the top layer, so it shows over a Dialog, Drawer, Popover or Menu, takes no pointer events, and
+  adds nothing inside or around the button. Escape closes the tip and nothing else, so a Dialog
+  around the button stays open until the next Escape.
+
+  SplitButton's chevron, CopyButton, AvatarButton and Pagination's arrows drawn as links show their
+  names the same way. CopyButton shows none while its confirmation shows.
+
+  A Button already inside a `<Tooltip>` is unchanged: it shows the Tooltip and no tip. A Tooltip
+  around an icon-only Button that repeats only its label can be removed.
+
+  The engine exports `nameTip(control, label, className)`, and each foundation re-exports it, for
+  the members that call it. Button's recipe adds the `tip` class, which composes the Tooltip's
+  `bubble`, and the Tooltip's trigger anchor carries `data-tooltip-part="trigger"`.
+
+- 53294c6: Keyboard and focus fixes for page structure, tooltips, reading direction and the grid, in every
+  web framework and in the elements.
+
+  - **Tooltip** stays open while its control holds the focus the keyboard gave it: focus that a key,
+    not a press of the pointer, came before. A Tab to a control below the fold scrolls the page, and
+    the scroll used to close the tooltip and take its description away. In Vue, Svelte, Solid,
+    Angular and the elements the pointer passing over the control and leaving no longer closes it
+    then either, as in React. Escape, focus leaving, a press and another tooltip opening still close
+    it, and a scroll or the pointer leaving still closes a tooltip on a control the pointer focused,
+    a clicked text field included. The engine exports `keyboardHolds`, `trackFocusOrigin`,
+    `closeTooltipOnScroll` and `holdTooltipFromPointer` for it.
+  - **AppShell's drawer** below the breakpoint: its `menu` button carries `aria-expanded` and
+    `aria-controls`, Escape closes the drawer and returns focus to the button, the skip link, the
+    banner, the topbar, the content region and the dock are `inert` while it is open, and a window
+    that grows past the breakpoint closes it.
+  - **AppShell on a page change**: a new `transitionKey` moves focus to the new page's `<h1>`, or
+    to `<main>` when it has none. A screen reader reads the heading that takes focus, so a polite
+    `role="status"` region after the content region says the page's title only when focus does not
+    land on the `<h1>`: when it moves to `<main>`, or stays where it is. Focus stays where it is when
+    it is already inside the new page, and when the reader moved it while a `pending` page loaded.
+    Nothing happens for the first page, and a `pending` page arrives when it is drawn. The skip link
+    moves focus into `<main>`, which takes `tabindex="-1"` only while it holds that focus, so a click
+    on the page's empty space still leaves focus on the body. The engine exports `arriveAtPage` and
+    `focusFromScript`. A test that expected focus on the drawer's button after a page change now
+    finds it on the new page, and one that reads the status region after a page change finds it
+    empty when the new page has an `<h1>`. A Next.js App Router app also hears its router's own
+    announcement of the new page's title.
+  - **Reading direction** is read from the place a member is in: a section that says `dir="rtl"`
+    on a left-to-right page turns the members inside it, and a member follows a change to that
+    section's `dir`. `readDirection` takes an optional element, `watchDirection` takes a second
+    argument to hear `dir` changes on any element, and each foundation's `useDirection` takes the
+    member's element (a ref in React, a getter elsewhere). Called with no argument, all three still
+    read the document. An element that is a Zag machine's own part is read from its parent, so
+    Calendar, whose root is its machine's content part, turns with its section. A member whose
+    element is drawn only in some layouts (Menubar's bar, which a phone's width replaces with one
+    button) reads its section when the element appears.
+  - **DataTable and Table's grid** keep focus when the row that holds it leaves the document: focus
+    goes to the same column of the row that takes its place, or of the last row.
+
+- 203668b: Text fields leave the keys an input method is handling to it. In TagInput, MultiSelect,
+  InlineEdit, PromptInput, PhoneInput and ColorInput, the Enter that confirms a Japanese or Chinese
+  candidate, including the one Safari sends after the composition has ended, no longer commits,
+  toggles, saves or sends half-typed text. An Escape that abandons a composition no longer clears
+  TagInput's or MultiSelect's text, cancels InlineEdit, or clears the query of the Vue, Svelte,
+  Solid, Angular and elements Command. Inside a Dialog, that Escape still closes the Dialog, as it
+  did before: the dialog's layer does not ask whether a composition is in progress. The engine
+  exports the check as `composingKey`.
+
+  Escape that clears TagInput's uncommitted text, clears a closed MultiSelect's text or cancels an
+  open InlineEdit no longer closes a Dialog around the field as well; the next Escape closes it.
+  The engine exports the hold as `holdFieldEscape`.
+
+  TagInput's and MultiSelect's arrow keys between the field and the chips follow the writing
+  direction: in a right-to-left page → moves back into the chips and ← forward to the field. The
+  engine exports the key as `lineStartKey`.
+
+  FileUpload and PromptInput move focus once the app has removed a file or an attachment whose
+  remove control was pressed: to the next item's remove control, else the previous one's, else the
+  dropzone or the field. Focus no longer falls to the page. The engine exports the rule as
+  `focusAfterListRemoval`.
+
+  In RichTextInput, Shift+Tab on an item of a top-level list moves focus out of the field and no
+  longer turns the item into a paragraph, and after an Escape with nothing to close, the next Tab or
+  Shift+Tab moves focus out from any list item without changing the text.
+
+- Updated dependencies [b40ece2]
+- Updated dependencies [786c025]
+- Updated dependencies [5b73195]
+- Updated dependencies [ee95409]
+- Updated dependencies [4571e3b]
+- Updated dependencies [53294c6]
+- Updated dependencies [203668b]
+- Updated dependencies [41606c8]
+- Updated dependencies [ddbd1d4]
+  - @polymorph/engine@1.0.18
+  - @polymorph/screen@1.0.18
+
 ## 1.0.17
 
 ### Patch Changes

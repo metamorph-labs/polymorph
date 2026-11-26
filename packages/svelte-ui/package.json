@@ -1,6 +1,6 @@
 {
   "name": "@polymorph/svelte-ui",
-  "version": "1.0.17",
+  "version": "1.0.18",
   "description": "The Polymorph design system's components for Svelte, the vocabulary: every member as a Svelte 5 component generated from its framework-neutral description, styled by its token-only recipe from @polymorph/recipes.",
   "keywords": [
     "polymorph",

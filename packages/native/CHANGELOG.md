@@ -1,5 +1,62 @@
 # @polymorph/native
 
+## 1.0.18
+
+### Patch Changes
+
+- b40ece2: **The SwiftUI and Compose focus ring follows the web's placements.** `pmFocusRing` draws the ring
+  in `border.focusSolid`, which now meets 3:1 on every background and wash, at the new
+  `focus.offset`, minus the width, so it covers the part's border instead of surrounding it. An
+  invalid field and OTPInput's caret cell on a wrong code draw it inside the danger border. Compose
+  also places it by the part's shape, as the web does: inside a solid fill with a gap, in the
+  fill's label colour (the solid Button, a selected day, the current SectionNav and
+  TableOfContents item); and around a part that cannot hold the line, `spacing.s1` out in the
+  focus colour: a control too small for it (Checkbox, Radio, Switch, Slider's thumb, Carousel's
+  dots) and a part whose box is its text (a link, a tab, a disclosure's trigger, a step, a sort
+  header). A system whose
+  `overrides.focus.offset` is 0 or more draws every ring outside, in the focus colour. Compose's
+  date field takes `border.focusSolid` on its focused border.
+- 41606c8: **A system file chooses which side of its column a numeric column's figures sit on.**
+  `overrides.numeric.align` takes `end`, the default, or `start`:
+
+  ```json
+  { "overrides": { "numeric": { "align": "start" } } }
+  ```
+
+  It applies to every `numeric` header, body cell and total in Table, and to DataTable's `numeric`
+  columns, in every web framework and the elements, and in the SwiftUI and Compose Table and
+  DataTable. A Markdown table's column whose delimiter ends in `:` is drawn as a `numeric` column,
+  so it follows the choice too. Tabular figures stay in both. A system that does not set it renders
+  as before.
+
+  A new token carries it in every pairing: `--pm-numeric-align` (`end` or `start`), which
+  `table.module.css` sets as a numeric cell's `text-align`, and `numeric.align` in the token
+  document's `invariant` section (`NUMERIC_ALIGNS`, `NumericAlign`). The recipe reads the token,
+  so a stylesheet emitted by an older engine draws numeric cells at the start: install the engine
+  and the recipes at the same version, as every release asks. On native platforms SwiftUI reads
+  `theme.numeric.align` (`PMNumericAlign`, `.end` or `.start`; `PMNumeric`'s initialiser defaults it
+  to `.end`), and the Kotlin and Dart token packages add `numericAlign` (`"end"` or `"start"`) to
+  `PMTheme`, beside `numeric`.
+
+- 1308b1b: An iOS app can add the Swift package by the repository's URL, at a release tag, instead of
+  through a checkout or a git submodule:
+  `.package(url: "https://github.com/metamorph-labs/polymorph", from: "1.0.18")`, with the products
+  `PolymorphTokens` and `PolymorphUI` from the package `polymorph`. A dependency by path on
+  `platforms/ios` still works and offers the same libraries.
+
+  The Android builds (`dev.polymorph:tokens`, `dev.polymorph:ui`) and the Dart package
+  (`polymorph_tokens`) now declare the release's version instead of `1.0.0`.
+
+- Updated dependencies [b40ece2]
+- Updated dependencies [786c025]
+- Updated dependencies [5b73195]
+- Updated dependencies [41606c8]
+- Updated dependencies [2186c5c]
+- Updated dependencies [49eed56]
+- Updated dependencies [ddbd1d4]
+  - @polymorph/theme@1.0.18
+  - @polymorph/registry@1.0.18
+
 ## 1.0.17
 
 ### Patch Changes

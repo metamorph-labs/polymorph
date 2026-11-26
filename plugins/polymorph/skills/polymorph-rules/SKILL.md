@@ -18,7 +18,7 @@ named `polymorph` does the same jobs through `validate` and `fix`, given the fra
 ## 1. Read what the rule says
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 validate src/App.tsx --framework <framework>
+npx -y @metamorph-labs/polymorph@1.0.18 validate src/App.tsx --framework <framework>
 ```
 
 Each violation is a line with the file, the position, the rule and its message. Under it:
@@ -30,8 +30,8 @@ Each violation is a line with the file, the position, the rule and its message. 
 ## 2. Take the rewrite when there is one
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 fix src/App.tsx --dry-run --framework <framework>
-npx -y @metamorph-labs/polymorph@1.0.17 fix src/App.tsx --framework <framework>
+npx -y @metamorph-labs/polymorph@1.0.18 fix src/App.tsx --dry-run --framework <framework>
+npx -y @metamorph-labs/polymorph@1.0.18 fix src/App.tsx --framework <framework>
 ```
 
 The first prints the fixed code, and the second writes it. The project's own `eslint --fix`

@@ -1,6 +1,6 @@
 {
   "name": "@polymorph/react",
-  "version": "1.0.17",
+  "version": "1.0.18",
   "description": "The React foundation of the Polymorph design system, which a consumer installs: the engine re-exported, the icon gateway, the motion presence components, the control hook, and the renderer of a screen a model writes at run time. Vendored members import this and nothing deeper.",
   "keywords": [
     "polymorph",

@@ -4,7 +4,7 @@
     "polymorph": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@metamorph-labs/polymorph@1.0.17", "mcp", "--read-only"]
+      "args": ["-y", "@metamorph-labs/polymorph@1.0.18", "mcp", "--read-only"]
     }
   }
 }

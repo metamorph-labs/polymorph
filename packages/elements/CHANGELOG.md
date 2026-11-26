@@ -1,5 +1,74 @@
 # @polymorph/elements
 
+## 1.0.18
+
+### Patch Changes
+
+- ee95409: **Every icon-only Button shows its label on hover and keyboard focus.** A Button with `iconOnly`
+  shows its `label` in a bubble that looks like a Tooltip's: after the Tooltip's delay when the mouse
+  rests on it, and at once when the reader moves focus to it with Tab or an arrow key. Touch, pen and
+  focus a script gives after Enter or a press do not open it, so a Dialog that focuses its icon-only
+  close button shows no tip there. It is a name tip, not a Tooltip: the bubble is hidden from
+  assistive technology, adds no `aria-describedby`, and the button's name is unchanged. It is drawn
+  in the top layer, so it shows over a Dialog, Drawer, Popover or Menu, takes no pointer events, and
+  adds nothing inside or around the button. Escape closes the tip and nothing else, so a Dialog
+  around the button stays open until the next Escape.
+
+  SplitButton's chevron, CopyButton, AvatarButton and Pagination's arrows drawn as links show their
+  names the same way. CopyButton shows none while its confirmation shows.
+
+  A Button already inside a `<Tooltip>` is unchanged: it shows the Tooltip and no tip. A Tooltip
+  around an icon-only Button that repeats only its label can be removed.
+
+  The engine exports `nameTip(control, label, className)`, and each foundation re-exports it, for
+  the members that call it. Button's recipe adds the `tip` class, which composes the Tooltip's
+  `bubble`, and the Tooltip's trigger anchor carries `data-tooltip-part="trigger"`.
+
+- 203668b: Text fields leave the keys an input method is handling to it. In TagInput, MultiSelect,
+  InlineEdit, PromptInput, PhoneInput and ColorInput, the Enter that confirms a Japanese or Chinese
+  candidate, including the one Safari sends after the composition has ended, no longer commits,
+  toggles, saves or sends half-typed text. An Escape that abandons a composition no longer clears
+  TagInput's or MultiSelect's text, cancels InlineEdit, or clears the query of the Vue, Svelte,
+  Solid, Angular and elements Command. Inside a Dialog, that Escape still closes the Dialog, as it
+  did before: the dialog's layer does not ask whether a composition is in progress. The engine
+  exports the check as `composingKey`.
+
+  Escape that clears TagInput's uncommitted text, clears a closed MultiSelect's text or cancels an
+  open InlineEdit no longer closes a Dialog around the field as well; the next Escape closes it.
+  The engine exports the hold as `holdFieldEscape`.
+
+  TagInput's and MultiSelect's arrow keys between the field and the chips follow the writing
+  direction: in a right-to-left page → moves back into the chips and ← forward to the field. The
+  engine exports the key as `lineStartKey`.
+
+  FileUpload and PromptInput move focus once the app has removed a file or an attachment whose
+  remove control was pressed: to the next item's remove control, else the previous one's, else the
+  dropzone or the field. Focus no longer falls to the page. The engine exports the rule as
+  `focusAfterListRemoval`.
+
+  In RichTextInput, Shift+Tab on an item of a top-level list moves focus out of the field and no
+  longer turns the item into a paragraph, and after an Escape with nothing to close, the next Tab or
+  Shift+Tab moves focus out from any list item without changing the text.
+
+- Updated dependencies [b40ece2]
+- Updated dependencies [b40ece2]
+- Updated dependencies [b40ece2]
+- Updated dependencies [b40ece2]
+- Updated dependencies [de4a5d4]
+- Updated dependencies [786c025]
+- Updated dependencies [5b73195]
+- Updated dependencies [ee95409]
+- Updated dependencies [b40ece2]
+- Updated dependencies [4571e3b]
+- Updated dependencies [53294c6]
+- Updated dependencies [203668b]
+- Updated dependencies [41606c8]
+- Updated dependencies [b40ece2]
+- Updated dependencies [ddbd1d4]
+  - @polymorph/recipes@1.0.18
+  - @polymorph/engine@1.0.18
+  - @polymorph/solid@1.0.18
+
 ## 1.0.17
 
 ### Patch Changes

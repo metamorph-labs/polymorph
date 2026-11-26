@@ -29,8 +29,8 @@ and `save_theme`.
 ## 2. See what can move
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 axes
-npx -y @metamorph-labs/polymorph@1.0.17 axes --values
+npx -y @metamorph-labs/polymorph@1.0.18 axes
+npx -y @metamorph-labs/polymorph@1.0.18 axes --values
 ```
 
 `axes` lists the axes and their values, the shipped systems and palettes, the colour roles and the
@@ -39,9 +39,9 @@ scales. `--values` adds each system's token values with its own palette.
 ## 3. Propose a theme from words
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 theme propose "calmer, warmer paper, more editorial"
-npx -y @metamorph-labs/polymorph@1.0.17 theme propose "denser and cooler" --based-on plain/neutral
-npx -y @metamorph-labs/polymorph@1.0.17 theme propose "denser and cooler" --save --dir design
+npx -y @metamorph-labs/polymorph@1.0.18 theme propose "calmer, warmer paper, more editorial"
+npx -y @metamorph-labs/polymorph@1.0.18 theme propose "denser and cooler" --based-on plain/neutral
+npx -y @metamorph-labs/polymorph@1.0.18 theme propose "denser and cooler" --save --dir design
 ```
 
 The answer lists what each word moved, the words the table does not know, and the verdict of the
@@ -57,8 +57,8 @@ lists, such as denser, rounder, calmer or warmer.
 ## 4. Edit a document by hand, then check it
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 theme validate src/theme/system.json src/theme/palette.json
-npx -y @metamorph-labs/polymorph@1.0.17 theme schema system --out system.schema.json
+npx -y @metamorph-labs/polymorph@1.0.18 theme validate src/theme/system.json src/theme/palette.json
+npx -y @metamorph-labs/polymorph@1.0.18 theme schema system --out system.schema.json
 ```
 
 `theme validate` admits a system and a palette under the same laws as the shipped ones, and names
@@ -68,8 +68,8 @@ editor.
 ## 5. Wear a shipped theme
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 add theme:pastel --framework <framework>
-npx -y @metamorph-labs/polymorph@1.0.17 add palette:orchid --framework <framework>
+npx -y @metamorph-labs/polymorph@1.0.18 add theme:pastel --framework <framework>
+npx -y @metamorph-labs/polymorph@1.0.18 add palette:orchid --framework <framework>
 ```
 
 `<framework>` is the app's framework, as the `polymorph-setup` skill tells it. In a vendoring
@@ -83,7 +83,7 @@ know move nothing, so the proposal is the shipped pairing as it is. Then name th
 `polymorphTheme`.
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 theme propose "as shipped" --based-on journal/umber --save --dir src/theme
+npx -y @metamorph-labs/polymorph@1.0.18 theme propose "as shipped" --based-on journal/umber --save --dir src/theme
 ```
 
 ## What not to do

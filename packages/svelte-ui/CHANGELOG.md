@@ -1,5 +1,171 @@
 # @polymorph/svelte-ui
 
+## 1.0.18
+
+### Patch Changes
+
+- de4a5d4: **FormPage takes a leading action.** `leadingAction` is one optional action drawn at the start of
+  the actions row, apart from `actions`, which stay at its end: the destructive tertiary action
+  FormPage's spec places leftmost, such as "Delete…". The row wraps as it did, and the actions stay
+  at the end of whichever line they land on, in either direction. Without it, FormPage renders as
+  before. A Vue, Svelte, Solid or Angular page passes it as the `leadingAction` slot, and an element
+  as a child with `slot="leadingAction"`. The SwiftUI and Compose FormPage take it too
+  (`PMFormPageProps.leadingAction`), at the start of the row they already draw. `danger-last` reads
+  the slot as a group of its own, so a danger Button there comes before the actions lawfully.
+- ee95409: **Every icon-only Button shows its label on hover and keyboard focus.** A Button with `iconOnly`
+  shows its `label` in a bubble that looks like a Tooltip's: after the Tooltip's delay when the mouse
+  rests on it, and at once when the reader moves focus to it with Tab or an arrow key. Touch, pen and
+  focus a script gives after Enter or a press do not open it, so a Dialog that focuses its icon-only
+  close button shows no tip there. It is a name tip, not a Tooltip: the bubble is hidden from
+  assistive technology, adds no `aria-describedby`, and the button's name is unchanged. It is drawn
+  in the top layer, so it shows over a Dialog, Drawer, Popover or Menu, takes no pointer events, and
+  adds nothing inside or around the button. Escape closes the tip and nothing else, so a Dialog
+  around the button stays open until the next Escape.
+
+  SplitButton's chevron, CopyButton, AvatarButton and Pagination's arrows drawn as links show their
+  names the same way. CopyButton shows none while its confirmation shows.
+
+  A Button already inside a `<Tooltip>` is unchanged: it shows the Tooltip and no tip. A Tooltip
+  around an icon-only Button that repeats only its label can be removed.
+
+  The engine exports `nameTip(control, label, className)`, and each foundation re-exports it, for
+  the members that call it. Button's recipe adds the `tip` class, which composes the Tooltip's
+  `bubble`, and the Tooltip's trigger anchor carries `data-tooltip-part="trigger"`.
+
+- 4571e3b: Keyboard and focus fixes for overlays and for members that leave the page.
+
+  - **Toast.** In React the viewport no longer uses `@radix-ui/react-toast`: it draws the same
+    region, list, cards and live regions as every other framework, so `@polymorph/react-ui`
+    drops that dependency. What a reader notices:
+    - Tab moves through the toasts in document order, oldest first, as in every other
+      framework. Radix moved newest first.
+    - A toast with an `action` whose call sets neither `durationMs` nor `retained` stays until it
+      is dismissed, whatever its tone, so a reader has the time to reach the action. Set
+      `durationMs` to keep a timer. The SwiftUI and Compose Toast follow the same rule.
+    - When a toast that holds focus leaves, by any route (its close control, its action,
+      Escape, `toast.dismiss`, its owner removing it, or a newer toast evicting it), focus moves
+      to the next toast, else the previous one, else back to the element focus came from as it
+      entered the notifications (F8 or Tab), else to the list.
+    - Escape reaches a toast only while focus is in it, so a toast raised while a Dialog is open
+      no longer takes Escape from the dialog. An Escape that closed a Select, Menu or Tooltip in
+      a toast's content, or that an input method was handling, leaves the toast open.
+    - The live regions say a toast when it is raised, and again when an update in place changes
+      its words, and say nothing when one leaves. Only a danger toast interrupts a screen reader
+      (the assertive region); a warning toast now waits its turn in the polite region, as the
+      SwiftUI and Compose Toast and Banner already did. They read the content's text and the action's
+      label too, and two toasts with the same words in a row are each said.
+    - The timers wait while the window is in the background (its page is hidden, or another
+      window or application has focus), as well as while the reader is on the notifications.
+      Focus in a frame on the page does not hold them. When the hold ends, a toast resumes with
+      the time that was left in every framework, as React's did; Vue, Svelte, Solid, Angular and
+      the elements started a whole new window.
+    - A toast raised again under the id of one whose card is still playing its exit stays: the
+      card takes out its own record only (`removeToast(id, raised)`).
+  - **Focus return when the trigger is gone.** Dialog, ConfirmDialog, Drawer, Lightbox, Command
+    and Tour return focus to the focusable element nearest where their trigger was when the
+    trigger has left the page while they were open (a confirm that deletes its row), instead of
+    dropping it to the body. The rule is the engine's `focusReturnTarget`.
+  - **Alert, Banner and ArtifactPane.** When one of them leaves the page while it holds focus,
+    after its own close control for one, focus moves to the focusable element nearest where it
+    was (`focusAfterRemoval`), also when the framework removes it only after a leave animation
+    (Vue's `Transition`, Angular's animations).
+  - **The phone-width sheet inside a Dialog (React).** Select, Menu and the other members that
+    draw the bottom sheet below `30rem` keep focus in the sheet when they open inside a Dialog
+    or a Drawer, and Escape and a press on the sheet's scrim close the sheet and leave the Dialog
+    open. An Escape that closes a Tooltip or a Menu inside the sheet leaves the sheet open. While
+    a sheet that holds focus is open, the rest of the page is hidden from assistive software.
+    `@polymorph/react-ui` adds `@radix-ui/react-focus-scope` and
+    `@radix-ui/react-dismissable-layer` as dependencies; both already came with
+    `@radix-ui/react-dialog`.
+  - **Solid's `watchEffect`.** It reads the watched value as the member is set up, as Vue's
+    `watch` does, so a change made between setup and the mount runs the effect again after the
+    mount, once Solid has drawn it. With it, the Solid and elements Toast viewport says a toast
+    raised in the same render as the viewport.
+  - The engine exports `focusPlace`, `nearestFocusable`, `focusReturnTarget`, `returnFocusTo`,
+    `focusAfterRemoval`, `focusAfterToast`, `followToastFocus`, `holdToastTimers`,
+    `toastClock`, `toastTimeLeft`, `announceToasts` and `TOAST_QUIET`, and a toast record carries `raised`, which a toast raised
+    again under the same id renews.
+
+- 53294c6: Keyboard and focus fixes for page structure, tooltips, reading direction and the grid, in every
+  web framework and in the elements.
+
+  - **Tooltip** stays open while its control holds the focus the keyboard gave it: focus that a key,
+    not a press of the pointer, came before. A Tab to a control below the fold scrolls the page, and
+    the scroll used to close the tooltip and take its description away. In Vue, Svelte, Solid,
+    Angular and the elements the pointer passing over the control and leaving no longer closes it
+    then either, as in React. Escape, focus leaving, a press and another tooltip opening still close
+    it, and a scroll or the pointer leaving still closes a tooltip on a control the pointer focused,
+    a clicked text field included. The engine exports `keyboardHolds`, `trackFocusOrigin`,
+    `closeTooltipOnScroll` and `holdTooltipFromPointer` for it.
+  - **AppShell's drawer** below the breakpoint: its `menu` button carries `aria-expanded` and
+    `aria-controls`, Escape closes the drawer and returns focus to the button, the skip link, the
+    banner, the topbar, the content region and the dock are `inert` while it is open, and a window
+    that grows past the breakpoint closes it.
+  - **AppShell on a page change**: a new `transitionKey` moves focus to the new page's `<h1>`, or
+    to `<main>` when it has none. A screen reader reads the heading that takes focus, so a polite
+    `role="status"` region after the content region says the page's title only when focus does not
+    land on the `<h1>`: when it moves to `<main>`, or stays where it is. Focus stays where it is when
+    it is already inside the new page, and when the reader moved it while a `pending` page loaded.
+    Nothing happens for the first page, and a `pending` page arrives when it is drawn. The skip link
+    moves focus into `<main>`, which takes `tabindex="-1"` only while it holds that focus, so a click
+    on the page's empty space still leaves focus on the body. The engine exports `arriveAtPage` and
+    `focusFromScript`. A test that expected focus on the drawer's button after a page change now
+    finds it on the new page, and one that reads the status region after a page change finds it
+    empty when the new page has an `<h1>`. A Next.js App Router app also hears its router's own
+    announcement of the new page's title.
+  - **Reading direction** is read from the place a member is in: a section that says `dir="rtl"`
+    on a left-to-right page turns the members inside it, and a member follows a change to that
+    section's `dir`. `readDirection` takes an optional element, `watchDirection` takes a second
+    argument to hear `dir` changes on any element, and each foundation's `useDirection` takes the
+    member's element (a ref in React, a getter elsewhere). Called with no argument, all three still
+    read the document. An element that is a Zag machine's own part is read from its parent, so
+    Calendar, whose root is its machine's content part, turns with its section. A member whose
+    element is drawn only in some layouts (Menubar's bar, which a phone's width replaces with one
+    button) reads its section when the element appears.
+  - **DataTable and Table's grid** keep focus when the row that holds it leaves the document: focus
+    goes to the same column of the row that takes its place, or of the last row.
+
+- 203668b: Text fields leave the keys an input method is handling to it. In TagInput, MultiSelect,
+  InlineEdit, PromptInput, PhoneInput and ColorInput, the Enter that confirms a Japanese or Chinese
+  candidate, including the one Safari sends after the composition has ended, no longer commits,
+  toggles, saves or sends half-typed text. An Escape that abandons a composition no longer clears
+  TagInput's or MultiSelect's text, cancels InlineEdit, or clears the query of the Vue, Svelte,
+  Solid, Angular and elements Command. Inside a Dialog, that Escape still closes the Dialog, as it
+  did before: the dialog's layer does not ask whether a composition is in progress. The engine
+  exports the check as `composingKey`.
+
+  Escape that clears TagInput's uncommitted text, clears a closed MultiSelect's text or cancels an
+  open InlineEdit no longer closes a Dialog around the field as well; the next Escape closes it.
+  The engine exports the hold as `holdFieldEscape`.
+
+  TagInput's and MultiSelect's arrow keys between the field and the chips follow the writing
+  direction: in a right-to-left page → moves back into the chips and ← forward to the field. The
+  engine exports the key as `lineStartKey`.
+
+  FileUpload and PromptInput move focus once the app has removed a file or an attachment whose
+  remove control was pressed: to the next item's remove control, else the previous one's, else the
+  dropzone or the field. Focus no longer falls to the page. The engine exports the rule as
+  `focusAfterListRemoval`.
+
+  In RichTextInput, Shift+Tab on an item of a top-level list moves focus out of the field and no
+  longer turns the item into a paragraph, and after an Escape with nothing to close, the next Tab or
+  Shift+Tab moves focus out from any list item without changing the text.
+
+- Updated dependencies [b40ece2]
+- Updated dependencies [b40ece2]
+- Updated dependencies [b40ece2]
+- Updated dependencies [de4a5d4]
+- Updated dependencies [ee95409]
+- Updated dependencies [b40ece2]
+- Updated dependencies [4571e3b]
+- Updated dependencies [53294c6]
+- Updated dependencies [203668b]
+- Updated dependencies [41606c8]
+- Updated dependencies [b40ece2]
+- Updated dependencies [ddbd1d4]
+  - @polymorph/recipes@1.0.18
+  - @polymorph/svelte@1.0.18
+
 ## 1.0.17
 
 ### Patch Changes

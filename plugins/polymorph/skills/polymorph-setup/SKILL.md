@@ -24,10 +24,10 @@ name: the unscoped `polymorph` package on npm is someone else's.
 ## A new app
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 init my-app
-npx -y @metamorph-labs/polymorph@1.0.17 init my-app --framework vue
-npx -y @metamorph-labs/polymorph@1.0.17 init my-app --system plain --no-install
-npx -y @metamorph-labs/polymorph@1.0.17 init my-site --framework elements
+npx -y @metamorph-labs/polymorph@1.0.18 init my-app
+npx -y @metamorph-labs/polymorph@1.0.18 init my-app --framework vue
+npx -y @metamorph-labs/polymorph@1.0.18 init my-app --system plain --no-install
+npx -y @metamorph-labs/polymorph@1.0.18 init my-site --framework elements
 ```
 
 `init` writes a new Vite app into an empty directory: the packages, a theme from a catalogue system
@@ -40,10 +40,10 @@ installs nothing.
 ## An existing app: vendoring
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 plan button dialog theme:pastel --framework <framework>
-npx -y @metamorph-labs/polymorph@1.0.17 add button dialog theme:pastel --framework <framework>
-npx -y @metamorph-labs/polymorph@1.0.17 diff
-npx -y @metamorph-labs/polymorph@1.0.17 update
+npx -y @metamorph-labs/polymorph@1.0.18 plan button dialog theme:pastel --framework <framework>
+npx -y @metamorph-labs/polymorph@1.0.18 add button dialog theme:pastel --framework <framework>
+npx -y @metamorph-labs/polymorph@1.0.18 diff
+npx -y @metamorph-labs/polymorph@1.0.18 update
 ```
 
 `<framework>` is the app's framework: the one `polymorph.json` records, or, in an app with no
@@ -72,9 +72,9 @@ files for a new app, so an app it wrote is a working example.
 ## The agent's files
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 agents
-npx -y @metamorph-labs/polymorph@1.0.17 agents --harness claude,codex
-npx -y @metamorph-labs/polymorph@1.0.17 agents --dry-run
+npx -y @metamorph-labs/polymorph@1.0.18 agents
+npx -y @metamorph-labs/polymorph@1.0.18 agents --harness claude,codex
+npx -y @metamorph-labs/polymorph@1.0.18 agents --dry-run
 ```
 
 `agents` writes what a coding agent reads in this repository: a marked block in `AGENTS.md` (and a
@@ -99,8 +99,8 @@ members. In a packages project, raise the ranges of the `@polymorph/*` aliases a
 ## Check the setup
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 check src
-npx -y @metamorph-labs/polymorph@1.0.17 card --framework <framework>
+npx -y @metamorph-labs/polymorph@1.0.18 check src
+npx -y @metamorph-labs/polymorph@1.0.18 card --framework <framework>
 ```
 
 `check` runs the red rules over a directory with no lint config and exits 1 on any violation. The

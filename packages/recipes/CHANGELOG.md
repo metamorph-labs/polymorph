@@ -1,5 +1,264 @@
 # @polymorph/recipes
 
+## 1.0.18
+
+### Patch Changes
+
+- b40ece2: Collapsible, Accordion, SplitPane and MasterDetailPage give a field or a Button at the edge of a
+  region that clips its whole seat shadow, and room for a control's focus mark drawn a
+  `--pm-space-1` gap outside it. Each region is larger than its content by `--pm-space-2` where the
+  member owns the space past it, and negative margins take that back, so nothing moves.
+
+  - Collapsible's region and Accordion's panel: at both sides. The block axis is unchanged, so the
+    height Radix measures and the open and close animations run to are the same. A control at the
+    top of an Accordion panel or the bottom of a Collapsible region still has its seat cut there.
+  - SplitPane: at the seam, inside the divider's column. The outer sides are the edges of the
+    region the split fills and get no room, because a pane drawn past them would make that region
+    scroll.
+  - MasterDetailPage: every side of the list pane and the detail with one pane, and in the split
+    the list pane's side at the seam and the detail's start side, inside its gutter.
+
+- b40ece2: A field at the edge of a Dialog's or a Drawer's body draws its whole seat shadow, so its rounded
+  corners stay round. The body scrolls, and a scroll container cuts what it holds at its padding
+  edge on both axes, so the body cut the seat at its sides, top and bottom, and the cut shadow
+  squared off the field's corners. Dialog's body is now larger than its content by `--pm-space-2`
+  on every side, inside the panel's padding, and its margins take that back, in the card, the
+  full-screen form and the bottom sheet. Drawer's body already had room at its sides, and takes
+  the same room at its top and, when a footer follows, at its end. Nothing in the body moves, and
+  the gaps the specs give are unchanged. ConfirmDialog renders Dialog and takes the same room.
+- b40ece2: **The focus ring is a solid 2px line placed by the part's shape.** Every focusable part draws
+  its focus ring as an outline 2px wide, or 3px in a `stark` system, in the solid focus colour
+  (`--pm-border-focus-solid`), with no glow under it. The outline still survives forced colours.
+  The focus convention places it in one of three ways:
+
+  - **Inside the edge**, for a part with padding around its content: fields, unfilled Buttons,
+    rows, cards. The line covers the border and the pixels inside it, and nothing is drawn outside
+    the control, so a scroll area, a pane or a table's wrapper no longer cuts it. An invalid field
+    and a selected or range-endpoint cell draw it inside their state border, so the border stays
+    visible.
+  - **Inside a fill, with a gap**, for a part with a solid fill: a `solid` Button (and every member
+    that composes Button), Calendar's selected day, DateRangePicker's endpoints, and the current
+    item of SectionNav, TableOfContents and AppShell's navigation. The line is the part's label
+    colour, one width in from the edge, so the fill shows on both sides of it.
+  - **Around, with a gap**, for a part that cannot hold the line: a control too small for it
+    (Checkbox, Radio, Switch, Slider's thumb, ColorInput's thumbs, Carousel's dots) and a part
+    whose box is its text (Link, Tabs' trigger, the Accordion, Collapsible and ReasoningDisclosure
+    triggers, Stepper's step, Table's sort button, the chart legend's key, JsonTree's toggle, a
+    Breadcrumbs crumb, an ErrorSummary link and a SourceList title). The line lies `--pm-space-1`
+    outside the part in the focus colour, in every state, so it touches no letter and leaves a
+    control's border uncovered.
+
+  The convention exports two classes (`focusRing`, `focusAround`) and two
+  hooks a filled part sets on its focused state (`--pm-focus-mark`, `--pm-focus-inset`). A vendored
+  recipe composes the class for its part's shape. A bordered part takes the focus colour on its
+  border only where a system moves the ring outside.
+
+  A system that wants the ring outside every control sets `overrides.focus.offset` to 0 or more in
+  its system file (`{ "overrides": { "focus": { "offset": 2 } } }`): rings then sit that far
+  outside the edge in the focus colour, filled parts included, and `overrides.focus.field: "border"`
+  keeps fields' rings inside their edge. Application CSS that drew its own focus outline with
+  `--pm-border-focus` and `--pm-glow-focus` draws the old ring: write
+  `outline: var(--pm-focus-width) solid var(--pm-border-focus-solid)` and
+  `outline-offset: var(--pm-focus-offset)` instead, or compose one of the convention's classes.
+
+- de4a5d4: **FormPage takes a leading action.** `leadingAction` is one optional action drawn at the start of
+  the actions row, apart from `actions`, which stay at its end: the destructive tertiary action
+  FormPage's spec places leftmost, such as "Delete…". The row wraps as it did, and the actions stay
+  at the end of whichever line they land on, in either direction. Without it, FormPage renders as
+  before. A Vue, Svelte, Solid or Angular page passes it as the `leadingAction` slot, and an element
+  as a child with `slot="leadingAction"`. The SwiftUI and Compose FormPage take it too
+  (`PMFormPageProps.leadingAction`), at the start of the row they already draw. `danger-last` reads
+  the slot as a group of its own, so a danger Button there comes before the actions lawfully.
+- ee95409: **Every icon-only Button shows its label on hover and keyboard focus.** A Button with `iconOnly`
+  shows its `label` in a bubble that looks like a Tooltip's: after the Tooltip's delay when the mouse
+  rests on it, and at once when the reader moves focus to it with Tab or an arrow key. Touch, pen and
+  focus a script gives after Enter or a press do not open it, so a Dialog that focuses its icon-only
+  close button shows no tip there. It is a name tip, not a Tooltip: the bubble is hidden from
+  assistive technology, adds no `aria-describedby`, and the button's name is unchanged. It is drawn
+  in the top layer, so it shows over a Dialog, Drawer, Popover or Menu, takes no pointer events, and
+  adds nothing inside or around the button. Escape closes the tip and nothing else, so a Dialog
+  around the button stays open until the next Escape.
+
+  SplitButton's chevron, CopyButton, AvatarButton and Pagination's arrows drawn as links show their
+  names the same way. CopyButton shows none while its confirmation shows.
+
+  A Button already inside a `<Tooltip>` is unchanged: it shows the Tooltip and no tip. A Tooltip
+  around an icon-only Button that repeats only its label can be removed.
+
+  The engine exports `nameTip(control, label, className)`, and each foundation re-exports it, for
+  the members that call it. Button's recipe adds the `tip` class, which composes the Tooltip's
+  `bubble`, and the Tooltip's trigger anchor carries `data-tooltip-part="trigger"`.
+
+- b40ece2: Input's and NumberInput's value ends in an ellipsis when the field is too narrow to show it and
+  is not focused. The value was already the part that gives way in a narrow field, while the
+  leading icon, the affixes and the clear button keep their width and the field keeps its padding;
+  it was cut at the edge of the space left to it with no mark. While the field is focused the
+  browser scrolls the value to the caret, as before. SearchInput and PasswordInput render Input and
+  take the same rule.
+- 4571e3b: Keyboard and focus fixes for overlays and for members that leave the page.
+
+  - **Toast.** In React the viewport no longer uses `@radix-ui/react-toast`: it draws the same
+    region, list, cards and live regions as every other framework, so `@polymorph/react-ui`
+    drops that dependency. What a reader notices:
+    - Tab moves through the toasts in document order, oldest first, as in every other
+      framework. Radix moved newest first.
+    - A toast with an `action` whose call sets neither `durationMs` nor `retained` stays until it
+      is dismissed, whatever its tone, so a reader has the time to reach the action. Set
+      `durationMs` to keep a timer. The SwiftUI and Compose Toast follow the same rule.
+    - When a toast that holds focus leaves, by any route (its close control, its action,
+      Escape, `toast.dismiss`, its owner removing it, or a newer toast evicting it), focus moves
+      to the next toast, else the previous one, else back to the element focus came from as it
+      entered the notifications (F8 or Tab), else to the list.
+    - Escape reaches a toast only while focus is in it, so a toast raised while a Dialog is open
+      no longer takes Escape from the dialog. An Escape that closed a Select, Menu or Tooltip in
+      a toast's content, or that an input method was handling, leaves the toast open.
+    - The live regions say a toast when it is raised, and again when an update in place changes
+      its words, and say nothing when one leaves. Only a danger toast interrupts a screen reader
+      (the assertive region); a warning toast now waits its turn in the polite region, as the
+      SwiftUI and Compose Toast and Banner already did. They read the content's text and the action's
+      label too, and two toasts with the same words in a row are each said.
+    - The timers wait while the window is in the background (its page is hidden, or another
+      window or application has focus), as well as while the reader is on the notifications.
+      Focus in a frame on the page does not hold them. When the hold ends, a toast resumes with
+      the time that was left in every framework, as React's did; Vue, Svelte, Solid, Angular and
+      the elements started a whole new window.
+    - A toast raised again under the id of one whose card is still playing its exit stays: the
+      card takes out its own record only (`removeToast(id, raised)`).
+  - **Focus return when the trigger is gone.** Dialog, ConfirmDialog, Drawer, Lightbox, Command
+    and Tour return focus to the focusable element nearest where their trigger was when the
+    trigger has left the page while they were open (a confirm that deletes its row), instead of
+    dropping it to the body. The rule is the engine's `focusReturnTarget`.
+  - **Alert, Banner and ArtifactPane.** When one of them leaves the page while it holds focus,
+    after its own close control for one, focus moves to the focusable element nearest where it
+    was (`focusAfterRemoval`), also when the framework removes it only after a leave animation
+    (Vue's `Transition`, Angular's animations).
+  - **The phone-width sheet inside a Dialog (React).** Select, Menu and the other members that
+    draw the bottom sheet below `30rem` keep focus in the sheet when they open inside a Dialog
+    or a Drawer, and Escape and a press on the sheet's scrim close the sheet and leave the Dialog
+    open. An Escape that closes a Tooltip or a Menu inside the sheet leaves the sheet open. While
+    a sheet that holds focus is open, the rest of the page is hidden from assistive software.
+    `@polymorph/react-ui` adds `@radix-ui/react-focus-scope` and
+    `@radix-ui/react-dismissable-layer` as dependencies; both already came with
+    `@radix-ui/react-dialog`.
+  - **Solid's `watchEffect`.** It reads the watched value as the member is set up, as Vue's
+    `watch` does, so a change made between setup and the mount runs the effect again after the
+    mount, once Solid has drawn it. With it, the Solid and elements Toast viewport says a toast
+    raised in the same render as the viewport.
+  - The engine exports `focusPlace`, `nearestFocusable`, `focusReturnTarget`, `returnFocusTo`,
+    `focusAfterRemoval`, `focusAfterToast`, `followToastFocus`, `holdToastTimers`,
+    `toastClock`, `toastTimeLeft`, `announceToasts` and `TOAST_QUIET`, and a toast record carries `raised`, which a toast raised
+    again under the same id renews.
+
+- 53294c6: Keyboard and focus fixes for page structure, tooltips, reading direction and the grid, in every
+  web framework and in the elements.
+
+  - **Tooltip** stays open while its control holds the focus the keyboard gave it: focus that a key,
+    not a press of the pointer, came before. A Tab to a control below the fold scrolls the page, and
+    the scroll used to close the tooltip and take its description away. In Vue, Svelte, Solid,
+    Angular and the elements the pointer passing over the control and leaving no longer closes it
+    then either, as in React. Escape, focus leaving, a press and another tooltip opening still close
+    it, and a scroll or the pointer leaving still closes a tooltip on a control the pointer focused,
+    a clicked text field included. The engine exports `keyboardHolds`, `trackFocusOrigin`,
+    `closeTooltipOnScroll` and `holdTooltipFromPointer` for it.
+  - **AppShell's drawer** below the breakpoint: its `menu` button carries `aria-expanded` and
+    `aria-controls`, Escape closes the drawer and returns focus to the button, the skip link, the
+    banner, the topbar, the content region and the dock are `inert` while it is open, and a window
+    that grows past the breakpoint closes it.
+  - **AppShell on a page change**: a new `transitionKey` moves focus to the new page's `<h1>`, or
+    to `<main>` when it has none. A screen reader reads the heading that takes focus, so a polite
+    `role="status"` region after the content region says the page's title only when focus does not
+    land on the `<h1>`: when it moves to `<main>`, or stays where it is. Focus stays where it is when
+    it is already inside the new page, and when the reader moved it while a `pending` page loaded.
+    Nothing happens for the first page, and a `pending` page arrives when it is drawn. The skip link
+    moves focus into `<main>`, which takes `tabindex="-1"` only while it holds that focus, so a click
+    on the page's empty space still leaves focus on the body. The engine exports `arriveAtPage` and
+    `focusFromScript`. A test that expected focus on the drawer's button after a page change now
+    finds it on the new page, and one that reads the status region after a page change finds it
+    empty when the new page has an `<h1>`. A Next.js App Router app also hears its router's own
+    announcement of the new page's title.
+  - **Reading direction** is read from the place a member is in: a section that says `dir="rtl"`
+    on a left-to-right page turns the members inside it, and a member follows a change to that
+    section's `dir`. `readDirection` takes an optional element, `watchDirection` takes a second
+    argument to hear `dir` changes on any element, and each foundation's `useDirection` takes the
+    member's element (a ref in React, a getter elsewhere). Called with no argument, all three still
+    read the document. An element that is a Zag machine's own part is read from its parent, so
+    Calendar, whose root is its machine's content part, turns with its section. A member whose
+    element is drawn only in some layouts (Menubar's bar, which a phone's width replaces with one
+    button) reads its section when the element appears.
+  - **DataTable and Table's grid** keep focus when the row that holds it leaves the document: focus
+    goes to the same column of the row that takes its place, or of the last row.
+
+- 41606c8: **A system file chooses which side of its column a numeric column's figures sit on.**
+  `overrides.numeric.align` takes `end`, the default, or `start`:
+
+  ```json
+  { "overrides": { "numeric": { "align": "start" } } }
+  ```
+
+  It applies to every `numeric` header, body cell and total in Table, and to DataTable's `numeric`
+  columns, in every web framework and the elements, and in the SwiftUI and Compose Table and
+  DataTable. A Markdown table's column whose delimiter ends in `:` is drawn as a `numeric` column,
+  so it follows the choice too. Tabular figures stay in both. A system that does not set it renders
+  as before.
+
+  A new token carries it in every pairing: `--pm-numeric-align` (`end` or `start`), which
+  `table.module.css` sets as a numeric cell's `text-align`, and `numeric.align` in the token
+  document's `invariant` section (`NUMERIC_ALIGNS`, `NumericAlign`). The recipe reads the token,
+  so a stylesheet emitted by an older engine draws numeric cells at the start: install the engine
+  and the recipes at the same version, as every release asks. On native platforms SwiftUI reads
+  `theme.numeric.align` (`PMNumericAlign`, `.end` or `.start`; `PMNumeric`'s initialiser defaults it
+  to `.end`), and the Kotlin and Dart token packages add `numericAlign` (`"end"` or `"start"`) to
+  `PMTheme`, beside `numeric`.
+
+- b40ece2: Toast's viewport draws each card's whole shadow. The viewport scrolls, and a scroll container cuts
+  what it holds at its padding edge, so it cut the shadows at the cards' sides and below the last
+  card, and the cut shadows read as a grey rectangle behind the stack: in the gaps between the cards
+  and behind their rounded corners. The viewport now reaches the window's end and bottom edges with
+  the cards' `--pm-space-6` inset as its padding there, and has `--pm-space-9` of padding on its
+  start side and top. The cards stay where they were, at the same width. The viewport takes no
+  pointer events and an open card does, so the padding and the gaps between the cards pass a click
+  to the page under them; the gaps took it before. F8 still focuses the viewport, and the browser's
+  own focus ring is drawn around the viewport's larger box.
+- ddbd1d4: **Three usage rules for Button, and a destructive Button never takes focus first.**
+
+  - `@polymorph/rules` gains three red rules, in `stageTwoRules` and so in `allRules`, which
+    `polymorph add` applies. An app that upgrades may see new reports from them:
+    - `polymorph/one-main-button`: a second main Button (`solid`/`accent`, the defaults) in one
+      Dialog, Drawer, Popover, Card or `Dashboard.Panel`.
+    - `polymorph/danger-last`: within one group of Buttons placed together, a danger Button
+      before another Button.
+    - `polymorph/trailing-icon`: a `trailingIcon` that is not a direction or a disclosure. The fix
+      moves the role to `icon` when the Button has none.
+
+    The groups report them as warnings, so a build that passed still passes. Spread the new
+    `usageRulesAsErrors` after the groups to make them errors. The rules read TSX, Vue, Svelte,
+    Solid and Angular. `@polymorph/rules/usage` holds what they count.
+
+  - A warning stays a warning past ESLint. `verify`'s `Diagnostic` gains an optional `severity`
+    (`error` or `warning`), which `verify` always writes from the linter's result, with
+    `isWarning`, `errorsOf` and `warningsOf` beside it. `polymorph check` marks a warning, counts it
+    apart and exits 1 on errors only. The MCP server's `validate`, `fix` and `fix_file` return
+    warnings in `warnings`, apart from `violations`, and `ok` reads the violations alone.
+    `emitCheckedScreen` returns `warnings` beside `violations`, and `emit_screen`, `pnpm emit` and
+    the screen scripts write a screen whose code has only warnings. Every existing rule is an
+    error, so nothing else changes.
+  - `danger-last` reads the Buttons one element holds side by side, up to a `Separator`, as one
+    group. A destructive action in a group of its own, apart from the group that holds the main
+    Button, may come first.
+  - `design/icons.json` marks the roles a trailing icon may take `trailing`: `collapse`, `down`,
+    `expand`, `forward`, `next` and `open-external`. The registry publishes it as `icons.trailing`.
+  - The validation of a screen spec (`@polymorph/spec/validate`, and `checkScreen` in
+    `@polymorph/screen`) reports the same three as faults.
+  - `@polymorph/engine`: `modalFocusTarget` never puts focus on a destructive Button when a
+    Dialog or a Drawer opens, in any framework. A footer whose rightmost action is destructive
+    starts on its leftmost safe action. A footer whose every action is destructive starts in the
+    body, else on close. A Dialog with a `tone="danger"` primary used to start on it.
+  - `@polymorph/recipes`: a disabled control fades its glyph with its label where it did not:
+    Accordion's chevron at rest, a checked and disabled entry's check in Menu, ContextMenu,
+    Menubar, SplitButton, Select, Combobox and MultiSelect, a disabled submenu row's chevron, and
+    the text of ImageEditor's and FileUpload's drop zones. A danger row's icon in Menu,
+    ContextMenu, Menubar and SplitButton takes the row's danger colour, as its spec says.
+
 ## 1.0.17
 
 ### Patch Changes

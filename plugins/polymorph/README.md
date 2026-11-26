@@ -20,12 +20,12 @@ red-rule violation by the exception ladder, adding polymorph to a project, and c
 
 ## What it runs
 
-The skills and the server run the published tools of release 1.0.17, the npm package
+The skills and the server run the published tools of release 1.0.18, the npm package
 `@metamorph-labs/polymorph`:
 
 ```sh
-npx -y @metamorph-labs/polymorph@1.0.17 card --framework react
-npx -y @metamorph-labs/polymorph@1.0.17 mcp --read-only
+npx -y @metamorph-labs/polymorph@1.0.18 card --framework react
+npx -y @metamorph-labs/polymorph@1.0.18 mcp --read-only
 ```
 
 The first run downloads the package and its dependencies from npmjs.com with `npx`, which can
@@ -64,7 +64,7 @@ Any harness that reads Agent Skills:
 npx skills add metamorph-labs/polymorph
 ```
 
-In a project of your own, `npx -y @metamorph-labs/polymorph@1.0.17 agents` writes the same skills, an `AGENTS.md`
+In a project of your own, `npx -y @metamorph-labs/polymorph@1.0.18 agents` writes the same skills, an `AGENTS.md`
 block and the MCP entries for Claude Code, Codex and Cursor, with a server that writes into the
 project. [docs/harnesses.md](https://github.com/metamorph-labs/polymorph/blob/main/docs/harnesses.md) says what each harness reads.
 

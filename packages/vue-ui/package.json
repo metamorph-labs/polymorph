@@ -1,6 +1,6 @@
 {
   "name": "@polymorph/vue-ui",
-  "version": "1.0.17",
+  "version": "1.0.18",
   "description": "The Polymorph design system's components for Vue, the vocabulary: every member as a single-file component generated from its framework-neutral description, styled by its token-only recipe from @polymorph/recipes.",
   "keywords": [
     "polymorph",

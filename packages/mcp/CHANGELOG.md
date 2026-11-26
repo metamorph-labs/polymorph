@@ -1,5 +1,99 @@
 # @polymorph/mcp
 
+## 1.0.18
+
+### Patch Changes
+
+- 2186c5c: **Every entry point starts the same server.** `serverFlags` reads the server's command line
+  (`[--project <path>] [--read-only]`, an unknown flag refused) and `serveStdio` starts the server
+  over stdio; the checkout's `polymorph-mcp` and the published tools' bins both use them.
+  `render_screen` reads a page built ahead of time when its context names one (`screenPage`), and
+  its advice for a missing browser is the entry point's (`browserSetup`, `checkoutBrowserSetup` for a
+  checkout). `browserAdvice` takes that setup where it took the checkout's path.
+- f5c3a2b: The server registers its tools from one table (`TOOLS`), and `toolCaller(context)` calls the same
+  table by name in the same process: it checks the arguments with the tool's own schema and returns
+  `{ value, images, isError }`, the answer the server would have sent before encoding it. A context
+  with no project has no write tool, as a `--read-only` server has none. `serveStdio(context)` runs
+  the server over stdio and resolves once the client has closed stdin and every request has its
+  answer; `polymorph-mcp` and `polymorph mcp` both start the server with it.
+- fc1e0ca: **`render_screen` reports two more layout faults.**
+
+  - `no-gap`: a member that touches another member with nothing between them, in a box that lays its
+    children out in flow, as a field placed directly above a Table in a Card does, or a member whose
+    own border lies against the inside of a box's border with no inset. A member that paints nothing,
+    such as a Table or an Image's frame, a member's own parts, members in a flex or grid container,
+    and a bar that runs edge to edge are not reported.
+  - `unseen-focus`: a control that, given keyboard focus, draws no mark, draws only an outline under
+    2px, or draws an outline under 3:1 against what it is drawn on or cut by a box that cannot scroll
+    to it. A mark on the box around the control, such as a field's frame, counts.
+
+  The page gives each control keyboard focus after the picture is taken, so the pictures are
+  unchanged, and puts focus and scroll positions back afterwards.
+
+- 49eed56: A search of several words finds members. `search_components`, `polymorph search` and the
+  workbench's Components page read `date picker` or `date-picker` as the name `DatePicker`, then as
+  a phrase, then word by word: a member is found when one of the words is in its name or when every
+  word is in its name or its purpose, and one that answers some of the words ranks below one that answers all
+  of them. Before, a query of several words matched only where a purpose or a
+  prop's doc held the phrase exactly, so `date picker` found nothing.
+- ddbd1d4: **Three usage rules for Button, and a destructive Button never takes focus first.**
+
+  - `@polymorph/rules` gains three red rules, in `stageTwoRules` and so in `allRules`, which
+    `polymorph add` applies. An app that upgrades may see new reports from them:
+    - `polymorph/one-main-button`: a second main Button (`solid`/`accent`, the defaults) in one
+      Dialog, Drawer, Popover, Card or `Dashboard.Panel`.
+    - `polymorph/danger-last`: within one group of Buttons placed together, a danger Button
+      before another Button.
+    - `polymorph/trailing-icon`: a `trailingIcon` that is not a direction or a disclosure. The fix
+      moves the role to `icon` when the Button has none.
+
+    The groups report them as warnings, so a build that passed still passes. Spread the new
+    `usageRulesAsErrors` after the groups to make them errors. The rules read TSX, Vue, Svelte,
+    Solid and Angular. `@polymorph/rules/usage` holds what they count.
+
+  - A warning stays a warning past ESLint. `verify`'s `Diagnostic` gains an optional `severity`
+    (`error` or `warning`), which `verify` always writes from the linter's result, with
+    `isWarning`, `errorsOf` and `warningsOf` beside it. `polymorph check` marks a warning, counts it
+    apart and exits 1 on errors only. The MCP server's `validate`, `fix` and `fix_file` return
+    warnings in `warnings`, apart from `violations`, and `ok` reads the violations alone.
+    `emitCheckedScreen` returns `warnings` beside `violations`, and `emit_screen`, `pnpm emit` and
+    the screen scripts write a screen whose code has only warnings. Every existing rule is an
+    error, so nothing else changes.
+  - `danger-last` reads the Buttons one element holds side by side, up to a `Separator`, as one
+    group. A destructive action in a group of its own, apart from the group that holds the main
+    Button, may come first.
+  - `design/icons.json` marks the roles a trailing icon may take `trailing`: `collapse`, `down`,
+    `expand`, `forward`, `next` and `open-external`. The registry publishes it as `icons.trailing`.
+  - The validation of a screen spec (`@polymorph/spec/validate`, and `checkScreen` in
+    `@polymorph/screen`) reports the same three as faults.
+  - `@polymorph/engine`: `modalFocusTarget` never puts focus on a destructive Button when a
+    Dialog or a Drawer opens, in any framework. A footer whose rightmost action is destructive
+    starts on its leftmost safe action. A footer whose every action is destructive starts in the
+    body, else on close. A Dialog with a `tone="danger"` primary used to start on it.
+  - `@polymorph/recipes`: a disabled control fades its glyph with its label where it did not:
+    Accordion's chevron at rest, a checked and disabled entry's check in Menu, ContextMenu,
+    Menubar, SplitButton, Select, Combobox and MultiSelect, a disabled submenu row's chevron, and
+    the text of ImageEditor's and FileUpload's drop zones. A danger row's icon in Menu,
+    ContextMenu, Menubar and SplitButton takes the row's danger colour, as its spec says.
+
+- Updated dependencies [5a4e457]
+- Updated dependencies [f5c3a2b]
+- Updated dependencies [b40ece2]
+- Updated dependencies [786c025]
+- Updated dependencies [5b73195]
+- Updated dependencies [2186c5c]
+- Updated dependencies [41606c8]
+- Updated dependencies [2186c5c]
+- Updated dependencies [49eed56]
+- Updated dependencies [2186c5c]
+- Updated dependencies [ddbd1d4]
+- Updated dependencies [f5661ea]
+  - @polymorph/cli@1.0.18
+  - @polymorph/theme@1.0.18
+  - @polymorph/registry@1.0.18
+  - @polymorph/spec@1.0.18
+  - @polymorph/rules@1.0.18
+
 ## 1.0.17
 
 ### Patch Changes
