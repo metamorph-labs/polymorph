@@ -586,6 +586,7 @@ describe('the behaviour contracts come from the specs', () => {
       'Stepper',
       'PromptInput',
       'SplitPane',
+      'Stat',
       'Table',
       'Tree',
     ]

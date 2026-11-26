@@ -73,5 +73,23 @@ export const states: ComponentStates = {
       html: `<poly-stat label="Urgent" value="1" trend='{"direction":"down","label":"2 fewer"}'></poly-stat>`,
       subject: 'poly-stat',
     },
+    {
+      name: 'loading — the label stays and the number holds its place',
+      html: `<poly-stat label="Response time" value icon="time" loading></poly-stat>`,
+      subject: 'poly-stat',
+      expect: { 'data-loading': '', 'aria-busy': 'true' },
+    },
+    {
+      name: 'loading with a delta — no sentiment before the number',
+      html: `<poly-stat label="Resolved" value="342" delta='{"value":"12%","direction":"up"}' loading></poly-stat>`,
+      subject: 'poly-stat',
+      expect: { 'data-loading': '', 'aria-busy': 'true' },
+    },
+    {
+      name: 'loading a dashboard card — the chip, the spark and the footer hold their places',
+      html: `<poly-stat label="Solved this week" value="1,204" trend='{"direction":"up","label":"+12.5%"}' spark='[180,195,190,210,220,216,240,251,248,262,270,284]' footer='{"primary":"Trending up this month","secondary":"Against the same week last month"}' loading></poly-stat>`,
+      subject: 'poly-stat',
+      expect: { 'data-loading': '', 'aria-busy': 'true' },
+    },
   ],
 }

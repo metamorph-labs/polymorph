@@ -2326,13 +2326,15 @@ fun PMStat(
     footer: PMStatFooter? = null,
     icon: PMIconRole? = null,
     label: String,
+    loading: Boolean? = null,
+    loadingLabel: String? = null,
     numeric: Boolean? = null,
     spark: List<Double>? = null,
     sparkLabel: ((String) -> String)? = null,
     trend: PMStatTrend? = null,
     value: String,
 ) {
-    PMStat.Render(PMStatProps(delta = delta, description = description, footer = footer, icon = icon, label = label, numeric = numeric, spark = spark, sparkLabel = sparkLabel, trend = trend, value = value))
+    PMStat.Render(PMStatProps(delta = delta, description = description, footer = footer, icon = icon, label = label, loading = loading, loadingLabel = loadingLabel, numeric = numeric, spark = spark, sparkLabel = sparkLabel, trend = trend, value = value))
 }
 
 /**

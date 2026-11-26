@@ -230,8 +230,15 @@ load is no member's state: the screen shows an ${f.m('Alert')} with
 ${f.v('Alert', 'tone', 'danger')}, a ${f.p('Alert', 'title')} and a retry
 ${f.p('Alert', 'action')} in the chart's panel. An Alert with no title and no children draws
 nothing, its action included, so a spec binds its title to an input the container leaves empty
-until a load fails. ${f.m('Dashboard')} and ${f.m('Stat')} take no loading prop, and the stat row
-draws nothing while ${f.p('Dashboard', 'stats')} is empty.
+until a load fails. A ${f.m('Stat')} whose number has not arrived takes
+${f.p('Stat', 'loading')}, in each entry of ${f.p('Dashboard', 'stats')} or on its own: its label
+row stays, and its value and each part it is passed (${f.p('Stat', 'delta')},
+${f.p('Stat', 'trend')}, ${f.p('Stat', 'spark')}, ${f.p('Stat', 'footer')}) draw a placeholder of
+that part's size, so the card keeps its height when the number arrives. Pass
+${f.p('Stat', 'value')} as the container has it, \`''\` on the first load, and the parts the loaded
+card will have; nothing a loading Stat is passed about its number is drawn or read. A screen
+reader hears ${f.p('Stat', 'loadingLabel')}, "Loading" by default, in the value's place. The stat
+row draws nothing while ${f.p('Dashboard', 'stats')} is empty.
 
 - Never edit the emitted file. Change the spec and emit it again.
 - An emitted screen imports its members from \`@polymorph/<framework>-ui\`. In a project that vendors

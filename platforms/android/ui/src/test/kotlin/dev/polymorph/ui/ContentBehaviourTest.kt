@@ -34,9 +34,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * What Plan, TableOfContents, CommentThread, Tour and RichTextContent say and
- * do, composed by Compose for desktop's test host and read through its
- * semantics, and the logic each computes from its props.
+ * What Plan, TableOfContents, CommentThread, Tour, RichTextContent and a
+ * loading Stat say and do, composed by Compose for desktop's test host and
+ * read through its semantics, and the logic each computes from its props.
  */
 @OptIn(ExperimentalTestApi::class)
 class ContentBehaviourTest {
@@ -602,5 +602,41 @@ class ContentBehaviourTest {
         assertEquals(listOf("thread-4", "thread-3"), selected)
         val marks = handed.last().marks.orEmpty()
         assertEquals(listOf(PMJSONValue.of(mapOf("type" to "annotation", "id" to "thread-3"))), marks)
+    }
+
+    /* Stat ------------------------------------------------------------------ */
+
+    /**
+     * A Stat whose number has not arrived (`stat.md`, Loading) is read as its
+     * label and the loading word: the value's Skeleton is named, and no value,
+     * delta or chip label is in the tree.
+     */
+    @Test
+    fun aLoadingStatIsReadAsItsLabelAndLoadingWithNoNumber() = runComposeUiTest {
+        setContent {
+            Scene {
+                PMStat(
+                    delta = PMStatDelta("12%", PMDeltaDirection.Up),
+                    label = "Revenue",
+                    loading = true,
+                    trend = PMStatTrend(PMDeltaDirection.Up, "+12.5%"),
+                    value = "\$48,200",
+                )
+            }
+        }
+        onNode(member("Stat") and hasContentDescription("Revenue") and hasContentDescription(PMStrings().loading))
+            .assertExists()
+        for (words in listOf("\$48,200", "12%", "+12.5%")) {
+            onAllNodes(hasText(words, substring = true), useUnmergedTree = true).assertCountEquals(0)
+            onAllNodes(hasContentDescription(words, substring = true), useUnmergedTree = true).assertCountEquals(0)
+        }
+    }
+
+    /** `loadingLabel` names the value's placeholder in the app's words. */
+    @Test
+    fun aLoadingStatReadsItsLoadingLabel() = runComposeUiTest {
+        setContent { Scene { PMStat(label = "Umsatz", loading = true, loadingLabel = "Lädt", value = "") } }
+        onNode(member("Stat") and hasContentDescription("Lädt")).assertExists()
+        onAllNodes(hasContentDescription(PMStrings().loading), useUnmergedTree = true).assertCountEquals(0)
     }
 }

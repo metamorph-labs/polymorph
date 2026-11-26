@@ -6,9 +6,10 @@
 
   @testable import PolymorphUI
 
-  /// What Plan, TableOfContents, CommentThread, Tour and RichTextContent say
-  /// and do, read through the accessibility tree AppKit publishes, as an
-  /// assistive client reads it, and the logic each computes from its props.
+  /// What Plan, TableOfContents, CommentThread, Tour, RichTextContent and a
+  /// loading Stat say and do, read through the accessibility tree AppKit
+  /// publishes, as an assistive client reads it, and the logic each computes
+  /// from its props.
   /// The scene is `BehaviourTests.Scene`.
   @MainActor
   final class ContentBehaviourTests: XCTestCase {
@@ -467,6 +468,38 @@
     }
 
     // MARK: Helpers
+
+    // MARK: Stat
+
+    /// A Stat whose number has not arrived (`stat.md`, Loading) is read as its
+    /// label and the loading word: the value's Skeleton is named, and no value,
+    /// delta or chip label is drawn or read.
+    func testALoadingStatIsReadAsItsLabelAndLoadingWithNoNumber() throws {
+      let scene = Scene(
+        PMStat(
+          props: PMStatProps(
+            delta: PMStatDelta(value: "12%", direction: .up), label: "Revenue", loading: true,
+            trend: PMStatTrend(direction: .up, label: "+12.5%"), value: "$48,200")))
+      defer { scene.close() }
+      XCTAssertNotNil(
+        scene.element(named: "Revenue, \(PMStrings.loading)"), "the stat is not read as loading")
+      let read = Scene.elements(in: scene.host).flatMap { element in
+        ["accessibilityLabel", "accessibilityValue", "accessibilityTitle"].compactMap {
+          attribute(element, $0)
+        }
+      }
+      for words in ["$48,200", "12%", "+12.5%", PMStrings.positive] {
+        XCTAssertFalse(read.contains { $0.contains(words) }, "\(words) is read while it loads")
+      }
+    }
+
+    /// `loadingLabel` names the value's placeholder in the app's words.
+    func testALoadingStatReadsItsLoadingLabel() {
+      let scene = Scene(
+        PMStat(props: PMStatProps(label: "Umsatz", loading: true, loadingLabel: "Lädt", value: "")))
+      defer { scene.close() }
+      XCTAssertNotNil(scene.element(named: "Umsatz, Lädt"))
+    }
 
     private func frame(_ element: NSObject) -> CGRect {
       (element.value(forKey: "accessibilityFrame") as? NSValue)?.rectValue ?? .zero

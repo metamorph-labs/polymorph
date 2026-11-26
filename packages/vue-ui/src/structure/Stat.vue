@@ -11,6 +11,7 @@ import { computed } from 'vue'
 import { Icon, type IconRole } from '@polymorph/vue'
 import styles from '@polymorph/recipes/structure/stat.module.css'
 import Badge from './Badge.vue'
+import Skeleton from './Skeleton.vue'
 import Sparkline from '../charts/Sparkline.vue'
 
 export type DeltaDirection = 'up' | 'down'
@@ -44,6 +45,18 @@ export interface StatProps {
   icon?: IconRole
   label: string
   /**
+   * The number has not arrived. The label row stays, and the value and each part the caller
+   * passes that states the number is a Skeleton of that part's size. `value` stays required, as
+   * a chart's rows do with its `loading`: pass what there is, `''` or the last value, and it is
+   * not drawn.
+   */
+  loading?: boolean
+  /**
+   * What a screen reader hears in the value's place while `loading`, the value's Skeleton's
+   * name. Default "Loading".
+   */
+  loadingLabel?: string
+  /**
    * Tabular figures, so a column of these lines up.
    */
   numeric?: boolean
@@ -71,6 +84,8 @@ export interface StatProps {
 defineOptions({ name: 'Stat', inheritAttrs: false })
 
 const props = withDefaults(defineProps<StatProps>(), {
+  loading: false,
+  loadingLabel: 'Loading',
   numeric: true,
   sparkLabel: (label: string) => `${label}, recent trend`,
 })
@@ -80,7 +95,12 @@ const positive = computed(() =>
 </script>
 
 <template>
-  <div :class="styles.stat" data-member="stat">
+  <div
+    :class="styles.stat"
+    data-member="stat"
+    :data-loading="loading ? '' : undefined"
+    :aria-busy="loading ? true : undefined"
+  >
     <!-- labelRow -->
     <div :class="styles.labelRow">
       <!-- label -->
@@ -93,25 +113,32 @@ const positive = computed(() =>
         <span v-if="icon !== undefined" :class="styles.glyph">
           <Icon :name="icon" />
         </span>
-        <Badge v-if="trend !== undefined" variant="outline" :icon="trend.direction">
+        <!-- trendPlaceholder -->
+        <span v-if="trend !== undefined && loading" :class="styles.trendPlaceholder">
+          <Skeleton textStep="xs" :width="7" />
+        </span>
+        <Badge v-else-if="trend !== undefined" variant="outline" :icon="trend.direction">
           {{ trend.label }}
         </Badge>
       </span>
     </div>
     <!-- valueRow -->
     <div :class="styles.valueRow">
+      <Skeleton v-if="loading" textStep="3xl" :width="10" :label="loadingLabel" />
       <!-- value -->
-      <span :class="styles.value" :data-numeric="numeric ? '' : undefined">
+      <span v-else :class="styles.value" :data-numeric="numeric ? '' : undefined">
         {{ value }}
       </span>
       <!-- spark -->
       <span v-if="spark !== undefined" :class="styles.spark">
-        <Sparkline :data="spark" :label="sparkLabel(label)" />
+        <Skeleton v-if="loading" shape="rect" :size="6" :width="9" />
+        <Sparkline v-else :data="spark" :label="sparkLabel(label)" />
       </span>
     </div>
+    <Skeleton v-if="delta !== undefined && loading" textStep="sm" :width="9" />
     <!-- delta -->
     <span
-      v-if="delta !== undefined"
+      v-else-if="delta !== undefined"
       :class="styles.delta"
       :data-direction="delta.direction"
       :data-positive="positive ? '' : undefined"
@@ -125,24 +152,31 @@ const positive = computed(() =>
         {{ `${delta.direction} ${delta.value} — ${positive ? 'positive' : 'negative'}` }}
       </span>
     </span>
+    <Skeleton v-else-if="description !== undefined && loading" textStep="xs" :width="10" />
     <!-- description -->
     <span v-else-if="description !== undefined" :class="styles.description">
       {{ description }}
     </span>
     <!-- footer -->
     <div v-if="footer !== undefined" :class="styles.footer">
-      <!-- footerPrimary -->
-      <span :class="styles.footerPrimary">
-        {{ footer.primary }}
-        <!-- footerGlyph -->
-        <span v-if="trend !== undefined" :class="styles.footerGlyph">
-          <Icon :name="trend.direction" size="sm" />
+      <template v-if="loading">
+        <Skeleton textStep="sm" />
+        <Skeleton textStep="sm" :width="10" />
+      </template>
+      <template v-else>
+        <!-- footerPrimary -->
+        <span :class="styles.footerPrimary">
+          {{ footer.primary }}
+          <!-- footerGlyph -->
+          <span v-if="trend !== undefined" :class="styles.footerGlyph">
+            <Icon :name="trend.direction" size="sm" />
+          </span>
         </span>
-      </span>
-      <!-- footerSecondary -->
-      <span :class="styles.footerSecondary">
-        {{ footer.secondary }}
-      </span>
+        <!-- footerSecondary -->
+        <span :class="styles.footerSecondary">
+          {{ footer.secondary }}
+        </span>
+      </template>
     </div>
   </div>
 </template>

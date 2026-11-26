@@ -1921,6 +1921,8 @@ export const DEFINITIONS: Readonly<Record<string, ElementDefinition>> = {
       footer: 'json',
       icon: 'string',
       label: 'string',
+      loading: 'boolean',
+      loadingLabel: 'string',
       numeric: 'boolean',
       spark: 'json',
       sparkLabel: 'property',

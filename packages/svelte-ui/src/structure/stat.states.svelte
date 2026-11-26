@@ -24,6 +24,21 @@ export const states: ComponentStates = {
     { name: 'trend down — the same chip, the other way', render: entry10 },
     { name: 'a footer with no trend — the glyph goes with the chip', render: entry11 },
     { name: 'a trend with no footer — the whole card is the number', render: entry12 },
+    {
+      name: 'loading — the label stays and the number holds its place',
+      render: entry13,
+      expect: { 'data-loading': '', 'aria-busy': 'true' },
+    },
+    {
+      name: 'loading with a delta — no sentiment before the number',
+      render: entry14,
+      expect: { 'data-loading': '', 'aria-busy': 'true' },
+    },
+    {
+      name: 'loading a dashboard card — the chip, the spark and the footer hold their places',
+      render: entry15,
+      expect: { 'data-loading': '', 'aria-busy': 'true' },
+    },
   ],
 }
 </script>
@@ -40,3 +55,6 @@ export const states: ComponentStates = {
 {#snippet entry10(overrides: Overrides)}<Stat label="Median response" value="2h 23m" trend={{ direction: 'down', label: '−18%' }} footer={{ primary: 'Faster than last week', secondary: 'Across every open queue' }} {...overrides} />{/snippet}
 {#snippet entry11(overrides: Overrides)}<Stat label="Open tickets" value="128" footer={{ primary: 'Steady all week', secondary: 'Nothing has been waiting past a day' }} {...overrides} />{/snippet}
 {#snippet entry12(overrides: Overrides)}<Stat label="Urgent" value="1" trend={{ direction: 'down', label: '2 fewer' }} {...overrides} />{/snippet}
+{#snippet entry13(overrides: Overrides)}<Stat label="Response time" value="" icon="time" loading={true} {...overrides} />{/snippet}
+{#snippet entry14(overrides: Overrides)}<Stat label="Resolved" value="342" delta={{ value: '12%', direction: 'up' }} loading={true} {...overrides} />{/snippet}
+{#snippet entry15(overrides: Overrides)}<Stat label="Solved this week" value="1,204" trend={{ direction: 'up', label: '+12.5%' }} spark={[180, 195, 190, 210, 220, 216, 240, 251, 248, 262, 270, 284]} footer={{ primary: 'Trending up this month', secondary: 'Against the same week last month' }} loading={true} {...overrides} />{/snippet}

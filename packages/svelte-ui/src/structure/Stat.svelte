@@ -10,6 +10,7 @@
 import { Icon, joinSlot, type IconRole } from '@polymorph/svelte'
 import styles from '@polymorph/recipes/structure/stat.module.css'
 import Badge from './Badge.svelte'
+import Skeleton from './Skeleton.svelte'
 import Sparkline from '../charts/Sparkline.svelte'
 
 export type DeltaDirection = 'up' | 'down'
@@ -43,6 +44,18 @@ export interface StatProps {
   icon?: IconRole
   label: string
   /**
+   * The number has not arrived. The label row stays, and the value and each part the caller
+   * passes that states the number is a Skeleton of that part's size. `value` stays required, as
+   * a chart's rows do with its `loading`: pass what there is, `''` or the last value, and it is
+   * not drawn.
+   */
+  loading?: boolean
+  /**
+   * What a screen reader hears in the value's place while `loading`, the value's Skeleton's
+   * name. Default "Loading".
+   */
+  loadingLabel?: string
+  /**
    * Tabular figures, so a column of these lines up.
    */
   numeric?: boolean
@@ -75,6 +88,8 @@ let {
   footer,
   icon,
   label: labelOwn,
+  loading = false,
+  loadingLabel = 'Loading',
   numeric = true,
   spark,
   sparkLabel = (label: string) => `${label}, recent trend`,
@@ -92,25 +107,43 @@ const positive = $derived(
 
 {@render joined.start?.()
 }{#if joined.shown
-  }<div class={styles.stat} data-member="stat"
+  }<div
+    class={styles.stat}
+    data-member="stat"
+    data-loading={(loading) ? '' : undefined}
+    aria-busy={(loading) ? true : undefined}
     ><div class={styles.labelRow}
       ><span class={styles.label}>{label}</span
       >{#if icon !== undefined || trend !== undefined
         }<span class={styles.labelEnd}
           >{#if icon !== undefined}<span class={styles.glyph}><Icon name={icon} /></span>{/if
-          }{#if trend !== undefined
+          }{#if trend !== undefined && loading
+            }<span class={styles.trendPlaceholder}><Skeleton textStep="xs" width={7} /></span
+          >{:else if trend !== undefined
             }<Badge variant="outline" icon={trend.direction}>{trend.label}</Badge
           >{/if
         }</span
       >{/if
     }</div
     ><div class={styles.valueRow}
-      ><span class={styles.value} data-numeric={(numeric) ? '' : undefined}>{value}</span
-      >{#if spark !== undefined
-        }<span class={styles.spark}><Sparkline data={spark} label={sparkLabel(label)} /></span
+      >{#if loading
+        }<Skeleton textStep="3xl" width={10} label={loadingLabel}
+      />{:else
+        }<span class={styles.value} data-numeric={(numeric) ? '' : undefined}>{value}</span
+      >{/if
+      }{#if spark !== undefined
+        }<span class={styles.spark}
+          >{#if loading
+            }<Skeleton shape="rect" size={6} width={9}
+          />{:else
+            }<Sparkline data={spark} label={sparkLabel(label)}
+          />{/if
+        }</span
       >{/if
     }</div
-    >{#if delta !== undefined
+    >{#if delta !== undefined && loading
+      }<Skeleton textStep="sm" width={9}
+    />{:else if delta !== undefined
       }<span
         class={styles.delta}
         data-direction={delta.direction}
@@ -121,19 +154,26 @@ const positive = $derived(
           >{`${delta.direction} ${delta.value} — ${positive ? 'positive' : 'negative'}`
         }</span
       ></span
-    >{:else if description !== undefined
+    >{:else if description !== undefined && loading
+      }<Skeleton textStep="xs" width={10}
+    />{:else if description !== undefined
       }<span class={styles.description}>{description}</span
     >{/if
     }{#if footer !== undefined
       }<div class={styles.footer}
-        ><span class={styles.footerPrimary}
-          >{footer.primary
-          }{#if trend !== undefined
-            }<span class={styles.footerGlyph}><Icon name={trend.direction} size="sm" /></span
-          >{/if
-        }</span
-        ><span class={styles.footerSecondary}>{footer.secondary}</span
-      ></div
+        >{#if loading
+          }<Skeleton textStep="sm"
+          /><Skeleton textStep="sm" width={10}
+        />{:else
+          }<span class={styles.footerPrimary}
+            >{footer.primary
+            }{#if trend !== undefined
+              }<span class={styles.footerGlyph}><Icon name={trend.direction} size="sm" /></span
+            >{/if
+          }</span
+          ><span class={styles.footerSecondary}>{footer.secondary}</span
+        >{/if
+      }</div
     >{/if
   }</div
 >{/if

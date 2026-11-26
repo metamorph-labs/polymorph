@@ -5340,6 +5340,18 @@ data class PMStatProps(
     val footer: PMStatFooter? = null,
     val icon: PMIconRole? = null,
     val label: String,
+    /**
+     * The number has not arrived. The label row stays, and the value and each part the caller
+     * passes that states the number is a Skeleton of that part's size. `value` stays required, as a
+     * chart's rows do with its `loading`: pass what there is, `''` or the last value, and it is not
+     * drawn.
+     */
+    val loading: Boolean? = null,
+    /**
+     * What a screen reader hears in the value's place while `loading`, the value's Skeleton's name.
+     * Default "Loading".
+     */
+    val loadingLabel: String? = null,
     /** Tabular figures, so a column of these lines up. */
     val numeric: Boolean? = null,
     /**
