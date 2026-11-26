@@ -26,8 +26,9 @@ are not in a conversation with a model. That is `CommentThread`, with
 | `ReasoningDisclosure` | A collapsible section showing the model's reasoning |
 | `ArtifactPane` | A side pane that shows one artifact a turn produced |
 
-`component <Name>` prints each one's props. Do not build any of these from other members, and do
-not bring in a chat library's components.
+`component <Name>` prints each one's props and, under `## Types`, the fields of the data types
+those props take, such as a trigger, an attachment or a source. Do not build any of these from other
+members, and do not bring in a chat library's components.
 
 ## 2. The page
 
@@ -39,7 +40,8 @@ that scrolls, and it needs a bounded box that application code cannot draw. The 
 scroll, so the composer stays in view.
 
 Write this screen in code. A screen spec repeats nothing, and a thread has one
-`ChatMessage` for each turn.
+`ChatMessage` for each turn. The app's router or root mounts the page as it mounts any
+other ([app.md](app.md)).
 
 ## 3. The container
 
@@ -104,7 +106,13 @@ export function AssistantPage() {
 }
 ```
 
-`streamReply` stands for the app's own client: an async iterator of the pieces of a reply. In Vue,
+`streamReply` stands for the app's own client: an async iterator of the pieces of a reply. A
+client that also reports a tool request or a reply's sources yields events of several kinds, and
+the container keeps what each one says in the turn. The `PromptInput` here holds its own
+text and empties itself when it sends. One given a `value` is the app's to
+empty.
+
+In Vue,
 Svelte, Solid and Angular the members and props have the same names, and a prop that takes content
 (`thread`, `composer`,
 `aside`, `actions`) is the framework's own slot,
@@ -137,18 +145,22 @@ as [code.md](code.md) writes one.
   `status` one of `error`, `denied`, `done`, `pending`, `running` and `approval`. The steps of a run are a `Plan`, each
   `status` one of `error`, `done`, `pending`, `running` and `skipped`. Thinking is a `ReasoningDisclosure`. A
   document the reply produced goes in the `ArtifactPane`.
-- **Ask before a tool acts with `ApprovalCard`.** It stores no answer. While the answer is
-  on its way to the server, set `pending` to it. When the server has it,
-  set `decision`, and the card stays as the record.
+- **Ask before a tool acts with `ApprovalCard`** (step 5). It stores no answer.
 - **Hold attachments as data.** `PromptInput`'s `attachments` is a
   list with `id`, `name` and
-  `status`. The app uploads a file when
+  `status`, one of `error`, `uploading` and `done`. The app uploads a file when
   `onAttach` gives it, and removes one on
-  `onRemoveAttachment`.
+  `onRemoveAttachment`. `onReject` gives each file
+  the composer refused with the reason, which the app says in a `Toast`. The app sends the
+  ids of the uploaded files with the message.
 - **Offer mentions and commands through `triggers`.** Each has a
   `char` such as `@` or `/`, a `label`
   and the app's `options`. A pick writes text into the prompt and calls
-  `onSelect`, so the app keeps the ids it sends with the message. For
+  `onSelect` with the option. The prompt holds text and no ids, so the
+  app keeps the picked options and, when the prompt is sent, sends the ids of those whose text is
+  still in it. `RichTextInput` differs: its mention is an entity the document stores, and
+  it names the character `trigger`
+  ([rich-text.md](rich-text.md)). For
   options the app searches for, set `filter` to `false`, read the
   query from `onQueryChange` and set
   `loading` until they arrive.
@@ -165,7 +177,59 @@ as [code.md](code.md) writes one.
 The thread announces each turn once to a screen reader when it is added. Do not add a live region
 of your own, and do not put the thread inside another scrolling box.
 
-## 5. What the members do not do
+## 5. A tool that asks first
+
+```tsx
+import { ApprovalCard, ChatMessage, ToolCall } from '@polymorph/react-ui'
+
+type Answer = 'approved' | 'denied'
+
+interface Call {
+  id: string
+  name: string
+  summary: string
+  input: unknown
+  /** The answer on its way to the server. */
+  sending?: Answer
+  /** The answer the server has. */
+  decision?: Answer
+  /** How the run stands once it is approved. */
+  run: 'running' | 'done' | 'error'
+}
+
+export function ToolTurn({ call, onAnswer }: { call: Call; onAnswer: (id: string, answer: Answer) => void }) {
+  const status = call.decision === undefined ? 'approval' : call.decision === 'denied' ? 'denied' : call.run
+  return (
+    <ChatMessage role="assistant" author="Assistant">
+      <ToolCall name={call.name} summary={call.summary} input={call.input} status={status} />
+      <ApprovalCard
+        title={`Run ${call.name}?`}
+        description={call.summary}
+        pending={call.sending}
+        decision={call.decision}
+        onApprove={() => onAnswer(call.id, 'approved')}
+        onDeny={() => onAnswer(call.id, 'denied')}
+      />
+    </ChatMessage>
+  )
+}
+```
+
+- The model's client reports the request, and the container adds the call to the turn of the reply
+  that asked. The `ToolCall` and the `ApprovalCard` sit side by side in that turn's
+  `ChatMessage`.
+- On an answer the container sets `pending` and sends the answer to its
+  server. When the server has it, the container sets `decision`.
+- Both stay in the turn. The `ToolCall`'s `status` goes from
+  `approval` to `running` and then `done` or `error`, or to `denied`. The card with a
+  `decision` is the record of who allowed what, so do not remove it.
+- Write `title` as a question the person can answer, from the app's own
+  data: the order's number and the amount, not the model's sentence. Set
+  `tone` to `danger` for what cannot be undone.
+- The tool runs on the server, and only after the server has the approval. A page that runs the
+  tool because its own state says "approved" has asked nobody.
+
+## 6. What the members do not do
 
 - They hold no model client, no stream reader and no message store. Those are the app's.
 - A code block is not coloured by token.

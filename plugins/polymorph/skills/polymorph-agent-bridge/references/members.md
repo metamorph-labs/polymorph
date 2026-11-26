@@ -11,9 +11,7 @@ npx -y @metamorph-labs/polymorph@1.0.18 component LineChart --framework <framewo
 
 - **A choice** is `{ id, label }`, with `disabled: true` on one a person cannot pick and
   `destructive: true` on one that waits for a person. An action that takes `id` names one
-  choice, and one that takes `ids` names the whole set. An id is the option's `value` where the
-  member has one, else what the member says it is, such as a `Menu` entry's label. A
-  repeated id takes ` (2)` after it.
+  choice, and one that takes `ids` names the whole set. A repeated id takes ` (2)` after it.
 - **The application owns a controlled value.** A member whose value the application holds changes
   when the application passes the new value back. Until it does, a step succeeds with an empty
   `changed`.
@@ -23,10 +21,35 @@ npx -y @metamorph-labs/polymorph@1.0.18 component LineChart --framework <framewo
   `fill`, and a `Dialog` that is not dismissible refuses
   `close`.
 
+## What an id names
+
+A member drawn from a list the application passes names each choice by a field of the entry. The
+text answer of `npx -y @metamorph-labs/polymorph@1.0.18 component <Name> --framework <framework>` prints that entry's fields under
+Types.
+
+| Member | `choose` takes | Each id is |
+| --- | --- | --- |
+| `Select` | one id | the `value` of an entry of `options`, a `SelectOption` |
+| `Combobox` | one id | the `value` of an entry of `options`, a `ComboboxOption` |
+| `MultiSelect` | the whole set of ids | the `value` of an entry of `options`, a `MultiSelectOption` |
+| `TreeSelect` | one id | the `id` of an entry of `items`, a `TreeItem` |
+| `RadioGroup` | one id | the `value` of an entry of `options`, a `RadioOption` |
+| `CheckboxGroup` | the whole set of ids | the `value` of an entry of `options`, a `CheckboxGroupOption` |
+| `SegmentedControl` | one id | the `value` of an entry of `options`, a `SegmentedControlOption` |
+| `ChoiceCard` | the whole set of ids | the `value` of an entry of `options`, a `ChoiceCardOption` |
+| `Tabs` | one id | the `value` of an entry of `tabs`, a `TabDescriptor` |
+
+- `Select` and `TreeSelect` with `emptyOption` list the empty choice as `''`.
+- An entry with `disabled: true` is listed with that flag, and a step that names it answers
+  `invalid-value`.
+- Another member names its choices as it says below, such as a `Menu` entry by its label.
+
 ## Fields
 
 - `Input`, `Textarea` and `SearchInput`: `fill`
-  writes the whole value, as typing it does, and `clear` empties it.
+  writes the whole value, as typing it does, and `clear` empties it. Their
+  value is read, whatever the field holds: only `PasswordInput`, `OTPInput` and a
+  password field keep a value secret.
 - `NumberInput`: `set` commits a number held within
   its bounds, and `clear` commits `null`.
 - `Slider`: `set` moves the first thumb and
@@ -45,8 +68,7 @@ npx -y @metamorph-labs/polymorph@1.0.18 component LineChart --framework <framewo
 
 ## Choices
 
-- `Select`, `RadioGroup`, `SegmentedControl` and `Tabs`: `choose` takes one id. A choice made while a list is closed needs no `open`
-  first. `CheckboxGroup` and `ChoiceCard`: `choose` takes the whole set of ids.
+- A choice made while a list is closed needs no `open` first.
 - `Combobox`: `choose` picks among every option the
   application passed, not only those the typed text leaves, and
   `fill` types the query, which the application hears as typing.
@@ -62,7 +84,8 @@ npx -y @metamorph-labs/polymorph@1.0.18 component LineChart --framework <framewo
   control that opens it, usually a `Button`, then read again. An open one runs
   `close`. A `Dialog` that is not dismissible is answered with one of its own Buttons.
 - `ConfirmDialog` runs `cancel` only. Its confirm is the
-  person's.
+  person's. The Button that opens it is the application's, and an agent presses it: a
+  `tone="danger"` one asks `confirm` first, so the person is asked twice.
 - Content in a closed `Accordion` item, `Collapsible` or tab is not listed. Run
   `expand`, `open` or
   `choose` first, then read again.

@@ -3,6 +3,105 @@
 What a document does at run time is decided once, in the walk every renderer draws from, so a
 document behaves the same in React and as elements.
 
+## An action with consequences
+
+An action is a name and the form's values. The model chose the name, and each value is what a
+control holds, so neither is the person's decision. A host that moves money, deletes or sends on an
+action does four things:
+
+1. Maps the name to its own handler. The rules in its system prompt declare the names it handles.
+2. Reads `values` as input from the page: checks each value's type and range against its own data.
+3. Opens its own `ConfirmDialog`, outside the screen, controlled by
+   `open` and `onOpenChange`. Its words come from
+   the host's data and the values, never from the document. An agent on the page cannot confirm
+   it: the confirm is the person's.
+4. Sends the request to its server with an idempotency key made when the dialog opens. The server
+   authorises the person, reads the order from its own records, checks the amount again, and acts
+   at most once for each key, so a confirm pressed twice or a request sent again refunds once.
+
+```tsx
+import { useState } from 'react'
+import * as members from '@polymorph/react-ui'
+import { ScreenView, type ScreenAction } from '@polymorph/react/screen'
+
+import { MEMBERS } from './screen-members'
+// Stand-in: your server's refund endpoint, which authorises, checks again and acts once for each
+// key. It resolves with what the server did, in the host's words.
+import { refund } from './refunds'
+
+const { ConfirmDialog, Stack } = members
+
+interface Order {
+  id: string
+  number: string
+  refundable: number
+  currency: string
+}
+
+interface Asked {
+  amount: number
+  reason: string
+  key: string
+}
+
+export function RefundScreen(props: {
+  answer: string
+  streaming: boolean
+  order: Order
+  send: (message: string) => void
+}) {
+  const { answer, streaming, order, send } = props
+  const [asked, setAsked] = useState<Asked | null>(null)
+  const money = (amount: number) =>
+    new Intl.NumberFormat(undefined, { style: 'currency', currency: order.currency }).format(amount)
+
+  const onAction = (action: ScreenAction) => {
+    if (action.name !== 'requestRefund') {
+      send(`An action from the screen: ${JSON.stringify(action)}`)
+      return
+    }
+    const { amount, reason } = action.values
+    if (typeof amount !== 'number' || amount <= 0 || amount > order.refundable) {
+      send(`The host refused the refund: the amount must be above 0 and at most ${order.refundable}.`)
+      return
+    }
+    setAsked({ amount, reason: typeof reason === 'string' ? reason : '', key: crypto.randomUUID() })
+  }
+
+  return (
+    <Stack gap={4}>
+      <ScreenView
+        text={answer}
+        streaming={streaming}
+        members={members}
+        allow={MEMBERS}
+        data={{ order: order.number }}
+        onAction={onAction}
+      />
+      <ConfirmDialog
+        open={asked !== null}
+        onOpenChange={(open) => {
+          if (!open) setAsked(null)
+        }}
+        title={`Refund order ${order.number}?`}
+        description={asked === null ? '' : `${money(asked.amount)} goes back to the card that paid for this order.`}
+        confirmLabel="Refund"
+        onConfirm={async () => {
+          if (asked === null) return
+          const outcome = await refund({ order: order.id, ...asked })
+          send(`The host's refund: ${outcome}`)
+        }}
+      />
+    </Stack>
+  )
+}
+```
+
+- The promise `onConfirm` returns keeps the confirm busy and the dialog
+  open until it settles. The dialog closes when it resolves, and stays open when it rejects.
+- Sending the outcome to the model is a request; the model's next screen then reads what happened
+  from the host.
+
 ## Data inputs
 
 An input whose type is not a function is a data input, filled from the host's `data` by its name.
@@ -41,7 +140,8 @@ position.
 control's value is, in order: what the person chose, until the document or the host gives it
 another value; else the value the document or the host gives it; else its default; else the empty
 value of its type: `null` where the type admits it, `[]` for a list, `false` for a checkbox or a
-switch, `""` for text.
+switch, `""` for text. A value is what the member reports: `NumberInput` a number,
+`Input` text for every `type`.
 
 - Two controls with one name are a fault, and `values` holds the last in document order.
 - A control named `__proto__`, `constructor` or `prototype` is a fault and is left out.
@@ -106,6 +206,7 @@ not arrived is a fault.
 | A shared or inherited control name | `values` holds one control, or none |
 | A member that threw as it rendered | Its node is drawn as nothing; the rest of the screen draws |
 | Text that stops being JSON, at `$` | The answer broke off; the document holds what came before it |
+| `the document has no root element`, at `$.root` | The answer ended with no document, or none that holds a root. Draw the renderer only for an answer that holds one |
 
 A fault in the root element leaves nothing to draw. `faults="inline"` draws each fault in its
 node's place, which helps while building a host.
@@ -118,7 +219,8 @@ A string at a prop or object key that takes an address (`avatar`, `href`, `nextH
 fault and is not passed. An address with a control character anywhere is refused whole, and spaces
 at either end are stripped before the scheme is read. Each address in a `srcSet` is held to the
 same rule. The rule covers the document's values and a value a binding puts directly at an address;
-it does not reach into an object the host binds whole.
+it does not reach into an object the host binds whole. No option refuses every address: a host
+that allows no link and no picture leaves out the members that take one (the skill's step 3).
 
 ## Limits
 
@@ -140,6 +242,20 @@ proportion to what it reads.
   or no scheme. No other member draws Markdown.
 - Ids and names, which can match the host's own. A control inside the host's `<form>` posts under
   the document's name.
-- Who called an action (step 8 of the skill).
+- Who called an action (the skill's step 8).
 - What `checkScreen` cannot see: it reads only the document, so what the walk refuses from the
   host's data (an address, a function) is reported by the renderer, not the check.
+
+## A run-time document is not a spec to emit
+
+The format and the validator are the same, so `emit` reads a document a model wrote. What happens
+to it differs:
+
+| | A spec `emit` compiles | A run-time document |
+| --- | --- | --- |
+| A data input | a prop the container passes | the host's `data` under its name, empty when absent |
+| A callback input | a function the container passes | an action the host is told of |
+| Members | every member the framework ships | the host's list |
+| Checked by | `validate` | `checkScreen`: the validator, then the run-time rules |
+| Becomes | a source file, reviewed and built | a drawing in the person's page |
+| Platforms | web, iOS and Android | web |

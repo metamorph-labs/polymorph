@@ -6,11 +6,15 @@ parent. Vue, Svelte, Solid and Angular have no run-time renderer of their own, s
 them uses it, as a page with no build does. The elements read the theme the page carries, as every
 member does.
 
+Like `ScreenView`, it applies its `members` and the run-time rules as it draws, whatever the server
+checked, and it draws only the document. Show the prose with `proseOf` (references/api.md) in an
+element of the page's own, as text.
+
 ## In an app with a bundler
 
 1. Add `@polymorph/elements` and `@polymorph/elements-ui` to `package.json` under the alias and
    version the other polymorph packages use (`npm:@metamorph-labs/polymorph-elements-ui@^<version>`),
-   and `@polymorph/screen` where the card is built. Run the project's install.
+   and `@polymorph/screen` on the server that builds the card. Run the project's install.
 2. Import `@polymorph/elements-ui/screen` once. It defines `<poly-screen>` and every `poly-*`
    element; each member's code loads the first time one of its elements renders.
 3. Write `<poly-screen></poly-screen>` in the template, as any custom element. In Vue, make
@@ -22,8 +26,10 @@ member does.
 import type { PolymorphEvent } from '@polymorph/elements'
 import { ACTION_EVENT, FAULT_EVENT, type PolyScreen, type ScreenAction } from '@polymorph/elements-ui/screen'
 
-import { askForScreen } from './ask'
 import { MEMBERS } from './screen-members'
+// Stand-in: posts the message to your server, which calls `answer` (the skill's step 6) and
+// streams the answer back. It calls `onText` with the answer so far, and resolves when it ends.
+import { streamTurn } from './server'
 
 /** Draws the model's answers in a `<poly-screen>` the page or a template wrote, and sends each action back. */
 export function connectScreen(screen: PolyScreen, data: Record<string, unknown>) {
@@ -32,7 +38,7 @@ export function connectScreen(screen: PolyScreen, data: Record<string, unknown>)
 
   const send = async (message: string) => {
     screen.streaming = true
-    await askForScreen(message, (text) => {
+    await streamTurn(message, (text) => {
       screen.text = text
     })
     screen.streaming = false
@@ -47,18 +53,16 @@ export function connectScreen(screen: PolyScreen, data: Record<string, unknown>)
 }
 ```
 
-`askForScreen` is the one in the skill's step 6, with the card and the check for the elements:
+On the server, `answer` from the skill's step 6 builds the card and checks for the elements:
 
 ```ts
-const SYSTEM = runtimeCard({ framework: 'elements', members: MEMBERS })
-const { ok, faults } = checkScreen(document, { framework: 'elements', members: MEMBERS })
+const CARD = runtimeCard({ framework: 'elements', members: MEMBERS })
+const { ok, faults } = checkScreen(read.document, { framework: 'elements', members: MEMBERS })
 ```
 
-Build the card and check on the server with `@polymorph/screen/card` and
-`@polymorph/screen/check`. `@polymorph/elements-ui/screen` exports the same functions bound to
-the elements, for code in the page: `drawScreen` draws into a plain element, and
-`PolyScreen`, `ACTION_EVENT` and `FAULT_EVENT` are the
-element's class and its events.
+`@polymorph/elements-ui/screen` exports the same functions bound to the elements, for code in the
+page: `drawScreen` draws into a plain element, and `PolyScreen`,
+`ACTION_EVENT` and `FAULT_EVENT` are the element's class and its events.
 
 ## On a page with no build
 
@@ -68,19 +72,19 @@ sheet, then loads `polymorph.js` as a module script. `polymorph.js` defines `<po
 and the first one to connect fetches the renderer.
 
 ```html
-<poly-screen id="assistant" members="Stack Card Heading Text Button FormField Input Textarea"></poly-screen>
+<poly-screen id="assistant" members="Stack Heading Text Button FormField NumberInput Textarea"></poly-screen>
 
 <script type="module">
-  // Stand-in: the page's call to the model, through its server, with the card for the elements
-  // as the system prompt. It calls `onText` with the answer so far, and resolves when it ends.
-  import { askModel } from './model.js'
+  // Stand-in: posts the message to the page's server, which calls the model with the card for the
+  // elements and checks the answer. It calls `onText` with the answer so far, and resolves when it ends.
+  import { streamTurn } from './server.js'
 
   const screen = document.querySelector('#assistant')
   screen.data = { order: 'Order 1042' }
 
   async function send(message) {
     screen.streaming = true
-    await askModel(message, (text) => {
+    await streamTurn(message, (text) => {
       screen.text = text
     })
     screen.streaming = false
@@ -104,7 +108,7 @@ elements, so they take no `framework`:
   import { loadScreen } from './polymorph/polymorph.js'
 
   const { runtimeCard, checkScreen } = await loadScreen()
-  const card = runtimeCard({ members: ['Stack', 'Card', 'Heading', 'Text', 'Button', 'FormField', 'Input', 'Textarea'] })
+  const card = runtimeCard({ members: ['Stack', 'Heading', 'Text', 'Button', 'FormField', 'NumberInput', 'Textarea'] })
 </script>
 ```
 

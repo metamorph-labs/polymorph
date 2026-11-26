@@ -84,7 +84,7 @@ Some screens have a procedure of their own. Read its file before you write the s
 | The screen | Read |
 | --- | --- |
 | Is written in code, or is the container of an emitted spec | [references/code.md](references/code.md) |
-| Needs the app around it: the root's providers, the mode, a form, a toast, a dialog, navigation | [references/app.md](references/app.md) |
+| Needs the app around it: the root's providers, the router, the mode, a form, a toast, a dialog, navigation | [references/app.md](references/app.md) |
 | Holds a conversation with a model | [references/chat.md](references/chat.md) |
 | Draws a chart | [references/charts.md](references/charts.md) |
 | Takes or shows formatted text, mentions or comments on words | [references/rich-text.md](references/rich-text.md) |
@@ -160,14 +160,31 @@ comment for a polymorph rule. Run `validate` again until it exits 0.
 
 ```sh
 npx -y @metamorph-labs/polymorph@1.0.18 render src/screens/inbox.json --system plain
+npx -y @metamorph-labs/polymorph@1.0.18 render src/screens/inbox.json --system plain --data src/screens/inbox.data.json
 ```
 
 `render` draws a spec in a browser at a phone width (375 by 812) and a desktop width (1440 by
-900), writes the pictures beside the spec (`src/screens/inbox.render/sampled-phone.png`), and lists
-the layout faults it measured in each. Open the pictures and look at them. With no data, each input
-is sampled from its type, so the pictures show where content goes. `--data <file>` draws the screen
-with a JSON value for each input, and `--empty <file>` adds a second drawing with its values laid
-over those.
+900), and lists the layout faults it measured in each. It writes the pictures into a directory
+beside the spec, `src/screens/inbox.render/`, named for what it drew and the width:
+
+| Drawn | Pictures |
+| --- | --- |
+| No data: each input sampled from its type, a list as empty | `sampled-phone.png`, `sampled-desktop.png` |
+| `--data <file>`: the file's value for each input | `populated-phone.png`, `populated-desktop.png` |
+| `--empty <file>`: its values laid over `--data`'s, a second drawing | `empty-phone.png`, `empty-desktop.png` |
+
+The `--data` file is sample data for the pictures, which the app never reads: a JSON object keyed
+by input name, kept beside the spec (`src/screens/inbox.data.json`). A callback input takes no
+value there, because the page stubs it.
+
+`render` draws with the shipped themes only. `--system` names a shipped system, `--palette` a
+shipped palette (the system's own when left out) and `--mode` `light` or `dark` (the system's
+default when left out); `axes` lists them. It reads no theme document of the app's and not
+`vite.config`. Name the shipped pair the app's theme started from: `init` copies them into
+`src/theme/` under their shipped names. A change the app made to its theme does not reach the
+pictures.
+
+Open the pictures and look at them, then read the faults:
 
 | Fault | What to change |
 | --- | --- |
@@ -178,10 +195,9 @@ over those.
 | `no-gap` | Two members touch. Put them in a `Stack` or `Inline` with a `gap`. |
 | `unseen-focus` | A control's focus mark is hidden. Do not put the control in a box that clips it. |
 
-Change the composition or a prop to fix a fault, never a style. `--system` names a shipped system:
-the one the app's theme starts from, or `plain`. `axes` lists them. The first `render`
-on a machine may answer that its browser is missing, with the command that downloads it. Run that
-command once, then render again.
+Change the composition or a prop to fix a fault, never a style. The first `render` on a machine
+may answer that its browser is missing, with the command that downloads it. Run that command once,
+then render again.
 
 `render` draws specs only. For a screen written in code, run the app and look at it in a browser
 when the session can.
@@ -193,9 +209,11 @@ npx -y @metamorph-labs/polymorph@1.0.18 check src
 ```
 
 `check` runs the red rules over the directory whatever the project's lint config holds, and exits 1
-on any violation. Then run the project's own lint and typecheck, as `package.json` names them. Its
-lint runs the red rules too only when its ESLint config loads them: it imports `@polymorph/rules`
-or spreads the fragment `polymorph.eslint.js` that `init` and `add` write.
+on any violation. `check` and `validate` read the red rules and not a prop's type: a value no
+member takes, such as a tone it does not have, passes both and fails the typecheck. So run the
+project's own lint and typecheck, as `package.json` names them. Its lint runs the red rules too
+only when its ESLint config loads them: it imports `@polymorph/rules` or spreads the fragment
+`polymorph.eslint.js` that `init` and `add` write.
 
 ## What application code may not contain
 

@@ -1,5 +1,6 @@
 import { pluginFiles } from '@polymorph/cli'
 import { buildRegistry } from '@polymorph/registry'
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -36,12 +37,23 @@ describe('the plugin names the server’s tools', () => {
     )
   })
 
-  it('names in its skills only tools the server registers', () => {
+  it('names in its skills only tools the server registers, and the agent bridge’s own', () => {
     const skills = files.filter((file) => file.path.includes('/skills/'))
     expect(skills.length).toBeGreaterThan(0)
+    // The agent bridge gives a model on the page tools of its own, which no
+    // server registers. The engine names them, and the CLI's law holds each
+    // name a skill writes to that list (`packages/cli/src/agents.test.ts`).
+    const bridge = [
+      ...readFileSync(
+        resolve(import.meta.dirname, '../../engine/src/agent/definitions.ts'),
+        'utf8',
+      ).matchAll(/name: '(polymorph_[a-z]+)'/g),
+    ].map((match) => match[1] as string)
+    expect(bridge.length).toBeGreaterThan(0)
+    const tools = [...TOOL_NAMES, ...bridge]
     for (const skill of skills) {
       for (const [, tool] of skill.contents.matchAll(/`([a-z]+(?:_[a-z]+)+)`/g)) {
-        expect(TOOL_NAMES as readonly string[], `${skill.path}: ${tool}`).toContain(tool)
+        expect(tools, `${skill.path}: ${tool}`).toContain(tool)
       }
     }
   })

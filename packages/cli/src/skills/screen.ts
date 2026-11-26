@@ -194,9 +194,11 @@ when the session can.
 ${commands(run, 'check src')}
 
 \`check\` runs the red rules over the directory whatever the project's lint config holds, and exits 1
-on any violation. Then run the project's own lint and typecheck, as \`package.json\` names them. Its
-lint runs the red rules too only when its ESLint config loads them: it imports \`@polymorph/rules\`
-or spreads the fragment \`polymorph.eslint.js\` that \`init\` and \`add\` write.
+on any violation. \`check\` and \`validate\` read the red rules and not a prop's type: a value no
+member takes, such as a tone it does not have, passes both and fails the typecheck. So run the
+project's own lint and typecheck, as \`package.json\` names them. Its lint runs the red rules too
+only when its ESLint config loads them: it imports \`@polymorph/rules\` or spreads the fragment
+\`polymorph.eslint.js\` that \`init\` and \`add\` write.
 
 ## What application code may not contain
 

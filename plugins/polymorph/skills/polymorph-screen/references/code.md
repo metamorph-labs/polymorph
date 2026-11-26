@@ -33,14 +33,14 @@ npx -y @metamorph-labs/polymorph@1.0.18 add tabs --framework <framework>
 ## 2. A screen in React
 
 ```tsx
-import { Button, DataTable, ListPage, SearchInput } from '@polymorph/react-ui'
+import { DataTable, Link, ListPage, SearchInput } from '@polymorph/react-ui'
 import { useState } from 'react'
 
 import type { Invoice } from './invoices'
 
 export function InvoicesPage(props: {
   invoices: Invoice[]
-  onNew: () => void
+  navigate: (href: string) => void
   onOpen: (invoice: Invoice) => void
 }) {
   const [query, setQuery] = useState('')
@@ -51,7 +51,11 @@ export function InvoicesPage(props: {
   return (
     <ListPage
       title="Invoices"
-      actions={<Button icon="add" label="New invoice" onClick={props.onNew} />}
+      actions={
+        <Link href="/invoices/new" variant="button" buttonVariant="solid" onNavigate={props.navigate}>
+          New invoice
+        </Link>
+      }
       filters={
         <SearchInput aria-label="Search invoices" size="sm" value={query} onChange={setQuery} />
       }
@@ -81,9 +85,12 @@ export function InvoicesPage(props: {
   nothing).
 - The screen holds its state (`query`) and derives what it shows (`shown`) as it renders.
   Polymorph has no data layer: data arrives as props or from the app's own fetching.
-- The page's one main action is a `Button` with no `variant`: solid and
-  accent. Every other Button there is `variant="outline"` or
-  `variant="ghost"`.
+- The page's one main action is solid and accent. Here it goes to another page, so it is a
+  `Link` with `variant="button"` and
+  `buttonVariant="solid"`. An action that does the work in place is a
+  `Button` with no `variant`. Every other Button there is
+  `variant="outline"` or `variant="ghost"`. [app.md](app.md)
+  has the rule for navigation.
 
 ## 3. The same screen in another framework
 
@@ -103,10 +110,11 @@ handle its change event. A Solid component reads `props.foo` and never destructu
 ```ts
 @Component({
   selector: 'app-invoices-page',
-  imports: [Button, DataTable, ListPage, SearchInput],
+  imports: [DataTable, Link, ListPage, SearchInput],
   template: `
     <pm-list-page title="Invoices" [empty]="invoices().length === 0" [emptyState]="none">
-      <pm-button slot="actions" icon="add" label="New invoice" (click)="create.emit()" />
+      <pm-link slot="actions" href="/invoices/new" variant="button" buttonVariant="solid"
+        (navigate)="navigate.emit($event)">New invoice</pm-link>
       <pm-search-input slot="filters" aria-label="Search invoices" size="sm"
         [value]="query()" (change)="query.set($event)" />
       <pm-data-table label="Invoices" [columns]="columns" [data]="shown()" [getRowId]="rowId"
@@ -116,7 +124,7 @@ handle its change event. A Solid component reads `props.foo` and never destructu
 })
 export class InvoicesPage {
   readonly invoices = input.required<Invoice[]>()
-  readonly create = output()
+  readonly navigate = output<string>()
   readonly open = output<Invoice>()
   protected readonly columns = [{ key: 'customer', header: 'Customer' }]
   protected readonly none = { title: 'No invoices yet' }
@@ -130,7 +138,7 @@ export class InvoicesPage {
 
 ```html
 <poly-list-page title="Invoices" empty-state='{"title":"No invoices yet"}'>
-  <poly-button slot="actions" icon="add" label="New invoice"></poly-button>
+  <poly-link slot="actions" href="/invoices/new" variant="button" button-variant="solid">New invoice</poly-link>
   <poly-data-table label="Invoices"
     columns='[{"key":"customer","header":"Customer"},{"key":"total","header":"Total","numeric":true}]'
     empty-state='{"icon":"search","title":"No invoice matches the search"}'></poly-data-table>
@@ -183,7 +191,7 @@ export function Invoices(props: { invoices: Invoice[]; navigate: (href: string) 
       onQueryChange={setQuery}
       getRowId={(invoice) => invoice.id}
       onOpen={(invoice) => props.navigate(`/invoices/${invoice.id}`)}
-      onNew={() => props.navigate('/invoices/new')}
+      onNavigate={props.navigate}
     />
   )
 }
@@ -195,6 +203,17 @@ export function Invoices(props: { invoices: Invoice[]; navigate: (href: string) 
 | `svelte` | `let query = $state('')`, `const shown = $derived(…)`; callbacks are props, `onQueryChange={(value) => (query = value)}` |
 | `solid` | `const [query, setQuery] = createSignal('')`; a derived value is a function, `invoices={shown()}` |
 | `angular` | the class in `imports`, written `<app-invoices-view>`; callbacks are inputs, `[onQueryChange]="setQuery"`, each an arrow-function property so it keeps `this`: `protected readonly setQuery = (value: string) => this.query.set(value)` |
+
+While the data has not arrived, the container passes `true` to each chart's
+`loading` and to `DataTable`'s `loading`, with
+empty rows: a chart draws a skeleton on the first load and dims its last frame on a refetch.
+Empty rows without `loading` draw the chart's empty sentence, its `messages.empty`. A failed
+load is no member's state: the screen shows an `Alert` with
+`tone="danger"`, a `title` and a retry
+`action` in the chart's panel. An Alert with no title and no children draws
+nothing, its action included, so a spec binds its title to an input the container leaves empty
+until a load fails. `Dashboard` and `Stat` take no loading prop, and the stat row
+draws nothing while `stats` is empty.
 
 - Never edit the emitted file. Change the spec and emit it again.
 - An emitted screen imports its members from `@polymorph/<framework>-ui`. In a project that vendors

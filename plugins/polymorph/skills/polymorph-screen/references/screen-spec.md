@@ -50,6 +50,45 @@ A value, as a prop or a child, is a string, a number, a boolean, `null`, an elem
 binding `{ "$": "inputName" }`, or a structured object `{ "$object": { … } }` for data a prop
 takes.
 
+A prop whose type is a node, such as `Dashboard`'s `actions` and
+`primary`, takes an element as its value, or a list of elements, which `emit`
+writes as a fragment. This `root` is a dashboard whose action goes to another page and whose main
+column is one `Dashboard.Panel` holding a chart. Its spec declares the inputs
+`byDay`, `loading` and `onNavigate`:
+
+```json
+{
+  "component": "Dashboard",
+  "props": {
+    "title": "Support",
+    "actions": {
+      "component": "Link",
+      "props": { "href": "/tickets/new", "variant": "button", "buttonVariant": "solid", "onNavigate": { "$": "onNavigate" } },
+      "children": ["New ticket"]
+    },
+    "primary": {
+      "component": "Dashboard.Panel",
+      "props": { "title": "Opened and resolved" },
+      "children": [
+        {
+          "component": "LineChart",
+          "props": {
+            "label": "Tickets opened and resolved by day",
+            "data": { "$": "byDay" },
+            "loading": { "$": "loading" },
+            "series": [
+              { "$object": { "key": "opened", "label": "Opened" } },
+              { "$object": { "key": "resolved", "label": "Resolved" } }
+            ],
+            "x": { "$object": { "key": "day", "scale": "time", "label": "Day" } }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
 A binding names a declared input, or a dotted path into one (`draft.subject`). It is never an
 expression: no call, operator or index. A value the screen needs computed, such as a count or a
 filtered list, is computed by the container and passed in as an input of its own.

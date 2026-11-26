@@ -13,6 +13,10 @@ root below. In another app, check each line.
 - The toast viewport is mounted once, outside the routes and outside any error boundary.
 - In React a `Tooltip` needs `TooltipProvider` above it. `AppShell` brings its own;
   a root without AppShell wraps the app in one.
+- Polymorph has no router and no data layer. The router is the app's own dependency, which the app
+  installs: a package outside `@polymorph` is allowed for routing and for data, and the red rules
+  pass a router's imports and components. Its provider goes inside the two above, around the
+  routes. This root uses React Router.
 
 ```tsx
 import 'virtual:polymorph/theme'
@@ -20,6 +24,7 @@ import 'virtual:polymorph/theme'
 import { ToastHost, TooltipProvider } from '@polymorph/react-ui'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
 
 import { App } from './App'
 
@@ -29,7 +34,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ToastHost messages={TOASTS}>
       <TooltipProvider>
-        <App />
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
       </TooltipProvider>
     </ToastHost>
   </StrictMode>,
@@ -44,6 +51,12 @@ createRoot(document.getElementById('root')!).render(
 <!-- elements: once, in <body> -->
 <poly-toast-viewport></poly-toast-viewport>
 ```
+
+A new page is mounted by the app's router, or by the root in an app without one. `init` wrote a
+placeholder screen, Welcome, from `src/screens/welcome.json`, and its root component
+(`src/App.tsx`, `src/App.vue`, `src/App.svelte` or `src/app.ts`) renders it. Replace what
+the root component renders with the app's routes, one page per route, and delete the Welcome spec
+and the file emitted from it once nothing renders them.
 
 - **Mode.** `ModeSwitch` with a `label` and no
   `value` shows the reader's choice of light, dark or system and applies it.
@@ -63,34 +76,53 @@ npx -y @metamorph-labs/polymorph@1.0.18 component FormField --framework <framewo
 ```
 
 ```tsx
-import { Button, Card, FormField, FormPage, Input, Select, Stack, toast } from '@polymorph/react-ui'
+import {
+  Button,
+  Card,
+  FormField,
+  FormPage,
+  Input,
+  Select,
+  Stack,
+  Textarea,
+  toast,
+} from '@polymorph/react-ui'
 import { useState } from 'react'
 
-const TERMS = [
-  { value: '30', label: '30 days' },
-  { value: '60', label: '60 days' },
+const CHANNELS = [
+  { value: 'email', label: 'Email' },
+  { value: 'chat', label: 'Chat' },
+  { value: 'phone', label: 'Phone' },
 ]
 
-export function NewInvoicePage(props: {
-  save: (draft: { customer: string; terms: string }) => Promise<void>
+export interface TicketDraft {
+  subject: string
+  channel: string
+  details: string
+}
+
+export function NewTicketPage(props: {
+  save: (draft: TicketDraft) => Promise<void>
   onDone: () => void
 }) {
-  const [customer, setCustomer] = useState('')
-  const [terms, setTerms] = useState('30')
+  const [subject, setSubject] = useState('')
+  const [channel, setChannel] = useState<string | undefined>(undefined)
+  const [details, setDetails] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [saving, setSaving] = useState(false)
-  const customerError = submitted && customer.trim() === '' ? 'Name the customer.' : undefined
+  const subjectError = submitted && subject.trim() === '' ? 'Give the ticket a subject.' : undefined
+  const channelError = submitted && channel === undefined ? 'Choose a channel.' : undefined
 
   async function submit() {
     setSubmitted(true)
-    if (customer.trim() === '') return
+    if (subject.trim() === '' || channel === undefined) return
     setSaving(true)
     try {
-      await props.save({ customer, terms })
-      toast.success('Invoice created')
+      await props.save({ subject, channel, details })
+      toast.success('Ticket created')
       props.onDone()
     } catch {
-      toast.danger('The invoice was not saved', { description: 'Try again in a moment.' })
+      toast.danger('The ticket was not saved', { description: 'Try again in a moment.' })
     } finally {
       setSaving(false)
     }
@@ -98,17 +130,25 @@ export function NewInvoicePage(props: {
 
   return (
     <FormPage
-      title="New invoice"
+      title="New ticket"
       onSubmit={submit}
-      actions={<Button type="submit" label="Create invoice" loading={saving} />}
+      actions={<Button type="submit" label="Create ticket" loading={saving} />}
     >
       <Card>
         <Stack gap={5}>
-          <FormField label="Customer" required error={customerError}>
-            <Input value={customer} onChange={setCustomer} />
+          <FormField label="Subject" required error={subjectError}>
+            <Input value={subject} onChange={setSubject} />
           </FormField>
-          <FormField label="Payment terms">
-            <Select options={TERMS} value={terms} onChange={(value) => setTerms(value ?? '30')} />
+          <FormField label="Channel" required error={channelError}>
+            <Select
+              options={CHANNELS}
+              placeholder="Choose a channel"
+              value={channel}
+              onChange={(value) => setChannel(value ?? undefined)}
+            />
+          </FormField>
+          <FormField label="Details">
+            <Textarea rows={5} value={details} onChange={setDetails} />
           </FormField>
         </Stack>
       </Card>
@@ -116,6 +156,9 @@ export function NewInvoicePage(props: {
   )
 }
 ```
+
+The route that mounts the page passes the router's navigation as `onDone`: in React Router,
+`onDone={() => navigate('/tickets')}`, with `navigate` from `useNavigate()`.
 
 - `FormPage` with `onSubmit` renders a real `<form>`: Enter submits
   from any field, and a failed submit moves focus to the first invalid field. Its
@@ -127,6 +170,14 @@ export function NewInvoicePage(props: {
   well. Two fields side by side are a `Grid` with `columns` of 2.
 - Errors are computed from the values and a `submitted` flag, so none shows before the first
   submit. A server's error for a field goes in that field's error.
+- `Input`'s and `Textarea`'s `onChange` hand over the text as a
+  `string`, then the change event, so `onChange={setSubject}` stores it.
+  `Select`'s hands over `string | null`.
+- A `Select` with no choice yet has a `placeholder` and a
+  `value` of `undefined`: hold it as `string | undefined`, and store
+  `value ?? undefined`. `null` is the choice `emptyOption` names, such as a
+  filter's "All", and is lawful only with it. Never `''`: below `30rem` the Select opens as a
+  sheet, whose trigger draws `''` blank, without the placeholder.
 - While the request runs, the submit Button takes `loading`, and a click does
   nothing.
 - A long form also lists its errors above the fields in `ErrorSummary`, whose
@@ -232,3 +283,9 @@ export function Shell(props: { path: string; navigate: (href: string) => void; c
   `previousHref` and `nextHref`.
 - An `onClick` on an `<a>` is a red-rule violation. A link that routes is a Link with
   `onNavigate`, and work that changes data is a Button.
+- An action that goes to another page, such as a page's "New ticket", is a `Link` with
+  `variant="button"`, never a `Button` whose handler calls the router. It
+  stays an `<a href>`, so it opens in a new tab and copies as an address, and it takes a
+  Button's look. Its `buttonVariant` is `soft` unless set: set
+  `buttonVariant="solid"` when it is the page's one main action. It has no icon,
+  no loading and no disabled state.

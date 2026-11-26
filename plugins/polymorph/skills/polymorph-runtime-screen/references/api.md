@@ -21,27 +21,64 @@ only what it needs.
 | `framework` | `react` (the default), `vue`, `svelte`, `solid`, `angular` or `elements`: the default members and which are absent |
 | `members` | the names the host allows; the framework's default when absent |
 
-`checkScreen` returns `{ ok, faults }`, each fault `{ path, message }`. `outputContract` is the
-card's last part alone.
+No option refuses addresses while keeping the members that take them. `checkScreen` returns
+`{ ok, faults }`, each fault `{ path, message }`. `outputContract` is the card's last part alone.
 
 `parsePartial(text)` returns:
 
 | Field | What it is |
 | --- | --- |
-| `document` | the document so far; `undefined` before its first brace |
-| `complete` | whether the document's outermost brace has closed |
+| `document` | the document so far; `undefined` before its first brace, and for an answer that is prose only |
+| `complete` | whether the document's outermost brace has closed; `false` for an answer that is prose only |
 | `open` | the path of the string still being written, or `null` |
 | `cut` | the path of the innermost value the text ends inside, or `null` |
 | `error` | `{ at, message }` where the text stops being JSON, or `null` |
 
-It reads the first fence marked `json`, or unmarked, and the first brace when the text has no
-fence. A name, a number, `true`, `false`, `null` and a binding are left out until whole; a
-string a person reads is kept while it is written.
+It reads the first fence marked `json`, or unmarked, and the first brace that opens an object when
+the text has no fence. A name, a number, `true`, `false`, `null` and a binding are left out until
+whole; a string a person reads is kept while it is written. It returns no prose.
 
 `createScreen(options)` is for a renderer of your own: `document`, `vocabulary`, `framework`,
 `members`, `data`, `fill` (`absent` or `sample`), `streaming`, `open`, `cut`, `onAction` and
 `onFault`. It returns a `Screen`: `root`, `faults`, `values`, `changed`, `fills`,
 `streaming`, `update(change)`, `subscribe(listener)` and `fail(fault)`.
+
+## The model's prose
+
+No export returns the text around the document. This helper takes it, for the page to draw as text
+beside the screen. A line of three backticks opens and closes a fence; the card asks for one fenced
+block, so the first is the document's.
+
+```ts
+// prose.ts
+
+/** A line that opens or closes a fenced block. */
+const FENCE = /^[ \t]*`{3}.*$/gm
+
+/** A last line of one or two backticks: a fence still being written. */
+const OPENING = /(?:^|\n)[ \t]*`{1,2}$/
+
+/**
+ * The text of a model's answer outside the fenced block that holds its document: the prose before
+ * it, and after it once it closes. `document` is what `parsePartial` read from the same answer.
+ */
+export function proseOf(answer: string, document: unknown): string {
+  const fence = new RegExp(FENCE)
+  const open = fence.exec(answer)
+  // No fence: prose, unless the document was written bare.
+  if (open === null) return document === undefined ? answer.replace(OPENING, '').trim() : ''
+  const close = fence.exec(answer)
+  const after = close === null ? '' : answer.slice(close.index + close[0].length)
+  return [answer.slice(0, open.index), after]
+    .map((part) => part.trim())
+    .filter((part) => part !== '')
+    .join('\n\n')
+}
+```
+
+Draw it with `StreamingText`, which draws text as it is, with
+`streaming` on until the document begins. `Markdown` draws the links
+and pictures its text writes and has no prop that refuses them.
 
 ## `@polymorph/react/screen`
 
@@ -57,9 +94,9 @@ the types `ScreenAction`, `ScreenFault`, `ScreenViewProps` and `ScreenMembers`.
 | `text` | a model's answer so far |
 | `document` | the document as an object, read when `text` is absent |
 | `cut`, `open` | `parsePartial`'s, beside `document` |
-| `streaming` | whether more is to come. With `text`, whether its document has not closed, unless given |
+| `streaming` | whether more is to come. With `text`, whether its document has not closed, unless given. Off while chunks still arrive, each chunk is a new whole document whose faults are told again |
 | `data` | the host's data by input name |
-| `allow` | the members a document may use. Read when the screen is made |
+| `allow` | the members a document may use. Read when the screen is made. Absent, every member React draws but `ThirdParty` and `Toast` |
 | `fill` | `absent` (the default) or `sample`, which fills an input with no data from its type |
 | `onAction(action)` | told each action; a promise it returns is what a member waits on |
 | `onFault(fault)` | told each fault once |
@@ -140,3 +177,20 @@ Both bubble and are composed.
 `polymorph.js` and `polymorph-all.js` export `loadScreen`.
 It resolves to `drawScreen`, `parsePartial`, `checkScreen`, `runtimeCard` and `outputContract`,
 bound to the elements.
+
+## The tools while you build
+
+Save an answer's document to a file to look at it:
+
+```sh
+npx -y @metamorph-labs/polymorph@1.0.18 render answer.json --system plain --data data.json
+npx -y @metamorph-labs/polymorph@1.0.18 validate answer.json --framework react
+npx -y @metamorph-labs/polymorph@1.0.18 component FormField --framework react
+```
+
+- `render` draws it with the React members, every member allowed, and reports layout faults.
+  `--data` takes a JSON file of the host's data by input name. It does not apply the host's list
+  or report a run-time fault, such as a refused address.
+- `validate` checks it as `emit` would: names, props, values, cells and usage rules. It does not
+  apply the host's list or the run-time rules; only `checkScreen` does.
+- `component` prints what a member takes. No verb prints the run-time card.

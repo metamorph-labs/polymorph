@@ -5,9 +5,13 @@ installed under that name, as an alias of `@metamorph-labs/polymorph-engine`.
 
 ## `@polymorph/engine/agent`
 
+A static import of a value from this entry point puts it in the importing module's chunk:
+`createAgentBridge` is the bridge. A page that loads the bridge on its first use imports it with
+`import('@polymorph/engine/agent')`, and imports only types from it statically.
+
 | Export | What it is |
 | --- | --- |
-| `createAgentBridge(options?)` | a bridge over the members mounted on the page. Two bridges read the same registry and report the same ids |
+| `createAgentBridge(options?)` | a bridge over the members mounted on the page. Two bridges read the same registry and report the same ids, and each runs its own acts and asks its own questions |
 | `agentTools(bridge)` | the bridge as three tools, for the application's own agent |
 | `registerWebMCP(bridge)` | registers those tools with the browser's WebMCP API, and returns the function that unregisters them |
 | `AGENT_CHANGE_EVENT` | `'polymorph:agentchange'` |
@@ -21,7 +25,7 @@ Types: `AgentBridge`, `AgentBridgeOptions`, `AgentConfirmRequest`, `AgentPolicy`
 | --- | --- |
 | `snapshot()` | `{ members }`: each listed member, in document order |
 | `query(query)` | the members that match, each `{ id, member, name, option? }` |
-| `act(steps)` | runs the steps in order and resolves to `{ results }`, stopping at the first that fails. It never rejects, and one `act` runs at a time |
+| `act(steps)` | runs the steps in order and resolves to `{ results }`, stopping at the first that fails. It never rejects. One `act` runs at a time: the next waits for it, also while it waits for `confirm` |
 | `subscribe(listener)` | calls `listener` after each step that succeeds, and returns the function that stops it. A listener that throws does not fail the step |
 | `acting` | `true` while a step's action runs |
 | `dispose()` | stops the bridge: it lists nothing after this, and a step answers `unknown-member` |
@@ -31,9 +35,36 @@ Types: `AgentBridge`, `AgentBridgeOptions`, `AgentConfirmRequest`, `AgentPolicy`
 | Option | What it takes |
 | --- | --- |
 | `confirm` | `(request) => boolean \| Promise<boolean>`. `request` is `{ id, member, name, action, value? }`. Only `true` is yes. A `confirm` that throws or rejects is a no. The state is read again after the answer, and a member removed while the person was asked answers `unknown-member` |
-| `policy.hide` | `(member) => boolean`, where `member` is `{ id, member, name, element }`. `true` takes the member out of every output and every step |
-| `policy.deny` | `(member, action) => boolean`. `true` takes the action away. Either function that throws hides or denies |
+| `policy.hide` | `(member) => boolean`. `member` is `{ id, member, name, element }`, frozen: the bridge's id for this mount, the member's name, its control's accessible name, and its control. A truthy answer takes the member out of every output and every step. The bridge asks only about a member whose element is in the document and not inside `hidden` content, and never about one another member withholds |
+| `policy.deny` | `(member, action) => boolean`, with the same `member`. A truthy answer takes the action away, and a step that names it answers `not-allowed`. Either function that throws hides or denies |
 | `settleMs` | milliseconds a step waits for the member's state to change after its action. The bridge reads the state again every few milliseconds and stops at the first change |
+
+### Starting the page agent in each framework
+
+`startPageAgent` is the function of step 4 of the skill. Call it where the framework runs code in
+the browser after mounting, keep what it returns for the assistant, and call its `stop` when the
+page unmounts:
+
+```ts
+// React: the component in references/asking.md.
+
+// Vue, in <script setup>
+let agent: PageAgent | undefined
+onMounted(() => {
+  agent = startPageAgent(ask)
+})
+onBeforeUnmount(() => agent?.stop())
+
+// Svelte, in <script>
+onMount(() => startPageAgent(ask).stop)
+
+// Solid, in a component
+onMount(() => onCleanup(startPageAgent(ask).stop))
+
+// Angular, in a component's constructor. afterNextRender runs in the browser only.
+const destroyRef = inject(DestroyRef)
+afterNextRender(() => destroyRef.onDestroy(startPageAgent(ask).stop))
+```
 
 ### A snapshot entry
 
@@ -59,16 +90,16 @@ A step is `{ id?, target?: { member?, name? }, action, value? }`. A result is
 `{ ok: false, id?, error: { code, message, allowed? } }`. A state that holds a secret is left out
 of `changed`.
 
-| Code | When |
-| --- | --- |
-| `unknown-member` | the id names no listed member, the target names none, or the member was removed while the person was asked |
-| `ambiguous-target` | the target names more than one member. The message lists their ids |
-| `not-allowed` | the member does not declare the action, or the policy denies it. `allowed` lists the actions it allows now |
-| `disabled` | the member's `disabled` state is true |
-| `invalid-value` | the value is not of the argument's type, names no enabled choice, or the step is not an object |
-| `needs-confirmation` | the action needs a person, and the bridge has no `confirm` |
-| `declined` | the person said no, or `confirm` failed |
-| `failed` | the action threw, with the member's message, any secret replaced |
+| Code | When | Do |
+| --- | --- | --- |
+| `unknown-member` | the id names no listed member, the target names none, or the member was removed while the person was asked | read again: the member is gone, closed, hidden, withheld or declares nothing |
+| `ambiguous-target` | the target names more than one member. The message lists their ids | name it by one of those ids |
+| `not-allowed` | the member does not declare the action, or the policy denies it. `allowed` lists the actions it allows now | choose from `allowed`. An empty list is the application's policy |
+| `disabled` | the member's `disabled` state is true | do what enables it, or tell the person |
+| `invalid-value` | the value is not of the argument's type, names no enabled choice, or the step is not an object | read the action's argument and the member's choices again |
+| `needs-confirmation` | the action needs a person, and the bridge has no `confirm` | leave it to a person. Do not look for another way |
+| `declined` | the person said no, or `confirm` failed | do not run it again unasked |
+| `failed` | the action threw, with the member's message, any secret replaced | read the message, such as a read-only field's refusal |
 
 ### Change events
 
@@ -87,23 +118,24 @@ too, and a step that fails dispatches none. `references/asking.md` shows a liste
 | `polymorph_act` | Operate controls on the page | `{ steps }`, each `{ id?, target?, action, value? }` | `consequentialHint`, `untrustedContentHint` |
 
 Each tool's `execute(input)` resolves to JSON and never rejects. A malformed input is answered:
-`polymorph_act` given no list of steps resolves to one `invalid-value` result.
+`polymorph_act` given no list of steps resolves to one `invalid-value` result. The tools'
+definitions are read from a bridge's `agentTools`: no entry point exports them alone.
 
 ## `@polymorph/engine/webmcp`
 
-It holds the tools' definitions and none of the bridge, so importing it keeps the bridge out of
-the bundle.
+It holds the tools' definitions and their registration, and none of the bridge, so importing it
+keeps the bridge out of the bundle.
 
 | Export | What it does |
 | --- | --- |
-| `registerWebMCPOnCall(load, options?)` | registers the three tools now. On the first call it runs `load`, a dynamic import of `@polymorph/engine/agent`, once, and creates the bridge with `options`. Calls that arrive while it loads wait for it. A failed load answers each waiting call with `{ error: { code: 'failed', message } }`, and the next call loads again. Returns the function that unregisters the tools and disposes of the bridge |
+| `registerWebMCPOnCall(load, options?)` | registers the three tools now. On the first call it runs `load` once and creates the bridge with `options` from what `load` resolves to: `@polymorph/engine/agent`, or an object with its `createAgentBridge` and `agentTools`. Calls that arrive while it loads wait for it. A failed load answers each waiting call with `{ error: { code: 'failed', message } }`, and the next call loads again. Returns the function that unregisters the tools and disposes of the bridge |
 | `applyAgentSetting(value)` | does what a `data-agent` value says: `null` registers nothing, `'on-call'` registers as `registerWebMCPOnCall` does, `'eager'` also loads the bridge at once, and another value warns. The bridge has no options. Returns the function that unregisters |
 | `AGENT_ATTRIBUTE` | `'data-agent'` |
 
 Types: `AgentSetting` and `AgentBridgeModule`.
 
-In React, register in an effect and return what unregisters. The bundler puts the bridge in a
-chunk the page fetches on the first call:
+A page whose only agents are the browser's registers in an effect and returns what unregisters.
+The bundler puts the bridge in a chunk the page fetches on the first call:
 
 ```tsx
 'use client'
