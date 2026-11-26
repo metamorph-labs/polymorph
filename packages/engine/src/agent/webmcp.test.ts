@@ -250,6 +250,81 @@ describe('registerWebMCPOnCall', () => {
     const unregister = registerWebMCPOnCall(load)
     expect(() => unregister()).not.toThrow()
     expect(load).not.toHaveBeenCalled()
+    const bridge = vi.fn(() => createAgentBridge())
+    registerWebMCPOnCall({ bridge })()
+    expect(bridge).not.toHaveBeenCalled()
+  })
+})
+
+describe('registerWebMCPOnCall with a bridge the page shares', () => {
+  it('runs the tools on that bridge, and leaves it working once it unregisters', async () => {
+    checkbox()
+    const { tools } = webmcp()
+    const shared = createAgentBridge({ settleMs: 0 })
+    releases.push(() => shared.dispose())
+    const unregister = registerWebMCPOnCall({ bridge: shared })
+    expect([...tools.keys()]).toEqual(['polymorph_snapshot', 'polymorph_query', 'polymorph_act'])
+    expect(await tools.get('polymorph_snapshot')?.execute({})).toEqual(shared.snapshot())
+
+    unregister()
+    expect(tools.size).toBe(0)
+    // The page's assistant still reads and acts through it.
+    const id = shared.snapshot().members[0]?.id
+    expect(id).toEqual(expect.any(String))
+    expect((await shared.act([{ id, action: 'check' }])).results[0]?.ok).toBe(true)
+  })
+
+  it('calls the function the page gives once, on the first call, and never disposes of what it returns', async () => {
+    checkbox()
+    const { tools } = webmcp()
+    const shared = createAgentBridge({ settleMs: 0 })
+    releases.push(() => shared.dispose())
+    const dispose = vi.spyOn(shared, 'dispose')
+    const bridge = vi.fn(() => Promise.resolve(shared))
+    const unregister = registerWebMCPOnCall({ bridge })
+    expect(bridge).not.toHaveBeenCalled()
+
+    const [read, found] = (await Promise.all([
+      tools.get('polymorph_snapshot')?.execute({}),
+      tools.get('polymorph_query')?.execute({ name: 'urgent' }),
+    ])) as [{ members: { id: string }[] }, { members: { id: string }[] }]
+    expect(bridge).toHaveBeenCalledTimes(1)
+    expect(read.members.map(({ id }) => id)).toEqual(found.members.map(({ id }) => id))
+    // One bridge for both: a step through WebMCP is the shared bridge's step.
+    const heard = vi.fn()
+    shared.subscribe(heard)
+    await tools
+      .get('polymorph_act')
+      ?.execute({ steps: [{ id: read.members[0]?.id, action: 'check' }] })
+    expect(heard).toHaveBeenCalledTimes(1)
+    expect(bridge).toHaveBeenCalledTimes(1)
+
+    unregister()
+    expect(dispose).not.toHaveBeenCalled()
+    expect(shared.snapshot().members).toHaveLength(1)
+  })
+
+  it('answers with an error when the function fails or gives no bridge, and calls it again on the next call', async () => {
+    checkbox()
+    const { tools } = webmcp()
+    const shared = createAgentBridge()
+    releases.push(() => shared.dispose())
+    const answers: (() => unknown)[] = [
+      () => Promise.reject(new TypeError('Failed to fetch')),
+      () => undefined,
+      () => shared,
+    ]
+    const bridge = vi.fn(() => answers.shift()?.() as AgentBridge)
+    releases.push(registerWebMCPOnCall({ bridge }))
+    const snapshot = tools.get('polymorph_snapshot')
+    expect(await snapshot?.execute({})).toEqual({
+      error: { code: 'failed', message: expect.stringContaining('Failed to fetch') },
+    })
+    expect(await snapshot?.execute({})).toEqual({
+      error: { code: 'failed', message: expect.stringContaining('gave no bridge') },
+    })
+    expect(await snapshot?.execute({})).toEqual(shared.snapshot())
+    expect(bridge).toHaveBeenCalledTimes(3)
   })
 })
 

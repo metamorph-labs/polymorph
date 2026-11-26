@@ -4,7 +4,8 @@
  * `execute` that calls a bridge, and `registerWebMCPOnCall` registers them
  * with the browser before a bridge exists, so both read this one list. It
  * imports nothing, so a page can register the tools without loading the
- * bridge's code.
+ * bridge's code, and `@polymorph/engine/webmcp` exports the list for a page's
+ * own assistant to send its model before the bridge loads.
  */
 
 /** The hints a tool carries, as WebMCP names them. */

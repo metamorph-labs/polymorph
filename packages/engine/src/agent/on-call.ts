@@ -16,5 +16,5 @@ import { registerOnCall } from './webmcp'
  * has no options, so no one confirms.
  */
 export function registerForSetting(claim: ToolsClaim, eager: boolean): () => void {
-  return registerOnCall(() => import('./index'), {}, claim, eager)
+  return registerOnCall({ load: () => import('./index'), options: {} }, claim, eager)
 }

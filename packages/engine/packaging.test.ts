@@ -179,6 +179,8 @@ describe('the published surface exists', () => {
         registerWebMCPOnCall: typeof webmcp.registerWebMCPOnCall,
         applyAgentSetting: typeof webmcp.applyAgentSetting,
         agentAttribute: webmcp.AGENT_ATTRIBUTE,
+        agentKeyAttribute: agent.AGENT_KEY_ATTRIBUTE,
+        toolDefinitions: webmcp.AGENT_TOOL_DEFINITIONS.map((tool) => tool.name),
         bridgeInWebMCP: ['createAgentBridge', 'agentTools', 'registerWebMCP'].filter(
           (name) => name in webmcp,
         ),
@@ -236,6 +238,9 @@ describe('the published surface exists', () => {
       registerWebMCPOnCall: 'function',
       applyAgentSetting: 'function',
       agentAttribute: 'data-agent',
+      agentKeyAttribute: 'data-agent-key',
+      // The tools' definitions, which an assistant sends its model before the bridge loads.
+      toolDefinitions: ['polymorph_snapshot', 'polymorph_query', 'polymorph_act'],
       bridgeInWebMCP: [],
       // The QR encoder, the chart paths, the Markdown parser, the rich-text
       // document and editor, and the agent bridge are subpaths, so an
@@ -263,7 +268,9 @@ describe('the published surface exists', () => {
    * a bundler must reach none of the bridge from it statically: the bridge is
    * the chunk a page fetches on the first call. A page's agent setting runs on
    * every page that loads the elements' no-build script, so its module
-   * imports nothing statically and holds no tool's definition.
+   * imports nothing statically and holds no tool's definition. No file the
+   * entry reaches holds the text only the bridge holds, which `scripts/size.mjs`
+   * looks for.
    */
   it('reaches none of the bridge from the webmcp entry except by a dynamic import', () => {
     const reached = new Set<string>()
@@ -285,6 +292,10 @@ describe('the published surface exists', () => {
       'dist/agent/webmcp.js',
       'dist/webmcp.js',
     ])
+    for (const file of reached) {
+      expect(readFileSync(dist(file), 'utf8'), file).not.toContain('polymorph:agentchange')
+    }
+    expect(readFileSync(dist('dist/agent/bridge.js'), 'utf8')).toContain('polymorph:agentchange')
     const setting = readFileSync(dist('dist/agent/setting.js'), 'utf8')
     expect(setting).not.toMatch(/^import\b/m)
     expect(setting).not.toContain('polymorph_snapshot')
