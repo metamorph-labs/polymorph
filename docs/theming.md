@@ -76,9 +76,10 @@ first paint ([Before first paint](#before-first-paint)). So a first visit to a p
 field is `theme.preferredColorScheme` and `theme.preferredDark` ([native.md](native.md)).
 
 A default is never stored, so a later change of a system's default, or a switch of system, still
-reaches a reader who never chose. A reader for whom an earlier release of the runtime stored
-`system` on the first hydration keeps following the device: that stored value is read as their
-choice.
+reaches a reader who never chose. A stored `system` is read as the reader's choice, so a returning
+reader whose storage holds it keeps following the device whatever the system's default. That
+includes most returning readers of an application that hydrated with an earlier release, which
+stored `system` on the first hydration.
 
 Where nothing sets `data-mode`, the pairing's block applies `defaultMode` itself, with `system`
 read as light: a nested scope that carries the pairing without `data-mode`, or a page that runs

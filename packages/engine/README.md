@@ -23,13 +23,15 @@ It contains:
   the axes and schemas, `resolveTheme`, the emitters (`emitThemeCSS` for the web; `emitSwift`,
   `emitKotlin` and `emitDart` for the SwiftUI, Compose and Dart token packages;
   `emitTokenDocument`, the same decisions as JSON), `admitTheme`, the runtime
-  (`installThemeCSS`, `setSystem`, `setPalette`, `setMode`, `hydrateTheme`, `PREPAINT_SCRIPT`)
+  (`installThemeCSS`, `setSystem`, `setPalette`, `setMode`, `hydrateTheme`, `PREPAINT_SCRIPT`,
+  `prepaintScript`)
   and the `--pm-*` token contract. See [docs/theming.md](../../docs/theming.md).
 - **Build-time theming.** `@polymorph/engine/vite` exports `polymorphTheme`, a Vite plugin that
   runs the theme engine when the application builds, fails the build on a law fault, and
   provides `virtual:polymorph/theme`: the compiled stylesheet, the fonts, hydration, and
   `ensurePairing(system, palette)` for the pairings compiled to their own sheets. It also writes
-  the default pairing onto `<html>` and inlines the pre-paint script. `@polymorph/engine/runtime`
+  the default pairing onto `<html>` and inlines the pre-paint script, built with each system's
+  default mode. `@polymorph/engine/runtime`
   is the theme runtime without the theme engine: the setters an application uses to switch
   themes. `@polymorph/engine/vite-env` types the virtual module. An application on this path
   ships no `zod`, no `culori` and no derivation code. The root's `admitTheme` +
