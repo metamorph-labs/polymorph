@@ -10,7 +10,12 @@
  * It is a subpath, so an application that does not create a bridge does not
  * ship it. The registry it reads is in the root, and holds only a list.
  */
-export { AGENT_CHANGE_EVENT, AGENT_SETTLE_MS, createAgentBridge } from './bridge'
+export {
+  AGENT_CHANGE_EVENT,
+  AGENT_KEY_ATTRIBUTE,
+  AGENT_SETTLE_MS,
+  createAgentBridge,
+} from './bridge'
 export type {
   AgentActResult,
   AgentBridge,

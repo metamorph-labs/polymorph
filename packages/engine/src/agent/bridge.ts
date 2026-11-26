@@ -125,6 +125,8 @@ export interface AgentChangeDetail {
   action: string
   changed: Record<string, AgentChange>
   source: 'agent'
+  /** The member's keys (`AgentPolicyMember`). The bridge always gives them. */
+  keys?: readonly string[]
 }
 
 /** What an application's policy reads about a member. */
@@ -133,6 +135,15 @@ export interface AgentPolicyMember {
   readonly member: string
   readonly name: string
   readonly element: Element | null
+  /**
+   * The member's keys: the value of `data-agent-key` (`AGENT_KEY_ATTRIBUTE`)
+   * on its element and on each element around it, the nearest first. The
+   * page writes them, so they stay the same in every language and every
+   * mount. Empty when no element around the member has one. The bridge
+   * always gives them, and a policy reads them as `{ keys = [] }`, so an
+   * object a test writes without them is still a member.
+   */
+  readonly keys?: readonly string[]
 }
 
 /**
@@ -153,6 +164,8 @@ export interface AgentConfirmRequest {
   name: string
   action: string
   value?: unknown
+  /** The member's keys (`AgentPolicyMember`). The bridge always gives them. */
+  keys?: readonly string[]
 }
 
 export interface AgentBridgeOptions {
@@ -179,6 +192,14 @@ export interface AgentBridge {
 
 /** The event a step that succeeds dispatches on its member's element, bubbling. */
 export const AGENT_CHANGE_EVENT = 'polymorph:agentchange'
+
+/**
+ * The attribute that gives the members inside an element a key: a name the
+ * page chooses, which its policy reads in `keys`. It is an attribute and not
+ * a prop, so it names every member the same way in every renderer: on an
+ * element the page writes around a member, or on a `poly-*` element itself.
+ */
+export const AGENT_KEY_ATTRIBUTE = 'data-agent-key'
 
 /** How long a step waits for a member's state to change, by default. */
 export const AGENT_SETTLE_MS = 150
@@ -212,6 +233,8 @@ interface Read {
   regions: readonly Element[]
   state: Record<string, unknown>
   name: string
+  /** The keys the page gave the member, the nearest first. */
+  keys: readonly string[]
   policy: AgentPolicyMember
 }
 
@@ -332,6 +355,25 @@ const failure = (
 })
 
 /**
+ * The keys of an element: the value of `data-agent-key` on it and on each
+ * element around it, the nearest first, each trimmed, an empty one left out.
+ * An overlay whose element is a panel drawn at the end of the document has
+ * only the keys around that panel.
+ */
+function keysOf(element: Element | null): readonly string[] {
+  const keys: string[] = []
+  for (
+    let at = element?.closest(`[${AGENT_KEY_ATTRIBUTE}]`);
+    at;
+    at = at.parentElement?.closest(`[${AGENT_KEY_ATTRIBUTE}]`)
+  ) {
+    const key = at.getAttribute(AGENT_KEY_ATTRIBUTE)?.trim()
+    if (key) keys.push(key)
+  }
+  return Object.freeze(keys)
+}
+
+/**
  * The regions a member withholds: its `withholds` element, or each element of
  * the list it gives, else its own element when it holds a secret. A
  * `withholds` that throws withholds the member's own element, so a fault keeps
@@ -376,13 +418,15 @@ export function createAgentBridge(options: AgentBridgeOptions = {}): AgentBridge
         const element = entry.handle.element() ?? null
         const state = { ...entry.handle.state() }
         const name = accessibleName(element)
+        const keys = keysOf(element)
         reads.push({
           entry,
           element,
           regions: regionsOf(entry, element),
           state,
           name,
-          policy: Object.freeze({ id: entry.id, member: entry.handle.member, name, element }),
+          keys,
+          policy: Object.freeze({ id: entry.id, member: entry.handle.member, name, element, keys }),
         })
       } catch {
         // A member that cannot be read is not reported.
@@ -697,6 +741,7 @@ export function createAgentBridge(options: AgentBridgeOptions = {}): AgentBridge
             name: scrub(read.name, secrets),
             action: name,
             ...(raw.value === undefined ? {} : { value: plain(raw.value) }),
+            keys: read.keys,
           })) === true
       } catch {
         answer = false
@@ -783,6 +828,7 @@ export function createAgentBridge(options: AgentBridgeOptions = {}): AgentBridge
       action: name,
       changed,
       source: 'agent',
+      keys: read.keys,
     }
     for (const listener of [...listeners]) {
       try {

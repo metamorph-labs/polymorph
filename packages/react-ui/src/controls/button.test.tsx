@@ -478,6 +478,34 @@ describe('an agent', () => {
     }
   })
 
+  it('is named by the key the page sets around it, so a policy denies its press in any language', async () => {
+    const onClick = vi.fn()
+    const bridge = createAgentBridge({
+      settleMs: 0,
+      policy: {
+        deny: ({ keys = [] }, action) => keys.includes('place-order') && action === 'press',
+      },
+    })
+    try {
+      render(
+        <div data-agent-key="checkout">
+          <div data-agent-key="place-order">
+            <Button label="Commander" onClick={onClick} />
+          </div>
+          <Button label="Enregistrer" />
+        </div>,
+      )
+      const [order, save] = bridge.snapshot().members
+      expect(order).toMatchObject({ name: 'Commander', actions: [] })
+      expect(save).toMatchObject({ name: 'Enregistrer', actions: [{ name: 'press' }] })
+      const { results } = await bridge.act([{ id: order?.id, action: 'press' }])
+      expect(results[0]).toMatchObject({ ok: false, error: { code: 'not-allowed' } })
+      expect(onClick).not.toHaveBeenCalled()
+    } finally {
+      bridge.dispose()
+    }
+  })
+
   it('turns a toggle by pressing it, so the caller’s onClick sets pressed', async () => {
     function Toggle() {
       const [on, setOn] = useState(false)

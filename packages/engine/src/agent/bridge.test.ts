@@ -560,6 +560,7 @@ describe('change events', () => {
       action: 'check',
       changed: { checked: { from: false, to: true } },
       source: 'agent',
+      keys: [],
     }
     expect(heard).toEqual([detail])
     expect(dispatched).toEqual([{ target: box, detail }])
@@ -859,6 +860,7 @@ describe('destructive actions', () => {
       member: 'Checkbox',
       name: 'Delete my account',
       action: 'check',
+      keys: [],
     })
     expect(onCheckedChange).toHaveBeenCalledWith(true)
   })
@@ -1149,7 +1151,7 @@ describe('policy', () => {
       },
     })
     const member = only(bridge)
-    expect(seen[0]).toEqual(['id', 'member', 'name', 'element'])
+    expect(seen[0]).toEqual(['id', 'member', 'name', 'element', 'keys'])
     expect(member.state).toEqual({ checked: false, disabled: false })
     expect(member.actions).toEqual([{ name: 'uncheck' }])
     const [result] = (await bridge.act([{ id: member.id, action: 'delete' }])).results
@@ -1168,6 +1170,15 @@ describe('policy', () => {
       },
     })
     expect(writes.snapshot().members).toEqual([])
+    const adds = bridgeOf({
+      policy: {
+        hide: ({ keys }) => {
+          ;(keys as string[]).push('trusted')
+          return false
+        },
+      },
+    })
+    expect(adds.snapshot().members).toEqual([])
     const throws = bridgeOf({
       policy: {
         deny: () => {
@@ -1176,6 +1187,82 @@ describe('policy', () => {
       },
     })
     expect(only(throws).actions).toEqual([])
+  })
+})
+
+describe('keys', () => {
+  /** An element around `inner` that gives the members inside it `key`. */
+  function keyed(key: string, inner: Element): HTMLElement {
+    const region = document.createElement('div')
+    region.setAttribute('data-agent-key', key)
+    inner.replaceWith(region)
+    region.append(inner)
+    return region
+  }
+
+  it('gives the policy the key on the element and on each element around it, the nearest first', () => {
+    const urgent = checkbox('Urgent')
+    const order = checkbox('Place order')
+    keyed('checkout', keyed('  place-order  ', order.row))
+    // An empty key names nothing.
+    keyed('', urgent.row)
+    const seen = new Map<string, readonly string[] | undefined>()
+    bridgeOf({
+      policy: {
+        hide: ({ name, keys }) => {
+          seen.set(name, keys)
+          return false
+        },
+      },
+    }).snapshot()
+    expect(seen.get('Place order')).toEqual(['place-order', 'checkout'])
+    expect(seen.get('Urgent')).toEqual([])
+    expect(Object.isFrozen(seen.get('Place order'))).toBe(true)
+  })
+
+  it('names a member whatever its name says, so a policy hides one and denies another by key', async () => {
+    const order = checkbox('Commander')
+    keyed('place-order', order.row)
+    const notes = checkbox('Notes internes')
+    keyed('internal-notes', keyed('admin', notes.row))
+    checkbox('Urgent')
+    const bridge = bridgeOf({
+      policy: {
+        hide: ({ keys = [] }) => keys.includes('admin'),
+        deny: ({ keys = [] }, action) => keys.includes('place-order') && action === 'check',
+      },
+    })
+    const members = bridge.snapshot().members
+    expect(members.map((member) => member.name)).toEqual(['Commander', 'Urgent'])
+    expect(members[0]?.actions).toEqual([{ name: 'uncheck' }])
+    const [denied] = (await bridge.act([{ target: { name: 'Commander' }, action: 'check' }]))
+      .results
+    expect(errorOf(denied)?.code).toBe('not-allowed')
+    expect(order.onCheckedChange).not.toHaveBeenCalled()
+  })
+
+  it('hands the keys to confirm and to the change event, and never to the agent', async () => {
+    const order = checkbox('Place order', { destructive: true })
+    keyed('place-order', order.row)
+    const confirm = vi.fn(() => Promise.resolve(true))
+    const bridge = bridgeOf({ confirm })
+    const heard: AgentChangeDetail[] = []
+    bridge.subscribe((change) => heard.push(change))
+    const { id } = only(bridge)
+    const tools = agentTools(bridge)
+    const outputs = [
+      bridge.snapshot(),
+      bridge.query({ name: 'place' }),
+      await bridge.act([{ id, action: 'check' }]),
+      ...(await Promise.all(
+        tools.map((tool) =>
+          tool.execute(tool.name === 'polymorph_act' ? { steps: [{ id, action: 'uncheck' }] } : {}),
+        ),
+      )),
+    ]
+    expect(confirm).toHaveBeenCalledWith(expect.objectContaining({ keys: ['place-order'] }))
+    expect(heard.map((change) => change.keys)).toEqual([['place-order'], ['place-order']])
+    for (const output of outputs) expect(JSON.stringify(output)).not.toContain('place-order')
   })
 })
 
