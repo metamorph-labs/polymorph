@@ -462,6 +462,16 @@ export const VERBS: readonly Verb[] = [
     needs: null,
   },
   {
+    name: 'theme hue',
+    group: 'themes',
+    summary:
+      'Print a colour’s OKLCH lightness, chroma and hue, and the accentHue it gives a palette.',
+    usage: 'polymorph theme hue <colour> [--json]',
+    flags: [{ name: 'json', summary: 'print the reading as JSON' }],
+    tools: [],
+    needs: null,
+  },
+  {
     name: 'mcp',
     group: 'agents',
     summary: 'Start the MCP server over stdio, for an agent’s client.',

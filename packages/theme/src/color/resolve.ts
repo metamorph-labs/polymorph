@@ -25,6 +25,7 @@ import {
   gradientPinFault,
   gradientStopPin,
   hasGradient,
+  isPinColor,
   neutralHueOf,
   PIN_ROLES,
   pinnedColor,
@@ -656,6 +657,28 @@ export function resolveMaterialSurface(
     return toCssColor(parsed, (parsed.alpha ?? 1) * GLASS_SURFACE_MIX[mode])
   }
   return { light: paint('light'), dark: paint('dark') }
+}
+
+/** A colour read into OKLCH, as `oklchOf` answers. */
+export interface OklchReading {
+  l: number
+  c: number
+  /** The hue in degrees, or `null` for a grey, whose chroma is 0 and whose hue OKLCH leaves undefined. */
+  h: number | null
+  alpha: number
+}
+
+/**
+ * A colour written as a palette writes a pin (`#rrggbb`, or the ring's
+ * `rgb(r g b / a)`), in OKLCH, or `null` when the text is not one. It is read
+ * as a pin is read (`pinnedWorking`), so the numbers are the ones the engine
+ * measures. A grey has equal channels and so no chroma, and its hue is `null`:
+ * no hue would be drawn from it.
+ */
+export function oklchOf(value: string): OklchReading | null {
+  if (!isPinColor(value)) return null
+  const { l, c, h, alpha } = parseEmitted(pinnedColor(value))
+  return { l, c, h: c === 0 ? null : h, alpha: alpha ?? 1 }
 }
 
 /**

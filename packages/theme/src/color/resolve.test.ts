@@ -7,8 +7,15 @@ import { pairingId } from '../pairings'
 import { COLOR_ROLES, type ColorRole } from '../roles'
 import { CHROMA_BUDGETS, type Seeds } from '../seeds'
 import { MODES, type Mode, type Theme } from '../theme'
-import { composite } from './contrast'
-import { auditPairings, ContrastLawError, resolveColors, resolveModeColors } from './resolve'
+import { composite, quantize } from './contrast'
+import { generateRamp, toHex } from './ramp'
+import {
+  auditPairings,
+  ContrastLawError,
+  oklchOf,
+  resolveColors,
+  resolveModeColors,
+} from './resolve'
 import { SOLID_LADDER } from './role-map'
 
 const toOklch = converter('oklch')
@@ -414,5 +421,36 @@ describe('pins', () => {
     expect(() =>
       resolveModeColors(withPins({ light: { 'accent.bg': '#f5f5f5' } }), 'light'),
     ).not.toThrow()
+  })
+})
+
+describe('oklchOf', () => {
+  it('reads a colour as a palette writes one, as the engine measures it', () => {
+    // A hex the engine wrote reads back as the colour drawn: the same channels, through the same
+    // reading the contrast law measures (`quantize`).
+    for (const step of [3, 9, 12] as const) {
+      const color = generateRamp(264, 0.21, 'light')[step]
+      const drawn = quantize(color)
+      expect(oklchOf(toHex(color)), `step ${step}`).toEqual({ ...drawn, alpha: 1 })
+    }
+    expect(oklchOf('#1F4FD8')).toMatchObject({ h: expect.closeTo(264.52, 2), alpha: 1 })
+    expect(oklchOf('#1f4fd8')).toEqual(oklchOf('#1F4FD8'))
+    // The ring's translucent form, which a palette may also write.
+    expect(oklchOf('rgb(31 79 216 / 0.5)')).toMatchObject({
+      h: expect.closeTo(264.52, 2),
+      alpha: 0.5,
+    })
+  })
+
+  it('gives a grey no hue', () => {
+    for (const grey of ['#000000', '#808080', '#ffffff']) {
+      expect(oklchOf(grey), grey).toMatchObject({ c: 0, h: null })
+    }
+  })
+
+  it('reads nothing that a palette does not write', () => {
+    for (const text of ['#123', '#12345g', 'blue', 'oklch(0.5 0.1 200)', 'rgb(31, 79, 216)', '']) {
+      expect(oklchOf(text), text).toBeNull()
+    }
   })
 })

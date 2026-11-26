@@ -72,10 +72,17 @@ export {
   MAX_NUDGE,
   measurePairing,
   NUDGE_STEP,
+  oklchOf,
   pairingPasses,
   resolveColors,
   resolveGradients,
   resolveModeColors,
   resolveModeGradients,
 } from './resolve'
-export type { GlassPairingResult, GradientPairingResult, PairingResult, Ramps } from './resolve'
+export type {
+  GlassPairingResult,
+  GradientPairingResult,
+  OklchReading,
+  PairingResult,
+  Ramps,
+} from './resolve'

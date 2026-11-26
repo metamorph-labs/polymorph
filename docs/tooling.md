@@ -323,6 +323,7 @@ Themes
   polymorph theme validate <system.json> <palette.json> [partner.json]
   polymorph theme emit <system.json> <palette.json> [partner.json]
   polymorph theme schema <system|palette>
+  polymorph theme hue <colour>        Print a colour’s OKLCH lightness, chroma and hue, and the accentHue it gives a palette.
 
 Agents
   polymorph mcp                       Start the MCP server over stdio, for an agent’s client.
@@ -360,7 +361,7 @@ the same job. `polymorph <verb> --help` prints one verb's usage and flags.
 | `--harness <list>` | `agents` | `claude`, `codex`, `cursor`, `generic` or `all`, comma-separated, added to the harnesses written before; with none and none written before, `claude,codex,cursor` |
 | `--remove <list>` | `agents` | Harnesses to stop writing for: the files only they read are removed where nobody edited them |
 | `--framework <name>` | `agents` | The framework the agent texts and the card are for; omitted, the one written before, else the project's |
-| `--json` | `check` and every verb that asks a tool | Print the report, or the tool's answer, as JSON |
+| `--json` | `check`, `theme hue` and every verb that asks a tool | Print the report, the reading, or the tool's answer, as JSON |
 | `--no-install` | `init` | Write the app and do not install it |
 | `--force` | `add`, `update`, `agents` | Overwrite files you have edited; for `agents`, also files a newer release wrote |
 | `--dry-run` | `add`, `init`, `agents` | Print the plan and write nothing |
@@ -676,6 +677,21 @@ the report says where the partner is looked for.
   its install (`add`, then `update` after an edit), so the sheet is re-derived when a decision
   changes. A banner in the file marks it as a handoff.
 - `schema` prints the JSON Schema for a system or a palette document, for an editor.
+
+`theme hue <colour>` reads one colour, written as a palette writes one (`#rrggbb`, or
+`rgb(r g b / a)`), into OKLCH with the engine's own reading (`oklchOf` in `@polymorph/theme`), and
+prints its lightness, chroma and hue and the `accentHue` a palette takes from it, in whole degrees:
+
+```sh
+polymorph theme hue "#1F4FD8"   # #1F4FD8 is oklch(0.491 0.216 264.5) … "accentHue": 265
+polymorph theme hue "#1F4FD8" --json
+```
+
+`--json` prints `{ color, l, c, h, accentHue }`. A grey (equal channels) has no chroma, and OKLCH
+gives it no hue, so `h` and `accentHue` are `null` and the reading says that a palette whose
+`chromaBudget` is `none` draws its accent from the greys. Text that is not such a colour exits 1
+and names the forms. Like `validate`, `emit` and `schema`, it computes an answer and asks no MCP
+tool, so no tool does its job.
 
 [theming.md](theming.md) covers bringing your own theme in full.
 
