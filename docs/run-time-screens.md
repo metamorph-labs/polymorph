@@ -89,12 +89,16 @@ export const SYSTEM = runtimeCard({ members: MEMBERS })
 ```
 
 `runtimeCard(options)` takes `framework` (`react` when absent, and `elements` for a page that
-draws with `<poly-screen>`) and `members`. Without `members`, the card lists every member the
-framework draws except those a host has to allow by name
-([What the host decides](#what-the-host-decides)). The card has three parts: a paragraph that says
-what the model is doing; the members, each with its props and their types, its parts and its
-lawful cells, then the data types those props take and the icon roles; and the output contract. It
-says nothing about tokens, red rules or installing, which a document cannot use.
+draws with `<poly-screen>`), `members` and `addresses`. Without `members`, the card lists every
+member the framework draws except those a host has to allow by name
+([What the host decides](#what-the-host-decides)). With `addresses: 'refused'` it lists no prop that
+takes an address and no member that cannot be drawn without one ([Addresses](#addresses)). The card
+has three parts: a paragraph that says what the model is doing; the members, each with its props
+and their types, its parts and its lawful cells, then the data types those props take and the icon
+roles; and the output contract. It says nothing about tokens, red rules or installing, which a
+document cannot use. The registry composes all three (`composeRuntimeCard` in
+`packages/registry/src/runtime-card.ts`), so `runtimeCard` and `polymorph card --runtime` print one
+text.
 
 Send the card as the system prompt, before anything that changes from one request to the next,
 and mark it for your provider's prompt cache. Every request with the same card then reads it from
@@ -107,9 +111,9 @@ message which data you hold, each key with its type. A document binds a data inp
 name, and the renderer draws the value you pass under that name. A document can also write its
 content as literal text.
 
-A server that does not run JavaScript writes the card to a file once for each release, with the
-command in [What it costs](#what-it-costs). A page can also build it with `loadScreen()`
-([below](#loadscreen-on-a-page-with-no-build)).
+A server that does not run JavaScript writes the card to a file once for each release with
+`polymorph card --runtime` ([What it costs](#what-it-costs)). A page can also build it with
+`loadScreen()` ([below](#loadscreen-on-a-page-with-no-build)).
 
 ### A React host
 
@@ -485,7 +489,9 @@ moves to another place by inserting an element before it.
 `parsePartial(text)` (`@polymorph/screen/partial`) reads the text a model has written so far as
 the document it holds so far. The text may be prose and then a fenced block. The document is read
 from the first fence marked `json`, or unmarked, and from the first brace that opens an object
-when the text has no fence. It returns:
+when the text has no fence. While the last line may still become a fence's opening line (one or
+two backticks, or three and what follows them), it waits for that line to end; a line that begins
+with code (`` `name` is … ``) is prose. It returns:
 
 | Field | What it is |
 | --- | --- |
@@ -494,6 +500,8 @@ when the text has no fence. It returns:
 | `open` | the path of the string still being written, or `null` |
 | `cut` | the path of the innermost value the text ends inside, or `null` when the document is whole or has not begun |
 | `error` | where the text stops being JSON, and why, or `null`; the document holds what came before |
+| `prose` | the text outside the block that holds the document, each part trimmed and two parts joined by a blank line ([below](#the-models-prose)) |
+| `fence` | `open` from the first backtick of the document's fence until its closing line begins, then `closed`; `null` for a document with no fence and for text with no such block |
 
 It keeps a string a person reads while it is written, so text appears as it arrives. It leaves out
 anything else until it is whole: a `component` name or a prop name (`Butt` is not `Button`), a
@@ -501,6 +509,24 @@ number (`12` may become `120`), `true`, `false` and `null`, a binding, an input,
 that does not yet say what it is. Every name, number and binding a cut holds is the one the whole
 document holds at the same path, and the whole text gives what `JSON.parse` gives
 (`packages/screen/src/partial.test.ts`).
+
+### The model's prose
+
+A model may write sentences before and after the fenced block that holds its document. `prose`
+is that text, found by the same reading that finds the document, so the two never overlap:
+
+- **With a fenced block**: the text before its opening line, and the text after its closing line
+  once that line has begun. While the fence is open, only the text before it. A closing line is
+  any line that begins with three backticks, as the reader reads a fence in another language.
+- **With a document written with no fence**: the text before its first brace, and the text after
+  its last once it has closed.
+- **With no document**: all of the text, but a last line that may still become the document's
+  fence.
+
+A fenced block in another language is prose, as the reader skips it. Reading the prose costs time
+in proportion to the text, as reading the document does, so a host reads both at every chunk
+(`packages/screen/src/partial.test.ts`, `packages/screen/src/hostile.test.ts`). `StreamingText`
+draws it as text; `Markdown` draws the links and pictures its text writes.
 
 ### When an element is drawn
 
@@ -533,7 +559,7 @@ drawn as early as it can be. A document in another order is still read and drawn
 ### A host that parses the stream itself
 
 `ScreenView` and `<poly-screen>` read `text` with `parsePartial` themselves. A host that parses
-the text itself, to log it or to read the prose, passes what `parsePartial` returned: `document`,
+the text itself, to log it, passes what `parsePartial` returned: `document`,
 `cut`, `open` and `streaming` (`!complete`, or the host's own end of the answer). `ScreenView`
 takes them as props, `drawScreen` in its options and in `update`, and `<poly-screen>` takes the
 document as `spec` and nothing else, so it draws each element as it arrives with the props it has
@@ -655,6 +681,12 @@ A shorter list gives a shorter card, fewer choices for the model, and a check th
 everything else. The same list goes to all three, so the model is never shown a member the
 renderer refuses.
 
+A host decides too whether a screen may hold an address: `addresses`, `allowed` when absent or
+`refused`. It goes where the list goes: to `runtimeCard`, `checkScreen`, `checkAnswer` and
+`createScreen` as `addresses`, to `ScreenView` as its `addresses` prop and to `<poly-screen>` as its
+`addresses` attribute or property. Each reads it when the screen is made, as it reads the list
+([Addresses](#addresses)).
+
 ### Addresses
 
 A string at a prop or an object key that takes an address (`avatar`, `href`, `nextHref`,
@@ -677,7 +709,31 @@ relative. At an address key, anything but a string or a list of strings is a fau
 passed. The check reads the document's own values and a value a binding puts directly at an address
 prop or key (`packages/screen/src/check.test.ts`, `packages/screen/src/walk.test.ts`,
 `packages/screen/src/hostile.test.ts`). A law holds that every prop the vocabulary types as text and
-names or documents as an address is one of the three keys (`packages/screen/src/parity.test.ts`).
+names or documents as an address is one of the keys (`packages/screen/src/parity.test.ts`).
+
+**A host that refuses addresses** (`addresses: 'refused'`) is given none, whatever the scheme:
+
+- The card lists no prop, part's prop or data type field that takes an address, and its output
+  contract tells the model to write none.
+- Every value the document writes or binds at an address prop or key is a fault at its path,
+  `` `href` takes an address, and this host takes none — leave `href` out ``, in `checkScreen` and
+  in the walk, and the walk passes nothing there. The element is drawn without it, as for a refused
+  address: a `Card` is drawn as a card that is no link.
+- A member that cannot be drawn without an address is not allowed, though the host names it in
+  `members`: one with a required prop that takes an address (`Link`, `Image`, `AudioPlayer`), one
+  with a required prop whose data type requires one (a `SectionNav`'s `items`, each with its `href`;
+  a `Citation`'s `source`), and `Markdown`, which draws the links and pictures its own text writes
+  (`ADDRESSES_FROM_TEXT`). The card leaves each out, and the check and the walk report it in the
+  words of a member the host does not allow, with the reason:
+  `` `Link` requires an address at `href`, and this host takes no address ``.
+- The host's own data inside a value the document binds whole, such as a list of breadcrumbs, is
+  passed as the host gave it, addresses included: the host chose those addresses.
+
+The rule is `addressNeed` in `@polymorph/registry/runtime-members`, which the card, the check and
+the walk all read. `packages/screen/src/hostile.test.ts` writes an address at every key, in every
+shape, literal and bound, while streaming and not, and holds that none reaches a member; a law
+holds `ADDRESSES_FROM_TEXT` to every React member and every member description that reads the
+Markdown parser (`packages/screen/src/parity.test.ts`).
 
 ### Limits
 
@@ -719,9 +775,8 @@ holds, and at one it cuts.
 - **Who called an action.** A member can call a callback with no one acting
   ([What an action is not](#what-an-action-is-not)).
 
-A host that refuses links and remote pictures leaves out of `members` every member that takes an
-address (`Link`, `Image`, `Avatar` and the others whose props or data types take one of those
-keys), and `Markdown`.
+A host that refuses links and remote pictures passes `addresses: 'refused'`
+([Addresses](#addresses)), which also leaves `Markdown` out.
 
 ### Faults
 
@@ -751,12 +806,37 @@ this way.
 
 ## Checking an answer and asking again
 
-`checkScreen(document, { framework, members })` (`@polymorph/screen/check`) returns
-`{ ok, faults }`. Its faults are the spec validator's, from a table generated from the registry,
-then the run-time's: a member the host does not allow, an address a screen may not hold, a
-control's name `values` cannot hold (one two controls share, or one every object has), an input
-type longer than `MAX_TYPE_LENGTH`, a key longer than `MAX_KEY_LENGTH`, a callback input bound
-where no callback receives it, and an element in a structured object's field that takes no node.
+`checkAnswer(text, { framework, members, addresses })` (`@polymorph/screen/check`) checks a
+model's whole answer as text. It reads the document with `parsePartial`, as the renderers do, and
+returns `{ ok, faults, document, complete, prose }`:
+
+- An answer that ends before its document does, after the first backtick of its fence or the first
+  brace of a bare document, is one fault at `$`:
+  `` the answer ends before its document does, inside `$.root.children[2].props`: it was cut off, as
+  at an output limit. Answer with the whole document, with fewer elements if it was long ``. The
+  model most often stopped at its output limit, and the words ask it for the whole document again.
+- Text that stops being JSON is one fault at `$`, the same words `ScreenView` tells `onFault`:
+  `the answer stops being JSON at character 120: a value`.
+- Either way, `document` is what arrived, and no fault is reported of what it lacks: what is
+  missing is the cut's, not the model's choice.
+- An answer with no document is prose, which is lawful: `ok` is `true` and `document` is
+  `undefined`. A host that needs a screen asks again.
+- A whole document is checked with `checkScreen` and the same options.
+
+Call it once the answer has ended. While the answer streams, a document that has not closed is
+what has arrived so far, and is no fault: read it with `parsePartial`. `<poly-screen>`'s `check()`
+gives `checkAnswer`'s faults for its `text` once `streaming` is off.
+
+`checkScreen(document, { framework, members, addresses })` checks a document the host already holds
+as an object, and returns `{ ok, faults }`. It reads only that object, so it cannot tell a document
+cut short from a whole one: a cut keeps only what is whole, which is often a lawful smaller screen
+(`packages/screen/src/check.test.ts` holds that `checkAnswer` refuses every cut that `checkScreen`
+alone would pass). Its faults are the spec validator's, from a table generated from the registry,
+then the run-time's: a member the host does not allow, an address a screen may not hold or, under
+`addresses: 'refused'`, any address, a control's name `values` cannot hold (one two controls share,
+or one every object has), an input type longer than `MAX_TYPE_LENGTH`, a key longer than
+`MAX_KEY_LENGTH`, a callback input bound where no callback receives it, and an element in a
+structured object's field that takes no node.
 It needs no registry and no checkout, and runs in a page, a worker and a server alike. A law holds
 that the table gives every screen in `design/screens/` and a set of faulty documents the same
 faults the full registry gives (`packages/screen/src/parity.test.ts`).
@@ -769,17 +849,14 @@ checks against the framework's default list, so a host passes it the list its re
 (`packages/screen/src/check.ts`).
 
 ```ts
-import { checkScreen } from '@polymorph/screen/check'
-import { parsePartial } from '@polymorph/screen/partial'
+import { checkAnswer } from '@polymorph/screen/check'
 
 import { askModel } from './model'
 import { MEMBERS } from './screen-members'
 
 /** Checks a whole answer, and asks the model once to correct it. */
 export async function answered(answer: string, onText: (text: string) => void) {
-  const { document, complete } = parsePartial(answer)
-  if (!complete) return
-  const { ok, faults } = checkScreen(document, { members: MEMBERS })
+  const { ok, faults } = checkAnswer(answer, { members: MEMBERS })
   if (ok) return
   const lines = faults.map((fault) => `${fault.path}: ${fault.message}`)
   // Stand-in: the next turn of the same conversation.
@@ -814,24 +891,25 @@ page, a worker and a server. Each subpath loads only what it needs.
 | `@polymorph/screen/partial` | `parsePartial(text)`, `MAX_DEPTH` | nothing else |
 | `@polymorph/screen/walk` | `createScreen(options)`, `materialize(drawn, materials)`, and the types `Screen`, `ScreenNode`, `ScreenAction`, `ScreenFault`, `ScreenOptions`, `ScreenUpdate`, `Drawn` | no vocabulary table, no card and no validator: a renderer hands it the table |
 | `@polymorph/screen/vocabulary` | `VOCABULARY`: the members, their props, parts, lawful cells and data types, generated from the release's registry | the table |
-| `@polymorph/screen/check` | `checkScreen(document, options)` | the table and the validator |
+| `@polymorph/screen/check` | `checkScreen(document, options)`, `checkAnswer(text, options)` | the table, the validator and `parsePartial` |
 | `@polymorph/screen/card` | `runtimeCard(options)`, `outputContract(options)` | the table and the card |
-| `@polymorph/screen` | all of the above, and the helpers the renderers share (`surfaceOf`, `defaultMembers`, `addressFault`, `toJson` and others) | all of the above |
+| `@polymorph/screen` | all of the above, and the helpers the renderers share (`surfaceOf`, `defaultMembers`, `addressNeed`, `addressFault`, `toJson` and others) | all of the above |
 
 `packages/screen/src/browser-surface.test.ts` holds what each entry reaches: `parsePartial`
 reaches no other module, the walk reaches neither the table, the card nor the validator, and
-`checkScreen` reaches the table and not the card.
+`checkScreen` and `checkAnswer` reach the table and not the card.
 
-`checkScreen`, `runtimeCard` and `outputContract` take:
+`checkScreen`, `checkAnswer`, `runtimeCard` and `outputContract` take:
 
 | Option | What it is |
 | --- | --- |
 | `framework` | `react`, `vue`, `svelte`, `solid`, `angular` or `elements`; `react` when absent. It decides the default members and which members are absent |
 | `members` | the names the host allows; the framework's default when absent |
+| `addresses` | `allowed` (the default) or `refused`: no address is passed, and no member that cannot be drawn without one ([Addresses](#addresses)) |
 | `vocabulary` | another table of `VOCABULARY`'s shape, for a test; the generated one when absent |
 
 `createScreen(options)` takes `document`, `vocabulary` (`VOCABULARY`), `framework`, `members`,
-`data`, `fill`, `streaming`, `open`, `cut`, `onAction` and `onFault`. `fill` is `absent`, the
+`addresses`, `data`, `fill`, `streaming`, `open`, `cut`, `onAction` and `onFault`. `fill` is `absent`, the
 default, or `sample`, which fills an input with no data from its type, for a picture of the
 screen. It returns a `Screen`: `root` (the node to draw, or `null`), `faults`, `values`, `changed`, `fills`
 (how each input was filled), `streaming`, `update(change)`, `subscribe(listener)` and
@@ -862,6 +940,7 @@ it.
 | `streaming` | whether more is to come. With `text`, whether the text's document has not closed, unless given |
 | `data` | the host's data, by input name |
 | `allow` | the members a document may use. Read when the screen is made: a different list makes a new screen |
+| `addresses` | `allowed` (the default) or `refused`. Read when the screen is made: a different value makes a new screen |
 | `fill` | `absent` (the default) or `sample` |
 | `onAction(action)` | told each action; a promise it returns is what the member waits on |
 | `onFault(fault)` | told each fault once, and text that stops being JSON as a fault at `$` |
@@ -890,15 +969,16 @@ has already defined keeps its element.
 | Export | What it is |
 | --- | --- |
 | `drawScreen(container, options)` | draws into a plain element, appending the drawing's root element to it. Returns `values`, `changed`, `faults`, `update(change)`, `check()` and `dispose()` |
-| `checkScreen(document, options)` | the core's, for the elements: `members` and `vocabulary` |
-| `runtimeCard(options)`, `outputContract(options)` | the core's, for the elements: `members` |
+| `checkScreen(document, options)`, `checkAnswer(text, options)` | the core's, for the elements: `members`, `addresses` and `vocabulary` |
+| `runtimeCard(options)`, `outputContract(options)` | the core's, for the elements: `members` and `addresses` |
 | `parsePartial(text)` | the core's |
 | `definePolyScreen()`, `PolyScreen`, `SCREEN_TAG` | the element, its class and its tag |
 | `ACTION_EVENT`, `FAULT_EVENT` | `'poly-action'` and `'poly-fault'` |
 
-`drawScreen` takes `document`, `data`, `streaming`, `open`, `cut`, `members`, `faults` (`hidden` or
-`inline`), `onAction` and `onFault`. It takes no `text`: a host that draws a stream with it passes
-what `parsePartial` returned. `update` takes the same fields but `members`.
+`drawScreen` takes `document`, `data`, `streaming`, `open`, `cut`, `members`, `addresses`, `faults`
+(`hidden` or `inline`), `onAction` and `onFault`. It takes no `text`: a host that draws a stream
+with it passes what `parsePartial` returned. `update` takes the same fields but `members` and
+`addresses`.
 
 ### `<poly-screen>`
 
@@ -921,10 +1001,11 @@ It draws the first of these that holds a document:
 | `data` (property) | the host's data, by input name |
 | `streaming` (attribute and property) | more of the document is to come. The page sets it while an answer arrives and clears it when the answer ends |
 | `members` (attribute and property) | the members the host allows; the elements' default when absent. The attribute holds names separated by spaces, or a JSON array. A value that is not a list of names allows no member and is a fault at the path `members`. A change starts the drawing again |
+| `addresses` (attribute and property) | `allowed` (the default) or `refused`; any other value is `allowed`. A change starts the drawing again |
 | `faults` (attribute and property) | `hidden` (the default) or `inline`, which draws each fault as a `poly-alert` in its node's place |
 | `values` (property, read only) | each named control's current value |
 | `changed` (property, read only) | the names in `values` whose value the person chose, in document order |
-| `check()` (method) | a promise of what `checkScreen` says of the document it draws, with its members. The first call fetches the validator |
+| `check()` (method) | a promise of what `checkScreen` says of the document it draws, with its members and addresses, and for `text` once `streaming` is off, of what `checkAnswer` says of the answer. The first call fetches the validator |
 
 A property set before the element is defined is read when it is.
 
@@ -938,7 +1019,7 @@ Both bubble and are composed. No member dispatches either (`packages/elements-ui
 ### `loadScreen()` on a page with no build
 
 `polymorph.js` and `polymorph-all.js` export `loadScreen()`. It resolves to `drawScreen`,
-`parsePartial`, `checkScreen`, `runtimeCard` and `outputContract`, as
+`parsePartial`, `checkScreen`, `checkAnswer`, `runtimeCard` and `outputContract`, as
 `@polymorph/elements-ui/screen` exports them, bound to the elements.
 
 ```html
@@ -957,27 +1038,22 @@ each of these ([verification.md](verification.md#the-static-page-check)).
 
 ## What it costs
 
-**The card.** Its length depends on the release, the framework and the members. Measure it for
-your list from an app that has installed `@polymorph/screen`:
+**The card.** Its length depends on the release, the framework, the members and the address
+policy. `polymorph card --runtime` prints the card for them, the text `runtimeCard` returns for the
+same options, and its length in characters on stderr:
 
 ```sh
-node --input-type=module -e "
-import { runtimeCard } from '@polymorph/screen/card'
-console.log(runtimeCard().length)
-console.log(runtimeCard({ framework: 'elements' }).length)
-console.log(runtimeCard({ members: ['Stack', 'Card', 'Heading', 'Text', 'Button', 'FormField', 'Input'] }).length)
-"
+npx -y @metamorph-labs/polymorph@<version> card --runtime
+npx -y @metamorph-labs/polymorph@<version> card --runtime --framework elements
+npx -y @metamorph-labs/polymorph@<version> card --runtime --members Stack,Card,Heading,Text,Button,FormField,Input
+npx -y @metamorph-labs/polymorph@<version> card --runtime --members Stack,Card,Text --addresses refused > card.md
 ```
 
-From a checkout of this repository, the same through the loader the eval uses:
-
-```sh
-node --input-type=module -e "
-import { createJiti } from 'jiti'
-const { runtimeCard } = await createJiti(process.cwd() + '/').import('./packages/screen/src/card.ts')
-console.log(runtimeCard().length, runtimeCard({ members: ['Stack', 'Card', 'Text', 'Button'] }).length)
-"
-```
+`<version>` is the release of the host's other polymorph packages, so the card matches the
+renderer. Its standard output is the card alone, so the last line writes the file a server that
+does not run JavaScript sends. From a
+checkout of this repository, `pnpm polymorph card --runtime` prints the same. The MCP tool
+`get_system_card` gives the card with `runtime: true`, `members` and `addresses`.
 
 The repository's card law counts four characters to a token, and keeps the default card and a
 card for a few dozen members under ceilings (`packages/screen/src/card.test.ts`). A shorter list
