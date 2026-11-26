@@ -314,7 +314,7 @@ export const PROJECTIONS: readonly Projection[] = [
   },
   {
     words: ['dark', 'darker', 'night', 'nocturnal'],
-    why: 'Which mode the pairing opens in. Both modes are always emitted; this is the default.',
+    why: 'The mode a first visit opens in, whatever the device’s mode. Both modes are always emitted; this is the default.',
     apply: (candidate) => {
       const from = candidate.defaultMode
       candidate.defaultMode = 'dark'
@@ -325,7 +325,7 @@ export const PROJECTIONS: readonly Projection[] = [
     // Not `light`, which can mean a weight, a mode or a tint. `daylight` has one
     // meaning.
     words: ['daylight', 'daytime'],
-    why: 'The other default mode.',
+    why: 'The other fixed default mode. Without either word the proposal keeps its starting system’s, which may follow the device.',
     apply: (candidate) => {
       const from = candidate.defaultMode
       candidate.defaultMode = 'light'

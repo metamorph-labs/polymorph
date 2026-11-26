@@ -167,7 +167,7 @@ framework's packages, so the app has one copy of them: \`vue\`, \`svelte\`, \`so
 ${f.x('polymorphTheme', '@polymorph/engine/vite')} compiles the two documents when the app builds,
 and again in dev when one changes. A pairing that breaks a theme law fails the build with the law's
 message. It writes \`data-system\`, \`data-palette\` and the pre-paint script into \`index.html\`, so the
-first paint wears the theme. Do not write them by hand.
+first paint wears the theme in the system's \`defaultMode\`. Do not write them by hand.
 
 ## 5. Import the theme first in the entry
 
@@ -254,8 +254,9 @@ not run there, so the theme is compiled into the repository when it is installed
 
 ${commands(run, `add theme:${DEFAULT_SYSTEM} --framework react`)}
 
-\`add\` writes the compiled theme and a theme module under \`src/polymorph/themes/\`, adds the
-system's fonts to \`package.json\`, and writes and links the lint fragments. It vendors no member
+\`add\` writes the compiled theme, a theme module and the pre-paint script built for the installed
+systems (\`prepaint.ts\`) under \`src/polymorph/themes/\`, adds the system's fonts to
+\`package.json\`, and writes and links the lint fragments. It vendors no member
 and keeps the aliases step 2 wrote. It reports that it found no entry and no \`index.html\`: the
 root layout does those two jobs.
 
@@ -263,9 +264,9 @@ root layout does those two jobs.
 // app/layout.tsx
 import type { ReactNode } from 'react'
 
-import { PREPAINT_SCRIPT } from '@polymorph/engine/runtime'
 import { TooltipProvider } from '@polymorph/react-ui'
 
+import { PREPAINT_SCRIPT } from '../src/polymorph/themes/prepaint'
 import { Theme } from './theme'
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -297,9 +298,10 @@ export function Theme() {
 }
 \`\`\`
 
-- ${f.x('PREPAINT_SCRIPT', '@polymorph/engine/runtime')} applies the reader's stored choice before
-  the first paint, so \`<html>\` may differ from the server's markup, which
-  \`suppressHydrationWarning\` allows.
+- ${f.x('PREPAINT_SCRIPT', themeModule)}, from the \`prepaint.ts\` that \`add\` writes, applies the
+  reader's stored choice before the first paint, and for a reader with no stored mode the system's
+  \`defaultMode\`. \`<html>\` may therefore differ from the server's markup, which
+  \`suppressHydrationWarning\` allows. It imports nothing, so the server layout can import it.
 - ${f.x('installThemes', themeModule)} imports the compiled sheet, the base layer and the fonts. Never
   import a stylesheet in \`app/layout.tsx\`: \`polymorph/no-app-css\` reports it.
 - A member that takes a function (a handler, \`onNavigate\`, a column's \`cell\`) is rendered from a
@@ -317,10 +319,13 @@ No check builds these. Tell the person so, and set them up only as far as below.
   \`${run} add theme:${DEFAULT_SYSTEM} --framework react\` compiles the theme, calls
   ${f.x('installThemes', themeModule)} from the entry it finds and puts the pre-paint script in a root \`index.html\`.
   It names each one it could not find: call \`installThemes()\` before the app mounts, and put the
-  pre-paint script first in \`<head>\`, as the Next.js layout does.
+  pre-paint script from \`prepaint.ts\` first in \`<head>\`, as the Next.js layout does.
 - **Nuxt, SvelteKit, SolidStart, Astro** run Vite but write their own document, which the plugin's
   \`index.html\` step does not reach. Steps 1 to 6 apply, and the document takes the pairing's
-  attributes and the pre-paint script as the Next.js layout does. SvelteKit renders the routes that
+  attributes and the pre-paint script first in \`<head>\`. Build the script with
+  ${f.x('prepaintScript', '@polymorph/engine/runtime')} from \`@polymorph/engine/runtime\`, given each
+  system's \`defaultMode\` as \`modes\` and the default system as \`system\`, so a system that opens
+  dark does not paint light first. SvelteKit renders the routes that
   hold members in the browser alone (\`export const ssr = false\`): the Svelte members do not
   hydrate.
 - **The Angular CLI** compiles no stylesheet a module imports, so its app lists

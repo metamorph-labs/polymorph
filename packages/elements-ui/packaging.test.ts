@@ -6,7 +6,7 @@ import ts from 'typescript'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { tagOf } from '@polymorph/elements/definition'
-import { PREPAINT_SCRIPT } from '@polymorph/engine'
+import { prepaintScript, type ModePreference } from '@polymorph/engine'
 import { NO_BUILD_FILES } from '@polymorph/registry'
 
 import { buildElementsUi, lockElementsUiDist } from './dist-lock'
@@ -329,7 +329,15 @@ describe('the published build', () => {
       for (const system of systems) {
         expect(cdn(`themes/${system}.css`), system).toContain(`[data-system="${system}"]`)
       }
-      expect(cdn('prepaint.js').trim()).toBe(PREPAINT_SCRIPT)
+      // Built with each house system's default mode, so a page wearing one that opens dark is
+      // dark from the first paint. The page names its system on `<html>`.
+      const modes = systems.map((system) => {
+        const document = JSON.parse(
+          readFileSync(resolve(ROOT, `design/systems/${system}.json`), 'utf8'),
+        ) as { defaultMode: ModePreference }
+        return [system, document.defaultMode] as const
+      })
+      expect(cdn('prepaint.js').trim()).toBe(prepaintScript({ modes: Object.fromEntries(modes) }))
     })
 
     it('define every tag from polymorph.js, each loading a chunk of its own', () => {

@@ -45,7 +45,8 @@ flint's colour seeds are in `design/palettes/cobalt.json`.
 - **`chromaBudget: medium`**: a step quieter than azure's `high`, as flint is a
   step quieter than pebble. A high-budget blue over tinted surfaces would put
   strong colour in two places and weaken the affordance.
-- **defaultMode: `light`.** Dark re-derives into a layered dark (`bg.app
+- **defaultMode: `system`.** A first visit wears the device's mode and follows it
+  until the reader chooses one. Dark re-derives into a layered dark (`bg.app
   #090a0b` under `bg.surface #12181c`, the surface again bluer than the page)
   and is lawful on both standards.
 

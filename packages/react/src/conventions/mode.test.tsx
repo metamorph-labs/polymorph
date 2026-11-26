@@ -4,7 +4,7 @@ import { hydrateRoot } from 'react-dom/client'
 import { renderToString } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { DATA_ATTRS, setMode, STORAGE_KEYS, teardownTheme } from '@polymorph/engine'
+import { DATA_ATTRS, hydrateTheme, setMode, STORAGE_KEYS, teardownTheme } from '@polymorph/engine'
 
 import { useMode } from './mode'
 
@@ -87,26 +87,50 @@ describe('useMode on a server and while React hydrates', () => {
     // What the pre-paint script leaves for a reader who chose dark on an earlier visit.
     localStorage.setItem(STORAGE_KEYS.mode, 'dark')
     root.setAttribute(DATA_ATTRS.mode, 'dark')
-    const host = document.createElement('div')
-    host.innerHTML = markup
-    document.body.append(host)
-    const reported: string[] = []
-    const error = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
-      reported.push(args.map(String).join(' '))
-    })
-    const hydrated = hydrateRoot(host, <Probe />, {
-      onRecoverableError: (failure) => reported.push(String(failure)),
+    await hydratesToDark(markup)
+  })
+
+  it('hydrates with no mismatch on a first visit whose system opens dark, then renders it', async () => {
+    const markup = renderToString(<Probe />)
+    expect(markup).toBe('<output data-preference="system" data-applied="light"></output>')
+    // What a first visit leaves: the pre-paint script painted the system's dark default, and
+    // hydration applied it without storing it.
+    hydrateTheme('terminal', {
+      systems: { terminal: 'petrol' },
+      palettes: ['petrol'],
+      modes: { terminal: 'dark' },
     })
     try {
-      const element = probe(host)
-      await vi.waitFor(() => expect(read(host)).toBe('dark/dark'))
-      // React kept the server's element and reported no mismatch.
-      expect(probe(host)).toBe(element)
-      expect(reported).toEqual([])
+      await hydratesToDark(markup)
+      expect(localStorage.getItem(STORAGE_KEYS.mode)).toBeNull()
     } finally {
-      error.mockRestore()
-      hydrated.unmount()
-      host.remove()
+      root.removeAttribute(DATA_ATTRS.system)
+      root.removeAttribute(DATA_ATTRS.palette)
     }
   })
 })
+
+/** Hydrates the server's markup and waits for the document's dark reading, with no mismatch. */
+async function hydratesToDark(markup: string): Promise<void> {
+  const host = document.createElement('div')
+  host.innerHTML = markup
+  document.body.append(host)
+  const reported: string[] = []
+  const error = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+    reported.push(args.map(String).join(' '))
+  })
+  const hydrated = hydrateRoot(host, <Probe />, {
+    onRecoverableError: (failure) => reported.push(String(failure)),
+  })
+  try {
+    const element = probe(host)
+    await vi.waitFor(() => expect(read(host)).toBe('dark/dark'))
+    // React kept the server's element and reported no mismatch.
+    expect(probe(host)).toBe(element)
+    expect(reported).toEqual([])
+  } finally {
+    error.mockRestore()
+    hydrated.unmount()
+    host.remove()
+  }
+}

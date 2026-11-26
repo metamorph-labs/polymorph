@@ -1,3 +1,4 @@
+import { readdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import react from '@vitejs/plugin-react'
@@ -5,7 +6,7 @@ import { defineConfig, type Plugin } from 'vite'
 
 // Imported by path rather than by package name so Vite's config loader inlines
 // the TypeScript source instead of handing it to Node.
-import { PREPAINT_SCRIPT } from '../../packages/theme/src/runtime'
+import { prepaintScript } from '../../packages/theme/src/runtime'
 import { composerSave } from './src/composer/save-endpoint'
 import { studioSave } from './src/studio/save-endpoint'
 
@@ -13,15 +14,37 @@ const src = (p: string) => fileURLToPath(new URL(p, import.meta.url))
 
 /**
  * Resolves the persisted theme and mode before first paint. The script is injected rather than
- * pasted into index.html so that it stays in step with the runtime that writes those keys.
+ * pasted into index.html so that it stays in step with the runtime that writes those keys. It is
+ * built with each house system's default mode and the system a first visit opens in, as
+ * `src/themes.ts` hands hydration the same, so a reader who has not chosen a mode sees the
+ * system's from the first paint. It is built on each page load, so an edit to a system file
+ * reaches the next reload.
  */
 function prepaintTheme(): Plugin {
   return {
     name: 'pm-prepaint-theme',
     transformIndexHtml() {
-      return [{ tag: 'script', children: PREPAINT_SCRIPT, injectTo: 'head-prepend' }]
+      return [{ tag: 'script', children: housePrepaint(), injectTo: 'head-prepend' }]
     },
   }
+}
+
+/** The pre-paint script for the systems in `design/systems/`, opening in `design/defaults.json`'s. */
+function housePrepaint(): string {
+  const dir = src('../../design/systems')
+  const modes = readdirSync(dir)
+    .filter((file) => file.endsWith('.json'))
+    .map((file) => {
+      const system = JSON.parse(readFileSync(`${dir}/${file}`, 'utf8')) as {
+        name: string
+        defaultMode: 'light' | 'dark' | 'system'
+      }
+      return [system.name, system.defaultMode] as const
+    })
+  const defaults = JSON.parse(readFileSync(src('../../design/defaults.json'), 'utf8')) as {
+    system: string
+  }
+  return prepaintScript({ modes: Object.fromEntries(modes), system: defaults.system })
 }
 
 /**

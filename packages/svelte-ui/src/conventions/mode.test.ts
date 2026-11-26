@@ -1,7 +1,7 @@
 import { flushSync } from 'svelte'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { DATA_ATTRS, setMode, STORAGE_KEYS, teardownTheme } from '@polymorph/svelte'
+import { DATA_ATTRS, hydrateTheme, setMode, STORAGE_KEYS, teardownTheme } from '@polymorph/svelte'
 
 import { render } from '../mount'
 import ModeHarness from '../testing/ModeHarness.svelte'
@@ -37,5 +37,23 @@ describe('useMode', () => {
     setMode('system')
     flushSync()
     expect(read(host)).toMatch(/^system\/(light|dark)$/)
+  })
+})
+
+describe('useMode on a first visit', () => {
+  it('reads the default hydration applied on its first render, under a system that opens dark', async () => {
+    hydrateTheme('terminal', {
+      systems: { terminal: 'petrol' },
+      palettes: ['petrol'],
+      modes: { terminal: 'dark' },
+    })
+    try {
+      const { host } = await render(ModeHarness, {})
+      expect(read(host)).toBe('dark/dark')
+      expect(localStorage.getItem(STORAGE_KEYS.mode)).toBeNull()
+    } finally {
+      root.removeAttribute(DATA_ATTRS.system)
+      root.removeAttribute(DATA_ATTRS.palette)
+    }
   })
 })

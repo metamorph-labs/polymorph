@@ -77,7 +77,9 @@ final class CatalogueTests: XCTestCase {
     XCTAssertEqual(theme.density.standard.space[4], theme.density.standard.space.s4)
     XCTAssertEqual(theme.defaultDensity, theme.density[theme.axes.density])
     XCTAssertEqual(theme.motion.none.duration.overlay, 0)
-    XCTAssertEqual(theme.preferredColorScheme, .light)
+    // plain follows the device until the reader chooses, and terminal opens dark.
+    XCTAssertNil(theme.preferredColorScheme)
+    XCTAssertEqual(PMTheme.terminal_petrol.preferredColorScheme, .dark)
     XCTAssertEqual(theme.colors.accentBg.resolved(in: .dark), theme.colors.accentBg.dark)
     // A weight between the nine is matched as CSS matches it: from 400 up, below it down.
     let style = { (wght: Int) in

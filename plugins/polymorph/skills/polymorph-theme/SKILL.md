@@ -173,10 +173,12 @@ npx -y @metamorph-labs/polymorph@1.0.18 theme propose "as shipped" --based-on jo
 
 Every pairing has a light and a dark mode, both derived from the one palette, so there is no dark
 palette to write. The mode is `data-mode` on `<html>`, which the pre-paint script sets
-before the first paint: to the reader's stored choice, or on a first visit to the operating
-system's mode. The system's `defaultMode` does not change a first visit. It gives the colours of a
-page where nothing sets `data-mode`, and no setting opens a first visit in one mode whatever the
-operating system says.
+before the first paint: to the reader's stored choice, or on a first visit to the system's
+`defaultMode`. `light` and `dark` open a first visit in that mode whatever the operating
+system's mode, and `system` follows the operating system's mode as it changes. Hydration applies
+the same default and does not store it, so the reader wears it until they choose a mode. To open
+an app dark, set `defaultMode` to `dark` in the system document; the Vite plugin and `add`
+build the pre-paint script from it. In the catalogue, terminal opens dark, and every other system says `system`.
 
 - A light and dark toggle is `ModeSwitch`: `<ModeSwitch label="Appearance" />` offers
   light, dark and system, and applies and stores the choice itself. It sits in a toolbar, a menu's

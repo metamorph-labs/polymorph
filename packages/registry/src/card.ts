@@ -528,12 +528,17 @@ export function renderSystemCard(registry: Registry, options: CardOptions = {}):
     write(`- **${axis.name}** — ${axis.values.join(' | ')}${exposed}`)
   }
 
-  write('', '**Systems.** `(kind, mode) — default palette · axes` in the order above.', '')
+  write(
+    '',
+    '**Systems.** `(kind, mode) — default palette · axes` in the order above. The mode is a ' +
+      'first visit’s; without one it follows the device.',
+    '',
+  )
   for (const system of registry.theme.systems) {
     const axes = registry.theme.axes.map((axis) => system.axes[axis.name]).join(', ')
-    write(
-      `- **${system.name}** (${system.kind}, ${system.defaultMode}) — ${system.defaultPalette} · ${axes}`,
-    )
+    // `system` is written as no mode, so the word cannot be read as a design system.
+    const mode = system.defaultMode === 'system' ? '' : `, ${system.defaultMode}`
+    write(`- **${system.name}** (${system.kind}${mode}) — ${system.defaultPalette} · ${axes}`)
   }
 
   write('', '**Palettes.**', '')

@@ -18,7 +18,7 @@ extension PMTheme {
       motionTemperament: .expressive,
       ornament: "minimal"
     ),
-    defaultMode: .light,
+    defaultMode: .system,
     chartCap: 3,
     fonts: PMFonts(
       body: PMFont(

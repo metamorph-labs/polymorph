@@ -14,7 +14,7 @@ import { buildRegistry, type Registry } from '@polymorph/registry'
 import { afterAll, describe, expect, it } from 'vitest'
 
 import { main, run } from './cli'
-import { elementsThemeSheet, noBuildFiles } from './elements'
+import { elementsPrepaint, elementsThemeSheet, noBuildFiles } from './elements'
 import { digest, readManifest } from './manifest'
 import { ELEMENTS_DIR, planInstall } from './plan'
 
@@ -142,7 +142,7 @@ describe('polymorph init --framework elements', () => {
     const html = read(site, 'public/index.html')
     const head = html.slice(html.indexOf('<head>'), html.indexOf('</head>'))
     // The stored theme choice runs before any stylesheet resolves.
-    expect(head.split('\n')[1]).toContain(registry.theme.prepaint)
+    expect(head.split('\n')[1]).toContain(elementsPrepaint(registry))
     expect(head).toContain('<link rel="stylesheet" href="polymorph/polymorph.css" />')
     expect(head).toContain('<link rel="stylesheet" href="polymorph/theme.css" />')
     expect(head).toContain('<script type="module" src="polymorph/polymorph.js"></script>')
@@ -154,6 +154,17 @@ describe('polymorph init --framework elements', () => {
       expect(html).toContain(`<${tag}`)
     }
     expect(html).toContain("addEventListener('poly-click'")
+  })
+
+  it('inlines the script built with each house system’s default mode', () => {
+    const script = elementsPrepaint(registry)
+    for (const system of registry.theme.systems) {
+      if (system.defaultMode === 'light' || system.defaultMode === 'dark') {
+        expect(script, system.name).toContain(`"${system.name}":"${system.defaultMode}"`)
+      }
+    }
+    // The page names its system on `<html>`, so the script names no fallback.
+    expect(script).toContain("n=t||d.getAttribute('data-system'),")
   })
 
   it('records every copy with its source and hash, and the sheet as generated', () => {

@@ -2,7 +2,13 @@ import { getAllByRole, getByRole } from '@testing-library/dom'
 import { userEvent } from 'vitest/browser'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
-import { getModePreference, setMode, STORAGE_KEYS, teardownTheme } from '@polymorph/engine'
+import {
+  getModePreference,
+  hydrateTheme,
+  setMode,
+  STORAGE_KEYS,
+  teardownTheme,
+} from '@polymorph/engine'
 import { installTestTheme } from '@polymorph/engine/testing'
 
 /**
@@ -145,6 +151,26 @@ export function modeSwitchLaw({ shell, mount }: ModeSwitchLaw): void {
     it('shows System where nothing is stored', async () => {
       await mounted()
       expect(checked()).toBe('System')
+    })
+
+    it('shows the system’s default where nothing is stored, and stores only a press', async () => {
+      stubScheme(false)
+      // A first visit to a page whose system opens dark, on a light device. The test theme wears
+      // pastel with amethyst, so hydration keeps that pairing.
+      hydrateTheme('pastel', {
+        systems: { pastel: 'amethyst' },
+        palettes: ['amethyst'],
+        modes: { pastel: 'dark' },
+      })
+      await mounted()
+      expect(checked()).toBe('Dark')
+      expect(root.getAttribute('data-mode')).toBe('dark')
+      expect(localStorage.getItem(STORAGE_KEYS.mode)).toBeNull()
+
+      await userEvent.click(segment('System'))
+      await vi.waitFor(() => expect(checked()).toBe('System'))
+      expect(root.getAttribute('data-mode')).toBe('light')
+      expect(localStorage.getItem(STORAGE_KEYS.mode)).toBe('system')
     })
 
     it('sets the mode on a press, stores it, and reports it', async () => {

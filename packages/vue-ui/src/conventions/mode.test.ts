@@ -2,7 +2,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createSSRApp, defineComponent, effectScope, h, nextTick } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 
-import { DATA_ATTRS, setMode, STORAGE_KEYS, teardownTheme, useMode } from '@polymorph/vue'
+import {
+  DATA_ATTRS,
+  hydrateTheme,
+  setMode,
+  STORAGE_KEYS,
+  teardownTheme,
+  useMode,
+} from '@polymorph/vue'
 
 import { mount } from '../mount'
 
@@ -65,27 +72,50 @@ describe('useMode on a server and while Vue hydrates', () => {
     // What the pre-paint script leaves for a reader who chose dark on an earlier visit.
     localStorage.setItem(STORAGE_KEYS.mode, 'dark')
     root.setAttribute(DATA_ATTRS.mode, 'dark')
+    await hydratesToDark(html)
+  })
 
-    const mismatches: string[] = []
-    const record = (...args: unknown[]) => {
-      if (args.some((arg) => typeof arg === 'string' && arg.includes('Hydration')))
-        mismatches.push(String(args[0]))
-    }
-    const warn = vi.spyOn(console, 'warn').mockImplementation(record)
-    const error = vi.spyOn(console, 'error').mockImplementation(record)
-    const host = document.createElement('div')
+  it('hydrates with no mismatch on a first visit whose system opens dark, then renders it', async () => {
+    const html = await renderToString(createSSRApp(Probe))
+    expect(html).toBe('<output data-preference="system" data-applied="light"></output>')
+    // What a first visit leaves: the pre-paint script painted the system's dark default, and
+    // hydration applied it without storing it.
+    hydrateTheme('terminal', {
+      systems: { terminal: 'petrol' },
+      palettes: ['petrol'],
+      modes: { terminal: 'dark' },
+    })
     try {
-      host.innerHTML = html
-      document.body.append(host)
-      const app = createSSRApp(Probe)
-      app.mount(host)
-      expect(mismatches).toEqual([])
-      await vi.waitFor(() => expect(read(host)).toBe('dark/dark'))
-      app.unmount()
+      await hydratesToDark(html)
+      expect(localStorage.getItem(STORAGE_KEYS.mode)).toBeNull()
     } finally {
-      warn.mockRestore()
-      error.mockRestore()
-      host.remove()
+      root.removeAttribute(DATA_ATTRS.system)
+      root.removeAttribute(DATA_ATTRS.palette)
     }
   })
 })
+
+/** Hydrates the server's markup and waits for the document's dark reading, with no mismatch. */
+async function hydratesToDark(html: string): Promise<void> {
+  const mismatches: string[] = []
+  const record = (...args: unknown[]) => {
+    if (args.some((arg) => typeof arg === 'string' && arg.includes('Hydration')))
+      mismatches.push(String(args[0]))
+  }
+  const warn = vi.spyOn(console, 'warn').mockImplementation(record)
+  const error = vi.spyOn(console, 'error').mockImplementation(record)
+  const host = document.createElement('div')
+  try {
+    host.innerHTML = html
+    document.body.append(host)
+    const app = createSSRApp(Probe)
+    app.mount(host)
+    expect(mismatches).toEqual([])
+    await vi.waitFor(() => expect(read(host)).toBe('dark/dark'))
+    app.unmount()
+  } finally {
+    warn.mockRestore()
+    error.mockRestore()
+    host.remove()
+  }
+}

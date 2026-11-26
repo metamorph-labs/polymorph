@@ -20,7 +20,7 @@ internal object Journal_Umber {
                 motionTemperament = "subtle",
                 ornament = "grain",
             ),
-            defaultMode = "light",
+            defaultMode = "system",
             chartCap = 3,
         ),
         fonts = PMFonts(

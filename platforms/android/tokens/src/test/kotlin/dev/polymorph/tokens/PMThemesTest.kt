@@ -64,7 +64,7 @@ class PMThemesTest {
         }
     }
 
-    /** The mode an app passes to draw the pairing as the web does where nothing sets one. */
+    /** The mode an app passes to draw the pairing as the web draws a first visit. */
     @Test
     fun thePreferredModeIsThePairings() {
         val modes = PMThemes.catalogue.map { it.pairing.defaultMode to it.preferredDark }.toSet()
@@ -74,7 +74,9 @@ class PMThemesTest {
         }
         val darkFirst = PMThemes.catalogue.first { it.pairing.defaultMode == "dark" }
         assertEquals(true, darkFirst.preferredDark, darkFirst.pairing.name)
-        assertEquals(false, PMThemes.plain_neutral.preferredDark)
+        // plain follows the device until the reader chooses, and terminal opens dark.
+        assertEquals(null, PMThemes.plain_neutral.preferredDark)
+        assertEquals(true, PMThemes.terminal_petrol.preferredDark)
     }
 
     @Test

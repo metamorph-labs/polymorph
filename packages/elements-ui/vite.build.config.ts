@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig, type Plugin, type UserConfig } from 'vite'
 import solid from 'vite-plugin-solid'
 
-import { admitTheme, PREPAINT_SCRIPT } from '../theme/src/index'
+import { admitTheme, prepaintScript, type ModePreference } from '../theme/src/index'
 import { dedupeStylesheet } from './dedupe-stylesheet'
 import { reachThroughPlugin } from './reach-through'
 
@@ -153,9 +153,25 @@ function noBuildAssets(): Plugin {
       for (const [system, css] of themeSheets()) {
         this.emitFile({ type: 'asset', fileName: `themes/${system}.css`, source: css })
       }
-      this.emitFile({ type: 'asset', fileName: 'prepaint.js', source: `${PREPAINT_SCRIPT}\n` })
+      this.emitFile({ type: 'asset', fileName: 'prepaint.js', source: `${noBuildPrepaint()}\n` })
     },
   }
+}
+
+/**
+ * The prepaint script of a page with no build, built with each house system's
+ * default mode, so a page that wears a system that opens dark is dark from
+ * the first paint. The page names its pairing on `<html>`, where the script
+ * reads it, so it needs no fallback system.
+ */
+function noBuildPrepaint(): string {
+  const modes = readdirSync(path('../../design/systems'))
+    .filter((name) => name.endsWith('.json'))
+    .map((file) => {
+      const system = designDocument(`systems/${file}`)
+      return [String(system['name']), system['defaultMode'] as ModePreference] as const
+    })
+  return prepaintScript({ modes: Object.fromEntries(modes) })
 }
 
 /**

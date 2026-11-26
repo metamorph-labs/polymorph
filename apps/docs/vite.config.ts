@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 
@@ -8,19 +8,42 @@ import { defineConfig, type Plugin } from 'vite'
 
 // Imported by path rather than by package name so Vite's config loader inlines
 // the TypeScript source instead of handing it to Node. The workbench does the same.
-import { PREPAINT_SCRIPT } from '../../packages/theme/src/runtime'
+import { prepaintScript } from '../../packages/theme/src/runtime'
 import { llmsPaths, readLlmsFiles } from './src/llms'
 
 const src = (p: string) => fileURLToPath(new URL(p, import.meta.url))
 
-/** Resolves the persisted theme and mode before first paint, so no unthemed flash shows. */
+/**
+ * Resolves the persisted theme and mode before first paint, so no unthemed flash shows. It is
+ * built with each house system's default mode and the system a first visit opens in, as
+ * `src/themes.ts` hands hydration the same, so a reader who has not chosen a mode sees the
+ * system's from the first paint.
+ */
 function prepaintTheme(): Plugin {
   return {
     name: 'pm-prepaint-theme',
     transformIndexHtml() {
-      return [{ tag: 'script', children: PREPAINT_SCRIPT, injectTo: 'head-prepend' }]
+      return [{ tag: 'script', children: housePrepaint(), injectTo: 'head-prepend' }]
     },
   }
+}
+
+/** The pre-paint script for the systems in `design/systems/`, opening in `design/defaults.json`'s. */
+function housePrepaint(): string {
+  const dir = src('../../design/systems')
+  const modes = readdirSync(dir)
+    .filter((file) => file.endsWith('.json'))
+    .map((file) => {
+      const system = JSON.parse(readFileSync(`${dir}/${file}`, 'utf8')) as {
+        name: string
+        defaultMode: 'light' | 'dark' | 'system'
+      }
+      return [system.name, system.defaultMode] as const
+    })
+  const defaults = JSON.parse(readFileSync(src('../../design/defaults.json'), 'utf8')) as {
+    system: string
+  }
+  return prepaintScript({ modes: Object.fromEntries(modes), system: defaults.system })
 }
 
 /**

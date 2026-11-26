@@ -285,12 +285,15 @@ What the plugin does:
 - **One main stylesheet** holds every system paired with its own default palette.
   `virtual:polymorph/theme` imports it, imports the font packages the pairings name (install
   them; `polymorph theme validate` lists them, and `fonts: false` leaves the imports to you), and
-  calls `hydrateTheme`, which applies a stored choice.
+  calls `hydrateTheme`, which applies a stored choice, and with no mode stored the worn system's
+  `defaultMode`, which it does not store.
 - **Every other pairing** compiles to its own small stylesheet, loaded the first time it is
   chosen by `ensurePairing(system, palette)`.
 - **`index.html`** gets the default `data-system` and `data-palette` on `<html>` and the
-  pre-paint script inlined at the top of `<head>`. A first visit therefore renders with the
-  default theme from the first paint, and a returning visit renders with its stored choice.
+  pre-paint script inlined at the top of `<head>`, built with each listed system's `defaultMode`
+  (`prepaintScript`). A first visit therefore renders with the default theme in the system's
+  default mode from the first paint (dark for a system whose `defaultMode` is `dark`, the
+  device's mode for `system`), and a returning visit renders with its stored choice.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
@@ -322,7 +325,7 @@ read `useMode` from the foundation and call `setMode`
 
 | Export | What it is |
 | --- | --- |
-| `catalogue` | `{ systems, palettes }`: each listed system mapped to its default palette, and the name of every listed palette. A theme picker reads its choices from it instead of repeating the plugin's lists. The theme module checks a stored choice against it, so a stored name that was renamed or removed falls back to the default |
+| `catalogue` | `{ systems, palettes, modes }`: each listed system mapped to its default palette, the name of every listed palette, and each listed system mapped to its `defaultMode`. A theme picker reads its choices from it instead of repeating the plugin's lists. The theme module checks a stored choice against it, so a stored name that was renamed or removed falls back to the default, and applies the worn system's mode to a reader who has not chosen one |
 | `defaultSystem` | the system a first visit wears: the `defaultSystem` option, or the first of `systems` |
 | `ensurePairing(system, palette)` | loads a pairing's stylesheet unless the main one has it, and resolves when it has loaded |
 
@@ -366,8 +369,11 @@ setPalette(admission.palette.name)
 That path ships the theme engine to every visitor: `zod`, `culori` and the derivation code, which
 `pnpm size` holds to the `runtime-engine` fixture's ceiling of 54 kB of gzipped JavaScript
 (`scripts/size/budgets.json`). Use it for themes a build
-cannot know, alongside compiled ones if you have both. On this path, inline `PREPAINT_SCRIPT` in
-`<head>` yourself, so the theme and light/dark mode resolve before first paint.
+cannot know, alongside compiled ones if you have both. On this path, inline the pre-paint script
+in `<head>` yourself, so the theme and light/dark mode resolve before first paint:
+`prepaintScript({ modes, system })` from `@polymorph/engine/runtime`, with each system's
+`defaultMode` you know before any script runs, or `PREPAINT_SCRIPT`, which follows the device for
+a reader who stored no mode. Pass the same modes to `hydrateTheme` as `installed.modes`.
 [theming.md](theming.md) explains systems, palettes, modes and the laws.
 
 **Values the theme does not derive.** Every `--pm-*` value comes from the system and palette
@@ -411,7 +417,7 @@ import { Button, Stack, PageHeader } from '@polymorph/react-ui'
 | `@polymorph/react` | the React foundation: everything `@polymorph/engine` exports, plus the icon gateway (`Icon`, `BrandMark`) and the conventions members are written with |
 | `@polymorph/react/style.css` | Icon's stylesheet, which `Icon` imports itself. No application needs this entry |
 | `@polymorph/engine` | the theme engine (including runtime admission) and runtime, the framework-free conventions, the icon role data — no React |
-| `@polymorph/engine/runtime` | the theme runtime alone — `setSystem`, `setPalette`, `setMode`, `hydrateTheme`, `PREPAINT_SCRIPT`, `DATA_ATTRS` and the rest — with none of the theme engine's derivation code (no `zod`, no `culori`) |
+| `@polymorph/engine/runtime` | the theme runtime alone — `setSystem`, `setPalette`, `setMode`, `hydrateTheme`, `PREPAINT_SCRIPT`, `prepaintScript`, `DATA_ATTRS` and the rest — with none of the theme engine's derivation code (no `zod`, no `culori`) |
 | `@polymorph/engine/motion` | the motion engine, with no framework in it — for member internals, not application code ([motion.md](motion.md)) |
 | `@polymorph/engine/qr`, `@polymorph/engine/charts`, `@polymorph/engine/markdown` | the helpers one member family draws with, with no framework in them: the QR encoder, the chart engine (the chart grammar, the scales and paths over `d3-scale`, `d3-array` and `d3-shape`, each chart member's model and the frame's state machines), and the Markdown parser. Off the root, so an application that imports the engine for its theme does not load them; every foundation re-exports them |
 | `@polymorph/engine/rich-text` | the rich-text document an application stores: `parseRichText`, which reads any JSON as a document and reports what it repaired, `normalizeRichText`, `serializeRichText`, `richTextHref`, which says which link targets a document may hold, and the projections to text (`richTextPlainText`, `richTextExcerpt`, `richTextLength`, `isRichTextEmpty`, `richTextEntities`). No dependency and no DOM, so a server checks and indexes documents with the code the members draw them with; every foundation re-exports it |
@@ -705,7 +711,8 @@ build, so `polymorph add` compiles the pairing into the repository:
 node ../polymorph/packages/cli/bin/polymorph.js add theme:plain
 ```
 
-It writes the compiled sheet, the base layer and a theme module under `src/polymorph/themes/`,
+It writes the compiled sheet, the base layer, a theme module and the pre-paint script built for
+the installed systems (`prepaint.ts`) under `src/polymorph/themes/`,
 adds the system's font packages to `package.json`, and writes the lint fragments and links them
 into the application's ESLint config ([Vendoring](#vendoring)). A Next.js application has no
 `index.html` and no entry module, so the install leaves two steps to the root layout, and says
@@ -715,9 +722,9 @@ so:
 // app/layout.tsx, a server component
 import type { ReactNode } from 'react'
 
-import { PREPAINT_SCRIPT } from '@polymorph/engine/runtime'
 import { TooltipProvider } from '@polymorph/react-ui'
 
+import { PREPAINT_SCRIPT } from '../src/polymorph/themes/prepaint'
 import { Theme } from './theme'
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -752,16 +759,18 @@ export function Theme() {
 - `data-system` and `data-palette` name the pairing the install compiled, so the server's markup
   matches a theme block before any script runs.
 - The pre-paint script is inline in `<head>`. It applies the reader's stored pairing, mode,
-  density and motion before the first paint, and the system's light or dark setting when no mode
-  is stored. It therefore writes attributes on `<html>` that the server did not render, and
+  density and motion before the first paint, and the system's `defaultMode` when no mode is
+  stored: dark for a system that opens dark, and the device's setting for `system`. The install
+  builds it from the installed systems into `prepaint.ts`, which imports nothing, so the server
+  layout can import it. It writes attributes on `<html>` that the server did not render, and
   `suppressHydrationWarning` says so. The attribute covers that one element and nothing below it.
 - The theme module is where the stylesheets enter the build: it imports the compiled sheet, the
   base layer and the fonts. A client component imports it, and Next.js links those stylesheets
   from every page under the layout. Do not import them in `app/layout.tsx` instead: a CSS import
   in application code is a `polymorph/no-app-css` report.
 - `installThemes()` reads `document` and the stored choices, so it runs in an effect. It replaces
-  a stored system or palette the install no longer has, and keeps the mode following the
-  system's setting.
+  a stored system or palette the install no longer has, applies the system's `defaultMode` to a
+  reader who has not chosen one, and keeps a `system` mode following the device.
 - A Tooltip needs a `TooltipProvider` above it, as in any React application. The provider is a
   client member, and a server layout renders it.
 
@@ -1197,7 +1206,10 @@ npx -y @metamorph-labs/polymorph@^<version> --help
   A stylesheet a script inserted would arrive after the first paint.
 - **The prepaint script runs first in `<head>`,** inline or as `<script src="polymorph/prepaint.js">`,
   so a stored mode, system or palette applies before the first paint. `<html data-system
-  data-palette>` names the pairing the page wears.
+  data-palette>` names the pairing the page wears. The script is built with each house system's
+  `defaultMode`, so a page that wears `terminal` opens dark for a reader who has not chosen a
+  mode. Nothing on the page calls `hydrateTheme`, so a `<poly-mode-switch>` there shows System
+  until the reader chooses, even on a page that opened dark.
 - **`polymorph.js` is a module script.** It defines every `poly-*` tag at once and loads each
   member's code, a chunk of its own, the first time one of its elements renders, so a page loads
   the members it uses. `polymorph-all.js` loads every member in one file. A module script does not
@@ -1613,7 +1625,8 @@ theme in the browser and any bundler can serve the result. Under `<dir>/themes/`
 | `systems/<name>.json`, `palettes/<name>.json` | the vendored system and palette documents — yours to edit |
 | `theme.css` | every installed system with its own default palette |
 | `pairings/<system>--<palette>.css` | each other pairing's sheet, with a small loader module `pairings/<system>--<palette>.ts` beside it |
-| `index.ts` | imports the base layer, the fonts and `theme.css`; uses only `@polymorph/engine/runtime`; exports `installThemes()` (the install patches your entry to call it) and `ensurePairing(system, palette)`, which returns a Promise to await before switching to a pairing |
+| `index.ts` | imports the base layer, the fonts and `theme.css`; uses only `@polymorph/engine/runtime`; exports `installThemes()` (the install patches your entry to call it) and `ensurePairing(system, palette)`, which returns a Promise to await before switching to a pairing. Hydration's catalogue carries each system's `defaultMode` |
+| `prepaint.ts` | exports `PREPAINT_SCRIPT`, the pre-paint script built with each installed system's `defaultMode`, which the install also inlines in `index.html` |
 
 The sheets are generated. After editing a vendored system or palette, run `polymorph update` to
 recompile them from your copies. An edit that breaks a law fails the update with the law's own

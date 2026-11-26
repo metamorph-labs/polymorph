@@ -25,6 +25,14 @@ export function themeSkill(registry: Registry, run: string): SkillFile[] {
   if (exact === held || exact === roundest) {
     throw new SkillFactError(`geometry has no value apart from ${held} and ${roundest} to name`)
   }
+  // The catalogue systems that open a first visit in a mode of their own rather than the device's.
+  const fixedModes = registry.theme.systems
+    .filter((system) => system.defaultMode !== 'system')
+    .map((system) => `${system.name} opens ${system.defaultMode}`)
+  const fixed =
+    fixedModes.length === 0
+      ? 'Every catalogue system says `system`.'
+      : `In the catalogue, ${all(fixedModes)}, and every other system says \`system\`.`
   // The Vite plugin's function, recorded once and named in code font and in a call.
   const plugin = f.x('polymorphTheme', '@polymorph/engine/vite')
   const call = `\`${plugin.slice(1, -1)}({ systems, palettes })\``
@@ -180,10 +188,12 @@ ${commands(run, 'theme propose "as shipped" --based-on journal/umber --save --di
 
 Every pairing has a light and a dark mode, both derived from the one palette, so there is no dark
 palette to write. The mode is \`data-mode\` on \`<html>\`, which the pre-paint script sets
-before the first paint: to the reader's stored choice, or on a first visit to the operating
-system's mode. The system's \`defaultMode\` does not change a first visit. It gives the colours of a
-page where nothing sets \`data-mode\`, and no setting opens a first visit in one mode whatever the
-operating system says.
+before the first paint: to the reader's stored choice, or on a first visit to the system's
+\`defaultMode\`. \`light\` and \`dark\` open a first visit in that mode whatever the operating
+system's mode, and \`system\` follows the operating system's mode as it changes. Hydration applies
+the same default and does not store it, so the reader wears it until they choose a mode. To open
+an app dark, set \`defaultMode\` to \`dark\` in the system document; the Vite plugin and \`add\`
+build the pre-paint script from it. ${fixed}
 
 - A light and dark toggle is ${f.m('ModeSwitch')}: \`<ModeSwitch label="Appearance" />\` offers
   light, dark and system, and applies and stores the choice itself. It sits in a toolbar, a menu's

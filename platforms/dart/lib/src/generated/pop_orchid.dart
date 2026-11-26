@@ -20,7 +20,7 @@ const PMTheme theme = PMTheme(
       motionTemperament: 'expressive',
       ornament: 'minimal',
     ),
-    defaultMode: 'light',
+    defaultMode: 'system',
     chartCap: 2,
   ),
   fonts: PMFonts(

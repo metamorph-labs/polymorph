@@ -117,8 +117,9 @@ ProvidePMTheme(theme, dark = theme.preferredDark) { TicketStatus(waiting) }
 
 `ProvidePMTheme` provides `LocalPMTheme` and Material 3's bridge (`PMMaterialTheme`), so the app's
 own Material components match the members. It follows the system's mode unless `dark` is given;
-`theme.preferredDark` is the pairing's own mode (`pairing.defaultMode`), which the web applies
-where nothing sets one, and null for a pairing that follows the device. The bridge also sets the
+`theme.preferredDark` is the pairing's own mode (`pairing.defaultMode`), which the web applies to
+a reader who has not chosen one, and null for a pairing that follows the device: every house
+pairing but `terminal_petrol`, which is true. The bridge also sets the
 content colour (`LocalContentColor`) to `text.primary`, in which Spinner, Icon and Material's text
 draw when nothing names their colour. `CompositionLocalProvider(LocalPMTheme provides theme)` alone
 serves the members, which draw their Material parts inside the bridge themselves, but leaves the

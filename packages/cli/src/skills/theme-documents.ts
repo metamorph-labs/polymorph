@@ -123,7 +123,7 @@ export function documentsReference(registry: Registry, run: string): string {
       mono: { family: family('mono') },
     },
     defaultPalette: 'acme-blue',
-    defaultMode: 'light',
+    defaultMode: 'system',
     kind: 'designed',
     overrides: { type: { base: 14, sm: 13, xs: 12 }, radius: { md: 10 } },
   }
@@ -183,10 +183,10 @@ ${pretty(example)}
 \`\`\`
 
 \`name\` is kebab-case and becomes \`data-system\`. \`defaultPalette\` is the palette worn with the
-system unless another is chosen. \`defaultMode\` (\`light\`, \`dark\` or \`system\`) gives the colours
-of a page where nothing sets \`data-mode\`, with \`system\` read as light. On the web the pre-paint
-script sets \`data-mode\` before the first paint, to the reader's stored choice or on a first visit
-to the operating system's mode, so \`defaultMode\` does not decide a first visit. \`kind\` is
+system unless another is chosen. \`defaultMode\` (\`light\`, \`dark\` or \`system\`) is the mode of a
+reader who has not chosen one: a first visit on the web opens in it, and on iOS and Android it is
+the theme's preferred mode. \`light\` and \`dark\` are that mode, and \`system\` follows the device.
+A reader's own choice is stored and wins. \`kind\` is
 \`designed\`. A system holds no colour: a colour seed
 in it is refused.
 

@@ -38,7 +38,8 @@ press's colour seeds are in `design/palettes/carmine.json`.
 - **`neutralTint: 0.003`**: the brightest paper in the set. Near-pure neutrals make the ink
   the darkest element and the wine the only warmth.
 - **No `gradientHue`**: a broadsheet page has no wash.
-- **defaultMode: `light`.** Dark derives a warm-black page with the ink flipped to paper and
+- **defaultMode: `system`.** A first visit wears the device's mode and follows it until the
+  reader chooses one. Dark derives a warm-black page with the ink flipped to paper and
   the wine unchanged (mode-pinned solids).
 
 ## Fonts — and the italic display slot

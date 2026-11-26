@@ -48,7 +48,8 @@ pastel's colour seeds are in `design/palettes/amethyst.json`.
   hue, as pastel intends.
 - **`chromaBudget: medium`**: humanist, not neon. Peak 0.15 puts `accent.bg` at #926fd4,
   saturated enough for a primary button.
-- **defaultMode: `light`.**
+- **defaultMode: `system`.** A first visit wears the device's mode and follows it until the
+  reader chooses one.
 
 ## Fonts
 

@@ -50,8 +50,8 @@ so one rationale covers both:
   `neutralHue` set explicitly to the accent's hue. White stays white under
   `quiet`, and the other greys lean slightly blue.
 - **`chromaBudget: high`**: one accent, at full brightness.
-- **defaultMode: `light`.** Dark re-derives lawfully and reads as the same
-  system.
+- **defaultMode: `system`.** A first visit wears the device's mode and follows it
+  until the reader chooses one. Dark re-derives lawfully and reads as the same system.
 
 Every palette is lawful on every system, so it is ordinary for two systems to
 share a default palette. This pair is notable because a reader would most expect a

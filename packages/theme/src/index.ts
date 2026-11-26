@@ -345,6 +345,7 @@ export {
   hydrateTheme,
   installThemeCSS,
   PREPAINT_SCRIPT,
+  prepaintScript,
   readMode,
   SERVER_MODE,
   setDensityDefault,
@@ -357,7 +358,7 @@ export {
   teardownTheme,
   watchMode,
 } from './runtime'
-export type { InstalledCatalogue, ModeReading } from './runtime'
+export type { InstalledCatalogue, ModeReading, PrepaintOptions } from './runtime'
 
 export {
   EXAMPLE_PALETTES,

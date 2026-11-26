@@ -7,7 +7,13 @@ import { admitTheme } from '@polymorph/theme'
 import stylelint, { type Config } from 'stylelint'
 import { describe, expect, it } from 'vitest'
 
-import { eslintFragment, stylelintFragment, themeModule, tokenValuesIn } from './emit'
+import {
+  eslintFragment,
+  prepaintModule,
+  stylelintFragment,
+  themeModule,
+  tokenValuesIn,
+} from './emit'
 import {
   addDependencies,
   importThemes,
@@ -339,6 +345,23 @@ describe('the generated files', () => {
     // Hydration can check a stored choice, which needs both sets.
     expect(module_).toContain('"palettes":["amethyst","orchid"]')
     expect(module_).toContain('hydrateTheme(DEFAULT_SYSTEM, INSTALLED)')
+  })
+
+  it('hands hydration each system’s default mode, and `system` for one it is not given', () => {
+    const module_ = themeModule(
+      [system('pastel', 'amethyst'), system('journal', 'umber')],
+      [palette('amethyst'), palette('umber')],
+      null,
+      { pastel: 'dark' },
+    )
+    expect(module_).toContain('"modes":{"journal":"system","pastel":"dark"}')
+  })
+
+  it('writes the pre-paint script as a module a server component can import', () => {
+    const script = '(function(){var a=\'x\',b="y"})()'
+    const module_ = prepaintModule(script)
+    expect(module_).toContain(`export const PREPAINT_SCRIPT = ${JSON.stringify(script)}`)
+    expect(module_).not.toMatch(/^import /m)
   })
 
   it('governs application code and the vendored tree differently', () => {

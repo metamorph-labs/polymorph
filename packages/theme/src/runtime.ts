@@ -122,10 +122,14 @@ export function appendThemeCSS(css: string, pairId: string): void {
 /**
  * Applies a system. The pairing's CSS must already be installed: an app with
  * cross-pairings calls `ensurePairing` first, or no block matches.
+ *
+ * A reader who has not chosen a mode wears the system's default, so while
+ * this document wears a default the mode moves to the new system's.
  */
 export function setSystem(name: string): void {
   apply(DATA_ATTRS.system, name)
   write(STORAGE_KEYS.system, name)
+  if (defaulted && defaultModeOf(name) !== applied) applyDefault(name)
 }
 
 export function setPalette(name: string): void {
@@ -144,12 +148,41 @@ export function getPalette(): string | null {
 let stopWatchingSystem: (() => void) | undefined
 
 /**
- * The preference the last `setMode` applied to this document, or `null` before
- * any. It is held here as well as stored, because storage can refuse the write
- * and another tab can overwrite it, and neither changes what this document
- * wears.
+ * The preference this document wears: the one the last `setMode` applied, or
+ * the system's default that hydration or `setSystem` applied, and `null`
+ * before either. It is held here as well as stored, because storage can
+ * refuse the write and another tab can overwrite it, and neither changes what
+ * this document wears.
  */
 let applied: ModePreference | null = null
+
+/**
+ * Whether `applied` is a system's default rather than a reader's choice. A
+ * default is never stored, so a later change of the default, or a switch of
+ * system, still reaches a reader who never chose.
+ */
+let defaulted = false
+
+/** Each installed system's `defaultMode`, from the catalogue `hydrateTheme` received. */
+let defaultModes: Readonly<Record<string, ModePreference>> = {}
+
+/**
+ * A system's default mode as the catalogue gives it, and `system` for a system
+ * it does not name or before any hydration.
+ */
+function defaultModeOf(system: string | null): ModePreference {
+  if (system === null || !Object.prototype.hasOwnProperty.call(defaultModes, system)) {
+    return 'system'
+  }
+  const mode = defaultModes[system]
+  return mode === 'light' || mode === 'dark' ? mode : 'system'
+}
+
+/** The stored preference, or `null` where nothing valid is stored. */
+function storedMode(): ModePreference | null {
+  const stored = read(STORAGE_KEYS.mode)
+  return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : null
+}
 
 const modeListeners = new Set<() => void>()
 
@@ -167,10 +200,25 @@ function prefersDark(): boolean {
  * current mode, and reapplied when that changes. (Here "system" is the OS
  * setting, not a design system.) Each call, and each change of the OS's mode
  * while `system` is applied, calls the `watchMode` listeners.
+ *
+ * It is the reader's choice, so it is stored, and it wins over every system's
+ * default from then on.
  */
 export function setMode(preference: ModePreference): void {
-  applied = preference
+  defaulted = false
   write(STORAGE_KEYS.mode, preference)
+  applyMode(preference)
+}
+
+/** Applies a system's default mode without storing it. */
+function applyDefault(system: string | null): void {
+  applyMode(defaultModeOf(system))
+  defaulted = true
+}
+
+/** Applies a preference to the document, without storing it. */
+function applyMode(preference: ModePreference): void {
+  applied = preference
   stopWatchingSystem?.()
   stopWatchingSystem = undefined
 
@@ -200,13 +248,15 @@ export function setMode(preference: ModePreference): void {
 
 /**
  * The preference this document wears, which may be `system`: the one the last
- * `setMode` applied, or the stored one before any call. The pre-paint script
- * applies the stored one, so the two agree until a `setMode`.
+ * `setMode` applied, the system's default that hydration applied, or before
+ * either the stored one. With nothing stored it is the worn system's
+ * `defaultMode` where the catalogue hydration received names it, and `system`
+ * where it does not. The pre-paint script applies the same, so the two agree
+ * until a `setMode`.
  */
 export function getModePreference(): ModePreference {
   if (applied !== null) return applied
-  const stored = read(STORAGE_KEYS.mode)
-  return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system'
+  return storedMode() ?? defaultModeOf(getSystem())
 }
 
 /** The mode currently applied. Unlike the preference, it is never `system`. */
@@ -284,6 +334,12 @@ export function setMotionTemperament(temperament: MotionTemperament | null): voi
 export interface InstalledCatalogue {
   systems: Readonly<Record<string, string>>
   palettes: readonly string[]
+  /**
+   * Each system's `defaultMode`: the mode preference of a reader who has not
+   * chosen one. A system it does not name, and every system when it is
+   * absent, follows the device (`system`).
+   */
+  modes?: Readonly<Record<string, ModePreference>>
 }
 
 function defaultPaletteOf(system: string | null, installed?: InstalledCatalogue): string | null {
@@ -336,6 +392,11 @@ function migrateLegacyTheme(installed?: InstalledCatalogue): void {
  * The stale key is cleared, or the next pre-paint would reapply it. Fallbacks
  * are never written back: only `setSystem` or `setPalette` stores a
  * preference, so later default changes still reach this user.
+ *
+ * **The mode.** A stored preference is applied. With none stored, the worn
+ * system's default (`installed.modes`) is applied and not stored, for the same
+ * reason: only `setMode` stores a mode, so a reader who never chose one follows
+ * the system's default, and the next system's after a `setSystem`.
  */
 export function hydrateTheme(fallbackSystem?: string, installed?: InstalledCatalogue): void {
   migrateLegacyTheme(installed)
@@ -372,18 +433,40 @@ export function hydrateTheme(fallbackSystem?: string, installed?: InstalledCatal
   const motion = read(STORAGE_KEYS.motion)
   if (motion) apply(DATA_ATTRS.motion, motion)
 
-  setMode(getModePreference())
+  defaultModes = installed?.modes ?? {}
+  // A choice this document made, then a stored one, then the default.
+  const chosen = applied !== null && !defaulted ? applied : storedMode()
+  if (chosen !== null) setMode(chosen)
+  else applyDefault(getSystem())
 }
 
 /**
  * For tests: releases the `prefers-color-scheme` subscription and forgets the
- * applied preference, so the next read is the stored one.
+ * applied preference and the catalogue's default modes, so the next read is
+ * the stored one.
  */
 export function teardownTheme(): void {
   stopWatchingSystem?.()
   stopWatchingSystem = undefined
   applied = null
+  defaulted = false
+  defaultModes = {}
 }
+
+/**
+ * The pre-paint script, with `unstored` as the expression for the preference
+ * of a reader who stored none, after the declarations in `declare`.
+ */
+const prepaint = (unstored: string, declare = ''): string =>
+  `(function(){try{var d=document.documentElement,s=localStorage,a=function(k,v){d.setAttribute(k,v)},` +
+  `t=s.getItem('${STORAGE_KEYS.system}'),p=s.getItem('${STORAGE_KEYS.palette}'),` +
+  declare +
+  `m=s.getItem('${STORAGE_KEYS.mode}')||${unstored},` +
+  `y=s.getItem('${STORAGE_KEYS.density}'),o=s.getItem('${STORAGE_KEYS.motion}');` +
+  `if(t)a('${DATA_ATTRS.system}',t);if(p)a('${DATA_ATTRS.palette}',p);` +
+  `a('${DATA_ATTRS.mode}',m==='system'?(matchMedia('${DARK_QUERY}').matches?'dark':'light'):m);` +
+  `if(y)a('${DATA_ATTRS.density}',y);` +
+  `if(o)a('${DATA_ATTRS.motion}',o)}catch(e){}})()`
 
 /**
  * Inline this in `<head>`, before any stylesheet, to apply the stored pairing
@@ -394,16 +477,54 @@ export function teardownTheme(): void {
  * it blocks parsing. It applies `pm-system`/`pm-palette` if present and **does
  * no migration**: a legacy visitor sees the fallback until hydration migrates
  * them, which keeps the script simple.
+ *
+ * It knows no system, so a reader who stored no mode follows the device. A
+ * page whose systems open in `light` or `dark` inlines `prepaintScript` instead.
  */
-export const PREPAINT_SCRIPT =
-  `(function(){try{var d=document.documentElement,s=localStorage,a=function(k,v){d.setAttribute(k,v)},` +
-  `t=s.getItem('${STORAGE_KEYS.system}'),p=s.getItem('${STORAGE_KEYS.palette}'),` +
-  `m=s.getItem('${STORAGE_KEYS.mode}')||'system',` +
-  `y=s.getItem('${STORAGE_KEYS.density}'),o=s.getItem('${STORAGE_KEYS.motion}');` +
-  `if(t)a('${DATA_ATTRS.system}',t);if(p)a('${DATA_ATTRS.palette}',p);` +
-  `a('${DATA_ATTRS.mode}',m==='system'?(matchMedia('${DARK_QUERY}').matches?'dark':'light'):m);` +
-  `if(y)a('${DATA_ATTRS.density}',y);` +
-  `if(o)a('${DATA_ATTRS.motion}',o)}catch(e){}})()`
+export const PREPAINT_SCRIPT = prepaint(`'system'`)
+
+/** What `prepaintScript` builds the pre-paint script for. */
+export interface PrepaintOptions {
+  /**
+   * Each system's `defaultMode`, as `InstalledCatalogue.modes` holds it. The
+   * script carries the systems whose default is `light` or `dark`, and every
+   * other system follows the device.
+   */
+  readonly modes?: Readonly<Record<string, ModePreference>>
+  /**
+   * The system a page wears when nothing is stored and `<html>` names none in
+   * its markup: the fallback `hydrateTheme` is given.
+   */
+  readonly system?: string
+}
+
+/**
+ * The pre-paint script for a page that knows its systems' default modes. With
+ * nothing stored it applies the mode hydration applies: the worn system's
+ * default, where the worn system is the stored one, else `<html data-system>`
+ * as the page's markup writes it, else `system`. So a page whose system opens
+ * dark is dark from the first paint.
+ *
+ * It is `PREPAINT_SCRIPT` when no system's default is `light` or `dark`. Each
+ * such system adds its name and mode to the script, which blocks parsing, so
+ * `runtime.test.ts` holds the script built for the house catalogue to a budget
+ * of its own.
+ */
+export function prepaintScript(options: PrepaintOptions = {}): string {
+  const fixed = Object.entries(options.modes ?? {})
+    .filter(([, mode]) => mode === 'light' || mode === 'dark')
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+  if (fixed.length === 0) return PREPAINT_SCRIPT
+  // JSON is a JavaScript literal. `<` is escaped so a name cannot close the inline script.
+  const literal = (value: unknown) => JSON.stringify(value).replace(/</g, '\\u003c')
+  const worn =
+    `t||d.getAttribute('${DATA_ATTRS.system}')` +
+    (options.system === undefined ? '' : `||${literal(options.system)}`)
+  return prepaint(
+    `M.hasOwnProperty(n)&&M[n]||'system'`,
+    `n=${worn},M=${literal(Object.fromEntries(fixed))},`,
+  )
+}
 
 /** True when the OS prefers dark. For toolbars showing "system (dark)". */
 export function systemPrefersDark(): boolean {
