@@ -1432,9 +1432,33 @@ theme known only at run time reaches the device as a token document, which
 
 The Compose members ship in one Gradle build, `platforms/android`: `:tokens`
 (`dev.polymorph.tokens`, plain Kotlin, every house pairing as a `PMTheme`) and `:ui`
-(`dev.polymorph.ui`, the members, on Compose Multiplatform with `jvm` and `android` targets). The
-build is not published to a repository. An app reaches it through a checkout of this repository
-or a git submodule of it, pinned to a release tag, and includes it whole:
+(`dev.polymorph.ui`, the members, on Compose Multiplatform with `jvm` and `android` targets).
+JitPack builds it from this repository's release tags, as `jitpack.yml` says, so an app depends on
+it as on any library, at the tag of the release:
+
+```kotlin
+// settings.gradle.kts
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven("https://jitpack.io")
+    }
+}
+
+// app/build.gradle.kts
+dependencies {
+    implementation("com.github.metamorph-labs.polymorph:tokens:v<version>")
+    implementation("com.github.metamorph-labs.polymorph:ui:v<version>")
+}
+```
+
+JitPack builds a tag the first time an app asks for it, which takes some minutes, and serves the
+same files from then on. Each module carries Gradle module metadata, so an Android app resolves
+the Android library and a desktop app the `jvm` one. JitPack builds a tag or a commit that holds
+`jitpack.yml`; a commit is named by its short id in place of the tag. An app can also include the
+build from a checkout of this repository, or a git submodule of it, pinned to a release tag,
+where the modules keep their own coordinates:
 
 ```kotlin
 // settings.gradle.kts
@@ -1446,6 +1470,9 @@ dependencies {
     implementation("dev.polymorph:ui")
 }
 ```
+
+Either way the app compiles against API 37 and gives its Gradle and Kotlin daemons a 4 GB heap
+([`platforms/android/README.md`](../platforms/android/README.md) says why).
 
 The app provides one pairing at its root and composes members, which read it from the
 composition:

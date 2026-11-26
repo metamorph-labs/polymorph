@@ -194,6 +194,7 @@ for each web framework publish privately to GitHub Packages under the `metamorph
 their `@polymorph/*` names
 ([docs/consuming.md](docs/consuming.md#1-registry-access) has the table). The iOS, Android and
 Dart packages are not published to a registry. An iOS app adds the Swift package by this
-repository's URL, an Android app includes the Gradle build from a checkout or a git submodule of
-this repository, and a Dart app adds its package by path or by git; each takes a release tag. Polymorph is licensed under the MIT License
+repository's URL, an Android app depends on the library JitPack builds from this repository
+(`com.github.metamorph-labs.polymorph:ui`) or includes the Gradle build from a checkout, and a Dart
+app adds its package by path or by git; each takes a release tag. Polymorph is licensed under the MIT License
 ([LICENSE](LICENSE), [NOTICE](NOTICE)).

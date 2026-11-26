@@ -63,9 +63,13 @@ palette), the one the members render under until an app provides another.
 
 ## Adding it to an app
 
-The modules live in a subdirectory of this repository, so an app reaches them through a checkout
-of the repository or a git submodule of it. The simplest is to include this build whole, with
-`includeBuild("../polymorph/platforms/android")` in `settings.gradle.kts`, and depend on
+JitPack builds the two modules from this repository's release tags (`jitpack.yml` at its root),
+so an app adds `maven("https://jitpack.io")` to its repositories and depends on
+`com.github.metamorph-labs.polymorph:tokens:v<version>` and
+`com.github.metamorph-labs.polymorph:ui:v<version>`
+([docs/consuming.md](../../docs/consuming.md#an-android-app)). An app can instead reach the
+modules through a checkout of the repository or a git submodule of it, and include this build
+whole, with `includeBuild("../polymorph/platforms/android")` in `settings.gradle.kts`, depending on
 `dev.polymorph:tokens` and `dev.polymorph:ui`. The build is written for Gradle 9.5.0, which its
 wrapper (`gradlew`) pins, the Android Gradle plugin 9.2.1 and Kotlin 2.3.21, which its root
 `build.gradle.kts` declares. An included build runs on the including app's Gradle, so the app

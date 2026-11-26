@@ -427,19 +427,24 @@ RootView().pmTheme(.terminal_petrol)`,
       'The components drawn in Jetpack Compose. The charts and a few web-only components have a stand-in instead.',
     add: [
       {
-        title: 'Get the Gradle build',
-        help: `It isn't on a repository. Check out the repository at a release tag, or add it as a git submodule.`,
-        code: nativeClone,
+        title: 'Add JitPack to your repositories',
+        help: 'JitPack builds the library straight from our release tags. The first build of a release takes a few minutes.',
+        code: `// settings.gradle.kts
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven("https://jitpack.io")
+    }
+}`,
       },
       {
-        title: 'Include it',
-        code: `// settings.gradle.kts
-includeBuild("../polymorph/platforms/android")
-
-// app/build.gradle.kts
+        title: 'Add the dependencies',
+        help: 'Prefer a checkout? Clone the repository at the release tag and use includeBuild("../polymorph/platforms/android") with dev.polymorph:tokens and dev.polymorph:ui instead.',
+        code: `// app/build.gradle.kts
 dependencies {
-    implementation("dev.polymorph:tokens")
-    implementation("dev.polymorph:ui")
+    implementation("com.github.metamorph-labs.polymorph:tokens:v${RELEASE}")
+    implementation("com.github.metamorph-labs.polymorph:ui:v${RELEASE}")
 }`,
       },
       {

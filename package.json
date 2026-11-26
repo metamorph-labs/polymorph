@@ -45,7 +45,7 @@
     "native:contracts": "node packages/native/bin/contracts.js",
     "native:version": "node packages/native/bin/version.js",
     "gate:ios": "pnpm native:contracts --check && pnpm emit:examples --check && vitest run --project logic packages/native && swift build --package-path platforms/ios && node scripts/ios-by-url.mjs && swift test --package-path platforms/ios && node scripts/ios-audit.mjs",
-    "gate:android": "pnpm native:contracts --check && pnpm native:version --check && pnpm emit:examples --check && vitest run --project logic packages/native/src/kotlin && platforms/android/gradlew -p platforms/android :tokens:build :ui:jvmTest :examples:relay:jvmTest && node scripts/android-audit.mjs",
+    "gate:android": "pnpm native:contracts --check && pnpm native:version --check && pnpm emit:examples --check && vitest run --project logic packages/native/src/kotlin && platforms/android/gradlew -p platforms/android :tokens:build :ui:jvmTest :examples:relay:jvmTest && node scripts/android-audit.mjs && node scripts/android-publish.mjs",
     "gate:engines": "node scripts/gate-engines.mjs",
     "gate:next": "node scripts/gate-next.mjs",
     "gate:no-build": "node scripts/gate-no-build.mjs",

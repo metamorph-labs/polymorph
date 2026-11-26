@@ -986,7 +986,9 @@ height.
 
 The module uses the Kotlin JVM plugin and imports nothing from Android or Compose: it builds
 without an Android SDK, and its sources compile in a multiplatform common source set. An app
-reaches it from a checkout of this repository or a git submodule of it: it includes the whole build
+depends on it as `com.github.metamorph-labs.polymorph:tokens` from JitPack
+([consuming.md](consuming.md#an-android-app)), or reaches it from a checkout of this repository or
+a git submodule of it: it includes the whole build
 (`includeBuild`, which [platforms/android/README.md](../platforms/android/README.md) shows), or
 this module alone as a Gradle module of its own build:
 

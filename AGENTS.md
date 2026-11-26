@@ -170,7 +170,8 @@ uploads a tagged release to npmjs.com. Browser tests need
 - **Other repositories install these packages** (`@polymorph/engine`, `@polymorph/rules`,
   `@polymorph/recipes`, and the React, Vue, Svelte, Solid, Angular and elements foundations and
   vocabularies, from GitHub Packages), copy the elements' no-build files with
-  `polymorph init --framework elements`, and reach `platforms/` through a checkout. A renamed
+  `polymorph init --framework elements`, and reach `platforms/` at a release tag (by URL on iOS,
+  through JitPack or a checkout on Android). A renamed
   export, a newly required prop or a layout change is a major release for all of them; prefer
   additive, optional changes, and add a changeset for anything a consumer sees
   (`.changeset/README.md`). `packages/react-ui/consumption.test.ts` and the packages' `packaging.test.ts`

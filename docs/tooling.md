@@ -262,8 +262,8 @@ a command, can do all an agent with the server can. `mcp` starts the server itse
 
 The CLI writes apps and vendors members for the web frameworks (`--framework`, below). The SwiftUI
 and Compose renderers are not npm packages. An iOS app adds the Swift package by this
-repository's URL, an Android app reaches the Compose build through a checkout or a git submodule
-of it, and [native.md](native.md) describes them.
+repository's URL, an Android app depends on the Compose build JitPack builds from a release tag
+or includes it from a checkout, and [native.md](native.md) describes them.
 
 ### Running it
 

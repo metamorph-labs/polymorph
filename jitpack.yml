@@ -1,0 +1,10 @@
+# JitPack builds the Android library, `platforms/android`, from a tag or a commit of this
+# repository and serves its modules as `com.github.metamorph-labs.polymorph:tokens` and
+# `com.github.metamorph-labs.polymorph:ui` at that tag or commit (docs/consuming.md, "An Android
+# app"). The two modules take JitPack's group and version while it builds them
+# (`platforms/android/*/build.gradle.kts`), and `pnpm gate:android` builds them the same way
+# (`scripts/android-publish.mjs`).
+jdk:
+  - openjdk17
+install:
+  - cd platforms/android && ./gradlew --no-daemon --console=plain :tokens:publishToMavenLocal :ui:publishToMavenLocal
