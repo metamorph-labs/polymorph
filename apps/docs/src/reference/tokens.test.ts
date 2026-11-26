@@ -47,6 +47,11 @@ describe('the tokens page', () => {
     }
     for (const system of REGISTRY.theme.systems) {
       expect(fontsOf(system.name), system.name).toMatch(/ for text/)
+      // Every system draws its headings in some face, its body face when it has no heading slot.
+      expect(fontsOf(system.name), system.name).toMatch(/headings/)
     }
+    expect(fontsOf('dew')).toBe(
+      'Geist for text and headings, Fraunces for display titles and Geist Mono for code',
+    )
   })
 })

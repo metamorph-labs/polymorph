@@ -125,9 +125,8 @@ function listed(words: readonly string[]): string {
 }
 
 /**
- * A system's fonts in words: "Geist for text, Fraunces for display titles and Geist Mono for
- * code". A system with no heading face of its own sets its headings in its text face, so
- * "text" says it and the heading role is not named again.
+ * A system's fonts in words: "Geist for text and headings, Fraunces for display titles and Geist
+ * Mono for code". A system with no heading face of its own lists headings with its text face.
  */
 export function fontsOf(system: string): string {
   const fonts = REGISTRY.theme.systems.find((entry) => entry.name === system)?.fonts ?? []
@@ -139,9 +138,7 @@ export function fontsOf(system: string): string {
   }
   const order = ['body', 'heading', 'display', 'mono']
   const slots = (roles: readonly string[]) =>
-    roles
-      .filter((slot) => !(slot === 'heading' && roles.includes('body')))
-      .sort((a, b) => order.indexOf(a) - order.indexOf(b))
+    [...roles].sort((a, b) => order.indexOf(a) - order.indexOf(b))
   const rank = (roles: readonly string[]) => Math.min(...roles.map((slot) => order.indexOf(slot)))
   const parts = [...fonts]
     .sort((a, b) => rank(a.roles) - rank(b.roles))
