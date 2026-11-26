@@ -126,8 +126,13 @@ export function CommentField() {
 The app supplies each kind's ${entity('options')}, and the field never fetches. With
 ${entity('filter')} set to \`false\` the app searches: it reads the query from
 ${entity('onQueryChange')} and passes ${entity('loading')}, ${entity('options')} and
-${entity('error')} back. The document stores the entity's \`kind\`, \`id\` and \`label\`, so it still
-reads when the thing it names is gone.
+${entity('error')} back. ${entity('error')} is the app's sentence for a search that failed. An
+option is an \`id\` and a \`label\`, and \`component RichTextInput\` prints the rest of both shapes
+under \`## Types\`. The app waits for a pause in typing before it searches, and drops the answer to
+a query that is no longer the latest: the field calls ${entity('onQueryChange')} on every change.
+
+The document stores the entity's \`kind\`, \`id\` and \`label\`, so it still reads when the thing
+it names is gone.
 
 ## 5. Show a document
 
@@ -169,8 +174,35 @@ selection through the handle it receives:
 \`\`\`
 
 On a page that only shows the document, ${f.m('RichTextContent')}'s
-${content('selectionActions')} receives \`{ range, text }\`, and the app stores
-${x('annotateRichText')}\`(body, range, thread.id)\`.
+${content('selectionActions')} receives \`{ range, text }\`: the selected stretch and its words.
+The app makes the thread, anchors it and saves the document:
+
+\`\`\`tsx
+<RichTextContent
+  value={description}
+  annotations={openThreads.map((thread) => thread.id)}
+  activeAnnotation={activeThread}
+  onAnnotationSelect={setActiveThread}
+  selectionActions={({ range, text }) => (
+    <Button
+      variant="ghost"
+      label="Comment"
+      onClick={() => {
+        const thread = createThread(text)
+        saveDescription(annotateRichText(description, range, thread.id))
+        setActiveThread(thread.id)
+      }}
+    />
+  )}
+/>
+\`\`\`
+
+A range is \`{ start, end }\`, counted in code points of the document's plain text with nothing
+between blocks, and \`end\` is not included. Every function here returns a new document and leaves
+the one it was given as it was. Without ${content('onAnnotationSelect')} a highlight takes no press.
+
+The thread is the app's to show: a ${f.m('CommentThread')} for the id in
+${content('activeAnnotation')}, beside the document or in a ${f.m('Drawer')}.
 
 A reviewer that has only the text, a person or a model, anchors a comment by quoting words:
 ${x('richTextFindText')}\`(doc, words)\` gives the ranges and ${x('annotateRichText')} anchors one.
@@ -183,15 +215,61 @@ ${x('removeRichTextAnnotation')} removes one.
 Every function is in \`${DOCUMENT}\`. It has no DOM, takes any JSON value or JSON string, and never
 throws. A client can send any JSON, so before storing a document:
 
-1. Read it with ${x('parseRichText')}, which returns \`{ value, faults }\`. \`value\` is always a
-   usable document in normal form. Refuse a document whose \`faults\` are not empty, or store
-   \`value\`.
-2. Refuse a document for which ${x('isRichTextNewer')} is true. This reader cannot check what it
+1. Refuse a document for which ${x('isRichTextNewer')} is true. This reader cannot check what it
    cannot read.
-3. Cut it down to the formats the field allows with ${x('restrictRichText')}.
+2. Read it with ${x('parseRichText')}, which returns \`{ value, faults }\`. \`value\` is always a
+   usable document in normal form, and each fault has a \`code\`, a \`path\` and a \`message\`. The
+   field writes no faults, so a document with one came from another client. Refuse it, or store
+   \`value\`: the product decides.
+3. Hold it to the formats the field allows with ${x('restrictRichText')}, which never refuses. It
+   returns the document cut down: a heading or a list that is not allowed becomes paragraphs, a
+   mark that is not allowed is dropped, and the words stay. Store the cut document, or refuse one
+   the cut changed, as the example does. The format names are the ones the
+   field's ${input('formats')} takes, and ${x('RICH_TEXT_FORMATS')} holds every one.
 4. Check ${x('richTextLength')} against the limit. It counts code points of the text a person sees.
 5. Check each entity ${x('richTextEntities')} lists: that its \`id\` names something the author may
-   mention, and that its \`label\` is the name the server knows.
+   mention, and that its \`label\` is the name the server knows. The same list, by \`kind\`, is who
+   was mentioned.
+
+\`\`\`ts
+import {
+  isRichTextNewer,
+  parseRichText,
+  restrictRichText,
+  richTextEntities,
+  richTextEquals,
+  richTextLength,
+  type RichTextDocument,
+  type RichTextFormat,
+} from '@polymorph/engine/rich-text'
+
+const FORMATS: RichTextFormat[] = ['bold', 'italic', 'code', 'link']
+const LIMIT = 5000
+
+type Read =
+  | { ok: true; body: RichTextDocument }
+  | { ok: false; reason: 'newer' | 'malformed' | 'format' | 'length' }
+
+/** A comment a client sent, as the document to store or the reason it is refused. */
+export function readComment(sent: unknown): Read {
+  if (isRichTextNewer(sent)) return { ok: false, reason: 'newer' }
+  const { value, faults } = parseRichText(sent)
+  if (faults.length > 0) return { ok: false, reason: 'malformed' }
+  const body = restrictRichText(value, FORMATS)
+  if (!richTextEquals(body, value)) return { ok: false, reason: 'format' }
+  if (richTextLength(body) > LIMIT) return { ok: false, reason: 'length' }
+  return { ok: true, body }
+}
+
+/** The ids of the people a stored comment mentions, each once. */
+export function mentioned(body: RichTextDocument): string[] {
+  const people = richTextEntities(body).filter((entity) => entity.kind === 'user')
+  return [...new Set(people.map((entity) => entity.id))]
+}
+\`\`\`
+
+Every function takes \`unknown\`, so the same code reads a parsed body or a string from a column.
+${x('RichTextDocument')} and ${x('RichTextFormat')} are types of the same module.
 
 | For | Use |
 | --- | --- |
