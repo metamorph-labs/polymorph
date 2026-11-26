@@ -188,6 +188,45 @@ describe('a command line a verb cannot read', () => {
     expect(calls).toEqual([])
   })
 
+  it('prints a usage rule’s warning from `validate`, marked as one, apart from the violations', async () => {
+    writeFileSync(resolve(PROJECT, 'Row.tsx'), 'export const Row = () => null\n')
+    const at = (rule: string, line: number) => ({
+      rule,
+      message: `${rule} message`,
+      line,
+      column: 3,
+    })
+    const answering =
+      (violations: unknown[]): Cli['tools'] =>
+      async () => ({
+        value: {
+          ok: violations.length === 0,
+          kind: 'code',
+          violations,
+          warnings: [at('polymorph/danger-last', 4)],
+          fatal: null,
+        },
+        images: [],
+        isError: false,
+      })
+
+    const warned = await polymorph(['validate', 'Row.tsx'], { tools: answering([]) })
+    expect(warned.code).toBe(0)
+    expect(warned.out).toContain(
+      'Row.tsx:4:3  polymorph/danger-last (warning)  polymorph/danger-last message',
+    )
+    expect(warned.out.endsWith('No violations. 1 warning.')).toBe(true)
+
+    const both = await polymorph(['validate', 'Row.tsx'], {
+      tools: answering([at('polymorph/no-raw-button', 2)]),
+    })
+    expect(both.code).toBe(1)
+    expect(both.out).toContain(
+      'Row.tsx:2:3  polymorph/no-raw-button  polymorph/no-raw-button message',
+    )
+    expect(both.out.endsWith('1 violation. 1 warning.')).toBe(true)
+  })
+
   it('keeps stdout JSON under `--json`', async () => {
     const { code, out } = await polymorph(['card', '--json', '--platforms', 'ios'], recording())
     expect(code).toBe(2)

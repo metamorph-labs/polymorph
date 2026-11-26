@@ -9,6 +9,7 @@ import {
   axesLines,
   componentLines,
   countLine,
+  WARNING,
   faultLines,
   pictureName,
   plural,
@@ -367,6 +368,8 @@ interface ValidateReading {
   ok: boolean
   kind: 'code' | 'spec'
   violations?: Reported[]
+  /** Reports of rules the groups report as warnings (the usage rules), which leave `ok` true. */
+  warnings?: Reported[]
   faults?: Fault[]
   fatal: string | null
 }
@@ -443,7 +446,7 @@ async function validate(verb: Verb, asked: Asked): Promise<Outcome> {
     return { code: clean ? 0 : 1 }
   }
 
-  const counts = { violations: 0, faults: 0, unread: 0 }
+  const counts = { violations: 0, faults: 0, unread: 0, warnings: 0 }
   for (const { submission: submitted, answer } of answers) {
     if (answer.isError) {
       cli.out(`${submitted.shown}  ${String(answer.value)}`)
@@ -456,8 +459,12 @@ async function validate(verb: Verb, asked: Asked): Promise<Outcome> {
       counts.unread += 1
     }
     for (const line of violationLines(submitted.shown, value.violations ?? [])) cli.out(line)
+    for (const line of violationLines(submitted.shown, value.warnings ?? [], WARNING)) {
+      cli.out(line)
+    }
     for (const line of faultLines(submitted.shown, value.faults ?? [])) cli.out(line)
     counts.violations += value.violations?.length ?? 0
+    counts.warnings += value.warnings?.length ?? 0
     counts.faults += value.faults?.length ?? 0
   }
   cli.out(countLine(counts))
@@ -548,6 +555,8 @@ interface FixReading {
   code?: string
   fixed: Record<string, number>
   violations: Reported[]
+  /** Reports of rules the groups report as warnings, which no fix rewrites and `ok` ignores. */
+  warnings?: Reported[]
   fatal: string | null
   notes?: string[]
 }
@@ -563,12 +572,14 @@ function fixReport(name: string, value: FixReading, done: string): string[] {
   const lines = [fixedLine(name, value, done)]
   if (value.fatal !== null) lines.push(`${name}  not read: ${value.fatal}`)
   lines.push(...violationLines(name, value.violations))
+  lines.push(...violationLines(name, value.warnings ?? [], WARNING))
   for (const note of value.notes ?? []) lines.push(`  · ${note}`)
   lines.push(
     countLine({
       violations: value.violations.length,
       faults: 0,
       unread: value.fatal === null ? 0 : 1,
+      warnings: value.warnings?.length ?? 0,
     }),
   )
   return lines
@@ -621,6 +632,8 @@ interface EmitReading {
   ok: boolean
   faults: Fault[]
   violations?: Reported[]
+  /** Reports in what was emitted of rules the groups report as warnings; they do not stop the write. */
+  warnings?: Reported[]
   fatal: string | null
   path?: string
   component?: string
@@ -654,6 +667,9 @@ async function emit(verb: Verb, asked: Asked): Promise<Outcome> {
         `${value.path ?? path} (${value.component}, ${value.language})`,
       ),
     )
+    for (const line of violationLines(value.path ?? path, value.warnings ?? [], WARNING)) {
+      cli.out(line)
+    }
     for (const note of value.notes ?? []) cli.out(`  · ${note}`)
     if (value.next !== undefined) cli.out(value.next)
     return { code: 0 }
@@ -661,11 +677,13 @@ async function emit(verb: Verb, asked: Asked): Promise<Outcome> {
   if (value.fatal !== null) cli.out(`${shown}  not written: ${value.fatal}`)
   for (const line of faultLines(shown, value.faults)) cli.out(line)
   for (const line of violationLines(path, value.violations ?? [])) cli.out(line)
+  for (const line of violationLines(path, value.warnings ?? [], WARNING)) cli.out(line)
   cli.out(
     countLine({
       violations: value.violations?.length ?? 0,
       faults: value.faults.length,
       unread: 0,
+      warnings: value.warnings?.length ?? 0,
     }),
   )
   return { code: 1 }

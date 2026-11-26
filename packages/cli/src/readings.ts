@@ -106,12 +106,17 @@ export interface Fault {
 /**
  * One line for each report, `file:line:column  rule  message`, and under it
  * the lawful answer: the rule's own rewrite when it has one, the members,
- * props and tokens the message names, and the ladder's rungs.
+ * props and tokens the message names, and the ladder's rungs. A warning is
+ * marked after its rule (`marked`, ` (warning)`), as `polymorph check` marks one.
  */
-export function violationLines(name: string, violations: readonly Reported[]): string[] {
+export function violationLines(
+  name: string,
+  violations: readonly Reported[],
+  marked = '',
+): string[] {
   return violations.flatMap((violation) => {
     const lines = [
-      `${name}:${violation.line}:${violation.column}  ${violation.rule}  ${violation.message}`,
+      `${name}:${violation.line}:${violation.column}  ${violation.rule}${marked}  ${violation.message}`,
     ]
     if (violation.fix) lines.push(`    fix    ${rewrite(violation.fix.text)}`)
     const alternatives = (violation.alternatives ?? []).map(alternative)
@@ -151,15 +156,28 @@ function climbLine(climb: readonly { rung: number; name: string }[]): string {
 export const faultLines = (name: string, faults: readonly Fault[]): string[] =>
   faults.map((fault) => `${name}  ${fault.path || '(document)'}  ${fault.message}`)
 
-/** The last line of a check: how many reports and faults, or that there were none. */
-export function countLine(counts: { violations: number; faults: number; unread: number }): string {
+/**
+ * The last line of a check: how many reports and faults, or that there were
+ * none, then how many warnings, which leave the answer lawful.
+ */
+export function countLine(counts: {
+  violations: number
+  faults: number
+  unread: number
+  warnings?: number
+}): string {
   const parts = [
     counts.violations > 0 ? plural(counts.violations, 'violation') : '',
     counts.faults > 0 ? plural(counts.faults, 'fault') : '',
     counts.unread > 0 ? `${plural(counts.unread, 'file')} not read` : '',
   ].filter(Boolean)
-  return parts.length === 0 ? 'No violations.' : `${parts.join(', ')}.`
+  const said = parts.length === 0 ? 'No violations.' : `${parts.join(', ')}.`
+  const warnings = counts.warnings ?? 0
+  return warnings > 0 ? `${said} ${plural(warnings, 'warning')}.` : said
 }
+
+/** How a warning is marked after its rule, as `polymorph check` marks one. */
+export const WARNING = ' (warning)'
 
 export const plural = (count: number, noun: string): string =>
   `${count} ${noun}${count === 1 ? '' : 's'}`
