@@ -488,6 +488,8 @@ export interface ProposalReading {
   basedOn: { system: string; palette: string }
   rationale: { word: string; why: string; moves: { field: string; from: string; to: string }[] }[]
   unmapped: string[]
+  /** The words in `unmapped` the table read and could not apply, each with why. */
+  unread: { word: string; why: string }[]
   lawful: boolean
   faults: string[]
 }
@@ -509,7 +511,10 @@ export function proposalLines(answer: ProposalReading): string[] {
     for (const move of entry.moves) lines.push(`    ${move.field}  ${move.from} → ${move.to}`)
     if (entry.moves.length === 0) lines.push('    no change: the draft already had these values')
   }
-  if (answer.unmapped.length > 0) lines.push(`  not in the table: ${answer.unmapped.join(', ')}`)
+  const explained = new Set(answer.unread.map((entry) => entry.word))
+  const unknown = answer.unmapped.filter((word) => !explained.has(word))
+  if (unknown.length > 0) lines.push(`  not in the table: ${unknown.join(', ')}`)
+  for (const entry of answer.unread) lines.push(`  not read: ${entry.word} — ${entry.why}`)
   lines.push(answer.lawful ? 'Lawful.' : 'Not lawful:')
   for (const fault of answer.faults) lines.push(`  ${fault}`)
   return lines

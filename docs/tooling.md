@@ -841,11 +841,18 @@ path in the project, and the file written is the emitter's, byte for byte. A spe
 
 ```sh
 polymorph theme propose "calmer, more editorial, warmer paper"
+polymorph theme propose "geometry=crisp denser" --based-on plain
 polymorph theme propose calm --based-on journal/umber --save --dir design
 ```
 
-The intent is every word after `propose`. The reading lists what each word moved, the words the
-table does not have, and the verdict. `--save` then calls `save_theme` with the two documents,
+The intent is every word after `propose`. A word in the table moves its axis one step along the
+order `axes` prints, or sets one value, and `<axis>=<value>` sets an axis to a value `axes` lists,
+read from the registry; words apply in the order written, so the later of two that name one axis
+wins. The reading lists what each word moved and the verdict. Under "not in the table" it lists
+the words the table does not have. Under "not read" it lists, each with why, the words of degree
+(slightly, somewhat, bit, little, very, much, less), which no move expresses, and each
+`<axis>=<value>` whose axis or value the catalogue does not have, with the values it has. `--save`
+then calls `save_theme` with the two documents,
 into `--dir` (default `design`), and `--overwrite` replaces files already saved under the names.
 It exits 1 when the proposal is not lawful or the save wrote nothing.
 
@@ -898,7 +905,7 @@ Marked `readOnlyHint`. None writes a file.
 | `get_theme_axes` | The axes and their values, the systems and palettes, the colour roles and scales. `customProperties: true` adds every `--pm-*` property; `tokenValues: true` adds each system's token values. |
 | `validate` | Submit `code` (TSX or CSS) and get the red-rule violations the repository's own lint run reports, with the same rules and the same lines, each with the ladder rungs that answer it. Code is parsed, never executed. Or submit `spec` (a screen spec, as the document itself or as its JSON text) and get it checked against the registry. Optional `filename` (where the code would live; `.css` routes to Stylelint, `.vue` to the Vue parser, `.svelte` to the Svelte parser, `.html` to Angular's template parser), `surface` (`application`, the default, or `vocabulary`) and `framework` (each checks a spec against that framework's vocabulary; `vue` lints unnamed markup with no block as a component's template, at the lines it was given, and code that opens with `<template>` or `<script>` is a single-file component either way; `svelte` lints unnamed code that opens with markup as a component; `solid` lints TSX as Solid's; `angular` lints unnamed TypeScript as a component module, its inline template included, and unnamed markup as a component's template; `elements` answers unnamed markup, and any `.html` file, with a `fatal` that says the red rules do not read HTML pages; otherwise TypeScript or CSS is linted as itself). Without `framework`, the project decides as it does for `fix`: TSX and a web spec are Solid's in a project whose package depends on `@polymorph/solid-ui` and not `@polymorph/react-ui`, and React's otherwise, so the two tools read one fragment alike and `emit_screen` writes a spec this accepts. |
 | `fix` | Submit `code` (TSX, a Vue or Svelte component, an Angular module or template, or CSS, with the same optional `filename`, `surface` and `framework` as `validate`, read the same way) and get it back with every violation that has exactly one lawful rewrite already rewritten. Without `framework`, TSX is Solid's in a project whose package depends on `@polymorph/solid-ui` and not `@polymorph/react-ui`, and React's otherwise. These are the rules' own fixes, the ones `eslint --fix` applies ([rules.md](rules.md#what-the-rules-fix) lists them). Whether the `<button>` fix applies is decided by the project rather than by a lint config (below). The answer contains the fixed `code`, `changed`, `fixed` (rule → how many of its reports the fixes resolved) and the remaining `violations`, which need a decision, each with its ladder rungs. A stylesheet comes back unchanged, because no CSS rule has a fix. Writes nothing. |
-| `propose_theme` | Turns an `intent` in plain words ("calmer, more editorial, warmer paper") into a complete candidate system and palette, resolved through the real engine, with a verdict (`lawful`, `faults`), a `rationale` per recognised word, and the words it did not recognise in `unmapped`. Optional `basedOn: { system, palette }`. The recognised words are listed in the tool's description (`packages/mcp/src/propose.ts`). |
+| `propose_theme` | Turns an `intent` in plain words ("calmer, more editorial, warmer paper") into a complete candidate system and palette, resolved through the real engine, with a verdict (`lawful`, `faults`), a `rationale` per recognised word, and the words that moved nothing in `unmapped`. A word of the form `<axis>=<value>` sets an axis to one of the values `get_theme_axes` lists. A word of degree (slightly, very, less), which no move expresses, and an `<axis>=<value>` the catalogue does not have are in `unmapped` too, each with why in `unread`. Optional `basedOn: { system, palette }`. The recognised words are listed in the tool's description (`packages/mcp/src/propose.ts`). |
 | `render_screen` | Draws a screen `spec` in a real browser under a `system` (and optional `palette` and `mode`), at a phone and a desktop width, and returns the layout faults measured in the page as data, followed by one PNG for each view. `data` and `empty` fill the spec's inputs. Needs Playwright's Chromium. Writes nothing. [Seeing a screen](#seeing-a-screen-render_screen) covers it. |
 
 `validate`, `fix` and `fix_file` return a rule the groups report as a warning (the usage rules,

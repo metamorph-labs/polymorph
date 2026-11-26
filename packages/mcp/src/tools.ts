@@ -140,8 +140,15 @@ export type {
  * Only the laws can say whether a new pair is lawful, so the tool runs them
  * instead of guessing. That verdict is what makes the answer useful.
  */
-export { IGNORED, PROJECTIONS, proposeTheme, vocabulary } from './propose'
-export type { Move, Projection, ProposeAnswer, ProposeArgs, RationaleEntry } from './propose'
+export { DEGREES, IGNORED, PROJECTIONS, proposeTheme, vocabulary } from './propose'
+export type {
+  Move,
+  Projection,
+  ProposeAnswer,
+  ProposeArgs,
+  RationaleEntry,
+  UnreadEntry,
+} from './propose'
 export type { SubmittedSpec } from './submitted'
 
 /* -------------------------------------------------------------------------- */

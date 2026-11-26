@@ -17,6 +17,7 @@ import {
 import { describe, expect, it } from 'vitest'
 
 import {
+  DEGREES,
   fix,
   getComponent,
   getInstallPlan,
@@ -600,11 +601,105 @@ describe('propose_theme', () => {
   it('ignores the function words rather than reporting them as misses', () => {
     // A stop list keeps a real miss such as "zesty" from being hidden among
     // articles. The list is data, and this check keeps it apart from the
-    // vocabulary.
-    const answer = proposeTheme(context, { intent: 'make it feel a bit more calm please' })
+    // vocabulary and from the words of degree, which are reported.
+    const answer = proposeTheme(context, { intent: 'make it feel more calm please' })
     expect(answer.unmapped).toEqual([])
+    expect(answer.unread).toEqual([])
     expect(answer.rationale.map((entry) => entry.word)).toEqual(['calm'])
-    for (const word of IGNORED) expect(vocabulary()).not.toContain(word)
+    for (const word of [...IGNORED, ...Object.keys(DEGREES)]) {
+      expect(vocabulary()).not.toContain(word)
+    }
+    for (const word of IGNORED) expect(Object.keys(DEGREES)).not.toContain(word)
+  })
+
+  it('reports a word of degree as not read, with why, instead of dropping it', () => {
+    // "Slightly rounded" is read as "rounded", the roundest geometry, so the
+    // answer has to say that "slightly" moved nothing.
+    const answer = proposeTheme(context, {
+      intent: 'slightly rounded, a bit denser, very calm, less stark',
+      basedOn: { system: 'plain' },
+    })
+    expect(answer.rationale.map((entry) => entry.word)).toEqual([
+      'rounded',
+      'denser',
+      'calm',
+      'stark',
+    ])
+    expect(answer.unmapped).toEqual(['slightly', 'bit', 'very', 'less'])
+    expect(answer.unread.map((entry) => entry.word)).toEqual(answer.unmapped)
+    for (const entry of answer.unread) expect(entry.why).toContain('<axis>=<value>')
+    expect(answer.unread[0]?.why).toContain('never part of one')
+    expect(answer.unread[3]?.why).toContain('does not turn the word after it around')
+    // A name every object has is a word like any other, not a degree.
+    const unknown = proposeTheme(context, { intent: 'constructor' })
+    expect([unknown.unmapped, unknown.unread]).toEqual([['constructor'], []])
+  })
+
+  it('sets an axis to the value `<axis>=<value>` names, for every value the catalogue lists', () => {
+    // The axes and their values are the registry's, so a value the catalogue
+    // gains can be named without a change here.
+    for (const { name, values } of registry.theme.axes) {
+      for (const value of values) {
+        const answer = proposeTheme(context, { intent: `${name}=${value}` })
+        expect((answer.system as { axes: Record<string, string> }).axes[name], name).toBe(value)
+        expect(answer.unmapped, `${name}=${value}`).toEqual([])
+        expect(() => parseSystem(answer.system)).not.toThrow()
+      }
+    }
+
+    const answer = proposeTheme(context, {
+      intent: 'Geometry=Crisp.',
+      basedOn: { system: 'plain' },
+    })
+    expect(answer.rationale).toEqual([
+      {
+        word: 'geometry=crisp',
+        why: expect.stringContaining('sharp, crisp, soft, round'),
+        moves: [{ field: 'axes.geometry', from: 'soft', to: 'crisp' }],
+      },
+    ])
+    expect((answer.system as { name: string }).name).toBe('plain-crisp')
+  })
+
+  it('reports an axis or a value the catalogue does not have, names the lawful ones, and moves nothing', () => {
+    const base = proposeTheme(context, { intent: '', basedOn: { system: 'plain' } })
+    const answer = proposeTheme(context, {
+      intent: 'geometry=softer shape=round accent=#1F4FD8',
+      basedOn: { system: 'plain' },
+    })
+    expect(answer.rationale).toEqual([])
+    expect(answer.system).toEqual(base.system)
+    expect(answer.unmapped).toEqual(['geometry=softer', 'shape=round', 'accent=#1F4FD8'])
+    const geometry = registry.theme.axes.find((axis) => axis.name === 'geometry')?.values ?? []
+    expect(answer.unread.map((entry) => entry.why)).toEqual([
+      `geometry takes ${geometry.join(', ')}`,
+      `no axis is called shape — the axes are ${registry.theme.axes.map((axis) => axis.name).join(', ')}`,
+      expect.stringContaining('no axis is called accent'),
+    ])
+  })
+
+  it('reads an exact value with ordinary words, and lets the later of two on one axis win', () => {
+    const mixed = proposeTheme(context, {
+      intent: 'denser, geometry=sharp; calmer',
+      basedOn: { system: 'plain' },
+    })
+    expect(mixed.rationale.map((entry) => entry.word)).toEqual([
+      'denser',
+      'geometry=sharp',
+      'calmer',
+    ])
+    const axes = (answer: { system: unknown }) =>
+      (answer.system as { axes: Record<string, string> }).axes
+    expect(axes(mixed)).toMatchObject({ density: 'compact', geometry: 'sharp' })
+
+    // As "calmer but bolder" ends bolder.
+    const plain = { basedOn: { system: 'plain' } }
+    expect(
+      axes(proposeTheme(context, { intent: 'rounder geometry=crisp', ...plain })).geometry,
+    ).toBe('crisp')
+    expect(
+      axes(proposeTheme(context, { intent: 'geometry=crisp rounder', ...plain })).geometry,
+    ).toBe('round')
   })
 
   it('lets a later word win a contradiction, the way a sentence does', () => {
