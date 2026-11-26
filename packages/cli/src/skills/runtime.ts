@@ -1,5 +1,6 @@
 import type { Registry } from '@polymorph/registry'
 import { renderRuntimeCard } from '@polymorph/registry/runtime-card'
+import { ADDRESS_KEYS } from '@polymorph/registry/runtime-members'
 
 import { DEFAULT_SYSTEM } from '../plan'
 import { all, commands, Facts, skill, SkillFactError, type SkillFile } from './facts'
@@ -25,15 +26,6 @@ const EXAMPLE_MEMBERS = [
   'NumberInput',
   'Textarea',
 ]
-
-/**
- * The props and data-type fields that take an address, as `ADDRESS_KEYS` in
- * `packages/screen/src/urls.ts` holds them. The CLI does not depend on `@polymorph/screen`, so
- * the set is written here, and `agents.test.ts` holds it to that file. A law in
- * `packages/screen/src/parity.test.ts` holds every prop the vocabulary types as an address to
- * one of these keys.
- */
-export const ADDRESS_KEYS = new Set(['avatar', 'href', 'nextHref', 'previousHref', 'src', 'srcSet'])
 
 /** The members whose props, or the data types their props take at any depth, hold an address. */
 function addressMembers(registry: Registry): string[] {

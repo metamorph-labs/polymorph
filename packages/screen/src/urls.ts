@@ -1,3 +1,5 @@
+import { ADDRESS_KEYS, ADDRESS_SCHEMES } from '@polymorph/registry/runtime-members'
+
 /**
  * The addresses a screen holds, and which of them a run-time screen may hold.
  *
@@ -6,35 +8,25 @@
  * loads. `javascript:` runs code there, and `data:` and `vbscript:` carry
  * code or content the host did not choose. So an address is relative, a
  * fragment, or one of four schemes, and any other is a fault whose value is
- * not passed.
+ * not passed. A host that refuses addresses (`addresses: 'refused'`) is given
+ * none at all: every value at an address key is a fault (`refusedAddress`).
  *
- * The address law in `packages/screen/src/parity.test.ts` holds `ADDRESS_KEYS`
- * to the vocabulary: every prop and data type field the registry types as
- * text that is named for an address in HTML, or whose documentation says it
- * holds a URL or a picture, is one of them.
+ * The keys and the schemes are the registry's
+ * (`@polymorph/registry/runtime-members`), which the run-time card reads too,
+ * and are re-exported here. The address law in
+ * `packages/screen/src/parity.test.ts` holds `ADDRESS_KEYS` to the vocabulary:
+ * every prop and data type field the registry types as text that is named for
+ * an address in HTML, or whose documentation says it holds a URL or a
+ * picture, is one of them.
  */
 
-/**
- * The props and object keys that take an address: a link's target, a pager's previous and next
- * windows, a picture or a recording, and a picture's set of files.
- */
-export const ADDRESS_KEYS: ReadonlySet<string> = new Set([
-  'avatar',
-  'href',
-  'nextHref',
-  'previousHref',
-  'src',
-  'srcSet',
-])
+export { ADDRESS_KEYS, ADDRESS_SCHEMES }
 
 /**
  * The keys whose text is a list of addresses, as HTML's `srcset` is: each candidate is an
  * address, then a space and its width or density, and a comma parts two candidates.
  */
 const ADDRESS_LIST_KEYS: ReadonlySet<string> = new Set(['srcSet'])
-
-/** The schemes an address may name. Anything else, and anything without a scheme that is not relative, is refused. */
-export const ADDRESS_SCHEMES: readonly string[] = ['http:', 'https:', 'mailto:', 'tel:']
 
 /** The last C0 control character's code. A URL parser strips these and the space from an address's ends. */
 const LAST_CONTROL = 0x1f
@@ -144,3 +136,7 @@ export function addressFaults(
     typeof item === 'string' ? text(item, `${path}[${index}]`) : [shape(item, `${path}[${index}]`)],
   )
 }
+
+/** The fault for a value at an address key, under a host that refuses addresses, in the validator's voice. */
+export const refusedAddress = (key: string): string =>
+  `\`${key}\` takes an address, and this host takes none — leave \`${key}\` out`

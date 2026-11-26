@@ -34,6 +34,7 @@ import {
   memberFault,
   sharedNameFault,
   surfaceOf,
+  type AddressPolicy,
   type ChildrenKind,
   type ScreenSurface,
   type ScreenVocabulary,
@@ -55,7 +56,7 @@ import {
   withoutElements,
   type Receiver,
 } from './receivers'
-import { addressFaults, ADDRESS_KEYS } from './urls'
+import { addressFaults, ADDRESS_KEYS, refusedAddress } from './urls'
 
 /**
  * The run-time walk: a screen document, the host's data and a vocabulary,
@@ -112,9 +113,10 @@ import { addressFaults, ADDRESS_KEYS } from './urls'
  *  - **Nothing the document says runs.** A component is drawn only if the
  *    vocabulary has it and the host allows it, a prop is passed only if the
  *    member has it, a callback only if it is a function, and an address only
- *    if it is one a screen may hold (`urls.ts`). An object is passed only as
- *    the format writes one (`$object`), and a document nested deeper than
- *    `MAX_DEPTH` (`depth.ts`) is drawn only down to it.
+ *    if it is one a screen may hold (`urls.ts`), and never for a host that
+ *    refuses addresses (`addresses`). An object is passed only as the format
+ *    writes one (`$object`), and a document nested deeper than `MAX_DEPTH`
+ *    (`depth.ts`) is drawn only down to it.
  *  - **An element is drawn once every data prop it requires has a value.**
  *    One whose required data prop was never written, or was refused, carries
  *    a fault that names the prop and is drawn as nothing. A required callback
@@ -245,6 +247,15 @@ export interface ScreenOptions {
   framework?: Framework
   /** The members the host allows (`MemberOptions` in `members.ts`). The framework's default when absent. */
   members?: readonly string[]
+  /**
+   * Whether the host takes addresses. `allowed`, the default: an address the
+   * document writes or binds is passed when it is one a screen may hold.
+   * `refused`: none is passed; each value at a prop or an object key that
+   * takes one is a fault, and a member that cannot be drawn without one is
+   * not allowed (`addressNeed`). The host's data inside a value bound whole
+   * is the host's, and is passed as it gave it.
+   */
+  addresses?: AddressPolicy
   /** The host's data, by input name. */
   data?: Readonly<Record<string, unknown>>
   /** What fills a data input the host gave no value for: nothing (`absent`), or a sample of its type (`sample`). */
@@ -600,8 +611,10 @@ const within = (path: string, outer: string): boolean =>
 export function createScreen(options: ScreenOptions): Screen {
   const vocabulary = options.vocabulary
   const framework = options.framework ?? DEFAULT_FRAMEWORK
+  const addresses = options.addresses ?? 'allowed'
   const allowed = allowedMembers(vocabulary, {
     framework,
+    addresses,
     ...(options.members === undefined ? {} : { members: options.members }),
   })
   const fillMode = options.fill ?? 'absent'
@@ -981,7 +994,8 @@ export function createScreen(options: ScreenOptions): Screen {
      * document or the host's data: text that is an address a screen may hold,
      * or a flat list of such text. Anything else is a fault, and nothing is
      * passed (`urls.ts`). No value (`undefined`, or `null` in the host's data)
-     * is passed as no value.
+     * is passed as no value. For a host that refuses addresses, nothing is
+     * passed, and whatever the document wrote there is a fault.
      */
     const address = (
       resolved: Drawn,
@@ -989,6 +1003,10 @@ export function createScreen(options: ScreenOptions): Screen {
       path: string,
       key: string,
     ): Drawn | undefined => {
+      if (addresses === 'refused') {
+        found.push({ path, message: refusedAddress(key) })
+        return undefined
+      }
       if (resolved.kind === 'value') {
         if (resolved.value === undefined) return resolved
         if (resolved.value === null && resolved.from === 'data') {
@@ -1353,7 +1371,7 @@ export function createScreen(options: ScreenOptions): Screen {
     /** Why a component cannot be drawn here, or `null`. */
     const nodeFault = (surface: ScreenSurface | null, component: string): string | null => {
       if (surface === null) return `no component called \`${component}\``
-      const disallowed = memberFault(vocabulary, component, allowed)
+      const disallowed = memberFault(vocabulary, component, allowed, addresses)
       if (disallowed !== null) return disallowed
       const entry = surface.entry.frameworks[framework]
       if (entry.status === 'absent') {

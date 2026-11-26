@@ -593,6 +593,45 @@ describe('addresses', () => {
       '$.root.children[3].props.items[0].href',
     ])
   })
+
+  it('passes none for a host that refuses them, and draws each member that can do without one', () => {
+    const document = doc(
+      {
+        component: 'Stack',
+        children: [
+          { component: 'Card', props: { title: 'Order', href: '/orders/7' }, children: ['x'] },
+          { component: 'Avatar', props: { name: 'Ada', src: { $: 'picture' } } },
+          {
+            component: 'Breadcrumbs',
+            props: { items: [{ $object: { label: 'Home', href: '/' } }] },
+          },
+          { component: 'Link', props: { href: '/help' }, children: ['Help'] },
+        ],
+      },
+      [{ name: 'picture', type: 'string' }],
+    )
+    const { screen, faults } = open({
+      document,
+      addresses: 'refused',
+      data: { picture: 'https://example.com/ada.png' },
+    })
+    expect(draw(screen.root)).toBe(
+      'Stack()[<Card(title="Order")[x]>, <Avatar(name="Ada")>, <Breadcrumbs(items=[{"label":"Home"}])>, <>]',
+    )
+    expect(at(screen, '$.root.children[3]').fault?.message).toMatch(
+      /^`Link` requires an address at `href`, and this host takes no address/,
+    )
+    expect(faults.map(({ path }) => path)).toEqual([
+      '$.root.children[0].props.href',
+      '$.root.children[1].props.src',
+      '$.root.children[2].props.items[0].href',
+      '$.root.children[3]',
+    ])
+    // Read when the screen is made: the same document draws its addresses for a host that takes them.
+    expect(draw(open({ document, data: { picture: '/ada.png' } }).screen.root)).toContain(
+      'Card(title="Order", href="/orders/7")',
+    )
+  })
 })
 
 describe('a function reaches a member only where a callback receives it', () => {

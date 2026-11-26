@@ -12,6 +12,7 @@ import {
   memberFault,
   sharedNameFault,
   surfaceOf,
+  type AddressPolicy,
   type MemberOptions,
   type ScreenVocabulary,
 } from './members'
@@ -31,7 +32,8 @@ import {
   withoutElements,
   type Receiver,
 } from './receivers'
-import { addressFaults, ADDRESS_KEYS } from './urls'
+import { parsePartial } from './partial'
+import { addressFaults, ADDRESS_KEYS, refusedAddress } from './urls'
 import { VOCABULARY } from './vocabulary'
 
 /**
@@ -43,9 +45,12 @@ import { VOCABULARY } from './vocabulary'
  * in the same shape and voice:
  *
  *  - a member the host does not allow (`members`), with the reason when it
- *    is one that hosts another library's code;
+ *    is one that hosts another library's code, or one a host that refuses
+ *    addresses cannot draw;
  *  - an address a screen may not hold (`urls.ts`), at a prop or an object
  *    key that takes one, by the walk's rule: text, or a flat list of text;
+ *    and under `addresses: 'refused'`, any value at such a key, a binding
+ *    included;
  *  - a control's name that the screen's `values` cannot hold: one a control
  *    before it in document order has, or one every object has (`__proto__`);
  *  - an input type longer than `MAX_TYPE_LENGTH`;
@@ -60,6 +65,10 @@ import { VOCABULARY } from './vocabulary'
  *
  * It runs in a page and in Node alike. It reads only the document, and never
  * runs or inserts anything it holds.
+ *
+ * `checkAnswer` checks a model's whole answer as text: it reads the document
+ * with `parsePartial` and reports an answer that ends before its document
+ * does, which `checkScreen` cannot see in the document it read.
  */
 
 export interface ScreenCheckOptions extends MemberOptions {
@@ -93,6 +102,7 @@ export function checkScreen(document: unknown, options: ScreenCheckOptions = {})
       document,
       allowedMembers(vocabulary, options),
       new Set(faults.map(({ path }) => path)),
+      options.addresses ?? 'allowed',
     ),
   ]
   return { ok: all.length === 0, faults: all }
@@ -116,6 +126,7 @@ function runTimeFaults(
   document: unknown,
   allowed: ReadonlySet<string>,
   validated: ReadonlySet<string>,
+  addresses: AddressPolicy,
 ): SpecFault[] {
   const faults: SpecFault[] = []
 
@@ -123,9 +134,14 @@ function runTimeFaults(
    * A value at a key that takes an address, by the walk's rule (`addressFaults`): text that is an
    * address a screen may hold, or a flat list of such text. A binding is the host's data, which
    * the walk checks when it draws, and a value the validator faults already (one of the wrong
-   * type) is not faulted twice.
+   * type) is not faulted twice. Under a host that refuses addresses, any value is a fault, a
+   * binding included: the document asks for an address there, whatever the host's data holds.
    */
   const address = (key: string, value: unknown, path: string): void => {
+    if (addresses === 'refused') {
+      if (!validated.has(path)) faults.push({ path, message: refusedAddress(key) })
+      return
+    }
     if (isRecord(value) && typeof value['$'] === 'string') return
     for (const fault of addressFaults(key, value, path)) {
       if (!validated.has(fault.path)) faults.push(fault)
@@ -196,7 +212,7 @@ function runTimeFaults(
     }
     if (typeof value['component'] === 'string') {
       const component = value['component']
-      const member = memberFault(vocabulary, component, allowed)
+      const member = memberFault(vocabulary, component, allowed, addresses)
       if (member !== null) faults.push({ path, message: member })
       const surface = surfaceOf(vocabulary, component)
       const types = new Map((surface?.props ?? []).map((prop) => [prop.name, prop.type]))
@@ -262,4 +278,51 @@ function runTimeFaults(
 
   if (isRecord(document)) visit(document['root'], '$.root', null)
   return faults
+}
+
+/** What `checkAnswer` says of a model's whole answer. */
+export interface AnswerCheck extends ScreenCheck {
+  /** The document the answer holds, whole or as far as it got; `undefined` when it holds none. */
+  document: unknown
+  /** Whether the answer holds the whole of its document: its outermost brace closed. */
+  complete: boolean
+  /** The answer's text outside the document's fenced block (`parsePartial`'s `prose`). */
+  prose: string
+}
+
+/**
+ * The fault of an answer that ended before its document did: the model
+ * stopped in the middle, most often at its output limit. Its words carry what
+ * a retry needs.
+ */
+export const cutAnswer = (where: string | null): string =>
+  `the answer ends before its document does${where === null ? ', inside the fenced block that holds it' : `, inside \`${where}\``}: ` +
+  'it was cut off, as at an output limit. Answer with the whole document, with fewer elements if it was long'
+
+/**
+ * Whether a model's whole answer is a screen a host may draw: the answer as
+ * text, read with `parsePartial`, then its document checked with
+ * `checkScreen` and the same options.
+ *
+ * Call it once the answer has ended. An answer that ends before its document
+ * does is a fault at `$` (`cutAnswer`), and so is text that stops being JSON;
+ * the document such an answer holds is returned as far as it got, with no
+ * other fault, as what is missing from it is the cut's and not the model's
+ * choice. An answer with no document is prose, which is lawful: `document` is
+ * `undefined` and `ok` is `true`, and a host that needs a screen asks again.
+ * While the answer streams, a document that has not closed is what has
+ * arrived so far and is no fault: read it with `parsePartial`.
+ */
+export function checkAnswer(text: string, options: ScreenCheckOptions = {}): AnswerCheck {
+  const read = parsePartial(text)
+  const answered = { document: read.document, complete: read.complete, prose: read.prose }
+  if (read.error !== null) {
+    const message = `the answer stops being JSON at character ${read.error.at}: ${read.error.message}`
+    return { ok: false, faults: [{ path: '$', message }], ...answered }
+  }
+  if (!read.complete && (read.document !== undefined || read.fence === 'open')) {
+    return { ok: false, faults: [{ path: '$', message: cutAnswer(read.cut) }], ...answered }
+  }
+  if (read.document === undefined) return { ok: true, faults: [], ...answered }
+  return { ...checkScreen(read.document, options), ...answered }
 }

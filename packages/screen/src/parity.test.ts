@@ -1,9 +1,10 @@
 import { readdirSync, readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 
 import { buildRegistry } from '@polymorph/registry'
 import { FRAMEWORKS } from '@polymorph/registry/frameworks'
 import { renderRuntimeCard } from '@polymorph/registry/runtime-card'
+import { ADDRESSES_FROM_TEXT } from '@polymorph/registry/runtime-members'
 import { compactTable, expandTable, renderTableModule } from '@polymorph/registry/screen-table'
 import { validateSpec } from '@polymorph/spec/validate'
 import { describe, expect, it } from 'vitest'
@@ -355,12 +356,46 @@ describe('the members that host another library’s code are off by default', ()
 })
 
 describe('the card a host renders from the table is the registry’s', () => {
-  it('in every framework', () => {
+  it('in every framework, and for a host that refuses addresses', () => {
     for (const framework of FRAMEWORKS) {
-      const members = allowedMembers(table, { framework })
-      expect(renderRuntimeCard(table, { framework, members }), framework).toBe(
-        renderRuntimeCard(registry, { framework, members }),
-      )
+      for (const addresses of ['allowed', 'refused'] as const) {
+        const members = allowedMembers(table, { framework, addresses })
+        expect(renderRuntimeCard(table, { framework, members, addresses }), framework).toBe(
+          renderRuntimeCard(registry, { framework, members, addresses }),
+        )
+      }
     }
+  })
+})
+
+describe('the members that draw the addresses their text writes', () => {
+  // A member that parses Markdown draws `[label](address)` as a link and `![alt](address)` as a
+  // picture, which no address key reaches: a host that refuses addresses leaves it out whole.
+  const PARSER = /\bparse(?:Markdown|Inlines)\b/
+  const sources = (dir: string, name: RegExp): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const path = join(dir, entry.name)
+      if (entry.isDirectory()) return sources(path, name)
+      return name.test(entry.name) ? [path] : []
+    })
+  const readers = (files: string[]) =>
+    files.filter((file) => PARSER.test(readFileSync(file, 'utf8'))).map((file) => basename(file))
+
+  it('are every React member that reads the Markdown parser', () => {
+    const react = readers(sources(resolve(ROOT, 'packages/react-ui/src'), /^[A-Z]\w*\.tsx$/))
+    expect(react.map((file) => basename(file, '.tsx')).sort()).toEqual(
+      [...ADDRESSES_FROM_TEXT].sort(),
+    )
+  })
+
+  it('are every member whose description, which writes the other renderers, reads it', () => {
+    const described = readers(sources(resolve(ROOT, 'packages/shells/src/members'), /\.ts$/)).map(
+      (file) =>
+        basename(file, '.ts')
+          .split('-')
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(''),
+    )
+    expect(described.sort()).toEqual([...ADDRESSES_FROM_TEXT].sort())
   })
 })
