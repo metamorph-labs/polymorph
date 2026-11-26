@@ -20,6 +20,7 @@ name: the unscoped `polymorph` package on npm is someone else's.
 | `polymorph.json` with `files`, and member source under its `dir` (`src/polymorph/`) | Vendoring: the members are copied into the repository as source the team owns |
 | `polymorph.json` with `"framework": "elements"` | A page with no build: the elements are copied into a static directory |
 | An app with none of these | An existing app without polymorph: vendoring is one command; the packages route is a few manual steps |
+| `Package.swift` or an Xcode project with PolymorphUI, a Gradle build with `dev.polymorph` or `com.github.metamorph-labs.polymorph`, or a `pubspec.yaml` that names polymorph_tokens | A native app: the `polymorph-native` skill |
 
 ## A new app
 
@@ -87,6 +88,10 @@ named, and text outside its block in `AGENTS.md` and other servers in an MCP con
 they are. `--force` overwrites edited files. `--remove <harness>` stops writing for a harness
 and removes the files only it reads that nobody edited. An older release refuses to write over a
 newer one's files.
+
+Each MCP entry runs `npx -y @metamorph-labs/polymorph@1.0.18 mcp --project <path>`, which starts the server over stdio for the
+harness's client. Run it by hand only to see that it starts. With `--read-only` in place of the
+project it offers no tool that writes a file.
 
 ## Moving to a newer release
 

@@ -242,6 +242,18 @@ describe('every command a text names', () => {
     }
   })
 
+  it('names every verb of the CLI in some skill, so no tool goes untold', () => {
+    const named = new Set(
+      all.flatMap(({ text, run }) =>
+        commandsIn(text, run).map((command) => {
+          const argv = words(command)
+          return verbNamed(argv[0], argv[1])?.name
+        }),
+      ),
+    )
+    expect(VERBS.map((verb) => verb.name).filter((name) => !named.has(name))).toEqual([])
+  })
+
   it('is a verb the CLI has, with flags it takes and the arguments it needs', () => {
     const problems = all.flatMap(({ where, text, run }) =>
       commandsIn(text, run).flatMap((command) =>

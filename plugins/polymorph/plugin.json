@@ -2,7 +2,7 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "polymorph",
   "version": "1.0.18",
-  "description": "Build interfaces with the Polymorph design system: skills for screens, red-rule violations, setup and themes, and an MCP server that reads the vocabulary, checks code and screen specs against the red rules, and draws a screen at phone and desktop width.",
+  "description": "Build interfaces with the Polymorph design system: skills for screens, red-rule violations, setup, themes, screens a model writes at run time, agents on the page and native apps, and an MCP server that reads the vocabulary, checks code and screen specs against the red rules, and draws a screen at phone and desktop width.",
   "author": {
     "name": "Metamorph, Inc.",
     "url": "https://github.com/metamorph-labs"
@@ -31,7 +31,7 @@
       "interface": {
         "displayName": "Polymorph",
         "shortDescription": "Build UI with a design system",
-        "longDescription": "Polymorph is an open-source design system: one closed vocabulary of interface components for React, Vue, Svelte, Solid, Angular and plain HTML, a theme engine, and lint rules (the red rules) that keep design decisions out of application code.\n\nThis plugin gives a coding agent the procedures and the tools to work in an app built with it. Its skills cover building a screen, answering a red-rule violation by the exception ladder, adding polymorph to a project, and changing the theme. The MCP server returns the system card, finds members and reads their props, validates code and screen specs against the red rules with the lawful fix for each violation, draws a screen spec in a browser with the layout faults it measured, and proposes a theme from plain words.\n\nEverything runs on your machine through the published npm package @metamorph-labs/polymorph. Nothing is sent to Metamorph.",
+        "longDescription": "Polymorph is an open-source design system: one closed vocabulary of interface components for React, Vue, Svelte, Solid, Angular and plain HTML, a theme engine, and lint rules (the red rules) that keep design decisions out of application code.\n\nThis plugin gives a coding agent the procedures and the tools to work in an app built with it. Its skills cover building a screen, answering a red-rule violation by the exception ladder, adding polymorph to a project, changing the theme, drawing a screen a model writes while the product runs, letting an agent on the page operate the members, and building a SwiftUI or Compose screen. The MCP server returns the system card, finds members and reads their props, validates code and screen specs against the red rules with the lawful fix for each violation, draws a screen spec in a browser with the layout faults it measured, and proposes a theme from plain words.\n\nEverything runs on your machine through the published npm package @metamorph-labs/polymorph. Nothing is sent to Metamorph.",
         "developerName": "Metamorph, Inc.",
         "category": "Developer Tools",
         "capabilities": [

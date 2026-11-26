@@ -56,7 +56,8 @@ The answer lists what each word moved, the words the table does not know, and th
 theme's laws. \`--based-on\` starts from a shipped pairing, such
 as ${pairings}; either half may be left out. \`--save\` writes the two documents into
 \`<dir>/systems/\` and \`<dir>/palettes/\` (the directory \`design\` when \`--dir\` is left out), and
-\`--overwrite\` replaces files already saved under the same names. Then point the app at them: in an
+\`--overwrite\` replaces files already saved under the same names. \`--save\` writes only in a
+project: a directory with a \`package.json\` or a \`polymorph.json\`. Then point the app at them: in an
 app \`init\` wrote, name the two files in ${plugin} in \`vite.config\`.
 
 Words the table does not know move nothing. Say what should change in the words of the axes \`axes\`
@@ -125,8 +126,9 @@ build, \`add theme:<system>\` compiles it into the theme sheet.
 
 An app that compiles its theme with the Vite plugin wears the documents \`vite.config\` names. To
 wear a shipped pairing there, save it as two documents of the app's own: words the table does not
-know move nothing, so the proposal is the shipped pairing as it is. Then name the two saved files in
-${plugin}.
+know move nothing, so the proposal holds the shipped pairing's axes, fonts and colour seeds. Both
+documents are saved under a name of their own, \`<system>-variant.json\`. Then name the two saved
+files in ${plugin}.
 
 ${commands(run, 'theme propose "as shipped" --based-on journal/umber --save --dir src/theme')}
 

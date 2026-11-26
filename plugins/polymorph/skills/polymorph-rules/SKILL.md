@@ -82,7 +82,8 @@ Common cases:
 - An icon set or an inline `<svg>`: `Icon` with a role from the card as its
   `name`. A glyph no role names is a `Bespoke` zone until the vocabulary adds
   a role.
-- A chart library: the chart members. A chart they cannot draw goes in a `Bespoke` zone.
+- A chart library: the chart members. A chart they cannot draw goes in a `Bespoke` zone
+  when the file draws it by hand, or in `ThirdParty` around a library that draws it.
 - A motion library: members animate their own states. Motion the vocabulary has no member for goes
   in a `Bespoke` zone.
 - A stylesheet import: delete it. Another library's own stylesheet is imported in the file that

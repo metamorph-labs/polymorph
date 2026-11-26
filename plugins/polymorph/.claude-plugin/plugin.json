@@ -2,7 +2,7 @@
   "name": "polymorph",
   "displayName": "Polymorph",
   "version": "1.0.18",
-  "description": "Build interfaces with the Polymorph design system: skills for screens, red-rule violations, setup and themes, and an MCP server that reads the vocabulary, checks code and screen specs against the red rules, and draws a screen at phone and desktop width.",
+  "description": "Build interfaces with the Polymorph design system: skills for screens, red-rule violations, setup, themes, screens a model writes at run time, agents on the page and native apps, and an MCP server that reads the vocabulary, checks code and screen specs against the red rules, and draws a screen at phone and desktop width.",
   "author": {
     "name": "Metamorph, Inc.",
     "url": "https://github.com/metamorph-labs"

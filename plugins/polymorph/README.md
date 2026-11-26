@@ -10,16 +10,17 @@ they need to build with it in your app: skills and an MCP server.
 
 ## Skills
 
-- `polymorph-screen`
-- `polymorph-rules`
-- `polymorph-setup`
-- `polymorph-theme`
-- `polymorph-runtime-screen`
-- `polymorph-agent-bridge`
-- `polymorph-native`
+- `polymorph-screen`: any screen: a form, a table, a chart, a chat, formatted text
+- `polymorph-rules`: a red-rule violation, a need no member covers
+- `polymorph-setup`: installing, vendoring, upgrading, the agent files
+- `polymorph-theme`: how the app looks
+- `polymorph-runtime-screen`: a screen a model writes at run time
+- `polymorph-agent-bridge`: an agent that operates the page
+- `polymorph-native`: a SwiftUI or Compose screen
 
-Each skill is a procedure with the exact commands: building a screen and checking it, answering a
-red-rule violation by the exception ladder, adding polymorph to a project, and changing the theme.
+Each skill is a procedure with the exact commands and code. A skill's `references/` files hold
+what one branch of its procedure needs, such as a chart, a conversation with a model or formatted
+text in `polymorph-screen`.
 
 ## What it runs
 

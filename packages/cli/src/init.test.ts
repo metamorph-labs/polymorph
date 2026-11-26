@@ -259,9 +259,13 @@ describe('the plan from the published tools', () => {
       .filter(([path, step]) => checkoutFiles.get(path) !== step)
       .map(([path]) => path)
     // The files that name the tools or the server: the manifest that lists the published
-    // tools, the agent files, and the record of their hashes.
+    // tools, the agent files, and the record of their hashes. A skill names the tools as the
+    // command it runs, `<name>@<range>`. A package whose name starts with theirs, such as the
+    // run-time core's, is the same text from both origins.
     const agentFiles = fromTools.steps
-      .filter((step) => step.path.includes('/skills/') && JSON.stringify(step).includes(TOOLS_NAME))
+      .filter(
+        (step) => step.path.includes('/skills/') && JSON.stringify(step).includes(`${TOOLS_NAME}@`),
+      )
       .map((step) => step.path)
     expect(agentFiles.length).toBeGreaterThan(0)
     expect(different).toEqual([
