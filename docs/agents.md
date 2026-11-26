@@ -467,8 +467,12 @@ let loading: Promise<AgentBridge> | undefined
 
 /** The page's one bridge, loaded on the first use by the assistant or by a WebMCP call. */
 export const pageBridge = () =>
-  (loading ??= import('@polymorph/engine/agent').then(({ createAgentBridge }) =>
-    createAgentBridge({ confirm: ask, policy }),
+  (loading ??= import('@polymorph/engine/agent').then(
+    ({ createAgentBridge }) => createAgentBridge({ confirm: ask, policy }),
+    (error: unknown) => {
+      loading = undefined // the next call loads again
+      throw error
+    },
   ))
 
 const unregister = registerWebMCPOnCall({ bridge: pageBridge })
