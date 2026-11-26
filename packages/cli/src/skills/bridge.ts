@@ -113,8 +113,8 @@ Every command in this skill starts with the same words, the polymorph tools run 
 
 | The job | Use |
 | --- | --- |
-| An assistant in the product reads the screen, fills fields, chooses and presses | a bridge handed to the assistant as tools: steps 3, 4 and 5 |
-| An agent in the browser operates the page through WebMCP | a bridge registered with WebMCP: steps 3, 4 and 6 |
+| An assistant in the product reads the screen, fills fields, chooses and presses | the page's bridge as the assistant's tools: steps 3 to 6 |
+| An agent in the browser operates the page through WebMCP | the page's bridge, registered with WebMCP: steps 3 to 5 |
 | You drive a page built with polymorph and want a surer way than the DOM | the tools the page registered: step 7 |
 | The agent shows the person a form or a choice of its own | a run-time screen: the \`polymorph-runtime-screen\` skill |
 | The agent needs a record's data, or an operation no member offers | a tool of the application's own: step 9 |
@@ -122,15 +122,15 @@ Every command in this skill starts with the same words, the polymorph tools run 
 
 For each member it lists, the bridge gives an id, the member's name, its control's accessible
 name and description (a field's hint and error), the member it is \`within\`, its declared states
-and the actions it allows now. It runs steps on those actions and reports what changed. It never
-gives:
+and the actions it allows now. It never gives:
 
 - A member that declares nothing, such as ${hidden}, or anything that is not a member: a plain
   element in a ${f.m('Bespoke')} zone, a component inside ${f.m('ThirdParty')}, the page's text.
 - A member whose element is absent or inside content marked \`hidden\` (a closed ${f.m('Dialog')},
   a collapsed panel), or one another member withholds (${f.m('ConfirmDialog')}'s confirm).
 - A secret: ${secrets} read their value as \`{ secret: true }\`, and every password field's value
-  is removed from every output.
+  is removed from every output. Every other field's value is read, an ${f.m('Input')} that holds
+  a card number included: step 5 keeps such a field out.
 - What a member shows beyond its states: a ${f.m('Table')} reads its sort, never its cells.
 - An action of a member whose \`disabled\` state is true.
 
@@ -144,7 +144,8 @@ member with no segment is hidden from agents.
 
 - ${f.m('Checkbox')}: ${a.segment('Checkbox')}.
 - ${f.m('Select')}: ${a.segment('Select')}. ${a.action('Select', 'choose', 'id')} takes the id of
-  one of its ${a.state('Select', 'options')}.
+  one of its ${a.state('Select', 'options')}, which is the ${f.field('SelectOption', 'value')} of an
+  option the app passed.
 - ${f.m('PasswordInput')}: ${a.segment('PasswordInput')}. An agent runs nothing.
 
 The JSON answer adds the types:
@@ -152,10 +153,10 @@ The JSON answer adds the types:
 ${commands(run, 'component Select --framework <framework> --json')}
 
 Under \`component.agent\`, each action gives its \`argument\` (\`boolean\`, \`number\`, \`text\`,
-\`id\` or \`ids\`), the \`among\` state whose choices an id names, and the state it \`sets\`.
-\`destructive\` and \`destructiveOptions\` say what makes a step wait for a person, such as
-${f.m('Button')}'s ${f.v('Button', 'tone', 'danger')}. [references/members.md](references/members.md)
-says how the members that need care read and act.
+\`id\` or \`ids\`), the \`among\` state its ids name, and the state it \`sets\`. \`destructive\` and
+\`destructiveOptions\` say what waits for a person, such as ${f.m('Button')}'s
+${f.v('Button', 'tone', 'danger')}. [references/members.md](references/members.md) says what each
+member's ids are, and how the members that need care read and act.
 
 ## 3. Choose how the page loads the bridge
 
@@ -165,116 +166,154 @@ listed, at their release. The members write to a registry inside that package, s
 resolve one copy of it: a second copy holds an empty registry. No foundation has a hook or a
 component for the bridge, and nothing in a bundled app reads \`data-agent\`.
 
-| The app wants | It calls | The page loads |
-| --- | --- | --- |
-| Its own assistant to call the tools | ${f.x('createAgentBridge', agent)} and ${f.x('agentTools', agent)} (steps 4 and 5) | the bridge, in the app's bundle |
-| Browser agents to call the tools, the bridge loaded at once | \`createAgentBridge\` and ${f.x('registerWebMCP', agent)} (step 4) | the bridge, in the app's bundle |
-| Browser agents to call the tools, the bridge loaded on the first call | ${f.x('registerWebMCPOnCall', webmcp)} from \`${webmcp}\` (step 6) | the tools' definitions now, and the bridge as a chunk of its own on the first call |
+What a module imports from \`${agent}\` with a static \`import\` is in that module's chunk, and
+${f.x('createAgentBridge', agent)} is the bridge. An \`import type\` adds nothing.
+\`${webmcp}\` holds the tools' definitions and their registration, and none of the bridge. So a
+page that loads the bridge on its first use, by the assistant or by a WebMCP call, imports it with
+\`import('${agent}')\` and registers with ${f.x('registerWebMCPOnCall', webmcp)} (step 4). A page
+that loads it at once imports \`createAgentBridge\` and ${f.x('registerWebMCP', agent)}
+statically. To see where the bridge went, build the app and find the file that holds
+\`polymorph:agentchange\`, which only the bridge holds:
+[references/testing.md](references/testing.md) has the check.
 
-A page with no build states the choice on its document element, and writes no script:
+A page with no build writes no script. \`<html data-agent="on-call">\` registers the three tools
+with WebMCP at load and fetches the bridge on the first call, and \`"eager"\` fetches it at load.
+Without the attribute the page registers nothing, because exposing a page is its owner's
+decision. The setting's bridge has no \`confirm\` and no policy, so a page that asks a person or
+narrows what an agent may do creates its own: [references/no-build.md](references/no-build.md).
 
-\`\`\`html
-<html lang="en" data-system="…" data-palette="…" data-agent="on-call">
-\`\`\`
+## 4. Create one bridge for the page
 
-| \`data-agent\` | The page |
-| --- | --- |
-| absent | registers nothing and fetches nothing more. Exposing a page is its owner's decision, so this is the default |
-| \`on-call\` | registers the three tools with WebMCP at load, and fetches and creates the bridge on the first call |
-| \`eager\` | fetches and creates the bridge at load, and registers its tools |
-
-\`polymorph.js\` and \`polymorph-all.js\` read the attribute once, as they run. Another value warns
-in the console and registers nothing. In a browser without WebMCP neither value does anything. The
-bridge the setting creates has no \`confirm\` and no policy, so a step that needs a person answers
-\`needs-confirmation\`. A page that asks a person, or narrows what an agent may do, states no
-\`data-agent\` and creates its own bridge: [references/no-build.md](references/no-build.md).
-
-## 4. Create the bridge
-
-Create it in the browser once the page has mounted, and dispose of it when the page unmounts. One
-module serves every framework:
+One bridge serves the product's assistant and the browser's WebMCP agents. A bridge runs one
+\`act\` at a time and asks the person inside it, so the page asks one question at a time. Two
+bridges each ask, and two questions can then be open at once. This module loads the bridge on the
+first call from either side:
 
 \`\`\`ts
 // src/agent/page-agent.ts
-import {
-  createAgentBridge,
-  registerWebMCP,
-  type AgentConfirmRequest,
-} from '${agent}'
+import type { AgentBridge, AgentConfirmRequest, AgentTool } from '${agent}'
+import { registerWebMCPOnCall } from '${webmcp}'
 
-/** Creates the page's agent bridge and registers its tools. Returns what stops both. */
-export function startPageAgent(ask: (request: AgentConfirmRequest) => Promise<boolean>): () => void {
-  const bridge = createAgentBridge({
-    // Asks the person at the page, and resolves true for yes.
-    confirm: ask,
-    policy: {
-      // The assistant does not operate the composer it is asked in.
-      hide: (member) => member.member === 'PromptInput',
-      // Only a person places an order.
-      deny: (member, action) =>
-        member.member === 'Button' && member.name === 'Place order' && action === 'press',
-    },
+import { policy } from './policy'
+
+export interface PageAgent {
+  load: () => Promise<{ bridge: AgentBridge; tools: AgentTool[] }>
+  stop: () => void
+}
+
+/** Starts one bridge for the page, which the product's assistant and WebMCP share. */
+export function startPageAgent(ask: (request: AgentConfirmRequest) => Promise<boolean>): PageAgent {
+  let stopped = false
+  let loading: Promise<{ bridge: AgentBridge; tools: AgentTool[] }> | undefined
+  const load = () =>
+    (loading ??= import('${agent}').then(
+      ({ createAgentBridge, agentTools }) => {
+        if (stopped) throw new Error('The page agent has stopped.')
+        const bridge = createAgentBridge({ confirm: ask, policy })
+        return { bridge, tools: agentTools(bridge) }
+      },
+      (error: unknown) => {
+        loading = undefined // the next call loads again
+        throw error
+      },
+    ))
+  // A WebMCP call runs on the same bridge: the module this load resolves to hands it back.
+  const unregister = registerWebMCPOnCall(async () => {
+    const { bridge, tools } = await load()
+    return { createAgentBridge: () => bridge, agentTools: () => tools }
   })
-  const unregister = registerWebMCP(bridge)
-  return () => {
-    unregister()
-    bridge.dispose()
+  return {
+    load,
+    stop: () => {
+      stopped = true
+      unregister()
+      void loading?.then(({ bridge }) => bridge.dispose(), () => {})
+    },
   }
 }
 \`\`\`
 
-Call it where the framework runs code after mounting:
+- \`registerWebMCPOnCall(load)\` registers the three tools now, and on the first call runs \`load\`
+  once and creates the bridge from what it resolves to: \`${agent}\`, or an object with its
+  \`createAgentBridge\` and ${f.x('agentTools', agent)}. This \`load\` hands back the page's bridge.
+- Where the browser has no WebMCP API, nothing registers, and the assistant still loads the
+  bridge. While another registration of the tools stands on the page, such as \`data-agent\`, it
+  registers nothing and warns in the console.
+- A page that loads the bridge at once creates it with the same options, calls
+  \`registerWebMCP(bridge)\`, which returns the function that unregisters, and hands the same
+  bridge to \`agentTools\` for the assistant.
+
+Start it in the browser once the page has mounted, keep what it returns where the assistant can
+reach it, and call its \`stop\` when the page unmounts. \`ask\` asks the person, resolves \`true\`
+for yes, and keeps its identity. [references/asking.md](references/asking.md) has the React
+component that does this through a ${f.m('ConfirmDialog')}, and
+[references/api.md](references/api.md) the call in Vue, Svelte, Solid and Angular, and each
+option, field, error and event.
+
+## 5. Write the policy
+
+\`policy.hide(member)\` returns \`true\` to take a member out of every output and every step, and
+\`policy.deny(member, action)\` returns \`true\` to take one action away. A policy only narrows: it
+cannot add a member, a state or an action. A function that throws hides or denies. The bridge
+calls both on every read and step, and only about a member whose element is in the document, so
+keep them cheap. \`member\` is a frozen ${f.x('AgentPolicyMember', agent)}:
+
+| Field | What it is | Stable |
+| --- | --- | --- |
+| \`id\` | the bridge's id for this mount of the member | no: each mount gets a new one, which the app does not choose |
+| \`member\` | the member's name, such as \`Input\` | yes, and it names every instance |
+| \`name\` | its control's accessible name: the label as the page shows it | no: it changes with the language and the wording |
+| \`element\` | the member's control: an ${f.m('Input')}'s \`<input>\`, a ${f.m('Button')}'s \`<button>\`, a ${f.m('Select')}'s trigger | its attributes are the ones the page sets |
+
+So name a member by an attribute the page sets on its control. An ${f.m('Input')}'s
+${f.p('Input', 'name')}, ${f.p('Input', 'autoComplete')} and ${f.p('Input', 'id')} reach its
+\`<input>\`, and inside a ${f.m('FormField')} the control's id is the field's
+${f.p('FormField', 'id')}. A ${f.m('Button')} takes no \`id\` or \`name\`: name it by the label
+the page passes it, read from the same string the page renders, or let its
+${f.p('Button', 'onClick')} decide (step 8).
 
 \`\`\`ts
-// React, in a component. \`ask\` keeps its identity (useCallback), or the bridge is made again.
-useEffect(() => startPageAgent(ask), [ask])
+// src/agent/policy.ts
+import type { AgentPolicy } from '${agent}'
 
-// Vue, in <script setup>
-let stop = () => {}
-onMounted(() => {
-  stop = startPageAgent(ask)
-})
-onBeforeUnmount(() => stop())
+import { labels } from '../labels'
 
-// Svelte, in <script>
-onMount(() => startPageAgent(ask))
-
-// Solid, in a component
-onMount(() => onCleanup(startPageAgent(ask)))
-
-// Angular, in a component's constructor. afterNextRender runs in the browser only.
-const destroyRef = inject(DestroyRef)
-afterNextRender(() => destroyRef.onDestroy(startPageAgent(ask)))
+export const policy: AgentPolicy = {
+  // Every card field, by the autocomplete token the page gives it, which no translation changes.
+  hide: ({ element }) => element?.getAttribute('autocomplete')?.startsWith('cc-') === true,
+  // A person places the order. The label is the string the page passes the Button.
+  deny: ({ member, name }, action) =>
+    member === 'Button' && name === labels.placeOrder && action === 'press',
+}
 \`\`\`
 
-\`ask\` asks the person and resolves \`true\` for yes: step 8 says how. The options are \`confirm\`,
-\`policy\`, whose \`hide\` and \`deny\` can only take a member or an action away, and \`settleMs\`, how
-long a step waits for its member to change (150 by default).
-[references/api.md](references/api.md) has each option, field, error and event. A page with no
-build creates its bridge in a module script: [references/no-build.md](references/no-build.md).
+Card data belongs in the payment provider's own hosted field, inside a ${f.m('ThirdParty')}
+boundary: it is outside the vocabulary, so the bridge never lists it.
 
-## 5. Hand the tools to the product's assistant
+The bridge is a filter in the page, not a security boundary. An agent acts with the person's
+session, and any script on the page can create a bridge without this policy or \`confirm\`. The
+server authorises every consequential action again, as it does a person's.
+
+## 6. Hand the tools to the product's assistant
 
 \`agentTools(bridge)\` returns three tools, \`polymorph_snapshot\`, \`polymorph_query\` and
-\`polymorph_act\`. Each has a \`description\` written for a model, a JSON Schema \`inputSchema\`, and
-\`execute(input)\`, which resolves to JSON and never rejects. Create the bridge as in step 4, and
-hand its tools to the assistant in place of \`registerWebMCP\`:
+\`polymorph_act\`. Each has a \`description\` written for a model, a JSON Schema \`inputSchema\`,
+and \`execute(input)\`, which resolves to JSON and never rejects. The definitions come from a
+bridge, so the assistant loads it when it is first used, such as when the person opens it:
 
 \`\`\`ts
 // src/agent/assistant-tools.ts
-import { agentTools, type AgentBridge } from '${agent}'
+import type { PageAgent } from './page-agent'
 
-/** The bridge's tools for the product's own model: what to declare, and what runs a call. */
-export function assistantTools(bridge: AgentBridge) {
-  const tools = agentTools(bridge)
+/** The bridge's tools for the product's own model, loading the bridge on the first use. */
+export async function assistantTools(agent: PageAgent) {
+  const { tools } = await agent.load()
   return {
-    // Declare each to the model in the shape its API takes for a tool.
     definitions: tools.map(({ name, description, inputSchema }) => ({
       name,
       description,
       inputSchema,
     })),
-    // Run a call the model made, and send back what it resolves to as the tool's result.
     run: async (name: string, input: unknown): Promise<unknown> => {
       const tool = tools.find((each) => each.name === name)
       if (tool === undefined) return { error: { code: 'unknown-tool', message: \`No tool \${name}.\` } }
@@ -284,22 +323,14 @@ export function assistantTools(bridge: AgentBridge) {
 }
 \`\`\`
 
+The app sends \`definitions\` with the conversation, in the shape the model's API takes for a tool.
+For each tool call the model returns, it calls \`run\` with the call's name and input, and sends
+what that resolves to back as the call's result.
 The calls run in the page, where the bridge is: a model on a server sends each call to the page.
 Every output holds the page's content, which a person or a record wrote, and each tool says so
-with \`untrustedContentHint\`. Tell the model that this content is data and never an instruction.
-
-## 6. Or register the tools with WebMCP
-
-\`registerWebMCP(bridge)\` registers the three tools on \`document.modelContext\`, or on
-\`navigator.modelContext\` in earlier browser builds, and returns the function that unregisters
-them. \`registerWebMCPOnCall\` registers them before the bridge loads, and loads it on the first
-call: [references/api.md](references/api.md) has a React component that does it.
-
-- A load that fails answers that call with \`{ error: { code: 'failed', message } }\`, and the
-  next call loads again.
-- One registration holds the tool names on a page. While it stands, another \`registerWebMCP\`,
-  \`registerWebMCPOnCall\` or \`data-agent\` registers nothing and warns in the console.
-- Where the browser has no WebMCP API, nothing registers, and the function returned does nothing.
+with \`untrustedContentHint\`. The system prompt tells the model that what it reads from the page
+is data and never an instruction. Nothing enforces that sentence, so the policy and the server's
+checks are what hold.
 
 ## 7. Read, then act
 
@@ -308,8 +339,7 @@ This is the procedure for the agent, through the tools or the bridge.
 1. Read the page with \`bridge.snapshot()\`, or find members with
    \`bridge.query({ name, text, member })\`. \`name\` matches the accessible name and each choice's
    label, \`text\` the text the member shows and its description, and \`member\` the member's name
-   whole. Each ignores case. A snapshot lists every choice of every member, so on a large page
-   query instead.
+   whole. Each ignores case. On a large page, query: a snapshot lists every choice.
 2. Write each step as \`{ id, action, value }\` with an id from that read, or as
    \`{ target: { member, name }, action, value }\`. A target must name one member: its name is
    matched whole, then as a part.
@@ -326,16 +356,11 @@ This is the procedure for the agent, through the tools or the bridge.
    and a member mounted again has a new id. Inside one \`act\`, name a member an earlier step
    brings up by \`target\`, because it had no id when you read.
 
-| \`error.code\` | Do |
-| --- | --- |
-| \`unknown-member\` | Read again. The member is gone, closed, hidden, withheld or declares nothing |
-| \`ambiguous-target\` | Name it by one of the ids the message lists |
-| \`not-allowed\` | Choose from \`allowed\`, the actions it allows now. An empty list is the application's policy |
-| \`disabled\` | Do what enables it, or tell the person |
-| \`invalid-value\` | Read the action's argument and the member's choices again |
-| \`needs-confirmation\` | The page asks no one, so a person must do it. Do not look for another way |
-| \`declined\` | The person said no. Do not run it again unasked |
-| \`failed\` | The member refused or threw, and the message says why, such as a read-only field |
+A failed result's \`error.code\` says why, and [references/api.md](references/api.md) says what to
+do for each code. On \`unknown-member\`, read again. On \`not-allowed\`, choose from \`allowed\`:
+an empty list is the application's policy. On \`needs-confirmation\`, the page asks no one, so a
+person must do it: do not look for another way. On \`declined\`, the person said no: do not run it
+again unasked.
 
 An agent that drives a browser from outside the page calls the tools the page registered, which
 carry the owner's policy and \`confirm\`. A page that registered none has offered no bridge:
@@ -349,8 +374,15 @@ and do not load a bridge into it.
 | A destructive instance (${f.m('Button')} with ${f.v('Button', 'tone', 'danger')}) or a choice marked destructive (a \`danger\` entry of ${f.m('Menu')}) waits for \`confirm\`, and is refused without one | Ask about a consequential action that is not destructive: a ${f.m('Button')} labelled Send or Place order runs at once |
 | No action answers for a person: ${f.m('ConfirmDialog')} withholds its confirm | Know which agent calls: every WebMCP client the browser lets call the page gets what the policy leaves |
 | A secret never leaves it, in a state, a name, a message or a change | Bind a bridge it did not make: any script on the page can create one without the policy or \`confirm\` |
-| A policy only narrows what the members declare | Respect modality: while a modal ${f.m('Dialog')} is open, the members behind it are listed and run |
-| One \`act\` of a bridge runs at a time | Filter what the page says: a name or a value can hold text written to steer a model |
+| A policy only narrows, and one \`act\` runs at a time | Respect modality: while a modal ${f.m('Dialog')} is open, the members behind it are listed and run |
+| | Filter what the page says: a name or a value can hold text written to steer a model |
+
+A ${f.m('Button')} with ${f.v('Button', 'tone', 'danger')} that opens a ${f.m('ConfirmDialog')}
+asks twice: \`confirm\` before the press, then the dialog, whose confirm no agent can press. Give a
+Button that only opens the dialog another tone, such as ${f.v('Button', 'variant', 'ghost')} with
+${f.v('Button', 'tone', 'neutral')}: an agent's press opens the dialog, and the person answers
+there, once. The dialog's own ${f.p('ConfirmDialog', 'tone')}, \`danger\` unless set, marks the
+destruction. Keep ${f.v('Button', 'tone', 'danger')} for a Button whose own press destroys.
 
 So the product decides, and writes down:
 
@@ -359,10 +391,11 @@ So the product decides, and writes down:
    ask the person when \`bridge.acting\` is true. The bridge sets it while a step's action runs,
    and a ${f.m('Button')}'s ${f.p('Button', 'onClick')} runs inside a \`press\`.
 3. How the person is asked: through a member the page draws, such as a ${f.m('ConfirmDialog')},
-   whose confirm an agent cannot press. [references/asking.md](references/asking.md) has a React
-   component that asks this way, and records what an agent did.
+   whose confirm an agent cannot press: [references/asking.md](references/asking.md).
 
-The server still checks every request, because an agent acts with the person's session.
+Each step that succeeds dispatches \`polymorph:agentchange\`, so the page can show the person what
+an agent changed. Logging it is the product's choice, and the record that counts is the one the
+server keeps of each request: any script on the page can dispatch that event.
 
 ## 9. When the member the task needs declares nothing
 
@@ -384,8 +417,10 @@ writes is held to no spec, and the bridge would list it as a member. Take step 2
 ## 10. Test it
 
 Test the bridge in a real browser, as polymorph does, with Vitest's browser mode and Playwright:
-the members need real focus, pointer and layout. [references/testing.md](references/testing.md)
-has a test to copy and the traps.
+the bridge reads the rendered page, its accessible names and what is in the document.
+[references/testing.md](references/testing.md) has the setup, a test to copy, the traps, and how
+to check that the bridge is not in what the page loads at start. \`validate\` and \`check\` read
+the red rules and not prop values, so run the project's typecheck as well.
 `
   return [
     {
@@ -396,12 +431,14 @@ has a test to copy and the traps.
           'agent bridge, instead of scraping the DOM or clicking coordinates. Use when asked to ' +
           'let an in-app assistant or chatbot fill a form or operate a screen, make a page usable ' +
           'by an AI agent or a browser agent, expose a page’s actions as tools for a model, add ' +
-          'WebMCP (document.modelContext) tools, put data-agent on a page with no build, read the ' +
-          'agent segment of the polymorph system card, or drive a page built with polymorph from ' +
-          'an agent. Covers @polymorph/engine/agent (createAgentBridge, snapshot, query, act, ' +
-          'confirm, the policy, secrets, agentTools, registerWebMCP), @polymorph/engine/webmcp ' +
-          '(registerWebMCPOnCall, applyAgentSetting), loadAgentBridge in polymorph.js, and ' +
-          'testing a bridge.',
+          'WebMCP (document.modelContext) tools, keep a field such as a card number or an action ' +
+          'such as placing an order from an agent, ask the person before an agent acts, put ' +
+          'data-agent on a page with no build, read the agent segment of the polymorph system ' +
+          'card, or drive a page built with polymorph from an agent. Covers ' +
+          '@polymorph/engine/agent (createAgentBridge, snapshot, query, act, confirm, the policy, ' +
+          'secrets, agentTools, registerWebMCP), @polymorph/engine/webmcp (registerWebMCPOnCall, ' +
+          'applyAgentSetting), one bridge shared by an assistant and WebMCP and loaded on its ' +
+          'first use, loadAgentBridge in polymorph.js, and testing a bridge.',
         body,
       ),
     },
@@ -451,9 +488,13 @@ installed under that name, as an alias of \`@metamorph-labs/polymorph-engine\`.
 
 ## \`${agent}\`
 
+A static import of a value from this entry point puts it in the importing module's chunk:
+\`createAgentBridge\` is the bridge. A page that loads the bridge on its first use imports it with
+\`import('${agent}')\`, and imports only types from it statically.
+
 | Export | What it is |
 | --- | --- |
-| ${call(f, 'createAgentBridge', agent, 'options?')} | a bridge over the members mounted on the page. Two bridges read the same registry and report the same ids |
+| ${call(f, 'createAgentBridge', agent, 'options?')} | a bridge over the members mounted on the page. Two bridges read the same registry and report the same ids, and each runs its own acts and asks its own questions |
 | ${call(f, 'agentTools', agent, 'bridge')} | the bridge as three tools, for the application's own agent |
 | ${call(f, 'registerWebMCP', agent, 'bridge')} | registers those tools with the browser's WebMCP API, and returns the function that unregisters them |
 | ${f.x('AGENT_CHANGE_EVENT', agent)} | \`'polymorph:agentchange'\` |
@@ -467,7 +508,7 @@ Types: ${all(types)}.
 | --- | --- |
 | \`snapshot()\` | \`{ members }\`: each listed member, in document order |
 | \`query(query)\` | the members that match, each \`{ id, member, name, option? }\` |
-| \`act(steps)\` | runs the steps in order and resolves to \`{ results }\`, stopping at the first that fails. It never rejects, and one \`act\` runs at a time |
+| \`act(steps)\` | runs the steps in order and resolves to \`{ results }\`, stopping at the first that fails. It never rejects. One \`act\` runs at a time: the next waits for it, also while it waits for \`confirm\` |
 | \`subscribe(listener)\` | calls \`listener\` after each step that succeeds, and returns the function that stops it. A listener that throws does not fail the step |
 | \`acting\` | \`true\` while a step's action runs |
 | \`dispose()\` | stops the bridge: it lists nothing after this, and a step answers \`unknown-member\` |
@@ -477,9 +518,36 @@ Types: ${all(types)}.
 | Option | What it takes |
 | --- | --- |
 | \`confirm\` | \`(request) => boolean \\| Promise<boolean>\`. \`request\` is \`{ id, member, name, action, value? }\`. Only \`true\` is yes. A \`confirm\` that throws or rejects is a no. The state is read again after the answer, and a member removed while the person was asked answers \`unknown-member\` |
-| \`policy.hide\` | \`(member) => boolean\`, where \`member\` is \`{ id, member, name, element }\`. \`true\` takes the member out of every output and every step |
-| \`policy.deny\` | \`(member, action) => boolean\`. \`true\` takes the action away. Either function that throws hides or denies |
+| \`policy.hide\` | \`(member) => boolean\`. \`member\` is \`{ id, member, name, element }\`, frozen: the bridge's id for this mount, the member's name, its control's accessible name, and its control. A truthy answer takes the member out of every output and every step. The bridge asks only about a member whose element is in the document and not inside \`hidden\` content, and never about one another member withholds |
+| \`policy.deny\` | \`(member, action) => boolean\`, with the same \`member\`. A truthy answer takes the action away, and a step that names it answers \`not-allowed\`. Either function that throws hides or denies |
 | \`settleMs\` | milliseconds a step waits for the member's state to change after its action. The bridge reads the state again every few milliseconds and stops at the first change |
+
+### Starting the page agent in each framework
+
+\`startPageAgent\` is the function of step 4 of the skill. Call it where the framework runs code in
+the browser after mounting, keep what it returns for the assistant, and call its \`stop\` when the
+page unmounts:
+
+\`\`\`ts
+// React: the component in references/asking.md.
+
+// Vue, in <script setup>
+let agent: PageAgent | undefined
+onMounted(() => {
+  agent = startPageAgent(ask)
+})
+onBeforeUnmount(() => agent?.stop())
+
+// Svelte, in <script>
+onMount(() => startPageAgent(ask).stop)
+
+// Solid, in a component
+onMount(() => onCleanup(startPageAgent(ask).stop))
+
+// Angular, in a component's constructor. afterNextRender runs in the browser only.
+const destroyRef = inject(DestroyRef)
+afterNextRender(() => destroyRef.onDestroy(startPageAgent(ask).stop))
+\`\`\`
 
 ### A snapshot entry
 
@@ -505,16 +573,16 @@ A step is \`{ id?, target?: { member?, name? }, action, value? }\`. A result is
 \`{ ok: false, id?, error: { code, message, allowed? } }\`. A state that holds a secret is left out
 of \`changed\`.
 
-| Code | When |
-| --- | --- |
-| \`unknown-member\` | the id names no listed member, the target names none, or the member was removed while the person was asked |
-| \`ambiguous-target\` | the target names more than one member. The message lists their ids |
-| \`not-allowed\` | the member does not declare the action, or the policy denies it. \`allowed\` lists the actions it allows now |
-| \`disabled\` | the member's \`disabled\` state is true |
-| \`invalid-value\` | the value is not of the argument's type, names no enabled choice, or the step is not an object |
-| \`needs-confirmation\` | the action needs a person, and the bridge has no \`confirm\` |
-| \`declined\` | the person said no, or \`confirm\` failed |
-| \`failed\` | the action threw, with the member's message, any secret replaced |
+| Code | When | Do |
+| --- | --- | --- |
+| \`unknown-member\` | the id names no listed member, the target names none, or the member was removed while the person was asked | read again: the member is gone, closed, hidden, withheld or declares nothing |
+| \`ambiguous-target\` | the target names more than one member. The message lists their ids | name it by one of those ids |
+| \`not-allowed\` | the member does not declare the action, or the policy denies it. \`allowed\` lists the actions it allows now | choose from \`allowed\`. An empty list is the application's policy |
+| \`disabled\` | the member's \`disabled\` state is true | do what enables it, or tell the person |
+| \`invalid-value\` | the value is not of the argument's type, names no enabled choice, or the step is not an object | read the action's argument and the member's choices again |
+| \`needs-confirmation\` | the action needs a person, and the bridge has no \`confirm\` | leave it to a person. Do not look for another way |
+| \`declined\` | the person said no, or \`confirm\` failed | do not run it again unasked |
+| \`failed\` | the action threw, with the member's message, any secret replaced | read the message, such as a read-only field's refusal |
 
 ### Change events
 
@@ -533,23 +601,24 @@ too, and a step that fails dispatches none. \`references/asking.md\` shows a lis
 | \`polymorph_act\` | Operate controls on the page | \`{ steps }\`, each \`{ id?, target?, action, value? }\` | \`consequentialHint\`, \`untrustedContentHint\` |
 
 Each tool's \`execute(input)\` resolves to JSON and never rejects. A malformed input is answered:
-\`polymorph_act\` given no list of steps resolves to one \`invalid-value\` result.
+\`polymorph_act\` given no list of steps resolves to one \`invalid-value\` result. The tools'
+definitions are read from a bridge's \`agentTools\`: no entry point exports them alone.
 
 ## \`${webmcp}\`
 
-It holds the tools' definitions and none of the bridge, so importing it keeps the bridge out of
-the bundle.
+It holds the tools' definitions and their registration, and none of the bridge, so importing it
+keeps the bridge out of the bundle.
 
 | Export | What it does |
 | --- | --- |
-| ${call(f, 'registerWebMCPOnCall', webmcp, 'load, options?')} | registers the three tools now. On the first call it runs \`load\`, a dynamic import of \`${agent}\`, once, and creates the bridge with \`options\`. Calls that arrive while it loads wait for it. A failed load answers each waiting call with \`{ error: { code: 'failed', message } }\`, and the next call loads again. Returns the function that unregisters the tools and disposes of the bridge |
+| ${call(f, 'registerWebMCPOnCall', webmcp, 'load, options?')} | registers the three tools now. On the first call it runs \`load\` once and creates the bridge with \`options\` from what \`load\` resolves to: \`${agent}\`, or an object with its \`createAgentBridge\` and \`agentTools\`. Calls that arrive while it loads wait for it. A failed load answers each waiting call with \`{ error: { code: 'failed', message } }\`, and the next call loads again. Returns the function that unregisters the tools and disposes of the bridge |
 | ${call(f, 'applyAgentSetting', webmcp, 'value')} | does what a \`data-agent\` value says: \`null\` registers nothing, \`'on-call'\` registers as \`registerWebMCPOnCall\` does, \`'eager'\` also loads the bridge at once, and another value warns. The bridge has no options. Returns the function that unregisters |
 | ${f.x('AGENT_ATTRIBUTE', webmcp)} | \`'data-agent'\` |
 
 Types: ${f.x('AgentSetting', webmcp)} and ${f.x('AgentBridgeModule', webmcp)}.
 
-In React, register in an effect and return what unregisters. The bundler puts the bridge in a
-chunk the page fetches on the first call:
+A page whose only agents are the browser's registers in an effect and returns what unregisters.
+The bundler puts the bridge in a chunk the page fetches on the first call:
 
 \`\`\`tsx
 'use client'
@@ -591,6 +660,18 @@ Every registration needs the browser's WebMCP API: \`document.modelContext\`, or
 `
 }
 
+/** The data type a member's prop takes a list of, as the registry names it. */
+function listType(registry: Registry, member: string, prop: string): string {
+  const type = registry.components
+    .find((entry) => entry.name === member)
+    ?.props.find((entry) => entry.name === prop)?.type
+  const found = type
+    ?.match(/\w+/g)
+    ?.find((word) => registry.dataTypes.some((entry) => entry.name === word))
+  if (found === undefined) throw new SkillFactError(`${member}'s ${prop} takes no declared type`)
+  return found
+}
+
 /** How the members that need care read and act, each name read from its agent contract. */
 function membersReference(registry: Registry, run: string): string {
   const f = new Facts(registry)
@@ -599,13 +680,27 @@ function membersReference(registry: Registry, run: string): string {
   const charts = a.members((contract) => contract.states.some((state) => state.name === 'count'))
   const legends = a.members((contract) => contract.actions.some((each) => each.name === 'toggle'))
   const brushes = a.members((contract) => contract.actions.some((each) => each.name === 'brush'))
-  const one = ['Select', 'RadioGroup', 'SegmentedControl', 'Tabs'].map((name) => {
-    a.action(name, 'choose', 'id')
-    return f.m(name)
-  })
-  const many = ['CheckboxGroup', 'ChoiceCard'].map((name) => {
-    a.action(name, 'choose', 'ids')
-    return f.m(name)
+  // The empty choice's prop, which both members that offer one take under one name.
+  const emptyOption = [f.p('Select', 'emptyOption'), f.p('TreeSelect', 'emptyOption')][0]
+  // Each choosing member drawn from a list the app passes, and the field of an entry its id is.
+  const ids = (
+    [
+      ['Select', 'options', 'id', 'value'],
+      ['Combobox', 'options', 'id', 'value'],
+      ['MultiSelect', 'options', 'ids', 'value'],
+      ['TreeSelect', 'items', 'id', 'id'],
+      ['RadioGroup', 'options', 'id', 'value'],
+      ['CheckboxGroup', 'options', 'ids', 'value'],
+      ['SegmentedControl', 'options', 'id', 'value'],
+      ['ChoiceCard', 'options', 'ids', 'value'],
+      ['Tabs', 'tabs', 'id', 'value'],
+    ] as const
+  ).map(([member, prop, argument, field]) => {
+    const type = listType(registry, member, prop)
+    // Checked, not printed: the table's column says what the argument is.
+    a.action(member, 'choose', argument)
+    const takes = argument === 'id' ? 'one id' : 'the whole set of ids'
+    return `| ${f.m(member)} | ${takes} | the ${f.field(type, field)} of an entry of ${f.p(member, prop)}, a ${f.x(type, '@polymorph/react-ui')} |`
   })
   return `# How the members read and act
 
@@ -618,9 +713,7 @@ ${commands(run, 'component LineChart --framework <framework> --json')}
 
 - **A choice** is \`{ id, label }\`, with \`disabled: true\` on one a person cannot pick and
   \`destructive: true\` on one that waits for a person. An action that takes \`id\` names one
-  choice, and one that takes \`ids\` names the whole set. An id is the option's \`value\` where the
-  member has one, else what the member says it is, such as a ${f.m('Menu')} entry's label. A
-  repeated id takes \` (2)\` after it.
+  choice, and one that takes \`ids\` names the whole set. A repeated id takes \` (2)\` after it.
 - **The application owns a controlled value.** A member whose value the application holds changes
   when the application passes the new value back. Until it does, a step succeeds with an empty
   \`changed\`.
@@ -630,10 +723,27 @@ ${commands(run, 'component LineChart --framework <framework> --json')}
   ${a.action('Input', 'fill', 'text')}, and a ${f.m('Dialog')} that is not dismissible refuses
   ${a.action('Dialog', 'close')}.
 
+## What an id names
+
+A member drawn from a list the application passes names each choice by a field of the entry. The
+text answer of \`${run} component <Name> --framework <framework>\` prints that entry's fields under
+Types.
+
+| Member | \`choose\` takes | Each id is |
+| --- | --- | --- |
+${ids.join('\n')}
+
+- ${f.m('Select')} and ${f.m('TreeSelect')} with ${emptyOption} list the empty choice as \`''\`.
+- An entry with \`disabled: true\` is listed with that flag, and a step that names it answers
+  \`invalid-value\`.
+- Another member names its choices as it says below, such as a ${f.m('Menu')} entry by its label.
+
 ## Fields
 
 - ${f.m('Input')}, ${f.m('Textarea')} and ${f.m('SearchInput')}: ${a.action('Input', 'fill', 'text')}
-  writes the whole value, as typing it does, and ${a.action('Input', 'clear')} empties it.
+  writes the whole value, as typing it does, and ${a.action('Input', 'clear')} empties it. Their
+  value is read, whatever the field holds: only ${f.m('PasswordInput')}, ${f.m('OTPInput')} and a
+  password field keep a value secret.
 - ${f.m('NumberInput')}: ${a.action('NumberInput', 'set', 'number')} commits a number held within
   its bounds, and ${a.action('NumberInput', 'clear')} commits \`null\`.
 - ${f.m('Slider')}: ${a.action('Slider', 'set', 'number')} moves the first thumb and
@@ -652,8 +762,7 @@ ${commands(run, 'component LineChart --framework <framework> --json')}
 
 ## Choices
 
-- ${all(one)}: \`choose\` takes one id. A choice made while a list is closed needs no \`open\`
-  first. ${all(many)}: \`choose\` takes the whole set of ids.
+- A choice made while a list is closed needs no \`open\` first.
 - ${f.m('Combobox')}: ${a.action('Combobox', 'choose', 'id')} picks among every option the
   application passed, not only those the typed text leaves, and
   ${a.action('Combobox', 'fill', 'text')} types the query, which the application hears as typing.
@@ -669,7 +778,8 @@ ${commands(run, 'component LineChart --framework <framework> --json')}
   control that opens it, usually a ${f.m('Button')}, then read again. An open one runs
   \`close\`. A ${f.m('Dialog')} that is not dismissible is answered with one of its own Buttons.
 - ${f.m('ConfirmDialog')} runs ${a.action('ConfirmDialog', 'cancel')} only. Its confirm is the
-  person's.
+  person's. The Button that opens it is the application's, and an agent presses it: a
+  ${f.v('Button', 'tone', 'danger')} one asks \`confirm\` first, so the person is asked twice.
 - Content in a closed ${f.m('Accordion')} item, ${f.m('Collapsible')} or tab is not listed. Run
   ${a.action('Accordion', 'expand', 'id')}, ${a.action('Collapsible', 'open')} or
   ${a.action('Tabs', 'choose', 'id')} first, then read again.
@@ -734,6 +844,7 @@ ${all(brushes)}. Without \`onSelect\`, ${a.state('LineChart', 'items')} is empty
   which declare nothing.
 `
 }
+
 /** How the person is asked, and how an application records what an agent did. */
 function askingReference(registry: Registry): string {
   const f = new Facts(registry)
@@ -746,8 +857,9 @@ only when it resolves \`true\`. An agent cannot answer it, and a \`confirm\` tha
 
 ## In React, through a ${f.m('ConfirmDialog')}
 
-This component starts the bridge with \`startPageAgent\` from step 4 of the skill, and asks through
-a ${f.m('ConfirmDialog')}. The dialog withholds its confirm, so no agent presses Allow.
+This component starts the page's one bridge with \`startPageAgent\` from step 4 of the skill, hands
+what that returns to \`onStart\`, and asks through a ${f.m('ConfirmDialog')}. The dialog withholds
+its confirm, so no agent presses Allow.
 
 \`\`\`tsx
 'use client'
@@ -756,15 +868,18 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AgentConfirmRequest } from '${agent}'
 import { ConfirmDialog } from '@polymorph/react-ui'
 
-import { startPageAgent } from './page-agent'
+import { startPageAgent, type PageAgent } from './page-agent'
 
-export function PageAgent() {
+/** Starts the page's one bridge, hands it to \`onStart\`, and asks the person through a ConfirmDialog. */
+export function PageAgentHost({ onStart }: { onStart: (agent: PageAgent | null) => void }) {
   const [asking, setAsking] = useState<AgentConfirmRequest | null>(null)
   const answer = useRef<(yes: boolean) => void>(() => {})
   const ask = useCallback(
     (request: AgentConfirmRequest) =>
       new Promise<boolean>((resolve) => {
         answer.current = (yes) => {
+          // Once: the close ConfirmDialog makes after Allow finds nothing left to answer.
+          answer.current = () => {}
           setAsking(null)
           resolve(yes)
         }
@@ -773,12 +888,14 @@ export function PageAgent() {
     [],
   )
   useEffect(() => {
-    const stop = startPageAgent(ask)
+    const agent = startPageAgent(ask)
+    onStart(agent)
     return () => {
-      stop()
+      onStart(null)
+      agent.stop()
       answer.current(false)
     }
-  }, [ask])
+  }, [ask, onStart])
   return (
     <ConfirmDialog
       open={asking !== null}
@@ -794,8 +911,16 @@ export function PageAgent() {
 }
 \`\`\`
 
-- \`ask\` keeps its identity, so the bridge is made once.
+- Render it once on the page. Give it an \`onStart\` that keeps its identity, such as a state
+  setter, and hand the agent it receives to the assistant (\`assistantTools(agent)\`, step 6). It
+  receives \`null\` once the page unmounts.
+- One question is open at a time. The page has one bridge, the bridge asks inside the one \`act\`
+  it runs, and the next \`act\`, from the assistant or from WebMCP, waits.
+- \`answer\` runs once per question. ${f.m('ConfirmDialog')} calls
+  ${f.p('ConfirmDialog', 'onOpenChange')} with \`false\` after ${f.p('ConfirmDialog', 'onConfirm')},
+  and that close finds nothing left to answer.
 - Closing the dialog any other way, and unmounting the page while the person is asked, answer no.
+- \`ask\` keeps its identity, so the bridge is made once.
 - \`request.name\` is the member's accessible name on this page, and \`request.value\` is what the
   agent asked to set or choose. Say both in the question, so the person knows what they allow.
 - Other frameworks do the same with their own state and the framework's ${f.m('ConfirmDialog')}.
@@ -815,8 +940,10 @@ document.addEventListener('polymorph:agentchange', (event) => {
 })
 \`\`\`
 
-A step whose \`changed\` is empty dispatches one too, and a step that fails dispatches none. Write
-the audit line the product keeps, or tell the person what the agent changed, from this detail.
+A step whose \`changed\` is empty dispatches one too, and a step that fails dispatches none. The
+event is for the page's own code: to tell the person what the agent changed, or to log it, which is
+the product's choice. It is no audit record. Any script on the page can dispatch an event of that
+name, so the record that counts is the one the server keeps of each request it authorises.
 
 ## Telling an agent's change from a person's
 
@@ -824,7 +951,8 @@ the audit line the product keeps, or tell the person what the agent changed, fro
 ${f.m('Checkbox')}'s ${f.p('Checkbox', 'onCheckedChange')} receives the same value from an agent's
 \`check\` as from a person's press. A handler that must treat the two apart reads \`bridge.acting\`
 when it is called: a ${f.m('Button')}'s ${f.p('Button', 'onClick')} runs inside the agent's
-\`press\`, so it reads \`true\` there.
+\`press\`, so it reads \`true\` there. Such a handler can ask the person before it places an order,
+in place of a policy that denies the press.
 `
 }
 
@@ -835,9 +963,50 @@ function testingReference(registry: Registry): string {
   const testing = '@polymorph/engine/testing'
   return `# Testing the bridge
 
-polymorph tests what its members declare in a real browser, with Vitest's browser mode and
-Playwright, because the members need real focus, pointer and layout. Test a screen's bridge the
-same way: render the screen, create a bridge, act, and read what changed.
+The bridge reads the rendered page: each control's accessible name, whether its element is in the
+document and drawn, and the state the member reads from it. A test of it renders the screen in a
+real browser. polymorph tests its members this way, in Chromium through Playwright, with Vitest's
+browser mode.
+
+## Set it up
+
+Install Vitest, its Playwright provider and Playwright, and a browser for Playwright. The provider
+package takes the same version as \`vitest\`. A React app adds Testing Library and React's Vite
+plugin, as below; another framework adds its own.
+
+\`\`\`sh
+npm install --save-dev vitest @vitest/browser-playwright playwright @testing-library/react @vitejs/plugin-react
+npx playwright install chromium
+\`\`\`
+
+Declare the browser in the Vitest config. If the app has a \`vite.config.ts\`, put \`test\` there,
+so the tests build the members as the app does.
+
+\`\`\`ts
+// vitest.config.ts
+import react from '@vitejs/plugin-react'
+import { playwright } from '@vitest/browser-playwright'
+import { defineConfig } from 'vitest/config'
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    browser: {
+      enabled: true,
+      headless: true,
+      provider: playwright(),
+      instances: [{ browser: 'chromium' }],
+      // Vitest's default viewport is a phone's. This is the wide layout.
+      viewport: { width: 1280, height: 800 },
+    },
+  },
+})
+\`\`\`
+
+A project that also has tests for Node lists each kind as an entry of \`test.projects\`, with its
+own \`name\` and \`include\`, as polymorph's own config does.
+
+## A test
 
 \`\`\`tsx
 import { render } from '@testing-library/react'
@@ -870,6 +1039,8 @@ it('lets an agent fill the ticket form', async () => {
 - Dispose of each bridge in the test that made it.
 - A step on a member that does not change waits the whole \`settleMs\`. A test may pass a smaller
   one, such as \`createAgentBridge({ settleMs: 60 })\`.
+- A test of the policy creates the bridge with it and reads the snapshot: a hidden member is
+  absent, and a denied action is missing from \`actions\` and answers \`not-allowed\`.
 - ${f.x('agentRegistrations', testing)} lists every registered member, withheld ones included,
   so a test can tell a member the bridge withholds from one that never registered.
 - ${f.x('installTestTheme', testing)} installs a theme, so the members render as on the page.
@@ -901,6 +1072,28 @@ delete (document as { modelContext?: unknown }).modelContext
 
 Mount the component that registers, check that \`tools\` holds the three names, call
 \`tools.get('polymorph_snapshot')?.({})\`, and check that unmounting empties \`tools\`.
+
+## What a test cannot show: where the bridge is bundled
+
+Vitest's browser mode serves each module as Vite's dev server does, without the chunks of a build.
+No test can show that the bridge stays out of what the page loads at start. Check the build:
+
+1. Build the app as it ships.
+2. Find the built file that holds \`polymorph:agentchange\`. Only the bridge holds that text, and a
+   minifier keeps it. Vite writes the files to \`dist/assets/\`:
+
+   \`\`\`sh
+   grep -l 'polymorph:agentchange' dist/assets/*.js
+   \`\`\`
+
+3. Check that the page does not load that file at start. With Vite, \`build.manifest: true\` writes
+   \`dist/.vite/manifest.json\`. Follow \`imports\` from the entry's record: no record it reaches
+   has that file as its \`file\`, and the bridge's record is reached through \`dynamicImports\`.
+   With another bundler, load the built page and check that its network list holds no such file
+   until the first use.
+
+A file that holds the text and loads at start has a static value import from \`${agent}\` in its
+module graph. Make it an \`import()\` or an \`import type\`.
 `
 }
 
@@ -917,9 +1110,19 @@ ${call(f, 'loadAgentBridge', 'packages/elements-ui/src/cdn/polymorph.ts', '')}, 
 
 ## The setting
 
-\`<html data-agent="on-call">\` or \`"eager"\` registers the three tools with the browser's WebMCP API
-and creates a bridge with no \`confirm\` and no policy. The file reads the attribute once, as it
-runs, so a value a script sets later is not read.
+\`\`\`html
+<html lang="en" data-system="…" data-palette="…" data-agent="on-call">
+\`\`\`
+
+| \`data-agent\` | The page |
+| --- | --- |
+| absent | registers nothing and fetches nothing more. Exposing a page is its owner's decision, so this is the default |
+| \`on-call\` | registers the three tools with WebMCP at load, and fetches and creates the bridge on the first call |
+| \`eager\` | fetches and creates the bridge at load, and registers its tools |
+
+The bridge either value creates has no \`confirm\` and no policy, so a step that needs a person
+answers \`needs-confirmation\`. The file reads the attribute once, as it runs, so a value a script
+sets later is not read. In a browser without WebMCP neither value registers or fetches anything.
 
 | The page loads | \`on-call\` fetches | \`eager\` fetches | \`loadAgentBridge()\` fetches |
 | --- | --- | --- | --- |
@@ -944,6 +1147,7 @@ its bridge in a module script:
   const { createAgentBridge, registerWebMCP } = await loadAgentBridge()
   const bridge = createAgentBridge({
     confirm: (request) => Promise.resolve(window.confirm(\`\${request.action} “\${request.name}”?\`)),
+    // The label is the one this page writes on the button.
     policy: { deny: (member) => member.member === 'Button' && member.name === 'Place order' },
   })
   registerWebMCP(bridge)
