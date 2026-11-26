@@ -56,7 +56,7 @@ plain's seeds are in `design/palettes/neutral.json`, the shortest palette in the
 | display | **Geist Variable** | Same family on purpose. Display contrast comes from weight and scale. A second face would pull attention from the content. |
 | mono | **Geist Mono Variable** (`geist-mono`) | The body face's mono pair, for IDs, timestamps and code. The shared skeleton keeps a table of IDs consistent with the text around it. |
 
-The engine derives the fallback stacks (`docs/theming.md`, the three font slots): the system
+The engine derives the fallback stacks (`docs/theming.md`, the font slots): the system
 sans stack for both sans slots and the system mono stack for mono, all with `font-display: swap`
 from fontsource. The apps load the packages per system (`apps/workbench/src/fonts.ts`). The
 library bundles no fonts.

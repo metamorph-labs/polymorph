@@ -6,7 +6,7 @@ it like source.
 
 | Path | What it is | Read by |
 | --- | --- | --- |
-| `systems/<name>.json` | A **system**: the eight axes, three font slots, presentation defaults and its default palette | the theme engine, both apps, the registry, the CLI, `pnpm size`, the native token emitters |
+| `systems/<name>.json` | A **system**: the eight axes, the font slots, presentation defaults and its default palette | the theme engine, both apps, the registry, the CLI, `pnpm size`, the native token emitters |
 | `systems/<name>.md` | That system's rationale: the character it aims for and the reasons for its axis values | the registry, the workbench mood board |
 | `palettes/<name>.json` | A **palette**: the colour seeds — accent and neutral hues, tint, chroma budget | the theme engine, both apps, the CLI, `pnpm size`, the native token emitters |
 | `palettes/README.md` | An overview of the palettes | people |

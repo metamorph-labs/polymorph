@@ -347,7 +347,7 @@ These are the parts of the model that are hardest to get right. Changes here nee
 | **Pending list** | `packages/native/src/pending.ts` (iOS) and `kotlin-pending.ts` (Android): the members a platform map marks native or adapted that have no rendering there. Its length is pinned by the native conformance law. |
 | **Gate** | The check a change must pass on the machine where it is made, one per platform: `pnpm gate` (web), `pnpm gate:ios` and `pnpm gate:android`. The web has a second, `pnpm gate:engines`, which repeats its browser tests on Firefox and WebKit. See [verification.md](verification.md). |
 | **Archetype** | A member that is a whole-page anatomy (`ListPage`, `FormPage`, …). |
-| **System** | Every design decision other than the colour seeds: eight design axes, three font slots, defaults. A JSON document in `design/systems/`. |
+| **System** | Every design decision other than the colour seeds: eight design axes, the font slots, defaults. A JSON document in `design/systems/`. |
 | **Palette** | The colour seeds a product uses. A JSON document in `design/palettes/`. |
 | **Pairing** | One system × one palette — the unit that resolves to tokens and is applied to the DOM (`data-system`, `data-palette`) or to a native app's root (`.pmTheme(_:)`, `ProvidePMTheme`). Informally, "a theme". |
 | **Axes** | The eight parameters a system sets (geometry, depth, density, …). See [theming.md](theming.md). |

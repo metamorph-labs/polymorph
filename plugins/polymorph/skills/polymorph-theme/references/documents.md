@@ -61,17 +61,27 @@ in it is refused.
 | `motionTemperament` | `none`, `subtle`, `standard`, `expressive` | durations and springs; `none` stops motion |
 | `ornament` | `none`, `minimal`, `grain`, `grid` | halos and page texture |
 
-`fonts` has three slots, `body`, `display` and `mono`, each `{ family, fallback?, style? }`.
-`body` draws every text step, `text.xs` to `text.3xl`: paragraphs, controls and headings,
-`PageHeader`'s title included. `display` draws only the display steps, which
-`Hero`'s title uses. `mono` draws code. No slot draws headings alone, so a serif for
-headings is one of two edits: a serif `display` changes `Hero`'s title only, and a serif
-`body` changes every heading and every paragraph. Say which one the request gets.
+`fonts` has four slots, `body`, `heading`, `display` and `mono`, each
+`{ family, fallback?, style? }`. `heading` is optional and the other three are required.
+
+| Slot | Draws |
+| --- | --- |
+| `body` | the body steps, `text.xs` to `text.md`: paragraphs, controls, labels, table cells |
+| `heading` | the heading steps, `text.lg` to `text.3xl`: every `Heading` level, `PageHeader`'s and `Dialog`'s titles, `Stat`'s value. Left out, they draw in `body` |
+| `display` | only the display steps, which `Hero`'s title uses |
+| `mono` | code |
+
+A serif for headings is therefore a serif `heading` slot, and it leaves paragraphs in `body`.
+A serif `display` changes `Hero`'s title only, and a serif `body` changes every
+paragraph, and every heading too while the system has no `heading` slot. Say which one the
+request gets.
 
 `typePersonality` picks no typeface. It sets the weights (`editorial` draws titles at 700), the
-tracking, the icon stroke, and the fallback of a `body` or `display` slot that names none: serif
-under `editorial`, sans under the others. Give a serif slot `"fallback": "serif"`, so the page
-shows a serif while the font loads.
+tracking, the icon stroke, and the fallback of a `body`, `heading` or `display` slot that
+names none: serif under `editorial`, sans under the others. Give a serif slot
+`"fallback": "serif"`, so the page shows a serif while the font loads. A system's
+`overrides.type.titleWeight` is drawn in the `heading` slot's family, so that family must ship
+the weight.
 
 `family` is a Fontsource family name: `Inter Variable` is the package
 `@fontsource-variable/inter`, and a name that does not end in Variable is `@fontsource/<name>`. `fallback`

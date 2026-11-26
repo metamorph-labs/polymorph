@@ -8,7 +8,7 @@ for the accent fills, their label, the focus pair and the colour the accent grad
 `moreContrast` names the palette a reader who asks for more contrast gets instead. No house
 palette uses either
 (`docs/theming.md`). A **system**
-(`design/systems/`) is the structure: the eight axes, the three font slots, the
+(`design/systems/`) is the structure: the eight axes, the font slots, the
 presentation defaults. A **pairing** is one system × one palette. It is the unit that
 resolves, emits, and is applied to the DOM (`docs/theming.md`).
 

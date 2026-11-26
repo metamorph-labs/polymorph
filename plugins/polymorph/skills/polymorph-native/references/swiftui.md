@@ -459,8 +459,8 @@ page's "Try again", are looked up in the app's string catalog, so the app transl
 
 A pairing's fonts are drawn when they are installed: the app adds the font files to its target and
 lists each under `<key>UIAppFonts</key>` in its Info.plist. The family a file declares must equal
-the pairing's `theme.fonts.body.family` (and `.display`, `.mono`). Until then each type step
-uses the system font in its slot's design.
+the pairing's `theme.fonts.body.family` (and `.heading`, `.display`, `.mono`). Until then
+each type step uses the system font in its slot's design.
 
 ## What no member draws
 

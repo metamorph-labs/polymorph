@@ -58,7 +58,7 @@ pastel's colour seeds are in `design/palettes/amethyst.json`.
 | display | **Plus Jakarta Sans Variable** | Same family on purpose. Display contrast comes from weight (600) and scale, which keeps the voice calm. |
 | mono | **Fira Code Variable** (`fira-code`) | A humanist mono from the body face's tradition, for IDs and code fragments. |
 
-The engine derives the fallback stacks (`docs/theming.md`, the three font slots): the system
+The engine derives the fallback stacks (`docs/theming.md`, the font slots): the system
 sans stack for sans personalities and the system mono stack for mono, all with
 `font-display: swap` from fontsource. The apps load the packages per system
 (`apps/workbench/src/fonts.ts`). The library bundles no fonts.
