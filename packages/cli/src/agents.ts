@@ -396,10 +396,8 @@ const FRAMEWORK_NOTES: Readonly<Record<Framework, FrameworkNotes>> = {
         'which also holds the theme sheet. `add theme:<system>` adds a system to the sheet, ' +
         '`<html data-system data-palette>` chooses the one a page wears, and `update` copies the ' +
         'files again when polymorph changes.',
-      '`<html data-agent="on-call">` registers the page\'s members with the browser\'s WebMCP API ' +
-        'as tools an agent in the browser calls, and loads the agent bridge on the first call; ' +
-        '`"eager"` loads it at once. No page states it until its owner decides an agent may ' +
-        'operate that page.',
+      '`<html data-agent="on-call">` lets an agent in the browser operate the page (the ' +
+        '`polymorph-agent-bridge` skill). A page states it only when its owner decides one may.',
     ],
   },
 }

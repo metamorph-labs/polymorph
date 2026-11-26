@@ -192,12 +192,12 @@ export type SkillName = (typeof SKILL_NAMES)[number]
  * description still learns which one to read.
  */
 export const SKILL_USES: Record<SkillName, string> = {
-  'polymorph-screen': 'any screen: a form, a table, a chart, a chat with a model, formatted text',
-  'polymorph-rules': 'a red-rule violation, or a need no member covers',
+  'polymorph-screen': 'any screen: a form, a table, a chart, a chat, formatted text',
+  'polymorph-rules': 'a red-rule violation, a need no member covers',
   'polymorph-setup': 'installing, vendoring, upgrading, the agent files',
   'polymorph-theme': 'how the app looks',
-  'polymorph-runtime-screen': 'a screen a model writes while the product runs',
-  'polymorph-agent-bridge': 'an agent on the page that operates the members',
+  'polymorph-runtime-screen': 'a screen a model writes at run time',
+  'polymorph-agent-bridge': 'an agent that operates the page',
   'polymorph-native': 'a SwiftUI or Compose screen',
 }
 
