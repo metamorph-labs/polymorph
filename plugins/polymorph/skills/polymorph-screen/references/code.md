@@ -212,8 +212,15 @@ load is no member's state: the screen shows an `Alert` with
 `tone="danger"`, a `title` and a retry
 `action` in the chart's panel. An Alert with no title and no children draws
 nothing, its action included, so a spec binds its title to an input the container leaves empty
-until a load fails. `Dashboard` and `Stat` take no loading prop, and the stat row
-draws nothing while `stats` is empty.
+until a load fails. A `Stat` whose number has not arrived takes
+`loading`, in each entry of `stats` or on its own: its label
+row stays, and its value and each part it is passed (`delta`,
+`trend`, `spark`, `footer`) draw a placeholder of
+that part's size, so the card keeps its height when the number arrives. Pass
+`value` as the container has it, `''` on the first load, and the parts the loaded
+card will have; nothing a loading Stat is passed about its number is drawn or read. A screen
+reader hears `loadingLabel`, "Loading" by default, in the value's place. The stat
+row draws nothing while `stats` is empty.
 
 - Never edit the emitted file. Change the spec and emit it again.
 - An emitted screen imports its members from `@polymorph/<framework>-ui`. In a project that vendors
