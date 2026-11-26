@@ -385,7 +385,12 @@ export function nameTipLaw({ shell, adapter }: NameTipLaw): void {
         'dismissible: Tab to the close button shows its tip, Escape closes the tip and the Dialog stays open, and a second Escape closes the Dialog',
         async () => {
           await openDialog()
-          for (let step = 0; step < 6 && document.activeElement !== close(); step += 1) {
+          // The Dialog opens with focus on its close button, so Tab leaves it and comes back.
+          for (
+            let step = 0;
+            step < 6 && (step === 0 || document.activeElement !== close());
+            step += 1
+          ) {
             await userEvent.keyboard('{Tab}')
           }
           expect(document.activeElement).toBe(close())

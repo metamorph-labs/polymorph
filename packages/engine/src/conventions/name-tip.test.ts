@@ -234,6 +234,21 @@ describe('keyboard focus', () => {
     expect(bubble()).toBeNull()
   })
 
+  it('does not open for focus a script gives some frames after a key that moves focus', async () => {
+    const button = tipped('Close')
+    const from = document.createElement('button')
+    from.textContent = 'From'
+    document.body.append(from)
+    from.focus()
+    // An arrow key that moves nothing here, as one that turned a Lightbox's picture.
+    await userEvent.keyboard('{ArrowRight}')
+    await frames()
+    await frames()
+    button.focus()
+    await frames()
+    expect(bubble()).toBeNull()
+  })
+
   it('does not open for focus a script gives after a pointer press', async () => {
     const elsewhere = document.createElement('button')
     elsewhere.textContent = 'Elsewhere'
@@ -284,6 +299,34 @@ describe('Escape', () => {
       }
     })
   }
+})
+
+describe('a button that is gone', () => {
+  it('opens no tip when the pointer entered it twice and it left before the delay', async () => {
+    await fakeTimersAfterSkip()
+    const button = tipped('Archive')
+    await userEvent.hover(button)
+    // The browser enters a control again when the page moves under a resting pointer.
+    button.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }))
+    releases.pop()?.()
+    button.remove()
+    await vi.advanceTimersByTimeAsync(TOOLTIP_DELAY_MS)
+    expect(bubble()).toBeNull()
+  })
+
+  it('leaves Escape to the page when its button left the document with the tip open', async () => {
+    await fakeTimersAfterSkip()
+    const button = tipped('Archive')
+    await hoverAndWait(button)
+    expect(bubble()).not.toBeNull()
+    vi.useRealTimers()
+    button.remove()
+    const heard = vi.fn()
+    document.addEventListener('keydown', heard, { once: true })
+    await userEvent.keyboard('{Escape}')
+    expect(heard).toHaveBeenCalledOnce()
+    expect(bubble()).toBeNull()
+  })
 })
 
 describe('until dismissed', () => {

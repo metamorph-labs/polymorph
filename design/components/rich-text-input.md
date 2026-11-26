@@ -217,6 +217,8 @@ container; nothing in it is clipped or scrolled away.
   selection it acts on stays, and the text has focus after the command. From the keys, focus
   stays on the control after a command. Escape in the toolbar returns focus to the text with the
   selection as it was; inside a Dialog, that Escape is the toolbar's and the dialog stays open.
+  While an icon-only control shows its name tip (`button.md`), Escape closes the tip first and the
+  next Escape returns focus.
 - **The text style Menu** lists Paragraph and Heading 1 to 3, the current one checked. A choice
   closes it. Opened with the pointer, it returns focus to the text when it closes; opened from
   the keys, to its control.
@@ -326,7 +328,8 @@ they may not edit; a disabled one draws no bar.
   brings it back. It leaves when the selection collapses or leaves the field.
 - **Keys.** The bar is a toolbar with the toolbar's keys and one tab stop. It follows the surface
   in the document, so Tab from the text reaches it while it is drawn, and Alt+F10 moves focus to
-  it. Escape in it returns focus to the text with the selection as it was. When it leaves with
+  it. Escape in it returns focus to the text with the selection as it was, after the Escape that
+  closes a control's name tip while one shows. When it leaves with
   focus in it (an app's control in it replaced the selection), focus goes back to the text. The
   first time a bar appears after focus entered the field from outside it, the status says the
   controls are there (`messages.selectionBarReady`), once: focus coming back to the text from the

@@ -23,7 +23,8 @@ import { TOOLTIP_DELAY_MS, TOOLTIP_SKIP_DELAY_MS } from './tooltip'
  *   while another tip shows or within `TOOLTIP_SKIP_DELAY_MS` of one closing.
  *   Touch and pen contact do not open it. Focus opens it when the person
  *   moved focus to the button with the keyboard: the last key pressed was
- *   Tab, an arrow key, Home or End, and the button matches `:focus-visible`.
+ *   Tab, an arrow key, Home or End, the focus came with that key or within two
+ *   frames of its release, and the button matches `:focus-visible`.
  *   So roving focus a member gives on an arrow key opens it, and focus a
  *   script gives after Enter, Space or a press does not: a Dialog that puts
  *   focus on its icon-only close button opens no tip, and the first Escape
@@ -62,14 +63,17 @@ let held = false
 /** When the last tip closed, for the skip delay: never, at first. */
 let closedAt = 0
 /**
- * True while the last key pressed moves focus (Tab, an arrow key, Home, End), and no press came
- * since. `tooltip-hold.ts` answers a different question for an open Tooltip: whether any key or a
+ * The time of the last key pressed, while that key moves focus (Tab, an arrow key, Home, End), no
+ * press came since, and the key is down or was released within two frames; otherwise 0. A member
+ * that roves focus gives it during the key or a frame later, so that focus is counted. Focus a
+ * script gives later is not: a Lightbox that opens some time after an arrow key puts focus on its
+ * close button with no tip, and the first Escape closes it. `tooltip-hold.ts` answers a different question for an open Tooltip: whether any key or a
  * press came before a focus. A Dialog opened with Enter gives its close button focus after a key,
  * which is keyboard focus there and is not a move here. The tip keeps this one flag instead of
  * reading that module's notes, because the tip ships in every bundle that draws a Button and the
  * notes cost more than the Button fixtures' size ceilings leave (`scripts/size/README.md`).
  */
-let moving = false
+let moving = 0
 /** True once the window's listeners are added, with the first tip. */
 let listening = false
 
@@ -179,14 +183,25 @@ export function nameTip(
     listen(window, {
       keydown(event) {
         const { key, isComposing } = event as KeyboardEvent
-        moving = /^(Tab|Arrow|Home|End)/.test(key)
+        // A synthetic key has no time, and 1 stands for it.
+        moving = /^(Tab|Arrow|Home|End)/.test(key) ? event.timeStamp || 1 : 0
+        // A button that left the document without its Button's leave takes no key from the page.
+        if (owner && !owner.isConnected) close()
         if (!owner || key !== 'Escape' || isComposing) return
         event.preventDefault()
         event.stopPropagation()
         close()
       },
+      keyup() {
+        const key = moving
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            if (moving === key) moving = 0
+          }),
+        )
+      },
       pointerdown() {
-        moving = false
+        moving = 0
         close()
       },
       pointermove(event) {
@@ -201,7 +216,10 @@ export function nameTip(
   let timer: ReturnType<typeof setTimeout> | undefined
   const own = new AbortController()
   const mine = () => owner === control
-  const show = (pointer: boolean) => open(control, label, className, pointer)
+  // A wait that outlives the control opens nothing.
+  const show = (pointer: boolean) => {
+    if (!own.signal.aborted && control.isConnected) open(control, label, className, pointer)
+  }
   const wait = () => clearTimeout(timer)
   const dismiss = () => {
     wait()
@@ -212,6 +230,9 @@ export function nameTip(
     {
       pointerenter(event) {
         if ((event as PointerEvent).pointerType !== 'mouse' || mine()) return
+        // The browser enters the control again when the page moves under a resting pointer, so
+        // an earlier wait ends before a new one starts.
+        wait()
         if (owner || Date.now() - closedAt < TOOLTIP_SKIP_DELAY_MS) show(true)
         else timer = setTimeout(show, TOOLTIP_DELAY_MS, true)
       },

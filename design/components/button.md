@@ -106,10 +106,11 @@ follow their platforms' own controls and show none.
   another tip shows or within `TOOLTIP_SKIP_DELAY_MS` of one closing, when it opens at once. These
   are Tooltip's delays. Touch and pen contact do not open it. Focus opens it when the reader
   moved focus to the button with the keyboard: the last key pressed was Tab, an arrow key, Home
-  or End, with no press since, and the button matches `:focus-visible`. So a Tab and the roving
-  focus a member gives on an arrow key open it. Focus a script gives after Enter, Space or a
-  pointer press does not: a Dialog opened with Enter that puts focus on its icon-only close
-  button shows no tip there, and the first Escape closes the Dialog.
+  or End, with no press since, the focus came with that key or within two frames of its release,
+  and the button matches `:focus-visible`. So a Tab and the roving focus a member gives on an
+  arrow key open it. Focus a script gives after Enter, Space or a pointer press, or some time
+  after a key that moves focus, does not: a Dialog opened with Enter that puts focus on its
+  icon-only close button shows no tip there, and the first Escape closes the Dialog.
 - **When it closes.** The pointer leaves the button, the bubble and the gap between them; the
   button loses focus; Escape; a press anywhere; a scroll of anything that holds the button; or
   the button leaves the document, is disabled or loses `iconOnly`.

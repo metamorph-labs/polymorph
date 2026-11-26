@@ -432,7 +432,14 @@ describe('the toolbar’s keys', () => {
     await userEvent.keyboard('{ArrowLeft}')
     expect(document.activeElement?.getAttribute('aria-label')).toBe('Code block')
     await userEvent.keyboard('{Home}')
-    expect(document.activeElement?.getAttribute('aria-label')).toBe('Bold')
+    const bold = document.activeElement
+    expect(bold?.getAttribute('aria-label')).toBe('Bold')
+    // Home moved focus to an icon-only control, so its name tip shows. Escape closes the tip and
+    // focus stays; the next Escape returns to the text.
+    await vi.waitFor(() => expect(document.querySelector('[popover]')?.textContent).toBe('Bold'))
+    await userEvent.keyboard('{Escape}')
+    expect(document.querySelector('[popover]')).toBeNull()
+    expect(document.activeElement).toBe(bold)
     await userEvent.keyboard('{Escape}')
     await vi.waitFor(() => expect(document.activeElement).toBe(surface()))
   })
