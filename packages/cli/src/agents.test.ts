@@ -393,8 +393,12 @@ function factFaults(text: string): string[] {
   for (const [, language, code] of fences) {
     if (language === 'tsx') {
       const foreign = new Set(
-        [...(code as string).matchAll(/import \{([^}]+)\} from '(?!@polymorph\/)[^']+'/g)].flatMap(
-          ([, names]) => (names as string).split(',').map((each) => each.trim()),
+        [
+          ...(code as string).matchAll(
+            /import (?:type )?\{([^}]+)\} from '(?!@polymorph\/)[^']+'/g,
+          ),
+        ].flatMap(([, names]) =>
+          (names as string).split(',').map((each) => each.trim().replace(/^type /, '')),
         ),
       )
       tagged(code as string, foreign)

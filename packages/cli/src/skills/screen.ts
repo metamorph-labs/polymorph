@@ -3,7 +3,7 @@ import type { Registry } from '@polymorph/registry'
 import { DEFAULT_SYSTEM } from '../plan'
 import { chartsReference } from './screen-charts'
 import { chatReference } from './screen-chat'
-import { codeReference } from './screen-code'
+import { appReference, codeReference } from './screen-code'
 import { richTextReference } from './screen-rich-text'
 import { all, commands, either, Facts, frameworkTable, skill, type SkillFile } from './facts'
 
@@ -82,7 +82,8 @@ Some screens have a procedure of their own. Read its file before you write the s
 
 | The screen | Read |
 | --- | --- |
-| Is written in code, or is the container of an emitted spec: state, a form, a table, a toast, an overlay, navigation | [references/code.md](references/code.md) |
+| Is written in code, or is the container of an emitted spec | [references/code.md](references/code.md) |
+| Needs the app around it: the root's providers, the mode, a form, a toast, a dialog, navigation | [references/app.md](references/app.md) |
 | Holds a conversation with a model | [references/chat.md](references/chat.md) |
 | Draws a chart | [references/charts.md](references/charts.md) |
 | Takes or shows formatted text, mentions or comments on words | [references/rich-text.md](references/rich-text.md) |
@@ -112,8 +113,9 @@ file: change the spec and emit it again.
 ## 5. Or write the screen in code
 
 Import members from the framework's vocabulary package, or from the vendored directory in a project
-that vendors. [references/code.md](references/code.md) has the import line for each framework, a
-worked screen, and what the app wires around it. Then check the file:
+that vendors. [references/code.md](references/code.md) has the import line for each framework and
+a worked screen, and [references/app.md](references/app.md) what the app wires around it. Then
+check the file:
 
 ${commands(run, 'validate src/pages/Settings.tsx --framework <framework>')}
 
@@ -213,6 +215,7 @@ or spreads the fragment \`polymorph.eslint.js\` that \`init\` and \`add\` write.
     },
     { path: 'polymorph-screen/references/screen-spec.md', contents: specReference(registry) },
     { path: 'polymorph-screen/references/code.md', contents: codeReference(registry, run) },
+    { path: 'polymorph-screen/references/app.md', contents: appReference(registry, run) },
     { path: 'polymorph-screen/references/chat.md', contents: chatReference(registry) },
     { path: 'polymorph-screen/references/charts.md', contents: chartsReference(registry, run) },
     { path: 'polymorph-screen/references/rich-text.md', contents: richTextReference(registry) },
