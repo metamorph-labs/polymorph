@@ -1422,10 +1422,13 @@ catalog, so the app translates them there.
 
 A screen is written as a spec whose `platform` is `ios` and emitted as SwiftUI, from a checkout:
 `pnpm emit <spec.json> InboxView.swift`, or the MCP tool `emit_screen` with a `.swift` path. The
-file holds the screen's model, its actions and a stateless view; the app owns navigation, state
-and asynchronous work ([native.md](native.md), `design/native/screen-contract.md`). A tenant's
-theme known only at run time reaches the device as a token document, which
-`PMTheme(tokenDocument:)` reads ([native.md](native.md#how-a-tenant-theme-reaches-a-device)).
+tool, and `polymorph emit`, write only into a directory that holds a `package.json` or a
+`polymorph.json`, which a Swift package or an Xcode project does not. `pnpm emit` writes to any
+path, so a checkout can write into the app's repository. The file holds the screen's model, its
+actions and a stateless view; the app owns navigation, state and asynchronous work
+([native.md](native.md), `design/native/screen-contract.md`). A tenant's theme known only at run
+time reaches the device as a token document, which `PMTheme(tokenDocument:)` reads
+([native.md](native.md#how-a-tenant-theme-reaches-a-device)).
 [`platforms/ios/README.md`](../platforms/ios/README.md) has the rest.
 
 ## An Android app
@@ -1471,7 +1474,9 @@ dependencies {
 }
 ```
 
-Either way the app compiles against API 37 and gives its Gradle and Kotlin daemons a 4 GB heap
+Either way the app compiles against API 37. An app that includes the build also gives its Gradle
+and Kotlin daemons a 4 GB heap, because the member module compiles in the app's build there. An app
+that takes JitPack's build receives the compiled modules and needs no larger heap
 ([`platforms/android/README.md`](../platforms/android/README.md) says why).
 
 The app provides one pairing at its root and composes members, which read it from the
@@ -1499,6 +1504,9 @@ image loader (`LocalPMImageLoader`), a file picker (`LocalPMFilePicker`) and an 
 
 A screen is written as a spec whose `platform` is `android` and emitted as Compose, from a
 checkout: `pnpm emit <spec.json> InboxScreen.kt`, or the MCP tool `emit_screen` with a `.kt` path.
+The tool, and `polymorph emit`, write only into a directory that holds a `package.json` or a
+`polymorph.json`, which an Android project does not. `pnpm emit` writes to any path, so a checkout
+can write into the app's repository.
 [`platforms/android/README.md`](../platforms/android/README.md) has the rest, and
 [native.md](native.md) has the members and the emitter.
 
@@ -1608,7 +1616,9 @@ theme in the browser and any bundler can serve the result. Under `<dir>/themes/`
 | `index.ts` | imports the base layer, the fonts and `theme.css`; uses only `@polymorph/engine/runtime`; exports `installThemes()` (the install patches your entry to call it) and `ensurePairing(system, palette)`, which returns a Promise to await before switching to a pairing |
 
 The sheets are generated. After editing a vendored system or palette, run `polymorph update` to
-recompile them. An edit that breaks a law fails the update with the law's own message.
+recompile them from your copies. An edit that breaks a law fails the update with the law's own
+message. `polymorph update --force` puts the shipped documents back and compiles the sheets from
+them.
 
 An application that installs its themes from a module of its own, instead of calling
 `installThemes()`, sets `"appInstallsThemes": true` in `polymorph.json`. `add` and `update` then

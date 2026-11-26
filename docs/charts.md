@@ -362,11 +362,12 @@ member as a child. Composing *inside* a chart is not supported.
   `BarChart` `lines` entry. It shares the one value axis, so its values read on the same ticks.
 - A second measure in another unit, such as a rate beside counts or latency beside requests,
   is a second chart. A `BarChart` of the counts sits above a `LineChart` of the rate, over the
-  same rows and the same `x`, in one panel. Each chart names its axis with its own `y.label`,
-  formats it with its own `y.format`, and has its own summary and twin, so no reading depends
-  on how two scales were made to fit one plot. Each chart sizes its value axis to its own tick
-  labels, so a category sits at nearly the same place in both plots, not exactly, and each
-  chart's band labels name its categories.
+  same rows and the same `x`, in one panel. Each chart formats its value axis with its own
+  `y.format` and has its own summary and twin, so no reading depends on how two scales were
+  made to fit one plot. Neither chart draws an axis title, so each series label names its
+  measure and unit, which the tooltip and the twin show. Each chart sizes its value axis to its
+  own tick labels, so a category sits at nearly the same place in both plots, not exactly, and
+  each chart's band labels name its categories.
 
 ```tsx
 <Dashboard.Panel title="Requests and p95 latency">
@@ -375,7 +376,7 @@ member as a child. Composing *inside* a chart is not supported.
       data={byHour}
       series={[{ key: 'requests', label: 'Requests' }]}
       x={{ key: 'hour' }}
-      y={{ label: 'Requests', format: { style: 'compact' } }}
+      y={{ format: { style: 'compact' } }}
       size="sm"
       label="Requests by hour"
     />
@@ -383,7 +384,7 @@ member as a child. Composing *inside* a chart is not supported.
       data={byHour}
       series={[{ key: 'p95', label: 'p95 latency (ms)' }]}
       x={{ key: 'hour' }}
-      y={{ label: 'Milliseconds', domain: 'zero' }}
+      y={{ domain: 'zero' }}
       markers
       size="sm"
       label="p95 latency by hour"
@@ -408,7 +409,11 @@ chart and no prop can carry a raw colour, a formatter function or a draw callbac
   currency | date`), `currency`, `maximumFractionDigits`, `granularity`. `percent` takes
   ratios.
 - **`ChartXAxis` / `ChartYAxis`** — `key`, `scale` (`band` default, `time`, `linear`),
-  `label`, `format`, `ticks`; `domain: 'auto' | 'zero'` on y.
+  `label`, `format`, `ticks`; `domain: 'auto' | 'zero'` on y. No chart draws an axis title.
+  `x.label` heads the first column of the twin's table; on a `Heatmap`, whose rows run down
+  y, `y.label` heads it. A `Histogram`'s `x.label` and `y.label` head its range and count
+  columns, and `y.label` also names the count in its tooltip. `BarChart`, `LineChart`,
+  `AreaChart` and `ScatterChart` do not read `y.label`.
 - **`size`** — `sm | md | lg` sets the frame height. Width always follows the container.
 - **`label`** is required: it is the accessible name.
 - **`locale`** — `Intl` formats with it. When it is omitted, the runtime's resolved locale

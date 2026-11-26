@@ -66,6 +66,12 @@ The engine path is `parseSystem` / `parsePalette` (zod schemas) → `composeThem
 | `overrides` | optional value-only amendments to the derived scales, below |
 | `$schema` | tolerated and ignored, so an editor can point at the JSON Schema |
 
+`defaultMode` decides the mode only where nothing sets `data-mode`: a nested scope that carries
+the pairing without `data-mode`, or a page that runs neither the pre-paint script nor
+`hydrateTheme`. It does not decide a first visit's mode on a page that runs either one. The
+pre-paint script always sets `data-mode` on `<html>`, to the operating system's mode when nothing
+is stored, and `hydrateTheme` applies the stored preference, which is `system` when none is stored.
+
 The schema is strict. It rejects an unknown key, and it rejects a colour seed in a system file.
 
 ### The eight axes

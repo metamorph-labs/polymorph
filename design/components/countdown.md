@@ -39,7 +39,7 @@ retried after the server's "retry after" seconds, and a request whose approval e
 | `label` | `string` | required | what it counts to, as the timer's accessible name: "Time until you can send a new code". Required, because an unnamed timer says a time and not what it is for |
 | `onEnd` | `() => void` | — | called once when the moment is reached. A moment already past at mount is reported once after mount, so an application that keeps the moment across a reload or a remount learns that it has passed. Never called on a server |
 | `announce` | `boolean` | `false` | says the time left in a polite line at one minute and at ten seconds ([A11y](#a11y)). Off, nothing is said |
-| `locale` | `string` | — | the locale rail: `Intl` writes the digits and the words; the page's own when absent |
+| `locale` | `string` | — | the locale rail: `Intl` writes the digits and the words; the runtime's resolved locale when absent, not the document's `lang` |
 | `messages` | `{ mark: (label: string, time: string) => string }` | English | the localization seam: `mark` joins the label and the time left in words for the announced line. The English default writes "label: time", "Time until the code expires: 1 minute" |
 
 Attributes: `data-ended` on the root once the time left is zero. The rest state carries none.

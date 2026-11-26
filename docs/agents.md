@@ -33,6 +33,11 @@ Angular. A custom element renders its Solid member, so the member inside a `poly
 registers as it does in a Solid application. The bridge reads those handles. It reports the states a member's fence declares and runs
 the actions it declares, and nothing else. A member with no fence is not visible to an agent.
 
+The bridge does not model modality. While a modal is open, the members behind it are listed and
+an agent can run their actions. The bridge leaves out a member whose element is absent from the
+document or inside content marked `hidden` ([below](#snapshot)). A member hidden only by a
+stylesheet is listed.
+
 The fence is the only thing that grants access. An application's policy can hide a member or deny
 an action, and it has no way to add either. A secret value never leaves the bridge, and an action
 a person must mean waits for that person to confirm it.
@@ -287,7 +292,8 @@ After each action the bridge waits for the renderer to settle, reads the member'
 reports what differs in `changed`. A step that removes its member's element still succeeds and
 reports what changed: a Dialog's `close` reports `open` from `true` to `false`, and the Dialog is
 not listed afterwards. A secret state, and any value that holds a secret, is left out
-of `changed`. `act` never rejects, and one `act` runs at a time, so two agents' steps never
+of `changed`. `act` never rejects. One `act` of a bridge runs at a time, so two agents that share
+a bridge never interleave their steps. Two bridges each keep their own order, so their steps can
 interleave.
 
 | Error code | When |

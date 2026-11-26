@@ -170,6 +170,11 @@ The MCP tool `emit_screen` does the same for a `.swift` path, and its answer nam
 it wrote ([tooling.md](tooling.md)). A web framework (`--framework`, `framework`) is refused for a
 native spec, whose language is its platform's.
 
+`emit_screen`, and `polymorph emit`, which calls it, write only into a project: a directory that
+holds a `package.json` or a `polymorph.json` ([tooling.md](tooling.md#the-project)). A Swift
+package or an Xcode project holds neither, so the tool refuses it. `pnpm emit` in a checkout of
+this repository writes to any path, one in a native repository included.
+
 The file declares four things, and nothing else:
 
 | Declaration | What it is |
@@ -605,9 +610,11 @@ pnpm emit platforms/android/examples/relay/Screens/inbox.json                # K
 pnpm emit platforms/android/examples/relay/Screens/inbox.json app/src/main/kotlin/dev/acme/relay/InboxScreen.kt
 ```
 
-The MCP tool `emit_screen` does the same for a `.kt` path. The file declares the package its
-directory names under the source root (`…/kotlin/dev/acme/relay/` is `dev.acme.relay`, and a
-`java/` root counts the same), so the app's own types beside it need no import; printed, or
+The MCP tool `emit_screen` does the same for a `.kt` path. As for Swift, it writes only into a
+directory that holds a `package.json` or a `polymorph.json`, and an Android project holds neither,
+so `pnpm emit` in a checkout of this repository is the way to write into one. The file declares the
+package its directory names under the source root (`…/kotlin/dev/acme/relay/` is `dev.acme.relay`,
+and a `java/` root counts the same), so the app's own types beside it need no import; printed, or
 written outside a source root, it declares none. It declares four things, and nothing else:
 
 | Declaration | What it is |

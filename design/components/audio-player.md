@@ -37,7 +37,7 @@ playlist: the application lays out several players, and the players keep to one 
 | `src` | `string` | required | the recording's URL. An empty string is the failed state, because there is nothing to load |
 | `label` | `string` | required | names the player, which is a group: "Voice message from Ada", "Call with Grace, 3 May". Required, because a page with two players needs to tell them apart, and only the app knows what each recording is |
 | `duration` | `number` | — | the recording's length in seconds, shown before the file gives its own. A file's finite length replaces it. A file that gives none keeps it: a recording that a browser's `MediaRecorder` wrote reports an infinite length until it has played through, and the app that recorded it knows how long it is |
-| `locale` | `string` | — | the locale the clock's numerals and the spoken lengths are written in, through `Intl`; the page's own when absent |
+| `locale` | `string` | — | the locale the clock's numerals and the spoken lengths are written in, through `Intl`; the runtime's resolved locale when absent, not the document's `lang` |
 | `messages` | `AudioPlayerMessages` | English | the localization seam: every word the member writes itself |
 | `onPlay` | `() => void` | — | the recording started playing. A conversation marks a voice message heard with it, as a messaging app's receipt does |
 | `onEnded` | `() => void` | — | the recording played to its end. An app that counts a message as heard only when it was heard through uses this one |

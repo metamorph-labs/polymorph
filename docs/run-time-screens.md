@@ -518,11 +518,12 @@ Cut inside the Amount field of the document above, the text ends in the Input's 
 … "children": [{ "component": "Input", "props": { "name": "amount", "type": "num
 ```
 
-The screen draws the Card, the Stack, the order's number and the Amount field, with no control in
-it yet, because `num` is not yet a type. Once the text reaches `"type": "number" } }`, the Input
-is drawn inside the field. The Button is drawn when its closing brace arrives, with its label, its
-variant and its action whole. A heading's or a paragraph's text appears as it is written, because
-a child string is drawn while it is written. A prop's value appears only once it is whole.
+The screen draws the Card, the Stack and the order's number. The Amount field waits for its Input,
+the one control it reads, and the Input waits because `num` is not yet a type. Once the text reaches
+`"type": "number" } }`, the field is drawn with the Input in it. The Button is drawn when its
+closing brace arrives, with its label, its variant and its action whole. A heading's or a
+paragraph's text appears as it is written, because a child string is drawn while it is written. A
+prop's value appears only once it is whole.
 
 The output contract tells the model to write `spec`, `name`, `purpose`, `inputs` and `root` in
 that order, an element's plain props before its props that hold elements, and `props` before
@@ -668,16 +669,15 @@ same rule.
 
 Any other scheme (`javascript:`, `data:`, `vbscript:`, `file:`) is a fault, and the value is not
 passed; the element is still drawn without it
-([above](#an-element-a-required-prop-is-missing-from)). An address that holds a control character or `DEL` anywhere is refused whole, because a
-browser removes tabs and line breaks from inside an address (`java\tscript:` is `javascript:`).
-Spaces and control characters at either end are stripped before the scheme is read, as a browser
-strips them. A colon after a `/`, `?` or `#` names no scheme, so `/a:b` is relative. At an address
-key, anything but a string or a list of strings is a fault and is not passed. The check reads the
-document's own values and a value a binding puts directly at an address prop or key
-(`packages/screen/src/check.test.ts`, `packages/screen/src/walk.test.ts`,
-`packages/screen/src/hostile.test.ts`). A law holds that every prop the vocabulary types as text
-and names or documents as an address is one of the three keys
-(`packages/screen/src/parity.test.ts`).
+([above](#an-element-a-required-prop-is-missing-from)). An address that holds a control character or
+`DEL` anywhere is refused whole, because a browser removes tabs and line breaks from inside an
+address (`java\tscript:` is `javascript:`). Spaces at either end are stripped before the scheme is
+read, as a browser strips them. A colon after a `/`, `?` or `#` names no scheme, so `/a:b` is
+relative. At an address key, anything but a string or a list of strings is a fault and is not
+passed. The check reads the document's own values and a value a binding puts directly at an address
+prop or key (`packages/screen/src/check.test.ts`, `packages/screen/src/walk.test.ts`,
+`packages/screen/src/hostile.test.ts`). A law holds that every prop the vocabulary types as text and
+names or documents as an address is one of the three keys (`packages/screen/src/parity.test.ts`).
 
 ### Limits
 

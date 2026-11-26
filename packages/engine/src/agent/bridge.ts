@@ -818,7 +818,7 @@ export function createAgentBridge(options: AgentBridgeOptions = {}): AgentBridge
     snapshot,
     query,
     act(steps) {
-      // One act at a time, so two agents' steps never interleave.
+      // One act of this bridge at a time, so agents that share it never interleave their steps.
       const run = queue.then(() => runSteps(steps))
       queue = run.catch(() => undefined)
       return run.catch(() => ({

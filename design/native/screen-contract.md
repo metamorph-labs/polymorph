@@ -287,9 +287,11 @@ A native app renders under one `PMTheme` from its platform's token package, inst
 root of the app: a catalogue pairing (`PMTheme.plain_neutral`), or one read at run time from a
 token document (`try PMTheme(tokenDocument: data)` on iOS). In SwiftUI the app installs it with
 `.pmTheme(theme)`, an environment value, and members read it from the environment. In Compose the
-theme is a `CompositionLocal` the member package declares and the app provides at its root
-(`CompositionLocalProvider(LocalPMTheme provides theme) { … }`), and members read it from the
-composition. The view never names a theme or a token.
+theme is a `CompositionLocal` (`LocalPMTheme`) the member package declares and the app provides at
+its root with `ProvidePMTheme(theme) { … }`, and members read it from the composition.
+`ProvidePMTheme` also provides Material 3's bridge, which sets the content colour to the pairing's
+`text.primary`. `CompositionLocalProvider(LocalPMTheme provides theme)` alone leaves Material's
+default content colour, black. The view never names a theme or a token.
 
 ## Worked example: Relay's inbox
 

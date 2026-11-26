@@ -35,7 +35,7 @@ It draws no waveform: the mark's halo is the input level, one number.
 | `recording` | `boolean` | `false` | the application is recording. The member draws it and never sets it |
 | `elapsed` | `number` | — | the seconds the application has recorded, drawn as m:ss beside the mark while recording |
 | `level` | `number` | — | the input level from 0 to 1, drawn as the size of the mark's halo while recording. A value outside the range is clamped, and a value that is not a number is no level |
-| `locale` | `string` | — | the locale the time's numerals are written in, through `Intl` (the engine's `clockTime`, which AudioPlayer's clock uses too); the page's own when absent |
+| `locale` | `string` | — | the locale the time's numerals are written in, through `Intl` (the engine's `clockTime`, which AudioPlayer's clock uses too); the runtime's resolved locale when absent, not the document's `lang` |
 | `onStart` | `() => void` | — | a press while not recording |
 | `onStop` | `() => void` | — | a press while recording |
 | `disabled` | `boolean` | `false` | Button passthrough |
