@@ -269,9 +269,16 @@ describe('every command a text names', () => {
     }
   })
 
-  it('names every rule and every MCP tool as the registry and the verbs have them', () => {
+  it('names every rule and every tool as the registry, the verbs and the bridge have them', () => {
     const rules = new Set(registry.laws.map((law) => law.name))
-    const tools = new Set(VERBS.flatMap((verb) => verb.tools))
+    // The tools the agent bridge gives a model on the page are named as the engine names them.
+    const bridge = [
+      ...readFileSync(resolve(ROOT, 'packages/engine/src/agent/definitions.ts'), 'utf8').matchAll(
+        /name: '(polymorph_[a-z]+)'/g,
+      ),
+    ].map((match) => match[1] as string)
+    expect(bridge.length).toBeGreaterThan(0)
+    const tools = new Set([...VERBS.flatMap((verb) => verb.tools), ...bridge])
     for (const { where, text } of all) {
       for (const [rule] of text.matchAll(
         /(?<![@\w/.-])polymorph\/[a-z]+(?:-[a-z]+)+(?![\w./-])/g,
