@@ -504,12 +504,20 @@ final class PMFont {
   final List<double> opsz;
 }
 
+/// The font slots. [heading] is the face of the heading steps, `text.lg` to
+/// `text.3xl`; in a system that states no heading slot it is the body slot.
 final class PMFonts {
-  const PMFonts({required this.body, required this.display, required this.mono});
+  const PMFonts({
+    required this.body,
+    required this.display,
+    required this.mono,
+    required this.heading,
+  });
 
   final PMFont body;
   final PMFont display;
   final PMFont mono;
+  final PMFont heading;
 }
 
 // Shape and depth -----------------------------------------------------------

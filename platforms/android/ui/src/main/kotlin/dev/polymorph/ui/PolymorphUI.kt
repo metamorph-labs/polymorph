@@ -273,6 +273,7 @@ private fun fallback(font: PMFont): FontFamily = when (font.fallback) {
 private fun PMTheme.font(slot: String): PMFont = when (slot) {
     "display" -> fonts.display
     "mono" -> fonts.mono
+    "heading" -> fonts.heading
     else -> fonts.body
 }
 
@@ -334,10 +335,25 @@ fun centringInset(outer: Float, inner: Float): Dp = (kotlin.math.max(0f, outer -
 fun PMTextStyle.weighted(like: PMTextStyle): PMTextStyle = copy(weight = like.weight)
 
 /**
+ * This step drawn as a heading: another step's weight and its face, the slot
+ * that step names. A heading at a body size (Heading's level 4) borrows both
+ * from `text.xl`, so every heading is in the heading slot's face.
+ */
+fun PMTextStyle.heading(like: PMTextStyle): PMTextStyle =
+    copy(weight = like.weight, family = like.family, slot = like.slot)
+
+/**
  * This step set in the pairing's mono face: its size, line height, weight and
  * tracking kept, as the recipes set code (`--pm-font-mono` at a text step).
  */
 fun PMTextStyle.mono(theme: PMTheme): PMTextStyle = copy(family = theme.fonts.mono.family, slot = "mono")
+
+/**
+ * This step set in the pairing's body face: a part at a heading step that is
+ * not a heading (Avatar's `lg` initials, Hero's lede), as the recipes set it
+ * with `text.md`'s family.
+ */
+fun PMTextStyle.inBodyFace(theme: PMTheme): PMTextStyle = copy(family = theme.fonts.body.family, slot = "body")
 
 /**
  * Tabular figures, in the pairing's own font, while `on`: the numeral

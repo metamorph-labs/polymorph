@@ -48,6 +48,14 @@ const PMTheme theme = PMTheme(
       weights: [400, 500, 600],
       opsz: [],
     ),
+    heading: PMFont(
+      family: 'Outfit',
+      variable: true,
+      fallback: 'sans',
+      style: 'normal',
+      weights: [400, 500, 600],
+      opsz: [],
+    ),
   ),
   numeric: ['tnum'],
   numericAlign: 'end',
@@ -91,7 +99,7 @@ const PMTheme theme = PMTheme(
       weight: 400,
       tracking: 0.0,
       family: 'Outfit',
-      slot: 'body',
+      slot: 'heading',
     ),
     xl: PMTextStyle(
       size: 27.0,
@@ -99,7 +107,7 @@ const PMTheme theme = PMTheme(
       weight: 500,
       tracking: 0.0,
       family: 'Outfit',
-      slot: 'body',
+      slot: 'heading',
     ),
     text2xl: PMTextStyle(
       size: 35.0,
@@ -107,7 +115,7 @@ const PMTheme theme = PMTheme(
       weight: 600,
       tracking: -0.02,
       family: 'Outfit',
-      slot: 'body',
+      slot: 'heading',
     ),
     text3xl: PMTextStyle(
       size: 45.5,
@@ -115,7 +123,7 @@ const PMTheme theme = PMTheme(
       weight: 600,
       tracking: -0.02,
       family: 'Outfit',
-      slot: 'body',
+      slot: 'heading',
     ),
   ),
   display: PMDisplayScale(

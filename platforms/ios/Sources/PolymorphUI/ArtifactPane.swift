@@ -10,7 +10,7 @@
 // between items, inset `space-3` and `space-4`: the mark (the kind's `sm`
 // glyph in `text.muted`, `artifact` with no kind, the `sm` Spinner while the
 // artifact is still written), the heading (the title in `text.md` at the
-// `text.xl` weight, Heading level 4's cell, on one line, then `meta` in
+// `text.xl` weight and face, Heading level 4's cell, on one line, then `meta` in
 // `text.xs`, muted), the switch between readings when there are two or more,
 // the app's actions, and the close Button (`ghost/neutral/sm`, icon-only
 // `close`, named by `closeLabel`) when `onClose` is set. The heading grows
@@ -120,7 +120,7 @@ public struct PMArtifactPane: PMArtifactPaneRendering {
 
       VStack(alignment: .leading, spacing: 0) {
         Text(props.title)
-          .pmTextStyle(theme.text.md.weighted(like: theme.text.xl))
+          .pmTextStyle(theme.text.md.heading(like: theme.text.xl))
           .foregroundStyle(colors.textPrimary.color)
           .lineLimit(1)
           .truncationMode(.tail)

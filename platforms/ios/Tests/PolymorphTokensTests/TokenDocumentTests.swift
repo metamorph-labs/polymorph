@@ -36,7 +36,8 @@ final class TokenDocumentTests: XCTestCase {
   }
 
   /// The probe holds what no catalogue pairing does: a tenant, an italic
-  /// display face, glass, a gradient partner and an exception of each family.
+  /// display face, a heading face of its own, glass, a gradient partner and an
+  /// exception of each family.
   func testTheProbeDecodesToItsStatic() throws {
     let probe = try TokenDocuments.shared().example("example-probe")
     let theme = try PMTheme(tokenDocument: probe.document)
@@ -44,6 +45,9 @@ final class TokenDocumentTests: XCTestCase {
 
     XCTAssertEqual(theme.kind, .tenant)
     XCTAssertTrue(theme.display.md.italic)
+    XCTAssertNotEqual(theme.fonts.heading.family, theme.fonts.body.family)
+    XCTAssertEqual(theme.text.lg.family, theme.fonts.heading.family)
+    XCTAssertEqual(theme.text.md.family, theme.fonts.body.family)
     XCTAssertFalse(theme.gradients.accentGradient.solid)
     let standard = theme.density.standard.space.s4
     XCTAssertEqual(
@@ -82,6 +86,22 @@ final class TokenDocumentTests: XCTestCase {
       XCTAssertEqual(rounded, written, "\(input)")
       XCTAssertEqual(rounded.sign, written == 0 ? .plus : written.sign, "\(input)")
     }
+  }
+
+  /// A document written before the heading slot has no `fonts.heading`, and
+  /// its heading steps name `font.body`. It decodes to the theme the emitter
+  /// writes today, whose heading slot is the body slot.
+  func testADocumentWithNoHeadingSlotReadsTheBodySlotAsIt() throws {
+    let entry = try TokenDocuments.shared().catalogue[0]
+    let older = try edited(entry.document) { root in
+      root[path: ["fonts", "heading"]] = nil
+      for step in ["lg", "xl", "2xl", "3xl"] {
+        root[path: ["invariant", "text.\(step).family", "ref"]] = "font.body"
+      }
+    }
+    let theme = try PMTheme(tokenDocument: older)
+    XCTAssertEqual(theme.fonts.heading, theme.fonts.body)
+    assertSame(theme, try XCTUnwrap(PMTheme.named(system: entry.system, palette: entry.palette)))
   }
 
   // MARK: Refusals

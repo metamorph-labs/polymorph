@@ -48,6 +48,14 @@ const PMTheme theme = PMTheme(
       weights: [400, 500],
       opsz: [],
     ),
+    heading: PMFont(
+      family: 'Space Grotesk',
+      variable: true,
+      fallback: 'sans',
+      style: 'normal',
+      weights: [400, 500],
+      opsz: [],
+    ),
   ),
   numeric: ['tnum', 'zero'],
   numericAlign: 'end',
@@ -91,7 +99,7 @@ const PMTheme theme = PMTheme(
       weight: 400,
       tracking: -0.01,
       family: 'Space Grotesk',
-      slot: 'body',
+      slot: 'heading',
     ),
     xl: PMTextStyle(
       size: 23.0,
@@ -99,7 +107,7 @@ const PMTheme theme = PMTheme(
       weight: 500,
       tracking: -0.01,
       family: 'Space Grotesk',
-      slot: 'body',
+      slot: 'heading',
     ),
     text2xl: PMTextStyle(
       size: 27.5,
@@ -107,7 +115,7 @@ const PMTheme theme = PMTheme(
       weight: 500,
       tracking: -0.01,
       family: 'Space Grotesk',
-      slot: 'body',
+      slot: 'heading',
     ),
     text3xl: PMTextStyle(
       size: 33.0,
@@ -115,7 +123,7 @@ const PMTheme theme = PMTheme(
       weight: 500,
       tracking: -0.02,
       family: 'Space Grotesk',
-      slot: 'body',
+      slot: 'heading',
     ),
   ),
   display: PMDisplayScale(

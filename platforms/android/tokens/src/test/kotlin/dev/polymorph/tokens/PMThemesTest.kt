@@ -45,6 +45,28 @@ class PMThemesTest {
         }
     }
 
+    /**
+     * The heading steps name the heading slot and carry its family, and the
+     * steps under them the body slot. `PMFonts` built without a heading slot
+     * has the body slot as it, as a system without one does.
+     */
+    @Test
+    fun theHeadingStepsDrawInTheHeadingSlot() {
+        for (theme in PMThemes.catalogue) {
+            val text = theme.text
+            for (step in listOf(text.lg, text.xl, text.text2xl, text.text3xl)) {
+                assertEquals("heading", step.slot, theme.pairing.name)
+                assertEquals(theme.fonts.heading.family, step.family, theme.pairing.name)
+            }
+            for (step in listOf(text.xs, text.sm, text.md)) {
+                assertEquals("body", step.slot, theme.pairing.name)
+            }
+            val fonts = theme.fonts
+            val withoutHeading = PMFonts(body = fonts.body, display = fonts.display, mono = fonts.mono)
+            assertEquals(fonts.body, withoutHeading.heading)
+        }
+    }
+
     @Test
     fun theDefaultsAreTheOnesTheAxesSelect() {
         for (theme in PMThemes.catalogue) {
