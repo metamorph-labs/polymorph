@@ -50,6 +50,7 @@
     "./bar-lines": "./src/bar-lines.ts",
     "./funnel-chart": "./src/funnel-chart.ts",
     "./chart-reading": "./src/chart-reading.ts",
+    "./chart-measure": "./src/chart-measure.ts",
     "./treemap": "./src/treemap.ts",
     "./chart-box": "./src/chart-box.ts",
     "./disabled": "./src/disabled.ts",

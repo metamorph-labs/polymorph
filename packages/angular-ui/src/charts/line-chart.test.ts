@@ -2,6 +2,7 @@ import { Component, signal } from '@angular/core'
 
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
 import { lineChartReadingLaw, type LineReadingLawProps } from '@polymorph/conformance/chart-reading'
+import { lineChartMeasureLaw } from '@polymorph/conformance/chart-measure'
 
 import { mountComponent } from '../mount'
 import { angularAdapter } from '../conformance/angular'
@@ -72,4 +73,11 @@ lineChartReadingLaw({
     await new Promise<void>((settle) => requestAnimationFrame(() => settle()))
     return mounted
   },
+})
+
+/* The measure it names, said once in its summary (`@polymorph/conformance/chart-measure`). */
+lineChartMeasureLaw({
+  shell: 'Angular',
+  // A prop the law leaves out is an input the test does not set.
+  mount: async (props) => (await mountComponent(LineChart, { ...props })).host,
 })

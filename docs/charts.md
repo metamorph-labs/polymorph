@@ -364,34 +364,46 @@ member as a child. Composing *inside* a chart is not supported.
   is a second chart. A `BarChart` of the counts sits above a `LineChart` of the rate, over the
   same rows and the same `x`, in one panel. Each chart formats its value axis with its own
   `y.format` and has its own summary and twin, so no reading depends on how two scales were
-  made to fit one plot. Neither chart draws an axis title, so each series label names its
-  measure and unit, which the tooltip and the twin show. Each chart sizes its value axis to its
-  own tick labels, so a category sits at nearly the same place in both plots, not exactly, and
-  each chart's band labels name its categories.
+  made to fit one plot. Neither chart draws an axis title. Each chart's `y.label` names its
+  measure and unit, which its summary sentence says once, and each series label names a
+  series, which the legend, the tooltip and the twin show. Each chart sizes its value axis to
+  its own tick labels, so a category sits at nearly the same place in both plots, not exactly,
+  and each chart's band labels name its categories.
 
 ```tsx
-<Dashboard.Panel title="Requests and p95 latency">
+<Dashboard.Panel title="Requests and latency">
   <Stack gap={4}>
     <BarChart
       data={byHour}
-      series={[{ key: 'requests', label: 'Requests' }]}
+      series={[
+        { key: 'web', label: 'Web' },
+        { key: 'api', label: 'API' },
+      ]}
+      mode="stacked"
       x={{ key: 'hour' }}
-      y={{ format: { style: 'compact' } }}
+      y={{ label: 'Requests', format: { style: 'compact' } }}
       size="sm"
       label="Requests by hour"
     />
     <LineChart
       data={byHour}
-      series={[{ key: 'p95', label: 'p95 latency (ms)' }]}
+      series={[
+        { key: 'p50', label: 'p50' },
+        { key: 'p95', label: 'p95' },
+      ]}
       x={{ key: 'hour' }}
-      y={{ domain: 'zero' }}
+      y={{ label: 'Latency (ms)', domain: 'zero' }}
       markers
       size="sm"
-      label="p95 latency by hour"
+      label="Latency by hour"
     />
   </Stack>
 </Dashboard.Panel>
 ```
+
+The bar chart's summary reads "Requests by hour showing Web and API, 24 points. Values:
+Requests. The same data is available as a table." for a day of hourly rows, and the line
+chart's names `Latency (ms)` the same way.
 
 ## The shared grammar
 
@@ -409,11 +421,16 @@ chart and no prop can carry a raw colour, a formatter function or a draw callbac
   currency | date`), `currency`, `maximumFractionDigits`, `granularity`. `percent` takes
   ratios.
 - **`ChartXAxis` / `ChartYAxis`** — `key`, `scale` (`band` default, `time`, `linear`),
-  `label`, `format`, `ticks`; `domain: 'auto' | 'zero'` on y. No chart draws an axis title.
-  `x.label` heads the first column of the twin's table; on a `Heatmap`, whose rows run down
-  y, `y.label` heads it. A `Histogram`'s `x.label` and `y.label` head its range and count
-  columns, and `y.label` also names the count in its tooltip. `BarChart`, `LineChart`,
-  `AreaChart` and `ScatterChart` do not read `y.label`.
+  `label`, `format`, `ticks`; `domain: 'auto' | 'zero'` on y. No chart draws an axis title,
+  so a label is read as words. `x.label` heads the first column of the twin's table; on a
+  `Heatmap`, whose rows run down y, `y.label` heads it. On `BarChart`, `LineChart`,
+  `AreaChart` and `ScatterChart`, `y.label` names the measure the values are in, and a
+  `ScatterChart`'s `x.label` names its other measure. The chart says each once, in its
+  summary sentence, through the catalog's `summary` (its `measure` and `xMeasure` facts). Every
+  series is in that one measure, so the tooltip, the live region and the twin's value columns
+  name each value by its series and leave the measure out. A `Histogram`'s `x.label` and
+  `y.label` head its range and count columns, and `y.label` also names the count in its
+  tooltip, because a sample has no series to name it.
 - **`size`** — `sm | md | lg` sets the frame height. Width always follows the container.
 - **`label`** is required: it is the accessible name.
 - **`locale`** — `Intl` formats with it. When it is omitted, the runtime's resolved locale
@@ -551,6 +568,11 @@ strips and a midpoint swatch when diverging).
 - Every member except `Sparkline` renders a visually hidden **summary sentence**, a polite
   live region for the reading position, and the **table twin**: a real `Table` behind an
   icon-only `Button`, given the full data set, with every value reachable without hover.
+  A series chart's summary names the measure its `y.label` gives, and a `ScatterChart`'s its
+  `x.label` too, once for the whole chart. The laws in
+  `packages/conformance/src/chart-measure.ts` hold that in every web framework: the summary
+  says the measure, and the tooltip, the live region and the twin's value columns do not
+  repeat it.
 - **Series are never identified by colour alone:** legend keys shaped like the mark,
   `markers` on line charts, selective end labels, and the twin.
 - **Every sentence the tier outputs is replaceable.** `messages: ChartMessages` is one

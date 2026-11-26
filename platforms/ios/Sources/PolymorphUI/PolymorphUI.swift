@@ -1394,6 +1394,28 @@ extension PMSpecDefault {
       comment: "Ends a chart's summary: its data is also a table.")
   }
 
+  /// The measures a summary names: " Values: Tickets.", and on a scatter
+  /// chart " Values: Satisfaction against Handle time."; empty when the chart
+  /// names none.
+  private static func chartMeasured(_ measure: String?, _ xMeasure: String?) -> String {
+    switch (measure, xMeasure) {
+    case (nil, nil):
+      return ""
+    case (let measure?, nil):
+      return String(
+        localized: " Values: \(measure).",
+        comment: "After a chart's summary: the measure its values are in.")
+    case (nil, let xMeasure?):
+      return String(
+        localized: " Values against \(xMeasure).",
+        comment: "After a scatter chart's summary: the measure its points are placed across.")
+    case (let measure?, let xMeasure?):
+      return String(
+        localized: " Values: \(measure) against \(xMeasure).",
+        comment: "After a scatter chart's summary: its two measures, the vertical one first.")
+    }
+  }
+
   private static func chartPoints(_ count: Int) -> String {
     count == 1
       ? String(localized: "1 point", comment: "How many rows a chart draws: one.")
@@ -1431,15 +1453,16 @@ extension PMSpecDefault {
     PMChartMessages(
       summary: { facts in
         let points = chartPoints(Int(facts.points))
+        let measured = chartMeasured(facts.measure, facts.xMeasure)
         guard !facts.series.isEmpty else {
           return String(
-            localized: "\(facts.label), \(points). \(chartTwin)",
-            comment: "A chart's summary: its name and how many rows it draws.")
+            localized: "\(facts.label), \(points).\(measured) \(chartTwin)",
+            comment: "A chart's summary: its name, how many rows it draws and its measures.")
         }
         let names = facts.series.formatted(.list(type: .and))
         return String(
-          localized: "\(facts.label) showing \(names), \(points). \(chartTwin)",
-          comment: "A chart's summary: its name, its series and how many rows it draws.")
+          localized: "\(facts.label) showing \(names), \(points).\(measured) \(chartTwin)",
+          comment: "A chart's summary: its name, its series, how many rows it draws and its measures.")
       },
       donutSummary: { facts in
         String(

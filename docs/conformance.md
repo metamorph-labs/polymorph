@@ -489,7 +489,9 @@ pnpm exec vitest run src/conformance.test -t "agent"                    # the ag
   Escape and an Escape with nothing read, Enter and Space with and without `onSelect` and the
   payload they report, LineChart's and AreaChart's brush, and that a key the reading takes has
   its default prevented. FunnelChart's and Treemap's keys are held by `funnelChartLaw` and
-  `treemapLaw`, below.
+  `treemapLaw`, below. The measure BarChart, LineChart, AreaChart and ScatterChart name, which
+  the summary says once and the readings at a position leave out, is held by the laws in
+  `packages/conformance/src/chart-measure.ts`, which the same tests call.
 - **Typeahead and focus traps.** They are not in the grammar. The overlay tests cover the trap
   (`packages/react-ui/src/overlays/dialog.test.tsx` tabs through it).
 - **Scroll positions.** No statement says where a scrolling part rests. A Tabs strip wider than
@@ -550,7 +552,11 @@ pnpm exec vitest run src/conformance.test -t "agent"                    # the ag
   mount of its own. A TreeSelect's popup
   holds a Tree, and `treeSelectLaw` (`packages/conformance/src/tree-select.ts`) runs `treeLaw` on
   it and holds what a choice, the empty choice and a level that arrives while the popup is open
-  do there, which every shell's `tree-select.test` calls with a mount of its own. An InlineEdit's save
+  do there, which every shell's `tree-select.test` calls with a mount of its own. A Select's
+  value is often the application's: what its trigger, its list and its hidden field show for the
+  value the application holds, `null` after a value included, in the anchored list and in the
+  phone's sheet, is held by `selectValueLaw` (`packages/conformance/src/select-value.ts`), which
+  every shell's `select.test` calls with a mount of its own. An InlineEdit's save
   that waits is held by the app too. What its field does while the save is in flight, where
   focus goes when the save fails or the app closes the field, and the row's height in both
   forms are held by `inlineEditLaw` (`packages/conformance/src/inline-edit.ts`), with what

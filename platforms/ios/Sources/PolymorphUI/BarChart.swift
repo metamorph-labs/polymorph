@@ -355,6 +355,8 @@ private struct BarModel {
   let summary: String
   let twin: PMChartTwinModel
   let label: String
+  /// The measure the values are in, `y.label`, when the chart names one.
+  let measure: String?
   let theme: PMTheme
 
   init(props: PMBarChartProps, theme: PMTheme, locale: Locale, hidden: Set<String>) {
@@ -427,11 +429,13 @@ private struct BarModel {
     self.tooltip = PMChartTooltipStyle(props.tooltip)
     self.summary = messages.summary(
       PMChartSummaryFacts(
-        label: props.label, series: painted.map(\.label), points: Double(rows.count)))
+        label: props.label, series: painted.map(\.label), points: Double(rows.count),
+        measure: props.y?.label))
     self.twin = .series(
       x: props.x, categories: categories, rows: rows, series: painted, format: props.y?.format,
       text: text)
     self.label = props.label
+    self.measure = props.y?.label
     self.theme = theme
   }
 
@@ -532,7 +536,7 @@ private struct BarModel {
     return PMChartDescriptor(
       title: label, summary: summary, xTitle: x.label ?? x.key, bands: categories,
       xRange: 0...Double(max(1, rows.count - 1)), xFormat: nil,
-      yTitle: painted.count == 1 ? painted[0].label : label, yRange: domain.range,
+      yTitle: measure ?? (painted.count == 1 ? painted[0].label : label), yRange: domain.range,
       yFormat: format, locale: text.locale,
       series: painted.map { entry in
         PMChartDescriptor.Series(

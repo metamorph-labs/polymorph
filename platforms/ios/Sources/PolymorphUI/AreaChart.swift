@@ -184,8 +184,8 @@ extension PMRangeModel {
       domain: PMChartScale.value(tops, zero: true, count: props.y?.ticks ?? 5),
       annotations: (percent ? [] : props.baseline.map { [$0.annotation] } ?? [])
         + (props.annotations ?? []),
-      tooltip: props.tooltip, label: props.label, size: props.size ?? .md, theme: theme,
-      cellFormat: cell, twin: twin)
+      tooltip: props.tooltip, label: props.label, measure: props.y?.label,
+      size: props.size ?? .md, theme: theme, cellFormat: cell, twin: twin)
   }
 }
 

@@ -111,6 +111,12 @@ export interface ChartXAxis {
   key: string
   /** default 'band' */
   scale?: ChartScaleKind
+  /**
+   * The axis's name. No chart draws it as an axis title. It heads the first
+   * column of the table twin, except on a `Heatmap`, whose twin's rows run
+   * down y. A `ScatterChart`, whose x is a measure, also says it in its
+   * summary sentence.
+   */
   label?: string
   /** time scales format from tick granularity via Intl */
   format?: ValueFormat
@@ -124,6 +130,12 @@ export interface ChartXAxis {
 }
 
 export interface ChartYAxis {
+  /**
+   * The measure the values are in (`Requests`, `Latency (ms)`). No chart draws
+   * it as an axis title. A series chart says it once in its summary sentence,
+   * and a `Histogram` heads its count column and names its tooltip's count with
+   * it.
+   */
   label?: string
   format?: ValueFormat
   /** Target tick count, default ~4–5. Ticks are clean numbers with thousands separators. */
@@ -202,8 +214,20 @@ export interface ChartMessages {
    * `AreaChart`, `ScatterChart`) and of `Histogram`. A histogram's sample has
    * observations but no series, so `series` is empty there. The names arrive
    * as a list, not joined, because each language has its own list conjunction.
+   *
+   * `measure` is the measure the values are in, the chart's `y.label`, and
+   * `xMeasure` a `ScatterChart`'s other measure, its `x.label`. Each is absent
+   * while the chart names none, and on `Histogram`. They are optional facts: a
+   * sentence that leaves them out still says everything else, so a host's
+   * catalog that does not read them keeps working.
    */
-  summary: (chart: { label: string; series: readonly string[]; points: number }) => string
+  summary: (chart: {
+    label: string
+    series: readonly string[]
+    points: number
+    measure?: string
+    xMeasure?: string
+  }) => string
   donutSummary: (chart: { label: string; segments: number }) => string
   /**
    * `grid` is absent before the plot is measured and when there is no data.

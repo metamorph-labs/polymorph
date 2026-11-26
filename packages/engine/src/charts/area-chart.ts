@@ -451,7 +451,7 @@ export function areaChartModel(input: AreaChartInput): AreaChartModel {
     brushOn,
     syncGroup: syncOn ? syncId : undefined,
     domainValues: domainValuesOf(data, x.key, kind, continuous),
-    summary: summaryFor(messages, label, painted, data.length, selectable),
+    summary: summaryFor(messages, label, painted, data.length, selectable, { measure: y?.label }),
     warnings,
     legend: legendFor(painted) !== null,
     twin: { columns: twinColumns(x, painted), rows: twinRows },

@@ -24,7 +24,7 @@ and its grammar types are the tier's (the engine's `charts/types.ts`, `docs/char
 | `data` | `readonly ChartDatum[]` | required | rows in given order; a `null` renders that series' band **absent** at that x, never as zero |
 | `series` | `readonly ChartSeries[]` | required | 2–8. One series is LineChart's `area` variant, and a dev-warning says so |
 | `x` | `ChartXAxis` | required | `band` or `time` |
-| `y` | `ChartYAxis` | — | stacking anchors at zero; `domain: 'auto'` is a dev-warning and ignored. In `percent` the axis formats as percent automatically |
+| `y` | `ChartYAxis` | — | stacking anchors at zero; `domain: 'auto'` is a dev-warning and ignored. In `percent` the axis formats as percent automatically. `label` names the measure the values are in, which the summary sentence says once (`docs/charts.md`); no axis title is drawn |
 | `variant` | `'stacked' \| 'percent'` | `'stacked'` | `percent` normalizes each x to 100% (`stackOffsetExpand`) |
 | `size` | `ChartSize` | `'md'` | frame heights per `bar-chart.md`'s recipe |
 | `label` | `string` | required | |

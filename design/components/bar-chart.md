@@ -29,7 +29,7 @@ the engine's `charts/types.ts`, and mean what `docs/charts.md` says.
 | `series` | `readonly ChartSeries[]` | required | 1–8, slots by declaration order; a 9th is a dev-warning naming the fold rule |
 | `lines` | `readonly ChartSeries[]` | — | series drawn as lines over the bars, on the bars' one value axis, in their `y.format` (below). They take the slots after the bars', count toward the eight, and join the legend (a line key), the tooltip, the walk, `onSelect`, the twin and the summary after the bar series. `mode` stacks the bars only; a line reads against the stack's total. Vertical only: on a horizontal chart a dev-warning says so and no line is drawn |
 | `x` | `ChartXAxis` | required | **band only**. `time`/`linear` triggers a dev-warning naming `Histogram` (the member that bins, `histogram.md`), and the axis renders as band |
-| `y` | `ChartYAxis` | — | `domain` is always `'zero'`, because a truncated bar misrepresents the value; `'auto'` is a dev-warning and ignored |
+| `y` | `ChartYAxis` | — | `domain` is always `'zero'`, because a truncated bar misrepresents the value; `'auto'` is a dev-warning and ignored. `label` names the measure the values are in, which the summary sentence says once (`docs/charts.md`); no axis title is drawn |
 | `orientation` | `'vertical' \| 'horizontal'` | `'vertical'` | horizontal for long category names; never rotate a label |
 | `mode` | `'grouped' \| 'stacked' \| 'diverging'` | `'grouped'` | applies at ≥ 2 series. `stacked` with mixed-sign data is a dev-warning and renders grouped, so nothing is silently clamped (the Likert form is `diverging`, below). `diverging` is the Likert form, on `stackOffsetDiverging` (installed). **The neutral split is data logic**: the app pre-signs the values, and the member never derives a neutral key. Paint uses the arms by distance from zero on each side, an ordinal scale around a centre, which is what the arms are for. **The mixed-sign dev-warning inverts for this mode**: signed data is expected, and an all-positive or all-negative dataset is what warns |
 | `size` | `ChartSize` | `'md'` | frame heights below |
@@ -179,7 +179,8 @@ the bar series, then the lines. The readout at a band lists every series, a line
 in the same format as a bar, and the summary names every series.
 This drives the tooltip and the polite live region. `role="img"` + `aria-label`
 from `label`. The visually hidden summary is `messages.summary`, given the chart's
-name, its series' names and its row count. The sentence comes from the host's
+name, its series' names, its row count and the measure `y.label` names, which it says once
+for every series. The sentence comes from the host's
 catalog, and the English default is in the engine's `charts/messages.ts`. The table
 twin (the `Table` member behind the ghost `table` toggle) is mandatory anatomy:
 tooltips add to it and never replace it. Identity is never colour alone: legend,

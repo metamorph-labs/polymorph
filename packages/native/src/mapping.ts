@@ -392,8 +392,13 @@ export const SHAPES: Readonly<Record<string, Shape>> = {
     fields: [
       {
         name: 'summary',
-        type: '(chart: { label: string; series: readonly string[]; points: number }) => string',
-        doc: 'The summary sentence of a series chart and of Histogram, whose `series` is empty.',
+        type: '(chart: { label: string; series: readonly string[]; points: number; measure?: string; xMeasure?: string }) => string',
+        // The web breaks the inline object over lines, one field to a line.
+        web: '(chart: { label: string series: readonly string[] points: number measure?: string xMeasure?: string }) => string',
+        doc:
+          'The summary sentence of a series chart and of Histogram, whose `series` is empty. ' +
+          '`measure` is the `y.label` the values are in, and `xMeasure` a ScatterChart’s ' +
+          '`x.label`; each is absent while the chart names none.',
       },
       { name: 'donutSummary', type: '(chart: { label: string; segments: number }) => string' },
       {
@@ -509,6 +514,8 @@ export const SHAPES: Readonly<Record<string, Shape>> = {
       { name: 'label', type: 'string' },
       { name: 'series', type: 'readonly string[]' },
       { name: 'points', type: 'number' },
+      { name: 'measure', type: 'string', optional: true },
+      { name: 'xMeasure', type: 'string', optional: true },
     ],
   },
   ChartTooltipConfig: {

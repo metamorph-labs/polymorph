@@ -245,6 +245,8 @@ private struct ScatterModel {
   let summary: String
   let twin: PMChartTwinModel
   let label: String
+  /// The measure the values are in, `y.label`, when the chart names one.
+  let measure: String?
   /// The bubble's extent, for the square-root radius.
   let bubbleExtent: (Double, Double)?
   let marker: CGFloat
@@ -277,7 +279,8 @@ private struct ScatterModel {
     self.tooltip = PMChartTooltipStyle(props.tooltip)
     self.summary = messages.summary(
       PMChartSummaryFacts(
-        label: props.label, series: painted.map(\.label), points: Double(props.data.count)))
+        label: props.label, series: painted.map(\.label), points: Double(props.data.count),
+        measure: props.y?.label, xMeasure: props.x.label))
     var twin = PMChartTwinModel.series(
       x: props.x, categories: xs.labels, rows: props.data, series: painted,
       format: props.y?.format, text: text)
@@ -291,6 +294,7 @@ private struct ScatterModel {
     }
     self.twin = twin
     self.label = props.label
+    self.measure = props.y?.label
     self.bubbleExtent = bubbles.flatMap { values in
       values.min().flatMap { low in values.max().map { (low, $0) } }
     }
@@ -352,7 +356,8 @@ private struct ScatterModel {
     return PMChartDescriptor(
       title: label, summary: summary, xTitle: x.label ?? x.key, bands: nil,
       xRange: (values.min() ?? 0)...max(values.max() ?? 1, values.min() ?? 0),
-      xFormat: xs.kind == .linear ? x.format : nil, yTitle: label, yRange: yDomain.range,
+      xFormat: xs.kind == .linear ? x.format : nil, yTitle: measure ?? label,
+      yRange: yDomain.range,
       yFormat: yFormat, locale: text.locale,
       series: painted.map { entry in
         PMChartDescriptor.Series(

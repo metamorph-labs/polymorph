@@ -5,6 +5,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
 import { lineChartReadingLaw } from '@polymorph/conformance/chart-reading'
+import { lineChartMeasureLaw } from '@polymorph/conformance/chart-measure'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { syncGroupSize } from '@polymorph/svelte'
 
@@ -266,6 +267,16 @@ chartBoxLaw({
 
 /* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
 lineChartReadingLaw({
+  shell: 'Svelte',
+  async mount(props) {
+    const mounted = await render(LineChart, props)
+    await tick()
+    return mounted
+  },
+})
+
+/* The measure it names, said once in its summary (`@polymorph/conformance/chart-measure`). */
+lineChartMeasureLaw({
   shell: 'Svelte',
   async mount(props) {
     const mounted = await render(LineChart, props)

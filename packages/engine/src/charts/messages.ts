@@ -27,6 +27,16 @@ const counted = (count: number, one: string, many: string) =>
   count === 1 ? `1 ${one}` : `${count} ${many}`
 
 /**
+ * The measures a summary names, as one sentence: "Values: Tickets.", and on a
+ * scatter chart "Values: Satisfaction against Handle time." Empty when the
+ * chart names none.
+ */
+function measured(measure: string | undefined, xMeasure: string | undefined): string {
+  if (measure === undefined && xMeasure === undefined) return ''
+  return ` Values${measure === undefined ? '' : `: ${measure}`}${xMeasure === undefined ? '' : ` against ${xMeasure}`}.`
+}
+
+/**
  * A summary sentence, not a chart description. The table twin holds the data.
  * The summary helps someone decide whether to open it, so every summary ends by
  * saying the table exists (the accessibility contract, `docs/charts.md`).
@@ -34,8 +44,8 @@ const counted = (count: number, one: string, many: string) =>
 const TWIN = 'The same data is available as a table.'
 
 export const DEFAULT_CHART_MESSAGES: ChartMessages = {
-  summary: ({ label, series, points }) =>
-    `${label}${series.length === 0 ? '' : ` showing ${listed(series)}`}, ${counted(points, 'point', 'points')}. ${TWIN}`,
+  summary: ({ label, series, points, measure, xMeasure }) =>
+    `${label}${series.length === 0 ? '' : ` showing ${listed(series)}`}, ${counted(points, 'point', 'points')}.${measured(measure, xMeasure)} ${TWIN}`,
   donutSummary: ({ label, segments }) =>
     `${label}, ${counted(segments, 'segment', 'segments')}. ${TWIN}`,
   // Reports the grid's shape, not a count of measurements. A count such as

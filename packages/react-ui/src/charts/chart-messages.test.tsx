@@ -46,6 +46,8 @@ const LIST = new Intl.ListFormat('fr', { type: 'conjunction' })
 const FR: ChartMessages = {
   // The catalog owns word order and plural rules: the name comes first, the
   // series are joined by the platform's French "et", and one reading is singular.
+  // It reads no measure: the series charts below name theirs (`y.label`), and a
+  // sentence that leaves the fact out is still the catalog's whole sentence.
   summary: ({ label, series, points }) =>
     `${label}${series.length === 0 ? '' : ` : ${LIST.format(series)}`} — ${
       points === 1 ? 'un relevé' : `${points} relevés`
@@ -107,6 +109,9 @@ function vocabulary(messages: ChartMessages, extra: readonly string[] = []): Set
     n,
     { label: '', series: ['', '', ''], points: n },
     { label: '', series: [], points: n },
+    { label: '', series: ['', ''], points: n, measure: '' },
+    { label: '', series: [''], points: n, measure: '', xMeasure: '' },
+    { label: '', series: [''], points: n, xMeasure: '' },
     { label: '', segments: n },
     { label: '' },
     { label: '', grid: { rows: n, columns: n } },
@@ -217,6 +222,7 @@ const SUBJECTS: Subject[] = [
         data={JOURS}
         series={DUO}
         x={{ key: 'jour', label: 'Jour' }}
+        y={{ label: 'Demandes' }}
         label={label}
         {...shared}
       />
@@ -241,6 +247,7 @@ const SUBJECTS: Subject[] = [
         data={JOURS}
         series={DUO}
         x={{ key: 'jour', label: 'Jour' }}
+        y={{ label: 'Demandes' }}
         label={label}
         {...shared}
       />
@@ -264,6 +271,7 @@ const SUBJECTS: Subject[] = [
         data={JOURS}
         series={DUO}
         x={{ key: 'jour', label: 'Jour' }}
+        y={{ label: 'Demandes' }}
         label={label}
         {...shared}
       />
@@ -287,6 +295,7 @@ const SUBJECTS: Subject[] = [
         data={MESURES}
         series={[{ key: 'note', label: 'Note' }]}
         x={{ key: 'delai', label: 'Délai' }}
+        y={{ label: 'Satisfaction' }}
         bubble={{ key: 'volume', label: 'Volume traité' }}
         label={label}
         {...shared}

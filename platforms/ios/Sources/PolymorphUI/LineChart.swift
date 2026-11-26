@@ -187,6 +187,8 @@ struct PMRangeModel {
   let summary: String
   let twin: PMChartTwinModel
   let label: String
+  /// The measure the values are in, `y.label`, when the chart names one.
+  let measure: String?
   let theme: PMTheme
   let height: CGFloat
 
@@ -208,8 +210,8 @@ struct PMRangeModel {
       domain: PMChartScale.value(
         values, zero: props.y?.domain == .zero, count: props.y?.ticks ?? 5),
       annotations: (props.baseline.map { [$0.annotation] } ?? []) + (props.annotations ?? []),
-      tooltip: props.tooltip, label: props.label, size: props.size ?? .md, theme: theme,
-      cellFormat: props.y?.format)
+      tooltip: props.tooltip, label: props.label, measure: props.y?.label,
+      size: props.size ?? .md, theme: theme, cellFormat: props.y?.format)
   }
 
   init(
@@ -217,8 +219,8 @@ struct PMRangeModel {
     curve: InterpolationMethod, markers: Bool, format: PMValueFormat?, messages: PMChartMessages,
     text: PMChartText, painted: [PMChartPaint], visible: [PMChartPaint],
     segments: [[PMChartSegment]], domain: PMChartDomain, annotations: [PMChartAnnotation],
-    tooltip: PMChartTooltip?, label: String, size: PMControlSize, theme: PMTheme,
-    cellFormat: PMValueFormat?, twin: PMChartTwinModel? = nil
+    tooltip: PMChartTooltip?, label: String, measure: String?, size: PMControlSize,
+    theme: PMTheme, cellFormat: PMValueFormat?, twin: PMChartTwinModel? = nil
   ) {
     let xs = PMChartXValues(rows: rows, x: x, kind: kind, text: text)
     self.rows = rows
@@ -238,12 +240,14 @@ struct PMRangeModel {
     self.annotations = annotations
     self.tooltip = PMChartTooltipStyle(tooltip)
     self.summary = messages.summary(
-      PMChartSummaryFacts(label: label, series: painted.map(\.label), points: Double(rows.count)))
+      PMChartSummaryFacts(
+        label: label, series: painted.map(\.label), points: Double(rows.count), measure: measure))
     self.twin =
       twin
       ?? .series(
         x: x, categories: xs.labels, rows: rows, series: painted, format: format, text: text)
     self.label = label
+    self.measure = measure
     self.theme = theme
     // The plot's height without the x axis's line, which the frame's height includes.
     self.height =
@@ -323,7 +327,7 @@ struct PMRangeModel {
       bands: continuous ? nil : xs.labels,
       xRange: (values.min() ?? 0)...max(values.max() ?? 1, values.min() ?? 0),
       xFormat: xs.kind == .linear ? x.format : nil,
-      yTitle: painted.count == 1 ? painted[0].label : label, yRange: domain.range,
+      yTitle: measure ?? (painted.count == 1 ? painted[0].label : label), yRange: domain.range,
       yFormat: format, locale: text.locale,
       series: painted.map { entry in
         PMChartDescriptor.Series(
