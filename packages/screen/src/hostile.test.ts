@@ -106,7 +106,7 @@ const HOLDERS: { name: string; at: (address: unknown) => unknown }[] = [
     name: 'ChatMessage.avatar',
     at: (address) => ({
       component: 'ChatMessage',
-      props: { role: 'user', avatar: address },
+      props: { role: 'user', author: 'Ada', avatar: address },
       children: ['x'],
     }),
   },
