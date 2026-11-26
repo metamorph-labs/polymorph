@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { dirname, posix, resolve } from 'node:path'
 
 import type { Registry, RegistrySystem } from '@polymorph/registry'
-import { admitTheme } from '@polymorph/theme'
+import { admitTheme, prepaintScript, type ModePreference } from '@polymorph/theme'
 
 import { DEFAULT_HARNESSES, freshRecord, planAgents, renderRecord, AGENT_RECORD } from './agents'
 import type { Origin, Program } from './init-app'
@@ -220,6 +220,20 @@ export interface ElementsInitPlan {
   steps: ElementsInitStep[]
 }
 
+/**
+ * The pre-paint script of a page with no build, as `prepaint.js` holds it: built
+ * with every house system's default mode, because the page's theme sheet is
+ * compiled from the catalogue's documents. The page names its pairing on
+ * `<html>`, so the script reads the system there and needs no fallback.
+ */
+export function elementsPrepaint(registry: Registry): string {
+  return prepaintScript({
+    modes: Object.fromEntries(
+      registry.theme.systems.map((system) => [system.name, system.defaultMode as ModePreference]),
+    ),
+  })
+}
+
 /** The example page: the stylesheets, the prepaint script and the elements, then a few members. */
 function examplePage(name: string, files: string, system: string, palette: string): string {
   return `<!doctype html>
@@ -313,7 +327,7 @@ export function planElementsInit(
         // The stored theme choice, inline and first in `<head>`, before any stylesheet resolves.
         contents: injectPrepaint(
           examplePage(name, posix.basename(dir), system.name, system.defaultPalette),
-          registry.theme.prepaint,
+          elementsPrepaint(registry),
         ),
       },
       // The agent files `polymorph agents` writes, for the harnesses it writes by default.

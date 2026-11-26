@@ -75,9 +75,11 @@ function pairingCSS(theme: ResolvedTheme): string {
   )
 }
 
+/** What hydration checks stored names against, and the mode each system opens in. */
 const INSTALLED: InstalledCatalogue = {
   systems: Object.fromEntries(SYSTEMS.map((system) => [system.name, system.defaultPalette])),
   palettes: PALETTES.map((palette) => palette.name),
+  modes: Object.fromEntries(SYSTEMS.map((system) => [system.name, system.defaultMode])),
 }
 
 export function installThemes(): void {

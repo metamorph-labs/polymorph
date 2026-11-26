@@ -14,6 +14,7 @@ import { tmpdir } from 'node:os'
 import { basename, dirname, resolve } from 'node:path'
 
 import { buildRegistry, type Registry } from '@polymorph/registry'
+import { prepaintScript } from '@polymorph/theme'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 
 import { applyPlan } from './apply'
@@ -692,6 +693,42 @@ describe('a theme install includes everything it needs to render', () => {
     const entry = read(app, 'src/main.tsx')
     expect(entry).toContain("import { installThemes } from './polymorph/themes'")
     expect(entry.indexOf('installThemes()')).toBeLessThan(entry.indexOf('createRoot(document'))
+  })
+
+  it('builds the pre-paint script and hydration’s catalogue with each system’s default mode', () => {
+    install(['theme:pastel', 'theme:terminal'])
+    const script = prepaintScript({
+      modes: { pastel: 'system', terminal: 'dark' },
+      system: 'pastel',
+    })
+
+    // A first visit to a page that wears terminal is dark from the first paint, and hydration
+    // applies the same mode without storing it.
+    expect(read(app, 'index.html')).toContain(
+      `<script data-polymorph="prepaint">${script}</script>`,
+    )
+    expect(read(app, 'src/polymorph/themes/index.ts')).toContain(
+      '"modes":{"pastel":"system","terminal":"dark"}',
+    )
+    // The same script as a module, for an application with no `index.html`.
+    expect(read(app, 'src/polymorph/themes/prepaint.ts')).toContain(
+      `export const PREPAINT_SCRIPT = ${JSON.stringify(script)}`,
+    )
+    expect(readManifest(app)?.files['src/polymorph/themes/prepaint.ts']?.source).toBeNull()
+  })
+
+  it('carries a default mode the application edited into its system document', () => {
+    install(['theme:pastel'])
+    const system = 'src/polymorph/themes/systems/pastel.json'
+    const document = JSON.parse(read(app, system)) as Record<string, unknown>
+    writeFileSync(resolve(app, system), JSON.stringify({ ...document, defaultMode: 'dark' }))
+
+    updateInstall(app, source, registry)
+
+    const script = prepaintScript({ modes: { pastel: 'dark' }, system: 'pastel' })
+    expect(read(app, 'index.html')).toContain(script)
+    expect(read(app, 'src/polymorph/themes/prepaint.ts')).toContain(JSON.stringify(script))
+    expect(read(app, 'src/polymorph/themes/index.ts')).toContain('"modes":{"pastel":"dark"}')
   })
 
   it('adds a note when there is no entry to call it from', () => {

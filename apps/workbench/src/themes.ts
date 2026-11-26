@@ -101,11 +101,13 @@ function pairingCSS(theme: ResolvedTheme): string {
 /**
  * The installed catalogue, which hydration uses to check stored names. Each system maps to its
  * fallback palette because the two names go stale separately. A stale system falls back
- * entirely. A stale palette falls back to its system's default.
+ * entirely. A stale palette falls back to its system's default. `modes` is the mode each system
+ * opens in for a reader who has not chosen one.
  */
 const INSTALLED: InstalledCatalogue = {
   systems: Object.fromEntries(SYSTEMS.map((system) => [system.name, system.defaultPalette])),
   palettes: PALETTES.map((palette) => palette.name),
+  modes: Object.fromEntries(SYSTEMS.map((system) => [system.name, system.defaultMode])),
 }
 
 /**
@@ -129,6 +131,7 @@ export function installThemes(): void {
       : {
           systems: { ...INSTALLED.systems, [DRAFT_SYSTEM]: DRAFT_PALETTE },
           palettes: [...INSTALLED.palettes, DRAFT_PALETTE],
+          modes: { ...INSTALLED.modes, [DRAFT_SYSTEM]: draft.system.defaultMode },
         }
   if (draft !== null) appendThemeCSS(draft.css, DRAFT_PAIR)
 

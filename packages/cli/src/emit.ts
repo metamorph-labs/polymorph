@@ -7,6 +7,7 @@ import {
   RADIUS_STEPS,
   SPACE_STEPS,
   TEXT_STEPS,
+  type ModePreference,
 } from '@polymorph/theme'
 
 import type { Framework } from '@polymorph/registry'
@@ -16,12 +17,16 @@ import { DEFAULT_SYSTEM, type InstallPlan, type PaletteInstall, type SystemInsta
 /**
  * The files `polymorph add` generates instead of copying.
  *
- * There are four, and the install does not work without each of them:
+ * There are five, and the install does not work without each of them:
  *
  *  - `themes/index.ts`. Without it the system and palette are JSON files that
  *    nothing reads.
  *  - the font imports inside it. Without them the theme renders in its
  *    fallback font stack, which is a broken install.
+ *  - `themes/prepaint.ts`, the pre-paint script built for the installed
+ *    systems. The install inlines it in `index.html`; an application with no
+ *    `index.html` (a Next.js root layout) imports it. Without it a system that
+ *    opens dark paints light first.
  *  - `polymorph.eslint.js` / `polymorph.stylelint.js`. Without them the red
  *    rules run only in this repository. "Open code, closed usage" requires the
  *    usage to be governed in the consumer's repository.
@@ -46,6 +51,27 @@ export const BASE_IMPORT = '../base.css'
 
 /** The compiled stylesheet of every installed system paired with its own palette. */
 export const THEME_SHEET = 'theme.css'
+
+/** The module that exports the pre-paint script built for the installed systems. */
+export const PREPAINT_MODULE = 'prepaint.ts'
+
+/**
+ * `themes/prepaint.ts`: the pre-paint script the install built from the
+ * installed systems' default modes, as a string an application inlines first
+ * in `<head>`. It imports nothing, so a server component can import it.
+ */
+export function prepaintModule(script: string): string {
+  return [
+    BANNER('the pre-paint script for the installed systems', 'run `polymorph update`'),
+    '/**',
+    ' * Inline it first in `<head>`, before any stylesheet. It applies the stored',
+    ' * pairing and mode before the first paint, and for a reader who stored no mode',
+    ' * the default mode of the system the page wears.',
+    ' */',
+    `export const PREPAINT_SCRIPT = ${JSON.stringify(script)}`,
+    '',
+  ].join('\n')
+}
 
 /**
  * Every pairing other than a system with its own palette, and the stylesheet
@@ -114,6 +140,11 @@ export function themeModule(
    * would break the consumer's build.
    */
   base: string | null = BASE_IMPORT,
+  /**
+   * Each system's `defaultMode`, read from the documents the install compiled.
+   * A system it does not name follows the device.
+   */
+  modes: Readonly<Record<string, ModePreference>> = {},
 ): string {
   const orderedSystems = [...systems].sort((a, b) => a.name.localeCompare(b.name))
   const orderedPalettes = [...palettes].sort((a, b) => a.name.localeCompare(b.name))
@@ -131,13 +162,13 @@ export function themeModule(
     })
 
   const installed = new Set(orderedPalettes.map((palette) => palette.name))
+  const resolvable = orderedSystems.filter((system) => installed.has(system.defaultPalette))
   const catalogue = {
-    systems: Object.fromEntries(
-      orderedSystems
-        .filter((system) => installed.has(system.defaultPalette))
-        .map((system) => [system.name, system.defaultPalette]),
-    ),
+    systems: Object.fromEntries(resolvable.map((system) => [system.name, system.defaultPalette])),
     palettes: orderedPalettes.map((palette) => palette.name),
+    modes: Object.fromEntries(
+      resolvable.map((system) => [system.name, modes[system.name] ?? 'system']),
+    ),
   }
   const first = orderedSystems[0]?.name ?? ''
 
@@ -166,7 +197,10 @@ export function themeModule(
     '',
     `export const DEFAULT_SYSTEM = '${first}'`,
     '',
-    '/** What hydration judges a stored choice against: the staleness law needs both sets. */',
+    '/**',
+    ' * What hydration judges a stored choice against, which the staleness law needs both sets',
+    ' * of, and the mode each system opens in for a reader who has not chosen one.',
+    ' */',
     `const INSTALLED = ${JSON.stringify(catalogue)}`,
     '',
     '/** Every other pairing: its own sheet, fetched the first time it is chosen. */',
@@ -892,6 +926,7 @@ export function generatedFiles(
     )
     // The installer compiles these from the JSON. This function only lists the paths.
     files[`${dir}/themes/${THEME_SHEET}`] = ''
+    files[`${dir}/themes/${PREPAINT_MODULE}`] = ''
     for (const pairing of themePairings(plan.systems, plan.palettes)) {
       files[`${dir}/themes/${pairing.sheet}`] = ''
       files[`${dir}/themes/${pairing.loader}`] = pairingLoader(pairing.sheet)

@@ -2,13 +2,15 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
 
 import type { Registry } from '@polymorph/registry'
-import { admitTheme } from '@polymorph/theme'
+import { admitTheme, prepaintScript, type ModePreference } from '@polymorph/theme'
 
 import {
   BASE_IMPORT,
   generatedFiles,
   hasTheme,
   pairingLoader,
+  PREPAINT_MODULE,
+  prepaintModule,
   THEME_SHEET,
   themeModule,
   themePairings,
@@ -157,9 +159,13 @@ export function applyPlan(
   // the one an earlier install compiled into the consumer's repository. A sheet
   // with no pairing in it, because the install has no system, gives the
   // registry's values for the default system instead (`fallbackValues`).
-  const themes = hasTheme(plan)
-    ? compileThemes(root, source, manifest, plan, systems, palettes, options.force === true)
-    : {}
+  const documentOf = themeDocuments(root, source, manifest, plan, options.force === true)
+  const themes = hasTheme(plan) ? compileThemes(documentOf, plan, systems, palettes) : {}
+  // The mode each system opens in for a reader who has not chosen one, from the documents the
+  // application has. The theme module hands them to hydration, and the pre-paint script applies
+  // the same before the first paint.
+  const modes = modesOf(documentOf, systems)
+  const prepaint = prepaintScript({ modes, system: systems[0]?.name })
   const sheet = `${dir}/themes/${THEME_SHEET}`
   const compiled = tokenValuesIn(
     themes[sheet] ??
@@ -202,8 +208,10 @@ export function applyPlan(
     }).map(([path, contents]) => ({
       path,
       contents: path.endsWith('themes/index.ts')
-        ? themeModule(systems, palettes, plan.base ? BASE_IMPORT : null)
-        : contents,
+        ? themeModule(systems, palettes, plan.base ? BASE_IMPORT : null, modes)
+        : path.endsWith(`themes/${PREPAINT_MODULE}`)
+          ? prepaintModule(prepaint)
+          : contents,
       from: null,
     })),
   ]
@@ -290,7 +298,7 @@ export function applyPlan(
   }
 
   if (systems.length > 0 || palettes.length > 0) {
-    edit('index.html', (html) => injectPrepaint(html, registry.theme.prepaint))
+    edit('index.html', (html) => injectPrepaint(html, prepaint))
 
     // An application that installs its themes from a module of its own says so
     // in the manifest (`appInstallsThemes`), and its entry is left as it is.
@@ -327,37 +335,17 @@ export function applyPlan(
  * module the application runs derives nothing. `theme.css` holds each system
  * with its own palette, and every other pairing gets its own sheet.
  *
- * The compiled JSON is the JSON the application will have. That is the
- * upstream copy this install writes, or the application's own copy if it has
- * edited it, because the install does not overwrite an edit unless it is
- * forced. An unlawful
- * pairing fails the install with the law's own message. A palette's
- * more-contrast partner rides in its pairing's sheet, under the media query.
+ * The compiled JSON is the JSON the application will have (`themeDocuments`).
+ * An unlawful pairing fails the install with the law's own message. A
+ * palette's more-contrast partner rides in its pairing's sheet, under the
+ * media query.
  */
 function compileThemes(
-  root: string,
-  source: string,
-  manifest: Manifest,
+  json: (entry: SystemInstall | PaletteInstall) => unknown,
   plan: InstallPlan,
   systems: SystemInstall[],
   palettes: PaletteInstall[],
-  force: boolean,
 ): Record<string, string> {
-  const planned = new Set([...plan.systems, ...plan.palettes].map((entry) => entry.file.to))
-  const json = (entry: SystemInstall | PaletteInstall): unknown => {
-    const vendored = resolve(root, entry.file.to)
-    const recorded = manifest.files[entry.file.to]
-    const edited =
-      existsSync(vendored) &&
-      recorded !== undefined &&
-      digest(readFileSync(vendored)) !== recorded.hash
-    // Under `force` the install writes the upstream copy over an edit, so the
-    // sheet is compiled from the upstream copy too.
-    const fromUpstream = planned.has(entry.file.to) && (!edited || force)
-    const path = fromUpstream || !existsSync(vendored) ? resolve(source, entry.file.from) : vendored
-    return JSON.parse(readFileSync(path, 'utf8'))
-  }
-
   const systemJson = new Map(systems.map((system) => [system.name, json(system)]))
   const paletteJson = new Map(palettes.map((palette) => [palette.name, json(palette)]))
   const compile = (system: string, palette: string): string => {
@@ -392,6 +380,52 @@ function compileThemes(
     files[`${dir}/${pairing.loader}`] = pairingLoader(pairing.sheet)
   }
   return files
+}
+
+/**
+ * A system's or palette's document as the application will have it: the
+ * upstream copy this install writes, or the application's own copy if it has
+ * edited it, because the install does not overwrite an edit unless it is
+ * forced. A document this install does not write is the application's copy.
+ */
+function themeDocuments(
+  root: string,
+  source: string,
+  manifest: Manifest,
+  plan: InstallPlan,
+  force: boolean,
+): (entry: SystemInstall | PaletteInstall) => unknown {
+  const planned = new Set([...plan.systems, ...plan.palettes].map((entry) => entry.file.to))
+  return (entry) => {
+    const vendored = resolve(root, entry.file.to)
+    const recorded = manifest.files[entry.file.to]
+    const edited =
+      existsSync(vendored) &&
+      recorded !== undefined &&
+      digest(readFileSync(vendored)) !== recorded.hash
+    // Under `force` the install writes the upstream copy over an edit, so the
+    // sheet is compiled from the upstream copy too.
+    const fromUpstream = planned.has(entry.file.to) && (!edited || force)
+    const path = fromUpstream || !existsSync(vendored) ? resolve(source, entry.file.from) : vendored
+    return JSON.parse(readFileSync(path, 'utf8'))
+  }
+}
+
+/**
+ * Each system's `defaultMode`, read from its document. A document that states
+ * no valid one follows the device, which admission refuses anyway when it
+ * compiles the system.
+ */
+function modesOf(
+  json: (entry: SystemInstall) => unknown,
+  systems: readonly SystemInstall[],
+): Record<string, ModePreference> {
+  return Object.fromEntries(
+    systems.map((system) => {
+      const mode = (json(system) as { defaultMode?: unknown } | null)?.defaultMode
+      return [system.name, mode === 'light' || mode === 'dark' ? mode : 'system']
+    }),
+  )
 }
 
 /**
