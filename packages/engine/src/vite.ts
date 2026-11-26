@@ -1,7 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-import { admitTheme, PREPAINT_SCRIPT, type AdmittedFont } from '@polymorph/theme'
+import {
+  admitTheme,
+  prepaintScript,
+  type AdmittedFont,
+  type ModePreference,
+} from '@polymorph/theme'
 import type { Plugin } from 'vite'
 
 /**
@@ -66,7 +71,11 @@ const THEME_ID = '\0polymorph:theme'
 const PAIRING_ID = '\0polymorph:pairing:'
 
 interface Compiled {
-  catalogue: { systems: Record<string, string>; palettes: string[] }
+  catalogue: {
+    systems: Record<string, string>
+    palettes: string[]
+    modes: Record<string, ModePreference>
+  }
   defaultSystem: string
   defaultPalette: string
   eager: string
@@ -109,7 +118,11 @@ function compile(root: string, options: PolymorphThemeOptions): Compiled {
     return admission
   }
 
-  const catalogue: Compiled['catalogue'] = { systems: {}, palettes: [...paletteByName.keys()] }
+  const catalogue: Compiled['catalogue'] = {
+    systems: {},
+    palettes: [...paletteByName.keys()],
+    modes: {},
+  }
   const eager: string[] = []
   const others = new Map<string, string>()
   const wanted =
@@ -127,7 +140,12 @@ function compile(root: string, options: PolymorphThemeOptions): Compiled {
     }
     catalogue.systems[name] = own
     const lawful = admit(system, ownPalette)
-    if (lawful) eager.push(lawful.css)
+    if (lawful) {
+      eager.push(lawful.css)
+      // The mode a reader who has not chosen one opens in, which hydration and the pre-paint
+      // script both apply.
+      if (lawful.system) catalogue.modes[name] = lawful.system.defaultMode
+    }
 
     for (const [paletteName, palette] of paletteByName) {
       if (paletteName === own) continue
@@ -246,8 +264,9 @@ export function polymorphTheme(options: PolymorphThemeOptions): Plugin {
 
     transformIndexHtml(html) {
       // The default pairing goes on <html>, so a first visit is themed before any
-      // script runs. The pre-paint script then applies a stored choice over it.
-      const { defaultSystem, defaultPalette } = current()
+      // script runs. The pre-paint script then applies a stored choice over it,
+      // and with none stored the default mode of the system the page wears.
+      const { catalogue, defaultSystem, defaultPalette } = current()
       const tagged = /<html(?![^>]*data-system)/.test(html)
         ? html.replace(
             /<html/,
@@ -256,7 +275,13 @@ export function polymorphTheme(options: PolymorphThemeOptions): Plugin {
         : html
       return {
         html: tagged,
-        tags: [{ tag: 'script', children: PREPAINT_SCRIPT, injectTo: 'head-prepend' }],
+        tags: [
+          {
+            tag: 'script',
+            children: prepaintScript({ modes: catalogue.modes, system: defaultSystem }),
+            injectTo: 'head-prepend',
+          },
+        ],
       }
     },
   }

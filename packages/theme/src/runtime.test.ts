@@ -23,6 +23,7 @@ import {
   hydrateTheme,
   installThemeCSS,
   PREPAINT_SCRIPT,
+  prepaintScript,
   readMode,
   SERVER_MODE,
   setDensityDefault,
@@ -47,6 +48,12 @@ const ATTRS = ['data-system', 'data-palette', 'data-mode', 'data-density', 'data
 const INSTALLED: InstalledCatalogue = {
   systems: { pastel: 'amethyst', terminal: 'petrol' },
   palettes: ['amethyst', 'petrol', 'orchid'],
+}
+
+/** The same catalogue with each system's default mode: pastel follows the device, terminal is dark. */
+const WITH_MODES: InstalledCatalogue = {
+  ...INSTALLED,
+  modes: { pastel: 'system', terminal: 'dark' },
 }
 
 beforeEach(() => {
@@ -393,6 +400,165 @@ describe('hydrateTheme', () => {
 })
 
 /**
+ * A system's `defaultMode` is the mode preference of a reader who has not
+ * chosen one. Hydration applies it and never stores it, so a later change of
+ * the default, or a switch of system, still reaches that reader.
+ */
+describe('hydrateTheme: the mode of a reader who has not chosen one', () => {
+  it('applies a dark default and stores nothing', () => {
+    stubMatchMedia(false)
+    hydrateTheme('terminal', WITH_MODES)
+
+    expect(html().getAttribute('data-mode')).toBe('dark')
+    expect(getModePreference()).toBe('dark')
+    expect(readMode()).toEqual({ preference: 'dark', mode: 'dark' })
+    expect(localStorage.getItem(STORAGE_KEYS.mode)).toBeNull()
+  })
+
+  it('follows the device and its changes under a `system` default, and stores nothing', () => {
+    const media = stubMatchMedia(false)
+    hydrateTheme('pastel', WITH_MODES)
+    expect(readMode()).toEqual({ preference: 'system', mode: 'light' })
+
+    media.matches = true
+    media.emit()
+    expect(readMode()).toEqual({ preference: 'system', mode: 'dark' })
+    expect(localStorage.getItem(STORAGE_KEYS.mode)).toBeNull()
+  })
+
+  it('does not follow the device under a light default', () => {
+    const media = stubMatchMedia(true)
+    hydrateTheme('pastel', { ...INSTALLED, modes: { pastel: 'light' } })
+    expect(readMode()).toEqual({ preference: 'light', mode: 'light' })
+
+    media.matches = false
+    media.emit()
+    media.matches = true
+    media.emit()
+    expect(html().getAttribute('data-mode')).toBe('light')
+  })
+
+  it('applies the default of the system it falls back to, and of a stored system', () => {
+    stubMatchMedia(false)
+    localStorage.setItem(STORAGE_KEYS.system, 'terminal')
+    hydrateTheme('pastel', WITH_MODES)
+    expect(readMode()).toEqual({ preference: 'dark', mode: 'dark' })
+
+    teardownTheme()
+    localStorage.setItem(STORAGE_KEYS.system, 'ghost')
+    hydrateTheme('pastel', WITH_MODES)
+    expect(html().getAttribute('data-system')).toBe('pastel')
+    expect(readMode()).toEqual({ preference: 'system', mode: 'light' })
+  })
+
+  it('applies a stored choice over the default', () => {
+    stubMatchMedia(false)
+    localStorage.setItem(STORAGE_KEYS.mode, 'light')
+    hydrateTheme('terminal', WITH_MODES)
+
+    expect(readMode()).toEqual({ preference: 'light', mode: 'light' })
+    expect(localStorage.getItem(STORAGE_KEYS.mode)).toBe('light')
+  })
+
+  it('applies a stored `system` over a dark default, as a returning reader stored it', () => {
+    stubMatchMedia(false)
+    localStorage.setItem(STORAGE_KEYS.mode, 'system')
+    hydrateTheme('terminal', WITH_MODES)
+
+    expect(readMode()).toEqual({ preference: 'system', mode: 'light' })
+  })
+
+  it('stores a choice the reader makes after the default, which then wins', () => {
+    stubMatchMedia(false)
+    hydrateTheme('terminal', WITH_MODES)
+    setMode('system')
+
+    expect(localStorage.getItem(STORAGE_KEYS.mode)).toBe('system')
+    teardownTheme()
+    hydrateTheme('terminal', WITH_MODES)
+    expect(readMode()).toEqual({ preference: 'system', mode: 'light' })
+  })
+
+  it('applies the default again when hydration repeats, and stores nothing', () => {
+    stubMatchMedia(false)
+    hydrateTheme('terminal', WITH_MODES)
+    hydrateTheme('terminal', WITH_MODES)
+
+    expect(readMode()).toEqual({ preference: 'dark', mode: 'dark' })
+    expect(localStorage.getItem(STORAGE_KEYS.mode)).toBeNull()
+  })
+
+  it('keeps a catalogue without default modes following the device, and stores nothing', () => {
+    const media = stubMatchMedia(false)
+    hydrateTheme('terminal', INSTALLED)
+    expect(readMode()).toEqual({ preference: 'system', mode: 'light' })
+
+    media.matches = true
+    media.emit()
+    expect(html().getAttribute('data-mode')).toBe('dark')
+    expect(localStorage.getItem(STORAGE_KEYS.mode)).toBeNull()
+
+    // The catalogue names no mode, so a switch of system leaves the mode as it is.
+    const listener = vi.fn()
+    const release = watchMode(listener)
+    try {
+      setSystem('pastel')
+      expect(listener).not.toHaveBeenCalled()
+      expect(readMode()).toEqual({ preference: 'system', mode: 'dark' })
+    } finally {
+      release()
+    }
+  })
+
+  it('reads `system` before any hydration, where it knows no default', () => {
+    stubMatchMedia(false)
+    html().setAttribute('data-system', 'terminal')
+    expect(getModePreference()).toBe('system')
+  })
+})
+
+describe('setSystem and the mode of a reader who has not chosen one', () => {
+  it('moves an unstored mode to the new system’s default, and stores none', () => {
+    const media = stubMatchMedia(false)
+    hydrateTheme('pastel', WITH_MODES)
+    const listener = vi.fn()
+    const release = watchMode(listener)
+    try {
+      setSystem('terminal')
+      expect(readMode()).toEqual({ preference: 'dark', mode: 'dark' })
+      expect(listener).toHaveBeenCalled()
+
+      setSystem('pastel')
+      expect(readMode()).toEqual({ preference: 'system', mode: 'light' })
+      media.matches = true
+      media.emit()
+      expect(html().getAttribute('data-mode')).toBe('dark')
+      expect(localStorage.getItem(STORAGE_KEYS.mode)).toBeNull()
+    } finally {
+      release()
+    }
+  })
+
+  it('keeps a mode the reader chose', () => {
+    stubMatchMedia(false)
+    hydrateTheme('pastel', WITH_MODES)
+    setMode('light')
+    setSystem('terminal')
+
+    expect(readMode()).toEqual({ preference: 'light', mode: 'light' })
+  })
+
+  it('keeps a stored mode', () => {
+    stubMatchMedia(false)
+    localStorage.setItem(STORAGE_KEYS.mode, 'system')
+    hydrateTheme('pastel', WITH_MODES)
+    setSystem('terminal')
+
+    expect(readMode()).toEqual({ preference: 'system', mode: 'light' })
+  })
+})
+
+/**
  * The legacy key holds one name; a pairing stores two. Hydration migrates it
  * once, because the pre-paint script has no room. A legacy visitor sees the
  * fallback on the first reload and their choice after that.
@@ -493,6 +659,130 @@ describe('PREPAINT_SCRIPT', () => {
       },
     })
     expect(() => new Function(PREPAINT_SCRIPT)()).not.toThrow()
+  })
+
+  it('follows the device for a reader who stored no mode, whatever the system', () => {
+    stubMatchMedia(false)
+    html().setAttribute('data-system', 'terminal')
+    new Function(PREPAINT_SCRIPT)()
+    expect(html().getAttribute('data-mode')).toBe('light')
+  })
+})
+
+/** Each house system's `defaultMode`, read from `design/systems/`. */
+function houseModes(): Record<string, 'light' | 'dark' | 'system'> {
+  const dir = resolve(process.cwd(), 'design/systems')
+  return Object.fromEntries(
+    readdirSync(dir)
+      .filter((file) => file.endsWith('.json'))
+      .map((file) => {
+        const system = JSON.parse(readFileSync(join(dir, file), 'utf8')) as {
+          name: string
+          defaultMode: 'light' | 'dark' | 'system'
+        }
+        return [system.name, system.defaultMode]
+      }),
+  )
+}
+
+describe('prepaintScript', () => {
+  it('is PREPAINT_SCRIPT when every system follows the device', () => {
+    expect(prepaintScript()).toBe(PREPAINT_SCRIPT)
+    expect(prepaintScript({ modes: { pastel: 'system' }, system: 'pastel' })).toBe(PREPAINT_SCRIPT)
+  })
+
+  it('stays under its own budget for the house catalogue, because it blocks parsing', () => {
+    // The script grows by one entry per system whose default is `light` or `dark`. The house
+    // catalogue's script is held at 600 bytes, the constant's 500 and room for the lookup.
+    const script = prepaintScript({ modes: houseModes(), system: 'plain' })
+    expect(script).not.toBe(PREPAINT_SCRIPT)
+    expect(script.length).toBeLessThanOrEqual(600)
+  })
+
+  it('grows by each system’s name and mode, and nothing more', () => {
+    const one = prepaintScript({ modes: { terminal: 'dark' } })
+    const two = prepaintScript({ modes: { terminal: 'dark', pastel: 'light' } })
+    expect(two.length - one.length).toBe(JSON.stringify({ pastel: 'light' }).length - 1)
+  })
+
+  /**
+   * For each default and each device: a first visit, nothing stored, run the
+   * built script as the page would, then hydration as the application would.
+   * The mode the script painted is the mode hydration applies.
+   */
+  describe('paints the mode hydration then applies, for a reader who stored nothing', () => {
+    for (const defaultMode of ['dark', 'light', 'system'] as const) {
+      for (const dark of [false, true]) {
+        const device = dark ? 'a dark device' : 'a light device'
+        it(`a ${defaultMode} default on ${device}`, () => {
+          stubMatchMedia(dark)
+          const catalogue: InstalledCatalogue = {
+            ...INSTALLED,
+            modes: { terminal: defaultMode, pastel: 'system' },
+          }
+          html().setAttribute('data-system', 'terminal')
+
+          new Function(prepaintScript({ modes: catalogue.modes, system: 'pastel' }))()
+          const painted = html().getAttribute('data-mode')
+          hydrateTheme('terminal', catalogue)
+
+          const expected = defaultMode === 'system' ? (dark ? 'dark' : 'light') : defaultMode
+          expect(painted).toBe(expected)
+          expect(html().getAttribute('data-mode')).toBe(painted)
+          expect(localStorage.getItem(STORAGE_KEYS.mode)).toBeNull()
+        })
+      }
+    }
+  })
+
+  it('reads the stored system first, then the markup’s, then the fallback', () => {
+    stubMatchMedia(false)
+    const script = prepaintScript({ modes: WITH_MODES.modes, system: 'terminal' })
+
+    new Function(script)()
+    expect(html().getAttribute('data-mode')).toBe('dark')
+
+    html().setAttribute('data-system', 'pastel')
+    new Function(script)()
+    expect(html().getAttribute('data-mode')).toBe('light')
+
+    localStorage.setItem(STORAGE_KEYS.system, 'terminal')
+    new Function(script)()
+    expect(html().getAttribute('data-mode')).toBe('dark')
+  })
+
+  it('applies a stored mode over every default', () => {
+    stubMatchMedia(true)
+    localStorage.setItem(STORAGE_KEYS.mode, 'light')
+    html().setAttribute('data-system', 'terminal')
+    new Function(prepaintScript({ modes: WITH_MODES.modes }))()
+    expect(html().getAttribute('data-mode')).toBe('light')
+  })
+
+  it('follows the device for a system the map does not name, a property name included', () => {
+    stubMatchMedia(true)
+    const script = prepaintScript({ modes: { terminal: 'light' } })
+    for (const system of ['pastel', 'constructor', 'toString']) {
+      html().setAttribute('data-system', system)
+      new Function(script)()
+      expect(html().getAttribute('data-mode'), system).toBe('dark')
+    }
+  })
+
+  it('cannot close the inline script it is written into', () => {
+    const script = prepaintScript({ modes: { '</script>': 'dark' }, system: '</script>' })
+    expect(script).not.toContain('</script>')
+    expect(() => new Function(script)()).not.toThrow()
+  })
+
+  it('survives storage being unavailable', () => {
+    stubMatchMedia(false)
+    vi.stubGlobal('localStorage', {
+      getItem() {
+        throw new Error('SecurityError')
+      },
+    })
+    expect(() => new Function(prepaintScript({ modes: WITH_MODES.modes }))()).not.toThrow()
   })
 })
 
