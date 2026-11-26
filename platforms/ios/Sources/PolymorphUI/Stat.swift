@@ -19,6 +19,14 @@
 // the number comes first and the spark never squashes. `sparkLabel` names it
 // from the stat's label, "Revenue, recent trend" by default, and it reads as
 // part of the one statement.
+//
+// `loading` says the number has not arrived. The label row stays, and the value
+// and each part the caller passes that states the number (the trend chip, the
+// spark, the delta or the description, the footer) is a Skeleton of that part's
+// size, so the stat keeps its height when the number arrives. The value's
+// Skeleton is named by `loadingLabel`, "Loading" by default, and the rest are
+// hidden, so the stat reads as its label and "Loading": no value, delta, chip
+// label or spark name is drawn or read for a number that has not arrived.
 
 import PolymorphTokens
 import SwiftUI
@@ -35,6 +43,7 @@ public struct PMStat: PMStatRendering {
     let space = theme.defaultDensity.space
     let colors = theme.colors
     let numeric = props.numeric ?? true
+    let loading = props.loading ?? false
     let positive = props.delta.map { $0.positive ?? ($0.direction == .up) }
 
     VStack(alignment: .leading, spacing: space.s2) {
@@ -52,9 +61,17 @@ public struct PMStat: PMStatRendering {
               PMIconView(icon, size: .md).foregroundStyle(colors.textMuted.color)
             }
             if let trend = props.trend {
-              PMBadge(
-                props: PMBadgeProps(
-                  children: trend.label, icon: Self.glyph(trend.direction), variant: .outline))
+              if loading {
+                // The chip's box, Badge's padding around a Skeleton of its line,
+                // so the label row keeps the chip's height.
+                PMSkeleton(props: PMSkeletonProps(textStep: .xs, width: .width7))
+                  .padding(.vertical, space.s1)
+                  .padding(.horizontal, space.s3)
+              } else {
+                PMBadge(
+                  props: PMBadgeProps(
+                    children: trend.label, icon: Self.glyph(trend.direction), variant: .outline))
+              }
             }
           }
           .fixedSize()
@@ -62,22 +79,41 @@ public struct PMStat: PMStatRendering {
       }
 
       HStack(alignment: .firstTextBaseline, spacing: space.s3) {
-        Text(props.value)
-          .pmTextStyle(theme.text.text3xl)
-          .foregroundStyle(colors.textPrimary.color)
-          .pmTabularFigures(numeric && theme.numeric.tabular)
+        if loading {
+          // The value's line box, and the one placeholder VoiceOver reads.
+          PMSkeleton(
+            props: PMSkeletonProps(
+              label: props.loadingLabel ?? PMStrings.loading, textStep: .textStep3xl,
+              width: .width10))
+        } else {
+          Text(props.value)
+            .pmTextStyle(theme.text.text3xl)
+            .foregroundStyle(colors.textPrimary.color)
+            .pmTabularFigures(numeric && theme.numeric.tabular)
+        }
         if let spark = props.spark {
           Spacer(minLength: 0)
-          PMSparkline(
-            props: PMSparklineProps(
-              data: spark,
-              label: props.sparkLabel?(props.label) ?? PMSpecDefault.sparkLabel(props.label)))
-          .fixedSize()
-          .alignmentGuide(.firstTextBaseline) { $0[.bottom] }
+          if loading {
+            // Shorter than the value's line box, so the row keeps its height.
+            PMSkeleton(props: PMSkeletonProps(shape: .rect, size: .s6, width: .width9))
+              .alignmentGuide(.firstTextBaseline) { $0[.bottom] }
+          } else {
+            PMSparkline(
+              props: PMSparklineProps(
+                data: spark,
+                label: props.sparkLabel?(props.label) ?? PMSpecDefault.sparkLabel(props.label)))
+            .fixedSize()
+            .alignmentGuide(.firstTextBaseline) { $0[.bottom] }
+          }
         }
       }
 
-      if let delta = props.delta, let positive {
+      if props.delta != nil, loading {
+        // No direction, value or sentiment for a number that has not arrived.
+        PMSkeleton(props: PMSkeletonProps(textStep: .sm, width: .width9))
+      } else if props.description != nil, props.delta == nil, loading {
+        PMSkeleton(props: PMSkeletonProps(textStep: .xs, width: .width10))
+      } else if let delta = props.delta, let positive {
         HStack(spacing: space.s1) {
           PMIconView(Self.glyph(delta.direction), size: .sm)
           Text(delta.value)
@@ -94,7 +130,14 @@ public struct PMStat: PMStatRendering {
           .foregroundStyle(colors.textMuted.color)
       }
 
-      if let footer = props.footer {
+      if props.footer != nil, loading {
+        // The footer's two lines; its words come with the number.
+        VStack(alignment: .leading, spacing: space.s2) {
+          PMSkeleton(props: PMSkeletonProps(textStep: .sm))
+          PMSkeleton(props: PMSkeletonProps(textStep: .sm, width: .width10))
+        }
+        .padding(.top, space.s5)
+      } else if let footer = props.footer {
         VStack(alignment: .leading, spacing: space.s2) {
           HStack(spacing: space.s3) {
             Text(footer.primary)
@@ -118,11 +161,12 @@ public struct PMStat: PMStatRendering {
     .fixedSize(horizontal: false, vertical: true)
     .frame(maxWidth: .infinity, alignment: .leading)
     .accessibilityElement(children: .combine)
-    .pmMember("Stat", attributes(positive: positive))
+    .pmMember("Stat", attributes(positive: positive, loading: loading))
   }
 
-  private func attributes(positive: Bool?) -> [String: String] {
+  private func attributes(positive: Bool?, loading: Bool) -> [String: String] {
     var found: [String: String] = [:]
+    if loading { found["loading"] = "true" }
     if let delta = props.delta { found["direction"] = delta.direction.rawValue }
     if let positive { found["positive"] = String(positive) }
     if let trend = props.trend { found["trend"] = trend.direction.rawValue }
@@ -153,12 +197,13 @@ public struct StatStates: PMStates {
   private func stat(
     _ label: String = Self.open, _ value: String = "128", icon: PMIconRole? = nil,
     delta: PMStatDelta? = nil, description: String? = nil, footer: PMStatFooter? = nil,
-    numeric: Bool? = nil, spark: [Double]? = nil, trend: PMStatTrend? = nil
+    loading: Bool? = nil, numeric: Bool? = nil, spark: [Double]? = nil,
+    trend: PMStatTrend? = nil
   ) -> PMStat {
     PMStat(
       props: PMStatProps(
         delta: delta, description: description, footer: footer, icon: icon, label: label,
-        numeric: numeric, spark: spark, trend: trend, value: value))
+        loading: loading, numeric: numeric, spark: spark, trend: trend, value: value))
   }
 
   private static let falling: [Double] = [42, 40, 41, 38, 35, 36, 33, 31, 32, 29, 27, 26]
@@ -208,6 +253,26 @@ public struct StatStates: PMStates {
           trend: PMStatTrend(direction: .up, label: "+12.5%"))
       },
       PMStateEntry("spark alone", expect: ["spark": "true"]) { stat(spark: Self.rising) },
+      PMStateEntry(
+        "loading", expect: ["loading": "true", "label": "\(Self.response), \(PMStrings.loading)"]
+      ) {
+        stat(Self.response, "", icon: .time, loading: true)
+      },
+      PMStateEntry(
+        "loading with a delta",
+        expect: ["loading": "true", "label": "\(Self.revenue), \(PMStrings.loading)"]
+      ) {
+        stat(
+          Self.revenue, "$48,200", delta: PMStatDelta(value: "12%", direction: .up), loading: true)
+      },
+      PMStateEntry(
+        "loading with a trend, a spark and a footer",
+        expect: ["loading": "true", "trend": "up", "footer": "true", "spark": "true"]
+      ) {
+        stat(
+          Self.revenue, "$48,200", footer: footer, loading: true, spark: Self.rising,
+          trend: PMStatTrend(direction: .up, label: "+12.5%"))
+      },
     ]
   }
 }

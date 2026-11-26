@@ -7819,6 +7819,13 @@ public struct PMStatProps {
   public var footer: PMStatFooter?
   public var icon: PMIconRole?
   public var label: String
+  /// The number has not arrived. The label row stays, and the value and each part the caller passes
+  /// that states the number is a Skeleton of that part's size. `value` stays required, as a chart's
+  /// rows do with its `loading`: pass what there is, `''` or the last value, and it is not drawn.
+  public var loading: Bool?
+  /// What a screen reader hears in the value's place while `loading`, the value's Skeleton's name.
+  /// Default "Loading".
+  public var loadingLabel: String?
   /// Tabular figures, so a column of these lines up.
   public var numeric: Bool?
   /// The trend as a shape: a `Sparkline` at the value row's inline end. It can sit beside `trend`
@@ -7839,6 +7846,8 @@ public struct PMStatProps {
     footer: PMStatFooter? = nil,
     icon: PMIconRole? = nil,
     label: String,
+    loading: Bool? = nil,
+    loadingLabel: String? = nil,
     numeric: Bool? = nil,
     spark: [Double]? = nil,
     sparkLabel: (@MainActor (String) -> String)? = nil,
@@ -7850,6 +7859,8 @@ public struct PMStatProps {
     self.footer = footer
     self.icon = icon
     self.label = label
+    self.loading = loading
+    self.loadingLabel = loadingLabel
     self.numeric = numeric
     self.spark = spark
     self.sparkLabel = sparkLabel
