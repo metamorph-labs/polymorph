@@ -655,7 +655,12 @@ function update(cli: Cli, flags: Flags): Outcome {
   )
   const held = before.files.filter((file) => file.state === 'edited' || file.state === 'diverged')
 
-  if (stale.length === 0 && before.installed === before.available && !flags.force) {
+  // An edited system or palette is the one edit `update` acts on: the sheets
+  // are compiled from the app's copies, so they are compiled again.
+  const themes = `${before.manifest.dir}/themes/`
+  const retheme = held.some((file) => file.path.startsWith(themes) && file.path.endsWith('.json'))
+
+  if (stale.length === 0 && before.installed === before.available && !flags.force && !retheme) {
     cli.out(`polymorph ${before.installed} — nothing to update`)
     for (const file of held) cli.out(row('kept yours', file.path))
     return { code: 0 }
@@ -665,6 +670,7 @@ function update(cli: Cli, flags: Flags): Outcome {
 
   cli.out(`polymorph ${before.installed} → ${result.manifest.version}`)
   cli.out(row('updated', `${result.written.length} files`))
+  if (retheme) cli.out(row('compiled', 'the theme sheets, from your systems and palettes'))
   for (const path of result.removed) cli.out(row('dropped', path))
   for (const path of result.skipped) cli.out(row('kept yours', path))
   for (const note of result.notes) cli.out(`  · ${note}`)

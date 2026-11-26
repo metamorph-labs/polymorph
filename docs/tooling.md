@@ -584,9 +584,8 @@ Afterwards, install the new dependencies. A file you had already edited is kept 
 path and that the manifest has no record of, such as your own `Button.tsx` under a `--dir` you
 already use, unless it already matches what would be written. Running `add` again is additive and
 does not duplicate any patch. The vendored system and palette JSON are yours to edit. Run
-`polymorph add theme:<system>` again after an edit to recompile the sheets from your copies.
-`polymorph update` reports nothing to update while no file has changed upstream, so it does not
-recompile them.
+`polymorph update` after an edit to recompile the sheets from your copies. It does so when
+nothing has changed upstream too.
 
 ### `polymorph.json`
 
@@ -674,8 +673,8 @@ the report says where the partner is looked for.
   not apply to a guest theme.
 - `emit` prints the emitted stylesheet. It is for handoff and inspection, not for installing. A
   product keeps the two JSON documents and compiles them in its build (`@polymorph/engine/vite`) or
-  its install (`add`, then `add theme:<system>` again after an edit), so the sheet is re-derived
-  when a decision changes. A banner in the file marks it as a handoff.
+  its install (`add`, then `update` after an edit), so the sheet is re-derived when a decision
+  changes. A banner in the file marks it as a handoff.
 - `schema` prints the JSON Schema for a system or a palette document, for an editor.
 
 [theming.md](theming.md) covers bringing your own theme in full.

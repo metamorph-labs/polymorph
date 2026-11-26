@@ -158,7 +158,7 @@ export function applyPlan(
   // with no pairing in it, because the install has no system, gives the
   // registry's values for the default system instead (`fallbackValues`).
   const themes = hasTheme(plan)
-    ? compileThemes(root, source, manifest, plan, systems, palettes)
+    ? compileThemes(root, source, manifest, plan, systems, palettes, options.force === true)
     : {}
   const sheet = `${dir}/themes/${THEME_SHEET}`
   const compiled = tokenValuesIn(
@@ -329,7 +329,8 @@ export function applyPlan(
  *
  * The compiled JSON is the JSON the application will have. That is the
  * upstream copy this install writes, or the application's own copy if it has
- * edited it, because the install does not overwrite an edit. An unlawful
+ * edited it, because the install does not overwrite an edit unless it is
+ * forced. An unlawful
  * pairing fails the install with the law's own message. A palette's
  * more-contrast partner rides in its pairing's sheet, under the media query.
  */
@@ -340,6 +341,7 @@ function compileThemes(
   plan: InstallPlan,
   systems: SystemInstall[],
   palettes: PaletteInstall[],
+  force: boolean,
 ): Record<string, string> {
   const planned = new Set([...plan.systems, ...plan.palettes].map((entry) => entry.file.to))
   const json = (entry: SystemInstall | PaletteInstall): unknown => {
@@ -349,7 +351,9 @@ function compileThemes(
       existsSync(vendored) &&
       recorded !== undefined &&
       digest(readFileSync(vendored)) !== recorded.hash
-    const fromUpstream = planned.has(entry.file.to) && !edited
+    // Under `force` the install writes the upstream copy over an edit, so the
+    // sheet is compiled from the upstream copy too.
+    const fromUpstream = planned.has(entry.file.to) && (!edited || force)
     const path = fromUpstream || !existsSync(vendored) ? resolve(source, entry.file.from) : vendored
     return JSON.parse(readFileSync(path, 'utf8'))
   }

@@ -821,6 +821,45 @@ describe('polymorph update', () => {
     expect(read(app, mine)).toContain('export function Button')
   })
 
+  it('compiles the sheet again from a palette the app edited, and from ours under --force', () => {
+    install(['theme:pastel'])
+    const palette = 'src/polymorph/themes/palettes/amethyst.json'
+    const sheet = 'src/polymorph/themes/theme.css'
+    const shipped = read(app, sheet)
+    const document = JSON.parse(read(app, palette)) as { accentHue: number }
+    writeFileSync(resolve(app, palette), JSON.stringify({ ...document, accentHue: 250 }, null, 2))
+
+    const lines: string[] = []
+    const polymorph = (argv: string[]) =>
+      run({ root: app, source, registry, out: (line) => lines.push(line) }, argv)
+
+    // Nothing changed upstream, and the edit is still acted on.
+    expect(polymorph(['update']).code).toBe(0)
+    expect(lines.join('\n')).not.toContain('nothing to update')
+    expect(lines.join('\n')).toContain('compiled')
+    const edited = read(app, sheet)
+    expect(edited).not.toBe(shipped)
+    expect(JSON.parse(read(app, palette))).toMatchObject({ accentHue: 250 })
+
+    // A second run compiles the same sheet: the edit is still the app's.
+    polymorph(['update'])
+    expect(read(app, sheet)).toBe(edited)
+
+    // `--force` puts our palette back, and the sheet is compiled from it.
+    polymorph(['update', '--force'])
+    expect(JSON.parse(read(app, palette))).toMatchObject({ accentHue: document.accentHue })
+    expect(read(app, sheet)).toBe(shipped)
+  })
+
+  it('says there is nothing to update when no file moved and no theme document was edited', () => {
+    install(['button', 'theme:pastel'])
+    const mine = 'src/polymorph/controls/Button.tsx'
+    writeFileSync(resolve(app, mine), `${read(app, mine)}\n// mine\n`)
+    const lines: string[] = []
+    run({ root: app, source, registry, out: (line) => lines.push(line) }, ['update'])
+    expect(lines.join('\n')).toContain('nothing to update')
+  })
+
   it('restores a file the consumer deleted', () => {
     install(['button'])
     rmSync(resolve(app, 'src/polymorph/controls/button.module.css'))
