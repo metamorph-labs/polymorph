@@ -128,7 +128,7 @@ onBeforeUnmount(() => release6?.())
   <div ref="region" role="region" :aria-label="say.viewport" tabindex="-1">
     <!-- list -->
     <ol ref="list" :class="styles.viewport" tabindex="-1" data-toast-part="list">
-      <template v-for="record in records" :key="record.id">
+      <template v-for="record in records" :key="record.key">
         <ToastCard :record="record" :dismissLabel="say.dismiss" :paused="paused" />
       </template>
     </ol>

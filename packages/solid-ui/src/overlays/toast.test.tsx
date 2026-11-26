@@ -33,6 +33,7 @@ toastFocusLaw({
   shell: 'Solid',
   mount: () => mount(() => <Toast.Viewport />),
   raise: (options) => toast({ durationMs: Number.POSITIVE_INFINITY, ...options }),
+  dismiss: (id) => toast.dismiss(id),
   remove: (id) => removeToast(id),
   clear: () => getToasts().forEach((record) => removeToast(record.id)),
 })

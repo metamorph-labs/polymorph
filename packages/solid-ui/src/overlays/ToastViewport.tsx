@@ -141,7 +141,7 @@ export default function ToastViewport(given: ToastViewportProps): JSX.Element {
       <div role="region" aria-label={say.value.viewport} tabindex="-1" ref={region.attach}>
         {/* list */}
         <ol class={styles.viewport} tabindex="-1" data-toast-part="list" ref={list.attach}>
-          <Each of={records.value} by={(record) => record.id} renew>
+          <Each of={records.value} by={(record) => record.key} renew>
             {(record) => (
               <ToastCard record={record} dismissLabel={say.value.dismiss} paused={paused.value} />
             )}

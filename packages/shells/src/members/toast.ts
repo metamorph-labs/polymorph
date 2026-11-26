@@ -214,7 +214,9 @@ export default describeMember({
               attrs: { tabindex: lit('-1'), 'data-toast-part': lit('list') },
             },
             [
-              each('records', 'record', 'record.id', [
+              // Keyed by the record's `key` and not its id: a toast raised again under the id
+              // of a card that is still leaving is a second card.
+              each('records', 'record', 'record.key', [
                 member('ToastCard', {
                   record: 'record',
                   dismissLabel: 'say.dismiss',

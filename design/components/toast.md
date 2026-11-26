@@ -123,6 +123,13 @@ replaces that record. The card and its position stay the same, the content chang
 the timer restarts. An unknown id raises a new toast as normal. `toast.promise` uses this
 contract and is not a special path.
 
+A toast that is leaving cannot be updated, so its id raises a new toast while its card plays its
+exit. The two share the id and are two cards: each record has a `key` of its own, which the
+viewport keys its cards by, and the leaving card takes only its own record out of the store when
+its exit ends. The key is the id, except for a toast raised while a leaving card holds the id. So
+an id its owner removes and raises again in one turn, as `ToastNotice` does under a new
+`eventKey`, keeps its card, and focus in its content stays where it is.
+
 `<ToastHost>` mounts the viewport once at the application root. The store keys records
 by `id`, so an update is one publish rather than a remove and an add. Toast attributes:
 `data-tone`, `data-state="open|closed"`, `data-swipe="move|cancel|end"` and

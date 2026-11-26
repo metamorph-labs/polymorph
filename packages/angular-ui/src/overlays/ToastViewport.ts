@@ -144,7 +144,7 @@ export class ToastViewport {
   }
 
   protected e4(record: Each<ReturnType<ToastViewport['e3']>>) {
-    return record.id
+    return record.key
   }
 
   protected e5(record: Each<ReturnType<ToastViewport['e3']>>): ToastCardProps['record'] {

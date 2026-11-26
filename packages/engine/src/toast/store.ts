@@ -95,6 +95,13 @@ export interface ToastStoreRecord<Content = unknown> extends ToastStoreOptions<C
    */
   raised: number
   /**
+   * What a viewport keys the toast's card by, unique among the records. It is the id, so a
+   * toast its owner removes and raises again in one turn keeps its card. A toast raised under
+   * an id that a leaving card still holds takes the id with its raise, so the two are two cards
+   * and the leaving one plays its exit. An update in place keeps it.
+   */
+  key: string
+  /**
    * Set while the toast leaves. Dismissal has two steps so that a toast closed
    * by hand passes through the same `data-state="closed"` as one that timed
    * out. That state styles a leaving card and stops it taking clicks during the
@@ -235,6 +242,7 @@ export function createToastStore<Content = unknown>(): ToastStore<Content> {
         ...lifetimeOf(options),
         revision: previous.revision + 1,
         raised: previous.raised,
+        key: previous.key,
       }
       publish(records.map((entry, index) => (index === live ? record : entry)))
       return id
@@ -247,6 +255,9 @@ export function createToastStore<Content = unknown>(): ToastStore<Content> {
       ...lifetimeOf(options),
       revision: 0,
       raised: sequence,
+      // Only a card that is leaving can still hold the id here. The separator is a control
+      // character, which no id an application writes contains.
+      key: records.some((entry) => entry.id === id) ? `${id}\u001F${sequence}` : id,
     }
     // The oldest are evicted, so the toast just raised is always kept.
     const next = [...records, record]

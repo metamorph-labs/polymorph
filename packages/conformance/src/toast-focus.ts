@@ -26,6 +26,10 @@ import { installTestTheme } from '@polymorph/engine/testing'
  * the background, and run again once focus has fallen out of the notifications
  * even when the browser sends no `focusout`.
  *
+ * A toast raised under the id of a card that is still leaving is a card of its
+ * own: the leaving card plays its exit and takes nothing else with it, and no
+ * framework is given two cards under one key.
+ *
  * The law moves focus onto a card's own control with `focus()` and presses
  * the key with the keyboard harness, because shells order the tab stops of a
  * stack differently and the law is about what the key does.
@@ -52,6 +56,8 @@ export interface ToastFocusLaw {
    * and returns its id.
    */
   raise(toast: ToastFocusLawToast): string
+  /** Closes one toast through the shell's store, as `toast.dismiss` does. */
+  dismiss(id: string): void
   /** Removes one toast from the shell's store, as the screen that owns it does. */
   remove(id: string): void
   /** Removes every toast from the shell's store. */
@@ -355,6 +361,56 @@ export function toastFocusLaw(law: ToastFocusLaw): void {
         law.raise({ id: 'export', title: 'Export ready' })
         await vi.waitFor(() => expect(polite.said()).toHaveLength(2))
         expect(polite.said()[1]).toContain('Export ready')
+      } finally {
+        polite.stop()
+      }
+    })
+  })
+
+  describe(`a toast raised again under a leaving toast's id in ${law.shell}`, () => {
+    beforeAll(installTestTheme)
+    afterEach(() => {
+      law.clear()
+      vi.restoreAllMocks()
+    })
+
+    it('draws it as a card of its own, and the leaving card leaves alone', async () => {
+      // A framework reports two children under one key on its console, or throws.
+      const error = vi.spyOn(console, 'error')
+      const warn = vi.spyOn(console, 'warn')
+      await law.mount()
+      law.raise({ id: 'saved', title: 'Draft saved' })
+      const first = await vi.waitFor(() => card('Draft saved'))
+
+      // The same turn: the first card has not started its exit when the second is raised.
+      law.dismiss('saved')
+      law.raise({ id: 'saved', title: 'Draft saved again' })
+      const second = await vi.waitFor(() => card('Draft saved again'))
+      expect(second, 'the toast raised again was drawn in the leaving card').not.toBe(first)
+
+      await vi.waitFor(() => expect(first.isConnected).toBe(false), { timeout: 3000 })
+      expect(cards()).toEqual([second])
+      expect(second.dataset['state']).toBe('open')
+      expect(second.textContent).toContain('Draft saved again')
+      const keyed = [...error.mock.calls, ...warn.mock.calls]
+        .map((call) => call.map(String).join(' '))
+        .filter((line) => /\bkeys?\b|duplicate|NG0955/i.test(line))
+      expect(keyed).toEqual([])
+    })
+
+    it('says the toast raised again, once', async () => {
+      await law.mount()
+      law.raise({ id: 'saved', title: 'Draft saved' })
+      await vi.waitFor(() => card('Draft saved'))
+      const polite = listen('polite')
+      try {
+        law.dismiss('saved')
+        law.raise({ id: 'saved', title: 'Draft saved again' })
+        await vi.waitFor(() => expect(polite.said()).toHaveLength(1))
+        expect(polite.said()[0]).toContain('Draft saved again')
+        await vi.waitFor(() => expect(cards()).toHaveLength(1), { timeout: 3000 })
+        await sleep(300)
+        expect(polite.said(), 'the leaving card made the region say another').toHaveLength(1)
       } finally {
         polite.stop()
       }

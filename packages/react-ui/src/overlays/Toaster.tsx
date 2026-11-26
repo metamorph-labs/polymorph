@@ -103,7 +103,7 @@ function ToastCard({
    */
   const held = useSyncExternalStore(
     subscribeToasts,
-    () => getToasts().some((each) => each.id === record.id),
+    () => getToasts().some((each) => each.key === record.key),
     () => true,
   )
   const leaving = record.closing === true || !held
@@ -376,7 +376,7 @@ export function Toaster({
         <MotionPresence>
           {records.map((record) => (
             <ToastCard
-              key={record.id}
+              key={record.key}
               record={record}
               dismissLabel={messages.dismiss}
               paused={paused}

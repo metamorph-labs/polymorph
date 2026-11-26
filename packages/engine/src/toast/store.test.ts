@@ -27,6 +27,7 @@ describe('createToastStore', () => {
         durationMs: TOAST_DEFAULT_DURATION_MS,
         revision: 0,
         raised: 1,
+        key: id,
       },
     ])
     expect(calls).toBe(1)
@@ -137,6 +138,28 @@ describe('createToastStore', () => {
     store.remove('a', leaving)
     expect(store.get()).toMatchObject([{ id: 'a', title: 'Saved again' }])
     expect(store.get()[0]?.closing).toBeUndefined()
+  })
+
+  it('keys a toast by its id, and by its id and raise while a leaving card holds the id', () => {
+    const store = createToastStore()
+    store.toast({ id: 'a', title: 'Saved' })
+    expect(store.get()[0]?.key).toBe('a')
+    // An update in place is the same card.
+    store.toast({ id: 'a', title: 'Saved twice' })
+    expect(store.get()[0]?.key).toBe('a')
+    store.toast.dismiss('a')
+    store.toast({ id: 'a', title: 'Saved again' })
+    const keys = store.get().map((record) => record.key)
+    expect(keys[0]).toBe('a')
+    expect(keys[1]).not.toBe('a')
+    expect(new Set(keys).size).toBe(2)
+    // Its own update keeps the key it was raised with.
+    store.toast({ id: 'a', title: 'Saved a third time' })
+    expect(store.get().map((record) => record.key)).toEqual(keys)
+    // An id its owner removed and raises again in one turn keeps its card.
+    store.remove('a')
+    store.toast({ id: 'a', title: 'Saved' })
+    expect(store.get().map((record) => record.key)).toEqual(['a'])
   })
 
   it('tells the owner once when its toast is dismissed, and not when the owner removes it', () => {

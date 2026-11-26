@@ -125,7 +125,7 @@ onDestroy(() => release6?.())
 }{#if joined.shown
   }<div bind:this={region} role="region" aria-label={say.viewport} tabindex="-1"
     ><ol bind:this={list} class={styles.viewport} tabindex="-1" data-toast-part="list"
-      >{#each records as record (record.id)
+      >{#each records as record (record.key)
         }<ToastCard {record} dismissLabel={say.dismiss} {paused}
       />{/each
     }</ol

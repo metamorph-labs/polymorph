@@ -107,6 +107,7 @@ toastFocusLaw({
   shell: 'React',
   mount: async () => render(<Toaster />),
   raise: (options) => toast({ durationMs: Number.POSITIVE_INFINITY, ...options }),
+  dismiss: (id) => toast.dismiss(id),
   remove: (id) => removeToast(id),
   clear: () => getToasts().forEach((record) => removeToast(record.id)),
 })

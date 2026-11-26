@@ -495,7 +495,8 @@ pnpm exec vitest run src/conformance.test -t "agent"                    # the ag
   close control, its action, Escape, its owner's removal or a newer toast's eviction; that
   Escape outside the notifications reaches no toast, and an Escape something else handled or an
   input method is handling dismisses none; what the live regions say as toasts are raised,
-  updated and leave; and that the timers wait while the window is in the background and run
+  updated and leave; that a toast raised under the id of a card that is still leaving is a card
+  of its own; and that the timers wait while the window is in the background and run
   again when focus falls out of the notifications with no `focusout`, are held by
   `toastFocusLaw` (`packages/conformance/src/toast-focus.ts`), which every shell's `toast.test`
   calls with a mount of its own, the React shell's too.
