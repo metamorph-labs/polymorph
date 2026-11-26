@@ -49,6 +49,13 @@ const AXIS_LABELS: Readonly<Record<string, string>> = {
 
 const title = (name: string) => name.charAt(0).toUpperCase() + name.slice(1)
 
+/** How a system greets someone who has not picked light or dark yet. */
+function opensIn(mode: 'light' | 'dark' | 'system'): string {
+  return mode === 'system'
+    ? 'it follows your device’s light or dark setting until you pick one'
+    : `it opens in ${mode} mode until you pick another`
+}
+
 /**
  * A small product screen in the system's own pairing: a display title, a figure with its trend,
  * a few controls and status. The Card shows the system's depth, and the title its display face.
@@ -147,7 +154,7 @@ function SystemBlock({
         <Stack gap={5}>
           <DescriptionList orientation="horizontal" items={axes} />
           <Text size="sm" tone="secondary">
-            {`It uses ${fontsOf(name)}. Its own palette is ${system.defaultPalette}, and it starts in ${system.defaultMode === 'dark' ? 'dark' : 'light'} mode.`}
+            {`It uses ${fontsOf(name)}. Its own palette is ${system.defaultPalette}, and ${opensIn(system.defaultMode)}.`}
           </Text>
         </Stack>
         <Specimen name={name} />

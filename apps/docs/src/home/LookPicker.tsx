@@ -1,3 +1,4 @@
+import { systemPrefersDark } from '@polymorph/theme'
 import { Button, Inline, SegmentedControl, Select, Stack } from '@polymorph/react-ui'
 import { useEffect, useState } from 'react'
 import { DESIGNED_SYSTEMS } from 'virtual:polymorph-docs/counts'
@@ -22,8 +23,11 @@ const MODES = [
 /** The system the stage opens in: a serif display face and a teal accent, far from the page's own. */
 const FIRST = SYSTEMS.includes('dew') ? 'dew' : (SYSTEMS[0] as string)
 
+/** The mode a system opens in for someone who has not chosen one: its own, or the device's. */
 function homeMode(system: string): Mode {
-  return findSystem(system).defaultMode === 'dark' ? 'dark' : 'light'
+  const mode = findSystem(system).defaultMode
+  if (mode === 'system') return systemPrefersDark() ? 'dark' : 'light'
+  return mode
 }
 
 /**

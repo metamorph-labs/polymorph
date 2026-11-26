@@ -48,7 +48,10 @@ system. It is the order of the runtime's `MODE_PREFERENCES`.
 There is no `defaultValue`. Uncontrolled, the value is the document's preference, which the
 runtime holds and stores. A default the member held would be a second answer to "which mode does
 this page wear", and the two would disagree after the first `setMode` from anywhere else. On a
-first visit nothing is stored, and the preference is `system`.
+first visit nothing is stored, and the preference is the worn system's `defaultMode`, which
+hydration applies: Dark is checked on a page whose system opens dark, and System on one whose
+system follows the device. On a page that never calls `hydrateTheme`, such as a page with no
+build, it is `system`.
 
 There are no per-option props. The three choices are the runtime's three preferences, and a
 choice the runtime cannot apply has no segment.
@@ -78,10 +81,12 @@ The member follows only what the runtime applies to this document. An attribute 
 writes on `<html>` by hand is not a choice the runtime made, and the member does not read it.
 
 **A server render and hydration.** A server stores no preference, so it renders System checked
-(`SERVER_MODE`). React, Vue and Solid render the same while they hydrate the server's markup, so
-there is no mismatch, and then check the document's preference. The page's colours are right
-from the first paint, because the pre-paint script applies the stored mode before any script
-runs. For a reader with a stored choice, the checked segment moves once, after hydration.
+(`SERVER_MODE`), whatever the system's default. React, Vue and Solid render the same while they
+hydrate the server's markup, so there is no mismatch, and then check the document's preference.
+The page's colours are right from the first paint, because the pre-paint script applies the
+stored mode, or the system's default, before any script runs. For a reader with a stored choice
+other than System, and on a first visit to a page whose system opens light or dark, the checked
+segment moves once, after hydration.
 
 ## In a Menu or the command palette
 

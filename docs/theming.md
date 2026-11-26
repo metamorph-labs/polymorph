@@ -49,7 +49,7 @@ The engine path is `parseSystem` / `parsePalette` (zod schemas) → `composeThem
     "mono": { "family": "Geist Mono Variable" }
   },
   "defaultPalette": "neutral",
-  "defaultMode": "light",
+  "defaultMode": "system",
   "kind": "designed"
 }
 ```
@@ -60,17 +60,29 @@ The engine path is `parseSystem` / `parsePalette` (zod schemas) → `composeThem
 | `axes` | all eight axes, below |
 | `fonts` | the three font slots, below |
 | `defaultPalette` | the palette used with the system unless another is chosen |
-| `defaultMode` | `light`, `dark` or `system`: the mode the pairing's block applies when nothing sets `data-mode` (`system` falls back to light in CSS) |
+| `defaultMode` | `light`, `dark` or `system`: the mode of a reader who has not chosen one, on every platform. `system` follows the device. In CSS it is also the mode the pairing's block applies where nothing sets `data-mode`, with `system` read as light |
 | `kind` | `designed` (default) or `tenant`. A tenant has a designed system's axes with a different palette and is exempt from the divergence law |
 | `register` | one paragraph introducing the system, read by the docs site; required of every committed designed system |
 | `overrides` | optional value-only amendments to the derived scales, below |
 | `$schema` | tolerated and ignored, so an editor can point at the JSON Schema |
 
-`defaultMode` decides the mode only where nothing sets `data-mode`: a nested scope that carries
-the pairing without `data-mode`, or a page that runs neither the pre-paint script nor
-`hydrateTheme`. It does not decide a first visit's mode on a page that runs either one. The
-pre-paint script always sets `data-mode` on `<html>`, to the operating system's mode when nothing
-is stored, and `hydrateTheme` applies the stored preference, which is `system` when none is stored.
+`defaultMode` is the mode preference of a reader who has not chosen one. `light` and `dark` are
+that mode, whatever the device's setting. `system` follows the device's mode and keeps following
+it as it changes. A reader's own choice (`setMode`) is stored and wins over the default from then
+on. On the web, `hydrateTheme` applies the worn system's default when nothing is stored and does
+not store it, and the pre-paint script built for the page's systems applies the same before the
+first paint ([Before first paint](#before-first-paint)). So a first visit to a page wearing
+`terminal`, whose default is `dark`, opens dark on a light device. On iOS and Android the same
+field is `theme.preferredColorScheme` and `theme.preferredDark` ([native.md](native.md)).
+
+A default is never stored, so a later change of a system's default, or a switch of system, still
+reaches a reader who never chose. A reader for whom an earlier release of the runtime stored
+`system` on the first hydration keeps following the device: that stored value is read as their
+choice.
+
+Where nothing sets `data-mode`, the pairing's block applies `defaultMode` itself, with `system`
+read as light: a nested scope that carries the pairing without `data-mode`, or a page that runs
+neither the pre-paint script nor `hydrateTheme`.
 
 The schema is strict. It rejects an unknown key, and it rejects a colour seed in a system file.
 
@@ -610,6 +622,9 @@ application imports it as `@polymorph/engine/runtime`:
 | `setDensityDefault(density \| null)` | `data-density` | `pm-density` |
 | `setMotionTemperament(t \| null)` | `data-motion` | `pm-motion` |
 
+`setSystem` also moves the mode of a reader who has not chosen one to the new system's
+`defaultMode`, and stores no mode. A mode the reader chose stays.
+
 Install the pairing's block before changing either attribute. On the compiled path, await
 `ensurePairing(system, palette)` first. Otherwise the document carries a pair that no block
 matches, and no theme values apply. This is deliberate: no rule matches a system or a palette on
@@ -656,10 +671,14 @@ const items: CommandItem[] = MODE_PREFERENCES.filter((choice) => choice !== pref
 )
 ```
 
-`getModePreference()` is the preference the last `setMode` applied to the document, and the
-stored one before any call. A server stores none, so a server render reads `system` and `light`
-(`SERVER_MODE`). React's, Vue's and Solid's `useMode` read the same while their framework
-hydrates the server's markup, so a ModeSwitch or an entry hydrates with no mismatch.
+`getModePreference()` is the preference the document wears: the one the last `setMode` applied,
+or the worn system's `defaultMode` that hydration applied when nothing is stored, and before
+either the stored one. So a ModeSwitch on a first visit to a page wearing a system whose default
+is `dark` shows Dark, and one on a page wearing a `system` default shows System. A server stores
+none and knows no device, so a server render reads `system` and `light` (`SERVER_MODE`) whatever
+the system's default. React's, Vue's and Solid's `useMode` read the same while their framework
+hydrates the server's markup, so a ModeSwitch or an entry hydrates with no mismatch, and then
+read the document: under a `dark` default, `dark` and `dark`.
 
 ### Reading the theme as data
 
@@ -743,13 +762,35 @@ partner, and no SwiftUI or Compose member reads the platform's contrast setting.
 
 `PREPAINT_SCRIPT` is a one-line script to inline at the top of `<head>`, before any stylesheet.
 `runtime.test.ts` keeps it under 500 bytes. It applies the stored system, palette, density and
-motion, and resolves the mode, so the first paint is already correct. Both apps inject it from
-`vite.config.ts`. The build-time plugin inlines it for an application, next to the default
-`data-system` and `data-palette` it writes on `<html>`. A CLI theme install patches it into
-`index.html`. It does no validation, so that it stays small.
+motion, and resolves the mode, so the first paint is already correct. It knows no system, so a
+reader who stored no mode gets the device's mode. It does no validation, so that it stays small.
+
+`prepaintScript({ modes, system })` builds the same script for a page that knows its systems'
+default modes. `modes` maps each system to its `defaultMode`, as `InstalledCatalogue.modes`
+does, and the script carries the systems whose default is `light` or `dark`. `system` is the
+fallback `hydrateTheme` is given. With nothing stored, the script applies the default of the
+worn system: the stored one, else the one the page's markup writes on `<html data-system>`, else
+`system`. That is the mode hydration then applies, so a page whose system opens dark does not
+paint light first. With no system whose default is `light` or `dark` it returns
+`PREPAINT_SCRIPT`. Each such system adds its name and mode, and `runtime.test.ts` holds the
+script built for the house catalogue to 600 bytes.
+
+Each place that writes the script for a page builds it with the systems it knows:
+
+| Where | What it is built with |
+| --- | --- |
+| the build-time plugin, `@polymorph/engine/vite` | the listed systems and `defaultSystem`; it inlines the script next to the default `data-system` and `data-palette` it writes on `<html>` |
+| `polymorph add theme:<system>` and `polymorph update` | the installed systems, read from the application's copies of their documents, and the first as the fallback; it patches the script into `index.html` and writes it as `themes/prepaint.ts`, for a root layout that has no `index.html` |
+| `polymorph init --framework elements` and `prepaint.js` | the house systems; the page names its pairing on `<html>` |
+| the workbench and the docs site (`vite.config.ts`) | the house systems and `design/defaults.json`'s system |
+
+A page whose themes arrive at run time inlines `prepaintScript` with the systems it can know
+before any script runs, or `PREPAINT_SCRIPT`, which follows the device.
 
 `hydrateTheme(fallbackSystem, installed)` runs once on mount. It re-attaches the
-`prefers-color-scheme` listener and checks the stored names against what is installed. A stored
+`prefers-color-scheme` listener and checks the stored names against what is installed. It
+applies the stored mode, or with none the worn system's default from `installed.modes`, which it
+does not store. A catalogue without `modes` gives every system `system`. A stored
 system that is not installed is replaced by the fallback system with its default palette, and the
 stored palette is cleared. A stored palette that is not installed is replaced by the current
 system's default. Fallbacks are never written to storage. Only an explicit
@@ -768,7 +809,7 @@ band or an embedded surface:
 This replaces **every theme decision** for the subtree. The element's own pairing wins over the
 one it sits inside. Its compound selector has three attributes, while the ancestor's descendant
 form has one, because the pairing prefix is inside `:where()`. Put `data-mode` on the element too.
-Without it, the nested pairing uses its own default mode. Install the pairing's block first.
+Without it, the nested pairing applies its own `defaultMode`, with `system` read as light. Install the pairing's block first.
 Portaled surfaces (menus, dialogs) render outside the subtree and use the page's pairing.
 
 ### Contextual scopes, not overrides
@@ -1191,17 +1232,17 @@ motionTemperament · ornament. Fonts: body / display / mono (all Fontsource `Var
 
 | System | Character | Axes | Fonts | Palette · mode |
 | --- | --- | --- | --- | --- |
-| `dew` | Warm paper, one clear teal on action and state, a serif only at display size, glass for what floats | soft · glass · standard · standard · grotesque · quiet · subtle · none | Geist / Fraunces / Geist Mono | verdigris · light |
-| `flint` | Layered planes with little contrast between them, crisp corners, a blue wash on the surfaces | crisp · elevated · standard · soft · grotesque · tinted · standard · minimal | Public Sans / Public Sans / JetBrains Mono | cobalt · light |
-| `glassmorphic` | Transient panes translucent over a blurred, saturated backdrop | round · glass · standard · soft · grotesque · tinted · expressive · minimal | Inter / Inter / JetBrains Mono | azure · light |
-| `harbor` | The tenant: terminal's structure with its own display face and brand | sharp · flat · compact · stark · mono · quiet · subtle · grid | Space Grotesk / Plus Jakarta Sans / Fira Code | ember · light |
-| `pebble` | Touch: round corners, thumb-sized controls, springs that overshoot | round · elevated · comfortable · standard · grotesque · quiet · expressive · minimal | Inter / Inter / JetBrains Mono | azure · light |
-| `journal` | A writing desk: warm paper with a grain, rules for separation, ink as the accent | soft · borders · comfortable · soft · humanist · quiet · subtle · grain | Source Sans 3 / Lora / Fira Code | umber · light |
-| `desktop` | The desk: soft corners, the standard working rhythm, motion that confirms | soft · elevated · standard · standard · grotesque · quiet · standard · minimal | Inter / Inter / JetBrains Mono | azure · light |
-| `pastel` | Lavender-tinted neutrals, lit fills that read as pressable, a violet gradient | soft · elevated · standard · standard · humanist · tinted · standard · minimal | Plus Jakarta Sans / Plus Jakarta Sans / Fira Code | amethyst · light |
-| `pop` | Consumer: round geometry over real elevation, a pink-to-violet gradient | round · elevated · comfortable · standard · grotesque · tinted · expressive · minimal | Outfit / Bricolage Grotesque / JetBrains Mono | orchid · light |
-| `press` | A broadsheet: bright paper, near-black ink, a rose-wine accent, an italic masthead | crisp · borders · standard · stark · editorial · quiet · standard · minimal | Source Serif 4 / Fraunces (italic) / Fira Code | carmine · light |
-| `plain` | The quiet default: true greys, hairline separation, a primary that is ink | soft · borders · standard · standard · grotesque · quiet · standard · minimal | Geist / Geist / Geist Mono | neutral · light |
+| `dew` | Warm paper, one clear teal on action and state, a serif only at display size, glass for what floats | soft · glass · standard · standard · grotesque · quiet · subtle · none | Geist / Fraunces / Geist Mono | verdigris · system |
+| `flint` | Layered planes with little contrast between them, crisp corners, a blue wash on the surfaces | crisp · elevated · standard · soft · grotesque · tinted · standard · minimal | Public Sans / Public Sans / JetBrains Mono | cobalt · system |
+| `glassmorphic` | Transient panes translucent over a blurred, saturated backdrop | round · glass · standard · soft · grotesque · tinted · expressive · minimal | Inter / Inter / JetBrains Mono | azure · system |
+| `harbor` | The tenant: terminal's structure with its own display face and brand | sharp · flat · compact · stark · mono · quiet · subtle · grid | Space Grotesk / Plus Jakarta Sans / Fira Code | ember · system |
+| `pebble` | Touch: round corners, thumb-sized controls, springs that overshoot | round · elevated · comfortable · standard · grotesque · quiet · expressive · minimal | Inter / Inter / JetBrains Mono | azure · system |
+| `journal` | A writing desk: warm paper with a grain, rules for separation, ink as the accent | soft · borders · comfortable · soft · humanist · quiet · subtle · grain | Source Sans 3 / Lora / Fira Code | umber · system |
+| `desktop` | The desk: soft corners, the standard working rhythm, motion that confirms | soft · elevated · standard · standard · grotesque · quiet · standard · minimal | Inter / Inter / JetBrains Mono | azure · system |
+| `pastel` | Lavender-tinted neutrals, lit fills that read as pressable, a violet gradient | soft · elevated · standard · standard · humanist · tinted · standard · minimal | Plus Jakarta Sans / Plus Jakarta Sans / Fira Code | amethyst · system |
+| `pop` | Consumer: round geometry over real elevation, a pink-to-violet gradient | round · elevated · comfortable · standard · grotesque · tinted · expressive · minimal | Outfit / Bricolage Grotesque / JetBrains Mono | orchid · system |
+| `press` | A broadsheet: bright paper, near-black ink, a rose-wine accent, an italic masthead | crisp · borders · standard · stark · editorial · quiet · standard · minimal | Source Serif 4 / Fraunces (italic) / Fira Code | carmine · system |
+| `plain` | The quiet default: true greys, hairline separation, a primary that is ink | soft · borders · standard · standard · grotesque · quiet · standard · minimal | Geist / Geist / Geist Mono | neutral · system |
 | `terminal` | A precision instrument: graphite and hairlines, one electric cyan, a ruled grid | sharp · flat · compact · stark · mono · quiet · subtle · grid | Space Grotesk / Space Grotesk / JetBrains Mono | petrol · dark |
 
 Each designed system has a rationale file next to it, `design/systems/<name>.md`, that explains

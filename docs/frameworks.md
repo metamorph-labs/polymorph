@@ -277,8 +277,10 @@ A page offers the choice of light, dark or the system's mode with a `ModeSwitch`
 entries in its account Menu or command palette ([mode-switch.md](../design/components/mode-switch.md)).
 An entry reads the current choice from `useMode` and sets it with `setMode`, which each
 foundation re-exports from the runtime. `useMode` returns `{ preference, mode }`: the preference,
-`light`, `dark` or `system`, and the mode it resolves to. It changes after each `setMode`, from
-any caller, and when the operating system's mode changes while `system` is applied.
+`light`, `dark` or `system`, and the mode it resolves to. With nothing stored, the preference is
+the worn system's `defaultMode`, which hydration applies ([theming.md](theming.md)). It changes
+after each `setMode`, from any caller, after a `setSystem` that moves an unchosen mode to the new
+system's default, and when the operating system's mode changes while `system` is applied.
 
 | Foundation | `useMode()` returns | Read it as |
 | --- | --- | --- |
@@ -288,9 +290,10 @@ any caller, and when the operating system's mode changes while `system` is appli
 | `@polymorph/solid` | an accessor | `mode().preference`, in the JSX, an effect or a memo |
 | `@polymorph/angular` | a signal, made in an injection context | `mode().preference`, in the template, an `effect` or a `computed` |
 
-A server stores no preference, so a server render reads `system` and `light`. In React, Vue and
-Solid the render that hydrates the server's markup reads the same, and the component reads the
-document once it has hydrated. Svelte and Angular read the document on the first render in the
+A server stores no preference and knows no device, so a server render reads `system` and
+`light`, whatever the system's default. In React, Vue and Solid the render that hydrates the
+server's markup reads the same, and the component reads the document once it has hydrated: under
+a `dark` default, `dark` and `dark`. Svelte and Angular read the document on the first render in the
 browser. A Vue account Menu's entries, which the Menu takes as `items`:
 
 ```ts

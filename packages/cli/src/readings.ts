@@ -332,6 +332,9 @@ export type AxesReading = Omit<ThemeCatalogue, 'customProperties' | 'prepaint' |
 }
 
 /** The theme's parameter space as Markdown: axes, systems, palettes, roles and scales. */
+/** The mode a system opens a first visit in, in words: `system` is the device's. */
+const opensIn = (mode: string): string => (mode === 'system' ? "in the device's mode" : mode)
+
 export function axesLines(answer: AxesReading): string[] {
   const lines = ['# Theme axes', '', '## Axes', '']
   for (const axis of answer.axes) {
@@ -345,7 +348,7 @@ export function axesLines(answer: AxesReading): string[] {
     const axes = Object.entries(system.axes).map(([axis, value]) => `${axis} ${value}`)
     const fonts = system.fonts.map((font) => font.family).join(', ')
     lines.push(
-      `- ${system.name} (${system.kind}): palette ${system.defaultPalette}, ${system.defaultMode}; ` +
+      `- ${system.name} (${system.kind}): palette ${system.defaultPalette}, opens ${opensIn(system.defaultMode)}; ` +
         `${axes.join(', ')}; fonts ${fonts}`,
     )
   }
