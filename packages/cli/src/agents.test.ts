@@ -433,6 +433,38 @@ function factFaults(text: string): string[] {
 /** The verbs whose answer depends on the app's framework, so a text names it. */
 const FRAMEWORK_VERBS = ['card', 'search', 'component', 'plan', 'add', 'validate', 'fix', 'emit']
 
+/** A command's arguments, without its verb's words, its flags and their values. */
+function positionalsOf(command: string): string[] {
+  const argv = words(command)
+  const verb = verbNamed(argv[0], argv[1])
+  if (verb === undefined) return []
+  const takesValue = new Set(
+    verb.flags.filter((flag) => flag.value !== undefined).map((f) => f.name),
+  )
+  const given = argv.slice(verb.name.split(' ').length)
+  const found: string[] = []
+  for (let index = 0; index < given.length; index += 1) {
+    const word = given[index] as string
+    if (!word.startsWith('--')) found.push(word)
+    else if (takesValue.has(word.slice(2))) index += 1
+  }
+  return found
+}
+
+/**
+ * Why a command names the framework wrongly, or `null`. A verb whose answer depends on the
+ * framework names it, except an `emit` whose output is a `.swift` or a `.kt` file: the spec's
+ * `platform` decides that screen's language, and `emit_screen` refuses a `framework` for it.
+ */
+function frameworkFault(command: string): string | null {
+  if (!FRAMEWORK_VERBS.includes(words(command)[0] as string)) return null
+  const named = /--framework \S+/.test(command)
+  const native =
+    words(command)[0] === 'emit' && /\.(?:swift|kt)$/.test(positionalsOf(command)[1] ?? '')
+  if (native) return named ? 'a native emit takes no --framework' : null
+  return named ? null : 'no --framework'
+}
+
 describe('every member, prop and part a text names', () => {
   const all = texts()
 
@@ -471,14 +503,24 @@ describe('every member, prop and part a text names', () => {
     expect(() => skillFiles(without, 'npx -y x')).toThrow(SkillFactError)
   })
 
-  it('names the framework on every command whose answer depends on it', () => {
-    const missing = all.flatMap(({ where, text, run }) =>
-      commandsIn(text, run)
-        .filter((command) => FRAMEWORK_VERBS.includes(words(command)[0] as string))
-        .filter((command) => !/--framework \S+/.test(command))
-        .map((command) => `${where}: \`${command}\``),
+  it('names the framework on every command whose answer depends on it, and on no native emit', () => {
+    const wrong = all.flatMap(({ where, text, run }) =>
+      commandsIn(text, run).flatMap((command) => {
+        const fault = frameworkFault(command)
+        return fault === null ? [] : [`${where}: \`${command}\`: ${fault}`]
+      }),
     )
-    expect(missing).toEqual([])
+    expect(wrong).toEqual([])
+  })
+
+  it('reads a framework left out, or named on a native emit, as a fault', () => {
+    expect(frameworkFault('emit screens/inbox.json src/Inbox.tsx')).not.toBeNull()
+    expect(frameworkFault('emit screens/inbox.json src/Inbox.tsx --framework react')).toBeNull()
+    expect(frameworkFault('emit orders.json Sources/App/OrdersView.swift')).toBeNull()
+    expect(frameworkFault('emit orders.json app/OrdersScreen.kt --json')).toBeNull()
+    expect(frameworkFault('emit orders.json OrdersView.swift --framework react')).not.toBeNull()
+    expect(frameworkFault('validate orders.json')).not.toBeNull()
+    expect(frameworkFault('axes --values')).toBeNull()
   })
 })
 

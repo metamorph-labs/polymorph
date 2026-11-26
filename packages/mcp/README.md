@@ -77,9 +77,11 @@ published package. It writes
 only into the **project**, which is the working directory it was started in, or the path given as
 `--project <path>`. An agent working in a repository starts its stdio servers there, and
 `--project` is for a client that starts servers somewhere else. A project is a directory with a
-`package.json`. The write tools refuse any other directory, and refuse a path that resolves
-outside the project, including through a link. `install` also refuses when the project is a
-checkout of polymorph.
+`package.json`, or a `polymorph.json` for a page with no build. A Swift package, an Xcode project
+or a Gradle build with neither is a native project: `emit_screen` writes the screens of its
+platform there, and no other tool writes into it. The write tools refuse any other directory, and refuse a path
+that resolves outside the project, including through a link. `install` also refuses when the
+project is a checkout of polymorph.
 
 `--read-only` starts the server with no project. It then registers the read tools and no write
 tool. A flag the server does not know stops it with a usage line.

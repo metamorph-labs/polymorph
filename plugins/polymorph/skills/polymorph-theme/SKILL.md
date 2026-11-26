@@ -1,6 +1,6 @@
 ---
 name: polymorph-theme
-description: Change how an app built with polymorph looks, its colours, type, density, shape, motion or overall feel, or how it offers light and dark mode. Use when asked to restyle or rebrand a polymorph app, to make it calmer, denser, warmer, darker or more editorial, to pick or adjust a theme, system or palette, to set an exact brand colour, a font or a type size, to add a dark mode toggle or a more-contrast palette, to edit a system or palette JSON document, when polymorph theme validate or the build reports a theme law, or when tempted to write a colour, font or length in application code. Proposes a theme from plain words, checks it against the theme laws and saves it.
+description: Change how an app built with polymorph looks, its colours, type, density, shape, motion or overall feel, or how it offers light and dark mode. Use when asked to restyle or rebrand a polymorph app, to make it calmer, denser, warmer, darker or more editorial, to pick or adjust a theme, system or palette, to set an exact brand colour or turn a brand's hex colour into a palette's accentHue, to set a font or a type size, to add a dark mode toggle or a more-contrast palette, to edit a system or palette JSON document, when polymorph theme validate or the build reports a theme law, or when tempted to write a colour, font or length in application code. Proposes a theme from plain words, checks it against the theme laws and saves it.
 ---
 
 # Change the theme
@@ -43,23 +43,29 @@ scales. `--values` adds each system's token values with its own palette.
 ```sh
 npx -y @metamorph-labs/polymorph@1.0.18 theme propose "calmer, warmer paper, more editorial"
 npx -y @metamorph-labs/polymorph@1.0.18 theme propose "denser and cooler" --based-on plain/neutral
+npx -y @metamorph-labs/polymorph@1.0.18 theme propose "geometry=crisp denser" --based-on plain/neutral
 npx -y @metamorph-labs/polymorph@1.0.18 theme propose "denser and cooler" --save --dir design
 ```
 
-The answer lists what each word moved, the words the table does not know, and the verdict of the
+The answer lists what each word moved, the words that moved nothing, and the verdict of the
 theme's laws. Each move is a proposal: check it against the axis's values in `axes`.
 
 - A word for a direction, such as denser, airier, calmer or bolder, moves its axes one step each,
   along the order `axes` prints. The same word again moves one more step, until the end.
 - A word for a place, such as rounder, sharper, flat or stark, sets the axis to that value, often
   its end: rounder is `round`, the roundest geometry.
-- Words of degree (slightly, somewhat, very, more, less) are skipped. No word, form or flag names a
-  value or a number of steps: `geometry=soft` is two words the table does not know.
-- The starting pairing's own value may already be the answer. `plain` has `soft` geometry, one
-  step under `round`, so "slightly rounded" may mean no change.
+- `<axis>=<value>` sets an axis to one of the values `axes` lists for it: `geometry=crisp`.
+  Use it for an exact value, and wherever a word would overshoot. An axis or a value `axes` does
+  not list moves nothing, and the answer names the lawful ones.
+- A word of degree (slightly, somewhat, a bit, a little, very, much, less) moves nothing, and the
+  answer lists it under "not read" with why: "slightly rounded" moves geometry to
+  `round` and reports "slightly". Name the value meant instead. "More" is read as the word
+  after it: "more editorial" is "editorial".
+- Words apply in the order written, so of two that set one axis, the later one wins.
+- The starting pairing's own value may already be the answer. `plain` has `soft`
+  geometry, one step under `round`.
 
-When a move overshoots, or a word moves nothing, set the axis by hand to the value meant (step 4).
-A typeface the app chooses and an exact colour are always hand edits.
+A typeface the app chooses and an exact colour are hand edits (step 4).
 
 `--based-on` starts from a shipped pairing, such as `desktop/azure`, `dew/verdigris`, `flint/cobalt`; either half may be left out. It
 takes a shipped name, not the app's own document: a change to a document the app already has is a
@@ -84,6 +90,19 @@ values each takes.
 | Colours for a reader who asks for more contrast | a second palette, named by `moreContrast` |
 | Chart colours | the palette's `accentHue`: chart colours have no field |
 | Dark mode | nothing: every palette derives both modes (step 7) |
+
+A brand colour gives the palette its `accentHue`. `theme hue` reads the colour in OKLCH, the
+space the engine derives every colour in, and prints the hue in whole degrees as `accentHue`
+takes it:
+
+```sh
+npx -y @metamorph-labs/polymorph@1.0.18 theme hue "#1F4FD8"
+```
+
+Quote the colour, because a shell reads `#` as the start of a comment. A grey has no hue, so the
+answer names no `accentHue` for it, and a palette whose `chromaBudget` is `none` draws its
+accent from the greys. The hue alone does not put the brand's colour on the main button, because
+the engine derives the fill's lightness and chroma: pin it (the reference has the whole palette).
 
 A system or palette the app writes for itself, not from the catalogue, is a guest. It answers to
 the laws every shipped pairing answers to, and the reference lists them.

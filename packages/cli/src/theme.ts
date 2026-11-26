@@ -2,7 +2,13 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 
 import type { Registry } from '@polymorph/registry'
-import { admitTheme, paletteJsonSchema, systemJsonSchema, type Admission } from '@polymorph/theme'
+import {
+  admitTheme,
+  oklchOf,
+  paletteJsonSchema,
+  systemJsonSchema,
+  type Admission,
+} from '@polymorph/theme'
 
 /**
  * `polymorph theme`: theme admission from the terminal, for guest pairings.
@@ -25,10 +31,15 @@ import { admitTheme, paletteJsonSchema, systemJsonSchema, type Admission } from 
  * (`@polymorph/engine/vite`, or `polymorph add` for a vendored install), so the
  * sheet is re-derived whenever a decision changes. The banner in every emitted
  * file says so.
+ *
+ * `hue` reads one colour, as a palette writes one, into OKLCH with the
+ * engine's own reading (`oklchOf`). A palette seeds its accent as an OKLCH
+ * hue, and a brand states its colour as hex, so this is the step between them.
  */
 
 export interface ThemeFlags {
   out?: string
+  json?: boolean
 }
 
 interface ThemeCli {
@@ -46,6 +57,8 @@ export function themeCommand(cli: ThemeCli, items: string[], flags: ThemeFlags):
       return emit(cli, paths, flags)
     case 'schema':
       return schema(cli, paths, flags)
+    case 'hue':
+      return hue(cli, paths, flags)
     case 'propose':
       // The proposal is the MCP tool's, which answers asynchronously; `main` runs it.
       cli.out('polymorph theme propose runs through `main`, which waits for the tools')
@@ -56,6 +69,7 @@ export function themeCommand(cli: ThemeCli, items: string[], flags: ThemeFlags):
           '  polymorph theme validate <system.json> <palette.json> [<partner.json>]   the laws, as a report\n' +
           '  polymorph theme emit <system.json> <palette.json> [<partner.json>]       the emitted sheet (--out file.css)\n' +
           '  polymorph theme schema <system|palette>                                  the JSON Schema (--out file.json)\n' +
+          '  polymorph theme hue <colour>                                             a colour in OKLCH, and its accentHue (--json)\n' +
           '  polymorph theme propose "<intent>"                                        a checked pair from plain words (--save)\n\n' +
           '  A palette that names a more-contrast partner is admitted with it: <partner.json>,\n' +
           '  or the file named for the partner beside the palette.\n',
@@ -230,5 +244,67 @@ function schema(cli: ThemeCli, paths: string[], flags: ThemeFlags): { code: numb
     return { code: 0 }
   }
   cli.out(json)
+  return { code: 0 }
+}
+
+/** What `theme hue --json` prints for a colour it read. */
+export interface HueReading {
+  color: string
+  /** OKLCH lightness, 0 to 1, to three decimals. */
+  l: number
+  /** OKLCH chroma, to three decimals. */
+  c: number
+  /** OKLCH hue in degrees, to one decimal; `null` for a grey. */
+  h: number | null
+  /** The hue as a palette's `accentHue` takes it, in whole degrees; `null` for a grey. */
+  accentHue: number | null
+}
+
+/**
+ * A colour's OKLCH lightness, chroma and hue, and the `accentHue` it gives a
+ * palette. The numbers are rounded to what an 8-bit colour can tell apart: a
+ * channel step moves lightness by about 0.004 and a saturated hue by a
+ * fraction of a degree. `accentHue` is a whole degree, as every catalogue
+ * palette writes it. A grey has no hue, so it gives no `accentHue`, and the
+ * reading says what a palette with no hue does instead.
+ */
+function hue(cli: ThemeCli, words: string[], flags: ThemeFlags): { code: number } {
+  const [written] = words
+  const reading = written === undefined ? null : oklchOf(written)
+  if (written === undefined || reading === null || words.length > 1) {
+    const message =
+      written === undefined
+        ? 'polymorph theme hue: name a colour, `#rrggbb` as a palette writes one'
+        : `polymorph theme hue: ${words.join(' ')} is not one colour as a palette writes one — ` +
+          'write `#rrggbb`, or `rgb(r g b / a)`'
+    cli.out(flags.json === true ? JSON.stringify({ error: message }, null, 2) : message)
+    return { code: 1 }
+  }
+
+  const answer: HueReading = {
+    color: written,
+    l: Number(reading.l.toFixed(3)),
+    c: Number(reading.c.toFixed(3)),
+    h: reading.h === null ? null : Number(reading.h.toFixed(1)),
+    accentHue: reading.h === null ? null : Math.round(reading.h) % 360,
+  }
+  if (flags.json === true) {
+    cli.out(JSON.stringify(answer, null, 2))
+    return { code: 0 }
+  }
+
+  const l = answer.l.toFixed(3)
+  const c = answer.c === 0 ? '0' : answer.c.toFixed(3)
+  if (answer.h === null) {
+    cli.out(`${written} is oklch(${l} 0 none): lightness ${l}, chroma 0, and no hue.`)
+    cli.out(
+      'A grey has no hue, so no accentHue matches it: a palette whose "chromaBudget" is "none" ' +
+        'draws its accent from the greys.',
+    )
+    return { code: 0 }
+  }
+  const h = answer.h.toFixed(1)
+  cli.out(`${written} is oklch(${l} ${c} ${h}): lightness ${l}, chroma ${c}, hue ${h}°.`)
+  cli.out(`A palette takes the hue as "accentHue": ${answer.accentHue}, in whole degrees.`)
   return { code: 0 }
 }

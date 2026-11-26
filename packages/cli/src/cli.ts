@@ -151,7 +151,8 @@ installed system can wear.
 
 \`polymorph theme\` takes your own two JSON documents by path instead — the
 same engine, the same laws, no catalogue: \`validate\` is the report,
-\`emit\` the sheet (--out file.css), \`schema\` the editor contract.
+\`emit\` the sheet (--out file.css), \`schema\` the editor contract. \`hue\`
+reads a colour such as "#1F4FD8" in OKLCH, for a palette's accentHue.
 
 \`polymorph check\` reads every .ts, .tsx, .vue, .svelte, .html and .css file
 below the directory (default: here) as application code, outside the vendored

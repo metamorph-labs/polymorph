@@ -134,6 +134,14 @@ const ringPinSchema = z.string().refine((value) => {
   return match !== null && [match[1], match[2], match[3]].every((channel) => Number(channel) <= 255)
 }, 'the pinned ring is #rrggbb, or rgb(r g b / a) with channels 0–255 and alpha below 1 to two decimals')
 
+/**
+ * Whether a text is a colour as a palette writes one: `#rrggbb`, or the
+ * ring's `rgb(r g b / a)`. The ring's schema is the widest a pin takes.
+ */
+export function isPinColor(value: string): boolean {
+  return ringPinSchema.safeParse(value).success
+}
+
 export const modePinsSchema = z.strictObject({
   'accent.bg': opaquePinSchema.optional(),
   'accent.bgHover': opaquePinSchema.optional(),

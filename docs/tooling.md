@@ -323,6 +323,7 @@ Themes
   polymorph theme validate <system.json> <palette.json> [partner.json]
   polymorph theme emit <system.json> <palette.json> [partner.json]
   polymorph theme schema <system|palette>
+  polymorph theme hue <colour>        Print a colour’s OKLCH lightness, chroma and hue, and the accentHue it gives a palette.
 
 Agents
   polymorph mcp                       Start the MCP server over stdio, for an agent’s client.
@@ -360,7 +361,7 @@ the same job. `polymorph <verb> --help` prints one verb's usage and flags.
 | `--harness <list>` | `agents` | `claude`, `codex`, `cursor`, `generic` or `all`, comma-separated, added to the harnesses written before; with none and none written before, `claude,codex,cursor` |
 | `--remove <list>` | `agents` | Harnesses to stop writing for: the files only they read are removed where nobody edited them |
 | `--framework <name>` | `agents` | The framework the agent texts and the card are for; omitted, the one written before, else the project's |
-| `--json` | `check` and every verb that asks a tool | Print the report, or the tool's answer, as JSON |
+| `--json` | `check`, `theme hue` and every verb that asks a tool | Print the report, the reading, or the tool's answer, as JSON |
 | `--no-install` | `init` | Write the app and do not install it |
 | `--force` | `add`, `update`, `agents` | Overwrite files you have edited; for `agents`, also files a newer release wrote |
 | `--dry-run` | `add`, `init`, `agents` | Print the plan and write nothing |
@@ -677,6 +678,21 @@ the report says where the partner is looked for.
   changes. A banner in the file marks it as a handoff.
 - `schema` prints the JSON Schema for a system or a palette document, for an editor.
 
+`theme hue <colour>` reads one colour, written as a palette writes one (`#rrggbb`, or
+`rgb(r g b / a)`), into OKLCH with the engine's own reading (`oklchOf` in `@polymorph/theme`), and
+prints its lightness, chroma and hue and the `accentHue` a palette takes from it, in whole degrees:
+
+```sh
+polymorph theme hue "#1F4FD8"   # #1F4FD8 is oklch(0.491 0.216 264.5) … "accentHue": 265
+polymorph theme hue "#1F4FD8" --json
+```
+
+`--json` prints `{ color, l, c, h, accentHue }`. A grey (equal channels) has no chroma, and OKLCH
+gives it no hue, so `h` and `accentHue` are `null` and the reading says that a palette whose
+`chromaBudget` is `none` draws its accent from the greys. Text that is not such a colour exits 1
+and names the forms. Like `validate`, `emit` and `schema`, it computes an answer and asks no MCP
+tool, so no tool does its job.
+
 [theming.md](theming.md) covers bringing your own theme in full.
 
 ### `check`
@@ -826,23 +842,33 @@ polymorph fix src/App.tsx                   # rewrites the file, as `fix_file` d
 polymorph fix src/App.tsx --dry-run         # prints the fixed code; writes nothing
 polymorph fix - --filename src/App.tsx < App.tsx > Fixed.tsx
 polymorph emit screens/inbox.json src/screens/Inbox.tsx
+polymorph emit screens/inbox.json Sources/App/InboxView.swift   # in a Swift package or an Xcode project
 ```
 
 `fix <file>` is `fix_file`: the file is fixed where it stands, and the reading names how many
 reports each rule's fixes answered and the violations left. `--dry-run`, and `-` for stdin, is
 `fix`: stdout is the fixed code, ending in a newline, and nothing else, so it can be redirected
 into a file, and what the fix did and what it left go to stderr. `emit <spec.json> <out>` is `emit_screen`: `<out>` is a
-path in the project, and the file written is the emitter's, byte for byte.
+path in the project, and the file written is the emitter's, byte for byte. A spec for `ios` or
+`android` takes no `--framework`, and a native repository is a project for its platform's screens
+([the project](#the-project)).
 
 ### Themes: `theme propose`
 
 ```sh
 polymorph theme propose "calmer, more editorial, warmer paper"
+polymorph theme propose "geometry=crisp denser" --based-on plain
 polymorph theme propose calm --based-on journal/umber --save --dir design
 ```
 
-The intent is every word after `propose`. The reading lists what each word moved, the words the
-table does not have, and the verdict. `--save` then calls `save_theme` with the two documents,
+The intent is every word after `propose`. A word in the table moves its axis one step along the
+order `axes` prints, or sets one value, and `<axis>=<value>` sets an axis to a value `axes` lists,
+read from the registry; words apply in the order written, so the later of two that name one axis
+wins. The reading lists what each word moved and the verdict. Under "not in the table" it lists
+the words the table does not have. Under "not read" it lists, each with why, the words of degree
+(slightly, somewhat, bit, little, very, much, less), which no move expresses, and each
+`<axis>=<value>` whose axis or value the catalogue does not have, with the values it has. `--save`
+then calls `save_theme` with the two documents,
 into `--dir` (default `design`), and `--overwrite` replaces files already saved under the names.
 It exits 1 when the proposal is not lawful or the save wrote nothing.
 
@@ -895,7 +921,7 @@ Marked `readOnlyHint`. None writes a file.
 | `get_theme_axes` | The axes and their values, the systems and palettes, the colour roles and scales. `customProperties: true` adds every `--pm-*` property; `tokenValues: true` adds each system's token values. |
 | `validate` | Submit `code` (TSX or CSS) and get the red-rule violations the repository's own lint run reports, with the same rules and the same lines, each with the ladder rungs that answer it. Code is parsed, never executed. Or submit `spec` (a screen spec, as the document itself or as its JSON text) and get it checked against the registry. Optional `filename` (where the code would live; `.css` routes to Stylelint, `.vue` to the Vue parser, `.svelte` to the Svelte parser, `.html` to Angular's template parser), `surface` (`application`, the default, or `vocabulary`) and `framework` (each checks a spec against that framework's vocabulary; `vue` lints unnamed markup with no block as a component's template, at the lines it was given, and code that opens with `<template>` or `<script>` is a single-file component either way; `svelte` lints unnamed code that opens with markup as a component; `solid` lints TSX as Solid's; `angular` lints unnamed TypeScript as a component module, its inline template included, and unnamed markup as a component's template; `elements` answers unnamed markup, and any `.html` file, with a `fatal` that says the red rules do not read HTML pages; otherwise TypeScript or CSS is linted as itself). Without `framework`, the project decides as it does for `fix`: TSX and a web spec are Solid's in a project whose package depends on `@polymorph/solid-ui` and not `@polymorph/react-ui`, and React's otherwise, so the two tools read one fragment alike and `emit_screen` writes a spec this accepts. |
 | `fix` | Submit `code` (TSX, a Vue or Svelte component, an Angular module or template, or CSS, with the same optional `filename`, `surface` and `framework` as `validate`, read the same way) and get it back with every violation that has exactly one lawful rewrite already rewritten. Without `framework`, TSX is Solid's in a project whose package depends on `@polymorph/solid-ui` and not `@polymorph/react-ui`, and React's otherwise. These are the rules' own fixes, the ones `eslint --fix` applies ([rules.md](rules.md#what-the-rules-fix) lists them). Whether the `<button>` fix applies is decided by the project rather than by a lint config (below). The answer contains the fixed `code`, `changed`, `fixed` (rule → how many of its reports the fixes resolved) and the remaining `violations`, which need a decision, each with its ladder rungs. A stylesheet comes back unchanged, because no CSS rule has a fix. Writes nothing. |
-| `propose_theme` | Turns an `intent` in plain words ("calmer, more editorial, warmer paper") into a complete candidate system and palette, resolved through the real engine, with a verdict (`lawful`, `faults`), a `rationale` per recognised word, and the words it did not recognise in `unmapped`. Optional `basedOn: { system, palette }`. The recognised words are listed in the tool's description (`packages/mcp/src/propose.ts`). |
+| `propose_theme` | Turns an `intent` in plain words ("calmer, more editorial, warmer paper") into a complete candidate system and palette, resolved through the real engine, with a verdict (`lawful`, `faults`), a `rationale` per recognised word, and the words that moved nothing in `unmapped`. A word of the form `<axis>=<value>` sets an axis to one of the values `get_theme_axes` lists. A word of degree (slightly, very, less), which no move expresses, and an `<axis>=<value>` the catalogue does not have are in `unmapped` too, each with why in `unread`. Optional `basedOn: { system, palette }`. The recognised words are listed in the tool's description (`packages/mcp/src/propose.ts`). |
 | `render_screen` | Draws a screen `spec` in a real browser under a `system` (and optional `palette` and `mode`), at a phone and a desktop width, and returns the layout faults measured in the page as data, followed by one PNG for each view. `data` and `empty` fill the spec's inputs. Needs Playwright's Chromium. Writes nothing. [Seeing a screen](#seeing-a-screen-render_screen) covers it. |
 
 `validate`, `fix` and `fix_file` return a rule the groups report as a warning (the usage rules,
@@ -1026,7 +1052,7 @@ agent's own copy of that output could drift from the vocabulary.
 
 | Tool | What it writes |
 | --- | --- |
-| `emit_screen` | Takes `spec` (a screen spec, as an object or as JSON text, as `validate` takes it) and `path` (relative to the project). The framework is the `framework` argument or, without one, the path's extension: a `.tsx` file emits for Solid with `framework: "solid"` or in a package that depends on `@polymorph/solid-ui` and not `@polymorph/react-ui`, as `validate` checks a spec, and for React otherwise, a `.vue` or `.svelte` file for Vue or Svelte, and a `.ts` module an Angular standalone component. A spec whose platform is `ios` emits a `.swift` file and one for `android` a `.kt` file, and `framework` is refused for either. Checks the spec exactly as `validate` does, a native spec against its platform's member package too; an unlawful spec writes nothing and returns its faults. A lawful one is compiled by the emitter (below), checked against the red rules (a native file against the native screen contract's law), and written, formatted with the Prettier config that applies to `path` (a native file as the emitter lays it out). The answer names the component (for SwiftUI the view, for Compose the composable), the `language` (`tsx`, `vue`, `svelte`, `angular`, `swift` or `kotlin`) and whether the file was `written`, `replaced` or `unchanged`, and adds a note when the package the file was written to does not depend on the framework's vocabulary (`@polymorph/react-ui`, `@polymorph/solid-ui`, …), which the file imports from. `framework: "elements"`, or a `.html` path in a project that uses the elements, is refused with the reason, because HTML has no way to bind a screen's callbacks and node renderers. |
+| `emit_screen` | Takes `spec` (a screen spec, as an object or as JSON text, as `validate` takes it) and `path` (relative to the project). The framework is the `framework` argument or, without one, the path's extension: a `.tsx` file emits for Solid with `framework: "solid"` or in a package that depends on `@polymorph/solid-ui` and not `@polymorph/react-ui`, as `validate` checks a spec, and for React otherwise, a `.vue` or `.svelte` file for Vue or Svelte, and a `.ts` module an Angular standalone component. A spec whose platform is `ios` emits a `.swift` file and one for `android` a `.kt` file, and `framework` is refused for either; a Swift package, an Xcode project or a Gradle build with no `package.json` takes only its own platform's screens ([the project](#the-project)). Checks the spec exactly as `validate` does, a native spec against its platform's member package too; an unlawful spec writes nothing and returns its faults. A lawful one is compiled by the emitter (below), checked against the red rules (a native file against the native screen contract's law), and written, formatted with the Prettier config that applies to `path` (a native file as the emitter lays it out). The answer names the component (for SwiftUI the view, for Compose the composable), the `language` (`tsx`, `vue`, `svelte`, `angular`, `swift` or `kotlin`) and whether the file was `written`, `replaced` or `unchanged`, and adds a note when the package the file was written to does not depend on the framework's vocabulary (`@polymorph/react-ui`, `@polymorph/solid-ui`, …), which the file imports from. `framework: "elements"`, or a `.html` path in a project that uses the elements, is refused with the reason, because HTML has no way to bind a screen's callbacks and node renderers. |
 | `install` | `polymorph add <items>`, applied. It takes the same `items`, `dir` and `framework` as `get_install_plan` and does what that plan describes: it vendors the file closure, records it in the manifest, adds the packages to `package.json`, extends the lint configs, and for a theme adds the pre-paint script to `index.html` and one import to the app entry. The answer lists what was `written`, what `cameAlong`, the files it `kept` because they were the project's own, and the project files it `extended`. It does not run a package manager. In an elements install it vendors no member and says why, and writes a theme into the install's theme sheet. |
 | `save_theme` | Takes `system` and `palette` (the two documents `propose_theme` returns, as returned or edited since), an optional `dir` (default `design`) and `overwrite`. Admits the pair through the theme engine again. An unlawful pair writes nothing and returns the laws' messages. A lawful one is written as `<dir>/systems/<name>.json` and `<dir>/palettes/<name>.json`. The answer lists the font packages to install, the catalogue laws that did not run, and what to add to the build. |
 | `fix_file` | Takes `path` (a TypeScript or JavaScript source file, a `.vue` or `.svelte` component, an Angular `.html` template, or a `.css` file, in the project), an optional `surface` and an optional `framework`. Without `framework`, the file and its package decide: a `.ts` module in a package that depends on `@polymorph/angular-ui`, or in a project whose manifest records Angular, is an Angular component, its inline template read; TSX is Solid's in a package that uses `@polymorph/solid-ui` and not `@polymorph/react-ui`. Applies `fix` to the file where it stands and writes it back when a fix changed it, so the code never passes through the conversation. The answer is `changed`, `fixed` and the remaining `violations`, without the code. A file that does not parse is left untouched. A stylesheet is also left untouched and only reported. |
@@ -1046,7 +1072,8 @@ What the write tools do not do:
   the call passes `overwrite: true`.
 - **Delete a file**, or write outside the project. A path is resolved before it is written, so a
   link inside the project that points out of it is refused too. The project is a directory with a
-  `package.json`, or with a `polymorph.json`, which marks a page with no build.
+  `package.json`, or with a `polymorph.json`, which marks a page with no build, or a native
+  project, which takes only its platform's screens ([the project](#the-project)).
 - **Change more than was asked.** `fix_file` is the only tool that edits a file someone else
   wrote. It changes only what a rule's fix changes. It does not reformat, and it changes nothing a
   rule did not report.
@@ -1076,8 +1103,18 @@ The server has two roots, like the CLI. It reads the vocabulary from the checkou
 bin, or from the published package. It writes into the **project**: the directory the server was started in, or the path given as
 `--project <path>`. An agent working in a repository starts its stdio servers there.
 
-- A project is a directory with a `package.json`. A write tool refuses any other directory, so a
-  client that starts its servers somewhere else gets a refusal that says to pass `--project`.
+- A project is a directory with a `package.json`, or with a `polymorph.json`, which marks a page
+  with no build. Every write tool writes there.
+- A directory with neither is a native project when it holds what a native platform's tools write
+  at a repository's root: a `Package.swift`, or a `.xcodeproj` or `.xcworkspace` bundle, for iOS;
+  `settings.gradle`, `settings.gradle.kts`, `build.gradle` or `build.gradle.kts` for Android.
+  `emit_screen` writes the screens of its platform there, a `.swift` file into an iOS project and
+  a `.kt` file into an Android one, and refuses a web screen, the other platform's screen, and
+  every other write, each with a sentence that says why. A web tool reads the framework and the
+  dependencies from a `package.json`, which a native project does not have.
+- Only the directory itself is read, not its parents or its children. A write tool refuses any
+  other directory, so a client that starts its servers somewhere else gets a refusal that says to
+  pass `--project`.
 - `install` refuses when the project is a checkout of polymorph (this one, or another clone or
   worktree) or a directory inside one, because it would vendor the vocabulary into its own source.
   `emit_screen` and `save_theme` work there. A screen is written into an app, and a theme saved to

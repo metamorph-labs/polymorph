@@ -75,8 +75,8 @@ sed -n '/^enum class PMBadgeTone(/,/^}/p' "$K/Contracts.kt"
 
 ## A worked screen: settings
 
-This file compiles against the package at the release tag. It is the shape the screen contract
-asks for, and the shape to write by hand.
+This file compiles against the package at the release tag. It is the shape `emit` writes from a
+spec, and the shape a screen written by hand keeps.
 
 ```kotlin
 package com.example.app
@@ -164,8 +164,8 @@ A records screen is a `ListPage`. Its `filters` hold a
 its children, and its body is a `DataTable`. On Android `DateRangePicker` is
 Material's own date range picker. `DataTable` is adapted: a list on phones, a table on tablets, a row's
 cells stacked in the list. A tap on a row calls `onRowClick` with the row.
-This screen is what the spec in the skill's step 6 describes, for `"platform": "android"` and with
-`onRetry` bound as well.
+`emit` writes this screen, apart from its comments and its package line, from the spec in the
+skill's step 6 made Android's, with `onRetry` bound as well.
 
 ```kotlin
 package com.example.app

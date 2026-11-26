@@ -23,9 +23,11 @@ import type { Registry, RegistryPalette, RegistrySystem } from '@polymorph/regis
  *     contrast pairing is measured against the emitted values in both modes.
  *     `lawful: false` comes back with the laws' own messages.
  *  3. **Nothing is guessed.** A word the table does not have comes back in
- *     `unmapped`. The tool never invents a move for an unknown word, and it
- *     never writes a file. Saving a proposal is the job of `save_theme` or the
- *     studio.
+ *     `unmapped`. So does a word of degree, which no move expresses, and an
+ *     exact value (`geometry=soft`) whose axis or value the catalogue does not
+ *     have, each with why in `unread`. The tool never invents a move for a word
+ *     it cannot apply, and it never writes a file. Saving a proposal is the job
+ *     of `save_theme` or the studio.
  *
  * **What the catalogue can and cannot carry.** A `basedOn` system is rebuilt
  * from `registry.theme.systems`, which publishes each font slot's *family*,
@@ -353,7 +355,8 @@ export const PROJECTIONS: readonly Projection[] = [
 /**
  * Words that carry no design decision, so they are neither mapped nor
  * reported. Listing them avoids guessing at them, and avoids hiding a real miss
- * such as "zesty" among articles and intensifiers.
+ * such as "zesty" among articles. "More" is here because every word in the
+ * table already means more of itself: "more editorial" is "editorial".
  */
 export const IGNORED: readonly string[] = [
   'a',
@@ -365,13 +368,6 @@ export const IGNORED: readonly string[] = [
   'with',
   'without',
   'more',
-  'less',
-  'very',
-  'much',
-  'bit',
-  'little',
-  'slightly',
-  'somewhat',
   'make',
   'made',
   'making',
@@ -406,10 +402,75 @@ export const IGNORED: readonly string[] = [
   'design',
 ]
 
+/** Why a word that asks for part of a move moves nothing. */
+const SMALLER =
+  'a degree: a word here moves its axis one whole step or sets one value, never part of one, ' +
+  'so name the value meant as <axis>=<value>'
+
+/** Why a word that asks for more than one move moves nothing. */
+const LARGER =
+  'a degree: a word here moves its axis one step each time it is written or sets one value, ' +
+  'so write the word again, or name the value meant as <axis>=<value>'
+
+/**
+ * Words of degree, each with why the table cannot express it. A word in the
+ * table moves its axis one step or sets it to one value, so "slightly rounded"
+ * reads as "rounded", the roundest geometry, and "less calm" as "calm". A
+ * degree word is reported in `unmapped`, and its reason in `unread`, so a
+ * reader knows that it moved nothing.
+ */
+export const DEGREES: Readonly<Record<string, string>> = {
+  less:
+    'a degree: it does not turn the word after it around, which still moves its own way, so ' +
+    'use the opposite word, or name the value meant as <axis>=<value>',
+  slightly: SMALLER,
+  somewhat: SMALLER,
+  bit: SMALLER,
+  little: SMALLER,
+  very: LARGER,
+  much: LARGER,
+}
+
+/**
+ * An exact value, `<axis>=<value>`: an axis's name, then the value, to the
+ * next space, comma or semicolon. Every other word is a run of letters, as
+ * the table reads words, so punctuation and digits split rather than hide one.
+ */
+const TOKEN = /([A-Za-z][A-Za-z0-9]*)=([^\s,;]*)|[A-Za-z]+/g
+
 const IGNORED_SET = new Set(IGNORED)
 const BY_WORD = new Map<string, Projection>(
   PROJECTIONS.flatMap((projection) => projection.words.map((word) => [word, projection] as const)),
 )
+
+/**
+ * `<axis>=<value>` applied: the axis set to the value, when the catalogue has
+ * both, or why it moved nothing. The axis and its values are the registry's
+ * (`catalogue.ladders`), matched without regard to case, so `polymorph axes`
+ * and `get_theme_axes` list every lawful one.
+ */
+function exact(
+  candidate: Candidate,
+  catalogue: Catalogue,
+  axisWritten: string,
+  valueWritten: string,
+): { entry: RationaleEntry; value: string } | { why: string } {
+  const axes = Object.keys(catalogue.ladders)
+  const axis = axes.find((name) => name.toLowerCase() === axisWritten.toLowerCase())
+  if (axis === undefined)
+    return { why: `no axis is called ${axisWritten} — the axes are ${axes.join(', ')}` }
+  const ladder = catalogue.ladders[axis] ?? []
+  const value = ladder.find((entry) => entry.toLowerCase() === valueWritten.toLowerCase())
+  if (value === undefined) return { why: `${axis} takes ${ladder.join(', ')}` }
+  return {
+    value,
+    entry: {
+      word: `${axis}=${value}`,
+      why: `A value named exactly, from the ones ${axis} takes: ${ladder.join(', ')}.`,
+      moves: set(candidate, axis, value),
+    },
+  }
+}
 
 /** The canonical word of each entry, which the tool's description publishes. */
 export function vocabulary(): string[] {
@@ -426,12 +487,22 @@ export interface ProposeArgs {
 }
 
 export interface RationaleEntry {
-  /** The word as the caller wrote it (lowercased). */
+  /**
+   * The word as the caller wrote it (lowercased), or an exact value as
+   * `<axis>=<value>` in the catalogue's spelling.
+   */
   word: string
   /** The table's sentence for it. */
   why: string
   /** What it changed. Empty means the draft already had those values. */
   moves: Move[]
+}
+
+/** A word that moved nothing although the table read it, and why. */
+export interface UnreadEntry {
+  /** The word as the caller wrote it: a word of degree, or `<axis>=<value>`. */
+  word: string
+  why: string
 }
 
 export interface ProposeAnswer {
@@ -442,8 +513,14 @@ export interface ProposeAnswer {
   /** Which system and palette the proposal started from. */
   basedOn: { system: string; palette: string }
   rationale: RationaleEntry[]
-  /** Words the table does not have. Never guessed at. */
+  /**
+   * Words that moved nothing: words the table does not have, words of degree,
+   * and exact values whose axis or value the catalogue does not have. Never
+   * guessed at.
+   */
   unmapped: string[]
+  /** The words in `unmapped` that the table read and could not apply, each with why. */
+  unread: UnreadEntry[]
   lawful: boolean
   /** Every reason this pair was refused, in the words of whatever refused it. */
   faults: string[]
@@ -553,17 +630,39 @@ export function proposeTheme(context: { registry: Registry }, args: ProposeArgs)
   const catalogue = catalogueOf(registry)
   const rationale: RationaleEntry[] = []
   const unmapped: string[] = []
+  const unread: UnreadEntry[] = []
   const canonical: string[] = []
+  const notRead = (word: string, why: string | null) => {
+    if (unmapped.includes(word)) return
+    unmapped.push(word)
+    if (why !== null) unread.push({ word, why })
+  }
 
-  // Letters only, so punctuation and hyphens split rather than hide a word.
-  for (const word of args.intent
-    .toLowerCase()
-    .split(/[^a-z]+/)
-    .filter(Boolean)) {
+  // In the order written, so an exact value and a word that name one axis
+  // resolve as two words do: the later one wins.
+  for (const [token, axis, written] of args.intent.matchAll(TOKEN)) {
+    if (axis !== undefined) {
+      // A value written in quotes, or at the end of a sentence, is the value.
+      const value = (written ?? '').replace(/[.!?]+$/, '').replace(/^(["'])(.*)\1$/, '$2')
+      const applied = exact(candidate, catalogue, axis, value)
+      if ('why' in applied) notRead(token, applied.why)
+      else {
+        rationale.push(applied.entry)
+        if (!canonical.includes(applied.value)) canonical.push(applied.value)
+      }
+      continue
+    }
+    const word = token.toLowerCase()
     if (IGNORED_SET.has(word)) continue
+    // Own keys only: "constructor" is a word, not a degree.
+    const degree = Object.hasOwn(DEGREES, word) ? DEGREES[word] : undefined
+    if (degree !== undefined) {
+      notRead(word, degree)
+      continue
+    }
     const projection = BY_WORD.get(word)
     if (!projection) {
-      if (!unmapped.includes(word)) unmapped.push(word)
+      notRead(word, null)
       continue
     }
     rationale.push({ word, why: projection.why, moves: projection.apply(candidate, catalogue) })
@@ -604,6 +703,7 @@ export function proposeTheme(context: { registry: Registry }, args: ProposeArgs)
     basedOn: { system: system.name, palette: palette.name },
     rationale,
     unmapped,
+    unread,
     lawful: faults.length === 0,
     faults,
   }

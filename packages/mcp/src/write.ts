@@ -2,6 +2,7 @@ import {
   existsSync,
   lstatSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   realpathSync,
   writeFileSync,
@@ -112,32 +113,131 @@ export class RefusedWriteError extends Error {
   }
 }
 
+/** A phone platform whose screens `emit_screen` writes. */
+type NativePlatform = 'ios' | 'android'
+
+/**
+ * What marks a directory as a native platform's repository: the file or the
+ * bundle the platform's own tools write at its root. A Swift package has
+ * `Package.swift`, an Xcode project a `.xcodeproj` or `.xcworkspace` bundle,
+ * and a Gradle build its settings or build script, which a module directory
+ * holds too.
+ */
+const NATIVE_MARKERS: Readonly<
+  Record<NativePlatform, { files: readonly string[]; bundles: readonly string[] }>
+> = {
+  ios: { files: ['Package.swift'], bundles: ['.xcodeproj', '.xcworkspace'] },
+  android: {
+    files: ['settings.gradle', 'settings.gradle.kts', 'build.gradle', 'build.gradle.kts'],
+    bundles: [],
+  },
+}
+
+/** What a project is: one a web tool writes into, or the native platforms it holds screens for. */
+interface Project {
+  path: string
+  /** A `package.json` or a `polymorph.json` is there, so every write tool writes into it. */
+  web: boolean
+  /** Without `web`, the platforms its markers name, each with the marker found. */
+  native: { platform: NativePlatform; marker: string }[]
+}
+
+/** The native platforms whose markers a directory holds at its top, with the first one found. */
+function nativeMarkers(path: string): Project['native'] {
+  let entries: string[]
+  try {
+    entries = readdirSync(path)
+  } catch {
+    return []
+  }
+  return (Object.keys(NATIVE_MARKERS) as NativePlatform[]).flatMap((platform) => {
+    const { files, bundles } = NATIVE_MARKERS[platform]
+    const marker = entries.find(
+      (entry) => files.includes(entry) || bundles.some((suffix) => entry.endsWith(suffix)),
+    )
+    return marker === undefined ? [] : [{ platform, marker }]
+  })
+}
+
 /**
  * The repository to write into, or the reason there is none.
  *
- * The `package.json` check guards against the most common mistake: an MCP
- * client that starts its servers outside the repository, for example in a home
- * directory. Vendored source written there is not an install, only stray
- * files, and the tool cannot tell the difference without checking. A page with
- * no build has no `package.json`, and its install manifest marks it instead.
+ * The check guards against the most common mistake: an MCP client that starts
+ * its servers outside the repository, for example in a home directory.
+ * Vendored source written there is not an install, only stray files, and the
+ * tool cannot tell the difference without checking. So the directory itself
+ * must say what it is. A `package.json` marks a web project, and a page with
+ * no build has its install manifest instead. A native repository has neither:
+ * its `Package.swift`, Xcode project or Gradle build marks it, and it takes
+ * only the screens emitted for its own platform (`admitsScreen`), because a
+ * web tool reads the framework and the dependencies from a `package.json`.
+ * Only the directory is read, not its parents, so a project is the directory
+ * a person pointed the tools at.
  */
-function projectOf(context: WriteContext): string {
+function markedProject(context: WriteContext): Project {
   if (context.project === undefined) {
     throw new RefusedWriteError(
       'polymorph: this server has no project to write into — it was started read-only',
     )
   }
-  if (
-    !existsSync(resolve(context.project, 'package.json')) &&
-    !existsSync(resolve(context.project, MANIFEST_FILE))
-  ) {
+  const path = context.project
+  const web = existsSync(resolve(path, 'package.json')) || existsSync(resolve(path, MANIFEST_FILE))
+  const native = web ? [] : nativeMarkers(path)
+  if (!web && native.length === 0) {
     throw new RefusedWriteError(
-      `polymorph: ${context.project} has no package.json or ${MANIFEST_FILE}, so it is not the ` +
-        'repository to write into — start the server from your repository, or pass ' +
-        '`--project <path>`',
+      `polymorph: ${path} has no package.json or ${MANIFEST_FILE}, and no Package.swift, Xcode ` +
+        'project or Gradle build, so it is not the repository to write into — start the server ' +
+        'from your repository, or pass `--project <path>`',
     )
   }
-  return context.project
+  return { path, web, native }
+}
+
+/** A native project's markers, for a sentence: `Package.swift`, or two joined by "and". */
+const markersOf = (project: Project): string =>
+  project.native.map((entry) => entry.marker).join(' and ')
+
+/**
+ * The project a tool that writes for the web writes into: `install`,
+ * `save_theme` and `fix_file`. A native repository is refused with what it
+ * takes instead.
+ */
+function projectOf(context: WriteContext, writes: string): string {
+  const project = markedProject(context)
+  if (!project.web) {
+    throw new RefusedWriteError(
+      `polymorph: ${project.path} holds ${markersOf(project)} and no package.json or ` +
+        `${MANIFEST_FILE}, so it takes only a screen emitted for ` +
+        `${project.native.map((entry) => `\`${entry.platform}\``).join(' or ')} — ${writes} ` +
+        'belongs in a web project, which a package.json marks',
+    )
+  }
+  return project.path
+}
+
+/**
+ * Refuses a screen a native repository does not hold: a web screen, or a
+ * screen for the other phone platform. A web project takes every screen, a
+ * native one included, as it always has.
+ */
+function admitsScreen(project: Project, native: NativePlatform | undefined): void {
+  if (project.web || project.native.some((entry) => entry.platform === native)) return
+  const holds = `${project.path} holds ${markersOf(project)} and no package.json or ${MANIFEST_FILE}`
+  const takes = project.native.map((entry) => `\`${entry.platform}\``).join(' or ')
+  throw new RefusedWriteError(
+    native === undefined
+      ? `polymorph: ${holds}, so it takes only a screen emitted for ${takes} — a web screen is ` +
+          'written into the web project whose package.json names the framework, and a screen ' +
+          `for this repository is a spec whose \`platform\` is ${takes}`
+      : `polymorph: ${holds}, so it takes only a screen emitted for ${takes}, and this spec is ` +
+          `for \`${native}\`, whose screens ${NATIVE_HOMES[native]} holds`,
+  )
+}
+
+/** Where each phone platform's screens are written, for a refusal that names it. */
+const NATIVE_HOMES: Readonly<Record<NativePlatform, string>> = {
+  ios: 'a Swift package or an Xcode project',
+  android: 'a Gradle build',
 }
 
 /**
@@ -342,7 +442,8 @@ export async function emitScreen(
   context: WriteContext,
   args: EmitScreenArgs,
 ): Promise<EmitScreenAnswer> {
-  const project = projectOf(context)
+  const marked = markedProject(context)
+  const project = marked.path
 
   const full = placed(project, args.path, '`path`')
 
@@ -392,6 +493,7 @@ export async function emitScreen(
             `\`${nativeExtension[0]}\``),
     )
   }
+  admitsScreen(marked, native)
   const memberPackage = native === undefined ? undefined : readNativePackage(context.root, native)
   const vocabulary = FRAMEWORK_VOCABULARY[framework]
 
@@ -708,7 +810,7 @@ export interface InstallAnswer {
  * "nothing happened", which would be false.
  */
 export function install(context: WriteContext, args: InstallArgs): InstallAnswer {
-  const project = projectOf(context)
+  const project = projectOf(context, 'an install of web members')
   if (holdsVocabulary(context, project)) {
     throw new RefusedWriteError(
       'polymorph: this project is in a checkout of polymorph itself, and an install would vendor ' +
@@ -876,7 +978,9 @@ export const DEFAULT_THEME_DIR = 'design'
  * add.
  */
 export function saveTheme(context: WriteContext, args: SaveThemeArgs): SaveThemeAnswer {
-  const project = projectOf(context)
+  // A native app reads a theme as a catalogue pairing or a server's token
+  // document, never as these two files, so a native repository takes none.
+  const project = projectOf(context, 'saving a system and a palette')
   const dir = args.dir ?? DEFAULT_THEME_DIR
   placed(project, dir, '`dir`')
 
@@ -1106,7 +1210,7 @@ const OWN_PARSER = /\.(?:vue|svelte|html)$/
  * `<button>` stays reported with a note saying why.
  */
 export async function fixFile(context: WriteContext, args: FixFileArgs): Promise<FixFileAnswer> {
-  const project = projectOf(context)
+  const project = projectOf(context, 'a fix of web source')
   placed(project, args.path, '`path`')
 
   if (!FIXABLE.test(args.path)) {

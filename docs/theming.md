@@ -273,7 +273,7 @@ Table and DataTable place their numeric headers and cells by it.
 
 | Field | Meaning |
 | --- | --- |
-| `accentHue` | OKLCH hue angle, 0–360 |
+| `accentHue` | OKLCH hue angle, 0–360; `polymorph theme hue "#rrggbb"` gives a colour's, in whole degrees |
 | `gradientHue` | optional partner hue for the two gradient roles; absent, every gradient is a solid colour unless `pins` states where `accent.gradient` runs to |
 | `neutralHue` | optional hue of the neutral ramp; absent, the neutrals take `accentHue` |
 | `neutralTint` | OKLCH chroma mixed into the neutrals, 0–0.03 |
@@ -1170,6 +1170,7 @@ The CLI runs the same admission (`packages/cli/src/theme.ts`):
 polymorph theme validate <system.json> <palette.json> [<partner.json>]  # the report; exit 1 when unlawful
 polymorph theme emit <system.json> <palette.json> [<partner.json>] --out theme.css
 polymorph theme schema system|palette --out schema.json                 # JSON Schema for an editor
+polymorph theme hue "#1F4FD8"                                           # a colour in OKLCH, and its accentHue
 ```
 
 In this repository, run them as `pnpm polymorph theme …`. `validate` also lists the fonts to

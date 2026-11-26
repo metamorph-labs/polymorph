@@ -3,9 +3,11 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 import { buildRegistry, type Registry } from '@polymorph/registry'
+import { generateRamp, toHex } from '@polymorph/theme'
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import { run } from './cli'
+import type { HueReading } from './theme'
 
 /**
  * `polymorph theme` for guest pairings, run the way a consumer runs it. A temp
@@ -187,5 +189,67 @@ describe('schema', () => {
     const { code, lines } = themed(['schema'])
     expect(code).toBe(1)
     expect(lines[0]).toContain('`system` or `palette`')
+  })
+})
+
+describe('hue', () => {
+  const reading = (colour: string): HueReading => {
+    const { code, lines } = themed(['hue', colour, '--json'])
+    expect(code, colour).toBe(0)
+    return JSON.parse(lines.join('\n')) as HueReading
+  }
+
+  it('prints a colour in OKLCH, and the accentHue a palette takes from it', () => {
+    const { code, lines } = themed(['hue', '#1F4FD8'])
+    expect(code).toBe(0)
+    expect(lines).toEqual([
+      '#1F4FD8 is oklch(0.491 0.216 264.5): lightness 0.491, chroma 0.216, hue 264.5°.',
+      'A palette takes the hue as "accentHue": 265, in whole degrees.',
+    ])
+    expect(reading('#1F4FD8')).toEqual({
+      color: '#1F4FD8',
+      l: 0.491,
+      c: 0.216,
+      h: 264.5,
+      accentHue: 265,
+    })
+    // CSS Color 4's own example: red is oklch(62.8% 0.2577 29.23).
+    expect(reading('#ff0000')).toMatchObject({ l: 0.628, c: 0.258, h: 29.2, accentHue: 29 })
+  })
+
+  it('reads back the hue of every colour the engine derives, to the degree', () => {
+    // The engine writes a ramp step as hex (`toHex`); the reading of that hex
+    // is the step's hue, within what 8-bit channels can tell apart.
+    for (const seed of [0, 45, 142, 264.5, 330]) {
+      for (const step of [9, 10, 11] as const) {
+        const color = generateRamp(seed, 0.15, 'light')[step]
+        const answer = reading(toHex(color))
+        expect(Math.abs((((answer.h ?? 0) - color.h + 540) % 360) - 180), `${seed}`).toBeLessThan(1)
+        expect(Math.abs(answer.l - color.l)).toBeLessThan(0.005)
+      }
+    }
+  })
+
+  it('gives a grey no hue, and says what a palette with no hue does', () => {
+    // Equal channels have no chroma, and OKLCH leaves the hue of no chroma
+    // undefined: any number here would be noise, not a hue a palette could seed.
+    expect(reading('#808080')).toEqual({ color: '#808080', l: 0.6, c: 0, h: null, accentHue: null })
+    const { code, lines } = themed(['hue', '#808080'])
+    expect(code).toBe(0)
+    expect(lines.join('\n')).toContain('no hue')
+    expect(lines.join('\n')).toContain('"chromaBudget" is "none"')
+  })
+
+  it('refuses text that is not a colour as a palette writes one, and names the forms', () => {
+    for (const colour of ['#123', '#12345g', 'blue', 'rgb(31, 79, 216)']) {
+      const { code, lines } = themed(['hue', colour])
+      expect(code, colour).toBe(1)
+      expect(lines[0], colour).toContain('`#rrggbb`')
+    }
+    const json = themed(['hue', 'blue', '--json'])
+    expect(json.code).toBe(1)
+    expect(JSON.parse(json.lines.join('\n'))).toEqual({ error: expect.stringContaining('blue') })
+    expect(themed(['hue']).code).toBe(1)
+    expect(themed(['hue', '#1F4FD8', '#808080']).code).toBe(1)
   })
 })

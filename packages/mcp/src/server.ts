@@ -474,15 +474,21 @@ export const TOOLS: readonly ToolEntry[] = [
       'candidate system and palette back as JSON, plus the verdict from actually resolving the ' +
       'pair through the theme engine. The tool owns a projection table and nothing else: each ' +
       'word maps to bounded moves along the axes and seeds, applied in the order you wrote ' +
-      'them, so a later word wins a contradiction. Words it does not have come back in ' +
-      '`unmapped` rather than being guessed at. It writes no files — land a proposal with ' +
-      '`save_theme`, or by pasting it into the workbench studio. The ' +
+      'them, so a later word wins a contradiction. A word moves its axis one step or sets one ' +
+      'value; `<axis>=<value>` (`geometry=soft`) sets an axis to a value `get_theme_axes` ' +
+      'lists. Words it does not have come back in `unmapped` rather than being guessed at, and ' +
+      'so do words of degree (slightly, very, less), which no move expresses, and an exact ' +
+      'value the catalogue does not have, each with why in `unread`. It writes no files — land ' +
+      'a proposal with `save_theme`, or by pasting it into the workbench studio. The ' +
       `vocabulary is: ${vocabulary().join(', ')}.`,
     inputSchema: {
       intent: z
         .string()
         .min(1)
-        .describe('Plain words. Every one it recognises is reported with what it moved.'),
+        .describe(
+          'Plain words, and `<axis>=<value>` for an exact value. Every one it recognises is ' +
+            'reported with what it moved.',
+        ),
       basedOn: z
         .object({
           system: z.string().optional().describe('A shipped system to start the axes from.'),
@@ -583,7 +589,9 @@ export const TOOLS: readonly ToolEntry[] = [
       'to a `.swift` file instead, and one whose `platform` is `android` to a `.kt` file: a ' +
       'model, an actions record and a stateless SwiftUI or Compose view built from the ' +
       'platform’s members (design/native/screen-contract.md); a member the platform does not ' +
-      'draw is a fault, and `framework` is refused. `framework: "elements"` is refused: HTML ' +
+      'draw is a fault, and `framework` is refused. A project with no `package.json` that is a ' +
+      'Swift package or an Xcode project takes only `ios` screens, and one that is a Gradle ' +
+      'build only `android` screens. `framework: "elements"` is refused: HTML ' +
       'has no way to bind a screen’s callbacks and node renderers. The spec is ' +
       'checked exactly as `validate` checks one, and an unlawful spec writes nothing and ' +
       'comes back with its faults. A lawful one lands as a presentational component — ' +

@@ -170,10 +170,18 @@ The MCP tool `emit_screen` does the same for a `.swift` path, and its answer nam
 it wrote ([tooling.md](tooling.md)). A web framework (`--framework`, `framework`) is refused for a
 native spec, whose language is its platform's.
 
-`emit_screen`, and `polymorph emit`, which calls it, write only into a project: a directory that
-holds a `package.json` or a `polymorph.json` ([tooling.md](tooling.md#the-project)). A Swift
-package or an Xcode project holds neither, so the tool refuses it. `pnpm emit` in a checkout of
-this repository writes to any path, one in a native repository included.
+`emit_screen`, and `polymorph emit`, which calls it, write only into a project
+([tooling.md](tooling.md#the-project)). A directory with no `package.json` or `polymorph.json`
+that holds a `Package.swift`, or a `.xcodeproj` or `.xcworkspace` bundle, is a project for iOS
+screens. An app's repository emits its screens with the published tools, run at its root:
+
+```sh
+npx -y @metamorph-labs/polymorph@latest emit screens/inbox.json Sources/App/InboxView.swift
+```
+
+Such a project takes a `.swift` screen and nothing else: a web screen, a Compose screen, an
+install, a theme or a fix is refused with a sentence that says where it belongs. `pnpm emit` in a
+checkout of this repository writes to any path.
 
 The file declares four things, and nothing else:
 
@@ -610,9 +618,10 @@ pnpm emit platforms/android/examples/relay/Screens/inbox.json                # K
 pnpm emit platforms/android/examples/relay/Screens/inbox.json app/src/main/kotlin/dev/acme/relay/InboxScreen.kt
 ```
 
-The MCP tool `emit_screen` does the same for a `.kt` path. As for Swift, it writes only into a
-directory that holds a `package.json` or a `polymorph.json`, and an Android project holds neither,
-so `pnpm emit` in a checkout of this repository is the way to write into one. The file declares the
+The MCP tool `emit_screen` does the same for a `.kt` path, and so does `polymorph emit`. A
+directory with no `package.json` or `polymorph.json` that holds `settings.gradle`,
+`settings.gradle.kts`, `build.gradle` or `build.gradle.kts` is a project for Android screens, and
+it takes a `.kt` screen and nothing else, as a Swift package takes only a `.swift` one. The file declares the
 package its directory names under the source root (`…/kotlin/dev/acme/relay/` is `dev.acme.relay`,
 and a `java/` root counts the same), so the app's own types beside it need no import; printed, or
 written outside a source root, it declares none. It declares four things, and nothing else:

@@ -170,7 +170,11 @@ describe('every tool is a verb, and every verb names a tool that exists', () => 
     expectTypeOf<FixFileAnswer>().toMatchTypeOf<{ changed: boolean; notes: string[] }>()
     expectTypeOf<EmitScreenAnswer>().toMatchTypeOf<{ ok: boolean; faults: object[] }>()
     expectTypeOf<RenderScreenAnswer>().toMatchTypeOf<{ ok: boolean; fatal: string | null }>()
-    expectTypeOf<ProposeAnswer>().toMatchTypeOf<{ lawful: boolean; unmapped: string[] }>()
+    expectTypeOf<ProposeAnswer>().toMatchTypeOf<{
+      lawful: boolean
+      unmapped: string[]
+      unread: { word: string; why: string }[]
+    }>()
     expectTypeOf<SaveThemeAnswer>().toMatchTypeOf<{ saved: boolean; written: string[] }>()
   })
 })
@@ -420,6 +424,26 @@ describe('polymorph emit', () => {
     expect(outside.code).toBe(1)
     expect(outside.out).toContain('must stay inside your repository')
   })
+
+  it('writes a SwiftUI screen in a Swift package, which has no package.json', async () => {
+    const root = mkdtempSync(resolve(tmpdir(), 'polymorph-verbs-swift-'))
+    temporaries.push(root)
+    writeFileSync(resolve(root, 'Package.swift'), '// swift-tools-version: 5.9\n')
+    mkdirSync(resolve(root, 'screens'))
+    const spec = readFileSync(resolve(ROOT, 'platforms/ios/Examples/Relay/Screens/settings.json'))
+    writeFileSync(resolve(root, 'screens/settings.json'), spec)
+
+    const out = 'Sources/App/SettingsView.swift'
+    const written = await polymorph(root, ['emit', 'screens/settings.json', out])
+    expect(written.code).toBe(0)
+    expect(written.out).toContain(`written    ${out} (SettingsView, swift)`)
+
+    writeFileSync(resolve(root, 'screens/inbox.json'), JSON.stringify(SPEC))
+    const web = await polymorph(root, ['emit', 'screens/inbox.json', 'src/Inbox.tsx'])
+    expect(web.code).toBe(1)
+    expect(web.out).toContain('so it takes only a screen emitted for `ios` — a web screen')
+    expect(existsSync(resolve(root, 'src'))).toBe(false)
+  })
 })
 
 describe('polymorph plan', () => {
@@ -455,6 +479,23 @@ describe('polymorph theme propose', () => {
     )
     expect(both.save_theme.saved).toBe(true)
     for (const path of both.save_theme.written) expect(existsSync(resolve(root, path))).toBe(true)
+  })
+
+  it('prints each word that moved nothing, and why when the table read it', async () => {
+    const { code, out } = await polymorph(project(), [
+      'theme',
+      'propose',
+      'slightly rounded geometry=softer zesty',
+      '--based-on',
+      'plain',
+    ])
+    expect(code).toBe(0)
+    const lines = out.split('\n')
+    expect(lines).toContain('  not in the table: zesty')
+    expect(lines.find((line) => line.startsWith('  not read: slightly — a degree'))).toBeDefined()
+    expect(lines).toContain(
+      '  not read: geometry=softer — geometry takes sharp, crisp, soft, round',
+    )
   })
 })
 

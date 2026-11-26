@@ -81,8 +81,8 @@ sed -n '/^public enum PMBadgeTone/,/^}/p' "$C"
 
 ## A worked screen: settings
 
-This view compiles against the package at the release tag. It is the shape the screen contract
-asks for, and the shape to write by hand.
+This view compiles against the package at the release tag. It is the shape `emit` writes from a
+spec, and the shape a view written by hand keeps.
 
 ```swift
 import PolymorphUI
@@ -199,7 +199,8 @@ A records screen is a `ListPage`. Its `filters` hold a
 its children, and its body is a `DataTable`. On iOS `DateRangePicker` is
 adapted: two date fields, one range calendar; a sheet on iPhone, anchored on iPad. `DataTable` is adapted too: a list on iPhone, a table on iPad, a row's
 cells stacked in the list. A tap on a row calls `onRowClick` with the row.
-This view is what the spec in the skill's step 6 describes, with `onRetry` bound as well.
+`emit` writes this view, apart from its comments, from the spec in the skill's step 6 with
+`onRetry` bound as well.
 
 ```swift
 import PolymorphUI
