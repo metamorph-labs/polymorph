@@ -77,6 +77,19 @@ answered with suggestions and exit code 1.
   place of a colour or a font size, and a heading in `Heading`, whose
   `level` sets its rank.
 
+Some screens have a procedure of their own. Read its file before you write the screen:
+
+| The screen | Read |
+| --- | --- |
+| Is written in code, or is the container of an emitted spec: state, a form, a table, a toast, an overlay, navigation | [references/code.md](references/code.md) |
+| Holds a conversation with a model | [references/chat.md](references/chat.md) |
+| Draws a chart | [references/charts.md](references/charts.md) |
+| Takes or shows formatted text, mentions or comments on words | [references/rich-text.md](references/rich-text.md) |
+
+Three jobs are another skill's: a screen a model writes while the product runs
+(`polymorph-runtime-screen`), an agent on the page that reads and operates the members
+(`polymorph-agent-bridge`), and a SwiftUI or Compose screen (`polymorph-native`).
+
 ## 4. Write a spec, then emit it
 
 The format is in [references/screen-spec.md](references/screen-spec.md). Check the spec, then

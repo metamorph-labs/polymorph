@@ -14,6 +14,9 @@ they need to build with it in your app: skills and an MCP server.
 - `polymorph-rules`
 - `polymorph-setup`
 - `polymorph-theme`
+- `polymorph-runtime-screen`
+- `polymorph-agent-bridge`
+- `polymorph-native`
 
 Each skill is a procedure with the exact commands: building a screen and checking it, answering a
 red-rule violation by the exception ladder, adding polymorph to a project, and changing the theme.

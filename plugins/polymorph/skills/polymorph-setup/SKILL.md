@@ -65,9 +65,9 @@ the files you have not edited and keeps the ones you have; `--force` takes upstr
 
 The packages route installs `@polymorph/engine`, the framework's foundation and vocabulary, and
 `@polymorph/rules` as npm aliases of their published names, adds the theme plugin to
-`vite.config`, and spreads the red rules into the lint configs. The steps, with the exact lines, are
-in https://github.com/metamorph-labs/polymorph/blob/main/docs/consuming.md. `init` writes the same
-files for a new app, so an app it wrote is a working example.
+`vite.config`, and spreads the red rules into the lint configs.
+[references/packages.md](references/packages.md) has each step with the exact lines. `init` writes
+the same files for a new app, so an app it wrote is a working example.
 
 ## The agent's files
 

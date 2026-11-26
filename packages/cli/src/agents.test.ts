@@ -33,6 +33,7 @@ import { planInit, publishedTools, TOOLS_NAME } from './init'
 import type { Origin, Program } from './init-app'
 import { pinnedTools, pluginFiles } from './plugin'
 import { SKILL_NAMES, SkillFactError, skillFiles } from './skills'
+import { NAMED } from './skills/facts'
 import { synopsis, verbNamed, VERBS } from './verbs'
 
 /**
@@ -327,6 +328,8 @@ function fieldsOf(member: string, prop: string): Set<string> | null {
  * in code font, in JSX or in a JSON spec that it lacks, a patch key its patch
  * type lacks, and an exception at a rung its member is not. A tag imported
  * from another package in the same block is that package's, not a member.
+ * Neither is a name a text takes through `Facts.x`, which the law below holds
+ * to the source that declares it.
  */
 function factFaults(text: string): string[] {
   const faults: string[] = []
@@ -334,7 +337,7 @@ function factFaults(text: string): string[] {
     for (const [, name, attributes] of code.matchAll(
       /<([A-Z][A-Za-z0-9]*(?:\.[A-Z][A-Za-z0-9]*)?)\b([^<>]*)>/g,
     )) {
-      if (foreign.has(name as string)) continue
+      if (foreign.has(name as string) || NAMED.has(name as string)) continue
       const props = propsOf(name as string)
       if (props === null) {
         faults.push(`<${name}>: no such member or part`)
@@ -386,7 +389,8 @@ function factFaults(text: string): string[] {
   const prose = text.replace(/```[\s\S]*?```/g, '')
   for (const [, code] of prose.matchAll(/`([^`]+)`/g)) {
     if (/^[A-Z][A-Za-z0-9]*(?:\.[A-Z][A-Za-z0-9]*)?$/.test(code as string)) {
-      if (propsOf(code as string) === null) faults.push(`\`${code}\`: no such member or part`)
+      if (propsOf(code as string) === null && !NAMED.has(code as string))
+        faults.push(`\`${code}\`: no such member or part`)
     }
     if ((code as string).startsWith('<') && /^<[A-Z]/.test(code as string))
       tagged(code as string, new Set())
@@ -439,6 +443,91 @@ describe('every member, prop and part a text names', () => {
         .map((command) => `${where}: \`${command}\``),
     )
     expect(missing).toEqual([])
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* Every name a text takes from a package or a native source                  */
+/* -------------------------------------------------------------------------- */
+
+/** The source file a module names, by its package's `exports`, or `null`. */
+function moduleSource(specifier: string): string | null {
+  const [scope, name, ...rest] = specifier.split('/')
+  const subpath = rest.length === 0 ? '.' : `./${rest.join('/')}`
+  for (const dir of readdirSync(resolve(ROOT, 'packages'))) {
+    const manifest = resolve(ROOT, 'packages', dir, 'package.json')
+    if (!existsSync(manifest)) continue
+    const json = JSON.parse(readFileSync(manifest, 'utf8')) as {
+      name?: string
+      exports?: Record<string, unknown>
+    }
+    if (json.name !== `${scope}/${name}`) continue
+    const target = json.exports?.[subpath]
+    return typeof target === 'string' ? resolve(ROOT, 'packages', dir, target) : null
+  }
+  return null
+}
+
+/** Every source file at a path: the file, or each file below the directory. */
+function sourcesAt(path: string): string[] {
+  if (!existsSync(path)) return []
+  return readdirSync(path, { withFileTypes: true, recursive: true }).length === 0
+    ? []
+    : readdirSync(path, { withFileTypes: true, recursive: true })
+        .filter((entry) => entry.isFile())
+        .map((entry) => resolve(entry.parentPath, entry.name))
+}
+
+/**
+ * Whether a source file declares `name`, or exports it by name, itself or in a
+ * file or a module it exports whole (`export * from`). It reads TypeScript, Swift and
+ * Kotlin declarations by their keyword.
+ */
+function declares(file: string, name: string, seen = new Set<string>()): boolean {
+  if (seen.has(file) || !existsSync(file)) return false
+  seen.add(file)
+  const source = readFileSync(file, 'utf8')
+  const keyword =
+    'const|function|class|interface|type|enum|struct|func|fun|protocol|object|typealias|val|var|let|case'
+  if (new RegExp(`\\b(?:${keyword})\\s+${name}\\b`).test(source)) return true
+  if (new RegExp(`export\\s+(?:type\\s+)?\\{[^}]*\\b${name}\\b[^}]*\\}`).test(source)) return true
+  return [...source.matchAll(/export \* from '([^']+)'/g)].some(([, from]) => {
+    const module = from as string
+    if (!module.startsWith('.')) {
+      const entry = moduleSource(module)
+      return entry !== null && declares(entry, name, seen)
+    }
+    return ['.ts', '.tsx', '/index.ts'].some((ending) =>
+      declares(resolve(dirname(file), `${module}${ending}`), name, seen),
+    )
+  })
+}
+
+/** Why a name a text takes through `Facts.x` is not in the source it names, or nothing. */
+function nameFault(name: string, from: string): string | null {
+  if (from.startsWith('@polymorph/')) {
+    const file = moduleSource(from)
+    if (file === null) return `${name}: no module ${from}`
+    return declares(file, name) ? null : `${name}: ${from} does not export it`
+  }
+  const path = resolve(ROOT, from)
+  if (!existsSync(path)) return `${name}: no source at ${from}`
+  const files = from.includes('.') ? [path] : sourcesAt(path)
+  return files.some((file) => declares(file, name)) ? null : `${name}: ${from} does not declare it`
+}
+
+describe('every name a text takes from a package or a native source', () => {
+  texts()
+
+  it('is declared where the text says it is', () => {
+    expect([...NAMED].flatMap(([name, from]) => nameFault(name, from) ?? [])).toEqual([])
+  })
+
+  it('reads a name its source lacks, and a source that is not there, as a fault', () => {
+    expect(nameFault('useThemeValues', '@polymorph/react')).toBeNull()
+    expect(nameFault('NoSuchExport', '@polymorph/react')).not.toBeNull()
+    expect(nameFault('useThemeValues', '@polymorph/react/nowhere')).not.toBeNull()
+    expect(nameFault('Anything', 'platforms/nowhere')).not.toBeNull()
   })
 })
 
