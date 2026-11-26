@@ -384,7 +384,7 @@ key End moves-focus-last on control
 | surface disabled | `--pm-text-disabled` · `cursor: not-allowed` |
 | placeholder | `content: attr(data-placeholder)` · `--pm-text-muted` · over the block (absolute, `inset-inline: 0`) · no pointer events |
 | paragraph | Text's base, composed; the body step comes from the surface |
-| heading, levels 1/2/3 | Heading's base, composed, and the steps Heading draws at levels 2, 3 and 4: `text.xl`; `text.lg`; `text.md` at `text.xl`'s weight |
+| heading, levels 1/2/3 | Heading's base, composed, and the steps Heading draws at levels 2, 3 and 4: `text.xl`; `text.lg`; `text.md` at `text.xl`'s weight and family |
 | list, list item, quote, entity | RichTextContent's classes, composed |
 | code block | CodeBlock's block, composed |
 | inline code | Code, composed |

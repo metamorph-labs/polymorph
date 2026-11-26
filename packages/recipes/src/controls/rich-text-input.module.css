@@ -199,7 +199,7 @@
 
 .heading3 {
   composes: heading from '../structure/heading.module.css';
-  font-family: var(--pm-text-md-family);
+  font-family: var(--pm-text-xl-family);
   font-size: var(--pm-text-md-size);
   font-weight: var(--pm-text-xl-weight);
   line-height: var(--pm-text-md-line-height);

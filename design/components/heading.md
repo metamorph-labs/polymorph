@@ -46,7 +46,11 @@ take it and draw nothing for it (`packages/native/src/undrawn.ts`).
 | --- | --- |
 | level 2 | `text.xl` quartet · `--pm-text-primary` · margin 0 (Stack owns rhythm) |
 | level 3 | `text.lg` quartet · `--pm-text-primary` · margin 0 |
-| level 4 | `text.md` sized, weight `--pm-text-xl-weight` (Text's `strong` cell). Below `text.lg` the sizes are body sizes, so weight marks the level, and the type scale owns the token (as conventions §6's law requires) · `--pm-text-primary` · margin 0. The one-h1 law still holds: levels are added downward only, and Heading still cannot render an `<h1>` |
+| level 4 | `text.md` sized, weight `--pm-text-xl-weight` and family `--pm-text-xl-family`. Below `text.lg` the sizes are body sizes, so weight marks the level, and the type scale owns the token (as conventions §6's law requires) · `--pm-text-primary` · margin 0. The one-h1 law still holds: levels are added downward only, and Heading still cannot render an `<h1>` |
+
+Every level draws in the heading slot: `text.lg` and `text.xl` are heading steps, and level 4
+borrows `text.xl`'s family with its weight. A system without a heading slot draws its headings
+in the body slot, so the levels are in the body face there ([theming.md](../../docs/theming.md)).
 
 No margins and no note slot. A caption under a heading is a `Text` beside it in a Stack, which
 is composition, not API (the docs SectionTitle's note becomes exactly that pairing).

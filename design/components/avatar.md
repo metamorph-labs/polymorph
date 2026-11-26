@@ -35,7 +35,7 @@ same choice Switch makes for its pill (`switch.md`).
 | Part | Tokens |
 | --- | --- |
 | image | cover-fit · border `1px solid --pm-border-subtle` (photos need containment on every surface) |
-| initials fallback | bg `--pm-accent-subtle` · text `--pm-accent-text` · uppercase · step per size table |
+| initials fallback | bg `--pm-accent-subtle` · text `--pm-accent-text` · uppercase · step per size table, in the body slot's family at every size (`text.md`'s family at `lg`, because `text.lg` draws in the heading slot and initials are a mark, not a heading) |
 | icon fallback (only when `name` is empty — the unassigned/unknown edge) | bg `--pm-bg-subtle` · `Icon "user"` at the size-matched icon token (sm→sm, md→md, lg→lg) in `--pm-text-muted` |
 
 There are no per-user hues, on purpose. A hash-to-hue scheme is a new colour decision
