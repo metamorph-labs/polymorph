@@ -29,7 +29,10 @@ import {
   type RegistryDataType,
   type RegistrySystem,
 } from '@polymorph/registry'
-import { readNativePackage, validateSpec, type SpecFault } from '@polymorph/spec'
+import { composeRuntimeCard } from '@polymorph/registry/runtime-card'
+import type { AddressPolicy } from '@polymorph/registry/runtime-members'
+import { compactTable, expandTable, type ScreenTable } from '@polymorph/registry/screen-table'
+import { readNativePackage, SPEC_ID, validateSpec, type SpecFault } from '@polymorph/spec'
 
 import type { BrowserSetup } from './render'
 import { submittedDocument, type SubmittedSpec } from './submitted'
@@ -191,6 +194,7 @@ export type {
  * names no platform of its own.
  */
 export { FRAMEWORKS, PLATFORMS } from '@polymorph/registry'
+export { ADDRESS_POLICIES } from '@polymorph/registry/runtime-members'
 export type { Framework, Platform }
 
 export interface SearchArgs {
@@ -426,9 +430,42 @@ export interface SystemCardArgs {
    * The web framework the card is written for. For `vue`, `svelte`, `solid`,
    * `angular` or `elements` it names that framework's packages and how a prop
    * reads there, and leaves out members with no shell in it. `react` when
-   * omitted.
+   * omitted. For the run-time card, `react` or `elements`.
    */
   framework?: Framework
+  /**
+   * The run-time card in place of the system card: the text a host puts in a
+   * model's system prompt for a screen the model writes while the product
+   * runs, as `runtimeCard` from `@polymorph/screen/card` returns it.
+   */
+  runtime?: boolean
+  /** With `runtime`: the members the host allows. The framework's default when omitted. */
+  members?: string[]
+  /** With `runtime`: `allowed` (the default) or `refused`, for a host that takes no address. */
+  addresses?: AddressPolicy
+}
+
+/** The frameworks a screen is drawn in at run time: React's renderer, and `<poly-screen>` for every other. */
+export const RUNTIME_FRAMEWORKS: readonly Framework[] = ['react', 'elements']
+
+/** Arguments `get_system_card` cannot answer, with the sentence that says why. */
+export class SystemCardError extends Error {
+  constructor(message: string) {
+    super(`polymorph: ${message}`)
+    this.name = 'SystemCardError'
+  }
+}
+
+/** The run-time table of each registry, made once: what `@polymorph/screen` ships, built from it. */
+const TABLES = new WeakMap<Registry, ScreenTable>()
+
+function runtimeTable(registry: Registry): ScreenTable {
+  let table = TABLES.get(registry)
+  if (table === undefined) {
+    table = expandTable(compactTable(registry))
+    TABLES.set(registry, table)
+  }
+  return table
 }
 
 /**
@@ -438,11 +475,56 @@ export interface SystemCardArgs {
  * For a platform other than the web, the vocabulary section leaves out the
  * members absent there and says how each adapted one renders. The card is the
  * registry's own rendering either way (`renderSystemCard`).
+ *
+ * With `runtime`, the run-time card instead, composed by the registry from the
+ * table `@polymorph/screen` ships, which `expandTable(compactTable(registry))`
+ * is: the text `runtimeCard` returns for the same framework, members and
+ * addresses (`packages/mcp/src/verbs.test.ts` holds the two equal).
  */
 export function getSystemCard(context: ToolContext, args: SystemCardArgs = {}): string {
-  return renderSystemCard(context.registry, {
-    platform: args.platform ?? DEFAULT_PLATFORM,
-    framework: args.framework ?? DEFAULT_FRAMEWORK,
+  if (args.runtime !== true) {
+    if (args.members !== undefined || args.addresses !== undefined) {
+      throw new SystemCardError(
+        '`members` and `addresses` choose the run-time card: pass `runtime: true` with them',
+      )
+    }
+    return renderSystemCard(context.registry, {
+      platform: args.platform ?? DEFAULT_PLATFORM,
+      framework: args.framework ?? DEFAULT_FRAMEWORK,
+    })
+  }
+  if ((args.platform ?? DEFAULT_PLATFORM) !== DEFAULT_PLATFORM) {
+    throw new SystemCardError(
+      `nothing draws a screen at run time on ${args.platform ?? ''}: a native screen is emitted ` +
+        'from a spec at build time, so the run-time card is for the web',
+    )
+  }
+  const framework = args.framework ?? DEFAULT_FRAMEWORK
+  if (!RUNTIME_FRAMEWORKS.includes(framework)) {
+    throw new SystemCardError(
+      `${framework} has no run-time renderer of its own: a page in it draws with \`<poly-screen>\`, ` +
+        'so its run-time card is `elements`’s',
+    )
+  }
+  const table = runtimeTable(context.registry)
+  if (args.members !== undefined) {
+    const known = new Set([
+      ...table.components.map((member) => member.name),
+      ...table.exceptions.primitives.map((primitive) => primitive.name),
+    ])
+    const unknown = args.members.filter((name) => !known.has(name))
+    if (unknown.length > 0) {
+      throw new SystemCardError(
+        `no member called ${unknown.map((name) => `"${name}"`).join(', ')} — \`members\` names ` +
+          'members and exception primitives, and a part comes with its member',
+      )
+    }
+  }
+  return composeRuntimeCard(table, {
+    framework,
+    spec: SPEC_ID,
+    ...(args.members === undefined ? {} : { members: args.members }),
+    ...(args.addresses === undefined ? {} : { addresses: args.addresses }),
   })
 }
 

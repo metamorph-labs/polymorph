@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import { callbackFill, isCallback, MAX_TYPE_LENGTH, stubFor } from './actions'
-import { checkScreen } from './check'
+import { checkAnswer, checkScreen } from './check'
 import { argumentsToJson, reduceToJson } from './json'
 import { MAX_DEPTH, parsePartial } from './partial'
-import { addressFault } from './urls'
+import { addressFault, ADDRESS_KEYS } from './urls'
 import { VOCABULARY } from './vocabulary'
 import { createScreen, materialize, type Drawn, type ScreenNode } from './walk'
 
@@ -106,7 +106,7 @@ const HOLDERS: { name: string; at: (address: unknown) => unknown }[] = [
     name: 'ChatMessage.avatar',
     at: (address) => ({
       component: 'ChatMessage',
-      props: { role: 'user', avatar: address },
+      props: { role: 'user', author: 'Ada', avatar: address },
       children: ['x'],
     }),
   },
@@ -251,6 +251,214 @@ describe('no address a screen may not hold reaches a member, in any shape', () =
     expect(crumbs?.kind === 'node' && crumbs.node.props['items']).toEqual({
       kind: 'value',
       value: [{ label: 'Host', href: '/host' }],
+      from: 'data',
+    })
+  })
+})
+
+/**
+ * Every value a renderer is handed at a key that takes an address, at any depth: a prop, a
+ * structured object's field, an item of a list, and what the walk hands a node it draws inside.
+ * Each is `[path, value]`.
+ */
+function addressesIn(node: ScreenNode | null): [string, unknown][] {
+  const out: [string, unknown][] = []
+  const take = (value: unknown, path: string, seen: Set<unknown>): void => {
+    if (Array.isArray(value)) value.forEach((item, at) => take(item, `${path}[${at}]`, seen))
+    else if (typeof value === 'object' && value !== null && !seen.has(value)) {
+      seen.add(value)
+      for (const [key, item] of Object.entries(value)) {
+        if (ADDRESS_KEYS.has(key) && item !== undefined) out.push([`${path}.${key}`, item])
+        take(item, `${path}.${key}`, seen)
+      }
+    }
+  }
+  const visit = (at: ScreenNode) => {
+    const draw = (drawn: Drawn) =>
+      materialize(drawn, {
+        node: (inner) => {
+          visit(inner)
+          return null
+        },
+      })
+    for (const [key, drawn] of Object.entries(at.props)) {
+      const value = draw(drawn)
+      if (ADDRESS_KEYS.has(key) && value !== undefined) out.push([`${at.path}.props.${key}`, value])
+      take(value, `${at.path}.props.${key}`, new Set())
+    }
+    at.children.forEach((drawn, index) =>
+      take(draw(drawn), `${at.path}.children[${index}]`, new Set()),
+    )
+  }
+  if (node !== null) visit(node)
+  return out
+}
+
+/** The components a drawing draws: every node without a fault. */
+function drawnComponents(node: ScreenNode | null): string[] {
+  const out: string[] = []
+  const visit = (at: ScreenNode) => {
+    if (at.fault === null) out.push(at.component)
+    const draw = (drawn: Drawn) =>
+      materialize(drawn, {
+        node: (inner) => {
+          visit(inner)
+          return null
+        },
+      })
+    Object.values(at.props).forEach(draw)
+    at.children.forEach(draw)
+  }
+  if (node !== null) visit(node)
+  return out
+}
+
+describe('no address reaches a member when the host refuses addresses', () => {
+  /** What a document can write where an address goes: lawful addresses, bindings and the hostile shapes. */
+  const WRITTEN: Record<string, unknown> = {
+    relative: '/orders/1042',
+    fragment: '#total',
+    https: 'https://example.com/',
+    mailto: 'mailto:a@example.com',
+    'a list': ['/a', '/b'],
+    'a set of files': '/a.jpg 1x, /a@2x.jpg 2x',
+    'a binding': { $: 'url' },
+    'a binding into an object': { $: 'site.url' },
+    ...SHAPES,
+  }
+  const inputs = [
+    { name: 'url', type: 'string' },
+    { name: 'site', type: '{ url: string }' },
+  ]
+  const data = { url: 'https://example.com/', site: { url: 'https://example.com/' } }
+
+  /** Every place an address can be written, beside the members with an address prop. */
+  const PLACES: { name: string; at: (address: unknown) => unknown }[] = [
+    ...HOLDERS,
+    {
+      name: 'Image.srcSet',
+      at: (address) => ({
+        component: 'Image',
+        props: { alt: 'A', src: '/a.png', srcSet: address },
+      }),
+    },
+    {
+      name: 'CursorPagination.nextHref',
+      at: (address) => ({
+        component: 'CursorPagination',
+        props: { hasPrevious: true, hasNext: true, nextHref: address, previousHref: address },
+      }),
+    },
+    {
+      name: 'AttachmentChip.href',
+      at: (address) => ({ component: 'AttachmentChip', props: { name: 'a.pdf', href: address } }),
+    },
+    {
+      name: 'AppShell.NavItem.href',
+      at: (address) => ({
+        component: 'AppShell',
+        props: { title: 'App' },
+        children: [{ component: 'AppShell.NavItem', props: { label: 'Home', href: address } }],
+      }),
+    },
+    {
+      name: 'RichTextMark.href, deep in a document',
+      at: (address) => ({
+        component: 'RichTextContent',
+        props: {
+          value: {
+            $object: {
+              type: 'doc',
+              content: [
+                {
+                  $object: {
+                    type: 'paragraph',
+                    content: [
+                      {
+                        $object: {
+                          type: 'text',
+                          text: 'Help',
+                          marks: [{ $object: { type: 'link', href: address } }],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        },
+      }),
+    },
+    {
+      name: 'a field of the host’s own row type',
+      at: (address) => ({
+        component: 'DataTable',
+        props: {
+          label: 'Rows',
+          data: [{ $object: { id: 'a', href: address, src: address } }],
+          columns: [],
+          getRowId: { $: 'rowId' },
+          emptyState: { $object: { title: 'None' } },
+        },
+      }),
+    },
+  ]
+
+  for (const place of PLACES) {
+    it(place.name, () => {
+      for (const [shape, address] of Object.entries(WRITTEN)) {
+        const document = doc(place.at(address), [
+          ...inputs,
+          { name: 'rowId', type: '(row: Row) => string' },
+        ])
+        for (const streaming of [false, true]) {
+          const screen = createScreen({
+            document,
+            vocabulary: VOCABULARY,
+            addresses: 'refused',
+            data,
+            streaming,
+          })
+          expect(addressesIn(screen.root), `${shape}, streaming ${String(streaming)}`).toEqual([])
+        }
+        expect(checkScreen(document, { addresses: 'refused' }).ok, shape).toBe(false)
+      }
+    })
+  }
+
+  it('draws no member that draws the links its text writes, and none that needs an address', () => {
+    const screen = createScreen({
+      document: doc({
+        component: 'Stack',
+        children: [
+          { component: 'Markdown', children: ['[Help](https://example.com) ![a](/a.png)'] },
+          { component: 'Link', props: { href: '/a' }, children: ['A'] },
+          { component: 'Image', props: { src: '/a.png', alt: 'A' } },
+          { component: 'Text', children: ['Stays'] },
+        ],
+      }),
+      vocabulary: VOCABULARY,
+      addresses: 'refused',
+      // Even a host that names them in its list.
+      members: ['Stack', 'Markdown', 'Link', 'Image', 'Text'],
+    })
+    expect(drawnComponents(screen.root)).toEqual(['Stack', 'Text'])
+  })
+
+  it('passes the host’s data inside a value bound whole as the host gave it', () => {
+    // The host's breadcrumbs carry its own addresses; the document chose only to show them.
+    const screen = createScreen({
+      document: doc({ component: 'Breadcrumbs', props: { items: { $: 'crumbs' } } }, [
+        { name: 'crumbs', type: 'BreadcrumbItem[]' },
+      ]),
+      vocabulary: VOCABULARY,
+      addresses: 'refused',
+      data: { crumbs: [{ label: 'Home', href: '/' }] },
+    })
+    expect(screen.root?.props['items']).toEqual({
+      kind: 'value',
+      value: [{ label: 'Home', href: '/' }],
       from: 'data',
     })
   })
@@ -559,6 +767,25 @@ describe('no input costs more than in proportion to its size', () => {
       sizes: [5_000, 40_000],
       make: (size) => `Here it is.\n\`\`\`${'a'.repeat(size)}`,
       run: (text: string) => parsePartial(text),
+    },
+    {
+      name: 'parsePartial: prose around a fenced document',
+      sizes: [50_000, 400_000],
+      make: (size) => `${'p '.repeat(size)}\n\`\`\`json\n{"a":1}\n\`\`\`\n${'q '.repeat(size)}`,
+      run: (text: string) => parsePartial(text),
+    },
+    {
+      name: 'parsePartial: many lines after a document, and no closing line',
+      sizes: [20_000, 160_000],
+      make: (size) => `\`\`\`json\n{"a":1}\n${'`x` y\n'.repeat(size)}`,
+      run: (text: string) => parsePartial(text),
+    },
+    {
+      name: 'checkAnswer: an answer cut inside a long string',
+      sizes: [50_000, 400_000],
+      make: (size) =>
+        `Here:\n\`\`\`json\n{"root":{"component":"Text","children":["${'x'.repeat(size)}`,
+      run: (text: string) => checkAnswer(text),
     },
     {
       name: 'parsePartial: many children',

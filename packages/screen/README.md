@@ -14,10 +14,10 @@ dependencies, and runs in a page, a worker and a server alike.
 | Import                         | What it is                                                                                                                                                  |
 | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@polymorph/screen/vocabulary` | `VOCABULARY`: the members, their props, parts and lawful cells, generated from the registry of the release you install.                                     |
-| `@polymorph/screen/check`      | `checkScreen(document, { framework?, members? })`: the spec validator's faults, plus a member the host does not allow and an address a screen may not hold. |
-| `@polymorph/screen/partial`    | `parsePartial(text)`: the document a model's answer holds so far, for drawing while it streams.                                                             |
+| `@polymorph/screen/check`      | `checkScreen(document, { framework?, members?, addresses? })`: the spec validator's faults, plus a member the host does not allow and an address a screen may not hold. `checkAnswer(text, options)`: the same for a model's whole answer as text, with an answer cut short as a fault. |
+| `@polymorph/screen/partial`    | `parsePartial(text)`: the document a model's answer holds so far, for drawing while it streams, and the prose around it.                                    |
 | `@polymorph/screen/walk`       | `createScreen(options)`: the document, the host's data and the vocabulary, resolved into what a renderer draws, with actions, controlled values and faults. |
-| `@polymorph/screen/card`       | `runtimeCard({ framework?, members? })`: the text a host puts in the model's system prompt.                                                                 |
+| `@polymorph/screen/card`       | `runtimeCard({ framework?, members?, addresses? })`: the text a host puts in the model's system prompt. `polymorph card --runtime` prints the same text.  |
 
 The root re-exports all of it. Import a subpath to load only what it needs: `parsePartial` loads
 no vocabulary, and the walk loads neither the vocabulary table nor the card.
@@ -78,7 +78,10 @@ behaves the same in each of them:
   `srcSet`, whose text is a list of addresses) is passed only as text that is
   relative or `http:`, `https:`, `mailto:` or `tel:`, or a flat list of such text, from the
   document or from the host's data a binding puts there. Data nested inside an object the host
-  binds whole is the host's responsibility: the walk passes it as the host gave it;
+  binds whole is the host's responsibility: the walk passes it as the host gave it. A host that
+  refuses addresses (`addresses: 'refused'`) is passed none: each is a fault, and a member that
+  cannot be drawn without one (`Link`, `Image`, `Markdown` and the others `addressNeed` names) is
+  not drawn;
 - a document nests at most `MAX_DEPTH` (128) objects and lists: `parsePartial` stops reading
   deeper text with an `error`, `checkScreen` reports a fault, and the walk draws nothing deeper.
   An action's `args` and a control's value are reduced to at most `MAX_JSON_VALUES` (100,000)
@@ -135,15 +138,15 @@ name as what the person meant.
 
 ```ts
 import { runtimeCard } from '@polymorph/screen/card'
-import { checkScreen } from '@polymorph/screen/check'
-import { parsePartial } from '@polymorph/screen/partial'
+import { checkAnswer } from '@polymorph/screen/check'
 
 const members = ['Stack', 'Card', 'Text', 'Button', 'Input', 'FormField']
 const system = runtimeCard({ members })
-// … stream the model's answer into `text` …
-const { document, complete } = parsePartial(text)
-if (complete) console.log(checkScreen(document, { members }).faults)
+// … stream the model's answer into `text`; once it has ended:
+const { ok, faults, prose } = checkAnswer(text, { members })
+if (!ok) console.log(faults)
 ```
 
 The card lists only the members the host allows, each with its props and their types, and ends
-with the output contract, so the model needs no tool call.
+with the output contract, so the model needs no tool call. `checkAnswer` reports an answer that
+ended before its document did, which `checkScreen` cannot see in the document a cut leaves.

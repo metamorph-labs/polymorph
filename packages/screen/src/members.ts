@@ -1,5 +1,12 @@
-import { DEFAULT_FRAMEWORK, unionParts, type Framework } from '@polymorph/registry/frameworks'
-import { DEFAULT_PLATFORM } from '@polymorph/registry/platforms'
+import { unionParts } from '@polymorph/registry/frameworks'
+import {
+  addressNeed,
+  allowedMembers,
+  CODE_HOSTS,
+  defaultMembers,
+  type AddressPolicy,
+  type MemberOptions,
+} from '@polymorph/registry/runtime-members'
 import type {
   ScreenTable,
   TableMember,
@@ -13,57 +20,17 @@ import type {
  *
  * Every function here takes the vocabulary as an argument and none imports
  * the generated table, so the walk, which a renderer hands a table, loads
- * none of it through this module.
+ * none of it through this module. The rule for which members a host allows
+ * (`allowedMembers`) is the registry's (`@polymorph/registry/runtime-members`),
+ * so the card the MCP tool prints and the card, the check and the walk here
+ * read one rule; it is re-exported here.
  */
 
 /** The vocabulary a screen is checked and drawn with: the generated table (`vocabulary.ts`) or another of its shape. */
 export type ScreenVocabulary = ScreenTable
 export type { TableMember, TablePart, TablePrimitive, TableProp }
-
-/**
- * The members that host another library's code, which a host allows only by
- * naming them in `members`. `ThirdParty` is the boundary around another
- * library's component: drawn from a document, it would hold whatever the host
- * puts there for it. No other member takes markup, a script's address or an
- * embed: a law in `packages/screen/src/parity.test.ts` reads every prop, every
- * part's prop and every data type field to hold that.
- */
-export const CODE_HOSTS: readonly string[] = ['ThirdParty']
-
-/** Which members a screen may use: a framework's, or a host's own list. */
-export interface MemberOptions {
-  /** The web framework that draws the screen. `react` when absent. */
-  framework?: Framework
-  /**
-   * The members and exception primitives the host allows, by name. A
-   * compound part is allowed with its member. Absent, every member the
-   * framework draws is allowed except those that host another library's code
-   * (`CODE_HOSTS`) and, in React, a member a call site calls as a function
-   * (`toast()`).
-   */
-  members?: readonly string[]
-}
-
-/**
- * The members a framework draws from a document when the host names none:
- * every member and primitive the framework ships, without the code hosts and,
- * in React, without a member React draws through a function.
- */
-export function defaultMembers(
-  vocabulary: ScreenVocabulary,
-  framework: Framework = DEFAULT_FRAMEWORK,
-): string[] {
-  const drawn = (entry: Pick<TableMember, 'name' | 'platforms' | 'frameworks'>): boolean =>
-    entry.platforms[DEFAULT_PLATFORM].status !== 'absent' &&
-    entry.frameworks[framework].status !== 'absent' &&
-    !CODE_HOSTS.includes(entry.name)
-  return [
-    ...vocabulary.components
-      .filter((member) => drawn(member) && !(framework === 'react' && member.call !== null))
-      .map((member) => member.name),
-    ...vocabulary.exceptions.primitives.filter(drawn).map((primitive) => primitive.name),
-  ]
-}
+export { addressNeed, allowedMembers, CODE_HOSTS, defaultMembers }
+export type { AddressPolicy, MemberOptions }
 
 /** Every member and exception primitive the vocabulary has, by name. */
 export function memberNames(vocabulary: ScreenVocabulary): string[] {
@@ -71,14 +38,6 @@ export function memberNames(vocabulary: ScreenVocabulary): string[] {
     ...vocabulary.components.map((member) => member.name),
     ...vocabulary.exceptions.primitives.map((primitive) => primitive.name),
   ]
-}
-
-/** The members a screen may use, by name: the host's list, or the framework's default. */
-export function allowedMembers(
-  vocabulary: ScreenVocabulary,
-  options: MemberOptions = {},
-): ReadonlySet<string> {
-  return new Set(options.members ?? defaultMembers(vocabulary, options.framework))
 }
 
 /**
@@ -241,20 +200,25 @@ export const sharedNameFault = (name: string, before: string): string =>
 /**
  * The fault for a member the host does not allow, in the validator's voice.
  * `null` for an allowed one, and for a name the vocabulary does not have,
- * which the validator reports.
+ * which the validator reports. Under a host that refuses addresses, a member
+ * that cannot be drawn without one says why (`addressNeed`).
  */
 export function memberFault(
   vocabulary: ScreenVocabulary,
   component: string,
   allowed: ReadonlySet<string>,
+  addresses?: AddressPolicy,
 ): string | null {
   const surface = surfaceOf(vocabulary, component)
   if (surface === null || allowed.has(surface.member)) return null
   const owner =
     surface.part === null ? '' : `\`${component}\` is a part of \`${surface.member}\`, and `
   const subject = owner === '' ? `\`${component}\`` : `\`${surface.member}\``
+  const need = addresses === 'refused' ? addressNeed(vocabulary, surface.member) : null
   const reason = CODE_HOSTS.includes(surface.member)
     ? 'hosts another library’s code, which this host does not allow'
-    : 'is not one of the members this host draws'
+    : need !== null
+      ? `${need}, and this host takes no address`
+      : 'is not one of the members this host draws'
   return `${owner}${subject} ${reason} — compose the screen from the members the card lists`
 }

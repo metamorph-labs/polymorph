@@ -173,6 +173,96 @@ describe('a model’s answer', () => {
     expect(parsePartial('Sure: {"name":"A"} — done.').document).toEqual({ name: 'A' })
     expect(parsePartial('no document yet').document).toBeUndefined()
   })
+
+  it('reads a bare document before a last line that begins with code, which no fence begins with', () => {
+    const read = parsePartial('Sure: {"name":"A"}\n`name` is the screen’s name.')
+    expect(read.document).toEqual({ name: 'A' })
+    expect(read.complete).toBe(true)
+    expect(read.prose).toBe('Sure:\n\n`name` is the screen’s name.')
+  })
+})
+
+describe('the prose around the document', () => {
+  const [first] = texts
+  const text = (first?.text ?? '{}').trimEnd()
+  const before = 'Here is the screen. It lists the tickets.'
+  const after = 'The filters are inputs.'
+  const fenced = [before, '', '```json', text, '```', '', after].join('\n')
+  const FENCES = [null, 'open', 'closed']
+
+  it('is the text before the fence and after it, never a character of the block, at every cut', () => {
+    const whole = parsePartial(fenced)
+    expect(whole.prose).toBe(`${before}\n\n${after}`)
+    expect(whole.fence).toBe('closed')
+    const opening = fenced.indexOf('```json')
+    const closing = fenced.lastIndexOf('```')
+    let fence = 0
+    for (let at = 0; at <= fenced.length; at += 1) {
+      const read = parsePartial(fenced.slice(0, at))
+      // The prose grows as the answer does, and holds nothing of the block.
+      expect(whole.prose.startsWith(read.prose), `${at}: ${read.prose}`).toBe(true)
+      if (at > opening && at < closing + 3) expect(read.prose, `${at}`).toBe(before)
+      // The fence opens at its first backtick and closes at its closing line, and never goes back.
+      const state = FENCES.indexOf(read.fence)
+      expect(state, `${at}: ${read.fence}`).toBeGreaterThanOrEqual(fence)
+      fence = state
+      expect(read.fence, `${at}`).toBe(at <= opening ? null : at < closing + 3 ? 'open' : 'closed')
+    }
+  }, 60_000)
+
+  it('is the text around a document written with no fence', () => {
+    expect(parsePartial('Sure: {"name":"A"} — done.').prose).toBe('Sure:\n\n— done.')
+    // Before the document closes, only the text before it.
+    expect(parsePartial('Sure: {"name":"A", "pur').prose).toBe('Sure:')
+    expect(parsePartial('Sure: {"name":"A"} — done.').fence).toBeNull()
+  })
+
+  it('is all of an answer with no document, but a last line that may become the fence', () => {
+    expect(parsePartial('  No screen this time.\n').prose).toBe('No screen this time.')
+    expect(parsePartial('Here it is:\n`').prose).toBe('Here it is:')
+    expect(parsePartial('Here it is:\n``').prose).toBe('Here it is:')
+    expect(parsePartial('Here it is:\n```jso').prose).toBe('Here it is:')
+    expect(parsePartial('Here it is:\n```jso').fence).toBe('open')
+    expect(parsePartial('Here it is:\n```json\n').prose).toBe('Here it is:')
+    expect(parsePartial('Here it is:\n```json\n').fence).toBe('open')
+    // A line that begins with code is prose: no fence begins that way.
+    expect(parsePartial('Use `Text`.\n`Heading` is for titles.').prose).toBe(
+      'Use `Text`.\n`Heading` is for titles.',
+    )
+    expect(parsePartial('').prose).toBe('')
+    expect(parsePartial(42 as unknown as string).prose).toBe('')
+  })
+
+  it('takes the fence the reader takes: a block in another language is prose', () => {
+    const answer = [
+      'A sketch:',
+      '```ts',
+      'const a = { b: 1 }',
+      '```',
+      'The screen:',
+      '```json',
+      '{"name":"A"}',
+      '```',
+      'Done.',
+    ].join('\n')
+    const read = parsePartial(answer)
+    expect(read.document).toEqual({ name: 'A' })
+    expect(read.prose).toBe('A sketch:\n```ts\nconst a = { b: 1 }\n```\nThe screen:\n\nDone.')
+  })
+
+  it('reads the text after a closing line when the document stops being JSON inside its fence', () => {
+    const read = parsePartial('Here:\n```json\n{"name": nope}\n```\nSorry.')
+    expect(read.error).not.toBeNull()
+    expect(read.fence).toBe('closed')
+    expect(read.prose).toBe('Here:\n\nSorry.')
+  })
+
+  it('is the text around an empty fenced block', () => {
+    const read = parsePartial('```json\n```\nNo screen this time.')
+    expect(read.document).toBeUndefined()
+    expect(read.fence).toBe('closed')
+    expect(read.prose).toBe('No screen this time.')
+  })
 })
 
 describe('what a cut keeps and what it leaves out', () => {

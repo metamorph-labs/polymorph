@@ -31,6 +31,7 @@ const PURE: Record<string, string> = {
   '@polymorph/registry/shape': 'packages/registry/src/shape.ts',
   '@polymorph/registry/screen-table': 'packages/registry/src/screen-table.ts',
   '@polymorph/registry/runtime-card': 'packages/registry/src/runtime-card.ts',
+  '@polymorph/registry/runtime-members': 'packages/registry/src/runtime-members.ts',
   '@polymorph/spec/schema': 'packages/spec/src/schema.ts',
   '@polymorph/spec/validate': 'packages/spec/src/validate.ts',
   '@polymorph/spec/action-type': 'packages/spec/src/action-type.ts',
@@ -96,6 +97,12 @@ describe('the package reaches nothing but its own modules and the pure subpaths'
 describe('each entry reaches only what it needs', () => {
   const TABLE = `${SRC}/vocabulary.gen.ts`
   const CARD = `${SRC}/card.ts`
+
+  it('checkAnswer is checkScreen’s module, which reaches parsePartial and not the card', () => {
+    const { files } = reach('check.ts')
+    expect(files.has(`${SRC}/partial.ts`)).toBe(true)
+    expect(files.has('packages/registry/src/runtime-card.ts')).toBe(false)
+  })
 
   it('parsePartial reaches no other module', () => {
     expect([...reach('partial.ts').files]).toEqual([`${SRC}/partial.ts`])

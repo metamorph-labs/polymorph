@@ -172,8 +172,12 @@ browser-safe), `@polymorph/registry/agent` (the grammar of a spec's `agent` fenc
 `pnpm registry` reports, browser-safe), `@polymorph/registry/exceptions` (the check that a system's per-member
 exception names a member that actually reads that token), `@polymorph/registry/screen-table` (the
 compact vocabulary table `pnpm registry` writes for the run-time core, and its expansion,
-browser-safe), and `@polymorph/registry/runtime-card` (the members section of the run-time card,
-rendered from that table, browser-safe). `@polymorph/screen` inlines the last two in its build
+browser-safe), `@polymorph/registry/runtime-members` (which members and addresses a screen drawn at
+run time may use: the framework's default members, the members a host that refuses addresses
+cannot draw, the address keys and schemes, browser-safe), and `@polymorph/registry/runtime-card`
+(the run-time card, composed from that table: its opening, its members section and its output
+contract, browser-safe). `@polymorph/screen` inlines the last three in its build, and the MCP tool
+`get_system_card` composes the run-time card from the registry with the last two
 ([run-time-screens.md](run-time-screens.md)).
 
 ### The system card
@@ -350,6 +354,8 @@ the same job. `polymorph <verb> --help` prints one verb's usage and flags.
 | `--framework <name>` | `card`, `search`, `plan`, `validate`, `fix`, `emit` | The tool's `framework` argument |
 | `--framework <name>` | `component` | Narrows the reading's frameworks to one. The JSON answer lists every framework |
 | `--platform <name>` | `card`, `search` | `web` (default), `ios` or `android` |
+| `--runtime` | `card` | The run-time card a product puts in its model's system prompt, in place of the system card, with its length in characters on stderr. `--framework` is `react` (default) or `elements` |
+| `--members <list>`, `--addresses <policy>` | `card --runtime` | The members the product allows, comma-separated, and `allowed` (default) or `refused`: the tool's `members` and `addresses` |
 | `--tier`, `--origin`, `--limit` | `search` | The tool's filters |
 | `--source` | `component` | Adds the member's source, stylesheet and states fixture |
 | `--properties`, `--values` | `axes` | Add every `--pm-*` property, and each system's token values |
@@ -766,7 +772,8 @@ A law holds the verb list to the server's table of tools
 tool a verb names is one the server registers.
 
 - **`--json`** prints exactly the tool's JSON answer and nothing else on stdout. The answer of
-  `card` is Markdown, so its JSON is a string. A refusal prints `{ "error": "<the tool's
+  `card` is Markdown, so its JSON is a string, and `card --runtime` still prints its length on
+  stderr. A refusal prints `{ "error": "<the tool's
   message>" }`. `validate` given several files prints an array of answers, one for each file in
   the order named, and `theme propose --save` prints `{ "propose_theme": …, "save_theme": … }`.
 - **Without `--json`** a verb prints a plain reading: the card as Markdown, a member as Markdown
@@ -792,6 +799,7 @@ registry and the files it ships, so every verb runs there with no checkout.
 
 ```sh
 polymorph card --framework vue              # the system card for a Vue app
+polymorph card --runtime --members Stack,Card,Text > card.md   # a run-time card; its length on stderr
 polymorph search date picker --limit 5      # the query is every word after the verb
 polymorph component Button                  # a wrong name gets suggestions, and exits 1
 polymorph axes --properties                 # the axes, systems, palettes, roles and scales
@@ -917,7 +925,7 @@ Marked `readOnlyHint`. None writes a file.
 | `search_components` | Finds members by name, purpose, prop or variant, ranked; an empty query lists the catalogue. A query of several words is read as a name with its words joined (`date picker` is `DatePicker`), as a phrase, and word by word, and the best reading ranks it. Word by word, a member is found when one of the words is in its name or when every word is in its name or its purpose, and one that answers some of the words ranks below one that answers all of them. Filters: `tier`, `origin`, `platform` (leaves out the members absent there; default `web`), `framework` (leaves out the members with no shell in that framework; default `react`), `limit`. Each hit says what it matched on. |
 | `get_component` | One member: props with printed types, lawful variant × tone cells, states, `data-*` attributes, dependencies. `source: true` adds the source, stylesheet and states fixture. A wrong name gets suggestions (`Modal` → `Dialog`). |
 | `get_install_plan` | What `polymorph add <items>` would copy: the file closure, packages and ranges, fonts. Takes the same items as `add`, and an optional `dir` and `framework` (`vue`, `svelte`, `solid` or `angular` plans that vocabulary's components, and `elements` plans no member and one theme sheet; omitted, the project manifest's framework, and a different one is refused). Writes nothing. |
-| `get_system_card` | The system card. The tool the server's instructions say to call first. `platform` (default `web`) renders it for one platform: absent members left out, adapted ones with how they render. `framework` (`vue`, `svelte`, `solid`, `angular` or `elements`) renders it for an app in that framework. |
+| `get_system_card` | The system card. The tool the server's instructions say to call first. `platform` (default `web`) renders it for one platform: absent members left out, adapted ones with how they render. `framework` (`vue`, `svelte`, `solid`, `angular` or `elements`) renders it for an app in that framework. `runtime: true` gives the run-time card instead, the text `runtimeCard` from `@polymorph/screen/card` returns, for `framework` `react` or `elements`, the `members` a product allows and its `addresses` (`allowed` or `refused`); `packages/mcp/src/verbs.test.ts` holds the two equal. |
 | `get_theme_axes` | The axes and their values, the systems and palettes, the colour roles and scales. `customProperties: true` adds every `--pm-*` property; `tokenValues: true` adds each system's token values. |
 | `validate` | Submit `code` (TSX or CSS) and get the red-rule violations the repository's own lint run reports, with the same rules and the same lines, each with the ladder rungs that answer it. Code is parsed, never executed. Or submit `spec` (a screen spec, as the document itself or as its JSON text) and get it checked against the registry. Optional `filename` (where the code would live; `.css` routes to Stylelint, `.vue` to the Vue parser, `.svelte` to the Svelte parser, `.html` to Angular's template parser), `surface` (`application`, the default, or `vocabulary`) and `framework` (each checks a spec against that framework's vocabulary; `vue` lints unnamed markup with no block as a component's template, at the lines it was given, and code that opens with `<template>` or `<script>` is a single-file component either way; `svelte` lints unnamed code that opens with markup as a component; `solid` lints TSX as Solid's; `angular` lints unnamed TypeScript as a component module, its inline template included, and unnamed markup as a component's template; `elements` answers unnamed markup, and any `.html` file, with a `fatal` that says the red rules do not read HTML pages; otherwise TypeScript or CSS is linted as itself). Without `framework`, the project decides as it does for `fix`: TSX and a web spec are Solid's in a project whose package depends on `@polymorph/solid-ui` and not `@polymorph/react-ui`, and React's otherwise, so the two tools read one fragment alike and `emit_screen` writes a spec this accepts. |
 | `fix` | Submit `code` (TSX, a Vue or Svelte component, an Angular module or template, or CSS, with the same optional `filename`, `surface` and `framework` as `validate`, read the same way) and get it back with every violation that has exactly one lawful rewrite already rewritten. Without `framework`, TSX is Solid's in a project whose package depends on `@polymorph/solid-ui` and not `@polymorph/react-ui`, and React's otherwise. These are the rules' own fixes, the ones `eslint --fix` applies ([rules.md](rules.md#what-the-rules-fix) lists them). Whether the `<button>` fix applies is decided by the project rather than by a lint config (below). The answer contains the fixed `code`, `changed`, `fixed` (rule → how many of its reports the fixes resolved) and the remaining `violations`, which need a decision, each with its ladder rungs. A stylesheet comes back unchanged, because no CSS rule has a fix. Writes nothing. |

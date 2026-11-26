@@ -685,6 +685,50 @@ describe('what cannot be drawn is drawn as nothing, and told', () => {
     expect(told.faults.map(({ path }) => path)).toEqual(['$.root.children[0].props.href'])
     expect(container.innerHTML).not.toContain('javascript:')
   })
+
+  it('passes no address at all for a host that refuses them, and draws what does without one', () => {
+    const page = doc(
+      {
+        component: 'Stack',
+        children: [
+          {
+            component: 'Card',
+            props: { title: 'Order 1042', label: 'Open order 1042', href: '/orders/1042' },
+            children: ['x'],
+          },
+          { component: 'Avatar', props: { name: 'Ada Lovelace', src: { $: 'picture' } } },
+          { component: 'Link', props: { href: '/help' }, children: ['Help'] },
+          { component: 'Markdown', children: ['See [the help](https://example.com/help).'] },
+          { component: 'Text', children: ['Still here'] },
+        ],
+      },
+      [{ name: 'picture', type: 'string' }],
+    )
+    const told = host()
+    const { container, rerender } = render(
+      <ScreenView
+        document={page}
+        members={members}
+        addresses="refused"
+        data={{ picture: 'https://example.com/ada.png' }}
+        onFault={told.onFault}
+      />,
+    )
+    expect(container.textContent).toContain('Order 1042')
+    expect(container.textContent).toContain('Still here')
+    expect(container.textContent).not.toContain('Help')
+    expect(container.querySelector('a, img, [href], [src]')).toBeNull()
+    expect(told.faults.map(({ path }) => path)).toEqual([
+      '$.root.children[0].props.href',
+      '$.root.children[1].props.src',
+      '$.root.children[2]',
+      '$.root.children[3]',
+    ])
+    // Read when the screen is made: a host that takes addresses draws the same document's links.
+    rerender(<ScreenView document={page} members={members} data={{ picture: '/ada.png' }} />)
+    expect(container.querySelector('a[href="/orders/1042"]')).not.toBeNull()
+    expect(container.textContent).toContain('Help')
+  })
 })
 
 describe('the host’s members', () => {

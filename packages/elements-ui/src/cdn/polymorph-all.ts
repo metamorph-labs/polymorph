@@ -33,7 +33,7 @@ export { restore, toast } from '@polymorph/elements'
 /** Loads the agent bridge: `createAgentBridge`, `agentTools` and `registerWebMCP`. */
 export const loadAgentBridge = () => import('@polymorph/engine/agent')
 
-/** Loads the run-time screens: `drawScreen`, `parsePartial`, `checkScreen`, `runtimeCard` and `outputContract`. */
+/** Loads the run-time screens: `drawScreen`, `parsePartial`, `checkScreen`, `checkAnswer`, `runtimeCard` and `outputContract`. */
 export const loadScreen = () => import('../screen/api')
 
 applyAgentSetting(document.documentElement.getAttribute(AGENT_ATTRIBUTE))

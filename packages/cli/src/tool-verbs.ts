@@ -136,7 +136,7 @@ export async function runToolVerb(cli: Cli, verb: Verb, argv: string[]): Promise
     const asked = { cli, args, json, ask: cli.tools }
     switch (verb.name) {
       case 'card':
-        return await card(asked)
+        return await card(verb, asked)
       case 'search':
         return await search(verb, asked)
       case 'component':
@@ -277,12 +277,39 @@ function readJson(verb: Verb, cli: Cli, flag: string, path: string): unknown {
 /* Looking up                                                                 */
 /* -------------------------------------------------------------------------- */
 
-async function card(asked: Asked): Promise<Outcome> {
+/**
+ * `card`: the system card, or with `--runtime` the run-time card. The run-time
+ * card is the whole of stdout, so it can be written to a file a server sends
+ * as its model's system prompt; its length in characters goes to stderr, as
+ * `fix` sends its report there.
+ */
+async function card(verb: Verb, asked: Asked): Promise<Outcome> {
   const { cli, args, json, ask } = asked
-  const answer = await ask('get_system_card', passed(args, 'framework', 'platform'))
+  const runtime = args.switches.has('runtime')
+  const members = args.values.get('members')
+  if (!runtime && (members !== undefined || args.values.has('addresses'))) {
+    throw new UsageError(
+      verb,
+      '`--members` and `--addresses` choose the run-time card: add `--runtime`',
+    )
+  }
+  const answer = await ask('get_system_card', {
+    ...passed(args, 'framework', 'platform', 'addresses'),
+    ...(runtime ? { runtime: true } : {}),
+    ...(members === undefined
+      ? {}
+      : {
+          members: members
+            .split(',')
+            .map((name) => name.trim())
+            .filter((name) => name !== ''),
+        }),
+  })
   if (answer.isError) return refused(asked, answer)
+  const text = String(answer.value)
   if (json) printJson(cli, answer.value)
-  else cli.out(String(answer.value))
+  else cli.out(text)
+  if (runtime) (cli.err ?? cli.out)(`The run-time card is ${plural(text.length, 'character')}.`)
   return { code: 0 }
 }
 

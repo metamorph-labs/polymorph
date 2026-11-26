@@ -7,8 +7,8 @@ them uses it, as a page with no build does. The elements read the theme the page
 member does.
 
 Like `ScreenView`, it applies its `members` and the run-time rules as it draws, whatever the server
-checked, and it draws only the document. Show the prose with `proseOf` (references/api.md) in an
-element of the page's own, as text.
+checked, and it draws only the document. Show the prose, `parsePartial(text).prose`, in an element
+of the page's own, as text.
 
 ## In an app with a bundler
 
@@ -57,7 +57,7 @@ On the server, `answer` from the skill's step 6 builds the card and checks for t
 
 ```ts
 const CARD = runtimeCard({ framework: 'elements', members: MEMBERS })
-const { ok, faults } = checkScreen(read.document, { framework: 'elements', members: MEMBERS })
+const { ok, faults } = checkAnswer(first, { framework: 'elements', members: MEMBERS })
 ```
 
 `@polymorph/elements-ui/screen` exports the same functions bound to the elements, for code in the
@@ -107,7 +107,7 @@ elements, so they take no `framework`:
 <script type="module">
   import { loadScreen } from './polymorph/polymorph.js'
 
-  const { runtimeCard, checkScreen } = await loadScreen()
+  const { runtimeCard, checkAnswer } = await loadScreen()
   const card = runtimeCard({ members: ['Stack', 'Heading', 'Text', 'Button', 'FormField', 'NumberInput', 'Textarea'] })
 </script>
 ```
@@ -122,11 +122,14 @@ elements, so they take no `framework`:
   document, whose faults are told again and whose unfinished elements are not drawn.
 - `members` is an attribute (names separated by spaces, or a JSON array) and a property. A value
   that is not a list of names allows no member, and is a fault at the path `members`.
+- `addresses="refused"` (an attribute and a property) passes no address and draws no member that
+  needs one, as the skill's step 3 says. A change to `members` or `addresses` draws anew.
 - `poly-action` carries `{ name, args, values, changed }`, as an action does in React. A listener
   hands the member a promise with `event.waitUntil(promise)`, while the event is dispatched:
   `ConfirmDialog` stays open and busy until it settles.
 - `poly-fault` carries `{ path, message, component? }`, once for each fault. `faults="inline"`
   draws each fault in its node's place, for a page under construction.
 - `values`, `changed` and `check()` read the drawing. `check()` is a promise of what the check
-  says of the document it draws, with its members.
+  says of the document it draws, with its members and addresses; for `text` once `streaming` is
+  off, it is `checkAnswer`'s, so an answer cut short is a fault.
 - A property set before the element is defined is read when it is.

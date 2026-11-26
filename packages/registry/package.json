@@ -13,7 +13,8 @@
     "./behaviour": "./src/behaviour.ts",
     "./agent": "./src/agent.ts",
     "./screen-table": "./src/screen-table.ts",
-    "./runtime-card": "./src/runtime-card.ts"
+    "./runtime-card": "./src/runtime-card.ts",
+    "./runtime-members": "./src/runtime-members.ts"
   },
   "dependencies": {
     "@polymorph/rules": "workspace:*",

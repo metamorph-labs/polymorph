@@ -53,8 +53,9 @@ each element with `createElement`, sets its props as properties, fills its slots
 - `<poly-screen>` (`src/screen/element.ts`) is an element written by hand, as `poly-icon` is: not a
   member, with no Solid member behind it. It draws its `spec` property, its `text` property (a
   model's answer so far, read with `parsePartial`), or the JSON in its `<script
-  type="application/json">` child. `data`, `streaming`, `members` and `faults` (`hidden` or
-  `inline`) set what it draws; `values`, `changed` and `check()` read it. `streaming` is the page's
+  type="application/json">` child. `data`, `streaming`, `members`, `addresses` (`allowed` or
+  `refused`) and `faults` (`hidden` or `inline`) set what it draws; `values`, `changed` and
+  `check()` read it. `streaming` is the page's
   to set, for `text` too; a `members` value that cannot be read allows no member and is a fault. It
   dispatches `poly-action` when a member calls one of the document's callback inputs, with `{ name,
   args, values, changed }` as `detail` (`event.waitUntil` hands the member a promise), and
@@ -62,8 +63,8 @@ each element with `createElement`, sets its props as properties, fills its slots
   of its own.
 - `drawScreen(container, options)` (`src/screen/api.ts`) draws into a plain element and returns a
   drawing with `update`, `values`, `changed`, `faults`, `check` and `dispose`. `checkScreen`,
-  `runtimeCard`, `outputContract` and `parsePartial` are the core's, bound to the members the
-  elements draw.
+  `checkAnswer`, `runtimeCard`, `outputContract` and `parsePartial` are the core's, bound to the
+  members the elements draw.
 - `src/screen/draw.ts` is the renderer both use: a drawing is updated in place by each node's
   path, and an element whose node did not change is left alone.
 
@@ -71,8 +72,8 @@ each element with `createElement`, sets its props as properties, fills its slots
 member's code when it first renders. On a page with no build, `polymorph.js` defines
 `<poly-screen>` and holds nothing else of it: the renderer and the vocabulary table are a chunk the
 first `<poly-screen>` to connect fetches, the validator a chunk its `check()` fetches, and
-`loadScreen()` resolves to `drawScreen`, `parsePartial`, `checkScreen`, `runtimeCard` and
-`outputContract`. `polymorph-all.js` holds all of it.
+`loadScreen()` resolves to `drawScreen`, `parsePartial`, `checkScreen`, `checkAnswer`,
+`runtimeCard` and `outputContract`. `polymorph-all.js` holds all of it.
 
 ## Entry points
 

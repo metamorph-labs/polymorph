@@ -11,7 +11,7 @@ import {
   type Codec,
   type ElementDefinition,
 } from '@polymorph/elements'
-import type { JsonValue } from '@polymorph/screen'
+import type { AddressPolicy, JsonValue } from '@polymorph/screen'
 import { VOCABULARY } from '@polymorph/screen/vocabulary'
 import {
   createScreen,
@@ -77,6 +77,11 @@ export interface DrawOptions {
   cut?: string | null
   /** The members the host allows, by name. The elements' default when absent. */
   members?: readonly string[]
+  /**
+   * Whether the drawing passes addresses: `allowed` (the default), or
+   * `refused`, which passes none (the walk's `addresses`).
+   */
+  addresses?: AddressPolicy
   /** `hidden` (the default) draws nothing for a node that cannot be drawn; `inline` draws its fault in its place. */
   faults?: FaultDisplay
   /** Told each action. What it returns answers the member, as the walk's `onAction`. */
@@ -231,6 +236,7 @@ export function draw(container: Element, options: DrawOptions = {}): Drawing {
       vocabulary: VOCABULARY,
       framework: 'elements',
       ...(options.members === undefined ? {} : { members: options.members }),
+      ...(options.addresses === undefined ? {} : { addresses: options.addresses }),
       ...(options.data === undefined ? {} : { data: options.data }),
       streaming: options.streaming ?? false,
       open: options.open ?? null,

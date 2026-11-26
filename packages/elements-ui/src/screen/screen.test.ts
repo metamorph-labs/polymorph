@@ -11,6 +11,7 @@ import usageOverview from '../../../screen/fixtures/usage-overview.json'
 import workspaceSettings from '../../../screen/fixtures/workspace-settings.json'
 import {
   ACTION_EVENT,
+  checkAnswer,
   drawScreen,
   FAULT_EVENT,
   parsePartial,
@@ -67,7 +68,7 @@ function draw(options: Parameters<typeof drawScreen>[1]): {
 /** A `<poly-screen>` in an element of the test's own, with its properties set before it connects. */
 function screen(
   properties: Partial<
-    Pick<PolyScreen, 'spec' | 'text' | 'data' | 'streaming' | 'members' | 'faults'>
+    Pick<PolyScreen, 'spec' | 'text' | 'data' | 'streaming' | 'members' | 'addresses' | 'faults'>
   > = {},
 ): {
   host: HTMLElement
@@ -602,5 +603,72 @@ describe('<poly-screen>', () => {
     const result = await element.check()
     expect(result.ok).toBe(false)
     expect(result.faults.map(({ path }) => path)).toEqual(['$.root.children[0]'])
+  })
+
+  it('checks a model’s answer once it has ended, and finds one that ended before its document did', async () => {
+    const whole = `Here it is.\n\`\`\`json\n${JSON.stringify(hello)}\n\`\`\`\nDone.`
+    const cut = whole.slice(0, whole.indexOf('"children"'))
+    const { element, into } = (() => {
+      const made = screen({ text: cut, streaming: true })
+      return { element: made.element, into: made.host }
+    })()
+    // While the answer arrives, what has arrived is checked as it is.
+    expect((await element.check()).faults).not.toContainEqual(
+      expect.objectContaining({ path: '$' }),
+    )
+    element.streaming = false
+    const ended = await element.check()
+    expect(ended.ok).toBe(false)
+    expect(ended).toEqual({ ok: false, faults: checkAnswer(cut).faults })
+    expect(ended.faults[0]?.message).toMatch(/^the answer ends before its document does/)
+    element.text = whole
+    await vi.waitFor(() => expect(into.querySelector('h1, h2')?.textContent).toBe('Hello'), WAIT)
+    expect(await element.check()).toEqual({ ok: true, faults: [] })
+  })
+
+  it('passes no address for a host that refuses them, from the attribute or the property', async () => {
+    const page = doc({
+      component: 'Stack',
+      children: [
+        {
+          component: 'Card',
+          props: { title: 'Order 1042', label: 'Open order 1042', href: '/orders/1042' },
+          children: ['x'],
+        },
+        { component: 'Link', props: { href: '/help' }, children: ['Help'] },
+        { component: 'Text', children: ['Still here'] },
+      ],
+    })
+    const into = host()
+    const element = document.createElement('poly-screen')
+    element.setAttribute('addresses', 'refused')
+    element.spec = page
+    const faults: ScreenFault[] = []
+    element.addEventListener(FAULT_EVENT, (event) =>
+      faults.push((event as CustomEvent<ScreenFault>).detail),
+    )
+    into.append(element)
+    await vi.waitFor(() => expect(into.textContent).toContain('Still here'), WAIT)
+    await frame()
+    expect(element.addresses).toBe('refused')
+    expect(into.textContent).toContain('Order 1042')
+    expect(into.querySelector('poly-link')).toBeNull()
+    expect(into.querySelector('a[href], [href]')).toBeNull()
+    expect(faults.map(({ path }) => path)).toEqual([
+      '$.root.children[0].props.href',
+      '$.root.children[1]',
+    ])
+    expect((await element.check()).faults.map(({ path }) => path)).toEqual([
+      '$.root.children[0].props.href',
+      '$.root.children[1]',
+      '$.root.children[1].props.href',
+    ])
+    // A change starts the drawing again, with the addresses.
+    element.addresses = 'allowed'
+    await vi.waitFor(
+      () => expect(into.querySelector('a[href="/orders/1042"]')).not.toBeNull(),
+      WAIT,
+    )
+    expect(into.textContent).toContain('Help')
   })
 })

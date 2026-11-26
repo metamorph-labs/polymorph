@@ -4,8 +4,9 @@ import { resolve } from 'node:path'
 import { validateSpec } from '@polymorph/spec/validate'
 import { describe, expect, it } from 'vitest'
 
-import { checkScreen } from './check'
-import { addressFault, addressListFault } from './urls'
+import { checkAnswer, checkScreen } from './check'
+import { parsePartial } from './partial'
+import { addressFault, addressListFault, ADDRESS_KEYS } from './urls'
 import { VOCABULARY } from './vocabulary'
 import { createScreen } from './walk'
 
@@ -329,5 +330,216 @@ describe('an address a screen may not hold', () => {
     ).faults.map((fault) => fault.path)
     expect(faults).toContain('$.root.children[0].props.nextHref')
     expect(faults).toContain('$.root.children[1].props.srcSet')
+  })
+})
+
+describe('a host that refuses addresses', () => {
+  const refused = { addresses: 'refused' } as const
+  const holding = (children: object[]) => ({
+    ...screen({ component: 'Stack', children }),
+    inputs: [{ name: 'picture', type: 'string' }],
+  })
+  const children = [
+    { component: 'Card', props: { title: 'Order', href: '/orders/1042' }, children: ['x'] },
+    { component: 'Avatar', props: { name: 'Ada', src: { $: 'picture' } } },
+    {
+      component: 'Breadcrumbs',
+      props: {
+        items: [
+          { $object: { label: 'Home', href: 'https://example.com/' } },
+          { $object: { label: 'Orders' } },
+        ],
+      },
+    },
+    {
+      component: 'List',
+      props: { label: 'Orders' },
+      children: [{ component: 'List.Item', props: { title: 'A', href: '#a' } }],
+    },
+    { component: 'Link', props: { href: '/help' }, children: ['Help'] },
+    { component: 'Markdown', children: ['See [the help](/help).'] },
+  ]
+  const document = holding(children)
+
+  it('reports every address the document writes or binds, and each member that needs one', () => {
+    expect(checkScreen(document).ok).toBe(true)
+    expect(checkScreen(document, refused).faults).toEqual([
+      {
+        path: '$.root.children[0].props.href',
+        message: '`href` takes an address, and this host takes none — leave `href` out',
+      },
+      {
+        path: '$.root.children[1].props.src',
+        message: '`src` takes an address, and this host takes none — leave `src` out',
+      },
+      {
+        path: '$.root.children[2].props.items[0].href',
+        message: '`href` takes an address, and this host takes none — leave `href` out',
+      },
+      {
+        path: '$.root.children[3].children[0].props.href',
+        message: '`href` takes an address, and this host takes none — leave `href` out',
+      },
+      {
+        path: '$.root.children[4]',
+        message:
+          '`Link` requires an address at `href`, and this host takes no address — compose the screen from the members the card lists',
+      },
+      {
+        path: '$.root.children[4].props.href',
+        message: '`href` takes an address, and this host takes none — leave `href` out',
+      },
+      {
+        path: '$.root.children[5]',
+        message:
+          '`Markdown` draws the links and pictures its text writes, and this host takes no address — compose the screen from the members the card lists',
+      },
+    ])
+  })
+
+  it('reports in the walk’s words, at the walk’s paths', () => {
+    // The walk reads no prop of a member it does not draw, so the Link's own `href` is left out.
+    const drawn = holding(children.filter((_, at) => at !== 4))
+    const pick = (faults: readonly { path: string; message: string }[]) =>
+      faults
+        .filter(({ message }) => /address/.test(message))
+        .map(({ path, message }) => ({ path, message }))
+        .sort((a, b) => a.path.localeCompare(b.path))
+    const walked = pick(
+      createScreen({
+        document: drawn,
+        vocabulary: VOCABULARY,
+        addresses: 'refused',
+        data: { picture: 'https://example.com/ada.png' },
+      }).faults,
+    )
+    expect(walked.length).toBe(5)
+    expect(pick(checkScreen(drawn, refused).faults)).toEqual(walked)
+  })
+
+  it('names a member that needs an address in a data type, with the field', () => {
+    const nav = screen({
+      component: 'SectionNav',
+      props: { label: 'On this page', items: [{ $object: { label: 'A' } }] },
+    })
+    expect(checkScreen(nav, refused).faults[0]?.message).toBe(
+      '`SectionNav` requires an address at `items` (`SectionNavItem.href`), and this host takes no address — compose the screen from the members the card lists',
+    )
+  })
+
+  it('reads every address key, as the walk does', () => {
+    for (const key of ADDRESS_KEYS) {
+      const keyed = screen({
+        component: 'DataTable',
+        props: {
+          label: 'Rows',
+          data: [{ $object: { [key]: '/a' } }],
+          columns: [],
+          getRowId: { $: 'rowId' },
+        },
+      })
+      const paths = checkScreen(
+        { ...keyed, inputs: [{ name: 'rowId', type: '(row: Row) => string' }] },
+        refused,
+      ).faults.map(({ path }) => path)
+      expect(paths, key).toContain(`$.root.props.data[0].${key}`)
+    }
+  })
+})
+
+describe('checkAnswer: a model’s whole answer', () => {
+  const text = JSON.stringify(inbox, null, 2)
+  const answer = [
+    'Here is the inbox.',
+    '',
+    '```json',
+    text,
+    '```',
+    '',
+    'It binds the tickets.',
+  ].join('\n')
+
+  it('is checkScreen for a whole answer, with the document, whether it is whole, and the prose', () => {
+    expect(checkAnswer(answer)).toEqual({
+      ok: true,
+      faults: [],
+      document: inbox,
+      complete: true,
+      prose: 'Here is the inbox.\n\nIt binds the tickets.',
+    })
+    const broken = answer.replace('"component": "Grid"', '"component": "Modal"')
+    expect(broken).not.toBe(answer)
+    expect(checkAnswer(broken).faults).toEqual(checkScreen(parsePartial(broken).document).faults)
+    expect(checkAnswer(answer, { members: ['Stack'] }).faults).toEqual(
+      checkScreen(inbox, { members: ['Stack'] }).faults,
+    )
+  })
+
+  it('reports an answer cut anywhere between its fence’s first backtick and the document’s last brace', () => {
+    const opening = answer.indexOf('```json')
+    const end = answer.indexOf(text) + text.length
+    let lawfulCuts = 0
+    for (let at = opening + 1; at < end; at += 1) {
+      const cut = answer.slice(0, at)
+      // The document a cut holds can be lawful as far as it goes, which `checkScreen` alone passes.
+      if (at % 50 === 0) {
+        const read = parsePartial(cut)
+        if (read.document !== undefined && checkScreen(read.document).ok) lawfulCuts += 1
+      }
+      const checked = checkAnswer(cut)
+      expect(checked.ok, `${at}`).toBe(false)
+      expect(checked.faults, `${at}`).toEqual([
+        {
+          path: '$',
+          message: expect.stringMatching(/^the answer ends before its document does/) as string,
+        },
+      ])
+      expect(checked.complete).toBe(false)
+    }
+    expect(lawfulCuts).toBeGreaterThan(0)
+    expect(checkAnswer(answer.slice(0, end)).ok).toBe(true)
+  }, 60_000)
+
+  it('says where the answer ends, in words a retry can carry', () => {
+    const cut = answer.slice(0, answer.indexOf('"children"'))
+    const { faults } = checkAnswer(cut)
+    expect(faults[0]?.message).toBe(
+      `the answer ends before its document does, inside \`${parsePartial(cut).cut ?? ''}\`: it was cut off, as at an output limit. Answer with the whole document, with fewer elements if it was long`,
+    )
+    expect(checkAnswer('Here it is:\n```json\n').faults[0]?.message).toBe(
+      'the answer ends before its document does, inside the fenced block that holds it: it was cut off, as at an output limit. Answer with the whole document, with fewer elements if it was long',
+    )
+  })
+
+  it('reports text that stops being JSON, and nothing the document so far lacks', () => {
+    const broken = '```json\n{"spec": "polymorph-screen/1", "root": nope}\n```'
+    const checked = checkAnswer(broken)
+    expect(checked.ok).toBe(false)
+    expect(checked.faults).toEqual([
+      {
+        path: '$',
+        message: `the answer stops being JSON at character ${broken.indexOf('nope')}: a value`,
+      },
+    ])
+  })
+
+  it('passes an answer that is prose only, with no document', () => {
+    expect(checkAnswer('I need the order number first.')).toEqual({
+      ok: true,
+      faults: [],
+      document: undefined,
+      complete: false,
+      prose: 'I need the order number first.',
+    })
+  })
+
+  it('takes the host’s addresses as checkScreen does', () => {
+    const linked = JSON.stringify(
+      screen({ component: 'Card', props: { title: 'A', href: '/a' }, children: ['x'] }),
+    )
+    expect(checkAnswer(linked).ok).toBe(true)
+    expect(checkAnswer(linked, { addresses: 'refused' }).faults.map(({ path }) => path)).toEqual([
+      '$.root.props.href',
+    ])
   })
 })

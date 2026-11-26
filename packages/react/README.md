@@ -49,7 +49,9 @@ It contains:
   ends: `parsePartial`'s `cut`) and how a member takes its children. This subpath draws what the
   core resolves: each node keyed by its path and memoized on it, so a longer document, new data or
   the reader's input mounts nothing twice, and each inside its own error boundary. A host that
-  reads the stream itself passes `document` with `parsePartial`'s `cut` and `open`. A server
+  reads the stream itself passes `document` with `parsePartial`'s `cut` and `open`. `allow` and
+  `addresses` (`refused` passes no address) are the host's list and policy, as the card and the
+  check take them. A server
   renders no error boundary, so the screen is drawn inside one Suspense boundary: a member that
   throws on the server (`renderToString`, `renderToPipeableStream`) leaves the screen's place
   for the browser to draw, empty or holding `fallback` when the host gives one, and the page around

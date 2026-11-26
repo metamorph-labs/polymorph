@@ -1,5 +1,6 @@
 import type { Registry } from '@polymorph/registry'
-import { renderRuntimeCard } from '@polymorph/registry/runtime-card'
+import { addressNeed, defaultMembers } from '@polymorph/registry/runtime-members'
+import { compactTable, expandTable } from '@polymorph/registry/screen-table'
 
 import { DEFAULT_SYSTEM } from '../plan'
 import { all, commands, Facts, skill, SkillFactError, type SkillFile } from './facts'
@@ -8,13 +9,13 @@ import { all, commands, Facts, skill, SkillFactError, type SkillFile } from './f
  * The skill for a screen a model writes while the product runs: the run-time card and the host's
  * rules in the model's prompt, the check and the retry on the server, the React renderer and
  * `<poly-screen>` on the page, the model's prose, what an action tells the host, an action with
- * consequences, and what a request costs. Each example in it was compiled against the sources or
- * run against them, the no-build page against the built files.
+ * consequences, refusing addresses, and what a request costs. Each example in it was compiled
+ * against the sources or run against them, the no-build page against the built files.
  */
 
 /**
- * The members the examples allow. None takes an address, so the examples obey the rule the text
- * states for a host that refuses links and pictures; `runtimeSkill` throws when one does.
+ * The members the examples allow. None needs an address, so the examples draw the same with
+ * `addresses: 'refused'`; `runtimeSkill` throws when one does.
  */
 const EXAMPLE_MEMBERS = [
   'Stack',
@@ -27,56 +28,13 @@ const EXAMPLE_MEMBERS = [
 ]
 
 /**
- * The props and data-type fields that take an address, as `ADDRESS_KEYS` in
- * `packages/screen/src/urls.ts` holds them. The CLI does not depend on `@polymorph/screen`, so
- * the set is written here, and `agents.test.ts` holds it to that file. A law in
- * `packages/screen/src/parity.test.ts` holds every prop the vocabulary types as an address to
- * one of these keys.
+ * The members React draws by default that a host refusing addresses cannot draw, by the rule the
+ * card, the check and the walk read (`addressNeed` in `@polymorph/registry/runtime-members`), on
+ * the table `@polymorph/screen` ships, which is the registry's compacted and expanded.
  */
-export const ADDRESS_KEYS = new Set(['avatar', 'href', 'nextHref', 'previousHref', 'src', 'srcSet'])
-
-/** The members whose props, or the data types their props take at any depth, hold an address. */
 function addressMembers(registry: Registry): string[] {
-  const types = new Map(registry.dataTypes.map((type) => [type.name, type]))
-  const reaches = (printed: string, seen: Set<string>): boolean =>
-    (printed.match(/\b[A-Z][A-Za-z0-9]*\b/g) ?? []).some((name) => {
-      const type = types.get(name)
-      if (type === undefined || seen.has(name)) return false
-      seen.add(name)
-      return type.fields.some((field) => ADDRESS_KEYS.has(field.name) || reaches(field.type, seen))
-    })
-  return [...registry.components, ...registry.exceptions.primitives]
-    .filter((member) => {
-      const parts = (member as { parts?: { props: { name: string; type: string }[] }[] }).parts
-      const props = [...member.props, ...(parts ?? []).flatMap((part) => part.props)]
-      return props.some((prop) => ADDRESS_KEYS.has(prop.name) || reaches(prop.type, new Set()))
-    })
-    .map((member) => member.name)
-}
-
-/**
- * The tokens the members section of a React card holds for `members`, at four characters to a
- * token as the card law counts them, floored to its leading digit: a bound the whole card is
- * over, which moves only when the vocabulary grows by a step of that size. The CLI does not
- * depend on `@polymorph/screen`, so the card's opening and output contract are not counted.
- */
-function cardTokensOver(registry: Registry, members: readonly string[]): string {
-  const section = renderRuntimeCard(registry, { framework: 'react', members: new Set(members) })
-  const tokens = section.length / 4
-  const step = 10 ** Math.floor(Math.log10(tokens))
-  return (Math.floor(tokens / step) * step).toLocaleString('en-US')
-}
-
-/** Every member and primitive the web draws in React, but the one that hosts another library's code. */
-function drawnInReact(registry: Registry): string[] {
-  return [...registry.components, ...registry.exceptions.primitives]
-    .filter(
-      (member) =>
-        member.platforms.web.status !== 'absent' &&
-        member.frameworks.react.status !== 'absent' &&
-        member.name !== 'ThirdParty',
-    )
-    .map((member) => member.name)
+  const table = expandTable(compactTable(registry))
+  return defaultMembers(table).filter((name) => addressNeed(table, name) !== null)
 }
 
 /** The example answer: the document a model writes for a refund, from the members above only. */
@@ -116,17 +74,16 @@ export function runtimeSkill(registry: Registry, run: string): SkillFile[] {
   const elements = (name: string) => f.x(name, '@polymorph/elements-ui/screen')
   const quoted = EXAMPLE_MEMBERS.map((name) => `'${name}'`).join(', ')
   const check = f.x('checkScreen', '@polymorph/screen/check')
+  const answered = f.x('checkAnswer', '@polymorph/screen/check')
   const partial = f.x('parsePartial', '@polymorph/screen/partial')
-  const overAll = cardTokensOver(registry, drawnInReact(registry))
-  const overFew = cardTokensOver(registry, EXAMPLE_MEMBERS)
   const addressed = addressMembers(registry)
   const leaks = EXAMPLE_MEMBERS.filter((name) => addressed.includes(name))
   if (leaks.length > 0) {
     throw new SkillFactError(
-      `the run-time examples allow ${leaks.join(', ')}, which take an address`,
+      `the run-time examples allow ${leaks.join(', ')}, which a host refusing addresses cannot draw`,
     )
   }
-  const refused = addressed.filter((name) => name !== 'Markdown').map((name) => f.m(name))
+  const refused = addressed.map((name) => f.m(name))
   const body = `
 # Draw a screen a model writes while the product runs
 
@@ -139,7 +96,7 @@ the form's values as data. Nothing is compiled.
 The work is in two places, and both are given the same list of members:
 
 - **The server that calls the model** builds the run-time card, sends it with the host's own
-  rules, checks each whole answer with ${check} and asks once more when it has faults.
+  rules, checks each whole answer with ${answered} and asks once more when it has faults.
 - **The page** draws the answer while it streams, with ${react('ScreenView')} or \`<poly-screen>\`.
   The renderer applies the member list and the run-time rules itself, so the page treats the
   document as untrusted whatever the server checked.
@@ -197,11 +154,12 @@ the ${f.m('ChatThread')} around the screen, the ${f.m('ConfirmDialog')} that con
 - With no list, every member the framework draws is allowed but ${f.m('ThirdParty')}, which holds
   whatever the host puts in it, and, in React, ${f.m('Toast')}.
 
-To refuse links and remote pictures, leave out every member that takes an address. No option of
-the card, the check or the renderers refuses an address and keeps its member. The members are
-${all(refused)}, and ${f.m('Markdown')}, which draws the links and pictures its text writes and has
-no prop that refuses them. ${f.m('Card')} is one for its ${f.p('Card', 'href')}: group content
-under a title with ${f.m('Stack')} and ${f.m('Heading')}, as the list above does.
+To refuse links and remote pictures, pass \`addresses: 'refused'\` beside the list: to the card and
+the check, as \`addresses\` on ${react('ScreenView')}, and as the \`addresses\` attribute of
+\`<poly-screen>\`. The card then lists no prop that takes an address, the check reports each one a
+document writes, and the renderer passes none: ${f.m('Card')} and ${f.part('List', 'Item')} are
+drawn without their \`href\`. A member that cannot be drawn without an address is left out of the
+card and refused: ${all(refused)}. The host's own data, bound whole, is passed as the host gave it.
 
 ## 4. Build the system prompt: the card, then the host's rules
 
@@ -259,8 +217,7 @@ ${REFUND}
 
 \`\`\`ts
 // ask.ts, on the server that calls the model.
-import { checkScreen } from '@polymorph/screen/check'
-import { parsePartial } from '@polymorph/screen/partial'
+import { checkAnswer } from '@polymorph/screen/check'
 
 // Stand-in: your call to the model. It sends CARD and RULES as the system prompt and \`turns\` as
 // the conversation, calls \`onText\` with the answer so far each time more arrives, and resolves
@@ -268,17 +225,13 @@ import { parsePartial } from '@polymorph/screen/partial'
 import { askModel, type Turn } from './model'
 import { MEMBERS } from './screen-members'
 
-/** Answers the conversation, and asks once more, with the faults, when its document is not lawful. */
+/** Answers the conversation, and asks once more, with the faults, when the answer is not lawful. */
 export async function answer(turns: Turn[], onText: (text: string) => void): Promise<Turn[]> {
   const first = await askModel(turns, onText)
   const answered: Turn[] = [...turns, { role: 'assistant', content: first }]
-  const read = parsePartial(first)
-  // No fence and no object: the answer is prose only. It is lawful, and there is no screen.
-  if (read.document === undefined) return answered
-  const { ok, faults } = checkScreen(read.document, { members: MEMBERS })
-  if (ok && read.complete) return answered
+  const { ok, faults } = checkAnswer(first, { members: MEMBERS })
+  if (ok) return answered
   const lines = faults.map((fault) => \`\${fault.path}: \${fault.message}\`)
-  if (!read.complete) lines.push('$: the answer ended before the document closed')
   const retry: Turn[] = [
     ...answered,
     { role: 'user', content: \`Your screen has these faults. Answer with the corrected document.\\n\${lines.join('\\n')}\` },
@@ -288,15 +241,18 @@ export async function answer(turns: Turn[], onText: (text: string) => void): Pro
 }
 \`\`\`
 
-- ${partial} reads the document from the first fence marked \`json\` or unmarked, or from the
-  first brace that opens an object when the answer has no fence. For an answer with neither,
-  \`document\` is \`undefined\`: the answer is prose, which is lawful and needs no retry.
-- \`complete\` is whether the document's outermost brace has closed. An answer that ends inside the
-  document, at a token limit or a dropped stream, is cut short. The check reads only what arrived,
-  which can be lawful as far as it goes, so the host names the cut itself.
-- ${check} returns \`{ ok, faults }\`, each fault \`{ path, message }\` in words a model corrects from
-  (\`\`no component called \`Modal\` — did you mean \`Dialog\`, …?\`\`). It reads what the renderer
-  does not: variant and tone cells, icon roles and the usage rules.
+- ${answered} takes the whole answer as text and the host's options, and returns \`ok\`, \`faults\`,
+  \`document\`, \`complete\` and \`prose\`. It reads the document as the renderer does
+  (${partial}): the first fence marked \`json\` or unmarked, or the first brace that opens an
+  object. An answer with neither is prose, which is lawful: \`document\` is \`undefined\`.
+- An answer that ends before its document does, at a token limit or a dropped stream, is one fault
+  at \`$\`: \`the answer ends before its document does\`, in words that ask for the whole document
+  again. Call it once the answer has ended; while it streams, a document that has not closed is
+  normal.
+- Each fault is \`{ path, message }\` in words a model corrects from
+  (\`\`no component called \`Modal\` — did you mean \`Dialog\`, …?\`\`). The check reads what the
+  renderer does not: variant and tone cells, icon roles and the usage rules. ${check} checks a
+  document object the host already holds.
 
 ## 7. On the page: draw the prose and the screen while they stream
 
@@ -305,7 +261,6 @@ import { useState } from 'react'
 import * as members from '@polymorph/react-ui'
 import { parsePartial, ScreenView, type ScreenAction } from '@polymorph/react/screen'
 
-import { proseOf } from './prose'
 import { MEMBERS } from './screen-members'
 // Stand-in: posts the person's message, or an action, to your server, which adds it to the
 // conversation and calls \`answer\` (step 6). It calls \`onText\` with the answer so far as it
@@ -328,14 +283,11 @@ export function Assistant({ data }: { data: Record<string, unknown> }) {
     void send(\`An action from the screen: \${JSON.stringify(action)}\`)
   }
 
-  const { document } = parsePartial(answer)
-  const prose = proseOf(answer, document)
+  const { document, prose, fence } = parsePartial(answer)
 
   return (
     <Stack gap={4}>
-      {prose !== '' && (
-        <StreamingText streaming={!done && document === undefined}>{prose}</StreamingText>
-      )}
+      {prose !== '' && <StreamingText streaming={!done && fence !== 'open'}>{prose}</StreamingText>}
       {document !== undefined && (
         <ScreenView
           text={answer}
@@ -357,9 +309,10 @@ export function Assistant({ data }: { data: Record<string, unknown> }) {
   list, a prop the member lacks, a refused address and a value where a function goes are left out
   and reported. Without \`allow\` it draws every member React draws but ${f.m('ThirdParty')} and
   ${f.m('Toast')}, so the page gets the server's list.
-- No export returns the prose. \`proseOf\` in [references/api.md](references/api.md) takes the
-  text outside the fence. ${f.m('StreamingText')} draws it as it is. ${f.m('Markdown')} draws the
-  links its text writes, so it is for a host that allows links.
+- \`prose\` is the text outside the fenced block that holds the document, as the reader finds it:
+  the text before the block, and after it once the block closes. \`fence\` is \`open\` from the
+  block's first backtick to its closing line. ${f.m('StreamingText')} draws the prose as it is.
+  ${f.m('Markdown')} draws the links its text writes, so it is for a host that allows links.
 - Draw ${react('ScreenView')} only when the answer holds a document. Given none, with \`streaming\`
   off, it reports \`the document has no root element\` at \`$.root\`.
 - \`streaming\` is on while the answer arrives and off when it ends, so an answer cut short reports
@@ -429,7 +382,7 @@ run-time document differs from a spec \`emit\` compiles.
 
 | Part | What it costs |
 | --- | --- |
-| The card | input on every request: over ${overFew} tokens for the list in step 3, over ${overAll} with every member React draws, at four characters to a token. After the first request a prompt cache holds it (step 4) |
+| The card | input on every request: measure it with the command below. After the first request a prompt cache holds it (step 4) |
 | The host's rules | input on every request, held in the cache with the card |
 | The conversation | input on every request: each earlier message and answer, documents included |
 | The answer | output: the prose and the document the model writes |
@@ -437,12 +390,15 @@ run-time document differs from a spec \`emit\` compiles.
 | An action | nothing, unless the host sends it to the model. One the host handles itself, such as \`requestRefund\`, costs no model call; telling the model the outcome is one request |
 
 A request's price is these counts at the provider's rates for input, cached input and output; the
-provider's response reports each count. Measure the card for your list from a directory where
-\`@polymorph/screen\` is installed (step 2), as the import fails anywhere else:
+provider's response reports each count. The card's length depends on the release, the framework,
+the members and \`--addresses\`. This prints the card for the list in step 3, the text
+\`runtimeCard\` returns for the same options, and its length in characters on stderr; a provider's
+tokenizer reads about four characters to a token:
 
-\`\`\`sh
-node --input-type=module -e "import { runtimeCard } from '@polymorph/screen/card'; console.log(runtimeCard({ members: [${quoted}] }).length)"
-\`\`\`
+${commands(run, `card --runtime --framework react --members ${EXAMPLE_MEMBERS.join(',')}`)}
+
+Its standard output is the whole card, so a server that runs no JavaScript writes it to a file
+once for each release (\`> card.md\`) and sends that.
 
 The page pays once, in what it loads:
 
@@ -458,13 +414,13 @@ The page pays once, in what it loads:
       contents: skill(
         'polymorph-runtime-screen',
         'Let a product answer with real interface while it runs. A model writes a ' +
-          'polymorph-screen/1 document, the server checks it with checkScreen, the page draws it ' +
+          'polymorph-screen/1 document, the server checks it with checkAnswer, the page draws it ' +
           'as it streams with ScreenView from @polymorph/react/screen or the <poly-screen> ' +
           'element from @polymorph/elements-ui/screen, and each press or submit becomes an ' +
           'action the product handles. Use when asked for generative UI, to render a model or ' +
           'agent response as components, to let an assistant show a form, a choice or a ' +
-          'confirmation, or when code imports @polymorph/screen, runtimeCard, parsePartial, ' +
-          'ScreenView or loadScreen. Covers the members a model may use and refusing links and ' +
+          'confirmation, or when code imports @polymorph/screen, runtimeCard, checkAnswer, ' +
+          'parsePartial, ScreenView or loadScreen. Covers the members a model may use and refusing links and ' +
           'images, the card and the host’s rules in the system prompt, checking and asking ' +
           'again, drawing the prose and the screen while they stream, actions and values, ' +
           'confirming an action with consequences, and what a request costs.',
@@ -499,8 +455,8 @@ them uses it, as a page with no build does. The elements read the theme the page
 member does.
 
 Like \`ScreenView\`, it applies its \`members\` and the run-time rules as it draws, whatever the server
-checked, and it draws only the document. Show the prose with \`proseOf\` (references/api.md) in an
-element of the page's own, as text.
+checked, and it draws only the document. Show the prose, \`parsePartial(text).prose\`, in an element
+of the page's own, as text.
 
 ## In an app with a bundler
 
@@ -549,7 +505,7 @@ On the server, \`answer\` from the skill's step 6 builds the card and checks for
 
 \`\`\`ts
 const CARD = runtimeCard({ framework: 'elements', members: MEMBERS })
-const { ok, faults } = checkScreen(read.document, { framework: 'elements', members: MEMBERS })
+const { ok, faults } = checkAnswer(first, { framework: 'elements', members: MEMBERS })
 \`\`\`
 
 \`@polymorph/elements-ui/screen\` exports the same functions bound to the elements, for code in the
@@ -599,7 +555,7 @@ elements, so they take no \`framework\`:
 <script type="module">
   import { loadScreen } from './polymorph/polymorph.js'
 
-  const { runtimeCard, checkScreen } = await loadScreen()
+  const { runtimeCard, checkAnswer } = await loadScreen()
   const card = runtimeCard({ members: [${quoted}] })
 </script>
 \`\`\`
@@ -614,13 +570,16 @@ elements, so they take no \`framework\`:
   document, whose faults are told again and whose unfinished elements are not drawn.
 - \`members\` is an attribute (names separated by spaces, or a JSON array) and a property. A value
   that is not a list of names allows no member, and is a fault at the path \`members\`.
+- \`addresses="refused"\` (an attribute and a property) passes no address and draws no member that
+  needs one, as the skill's step 3 says. A change to \`members\` or \`addresses\` draws anew.
 - \`poly-action\` carries \`{ name, args, values, changed }\`, as an action does in React. A listener
   hands the member a promise with \`event.waitUntil(promise)\`, while the event is dispatched:
   ${f.m('ConfirmDialog')} stays open and busy until it settles.
 - \`poly-fault\` carries \`{ path, message, component? }\`, once for each fault. \`faults="inline"\`
   draws each fault in its node's place, for a page under construction.
 - \`values\`, \`changed\` and \`check()\` read the drawing. \`check()\` is a promise of what the check
-  says of the document it draws, with its members.
+  says of the document it draws, with its members and addresses; for \`text\` once \`streaming\` is
+  off, it is \`checkAnswer\`'s, so an answer cut short is a fault.
 - A property set before the element is defined is read when it is.
 `
 }
@@ -838,6 +797,9 @@ not arrived is a fault.
 | A shared or inherited control name | \`values\` holds one control, or none |
 | A member that threw as it rendered | Its node is drawn as nothing; the rest of the screen draws |
 | Text that stops being JSON, at \`$\` | The answer broke off; the document holds what came before it |
+| \`the answer ends before its document does\`, at \`$\` | ${f.x('checkAnswer', '@polymorph/screen/check')} only: the answer was cut off. Ask again with the fault |
+| \`… takes an address, and this host takes none\` | Under \`addresses: 'refused'\`: not passed; the element is drawn without it |
+| \`… requires an address at …\`, \`… draws the links and pictures its text writes\` | Under \`addresses: 'refused'\`: drawn as nothing |
 | \`the document has no root element\`, at \`$.root\` | The answer ended with no document, or none that holds a root. Draw the renderer only for an answer that holds one |
 
 A fault in the root element leaves nothing to draw. \`faults="inline"\` draws each fault in its
@@ -851,8 +813,13 @@ A string at a prop or object key that takes an address (\`avatar\`, \`href\`, \`
 fault and is not passed. An address with a control character anywhere is refused whole, and spaces
 at either end are stripped before the scheme is read. Each address in a \`srcSet\` is held to the
 same rule. The rule covers the document's values and a value a binding puts directly at an address;
-it does not reach into an object the host binds whole. No option refuses every address: a host
-that allows no link and no picture leaves out the members that take one (the skill's step 3).
+it does not reach into an object the host binds whole.
+
+With \`addresses: 'refused'\` (the skill's step 3), any value the document writes or binds at those
+keys is a fault and is not passed, whatever its scheme, and the element is drawn without it. A
+member that requires an address, in a prop or in a required field of the data type a prop takes,
+and ${f.m('Markdown')}, which draws the links and pictures its text writes, are left out of the card
+and drawn as nothing. A host that names one in its list is refused it all the same.
 
 ## Limits
 
@@ -871,7 +838,7 @@ proportion to what it reads.
 - The host's data inside a bound value: a list of the host's objects is passed as the host gave it.
 - Where a link leads, and where a picture or a recording loads from.
 - What ${f.m('Markdown')} draws from its text: links and pictures at \`http:\`, \`https:\`, \`mailto:\`
-  or no scheme. No other member draws Markdown.
+  or no scheme. No other member draws Markdown, and a host that refuses addresses draws none.
 - Ids and names, which can match the host's own. A control inside the host's \`<form>\` posts under
   the document's name.
 - Who called an action (the skill's step 8).
@@ -910,21 +877,24 @@ only what it needs.
 | Import | Exports | Loads |
 | --- | --- | --- |
 | \`@polymorph/screen/partial\` | ${f.x('parsePartial', '@polymorph/screen/partial')}, ${f.x('MAX_DEPTH', '@polymorph/screen/partial')}, the type ${f.x('PartialDocument', '@polymorph/screen/partial')} | nothing else |
-| \`@polymorph/screen/check\` | ${f.x('checkScreen', '@polymorph/screen/check')} | the vocabulary table and the validator |
+| \`@polymorph/screen/check\` | ${f.x('checkAnswer', '@polymorph/screen/check')}, ${f.x('checkScreen', '@polymorph/screen/check')} | the vocabulary table, the validator and the reader |
 | \`@polymorph/screen/card\` | ${f.x('runtimeCard', '@polymorph/screen/card')}, ${f.x('outputContract', '@polymorph/screen/card')} | the table and the card |
 | \`@polymorph/screen/walk\` | ${walk('createScreen')}, ${walk('materialize')}, the types ${walk('ScreenAction')}, ${walk('ScreenFault')}, ${walk('ScreenNode')}, ${walk('ScreenOptions')}, ${walk('ScreenUpdate')} | no table: a renderer hands it one |
 | \`@polymorph/screen/vocabulary\` | ${f.x('VOCABULARY', '@polymorph/screen/vocabulary')}, the table generated from the release's registry | the table |
 | \`@polymorph/screen\` | all of the above, the limits and the helpers the renderers share | everything |
 
-\`checkScreen(document, options)\`, \`runtimeCard(options)\` and \`outputContract(options)\` take:
+\`checkAnswer(text, options)\`, \`checkScreen(document, options)\`, \`runtimeCard(options)\` and
+\`outputContract(options)\` take:
 
 | Option | What it is |
 | --- | --- |
 | \`framework\` | \`react\` (the default), \`vue\`, \`svelte\`, \`solid\`, \`angular\` or \`elements\`: the default members and which are absent |
 | \`members\` | the names the host allows; the framework's default when absent |
+| \`addresses\` | \`allowed\` (the default) or \`refused\`: no address passes, and no member that needs one |
 
-No option refuses addresses while keeping the members that take them. \`checkScreen\` returns
-\`{ ok, faults }\`, each fault \`{ path, message }\`. \`outputContract\` is the card's last part alone.
+\`checkScreen\` returns \`{ ok, faults }\`, each fault \`{ path, message }\`. \`checkAnswer\` returns
+those and \`document\`, \`complete\` and \`prose\`, with an answer cut short as a fault at \`$\`.
+\`outputContract\` is the card's last part alone.
 
 \`parsePartial(text)\` returns:
 
@@ -935,10 +905,12 @@ No option refuses addresses while keeping the members that take them. \`checkScr
 | \`open\` | the path of the string still being written, or \`null\` |
 | \`cut\` | the path of the innermost value the text ends inside, or \`null\` |
 | \`error\` | \`{ at, message }\` where the text stops being JSON, or \`null\` |
+| \`prose\` | the text outside the block that holds the document: before it, and after it once it closes; all the text when there is no document |
+| \`fence\` | \`open\` from the block's first backtick until its closing line, then \`closed\`; \`null\` with no fence |
 
 It reads the first fence marked \`json\`, or unmarked, and the first brace that opens an object when
 the text has no fence. A name, a number, \`true\`, \`false\`, \`null\` and a binding are left out until
-whole; a string a person reads is kept while it is written. It returns no prose.
+whole; a string a person reads is kept while it is written.
 
 \`createScreen(options)\` is for a renderer of your own: \`document\`, \`vocabulary\`, \`framework\`,
 \`members\`, \`data\`, \`fill\` (\`absent\` or \`sample\`), \`streaming\`, \`open\`, \`cut\`, \`onAction\` and
@@ -947,40 +919,12 @@ whole; a string a person reads is kept while it is written. It returns no prose.
 
 ## The model's prose
 
-No export returns the text around the document. This helper takes it, for the page to draw as text
-beside the screen. A line of three backticks opens and closes a fence; the card asks for one fenced
-block, so the first is the document's.
-
-\`\`\`ts
-// prose.ts
-
-/** A line that opens or closes a fenced block. */
-const FENCE = /^[ \\t]*\`{3}.*$/gm
-
-/** A last line of one or two backticks: a fence still being written. */
-const OPENING = /(?:^|\\n)[ \\t]*\`{1,2}$/
-
-/**
- * The text of a model's answer outside the fenced block that holds its document: the prose before
- * it, and after it once it closes. \`document\` is what \`parsePartial\` read from the same answer.
- */
-export function proseOf(answer: string, document: unknown): string {
-  const fence = new RegExp(FENCE)
-  const open = fence.exec(answer)
-  // No fence: prose, unless the document was written bare.
-  if (open === null) return document === undefined ? answer.replace(OPENING, '').trim() : ''
-  const close = fence.exec(answer)
-  const after = close === null ? '' : answer.slice(close.index + close[0].length)
-  return [answer.slice(0, open.index), after]
-    .map((part) => part.trim())
-    .filter((part) => part !== '')
-    .join('\\n\\n')
-}
-\`\`\`
-
-Draw it with ${f.m('StreamingText')}, which draws text as it is, with
-${f.p('StreamingText', 'streaming')} on until the document begins. ${f.m('Markdown')} draws the links
-and pictures its text writes and has no prop that refuses them.
+\`parsePartial(answer).prose\` is the text around the document, for the page to draw as text beside
+the screen. A fenced block in another language is prose, as the reader skips it. A last line that
+may still become the document's fence (one to three backticks) is left out until it is whole. Draw
+the prose with ${f.m('StreamingText')}, with ${f.p('StreamingText', 'streaming')} on while \`fence\` is
+not \`open\`. ${f.m('Markdown')} draws the links and pictures its text writes, so it is for a host
+that allows them.
 
 ## \`@polymorph/react/screen\`
 
@@ -999,6 +943,7 @@ the types \`ScreenAction\`, \`ScreenFault\`, ${react('ScreenViewProps')} and ${r
 | \`streaming\` | whether more is to come. With \`text\`, whether its document has not closed, unless given. Off while chunks still arrive, each chunk is a new whole document whose faults are told again |
 | \`data\` | the host's data by input name |
 | \`allow\` | the members a document may use. Read when the screen is made. Absent, every member React draws but \`ThirdParty\` and \`Toast\` |
+| \`addresses\` | \`allowed\` (the default) or \`refused\`. Read when the screen is made |
 | \`fill\` | \`absent\` (the default) or \`sample\`, which fills an input with no data from its type |
 | \`onAction(action)\` | told each action; a promise it returns is what a member waits on |
 | \`onFault(fault)\` | told each fault once |
@@ -1045,12 +990,12 @@ so far.
 ## \`@polymorph/elements-ui/screen\`
 
 Importing it defines \`<poly-screen>\` and every element. It exports ${elements('drawScreen')},
-\`checkScreen\`, \`runtimeCard\`, \`outputContract\` and \`parsePartial\` bound to the elements,
+\`checkAnswer\`, \`checkScreen\`, \`runtimeCard\`, \`outputContract\` and \`parsePartial\` bound to the elements,
 ${elements('definePolyScreen')}, ${elements('PolyScreen')}, ${elements('SCREEN_TAG')},
 ${elements('ACTION_EVENT')} (\`'poly-action'\`) and ${elements('FAULT_EVENT')} (\`'poly-fault'\`).
 
 \`drawScreen(container, options)\` appends the drawing to a plain element. It takes \`document\`,
-\`data\`, \`streaming\`, \`open\`, \`cut\`, \`members\`, \`faults\`, \`onAction\` and \`onFault\`, and no
+\`data\`, \`streaming\`, \`open\`, \`cut\`, \`members\`, \`addresses\`, \`faults\`, \`onAction\` and \`onFault\`, and no
 \`text\`: a host that streams passes what \`parsePartial\` returned. It returns \`values\`, \`changed\`,
 \`faults\`, \`update(change)\`, \`check()\` and \`dispose()\`.
 
@@ -1063,9 +1008,10 @@ ${elements('ACTION_EVENT')} (\`'poly-action'\`) and ${elements('FAULT_EVENT')} (
 | \`data\` (property) | the host's data by input name |
 | \`streaming\` (attribute and property) | more of the document is to come |
 | \`members\` (attribute and property) | the members the host allows: names separated by spaces, or a JSON array |
+| \`addresses\` (attribute and property) | \`allowed\` (the default) or \`refused\` |
 | \`faults\` (attribute and property) | \`hidden\` (the default) or \`inline\` |
 | \`values\`, \`changed\` (properties, read only) | each named control's value, and the names the person changed |
-| \`check()\` (method) | a promise of what the check says of the document it draws |
+| \`check()\` (method) | a promise of what the check says of the document it draws; for \`text\` once \`streaming\` is off, of the answer |
 
 | Event | \`detail\` |
 | --- | --- |
@@ -1077,20 +1023,23 @@ Both bubble and are composed.
 ## \`loadScreen()\`
 
 \`polymorph.js\` and \`polymorph-all.js\` export ${f.x('loadScreen', 'packages/elements-ui/src/cdn/polymorph.ts')}.
-It resolves to \`drawScreen\`, \`parsePartial\`, \`checkScreen\`, \`runtimeCard\` and \`outputContract\`,
-bound to the elements.
+It resolves to \`drawScreen\`, \`parsePartial\`, \`checkAnswer\`, \`checkScreen\`, \`runtimeCard\` and
+\`outputContract\`, bound to the elements.
 
 ## The tools while you build
 
-Save an answer's document to a file to look at it:
+Print the run-time card, or save an answer's document to a file to look at it:
 
-${commands(run, `render answer.json --system ${DEFAULT_SYSTEM} --data data.json`, 'validate answer.json --framework react', 'component FormField --framework react')}
+${commands(run, 'card --runtime --framework react --members Stack,Card,Text,Button --addresses refused', `render answer.json --system ${DEFAULT_SYSTEM} --data data.json`, 'validate answer.json --framework react', 'component FormField --framework react')}
+
+- \`card --runtime\` prints the card \`runtimeCard\` builds for the same \`--framework\` (\`react\` or
+  \`elements\`), \`--members\` and \`--addresses\`, and its length in characters on stderr.
 
 - \`render\` draws it with the React members, every member allowed, and reports layout faults.
   \`--data\` takes a JSON file of the host's data by input name. It does not apply the host's list
   or report a run-time fault, such as a refused address.
 - \`validate\` checks it as \`emit\` would: names, props, values, cells and usage rules. It does not
   apply the host's list or the run-time rules; only \`checkScreen\` does.
-- \`component\` prints what a member takes. No verb prints the run-time card.
+- \`component\` prints what a member takes.
 `
 }

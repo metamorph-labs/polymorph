@@ -25,7 +25,9 @@
  *
  * The text may be a model's answer: prose, then a fenced `json` block. The
  * document is read from the first fence marked `json` (or unmarked), and from
- * the first brace that opens an object when the text has no fence.
+ * the first brace that opens an object when the text has no fence. The text
+ * outside that block is the answer's prose (`prose`), found by the same reading,
+ * so the prose and the document never overlap.
  *
  * Objects and lists nested deeper than `MAX_DEPTH` are where the text stops
  * being read: the document is cut before the bracket that goes too deep, and
@@ -59,6 +61,29 @@ export interface PartialDocument {
   cut: string | null
   /** Where the text stops being JSON before it ends, and why. The document holds what came before. */
   error: { at: number; message: string } | null
+  /**
+   * The answer's text outside the block that holds the document, each part
+   * without the spaces and line breaks at its ends, and two parts joined by a
+   * blank line:
+   *
+   *  - with a fenced block, the text before its opening line, and the text
+   *    after its closing line once that line has begun;
+   *  - with a document written with no fence, the text before its first
+   *    brace, and the text after its last once it has closed;
+   *  - with no document, all of the text, but a last line that may still
+   *    become the opening line of the document's fence (one or two
+   *    backticks, or three and what follows them on the line).
+   *
+   * A fenced block in another language is prose, as the reader skips it.
+   */
+  prose: string
+  /**
+   * The fenced block that holds the document: `open` from its opening line, or
+   * from a last line that may still become one, until its closing line
+   * begins; then `closed`. `null` for a document written with no fence, and
+   * for text that has no such block.
+   */
+  fence: 'open' | 'closed' | null
 }
 
 /** A value the cut leaves out. */
@@ -114,8 +139,36 @@ class Stop extends Error {}
  */
 const FENCE = /^[ \t]*```[ \t]*(?![ \t])([^\s`]*)(?![^\s`])[^\n]*\n/gm
 
-/** Where the document starts in a model's answer, or -1 before it does. */
-function documentStart(text: string): number {
+/**
+ * A last line that may still become a fence's opening line: one or two
+ * backticks, or three and whatever follows them on the line. A line such as
+ * `` `code` and more `` cannot, and is prose.
+ */
+const FENCE_BEGUN = /^[ \t]*(?:`{1,2}|```[^\n]*)$/
+
+/** A fence's closing line, from its first character to its line break or the end of the text. */
+const CLOSING = /^[ \t]*```[^\n]*(?:\n|$)/gm
+
+/** Where a model's answer holds its document. */
+interface Start {
+  /** The document's first brace, or -1 before it. */
+  brace: number
+  /**
+   * Where the block that holds the document begins: its fence's opening line,
+   * a last line that may still become one, or the first brace of a document
+   * written with no fence. -1 when the text holds no such block.
+   */
+  block: number
+  /** Whether the block is a fence, or a line that may still become one. */
+  fenced: boolean
+  /** Where the text after the fence's opening line begins, for a fence whose line has ended. */
+  after: number
+}
+
+const NO_START: Start = { brace: -1, block: -1, fenced: false, after: -1 }
+
+/** Where the document starts in a model's answer, and the block that holds it. */
+function documentStart(text: string): Start {
   const fence = new RegExp(FENCE)
   let inside = false
   for (const match of text.matchAll(fence)) {
@@ -125,18 +178,67 @@ function documentStart(text: string): number {
       continue
     }
     if (info === '' || info === 'json') {
-      const brace = text.indexOf('{', (match.index ?? 0) + match[0].length)
-      return brace
+      const block = match.index ?? 0
+      const after = block + match[0].length
+      return { brace: text.indexOf('{', after), block, fenced: true, after }
     }
     inside = true
   }
   // A fence whose line has not ended yet starts the document's block: wait for it, rather than
-  // read a brace in the prose before it.
-  const last = text.slice(text.lastIndexOf('\n') + 1)
-  if (/^[ \t]*`/.test(last)) return -1
+  // read a brace in the prose before it. Inside a block in another language, the line is that
+  // block's own closing line, and the reader waits for it too.
+  const lineStart = text.lastIndexOf('\n') + 1
+  if (FENCE_BEGUN.test(text.slice(lineStart))) {
+    return inside ? NO_START : { brace: -1, block: lineStart, fenced: true, after: -1 }
+  }
   // A brace that opens an object: a member's name, a closing brace or the end of the text follows
   // it. A brace in prose (`{ braces }`) does not.
-  return /\{[ \t\r\n]*(?:"|\}|$)/.exec(text)?.index ?? -1
+  const brace = /\{[ \t\r\n]*(?:"|\}|$)/.exec(text)?.index ?? -1
+  return brace === -1 ? NO_START : { brace, block: brace, fenced: false, after: -1 }
+}
+
+/** The parts of the text that are prose, each trimmed, joined by a blank line. */
+const proseOf = (...parts: string[]): string =>
+  parts
+    .map((part) => part.trim())
+    .filter((part) => part !== '')
+    .join('\n\n')
+
+/**
+ * Where a fence's closing line ends, searched from `from`: the end of the
+ * document, or where its text stops being JSON. A closing line is any line
+ * that starts with three backticks, as the reader reads a fence in another
+ * language (`FENCE`). Three backticks and nothing more may also follow the
+ * document's closing brace on its own line. -1 while there is none.
+ */
+function closingEnd(text: string, from: number): number {
+  const same = /[ \t]*```[ \t]*(?:\n|$)/y
+  same.lastIndex = from
+  const inline = same.exec(text)
+  if (inline !== null) return from + inline[0].length
+  const closing = new RegExp(CLOSING)
+  closing.lastIndex = from
+  const line = closing.exec(text)
+  return line === null ? -1 : line.index + line[0].length
+}
+
+/**
+ * The prose and the fence of an answer whose block starts at `start`. `end` is
+ * where the document's text ends: after its closing brace, where it stops
+ * being JSON, or `-1` while it is still being written.
+ */
+function around(text: string, start: Start, end: number): Pick<PartialDocument, 'prose' | 'fence'> {
+  if (start.block === -1) return { prose: proseOf(text), fence: null }
+  const before = text.slice(0, start.block)
+  if (!start.fenced) {
+    return { prose: proseOf(before, end === -1 ? '' : text.slice(end)), fence: null }
+  }
+  // A fence whose opening line has ended closes after the document, or, before its first brace,
+  // after the opening line.
+  const from = start.brace === -1 ? start.after : end
+  const closed = from === -1 ? -1 : closingEnd(text, from)
+  if (closed === -1) return { prose: proseOf(before), fence: 'open' }
+  return { prose: proseOf(before, text.slice(closed)), fence: 'closed' }
 }
 
 /** Sets a member as the object's own, `__proto__` included, as `JSON.parse` does. */
@@ -154,9 +256,28 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 export function parsePartial(text: string): PartialDocument {
   // A host's text may arrive as anything; what is not text holds no document yet.
-  const start = typeof text === 'string' ? documentStart(text) : -1
+  if (typeof text !== 'string') {
+    return {
+      document: undefined,
+      complete: false,
+      open: null,
+      cut: null,
+      error: null,
+      prose: '',
+      fence: null,
+    }
+  }
+  const found = documentStart(text)
+  const start = found.brace
   if (start === -1) {
-    return { document: undefined, complete: false, open: null, cut: null, error: null }
+    return {
+      document: undefined,
+      complete: false,
+      open: null,
+      cut: null,
+      error: null,
+      ...around(text, found, -1),
+    }
   }
 
   let at = start
@@ -434,11 +555,16 @@ export function parsePartial(text: string): PartialDocument {
     }
   }
   const document = parsed.value === OMIT ? undefined : parsed.value
+  // Where the document's text ends: after its closing brace, or where it stops being JSON. The
+  // compiler cannot see that `fail` sets `error`.
+  const failed = error as PartialDocument['error']
+  const end = parsed.whole ? at : (failed?.at ?? -1)
   return {
     document: isRecord(document) || document === undefined ? document : undefined,
     complete: parsed.whole,
     open: parsed.value === OMIT ? null : parsed.open,
     cut: parsed.whole ? null : cutAt,
     error,
+    ...around(text, found, end),
   }
 }

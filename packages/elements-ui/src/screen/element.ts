@@ -1,5 +1,5 @@
 import type { ScreenCheck } from '@polymorph/screen/check'
-import type { JsonValue } from '@polymorph/screen'
+import type { AddressPolicy, JsonValue } from '@polymorph/screen'
 
 import type { FaultDisplay } from './draw'
 import type { Controller, ScreenState } from './drawing'
@@ -18,10 +18,12 @@ import type { Controller, ScreenState } from './drawing'
  *   input name. `streaming` (attribute and property) says more of the
  *   document is to come. `members` (attribute, a JSON array or names separated
  *   by spaces, and property) is the members the host allows; a value that
- *   cannot be read allows none and is a fault at the path `members`. `faults`
- *   (attribute and property) is `hidden`, the default, or `inline`, which draws
- *   a fault in its node's place. A property set before the element is defined
- *   is read when it is.
+ *   cannot be read allows none and is a fault at the path `members`.
+ *   `addresses` (attribute and property) is `allowed`, the default, or
+ *   `refused`, which passes no address the document writes or binds and draws
+ *   no member that needs one. `faults` (attribute and property) is `hidden`,
+ *   the default, or `inline`, which draws a fault in its node's place. A
+ *   property set before the element is defined is read when it is.
  * - **Events.** `poly-action` when a member calls one of the document's
  *   callback inputs, with `detail` `{ name, args, values, changed }`
  *   (`changed` names the controls the person changed); a listener hands
@@ -30,7 +32,9 @@ import type { Controller, ScreenState } from './drawing'
  *   and are composed.
  * - **Script.** `values` is each named control's current value, and
  *   `changed` the names of those the person changed. `check()`
- *   resolves to what `checkScreen` says of the document it draws.
+ *   resolves to what `checkScreen` says of the document it draws, and, for
+ *   `text` once `streaming` is off, what `checkAnswer` says of the answer, so
+ *   an answer that ended before its document did is a fault.
  * - **Box.** It draws in the light DOM and, while it draws, carries the custom
  *   state `poly-host`, which the foundation's host rule gives `display:
  *   contents`: the screen lays out as content of the element's parent, as a
@@ -48,7 +52,7 @@ const loadDrawing = () => import('./drawing')
 const loadCheck = () => import('./check')
 
 /** The properties a page may set before the element is defined. */
-const PROPERTIES = ['spec', 'text', 'data', 'streaming', 'members', 'faults'] as const
+const PROPERTIES = ['spec', 'text', 'data', 'streaming', 'members', 'addresses', 'faults'] as const
 
 /** `HTMLElement`, or a stand-in where there is no DOM, so the module loads in Node. */
 const Base: typeof HTMLElement =
@@ -92,9 +96,12 @@ function membersOf(value: string | null): Members {
 
 const displayOf = (value: unknown): FaultDisplay => (value === 'inline' ? 'inline' : 'hidden')
 
+/** The address policy a page gave: `refused`, or `allowed` for anything else. */
+const policyOf = (value: unknown): AddressPolicy => (value === 'refused' ? 'refused' : 'allowed')
+
 export class PolyScreen extends Base {
   static get observedAttributes(): string[] {
-    return ['streaming', 'members', 'faults']
+    return ['streaming', 'members', 'addresses', 'faults']
   }
 
   #spec: unknown = undefined
@@ -103,6 +110,7 @@ export class PolyScreen extends Base {
   #streaming = false
   #members: readonly string[] | undefined = undefined
   #membersFault: string | null = null
+  #addresses: AddressPolicy = 'allowed'
   #faults: FaultDisplay = 'hidden'
   #controller: Controller | null = null
   #loading = false
@@ -182,6 +190,19 @@ export class PolyScreen extends Base {
     this.#sync()
   }
 
+  /**
+   * `allowed`: an address the document writes or binds is passed when it is one a screen may
+   * hold. `refused`: none is passed, and a member that cannot be drawn without one is not drawn.
+   * A change starts the drawing again.
+   */
+  get addresses(): AddressPolicy {
+    return this.#addresses
+  }
+  set addresses(value: AddressPolicy) {
+    this.#addresses = policyOf(value)
+    this.#sync()
+  }
+
   /** `hidden`: a node that cannot be drawn draws nothing. `inline`: its fault is drawn in its place. */
   get faults(): FaultDisplay {
     return this.#faults
@@ -201,13 +222,28 @@ export class PolyScreen extends Base {
     return this.#controller?.changed ?? []
   }
 
-  /** What `checkScreen` says of the document the element draws, with its members. */
+  /**
+   * What `checkScreen` says of the document the element draws, with its members and its address
+   * policy. For a model's answer set as `text`, once `streaming` is off, it is what `checkAnswer`
+   * says, so an answer that ended before its document did is a fault.
+   */
   async check(): Promise<ScreenCheck> {
-    const [{ checkScreen }, { sourceOf }] = await Promise.all([loadCheck(), loadDrawing()])
+    const [{ checkAnswer, checkScreen }, { sourceOf }] = await Promise.all([
+      loadCheck(),
+      loadDrawing(),
+    ])
     const { document, fault } = sourceOf(this, this.#state())
     if (fault !== null) return { ok: false, faults: [{ path: '$', message: fault }] }
+    const options = {
+      addresses: this.#addresses,
+      ...(this.#members === undefined ? {} : { members: this.#members }),
+    }
     try {
-      return checkScreen(document, this.#members === undefined ? {} : { members: this.#members })
+      if (this.#spec === undefined && this.#text !== undefined && !this.#streaming) {
+        const { ok, faults } = checkAnswer(this.#text, options)
+        return { ok, faults }
+      }
+      return checkScreen(document, options)
     } catch (error) {
       // A document nested deeper than the validator reads.
       const message = `the document cannot be read: ${error instanceof Error ? error.message : String(error)}`
@@ -221,7 +257,8 @@ export class PolyScreen extends Base {
       const read = membersOf(value)
       this.#members = read.members
       this.#membersFault = read.fault
-    } else if (name === 'faults') this.#faults = displayOf(value)
+    } else if (name === 'addresses') this.#addresses = policyOf(value)
+    else if (name === 'faults') this.#faults = displayOf(value)
     this.#sync()
   }
 
@@ -266,6 +303,7 @@ export class PolyScreen extends Base {
       streaming: this.#streaming,
       members: this.#members,
       membersFault: this.#membersFault,
+      addresses: this.#addresses,
       faults: this.#faults,
     }
   }

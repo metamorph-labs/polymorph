@@ -34,7 +34,6 @@ import type { Origin, Program } from './init-app'
 import { pinnedTools, pluginFiles } from './plugin'
 import { SKILL_NAMES, SkillFactError, skillFiles } from './skills'
 import { NAMED } from './skills/facts'
-import { ADDRESS_KEYS } from './skills/runtime'
 import { VITE_FLOOR } from './skills/setup-packages'
 import { synopsis, verbNamed, VERBS } from './verbs'
 
@@ -605,14 +604,17 @@ describe('every name a text takes from a package or a native source', () => {
     ).toEqual([])
   })
 
-  it('reads the address keys the run-time core reads', () => {
-    const source = readFileSync(resolve(ROOT, 'packages/screen/src/urls.ts'), 'utf8')
-    const declared = /export const ADDRESS_KEYS[^=]*= new Set(?:<[^>]*>)?\(\[([^\]]*)\]/.exec(
-      source,
-    )
-    const keys = [...(declared?.[1] ?? '').matchAll(/'([^']+)'/g)].map((match) => match[1])
-    expect(keys.length).toBeGreaterThan(0)
-    expect([...ADDRESS_KEYS].sort()).toEqual([...keys].sort())
+  it('reads the address rule the run-time core reads', () => {
+    // The run-time skill names the members a host that refuses addresses cannot draw by the
+    // registry's rule. The core draws by the same rule, imported, not copied.
+    const urls = readFileSync(resolve(ROOT, 'packages/screen/src/urls.ts'), 'utf8')
+    const members = readFileSync(resolve(ROOT, 'packages/screen/src/members.ts'), 'utf8')
+    const from = (name: string) =>
+      new RegExp(`import \\{[^}]*\\b${name}\\b[^}]*\\} from '@polymorph/registry/runtime-members'`)
+    expect(urls).toMatch(from('ADDRESS_KEYS'))
+    expect(urls).not.toMatch(/\bconst ADDRESS_KEYS\b/)
+    expect(members).toMatch(from('addressNeed'))
+    expect(members).toMatch(from('allowedMembers'))
   })
 
   it('states the lowest vite the engine takes as the engine declares it', () => {

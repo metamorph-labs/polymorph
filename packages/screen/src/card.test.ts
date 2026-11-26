@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 
 import { outputContract, runtimeCard } from './card'
 import { checkScreen } from './check'
-import { allowedMembers, CODE_HOSTS, surfaceOf } from './members'
+import { addressNeed, allowedMembers, CODE_HOSTS, defaultMembers, surfaceOf } from './members'
 import { ADDRESS_KEYS } from './urls'
 import { VOCABULARY } from './vocabulary'
 
@@ -225,6 +225,73 @@ describe('the output contract', () => {
   it('names only the rungs the host’s members can take', () => {
     expect(outputContract({ members: ['Text'] })).not.toContain('declared exception')
     expect(outputContract({ members: ['Card'] })).toContain('a `patch` prop (on `Card`) is rung 3')
+  })
+})
+
+describe('the card for a host that refuses addresses', () => {
+  const card = runtimeCard({ addresses: 'refused' })
+  const rows = card.split('\n').filter((row) => /^\s*- \*\*/.test(row))
+
+  it('lists no prop, part’s prop or data type field that takes an address', () => {
+    for (const row of rows) {
+      for (const key of ADDRESS_KEYS) expect(row, row.slice(0, 40)).not.toContain(` · ${key}`)
+    }
+    expect(line(card, 'Card')).not.toContain(' · href')
+    expect(card).toContain('  - **List.Item** · ')
+    expect(card.split('\n').find((row) => row.startsWith('  - **List.Item**'))).not.toContain(
+      ' · href',
+    )
+    expect(line(card, 'BreadcrumbItem')).toBe(
+      '- **BreadcrumbItem** · label*: string · onSelect: () => void',
+    )
+    // The default card lists them.
+    expect(line(runtimeCard(), 'Card')).toContain(' · href: string')
+  })
+
+  it('lists no member that needs an address, and every other member it lists by default', () => {
+    const needs = defaultMembers(VOCABULARY).filter(
+      (name) => addressNeed(VOCABULARY, name) !== null,
+    )
+    expect(needs).toEqual(expect.arrayContaining(['Link', 'Image', 'Markdown', 'SectionNav']))
+    expect(needs).not.toContain('Card')
+    for (const name of defaultMembers(VOCABULARY)) {
+      expect(card.includes(`- **${name}**`), name).toBe(!needs.includes(name))
+    }
+    // A member the host names is left out too.
+    expect(runtimeCard({ members: ['Stack', 'Link'], addresses: 'refused' })).not.toContain(
+      '**Link**',
+    )
+  })
+
+  it('tells the model to write no address, in place of the schemes', () => {
+    expect(outputContract({ addresses: 'refused' })).toContain(
+      '- This host shows no link and loads nothing from an address: write no `avatar`, `href`, ' +
+        '`nextHref`, `previousHref`, `src` or `srcSet`, in a prop or a field.',
+    )
+    expect(outputContract({ addresses: 'refused' })).not.toContain('`https:`')
+    expect(outputContract()).toContain('`https:`')
+  })
+
+  it('passes, under the same option, a screen that holds no address', () => {
+    // A document the refusing card describes is one the check passes under the same option.
+    const plain = {
+      spec: 'polymorph-screen/1',
+      name: 'Plain',
+      purpose: 'A card with a title and a list.',
+      inputs: [],
+      root: {
+        component: 'Card',
+        props: { title: 'Orders' },
+        children: [
+          {
+            component: 'List',
+            props: { label: 'Orders' },
+            children: [{ component: 'List.Item', props: { title: 'Order 1042' } }],
+          },
+        ],
+      },
+    }
+    expect(checkScreen(plain, { addresses: 'refused' }).faults).toEqual([])
   })
 })
 
