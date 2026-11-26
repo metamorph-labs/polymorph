@@ -15,6 +15,7 @@ A static import of a value from this entry point puts it in the importing module
 | `agentTools(bridge)` | the bridge as three tools, for the application's own agent |
 | `registerWebMCP(bridge)` | registers those tools with the browser's WebMCP API, and returns the function that unregisters them |
 | `AGENT_CHANGE_EVENT` | `'polymorph:agentchange'` |
+| `AGENT_KEY_ATTRIBUTE` | `'data-agent-key'`, the attribute whose value a policy reads in `keys` |
 | `AGENT_SETTLE_MS` | `150`, the default `settleMs` |
 
 Types: `AgentBridge`, `AgentBridgeOptions`, `AgentConfirmRequest`, `AgentPolicy`, `AgentPolicyMember`, `AgentSnapshot`, `AgentSnapshotMember`, `AgentSnapshotAction`, `AgentQuery`, `AgentMatch`, `AgentStep`, `AgentStepResult`, `AgentActResult`, `AgentChange`, `AgentChangeDetail`, `AgentError`, `AgentErrorCode`, `AgentTool`, `AgentToolName` and `AgentToolAnnotations`.
@@ -34,8 +35,8 @@ Types: `AgentBridge`, `AgentBridgeOptions`, `AgentConfirmRequest`, `AgentPolicy`
 
 | Option | What it takes |
 | --- | --- |
-| `confirm` | `(request) => boolean \| Promise<boolean>`. `request` is `{ id, member, name, action, value? }`. Only `true` is yes. A `confirm` that throws or rejects is a no. The state is read again after the answer, and a member removed while the person was asked answers `unknown-member` |
-| `policy.hide` | `(member) => boolean`. `member` is `{ id, member, name, element }`, frozen: the bridge's id for this mount, the member's name, its control's accessible name, and its control. A truthy answer takes the member out of every output and every step. The bridge asks only about a member whose element is in the document and not inside `hidden` content, and never about one another member withholds |
+| `confirm` | `(request) => boolean \| Promise<boolean>`. `request` is `{ id, member, name, action, value?, keys }`. Only `true` is yes. A `confirm` that throws or rejects is a no. The state is read again after the answer, and a member removed while the person was asked answers `unknown-member` |
+| `policy.hide` | `(member) => boolean`. `member` is `{ id, member, name, element, keys }`, frozen: the bridge's id for this mount, the member's name, its control's accessible name, its control, and the `data-agent-key` of each element around the control, the nearest first. A truthy answer takes the member out of every output and every step. The bridge asks only about a member whose element is in the document and not inside `hidden` content, and never about one another member withholds |
 | `policy.deny` | `(member, action) => boolean`, with the same `member`. A truthy answer takes the action away, and a step that names it answers `not-allowed`. Either function that throws hides or denies |
 | `settleMs` | milliseconds a step waits for the member's state to change after its action. The bridge reads the state again every few milliseconds and stops at the first change |
 
@@ -105,8 +106,8 @@ of `changed`.
 
 A step that succeeds dispatches `polymorph:agentchange`, bubbling, on the element its member names
 after the step; when that is gone, on the element it named before, while that is in the document;
-and otherwise on the document. The detail is `{ id, member, action, changed, source: 'agent' }`,
-the same object `subscribe` hands its listeners. A step whose `changed` is empty dispatches one
+and otherwise on the document. The detail is
+`{ id, member, action, changed, source: 'agent', keys }`, the same object `subscribe` hands its listeners. A step whose `changed` is empty dispatches one
 too, and a step that fails dispatches none. `references/asking.md` shows a listener.
 
 ### The tools
@@ -119,7 +120,7 @@ too, and a step that fails dispatches none. `references/asking.md` shows a liste
 
 Each tool's `execute(input)` resolves to JSON and never rejects. A malformed input is answered:
 `polymorph_act` given no list of steps resolves to one `invalid-value` result. The tools'
-definitions are read from a bridge's `agentTools`: no entry point exports them alone.
+definitions alone are `AGENT_TOOL_DEFINITIONS` in `@polymorph/engine/webmcp`, which holds none of the bridge.
 
 ## `@polymorph/engine/webmcp`
 
@@ -128,11 +129,14 @@ keeps the bridge out of the bundle.
 
 | Export | What it does |
 | --- | --- |
-| `registerWebMCPOnCall(load, options?)` | registers the three tools now. On the first call it runs `load` once and creates the bridge with `options` from what `load` resolves to: `@polymorph/engine/agent`, or an object with its `createAgentBridge` and `agentTools`. Calls that arrive while it loads wait for it. A failed load answers each waiting call with `{ error: { code: 'failed', message } }`, and the next call loads again. Returns the function that unregisters the tools and disposes of the bridge |
+| `registerWebMCPOnCall(load, options?)` | registers the three tools now. On the first call it runs `load` once and creates the bridge with `options` from what `load` resolves to: `@polymorph/engine/agent`, or an object with its `createAgentBridge` and `agentTools`. Calls that arrive while it loads wait for it. A failed load answers each waiting call with `{ error: { code: 'failed', message } }`, and the next call loads again. Returns the function that unregisters the tools and disposes of the bridge it created |
+| `registerWebMCPOnCall({ bridge })` | the same registration on a bridge the page already has: `bridge` is the bridge, or a function that returns it or a promise of it, called once on the first call and again on the next call after it fails or gives no bridge. Returns the function that unregisters the tools, which never disposes of that bridge |
 | `applyAgentSetting(value)` | does what a `data-agent` value says: `null` registers nothing, `'on-call'` registers as `registerWebMCPOnCall` does, `'eager'` also loads the bridge at once, and another value warns. The bridge has no options. Returns the function that unregisters |
 | `AGENT_ATTRIBUTE` | `'data-agent'` |
+| `AGENT_TOOL_DEFINITIONS` | the three tools' `name`, `title`, `description`, `inputSchema` and `annotations`, frozen, in the order `agentTools` lists them |
 
-Types: `AgentSetting` and `AgentBridgeModule`.
+Types: `AgentSetting`, `AgentBridgeModule`,
+`SharedAgentBridge` and `AgentToolDefinition`.
 
 A page whose only agents are the browser's registers in an effect and returns what unregisters.
 The bundler puts the bridge in a chunk the page fetches on the first call:

@@ -81,8 +81,9 @@ It contains:
   a page that creates no bridge carries the list and nothing else. It reports the states and
   runs the actions each spec's `agent` fence declares, never returns a secret value, and runs a
   destructive action only after a person confirms it. Another subpath registers the bridge's
-  tools with WebMCP before the bridge is loaded, and holds none of it
-  (`@polymorph/engine/webmcp`: `registerWebMCPOnCall`, `applyAgentSetting`, `AGENT_ATTRIBUTE`).
+  tools with WebMCP before the bridge is loaded, or on a bridge the page already has, and
+  exports the tools' definitions, and holds none of the bridge (`@polymorph/engine/webmcp`:
+  `registerWebMCPOnCall`, `applyAgentSetting`, `AGENT_ATTRIBUTE`, `AGENT_TOOL_DEFINITIONS`).
 - **The icon roles.** The closed enum of semantic roles (`ICON_ROLES`, `isIconRole`,
   `ICON_ROLE_META`, `ICON_SET`), read from `design/icons.json`, and the brand marks' data
   (`BRAND_MARKS`, `BRAND_DRAWINGS`), which each foundation's `BrandMark` draws. A component

@@ -62,15 +62,15 @@ const bridge = createAgentBridge({
   // Narrowing only: a policy hides a member or denies an action, and adds nothing.
   policy: {
     hide: (member) => member.member === 'PromptInput',
-    deny: (member, action) => member.member === 'Button' && member.name === 'Delete account',
+    deny: ({ keys = [] }, action) => keys.includes('delete-account') && action === 'press',
   },
 })
 ```
 
 | Option | What it does |
 | --- | --- |
-| `confirm(request)` | asks a person to confirm a destructive action, and resolves `true` for yes. `request` is `{ id, member, name, action, value? }`. A `confirm` that throws or rejects is a no |
-| `policy.hide(member)` | takes a member out of every output: it is not listed, not matched and not run. `member` is `{ id, member, name, element }` |
+| `confirm(request)` | asks a person to confirm a destructive action, and resolves `true` for yes. `request` is `{ id, member, name, action, value?, keys }`. A `confirm` that throws or rejects is a no |
+| `policy.hide(member)` | takes a member out of every output: it is not listed, not matched and not run. `member` is `{ id, member, name, element, keys }`, and `keys` are the page's names for it ([Keys](#keys)) |
 | `policy.deny(member, action)` | takes one action away from a member. A function of the policy that throws hides or denies |
 | `settleMs` | how long a step waits for the member's state to change after its action, in milliseconds (150 by default) |
 
@@ -320,8 +320,8 @@ panel that has closed):
 
 ```ts
 document.addEventListener('polymorph:agentchange', (event) => {
-  const { id, member, action, changed, source } = (event as CustomEvent).detail
-  audit.record({ id, member, action, changed, source }) // source is always 'agent'
+  const { id, member, action, changed, source, keys } = (event as CustomEvent).detail
+  audit.record({ id, member, action, changed, source, keys }) // source is always 'agent'
 })
 ```
 
@@ -352,6 +352,51 @@ only narrow what the fences declare. The bridge reads the allowed actions from t
 handle, which the staleness law holds to the spec (below), so no application code can widen
 what a member allows.
 
+### Keys
+
+A page names a member for its policy with a key: the value of `data-agent-key`
+(`AGENT_KEY_ATTRIBUTE`) on an element around the member's control. The policy reads it in
+`keys`, with the key of every element around that one, the nearest first. The page writes the
+key, so it is the same in every language and on every mount. `name` is the label as the page
+shows it, which a translation changes, and `id` is new on each mount.
+
+```tsx
+<div data-agent-key="place-order">
+  <Button label={t('Place order')} onClick={placeOrder} />
+</div>
+```
+
+```html
+<poly-button data-agent-key="place-order" label="Commander"></poly-button>
+```
+
+```ts
+const bridge = createAgentBridge({
+  policy: {
+    hide: ({ keys = [] }) => keys.includes('internal-notes'),
+    deny: ({ keys = [] }, action) => keys.includes('place-order') && action === 'press',
+  },
+})
+```
+
+- **No member takes a prop for it.** The bridge reads the attribute from the document, so a key
+  names a React, Vue, Svelte, Solid or Angular member and an element the same way, and SwiftUI and
+  Compose have nothing to carry. In a framework the page writes it on a plain element around the
+  member, which a `Stack` or an `Inline` then lays out in the member's place. A `poly-*` element
+  keeps the attribute and draws no box, so a page with no build writes it on the element itself.
+- **A key names a region.** A key on a form names each field inside it. `keys` holds every key
+  around the member, so a rule about a region holds for a member inside it that has a key of its
+  own. An empty value is no key.
+- **An overlay's panel is outside the page's elements.** Dialog, Drawer, Popover, ConfirmDialog,
+  Command, Lightbox and Tour draw their panel at the end of the document, so a key around the
+  overlay reaches neither the overlay nor what it holds. A key inside its content names the
+  members there. The overlay itself is named by `member`.
+- **The page's code reads keys, and an agent does not.** `keys` reaches the policy, `confirm`'s
+  request and the change event. No snapshot, query, step result or tool output carries them: an
+  agent names a member by its id or by the name a person reads.
+- **Read it as `{ keys = [] }`.** The bridge always gives `keys`, and the types mark it optional,
+  so an object a test writes without it is still a member.
+
 ### Tools and WebMCP
 
 `agentTools(bridge)` returns the bridge as three tools for an application's own agent. Each is
@@ -368,8 +413,8 @@ Every tool carries `untrustedContentHint`, because its output holds the page's c
 
 `registerWebMCP(bridge)` registers the same three tools with the browser's WebMCP API, on
 `document.modelContext` or, in earlier builds, `navigator.modelContext`, and returns the function
-that unregisters them. Where the API is absent it registers nothing, and the function does
-nothing.
+that unregisters them and leaves the bridge as it is. Where the API is absent it registers
+nothing, and the function does nothing.
 
 One registration of the tools stands on a page at a time. While one does, another
 `registerWebMCP`, a `registerWebMCPOnCall` or a page's `data-agent` registers nothing, warns in the
@@ -407,6 +452,56 @@ export function PageAgent({ ask }: { ask: (question: string) => Promise<boolean>
   `{ error: { code: 'failed', message } }`, and the next call runs `load` again.
 - **The function it returns** unregisters the tools and disposes of the bridge it created.
 - **Where the API is absent** it registers nothing and never calls `load`.
+
+A page whose own assistant has a bridge shares it with WebMCP: `registerWebMCPOnCall({ bridge })`
+runs the tools on that bridge. One bridge runs one `act` at a time, so the assistant's steps and
+a browser agent's never interleave, and the person is asked one question at a time. `bridge` is
+the bridge, or a function that returns it or a promise of it, so the page can load the bridge on
+its first use by either side:
+
+```ts
+import type { AgentBridge } from '@polymorph/engine/agent'
+import { registerWebMCPOnCall } from '@polymorph/engine/webmcp'
+
+let loading: Promise<AgentBridge> | undefined
+
+/** The page's one bridge, loaded on the first use by the assistant or by a WebMCP call. */
+export const pageBridge = () =>
+  (loading ??= import('@polymorph/engine/agent').then(({ createAgentBridge }) =>
+    createAgentBridge({ confirm: ask, policy }),
+  ))
+
+const unregister = registerWebMCPOnCall({ bridge: pageBridge })
+```
+
+- **The function runs once**, on the first call, as `load` does. When it fails or gives no bridge,
+  the call is answered with `{ error: { code: 'failed', message } }`, and the next call runs it
+  again.
+- **Unregistering leaves the bridge as it is.** The function `registerWebMCPOnCall` returns removes
+  the tools and never disposes of a bridge it did not create, so the assistant keeps using it. The
+  page that created the bridge disposes of it. `registerWebMCP(bridge)` does the same with a bridge
+  the page has already loaded.
+
+`AGENT_TOOL_DEFINITIONS`, from `@polymorph/engine/webmcp`, are the three tools' names, titles,
+descriptions, input schemas and hints, the list `agentTools` and the registrations read. A page's
+own assistant sends them to its model before the bridge loads, and loads the bridge when the model
+first calls a tool:
+
+```ts
+import { AGENT_TOOL_DEFINITIONS } from '@polymorph/engine/webmcp'
+
+const tools = AGENT_TOOL_DEFINITIONS.map(({ name, description, inputSchema }) => ({
+  name,
+  description,
+  inputSchema,
+}))
+
+async function run(name: string, input: unknown): Promise<unknown> {
+  const { agentTools } = await import('@polymorph/engine/agent')
+  const tool = agentTools(await pageBridge()).find((each) => each.name === name)
+  return tool === undefined ? { error: { code: 'unknown-tool', message: name } } : tool.execute(input)
+}
+```
 
 `applyAgentSetting(value)`, from the same entry point, does what a page's `data-agent` says, as the
 elements' no-build scripts call it with the attribute's value (`AGENT_ATTRIBUTE`): `null` registers

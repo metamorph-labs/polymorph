@@ -44,12 +44,16 @@ its bridge in a module script:
   const { createAgentBridge, registerWebMCP } = await loadAgentBridge()
   const bridge = createAgentBridge({
     confirm: (request) => Promise.resolve(window.confirm(`${request.action} “${request.name}”?`)),
-    // The label is the one this page writes on the button.
-    policy: { deny: (member) => member.member === 'Button' && member.name === 'Place order' },
+    // The page writes data-agent-key="place-order" on that poly-button.
+    policy: { deny: ({ keys = [] }) => keys.includes('place-order') },
   })
   registerWebMCP(bridge)
 </script>
 ```
+
+The key is an attribute of the element: `<poly-button data-agent-key="place-order" label="…">`.
+The element keeps it and draws no box, and its control is inside it, so the policy reads the key
+in every language the label is written in.
 
 - Import it from the file the page loads, at the same path. A copy from anywhere else reads a
   registry of its own, which holds nothing.

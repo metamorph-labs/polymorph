@@ -1,7 +1,7 @@
 # Asking the person
 
 `confirm` is the application's, and it asks the person at the page. The bridge calls it with
-`{ id, member, name, action, value? }` before an action that needs a person, and runs the action
+`{ id, member, name, action, value?, keys }` before an action that needs a person, and runs the action
 only when it resolves `true`. An agent cannot answer it, and a `confirm` that throws is a no.
 
 ## In React, through a `ConfirmDialog`
@@ -61,8 +61,8 @@ export function PageAgentHost({ onStart }: { onStart: (agent: PageAgent | null) 
 ```
 
 - Render it once on the page. Give it an `onStart` that keeps its identity, such as a state
-  setter, and hand the agent it receives to the assistant (`assistantTools(agent)`, step 6). It
-  receives `null` once the page unmounts.
+  setter, and hand the agent it receives to the assistant (`runTool(agent, name, input)`, step
+  6). It receives `null` once the page unmounts.
 - One question is open at a time. The page has one bridge, the bridge asks inside the one `act`
   it runs, and the next `act`, from the assistant or from WebMCP, waits.
 - `answer` runs once per question. `ConfirmDialog` calls
@@ -72,6 +72,7 @@ export function PageAgentHost({ onStart }: { onStart: (agent: PageAgent | null) 
 - `ask` keeps its identity, so the bridge is made once.
 - `request.name` is the member's accessible name on this page, and `request.value` is what the
   agent asked to set or choose. Say both in the question, so the person knows what they allow.
+  `request.keys` are the page's keys for the member, for a question worded per control.
 - Other frameworks do the same with their own state and the framework's `ConfirmDialog`.
   A page with no build can ask with `window.confirm`, as `references/no-build.md` shows.
 
@@ -79,13 +80,13 @@ export function PageAgentHost({ onStart }: { onStart: (agent: PageAgent | null) 
 
 Each step that succeeds dispatches `AGENT_CHANGE_EVENT`, `polymorph:agentchange`,
 bubbling, on its member's element, or on the document when the step removed that element. The
-detail is `{ id, member, action, changed, source: 'agent' }`. `bridge.subscribe(listener)` hands
+detail is `{ id, member, action, changed, source: 'agent', keys }`. `bridge.subscribe(listener)` hands
 a listener the same object, and returns the function that stops it.
 
 ```ts
 document.addEventListener('polymorph:agentchange', (event) => {
-  const { id, member, action, changed } = (event as CustomEvent).detail
-  console.info('the agent ran', action, 'on', member, id, changed)
+  const { id, member, action, changed, keys } = (event as CustomEvent).detail
+  console.info('the agent ran', action, 'on', member, id, keys, changed)
 })
 ```
 

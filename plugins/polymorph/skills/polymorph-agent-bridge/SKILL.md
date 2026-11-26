@@ -1,6 +1,6 @@
 ---
 name: polymorph-agent-bridge
-description: Let an AI agent on a running page read and operate the polymorph members through the agent bridge, instead of scraping the DOM or clicking coordinates. Use when asked to let an in-app assistant or chatbot fill a form or operate a screen, make a page usable by an AI agent or a browser agent, expose a page’s actions as tools for a model, add WebMCP (document.modelContext) tools, keep a field such as a card number or an action such as placing an order from an agent, ask the person before an agent acts, put data-agent on a page with no build, read the agent segment of the polymorph system card, or drive a page built with polymorph from an agent. Covers @polymorph/engine/agent (createAgentBridge, snapshot, query, act, confirm, the policy, secrets, agentTools, registerWebMCP), @polymorph/engine/webmcp (registerWebMCPOnCall, applyAgentSetting), one bridge shared by an assistant and WebMCP and loaded on its first use, loadAgentBridge in polymorph.js, and testing a bridge.
+description: Let an AI agent on a running page read and operate the polymorph members through the agent bridge, instead of scraping the DOM or clicking coordinates. Use when asked to let an in-app assistant or chatbot fill a form or operate a screen, make a page usable by an AI agent or a browser agent, expose a page’s actions as tools for a model, add WebMCP (document.modelContext) tools, keep a field such as a card number or an action such as placing an order from an agent (data-agent-key), ask the person before an agent acts, put data-agent on a page with no build, read the agent segment of the polymorph system card, or drive a page built with polymorph from an agent. Covers @polymorph/engine/agent (createAgentBridge, snapshot, query, act, confirm, the policy, secrets, agentTools, registerWebMCP), @polymorph/engine/webmcp (registerWebMCPOnCall, applyAgentSetting, AGENT_TOOL_DEFINITIONS), one bridge shared by an assistant and WebMCP and loaded on its first use, loadAgentBridge in polymorph.js, and testing a bridge.
 ---
 
 # Let an agent on the page read and operate the members
@@ -100,57 +100,53 @@ first call from either side:
 
 ```ts
 // src/agent/page-agent.ts
-import type { AgentBridge, AgentConfirmRequest, AgentTool } from '@polymorph/engine/agent'
+import type { AgentBridge, AgentConfirmRequest } from '@polymorph/engine/agent'
 import { registerWebMCPOnCall } from '@polymorph/engine/webmcp'
 
 import { policy } from './policy'
 
 export interface PageAgent {
-  load: () => Promise<{ bridge: AgentBridge; tools: AgentTool[] }>
+  bridge: () => Promise<AgentBridge>
   stop: () => void
 }
 
 /** Starts one bridge for the page, which the product's assistant and WebMCP share. */
 export function startPageAgent(ask: (request: AgentConfirmRequest) => Promise<boolean>): PageAgent {
   let stopped = false
-  let loading: Promise<{ bridge: AgentBridge; tools: AgentTool[] }> | undefined
-  const load = () =>
+  let loading: Promise<AgentBridge> | undefined
+  const bridge = () =>
     (loading ??= import('@polymorph/engine/agent').then(
-      ({ createAgentBridge, agentTools }) => {
+      ({ createAgentBridge }) => {
         if (stopped) throw new Error('The page agent has stopped.')
-        const bridge = createAgentBridge({ confirm: ask, policy })
-        return { bridge, tools: agentTools(bridge) }
+        return createAgentBridge({ confirm: ask, policy })
       },
       (error: unknown) => {
         loading = undefined // the next call loads again
         throw error
       },
     ))
-  // A WebMCP call runs on the same bridge: the module this load resolves to hands it back.
-  const unregister = registerWebMCPOnCall(async () => {
-    const { bridge, tools } = await load()
-    return { createAgentBridge: () => bridge, agentTools: () => tools }
-  })
+  const unregister = registerWebMCPOnCall({ bridge })
   return {
-    load,
+    bridge,
     stop: () => {
       stopped = true
       unregister()
-      void loading?.then(({ bridge }) => bridge.dispose(), () => {})
+      void loading?.then((made) => made.dispose(), () => {})
     },
   }
 }
 ```
 
-- `registerWebMCPOnCall(load)` registers the three tools now, and on the first call runs `load`
-  once and creates the bridge from what it resolves to: `@polymorph/engine/agent`, or an object with its
-  `createAgentBridge` and `agentTools`. This `load` hands back the page's bridge.
+- `registerWebMCPOnCall({ bridge })` registers the three tools now, calls
+  `bridge` on the first call, once, and runs every call on what it resolves to: the assistant's
+  bridge. Unregistering removes the tools and never disposes of a bridge it did not create, so
+  `stop` disposes of it.
 - Where the browser has no WebMCP API, nothing registers, and the assistant still loads the
   bridge. While another registration of the tools stands on the page, such as `data-agent`, it
   registers nothing and warns in the console.
 - A page that loads the bridge at once creates it with the same options, calls
-  `registerWebMCP(bridge)`, which returns the function that unregisters, and hands the same
-  bridge to `agentTools` for the assistant.
+  `registerWebMCP(bridge)`, which returns the function that unregisters, and
+  hands the same bridge to the assistant.
 
 Start it in the browser once the page has mounted, keep what it returns where the assistant can
 reach it, and call its `stop` when the page unmounts. `ask` asks the person, resolves `true`
@@ -173,28 +169,38 @@ keep them cheap. `member` is a frozen `AgentPolicyMember`:
 | `member` | the member's name, such as `Input` | yes, and it names every instance |
 | `name` | its control's accessible name: the label as the page shows it | no: it changes with the language and the wording |
 | `element` | the member's control: an `Input`'s `<input>`, a `Button`'s `<button>`, a `Select`'s trigger | its attributes are the ones the page sets |
+| `keys` | the `data-agent-key` of each element around the control, the nearest first | yes: the page writes them |
 
-So name a member by an attribute the page sets on its control. An `Input`'s
-`name`, `autoComplete` and `id` reach its
-`<input>`, and inside a `FormField` the control's id is the field's
-`id`. A `Button` takes no `id` or `name`: name it by the label
-the page passes it, read from the same string the page renders, or let its
-`onClick` decide (step 8).
+So name a member by a key. Write `data-agent-key` on a plain element around the member, which
+takes the member's place in the layout, or on the `poly-*` element itself on a page with no
+build. No member takes a prop for it, so it works the same in every framework. A key names every
+member inside its element, and `keys` holds each key around a member, so one key on a form
+names its fields. `Dialog`, `Drawer` and `Popover` draw their panel at
+the end of the document: a key around one names nothing, and a key inside its content names the
+members there.
+
+```tsx
+<div data-agent-key="place-order">
+  <Button label={t('Place order')} onClick={placeOrder} />
+</div>
+```
 
 ```ts
 // src/agent/policy.ts
 import type { AgentPolicy } from '@polymorph/engine/agent'
 
-import { labels } from '../labels'
-
 export const policy: AgentPolicy = {
-  // Every card field, by the autocomplete token the page gives it, which no translation changes.
+  // Every card field, by the autocomplete token the page gives it.
   hide: ({ element }) => element?.getAttribute('autocomplete')?.startsWith('cc-') === true,
-  // A person places the order. The label is the string the page passes the Button.
-  deny: ({ member, name }, action) =>
-    member === 'Button' && name === labels.placeOrder && action === 'press',
+  // A person places the order: the page writes data-agent-key="place-order" around its Button.
+  deny: ({ keys = [] }, action) => keys.includes('place-order') && action === 'press',
 }
 ```
+
+Read `keys` as `{ keys = [] }`: the bridge always gives them, and the type marks them optional.
+An attribute a member passes to its control works too: an `Input`'s
+`autoComplete` reaches its `<input>`. The page's code reads keys in the
+policy, `confirm` and the change event; no output an agent reads carries them.
 
 Card data belongs in the payment provider's own hosted field, inside a `ThirdParty`
 boundary: it is outside the vocabulary, so the bridge never lists it.
@@ -205,35 +211,36 @@ server authorises every consequential action again, as it does a person's.
 
 ## 6. Hand the tools to the product's assistant
 
-`agentTools(bridge)` returns three tools, `polymorph_snapshot`, `polymorph_query` and
-`polymorph_act`. Each has a `description` written for a model, a JSON Schema `inputSchema`,
-and `execute(input)`, which resolves to JSON and never rejects. The definitions come from a
-bridge, so the assistant loads it when it is first used, such as when the person opens it:
+The bridge's three tools are `polymorph_snapshot`, `polymorph_query` and `polymorph_act`.
+`AGENT_TOOL_DEFINITIONS` gives each one's `name`, a `description` written for
+a model and a JSON Schema `inputSchema`, without the bridge, so the app sends them to its model
+before the bridge loads. `agentTools(bridge)` gives the same tools with
+`execute(input)`, which resolves to JSON and never rejects:
 
 ```ts
 // src/agent/assistant-tools.ts
+import { AGENT_TOOL_DEFINITIONS } from '@polymorph/engine/webmcp'
+
 import type { PageAgent } from './page-agent'
 
-/** The bridge's tools for the product's own model, loading the bridge on the first use. */
-export async function assistantTools(agent: PageAgent) {
-  const { tools } = await agent.load()
-  return {
-    definitions: tools.map(({ name, description, inputSchema }) => ({
-      name,
-      description,
-      inputSchema,
-    })),
-    run: async (name: string, input: unknown): Promise<unknown> => {
-      const tool = tools.find((each) => each.name === name)
-      if (tool === undefined) return { error: { code: 'unknown-tool', message: `No tool ${name}.` } }
-      return tool.execute(input)
-    },
-  }
+/** The tools to send the product's model, which load nothing. */
+export const definitions = AGENT_TOOL_DEFINITIONS.map(({ name, description, inputSchema }) => ({
+  name,
+  description,
+  inputSchema,
+}))
+
+/** Runs one tool call the model returned, loading the bridge on the first. */
+export async function runTool(agent: PageAgent, name: string, input: unknown): Promise<unknown> {
+  const { agentTools } = await import('@polymorph/engine/agent')
+  const tool = agentTools(await agent.bridge()).find((each) => each.name === name)
+  if (tool === undefined) return { error: { code: 'unknown-tool', message: `No tool ${name}.` } }
+  return tool.execute(input)
 }
 ```
 
 The app sends `definitions` with the conversation, in the shape the model's API takes for a tool.
-For each tool call the model returns, it calls `run` with the call's name and input, and sends
+For each tool call the model returns, it calls `runTool` with the call's name and input, and sends
 what that resolves to back as the call's result.
 The calls run in the page, where the bridge is: a model on a server sends each call to the page.
 Every output holds the page's content, which a person or a record wrote, and each tool says so
