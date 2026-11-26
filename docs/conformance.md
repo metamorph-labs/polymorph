@@ -66,7 +66,7 @@ block that shows a contract fence, like the one above, is skipped whole.
 Every member with keyboard, focus, dismissal or announcement behaviour has a contract: every overlay
 (Tabs and Command among them), every control, and Accordion, Alert, AudioPlayer, Carousel, ChatThread,
 Collapsible, DataTable, ErrorSummary, JsonTree, LogView, Pagination, Plan, SearchPage, Spinner, Stepper, PromptInput,
-SplitPane, Tree and Table, whose rows take a click. `packages/registry/src/registry.test.ts` fails when one of them
+SplitPane, Stat, which is busy while it loads, Tree and Table, whose rows take a click. `packages/registry/src/registry.test.ts` fails when one of them
 has none. A structure or layout member with no behaviour has no fence. The chart tier takes keys and
 announces too, and has no fence: a chart's keys move a reading position whose words and marks depend
 on the data, and the tier's laws hold them (What it does not check, below).

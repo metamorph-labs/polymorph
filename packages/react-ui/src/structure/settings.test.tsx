@@ -427,6 +427,101 @@ describe('Stat', () => {
       expect(gap).toBeGreaterThan(Number.parseFloat(getComputedStyle(root).rowGap))
     })
   })
+
+  /**
+   * The number has not arrived (`stat.md`, Loading). The label row is known
+   * before it, and every part that states the number is a Skeleton of that
+   * part's size.
+   */
+  describe('loading', () => {
+    const FULL: Partial<StatProps> = {
+      value: '1,204',
+      trend: { direction: 'up', label: '+12.5%' },
+      spark: [180, 195, 190, 210, 220, 216, 240, 251, 248, 262, 270, 284],
+      footer: { primary: 'Trending up this month', secondary: 'Against the same week' },
+    }
+
+    it('keeps the label row and says the stat is busy', () => {
+      const root = stat({ icon: 'time', loading: true })
+      expect(root.getAttribute('aria-busy')).toBe('true')
+      expect(root.dataset['loading']).toBe('')
+      expect(screen.getByText('Open tickets')).toBeTruthy()
+      // The label row's glyph is the caller's icon, known before the number.
+      expect(root.querySelector('svg')?.dataset['icon']).toBe('time')
+    })
+
+    it('puts one named placeholder in the value’s place and hides the rest', () => {
+      const root = stat({ ...FULL, delta: { value: '12%', direction: 'up' }, loading: true })
+      expect(screen.getByRole('status', { name: 'Loading' })).toBeTruthy()
+      const placeholders = [...root.querySelectorAll('[data-member="skeleton"]')]
+      // The value, the chip, the spark, the delta and the footer's two lines.
+      expect(placeholders).toHaveLength(6)
+      expect(
+        placeholders.filter((node) => node.getAttribute('aria-hidden') === 'true'),
+      ).toHaveLength(5)
+    })
+
+    it('draws nothing it was given about the number', () => {
+      const root = stat({
+        ...FULL,
+        value: '342',
+        delta: { value: '12%', direction: 'up' },
+        loading: true,
+      })
+      const text = root.textContent ?? ''
+      for (const words of ['342', '12%', 'positive', '+12.5%', 'Trending up', 'Against the']) {
+        expect(text, words).not.toContain(words)
+      }
+      // No sentiment, no chip, no spark and so no sparkline name.
+      expect(root.querySelector('[data-direction]')).toBeNull()
+      expect(root.querySelector('[data-member="badge"]')).toBeNull()
+      expect(screen.queryByRole('img')).toBeNull()
+      expect(root.querySelector('[data-numeric]')).toBeNull()
+
+      const described = stat({ description: 'vs last week', loading: true })
+      expect(described.textContent).not.toContain('vs last week')
+    })
+
+    it('draws no placeholder for a part the caller did not pass', () => {
+      const root = stat({ loading: true })
+      // The value's alone: a delta, a chip, a spark or a footer would be invented.
+      expect(root.querySelectorAll('[data-member="skeleton"]')).toHaveLength(1)
+    })
+
+    it('keeps the card’s height when the number arrives', () => {
+      const cards: Partial<StatProps>[] = [
+        { icon: 'time' },
+        { delta: { value: '12%', direction: 'up' } },
+        { description: 'vs last week' },
+        FULL,
+        { ...FULL, delta: { value: '12%', direction: 'up' } },
+      ]
+      for (const props of cards) {
+        const { container, rerender } = render(
+          <div style={{ inlineSize: '360px' }}>
+            <Stat label="Solved this week" value="1,204" {...props} loading />
+          </div>,
+        )
+        const root = container.querySelector('[data-member="stat"]') as HTMLElement
+        const loading = root.getBoundingClientRect().height
+        const row = (root.firstElementChild as HTMLElement).getBoundingClientRect().height
+
+        rerender(
+          <div style={{ inlineSize: '360px' }}>
+            <Stat label="Solved this week" value="1,204" {...props} />
+          </div>,
+        )
+        const loaded = container.querySelector('[data-member="stat"]') as HTMLElement
+        expect(loaded.querySelector('[data-member="skeleton"]')).toBeNull()
+        expect(loaded.getBoundingClientRect().height, JSON.stringify(props)).toBe(loading)
+        // The label row too, which holds the chip.
+        expect(
+          (loaded.firstElementChild as HTMLElement).getBoundingClientRect().height,
+          JSON.stringify(props),
+        ).toBe(row)
+      }
+    })
+  })
 })
 
 describe('SettingsRow', () => {

@@ -224,7 +224,7 @@ describe('a host’s language reaches every name the vocabulary would otherwise 
     expect(screen.getByText('échap')).toBeTruthy()
   })
 
-  it('Stat and Carousel — a derived name and a spoken role', () => {
+  it('Stat and Carousel — a derived name, a loading name and a spoken role', () => {
     render(
       <Stat
         label="Refus"
@@ -234,6 +234,11 @@ describe('a host’s language reaches every name the vocabulary would otherwise 
       />,
     )
     expect(screen.getByRole('img', { name: 'Refus, tendance récente' })).toBeTruthy()
+    cleanup()
+
+    render(<Stat label="Refus" value="" loading loadingLabel="Chargement" />)
+    expect(screen.getByRole('status', { name: 'Chargement' })).toBeTruthy()
+    expect(screen.queryByRole('status', { name: 'Loading' })).toBeNull()
     cleanup()
 
     render(

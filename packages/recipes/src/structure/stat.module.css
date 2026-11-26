@@ -44,6 +44,13 @@
   color: var(--pm-text-muted);
 }
 
+/* The trend chip's place while the number loads: Badge's own box, with no
+   colour, around a Skeleton of the chip's line. The chip is taller than the
+   label beside it, so the box keeps the label row at the chip's height. */
+.trendPlaceholder {
+  composes: badge from './badge.module.css';
+}
+
 /* Number at the start and spark at the end, baseline-aligned so the spark reads
    as a note *on* the number. */
 .valueRow {
