@@ -511,6 +511,16 @@ strips and a midpoint swatch when diverging).
 - **`onSelect`** fires on Enter, Space or click at the reading position, with a payload
   shaped for the member (for example `{ index, key, datum }` on a bar). The summary sentence
   tells screen-reader users that the plot can be activated.
+- **Laws hold the keys in every web framework.** The reading position of `BarChart`,
+  `LineChart`, `AreaChart`, `ScatterChart`, `Histogram`, `RadarChart`, `Heatmap` and
+  `DonutChart` is held by the laws in `packages/conformance/src/chart-reading.ts`, which the
+  test of each of those members calls in React, Vue, Svelte, Solid, Angular and the elements:
+  one focus stop named by `label`, the first arrow on an end, where the walk stops or goes
+  around, Home and End, each member's rule for Up and Down, the words each position says,
+  Escape, Enter and Space with and without `onSelect`, the brush's keys, and the defaults the
+  reading prevents. `FunnelChart`'s and `Treemap`'s keys are held by `funnelChartLaw` and
+  `treemapLaw`. The contract grammar does not state a chart's keys, because their result is
+  words and marks that depend on the data ([conformance.md](conformance.md)).
 
 ### Brush, sync and annotations
 
@@ -620,6 +630,10 @@ spec must say what it is *not* and which member to use instead. The general proc
    ([verification.md](verification.md#the-ios-gate)). On Android, mark it absent with `Table` as
    its substitute, as the Android map does for every chart member, and take it off the Compose
    list.
-9. Run the member's tests and the laws: `pnpm exec vitest run packages/react-ui/src/charts` for
+9. **Hold its keys with a law.** A member whose keys walk a reading position states that walk,
+   its words and its `onSelect` payload in a law of its own in
+   `packages/conformance/src/chart-reading.ts`, and the member's test in every web framework
+   calls it with a mount of its own.
+10. Run the member's tests and the laws: `pnpm exec vitest run packages/react-ui/src/charts` for
    React, and `pnpm exec vitest run packages/vue-ui packages/svelte-ui packages/solid-ui
-   packages/angular-ui` for the generated members.
+   packages/angular-ui packages/elements-ui` for the generated members and the elements.

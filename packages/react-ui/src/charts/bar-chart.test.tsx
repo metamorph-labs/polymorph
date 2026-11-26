@@ -5,16 +5,20 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { assertGoverned, type ChartDatum } from '@polymorph/react'
 import { barLinesLaw } from '@polymorph/conformance/bar-lines'
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
+import { barChartReadingLaw } from '@polymorph/conformance/chart-reading'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { reactAdapter } from '../conformance/react'
 import { BarChart, type BarChartProps } from './BarChart'
 import { states } from './bar-chart.states'
 
 /**
- * Browser checks for *geometry* and *keyboard access*, which unit tests of the
- * engine cannot cover. The engine's arithmetic is tested in
- * the engine's `charts/charts.test.ts`. These tests check that the marks land where the
- * arithmetic says and that a keyboard user can reach the numbers.
+ * Browser checks for *geometry*, which unit tests of the engine cannot cover:
+ * the marks land where the engine's arithmetic says (tested in the engine's
+ * `charts/charts.test.ts`), with the pointer, the tooltip, the legend and the
+ * twin. The reading position and its keys are the law's
+ * (`@polymorph/conformance/chart-reading`), the lines over the bars are
+ * `@polymorph/conformance/bar-lines`'s, and the chart's box is
+ * `@polymorph/conformance/chart-box`'s; this file calls each for React.
  */
 
 beforeAll(installTestTheme)
@@ -159,79 +163,6 @@ describe('BarChart', () => {
     expect(bars(container)).toHaveLength(2)
   })
 
-  it('gives the whole plot one focus stop and walks the bands with arrow keys', async () => {
-    const { container } = render(
-      <BarChart data={ROWS} series={PAIR} x={{ key: 'day' }} label="Keyboard" />,
-    )
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-    expect(document.activeElement).toBe(plot)
-
-    const live = container.querySelector('[aria-live="polite"]') as HTMLElement
-    // Checked explicitly that nothing is being read yet, because the assertion
-    // below depends on it. The pointer is real in a browser test and stays
-    // where the previous test left it, so a cursor over a band sets the reading
-    // position without moving, and the first arrow steps from *there*.
-    // `test-setup.ts` moves the cursor away; this assertion makes a regression
-    // fail clearly instead of looking like broken keys.
-    expect(live.textContent, 'a resting pointer had already set the position').toBe('')
-
-    await userEvent.keyboard('{ArrowRight}')
-    // Focus gives the same details as hover: the live region announces what
-    // the tooltip shows a pointer user.
-    expect(live.textContent).toContain('Mon')
-    expect(live.textContent).toContain('Opened 32')
-
-    await userEvent.keyboard('{ArrowRight}')
-    expect(live.textContent).toContain('Tue')
-
-    await userEvent.keyboard('{Escape}')
-    expect(live.textContent).toBe('')
-  })
-
-  it('marks the band under the reading position for emphasis', async () => {
-    const { container } = render(
-      <BarChart data={ROWS} series={PAIR} x={{ key: 'day' }} label="Active" />,
-    )
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}')
-    expect(container.querySelectorAll('g[data-active]')).toHaveLength(1)
-  })
-
-  it('walks the series with Up/Down and announces the walked mark first', async () => {
-    const { container } = render(
-      <BarChart data={ROWS} series={PAIR} x={{ key: 'day' }} label="Series walk" />,
-    )
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-    const live = container.querySelector('[aria-live="polite"]') as HTMLElement
-    // As above: the claim is about arriving with nothing read.
-    expect(live.textContent, 'a resting pointer had already set the position').toBe('')
-    const marked = () => bars(container).filter((bar) => bar.hasAttribute('data-active'))
-
-    await userEvent.keyboard('{ArrowRight}')
-    // The whole band first: every series in the sentence, no single mark.
-    expect(live.textContent).toBe('Mon: Opened 32, Resolved 28')
-    expect(marked()).toHaveLength(0)
-
-    await userEvent.keyboard('{ArrowDown}')
-    // The walked bar carries its own flag as well as the band's, and the
-    // sentence starts with its series.
-    expect(live.textContent).toBe('Opened: 32 — Mon')
-    expect(marked()).toHaveLength(1)
-    expect(container.querySelectorAll('g[data-active]')).toHaveLength(1)
-
-    await userEvent.keyboard('{ArrowDown}')
-    expect(live.textContent).toBe('Resolved: 28 — Mon')
-    expect(marked()).toHaveLength(1)
-
-    // Escape clears the whole reading, including the series selection.
-    await userEvent.keyboard('{Escape}')
-    expect(live.textContent).toBe('')
-    expect(marked()).toHaveLength(0)
-  })
-
   it('makes every hit target at least 24px wide, however dense the chart', () => {
     // Thirty bands in a 360px plot gives bands of about 10px, which is too small
     // a target. `hitBox` grows each one to the system minimum. Neighbours may
@@ -370,28 +301,6 @@ describe('BarChart', () => {
     const table = screen.getByRole('table', { name: /Refit — data/ })
     expect(table.textContent).toContain('Opened')
     expect(table.textContent).toContain('40')
-  })
-
-  it('reports the walked series’ key through onSelect', async () => {
-    const onSelect = vi.fn()
-    const { container } = render(
-      <BarChart
-        data={ROWS}
-        series={PAIR}
-        x={{ key: 'day' }}
-        onSelect={onSelect}
-        label="Selectable"
-      />,
-    )
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-    // Enter on a whole band reports the first series, where the walk starts.
-    await userEvent.keyboard('{ArrowRight}{Enter}')
-    expect(onSelect).toHaveBeenCalledWith({ index: 0, key: 'opened', datum: ROWS[0] })
-    // Walk down to the second mark; the selection now reports it.
-    await userEvent.keyboard('{ArrowDown}{ArrowDown}{Enter}')
-    expect(onSelect).toHaveBeenLastCalledWith({ index: 0, key: 'resolved', datum: ROWS[0] })
-    expect(container.textContent).toContain('Enter or Space selects')
   })
 
   it('activates on click at the band the pointer is reading', async () => {
@@ -567,4 +476,10 @@ describe('BarChart mode="diverging" (the Likert form)', () => {
     expect(paints.length).toBeGreaterThan(0)
     expect(new Set(paints)).toEqual(new Set(['var(--pm-chart-pos-2)']))
   })
+})
+
+/* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
+barChartReadingLaw({
+  shell: 'React',
+  mount: async (props) => render(<BarChart {...props} />),
 })

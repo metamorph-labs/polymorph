@@ -2,6 +2,7 @@ import { getByRole } from '@testing-library/dom'
 import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
+import { radarChartReadingLaw } from '@polymorph/conformance/chart-reading'
 import type { ResolvedTheme } from '@polymorph/engine'
 import { installTestTheme } from '@polymorph/engine/testing'
 
@@ -11,11 +12,12 @@ import RadarChart, { type RadarChartProps } from './RadarChart'
 /**
  * RadarChart in the Solid shell (`design/components/radar-chart.md`): the rings,
  * polygons and vertices land where the engine's model says once the plot is
- * measured, the vertex walk wraps around the polygon, and the palette's cap
- * is read from the plot, as the React member's tests hold them
- * (`packages/react-ui/src/charts/radar-chart.test.tsx`). RadarChart has no
- * contract fence, so these are the checks on its behaviour; the drawing is the
- * engine's `radarChartModel`, which both members render.
+ * measured, the pointer reads the nearest vertex, and the palette's cap is
+ * read from the plot, as the React member's tests hold them
+ * (`packages/react-ui/src/charts/radar-chart.test.tsx`). The vertex walk
+ * around the polygon and its keys are `@polymorph/conformance/chart-reading`'s,
+ * which this file calls. The drawing is the engine's `radarChartModel`, which
+ * every member renders.
  */
 
 let theme: ResolvedTheme
@@ -85,32 +87,6 @@ describe('RadarChart', () => {
     expect(((stroke?.getAttribute('d') ?? '').match(/M/g) ?? []).length).toBeGreaterThan(1)
   })
 
-  it('walks the axes with wrapping and the series with Up/Down, and says each', async () => {
-    const { host, plot, live } = await chart({ label: 'Walk' })
-    await vi.waitFor(() => expect(vertices(host)).toHaveLength(10))
-    plot.focus()
-    expect(live.textContent?.trim()).toBe('')
-    const marked = () => vertices(host).filter((vertex) => vertex.hasAttribute('data-active'))
-
-    await userEvent.keyboard('{ArrowRight}')
-    expect(live.textContent?.trim()).toBe('First response: Agent, 4.5')
-    expect(marked()).toHaveLength(1)
-    expect(host.querySelectorAll('g[class*="profiles"] > g[data-active]')).toHaveLength(1)
-    expect(host.querySelector('svg[data-reading]')).toBeTruthy()
-
-    // Counter-clockwise from the first spoke reaches the last: the walk wraps.
-    await userEvent.keyboard('{ArrowLeft}')
-    expect(live.textContent?.trim()).toBe('Coverage: Agent, 3.9')
-
-    await userEvent.keyboard('{ArrowDown}')
-    expect(live.textContent?.trim()).toBe('Coverage: Team, 3.7')
-    expect(profiles(host)[1]?.hasAttribute('data-active')).toBe(true)
-
-    await userEvent.keyboard('{Escape}')
-    expect(live.textContent?.trim()).toBe('')
-    expect(marked()).toHaveLength(0)
-  })
-
   it('reads the vertex nearest the pointer, and nothing once it leaves', async () => {
     const { host, live } = await chart({ label: 'Pointer' })
     await vi.waitFor(() => expect(vertices(host)).toHaveLength(10))
@@ -165,19 +141,11 @@ describe('RadarChart', () => {
     expect(host.querySelector('[data-key-shape]')).toBeNull()
   })
 
-  it('reports the axis, the series and the value through select, on Enter, Space and click', async () => {
+  it('reports the vertex a click reads through select, and nothing far from every vertex', async () => {
     const onSelect = vi.fn()
     const { host, plot } = await chart({ label: 'Selectable', onSelect })
     await vi.waitFor(() => expect(vertices(host)).toHaveLength(10))
-    expect(host.textContent).toContain('Enter or Space selects')
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}{ArrowRight}{Enter}')
-    expect(onSelect).toHaveBeenCalledWith({ axis: 'resolution', key: 'agent', value: 3.2 })
-    await userEvent.keyboard('{ArrowDown} ')
-    expect(onSelect).toHaveBeenLastCalledWith({ axis: 'resolution', key: 'team', value: 3.6 })
-
-    // A click reads the vertex under the pointer; at the centre, far from every vertex, it reads none.
-    onSelect.mockClear()
+    // At the centre, far from every vertex, a click reads none.
     await userEvent.click(plot)
     expect(onSelect).not.toHaveBeenCalled()
     await userEvent.click(vertices(host)[0] as Element)
@@ -217,4 +185,10 @@ describe('RadarChart', () => {
       warn.mockRestore()
     }
   })
+})
+
+/* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
+radarChartReadingLaw({
+  shell: 'Solid',
+  mount: (props) => mount(() => <RadarChart {...props} />),
 })

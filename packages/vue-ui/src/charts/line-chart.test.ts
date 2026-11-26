@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { h, nextTick } from 'vue'
 
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
+import { lineChartReadingLaw } from '@polymorph/conformance/chart-reading'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { syncGroupSize } from '@polymorph/vue'
 
@@ -15,12 +16,13 @@ import { states } from './line-chart.states'
 /**
  * LineChart in the Vue shell (`design/components/line-chart.md`): the strokes
  * land where the engine's model says once the plot is measured, a gap breaks
- * them, and the crosshair reads the same numbers to a keyboard as to a
- * pointer, as the React member's tests hold them
- * (`packages/react-ui/src/charts/line-chart.test.tsx`). The brush and the sync
- * group drive the engine's machines through the description's handlers and
- * effects, so they are checked here too. The drawing is the engine's
- * `lineChartModel`, which both members render.
+ * them, and a click, the tooltip, a brush on a linear x and the sync group
+ * work, as the React member's tests hold them
+ * (`packages/react-ui/src/charts/line-chart.test.tsx`), and the markers at the
+ * reading position carry its flag. The reading position, its keys and the
+ * brush's keys are `@polymorph/conformance/chart-reading`'s, which this file
+ * calls. The drawing is the engine's `lineChartModel`, which every member
+ * renders.
  */
 
 beforeAll(installTestTheme)
@@ -106,39 +108,12 @@ describe('LineChart', () => {
     expect(lines(smooth.host)[0]?.getAttribute('d')).toContain('C')
   })
 
-  it('walks the crosshair with arrow keys and lists every series at it', async () => {
-    const { host, plot, live } = await chart('Keyboard', { markers: true })
+  it('flags the markers at the reading position, one per series', async () => {
+    const { host, plot } = await chart('Keyboard', { markers: true })
     await vi.waitFor(() => expect(lines(host)).toHaveLength(2))
-    expect(crosshairs(host)).toHaveLength(0)
     plot.focus()
-    expect(live.textContent, 'a resting pointer had already set the position').toBe('')
-
     await userEvent.keyboard('{ArrowRight}')
-    expect(live.textContent).toContain('Opened 28')
-    expect(live.textContent).toContain('Resolved 25')
-    expect(crosshairs(host)).toHaveLength(1)
-    // The markers at the reading position, one per series, carry the flag.
-    expect(host.querySelectorAll('circle[data-active]')).toHaveLength(2)
-
-    await userEvent.keyboard('{End}')
-    expect(live.textContent).toContain('Opened 31')
-
-    await userEvent.keyboard('{Escape}')
-    expect(live.textContent).toBe('')
-    expect(crosshairs(host)).toHaveLength(0)
-  })
-
-  it('says "No data" for a gap rather than leaving the readout blank', async () => {
-    const { plot, live } = await chart('Gap readout', {
-      data: [
-        { day: '2026-07-01', opened: 28 },
-        { day: '2026-07-02', opened: null },
-      ],
-      series: [{ key: 'opened', label: 'Opened' }],
-    })
-    plot.focus()
-    await userEvent.keyboard('{End}')
-    expect(live.textContent).toContain('No data')
+    await vi.waitFor(() => expect(host.querySelectorAll('circle[data-active]')).toHaveLength(2))
   })
 
   it('shows the tooltip at the reading position, and keeps the reading without it', async () => {
@@ -172,32 +147,12 @@ describe('LineChart', () => {
     expect(table.textContent).toContain('28')
   })
 
-  it('reports the row through select, on Enter, on Space and on click', async () => {
+  it('reports the row a click reads through select', async () => {
     const onSelect = vi.fn()
-    const { host, plot } = await chart('Selectable', { onSelect })
-    expect(host.textContent).toContain('Enter or Space selects')
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}{Enter}')
-    expect(onSelect).toHaveBeenCalledWith({ index: 0, datum: DAYS[0] })
-    await userEvent.keyboard('{ArrowRight} ')
-    expect(onSelect).toHaveBeenLastCalledWith({ index: 1, datum: DAYS[1] })
-
-    onSelect.mockClear()
+    const { plot } = await chart('Selectable', { onSelect })
     await userEvent.click(plot)
     expect(onSelect).toHaveBeenCalledTimes(1)
     expect(onSelect.mock.calls[0]?.[0]).toHaveProperty('datum')
-  })
-
-  it('extends a brush from the reading position and commits ISO strings on Enter', async () => {
-    const onBrushEnd = vi.fn()
-    const { host, plot } = await chart('Brushable', { onBrushEnd })
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}{Shift>}{ArrowRight}{ArrowRight}{/Shift}')
-    expect(host.querySelector('[class*="range"]')).toBeTruthy()
-    expect(onBrushEnd).not.toHaveBeenCalled()
-    await userEvent.keyboard('{Enter}')
-    expect(onBrushEnd).toHaveBeenCalledTimes(1)
-    expect(onBrushEnd).toHaveBeenCalledWith(['2026-07-01', '2026-07-03'])
   })
 
   it('commits numbers on a linear x', async () => {
@@ -216,21 +171,6 @@ describe('LineChart', () => {
     await userEvent.keyboard('{ArrowRight}{Shift>}{ArrowRight}{/Shift}{Enter}')
     // Sorted by the x values, not by the rows' order.
     expect(onBrushEnd).toHaveBeenCalledWith([0, 20])
-  })
-
-  it('clears the brush on the first Escape and the reading on the second', async () => {
-    const { host, plot } = await chart('Two stages', { onBrushEnd: () => {} })
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}{Shift>}{ArrowRight}{/Shift}')
-    expect(host.querySelector('[class*="range"]')).toBeTruthy()
-    expect(crosshairs(host)).toHaveLength(1)
-
-    await userEvent.keyboard('{Escape}')
-    expect(host.querySelector('[class*="range"]')).toBeNull()
-    expect(crosshairs(host)).toHaveLength(1)
-
-    await userEvent.keyboard('{Escape}')
-    expect(crosshairs(host)).toHaveLength(0)
   })
 
   it('warns and draws no brush on a band x', async () => {
@@ -315,3 +255,13 @@ describe('LineChart', () => {
 
 /* No part of a state is drawn past the chart's inline edges (`@polymorph/conformance/chart-box`). */
 chartBoxLaw({ shell: 'Vue', member: 'LineChart', entries: states.entries, adapter: vueAdapter })
+
+/* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
+lineChartReadingLaw({
+  shell: 'Vue',
+  async mount(props) {
+    const mounted = await mount(() => h(LineChart, { ...props }))
+    await nextTick()
+    return mounted
+  },
+})

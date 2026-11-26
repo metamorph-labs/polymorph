@@ -4,6 +4,7 @@ import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
+import { areaChartReadingLaw } from '@polymorph/conformance/chart-reading'
 import { installTestTheme } from '@polymorph/engine/testing'
 
 import { render } from '../mount'
@@ -14,11 +15,13 @@ import { states } from './area-chart.states.svelte'
 /**
  * AreaChart in the Svelte shell (`design/components/area-chart.md`): the bands
  * stack where the engine's model says once the plot is measured, the axis
- * reaches the total, a gap breaks a band, and the percent variant never shows
- * a share without its value, as the React member's tests hold them
- * (`packages/react-ui/src/charts/area-chart.test.tsx`). The brush and the sync
- * group are LineChart's handlers and effects, on a time x only. The drawing is
- * the engine's `areaChartModel`, which both members render.
+ * reaches the total, a gap breaks a band, the percent variant never shows a
+ * share without its value, and a linear x has no brush and no sync group, as
+ * the React member's tests hold them
+ * (`packages/react-ui/src/charts/area-chart.test.tsx`). The reading position,
+ * its keys and the brush's keys are `@polymorph/conformance/chart-reading`'s,
+ * which this file calls. The drawing is the engine's `areaChartModel`, which
+ * every member renders.
  */
 
 beforeAll(installTestTheme)
@@ -109,23 +112,14 @@ describe('AreaChart', () => {
     expect(getByRole(host, 'table', { name: /Signed — data/ }).textContent).toContain('-8')
   })
 
-  it('reads every series at the crosshair, which alone carries the active state', async () => {
-    const { host, plot, live } = await chart('Keyboard')
+  it('marks the reading with the crosshair alone, and heads the tooltip with the row', async () => {
+    const { host, plot } = await chart('Keyboard')
     await vi.waitFor(() => expect(bands(host)).toHaveLength(3))
-    expect(crosshairs(host)).toHaveLength(0)
     plot.focus()
-    expect(live.textContent, 'a resting pointer had already set the position').toBe('')
-
     await userEvent.keyboard('{ArrowRight}')
-    expect(live.textContent).toContain('Urgent 12')
-    expect(live.textContent).toContain('Normal 68')
-    expect(crosshairs(host)).toHaveLength(1)
-    expect(crosshairs(host)[0]?.hasAttribute('data-active')).toBe(true)
+    await vi.waitFor(() => expect(crosshairs(host)).toHaveLength(1))
+    expect([...host.querySelectorAll('[data-active]')]).toEqual([...crosshairs(host)])
     expect(host.querySelector('[class*="tooltip"]')?.textContent).toContain('W30')
-
-    await userEvent.keyboard('{Escape}')
-    expect(live.textContent).toBe('')
-    expect(crosshairs(host)).toHaveLength(0)
   })
 
   it('reads value and share at the position in the percent variant', async () => {
@@ -162,33 +156,11 @@ describe('AreaChart', () => {
     expect(table.textContent).toContain('34')
   })
 
-  it('reports the row through select, on Enter and on click', async () => {
+  it('reports the row a click reads through select', async () => {
     const onSelect = vi.fn()
-    const { host, plot } = await chart('Selectable', { onSelect })
-    expect(host.textContent).toContain('Enter or Space selects')
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}{Enter}')
-    expect(onSelect).toHaveBeenCalledWith({ index: 0, datum: WEEKS[0] })
-
-    onSelect.mockClear()
+    const { plot } = await chart('Selectable', { onSelect })
     await userEvent.click(plot)
     expect(onSelect).toHaveBeenCalledTimes(1)
-  })
-
-  it('brushes a time x from the reading position and emits the rows’ ISO strings', async () => {
-    const onBrushEnd = vi.fn()
-    const { host, plot } = await chart('Brushable', {
-      data: DAYS,
-      series: PRIORITY.slice(0, 2),
-      x: { key: 'day', scale: 'time' },
-      onBrushEnd,
-    })
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}{Shift>}{ArrowRight}{ArrowRight}{/Shift}')
-    expect(host.querySelector('[class*="range"]')).toBeTruthy()
-    await userEvent.keyboard('{Enter}')
-    expect(onBrushEnd).toHaveBeenCalledTimes(1)
-    expect(onBrushEnd).toHaveBeenCalledWith(['2026-07-01', '2026-07-03'])
   })
 
   it('warns once that a linear x belongs to LineChart, draws it, and gives it no brush', async () => {
@@ -288,4 +260,14 @@ chartBoxLaw({
   member: 'AreaChart',
   entries: states.entries,
   adapter: svelteAdapter,
+})
+
+/* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
+areaChartReadingLaw({
+  shell: 'Svelte',
+  async mount(props) {
+    const mounted = await render(AreaChart, props)
+    await tick()
+    return mounted
+  },
 })

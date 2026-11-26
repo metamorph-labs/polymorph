@@ -3,6 +3,7 @@ import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
+import { donutChartReadingLaw } from '@polymorph/conformance/chart-reading'
 import { installTestTheme } from '@polymorph/engine/testing'
 
 import { mount } from '../mount'
@@ -13,11 +14,12 @@ import { states } from './donut-chart.states'
 /**
  * DonutChart in the Solid shell (`design/components/donut-chart.md`): the ring
  * draws where the engine's model says once the plot is measured, a zero or
- * negative segment stays off the ring and in the twin, the share is shown
- * wherever the value is, and a keyboard user reaches every segment, as the
- * React member's tests hold them (`packages/react-ui/src/charts/donut-chart.test.tsx`).
- * DonutChart has no contract fence, so these are the checks on its behaviour;
- * the drawing is the engine's `donutChartModel`, which both members render.
+ * negative segment stays off the ring and in the twin, and the tooltip shows
+ * the share, as the React member's tests hold them
+ * (`packages/react-ui/src/charts/donut-chart.test.tsx`). The walk over the
+ * segments, the value and share each one says, and its keys are
+ * `@polymorph/conformance/chart-reading`'s, which this file calls. The drawing
+ * is the engine's `donutChartModel`, which every member renders.
  */
 
 beforeAll(installTestTheme)
@@ -91,27 +93,6 @@ describe('DonutChart', () => {
     }
   })
 
-  it('walks the segments with arrow keys and says the value and the share', async () => {
-    const { host, plot, live } = await chart({ label: 'Shares' })
-    await vi.waitFor(() => expect(arcs(host)).toHaveLength(4))
-    plot.focus()
-    expect(live.textContent, 'a resting pointer had already set the position').toBe('')
-    const active = () => arcs(host).filter((arc) => arc.hasAttribute('data-active'))
-
-    await userEvent.keyboard('{ArrowRight}')
-    expect(live.textContent).toBe('Email: 214, 58%')
-    expect(active()).toEqual([arcs(host)[0]])
-    expect(host.querySelector('svg')?.hasAttribute('data-reading')).toBe(true)
-
-    await userEvent.keyboard('{ArrowRight}')
-    expect(live.textContent).toBe('Chat: 96, 26%')
-    expect(active()).toEqual([arcs(host)[1]])
-
-    await userEvent.keyboard('{Escape}')
-    expect(live.textContent).toBe('')
-    expect(active()).toHaveLength(0)
-  })
-
   it('reads the segment whose target the pointer enters', async () => {
     const { host, live } = await chart({ label: 'Pointer' })
     await vi.waitFor(() => expect(hits(host)).toHaveLength(4))
@@ -170,24 +151,19 @@ describe('DonutChart', () => {
     expect(host.querySelector('[class*="legend"]')).toBeNull()
   })
 
-  it('reports the read segment with its share through select, on Enter, Space and click', async () => {
+  it('reports the segment the pointer reads on a click, with its share', async () => {
     const onSelect = vi.fn()
-    const { host, plot } = await chart({ label: 'Selectable', onSelect })
-    expect(host.textContent).toContain('Enter or Space selects')
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}{ArrowRight}{Enter}')
+    const { host, plot, live } = await chart({ label: 'Selectable', onSelect })
+    await vi.waitFor(() => expect(hits(host)).toHaveLength(4))
+    hits(host)[1]?.dispatchEvent(new PointerEvent('pointerenter'))
+    await vi.waitFor(() => expect(live.textContent).toBe('Chat: 96, 26%'))
+    await userEvent.click(plot)
     expect(onSelect).toHaveBeenCalledWith({
       key: 'chat',
       label: 'Chat',
       value: 96,
       share: 96 / (214 + 96 + 41 + 18),
     })
-    await userEvent.keyboard('{ArrowRight} ')
-    expect(onSelect).toHaveBeenLastCalledWith(expect.objectContaining({ key: 'phone' }))
-
-    onSelect.mockClear()
-    await userEvent.click(plot)
-    expect(onSelect).toHaveBeenCalledTimes(1)
   })
 
   it('renders the empty sentence for no segments', async () => {
@@ -203,4 +179,10 @@ chartBoxLaw({
   member: 'DonutChart',
   entries: states.entries,
   adapter: solidAdapter,
+})
+
+/* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
+donutChartReadingLaw({
+  shell: 'Solid',
+  mount: (props) => mount(() => <DonutChart {...props} />),
 })

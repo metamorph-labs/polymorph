@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import { userEvent } from 'vitest/browser'
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
+import { heatmapReadingLaw } from '@polymorph/conformance/chart-reading'
 import { assertGoverned, type ChartDatum } from '@polymorph/react'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { reactAdapter } from '../conformance/react'
@@ -11,8 +12,10 @@ import { states } from './heatmap.states'
 
 /**
  * Browser checks: a cell's colour is one of the seven emitted steps, never a
- * value between two of them; an absent measurement shows the surface, not the
- * lightest step; and the grid can be walked on both axes.
+ * value between two of them, and an absent measurement shows the surface, not
+ * the lightest step. The walk over the grid on both axes and its keys are the
+ * law's (`@polymorph/conformance/chart-reading`), which this file calls for
+ * React.
  */
 
 beforeAll(installTestTheme)
@@ -82,35 +85,6 @@ describe('Heatmap', () => {
     expect(cells(container)).toHaveLength(8)
   })
 
-  it('walks x with Left/Right and y with Up/Down', async () => {
-    const { container } = render(
-      <Heatmap
-        data={GRID}
-        x={{ key: 'band' }}
-        y={{ key: 'day' }}
-        value={{ key: 'tickets' }}
-        label="Keyboard"
-      />,
-    )
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-
-    const live = container.querySelector('[aria-live="polite"]') as HTMLElement
-    // A cursor left over a cell would set the reading position, and the first
-    // arrow would step from there. `test-setup.ts` moves the cursor away; this
-    // assertion names the failure if that stops working.
-    expect(live.textContent, 'a resting pointer had already set the position').toBe('')
-
-    await userEvent.keyboard('{ArrowRight}')
-    expect(live.textContent).toBe('08–12, Mon: 10')
-
-    await userEvent.keyboard('{ArrowRight}')
-    expect(live.textContent).toBe('12–16, Mon: 11')
-
-    await userEvent.keyboard('{ArrowDown}')
-    expect(live.textContent).toBe('12–16, Tue: 21')
-  })
-
   it('replaces the series legend with the ramp and its bounds', () => {
     const { container } = render(
       <Heatmap
@@ -161,31 +135,6 @@ describe('Heatmap', () => {
     expect(table.querySelectorAll('tbody tr')).toHaveLength(3)
     expect(table.querySelectorAll('thead th')).toHaveLength(4)
     expect(table.textContent).toContain('32')
-  })
-
-  it('reports the read cell through onSelect, and nothing for an absent cell', async () => {
-    const onSelect = vi.fn()
-    const { container } = render(
-      <Heatmap
-        data={[
-          { band: '08–12', day: 'Mon', tickets: 10 },
-          { band: '12–16', day: 'Mon', tickets: null },
-        ]}
-        x={{ key: 'band' }}
-        y={{ key: 'day' }}
-        value={{ key: 'tickets' }}
-        onSelect={onSelect}
-        label="Selectable"
-      />,
-    )
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}{Enter}')
-    expect(onSelect).toHaveBeenCalledWith({ x: '08–12', y: 'Mon', value: 10 })
-    // The absent cell has no number to report.
-    await userEvent.keyboard('{ArrowRight} ')
-    expect(onSelect).toHaveBeenCalledTimes(1)
-    expect(container.textContent).toContain('Enter or Space selects')
   })
 })
 
@@ -264,3 +213,9 @@ describe('Heatmap diverging colours on signed data', () => {
 
 /* No part of a state is drawn past the chart's inline edges (`@polymorph/conformance/chart-box`). */
 chartBoxLaw({ shell: 'React', member: 'Heatmap', entries: states.entries, adapter: reactAdapter })
+
+/* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
+heatmapReadingLaw({
+  shell: 'React',
+  mount: async (props) => render(<Heatmap {...props} />),
+})

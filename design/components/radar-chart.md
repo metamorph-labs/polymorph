@@ -111,6 +111,13 @@ per axis and one column per series. It shows the values without the polygon's di
 correction stated above). Identity never relies on colour alone: the cap keeps the ≤ 3 slots far
 apart, keys match the mark, and the twin has every number.
 
+The first Right lands on the axis at 12 o'clock and the first Left on the last axis. Right past
+the last axis reads the first, and Left past the first reads the last. Home and End move to the
+first and the last axis. The reading starts on the first series, Up and Down do nothing until a
+vertex is read, and they stop at the first and the last series. Otherwise the keys are as
+`bar-chart.md` states them: Escape and an Escape with nothing read, the defaults the reading
+prevents, and Enter and Space with and without `onSelect`.
+
 ## Agent
 
 A RadarChart is listed for an agent, named by its `label`, while a person has something to operate

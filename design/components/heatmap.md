@@ -121,6 +121,13 @@ are below 3:1 (the relief rule, applied structurally). Colour is never the only 
 position shows where, and the twin shows how much. With `onSelect`, Enter/Space activate at the
 reading position and the summary sentence mentions the activation; `role="img"` remains.
 
+The reading starts on the first row: the first Right lands on the first column and the first
+Left on the last. Up and Down do nothing until a cell is read. Each walk stops at its ends, and
+Home and End move to the first and the last column of the row. An absent cell is still reached
+and read with the catalog's `noData` text, and Enter or Space there reports nothing. Otherwise
+the keys are as `bar-chart.md` states them: Escape and an Escape with nothing read, the defaults
+the reading prevents, and Enter and Space with and without `onSelect`.
+
 ## Agent
 
 A Heatmap with `onSelect` is listed for an agent, named by its `label`; without `onSelect` a person

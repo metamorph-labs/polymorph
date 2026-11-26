@@ -108,6 +108,12 @@ to estimate. The centre figure is real text, so the relief rule does not apply t
 is never the only channel: the legend and twin name every segment, and ≤ 6 segments keeps
 adjacent slots well apart on the colour wheel.
 
+The first Right lands on the segment at 12 o'clock and the first Left on the last segment. The
+walk stops at both, and Home and End move to them. Up and Down are not the chart's, because a
+donut has one ring. Otherwise the keys are as `bar-chart.md` states them: Escape and an Escape
+with nothing read, the defaults the reading prevents, and Enter and Space with and without
+`onSelect`.
+
 ## Agent
 
 A DonutChart with `onSelect` is listed for an agent, named by its `label`; without `onSelect` a

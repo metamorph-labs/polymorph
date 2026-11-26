@@ -8,13 +8,16 @@ import {
   type ChartSeries,
   type ResolvedTheme,
 } from '@polymorph/react'
+import { radarChartReadingLaw } from '@polymorph/conformance/chart-reading'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { RadarChart, type RadarChartProps } from './RadarChart'
 
 /**
- * Browser checks: the rings draw as polygons, a gap breaks the profile instead
- * of dropping it to zero, and the vertex walk wraps around the polygon. The
- * polar arithmetic is tested in the engine's `charts/charts.test.ts`.
+ * Browser checks: the rings draw as polygons, and a gap breaks the profile
+ * instead of dropping it to zero. The polar arithmetic is tested in the
+ * engine's `charts/charts.test.ts`. The vertex walk around the polygon and its
+ * keys are the law's (`@polymorph/conformance/chart-reading`), which this file
+ * calls for React.
  */
 
 let theme: ResolvedTheme
@@ -91,36 +94,6 @@ describe('RadarChart', () => {
     expect((d.match(/M/g) ?? []).length).toBeGreaterThan(1)
   })
 
-  it('walks the axes with wrapping, and the series with Up/Down', async () => {
-    const { container } = render(<RadarChart axes={AXES} data={ROWS} series={PAIR} label="Walk" />)
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-
-    const live = container.querySelector('[aria-live="polite"]') as HTMLElement
-    await userEvent.keyboard('{ArrowRight}')
-    expect(live.textContent).toBe('First response: Agent, 4.5')
-
-    // Moving counter-clockwise from the first spoke reaches the last, because
-    // the walk wraps around the polygon.
-    await userEvent.keyboard('{ArrowLeft}')
-    expect(live.textContent).toBe('Coverage: Agent, 3.9')
-
-    await userEvent.keyboard('{ArrowDown}')
-    expect(live.textContent).toBe('Coverage: Team, 3.7')
-  })
-
-  it('reports axis key, series key and value on Enter', async () => {
-    const onSelect = vi.fn()
-    const { container } = render(
-      <RadarChart axes={AXES} data={ROWS} series={PAIR} onSelect={onSelect} label="Select" />,
-    )
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-
-    await userEvent.keyboard('{ArrowRight}{ArrowRight}{Enter}')
-    expect(onSelect).toHaveBeenCalledWith({ axis: 'resolution', key: 'agent', value: 3.2 })
-  })
-
   it('dev-warns above the palette’s cap and names the token', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const over = theme.chartCap + 1
@@ -154,4 +127,10 @@ describe('RadarChart', () => {
     expect(table.textContent).toContain('Escalation')
     expect(table.textContent).toContain('4.5')
   })
+})
+
+/* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
+radarChartReadingLaw({
+  shell: 'React',
+  mount: async (props) => render(<RadarChart {...props} />),
 })

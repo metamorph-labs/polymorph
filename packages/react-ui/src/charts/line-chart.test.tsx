@@ -3,6 +3,7 @@ import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
+import { lineChartReadingLaw } from '@polymorph/conformance/chart-reading'
 import { assertGoverned, type ChartDatum } from '@polymorph/react'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { reactAdapter } from '../conformance/react'
@@ -11,7 +12,9 @@ import { states } from './line-chart.states'
 
 /**
  * Browser checks: a gap breaks the stroke, a calendar date lands on its own day,
- * and the crosshair reads the same numbers to a keyboard as to a pointer.
+ * a click activates, a band x has no brush, and a sync group shares one
+ * reading. The reading position, its keys and the brush's keys are the law's
+ * (`@polymorph/conformance/chart-reading`), which this file calls for React.
  */
 
 beforeAll(installTestTheme)
@@ -199,61 +202,6 @@ describe('LineChart', () => {
     expect(label.getBoundingClientRect().bottom).toBeLessThanOrEqual(plot.bottom)
   })
 
-  it('walks the reading position with arrow keys and lists every series at it', async () => {
-    const { container } = render(
-      <LineChart data={DAYS} series={PAIR} x={{ key: 'day', scale: 'time' }} label="Keyboard" />,
-    )
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-    const live = container.querySelector('[aria-live="polite"]') as HTMLElement
-    // Checked explicitly: a cursor left over the plot by an earlier test sets
-    // the reading position without moving, and the first arrow would step from
-    // there. `test-setup.ts` moves the cursor away; this assertion names the
-    // failure if that stops working.
-    expect(live.textContent, 'a resting pointer had already set the position').toBe('')
-
-    await userEvent.keyboard('{ArrowRight}')
-    // One readout lists every series, because the pointer aims at a date, not
-    // at a line.
-    expect(live.textContent).toContain('Opened 28')
-    expect(live.textContent).toContain('Resolved 25')
-
-    await userEvent.keyboard('{End}')
-    expect(live.textContent).toContain('Opened 31')
-  })
-
-  it('shows the crosshair only while a position is being read', async () => {
-    const { container } = render(
-      <LineChart data={DAYS} series={PAIR} x={{ key: 'day', scale: 'time' }} label="Crosshair" />,
-    )
-    expect(container.querySelector('[class*="crosshair"]')).toBeNull()
-
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}')
-    expect(container.querySelector('[class*="crosshair"]')).toBeTruthy()
-  })
-
-  it('says "No data" for a gap rather than leaving the readout blank', async () => {
-    const { container } = render(
-      <LineChart
-        data={[
-          { day: '2026-07-01', opened: 28 },
-          { day: '2026-07-02', opened: null },
-        ]}
-        series={[{ key: 'opened', label: 'Opened' }]}
-        x={{ key: 'day', scale: 'time' }}
-        label="Gap readout"
-      />,
-    )
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-    await userEvent.keyboard('{End}')
-    expect((container.querySelector('[aria-live="polite"]') as HTMLElement).textContent).toContain(
-      'No data',
-    )
-  })
-
   it('carries the same numbers into the table twin', async () => {
     render(<LineChart data={DAYS} series={PAIR} x={{ key: 'day', scale: 'time' }} label="Twin" />)
     await userEvent.click(screen.getByRole('button', { name: /show the data table/i }))
@@ -316,28 +264,6 @@ describe('LineChart', () => {
     expect(texts).toContain('Launch')
   })
 
-  it('calls onSelect on Enter and Space', async () => {
-    const onSelect = vi.fn()
-    const { container } = render(
-      <LineChart
-        data={DAYS}
-        series={PAIR}
-        x={{ key: 'day', scale: 'time' }}
-        onSelect={onSelect}
-        label="Selectable"
-      />,
-    )
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}{Enter}')
-    expect(onSelect).toHaveBeenCalledWith({ index: 0, datum: DAYS[0] })
-    await userEvent.keyboard('{ArrowRight} ')
-    expect(onSelect).toHaveBeenCalledWith({ index: 1, datum: DAYS[1] })
-    // The summary also mentions the activation keys, because the plot keeps
-    // `role="img"`.
-    expect(container.textContent).toContain('Enter or Space selects')
-  })
-
   it('activates on click at the position the pointer is reading', async () => {
     const onSelect = vi.fn()
     const { container } = render(
@@ -354,57 +280,6 @@ describe('LineChart', () => {
     expect(onSelect).toHaveBeenCalledTimes(1)
     expect(onSelect.mock.calls[0]?.[0]).toHaveProperty('index')
     expect(onSelect.mock.calls[0]?.[0]).toHaveProperty('datum')
-  })
-
-  it('extends a brush from the reading position and commits ISO strings on Enter', async () => {
-    const onBrushEnd = vi.fn()
-    const { container } = render(
-      <LineChart
-        data={DAYS}
-        series={PAIR}
-        x={{ key: 'day', scale: 'time' }}
-        onBrushEnd={onBrushEnd}
-        label="Brushable"
-      />,
-    )
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}')
-    await userEvent.keyboard('{Shift>}{ArrowRight}{ArrowRight}{/Shift}')
-    // The range is painted with the selection roles while it is being built…
-    expect(container.querySelector('[class*="range"]')).toBeTruthy()
-    expect(onBrushEnd).not.toHaveBeenCalled()
-    await userEvent.keyboard('{Enter}')
-    // …and the callback fires on commit only, with the rows' ISO strings sorted.
-    expect(onBrushEnd).toHaveBeenCalledTimes(1)
-    expect(onBrushEnd).toHaveBeenCalledWith(['2026-07-01', '2026-07-03'])
-  })
-
-  it('clears the brush on the first Escape and the reading on the second', async () => {
-    const onBrushEnd = vi.fn()
-    const { container } = render(
-      <LineChart
-        data={DAYS}
-        series={PAIR}
-        x={{ key: 'day', scale: 'time' }}
-        onBrushEnd={onBrushEnd}
-        label="Two stages"
-      />,
-    )
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}{Shift>}{ArrowRight}{/Shift}')
-    expect(container.querySelector('[class*="range"]')).toBeTruthy()
-    expect(container.querySelector('[class*="crosshair"]')).toBeTruthy()
-
-    await userEvent.keyboard('{Escape}')
-    // Stage one: the range goes, the reading stays.
-    expect(container.querySelector('[class*="range"]')).toBeNull()
-    expect(container.querySelector('[class*="crosshair"]')).toBeTruthy()
-
-    await userEvent.keyboard('{Escape}')
-    // Stage two: the reading goes.
-    expect(container.querySelector('[class*="crosshair"]')).toBeNull()
   })
 
   it('warns and draws no brush on a band x', async () => {
@@ -486,3 +361,9 @@ describe('LineChart', () => {
 
 /* No part of a state is drawn past the chart's inline edges (`@polymorph/conformance/chart-box`). */
 chartBoxLaw({ shell: 'React', member: 'LineChart', entries: states.entries, adapter: reactAdapter })
+
+/* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
+lineChartReadingLaw({
+  shell: 'React',
+  mount: async (props) => render(<LineChart {...props} />),
+})

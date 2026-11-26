@@ -114,10 +114,13 @@ Markers may scale in with the stagger. Value changes re-render.
 
 As `bar-chart.md`, with the crosshair as the keyboard reading position. Left/Right move along
 x, the readout announces politely, and the twin holds the same values. The area fill never
-carries meaning alone; the stroke is the mark.
+carries meaning alone; the stroke is the mark. Up and Down are not the chart's: the readout
+already lists every series at the position, so there is no series to walk, and the page
+scrolls as it would elsewhere.
 
 Brush keyboard: **Shift+Arrows** extend a range from the reading position, and **Enter** commits
-it (`onBrushEnd` fires on commit only). **Escape is two-stage**: the first press cancels an
+it (`onBrushEnd` fires on commit only). A committed range stays on the plot, and Enter does
+not report it again. **Escape is two-stage**: the first press cancels an
 active brush, the second clears the reading. With `onSelect`, Enter/Space activate at the reading
 position, and the visually hidden summary describes the activation. `role="img"` stays unless axe
 reports a problem.

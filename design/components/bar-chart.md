@@ -187,6 +187,18 @@ selective direct labels and the twin. With `onSelect`, Enter/Space activate at t
 reading position, and the summary sentence names the activation. `role="img"`
 stays, and is reconsidered only if axe reports a violation.
 
+Nothing is read until a key or the pointer moves the reading. The first Right lands
+on the first band and the first Left on the last. Right and Left stop at the ends,
+and Home and End move to the first and the last band. Up and Down do nothing until a
+band is read. From a whole band the first Down lands on the first series and the
+first Up on the last, the walk stops at the ends, and the walked series leads the
+sentence (`Opened: 32 — Mon`) and stays walked as Right and Left move. Escape clears
+the reading, the walked series with it. An Escape with nothing read is not the
+chart's, and its default is left to the page. Every key the reading takes has its
+default prevented, so an arrow does not scroll the page. Enter on a
+whole band reports the first series, and with nothing read Enter and Space report
+nothing. Without `onSelect`, Enter and Space are not the chart's.
+
 ## Agent
 
 A BarChart is listed for an agent, named by its `label`, while a person has something to operate in

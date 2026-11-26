@@ -106,7 +106,9 @@ No draw-on; value changes re-render. Reduced motion and `none`: instant.
 ## A11y
 
 As `bar-chart.md`, with the reading position moving between marks. Left/Right move through rows
-in data order within the active series, and Up/Down switch series at the same row. Each move
+in data order within the active series, and Up/Down switch series at the same row. The reading
+starts on the first series, Up and Down do nothing until a mark is read, and they stop at the
+first and the last series. Each move
 announces "x, y (, bubble): series" politely. The twin is a `Table` of x · y (· bubble) per
 series, so every point is available without hover. With `onSelect`, Enter/Space activate at the
 reading position, and the visually hidden summary describes the activation. A position at which the

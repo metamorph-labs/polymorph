@@ -67,7 +67,9 @@ Every member with keyboard, focus, dismissal or announcement behaviour has a con
 (Tabs and Command among them), every control, and Accordion, Alert, AudioPlayer, Carousel, ChatThread,
 Collapsible, DataTable, ErrorSummary, JsonTree, LogView, Pagination, Plan, SearchPage, Spinner, Stepper, PromptInput,
 SplitPane, Tree and Table, whose rows take a click. `packages/registry/src/registry.test.ts` fails when one of them
-has none. A structure or layout member with no behaviour has no fence.
+has none. A structure or layout member with no behaviour has no fence. The chart tier takes keys and
+announces too, and has no fence: a chart's keys move a reading position whose words and marks depend
+on the data, and the tier's laws hold them (What it does not check, below).
 
 ## The grammar
 
@@ -445,7 +447,7 @@ open, where Radix closes it.
 | --- | --- |
 | `packages/registry/src/behaviour.ts` | the grammar, the parser, the state resolution and the registry shape |
 | `packages/registry/src/behaviour.test.ts` | every spec's contract parses; the grammar rejects what it does not define, with the rule and the line |
-| `packages/registry/src/registry.test.ts` | the registry carries each member's contract, read from the spec the law reads; every overlay and control has one, and so does every other member that takes keys or focus, dismisses or announces |
+| `packages/registry/src/registry.test.ts` | the registry carries each member's contract, read from the spec the law reads; every overlay and control has one, and so does every other member that takes keys or focus, dismisses or announces, except the chart tier, whose laws hold its behaviour |
 | `packages/react-ui/src/conformance.test.tsx` | every statement holds against the React shell; every state resolves to one entry and every part has a locator that does not assume the statement; every listed handler is declared in its spec's API; every ledger entry still diverges, for its declared reason; and the runner fails a false statement of every kind and every key and click effect |
 | `packages/conformance/src/law.ts` | the law a generated shell calls: every contract parses; every statement of every member the shell ships holds against it; every state resolves to one of its fixture entries; every entry of its ledger still diverges, for its declared reason; and the runner fails a false statement of every kind and every key and click effect through its adapter. Its `agentConformanceLaw` holds the agent fences the same way, for the React shell and the generated ones, and it runs `focusAfterRemovalLaw` too |
 | `packages/conformance/src/focus-after-removal.ts` | where focus goes when an Alert, a Banner or an ArtifactPane that holds it leaves the page: each member's fixture entry is mounted through the shell's adapter, focus is put on its close control, and the adapter unmounts the entry, as an application's state change does; focus is then on the element after it. The application removes these members, so no contract statement can say it. `conformanceLaw` calls it, and the React law calls it beside its contract statements |
@@ -473,6 +475,21 @@ pnpm exec vitest run src/conformance.test -t "agent"                    # the ag
   Escape with the Dialog left open, hoverable and persistent.
   ContextMenu's contract covers its paired visible control, which is its keyboard path, and the
   member's own tests cover the right-click.
+- **What a key does inside one focus stop.** A statement reads one part's role, name or
+  attribute, or where focus goes. A chart's plot is one focus stop, and its keys move a reading
+  position inside it: what a key does shows as words in a live region and a mark on the plot, and
+  both depend on the data. So the grammar does not state a chart's keys, and the chart tier has no
+  fence. The reading position of BarChart, LineChart, AreaChart, ScatterChart, Histogram,
+  RadarChart, Heatmap and DonutChart is held by the laws in
+  `packages/conformance/src/chart-reading.ts` (`barChartReadingLaw` and one for each of the
+  others), which every shell's test of each of those members calls with a mount of its own: the
+  plot as one focus stop named by `label`, nothing read at rest, the first Right on the first
+  position and the first Left on the last, the steps and where they stop or go around, Home and
+  End, each member's rule for Up and Down, the words the live region says at each position,
+  Escape and an Escape with nothing read, Enter and Space with and without `onSelect` and the
+  payload they report, LineChart's and AreaChart's brush, and that a key the reading takes has
+  its default prevented. FunnelChart's and Treemap's keys are held by `funnelChartLaw` and
+  `treemapLaw`, below.
 - **Typeahead and focus traps.** They are not in the grammar. The overlay tests cover the trap
   (`packages/react-ui/src/overlays/dialog.test.tsx` tabs through it).
 - **Scroll positions.** No statement says where a scrolling part rests. A Tabs strip wider than

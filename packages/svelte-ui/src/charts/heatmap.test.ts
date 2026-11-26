@@ -4,6 +4,7 @@ import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
+import { heatmapReadingLaw } from '@polymorph/conformance/chart-reading'
 import { installTestTheme } from '@polymorph/engine/testing'
 
 import { render } from '../mount'
@@ -14,12 +15,12 @@ import { states } from './heatmap.states.svelte'
 /**
  * Heatmap in the Svelte shell (`design/components/heatmap.md`): the cells land
  * where the engine's model says once the plot is measured, each colour is one
- * of the emitted steps, an absent measurement shows the surface, the scale
- * legend replaces the series legend, and a keyboard user walks the grid on
- * both axes, as the React member's tests hold them
- * (`packages/react-ui/src/charts/heatmap.test.tsx`). Heatmap has no contract
- * fence, so these are the checks on its behaviour; the drawing is the engine's
- * `heatmapModel`, which both members render.
+ * of the emitted steps, an absent measurement shows the surface, and the scale
+ * legend replaces the series legend, as the React member's tests hold them
+ * (`packages/react-ui/src/charts/heatmap.test.tsx`). The walk over the grid on
+ * both axes and its keys are `@polymorph/conformance/chart-reading`'s, which
+ * this file calls. The drawing is the engine's `heatmapModel`, which every
+ * member renders.
  */
 
 beforeAll(installTestTheme)
@@ -86,39 +87,9 @@ describe('Heatmap', () => {
     expect(sparse.host.querySelectorAll('rect[class*="hit"]')).toHaveLength(9)
   })
 
-  it('walks x with Left/Right and y with Up/Down, and says each cell', async () => {
-    const { host, plot, live } = await chart({ label: 'Keyboard' })
+  it('reads the cell under the pointer', async () => {
+    const { host, live } = await chart({ label: 'Pointer' })
     await vi.waitFor(() => expect(cells(host)).toHaveLength(9))
-    plot.focus()
-    expect(live.textContent, 'a resting pointer had already set the position').toBe('')
-    const marked = () => cells(host).filter((cell) => cell.hasAttribute('data-active'))
-
-    await userEvent.keyboard('{ArrowRight}')
-    expect(live.textContent).toBe('08–12, Mon: 10')
-    expect(marked()).toHaveLength(1)
-
-    await userEvent.keyboard('{ArrowRight}')
-    expect(live.textContent).toBe('12–16, Mon: 11')
-
-    await userEvent.keyboard('{ArrowDown}')
-    expect(live.textContent).toBe('12–16, Tue: 21')
-    expect(marked()).toEqual([cells(host)[4]])
-
-    await userEvent.keyboard('{Escape}')
-    expect(live.textContent).toBe('')
-    expect(marked()).toHaveLength(0)
-  })
-
-  it('reads an absent cell as no data, and the cell under the pointer', async () => {
-    const { host, plot, live } = await chart({
-      data: GRID.map((row, index) => (index === 0 ? { ...row, tickets: null } : row)),
-      label: 'Pointer',
-    })
-    await vi.waitFor(() => expect(cells(host)).toHaveLength(8))
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}')
-    expect(live.textContent).toBe('08–12, Mon: No data')
-
     const hits = [...host.querySelectorAll('rect[class*="hit"]')]
     await userEvent.hover(hits[8] as Element)
     await vi.waitFor(() => expect(live.textContent).toBe('16–20, Wed: 32'))
@@ -197,33 +168,13 @@ describe('Heatmap', () => {
     expect(getByRole(host, 'button', { name: /hide the data table/i })).toBeTruthy()
   })
 
-  it('reports the read cell through select on Enter, Space and click, and nothing for an absent cell', async () => {
+  it('reports the cell a click reads through select', async () => {
     const onSelect = vi.fn()
-    const { host, plot } = await chart({
-      data: [
-        { band: '08–12', day: 'Mon', tickets: 10 },
-        { band: '12–16', day: 'Mon', tickets: null },
-      ],
-      onSelect,
-      label: 'Selectable',
-    })
-    expect(host.textContent).toContain('Enter or Space selects')
-    await vi.waitFor(() => expect(cells(host)).toHaveLength(1))
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}{Enter}')
-    expect(onSelect).toHaveBeenCalledWith({ x: '08–12', y: 'Mon', value: 10 })
-    // The absent cell has no number to report.
-    await userEvent.keyboard('{ArrowRight} ')
-    expect(onSelect).toHaveBeenCalledTimes(1)
-    await userEvent.keyboard('{ArrowLeft} ')
-    expect(onSelect).toHaveBeenCalledTimes(2)
-
-    // A click reports the cell the pointer reads: the grid's centre.
-    const clicked = vi.fn()
-    const grid = await chart({ onSelect: clicked, label: 'Clickable' })
-    await vi.waitFor(() => expect(cells(grid.host)).toHaveLength(9))
-    await userEvent.click(grid.plot)
-    expect(clicked).toHaveBeenCalledWith({ x: '12–16', y: 'Tue', value: 21 })
+    const { host, plot } = await chart({ onSelect, label: 'Clickable' })
+    await vi.waitFor(() => expect(cells(host)).toHaveLength(9))
+    // The click lands on the grid's centre.
+    await userEvent.click(plot)
+    expect(onSelect).toHaveBeenCalledWith({ x: '12–16', y: 'Tue', value: 21 })
   })
 
   it('shows the empty state with no axes, legend or cells', async () => {
@@ -237,3 +188,13 @@ describe('Heatmap', () => {
 
 /* No part of a state is drawn past the chart's inline edges (`@polymorph/conformance/chart-box`). */
 chartBoxLaw({ shell: 'Svelte', member: 'Heatmap', entries: states.entries, adapter: svelteAdapter })
+
+/* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
+heatmapReadingLaw({
+  shell: 'Svelte',
+  async mount(props) {
+    const mounted = await render(Heatmap, props)
+    await tick()
+    return mounted
+  },
+})

@@ -112,7 +112,8 @@ re-render without a draw-on animation. Reduced motion and `none`: no animation.
 ## A11y
 
 As `bar-chart.md`: the plot is one focus stop, and Left/Right move through bins in axis order,
-announcing "a–b: count" politely. The twin is a `Table` of range · count with the same bins
+announcing "a–b: count" politely. Up and Down are not the chart's, because a sample has one
+series. The twin is a `Table` of range · count with the same bins
 and en-dash labels, so every value is reachable without hover. With `onSelect`, Enter/Space
 activate at the reading position and the visually hidden summary mentions the activation;
 `role="img"` remains. Colour never identifies anything, because there is only one series.

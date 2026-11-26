@@ -3,6 +3,7 @@ import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
+import { histogramReadingLaw } from '@polymorph/conformance/chart-reading'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { binSample } from '@polymorph/solid'
 
@@ -14,10 +15,11 @@ import { states } from './histogram.states'
 /**
  * Histogram in the Solid shell (`design/components/histogram.md`): the engine's
  * bins draw as contiguous bars once the plot is measured, the count axis is
- * anchored at zero, and a keyboard user can walk the distribution, as the
- * React member's tests hold them (`packages/react-ui/src/charts/histogram.test.tsx`).
- * Histogram has no contract fence, so these are the checks on its behaviour;
- * the drawing is the engine's `histogramModel`, which both members render.
+ * anchored at zero, and the pointer reads the nearest bin, as the React
+ * member's tests hold them (`packages/react-ui/src/charts/histogram.test.tsx`).
+ * The walk over the bins and its keys are
+ * `@polymorph/conformance/chart-reading`'s, which this file calls. The drawing
+ * is the engine's `histogramModel`, which every member renders.
  */
 
 beforeAll(installTestTheme)
@@ -86,27 +88,6 @@ describe('Histogram', () => {
     }
   })
 
-  it('walks bins with arrow keys, announcing the en-dash range and its count', async () => {
-    const { host, plot, live } = await chart({ label: 'Walk' })
-    await vi.waitFor(() => expect(bars(host).length).toBeGreaterThan(0))
-    plot.focus()
-    expect(live.textContent, 'a resting pointer had already set the position').toBe('')
-
-    await userEvent.keyboard('{ArrowRight}')
-    expect(live.textContent).toBe(`${FIRST.from}–${FIRST.to}: ${FIRST.count}`)
-    const active = host.querySelectorAll('g[data-active]')
-    expect(active).toHaveLength(1)
-    expect(active[0]?.parentElement?.firstElementChild).toBe(active[0])
-
-    await userEvent.keyboard('{End}')
-    const last = BINS.at(-1)!
-    expect(live.textContent).toBe(`${last.from}–${last.to}: ${last.count}`)
-
-    await userEvent.keyboard('{Escape}')
-    expect(live.textContent).toBe('')
-    expect(host.querySelectorAll('g[data-active]')).toHaveLength(0)
-  })
-
   it('reads the bin nearest the pointer', async () => {
     const { host, plot, live } = await chart({ label: 'Pointer' })
     await vi.waitFor(() => expect(bars(host).length).toBeGreaterThan(0))
@@ -145,22 +126,9 @@ describe('Histogram', () => {
     expect(table.textContent).toContain('Range')
   })
 
-  it('reports the read bin’s edges and count through select, on Enter, Space and click', async () => {
+  it('reports the bin a click reads through select', async () => {
     const onSelect = vi.fn()
-    const { host, plot } = await chart({ label: 'Select', onSelect })
-    expect(host.textContent).toContain('Enter or Space selects')
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}{Enter}')
-    expect(onSelect).toHaveBeenCalledWith({
-      bin: { from: FIRST.from, to: FIRST.to, count: FIRST.count },
-    })
-    await userEvent.keyboard('{ArrowRight} ')
-    const second = BINS[1]!
-    expect(onSelect).toHaveBeenLastCalledWith({
-      bin: { from: second.from, to: second.to, count: second.count },
-    })
-
-    onSelect.mockClear()
+    const { plot } = await chart({ label: 'Select', onSelect })
     await userEvent.click(plot)
     expect(onSelect).toHaveBeenCalledTimes(1)
   })
@@ -175,3 +143,9 @@ describe('Histogram', () => {
 
 /* No part of a state is drawn past the chart's inline edges (`@polymorph/conformance/chart-box`). */
 chartBoxLaw({ shell: 'Solid', member: 'Histogram', entries: states.entries, adapter: solidAdapter })
+
+/* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
+histogramReadingLaw({
+  shell: 'Solid',
+  mount: (props) => mount(() => <Histogram {...props} />),
+})

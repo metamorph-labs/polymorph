@@ -564,7 +564,10 @@ describe('the behaviour contracts come from the specs', () => {
   it('covers every member with keyboard, focus, dismissal or announcement behaviour', () => {
     // Every overlay and every control, and the members of other tiers that
     // take keys or focus, dismiss or announce. A new member of these is caught
-    // here without a fence.
+    // here without a fence. The chart tier takes keys and announces too, and
+    // has no fence: its laws in `@polymorph/conformance` hold its behaviour
+    // (`chart-reading`, `funnel-chart`, `treemap`, `bar-lines`), because a
+    // chart's keys move a reading position whose result depends on the data.
     const behaving = [
       'Accordion',
       'Alert',

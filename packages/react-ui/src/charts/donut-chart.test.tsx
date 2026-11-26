@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import { userEvent } from 'vitest/browser'
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
+import { donutChartReadingLaw } from '@polymorph/conformance/chart-reading'
 import { assertGoverned } from '@polymorph/react'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { reactAdapter } from '../conformance/react'
@@ -11,8 +12,10 @@ import { states } from './donut-chart.states'
 
 /**
  * Browser checks: a zero segment takes none of the ring and keeps its row, the
- * **share** is shown wherever the value is, and every segment has a pointer
- * target large enough to hit.
+ * **share** is shown in the twin beside the value, and every segment has a
+ * pointer target large enough to hit. The walk over the segments, the words
+ * each says with its share, and its keys are the law's
+ * (`@polymorph/conformance/chart-reading`), which this file calls for React.
  */
 
 beforeAll(installTestTheme)
@@ -97,23 +100,6 @@ describe('DonutChart', () => {
     expect(row?.textContent).toContain('—')
   })
 
-  it('shows the share beside the value', async () => {
-    const { container } = render(<DonutChart segments={CHANNELS} label="Shares" />)
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-
-    const live = container.querySelector('[aria-live="polite"]') as HTMLElement
-    // A cursor left over an arc would set the reading position, and the first
-    // arrow would step from there. `test-setup.ts` moves the cursor away; this
-    // assertion names the failure if that stops working.
-    expect(live.textContent, 'a resting pointer had already set the position').toBe('')
-
-    await userEvent.keyboard('{ArrowRight}')
-    expect(live.textContent).toContain('Email')
-    expect(live.textContent).toContain('214')
-    expect(live.textContent).toMatch(/%/)
-  })
-
   it('renders the center figure as real text, pre-formatted by the app', () => {
     const { container } = render(
       <DonutChart
@@ -151,25 +137,6 @@ describe('DonutChart', () => {
     )
     expect(container.querySelector('[class*="legend"]')).toBeNull()
   })
-
-  it('reports the selection with the share included', async () => {
-    const onSelect = vi.fn()
-    const { container } = render(
-      <DonutChart segments={CHANNELS} onSelect={onSelect} label="Selectable" />,
-    )
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-    // Left/Right walk segments clockwise. Enter reports the read segment with
-    // its share, which the geometry shows least accurately.
-    await userEvent.keyboard('{ArrowRight}{ArrowRight}{Enter}')
-    expect(onSelect).toHaveBeenCalledWith({
-      key: 'chat',
-      label: 'Chat',
-      value: 96,
-      share: 96 / (214 + 96 + 41 + 18),
-    })
-    expect(container.textContent).toContain('Enter or Space selects')
-  })
 })
 
 /* No part of a state is drawn past the chart's inline edges (`@polymorph/conformance/chart-box`). */
@@ -178,4 +145,10 @@ chartBoxLaw({
   member: 'DonutChart',
   entries: states.entries,
   adapter: reactAdapter,
+})
+
+/* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
+donutChartReadingLaw({
+  shell: 'React',
+  mount: async (props) => render(<DonutChart {...props} />),
 })

@@ -5,6 +5,7 @@ import { h, nextTick } from 'vue'
 
 import { barLinesLaw } from '@polymorph/conformance/bar-lines'
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
+import { barChartReadingLaw } from '@polymorph/conformance/chart-reading'
 import { installTestTheme } from '@polymorph/engine/testing'
 
 import { mount } from '../mount'
@@ -14,11 +15,13 @@ import { states } from './bar-chart.states'
 
 /**
  * BarChart in the Vue shell (`design/components/bar-chart.md`): the marks land
- * where the engine's model says once the plot is measured, and a keyboard user
- * reaches every number, as the React member's tests hold them
- * (`packages/react-ui/src/charts/bar-chart.test.tsx`). BarChart has no
- * contract fence, so these are the checks on its behaviour; the drawing is the
- * engine's `barChartModel`, which both members render.
+ * where the engine's model says once the plot is measured, with the tooltip,
+ * the legend, a click and the annotation layer, as the React member's tests
+ * hold them (`packages/react-ui/src/charts/bar-chart.test.tsx`). The reading
+ * position and its keys are `@polymorph/conformance/chart-reading`'s, the
+ * lines over the bars `@polymorph/conformance/bar-lines`'s and the chart's box
+ * `@polymorph/conformance/chart-box`'s, which this file calls. The drawing is
+ * the engine's `barChartModel`, which every member renders.
  */
 
 beforeAll(installTestTheme)
@@ -76,29 +79,6 @@ describe('BarChart', () => {
     expect(ticks).toContain('0')
   })
 
-  it('walks the bands with arrow keys and the series with Up/Down, and says each', async () => {
-    const { host, plot, live } = await chart({ label: 'Keyboard' })
-    plot.focus()
-    expect(live.textContent, 'a resting pointer had already set the position').toBe('')
-    const marked = () => bars(host).filter((bar) => bar.hasAttribute('data-active'))
-
-    await userEvent.keyboard('{ArrowRight}')
-    expect(live.textContent).toBe('Mon: Opened 32, Resolved 28')
-    expect(host.querySelectorAll('g[data-active]')).toHaveLength(1)
-    expect(marked()).toHaveLength(0)
-
-    await userEvent.keyboard('{ArrowDown}')
-    expect(live.textContent).toBe('Opened: 32 — Mon')
-    expect(marked()).toHaveLength(1)
-
-    await userEvent.keyboard('{ArrowDown}{ArrowRight}')
-    expect(live.textContent).toBe('Resolved: 39 — Tue')
-
-    await userEvent.keyboard('{Escape}')
-    expect(live.textContent).toBe('')
-    expect(marked()).toHaveLength(0)
-  })
-
   it('shows the tooltip at the reading position, and keeps the reading without it', async () => {
     const shown = await chart({ label: 'Tooltip' })
     shown.plot.focus()
@@ -145,17 +125,9 @@ describe('BarChart', () => {
     expect(getByRole(host, 'button', { name: /hide the data table/i })).toBeTruthy()
   })
 
-  it('reports the walked series through select, on Enter and on click', async () => {
+  it('reports the band a click reads through select', async () => {
     const onSelect = vi.fn()
-    const { host, plot } = await chart({ label: 'Selectable', onSelect })
-    expect(host.textContent).toContain('Enter or Space selects')
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}{Enter}')
-    expect(onSelect).toHaveBeenCalledWith({ index: 0, key: 'opened', datum: ROWS[0] })
-    await userEvent.keyboard('{ArrowDown}{ArrowDown}{Enter}')
-    expect(onSelect).toHaveBeenLastCalledWith({ index: 0, key: 'resolved', datum: ROWS[0] })
-
-    onSelect.mockClear()
+    const { plot } = await chart({ label: 'Selectable', onSelect })
     await userEvent.click(plot)
     expect(onSelect).toHaveBeenCalledTimes(1)
   })
@@ -215,3 +187,13 @@ describe('BarChart', () => {
 
 /* No part of a state is drawn past the chart's inline edges (`@polymorph/conformance/chart-box`). */
 chartBoxLaw({ shell: 'Vue', member: 'BarChart', entries: states.entries, adapter: vueAdapter })
+
+/* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
+barChartReadingLaw({
+  shell: 'Vue',
+  async mount(props) {
+    const mounted = await mount(() => h(BarChart, { ...props }))
+    await nextTick()
+    return mounted
+  },
+})

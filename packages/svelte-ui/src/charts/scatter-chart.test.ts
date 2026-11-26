@@ -4,6 +4,7 @@ import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
+import { scatterChartReadingLaw } from '@polymorph/conformance/chart-reading'
 import { installTestTheme } from '@polymorph/engine/testing'
 
 import { render } from '../mount'
@@ -15,12 +16,12 @@ import { states } from './scatter-chart.states.svelte'
 /**
  * ScatterChart in the Svelte shell (`design/components/scatter-chart.md`): the
  * marks land where the engine's model says once the plot is measured, the
- * pointer reads the nearest mark on the plane, a keyboard user reaches every
- * observation, and the palette's cap is read from the theme, as the React
- * member's tests hold them (`packages/react-ui/src/charts/scatter-chart.test.tsx`).
- * ScatterChart has no contract fence, so these are the checks on its
- * behaviour; the drawing is the engine's `scatterChartModel`, which both
- * members render.
+ * pointer reads the nearest mark on the plane, and the palette's cap is read
+ * from the theme, as the React member's tests hold them
+ * (`packages/react-ui/src/charts/scatter-chart.test.tsx`). The per-mark
+ * reading and its keys are `@polymorph/conformance/chart-reading`'s, which this
+ * file calls. The drawing is the engine's `scatterChartModel`, which every
+ * member renders.
  */
 
 let chartCap = 0
@@ -131,29 +132,6 @@ describe('ScatterChart', () => {
     expect(host.querySelectorAll('path[class*="zero"]')).toHaveLength(1)
   })
 
-  it('walks rows with Left/Right and series with Up/Down, announcing x, y: series', async () => {
-    const { host, plot, live } = await chart({ data: TEAMS, series: PAIR, label: 'Walk' })
-    await vi.waitFor(() => expect(dots(host)).toHaveLength(4))
-    plot.focus()
-    expect(live.textContent, 'a resting pointer had already set the position').toBe('')
-    const marked = () => dots(host).filter((dot) => dot.hasAttribute('data-active'))
-
-    await userEvent.keyboard('{ArrowRight}')
-    expect(live.textContent).toBe('2, 4.8: Triage')
-    expect(marked()).toHaveLength(1)
-    expect(host.querySelectorAll('g[data-active]')).toHaveLength(1)
-
-    // Up/Down switch series at the same row.
-    await userEvent.keyboard('{ArrowDown}')
-    expect(live.textContent).toBe('2, 4.2: Escalations')
-    await userEvent.keyboard('{ArrowRight}')
-    expect(live.textContent).toBe('6, 3.8: Escalations')
-
-    await userEvent.keyboard('{Escape}')
-    expect(live.textContent).toBe('')
-    expect(marked()).toHaveLength(0)
-  })
-
   it('reads the mark nearest the pointer on the plane, and clears past the hit size', async () => {
     const { host, plot, live } = await chart({ data: TEAMS, series: PAIR, label: 'Pointer' })
     await vi.waitFor(() => expect(dots(host)).toHaveLength(4))
@@ -231,17 +209,10 @@ describe('ScatterChart', () => {
     expect(table.textContent).toContain('40')
   })
 
-  it('reports the row, the walked series and the datum through select, on Enter and on click', async () => {
+  it('reports the mark a click reads through select', async () => {
     const onSelect = vi.fn()
-    const { host, plot } = await chart({ label: 'Selectable', onSelect })
-    expect(host.textContent).toContain('Enter or Space selects')
+    const { host } = await chart({ label: 'Selectable', onSelect })
     await vi.waitFor(() => expect(dots(host)).toHaveLength(4))
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}{ArrowRight}{Enter}')
-    expect(onSelect).toHaveBeenCalledWith({ index: 1, key: 'csat', datum: ROWS[1] })
-
-    // A click reports the mark the pointer reads; on the empty surface it reads none.
-    onSelect.mockClear()
     await userEvent.click(dots(host)[2] as Element)
     expect(onSelect).toHaveBeenCalledWith({ index: 2, key: 'csat', datum: ROWS[2] })
   })
@@ -308,4 +279,14 @@ chartBoxLaw({
   member: 'ScatterChart',
   entries: states.entries,
   adapter: svelteAdapter,
+})
+
+/* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
+scatterChartReadingLaw({
+  shell: 'Svelte',
+  async mount(props) {
+    const mounted = await render(ScatterChart, props)
+    await tick()
+    return mounted
+  },
 })

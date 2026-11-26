@@ -9,16 +9,18 @@ import {
   type ResolvedTheme,
 } from '@polymorph/react'
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
+import { scatterChartReadingLaw } from '@polymorph/conformance/chart-reading'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { reactAdapter } from '../conformance/react'
 import { ScatterChart, type ScatterChartProps } from './ScatterChart'
 import { states } from './scatter-chart.states'
 
 /**
- * Browser checks: observations land where their two measures put them, bubble
- * radii stay within the sqrt scale's mark-spec bounds, and the per-mark reading
- * works without a pointer. The scan and scale arithmetic is tested in
- * the engine's `charts/charts.test.ts`.
+ * Browser checks: observations land where their two measures put them, and
+ * bubble radii stay within the sqrt scale's mark-spec bounds. The scan and
+ * scale arithmetic is tested in the engine's `charts/charts.test.ts`. The
+ * per-mark reading and its keys are the law's
+ * (`@polymorph/conformance/chart-reading`), which this file calls for React.
  */
 
 let theme: ResolvedTheme
@@ -138,51 +140,6 @@ describe('ScatterChart', () => {
     expect(container.querySelectorAll('path[class*="zero"]')).toHaveLength(1)
   })
 
-  it('walks rows with Left/Right and series with Up/Down, announcing x, y: series', async () => {
-    const { container } = render(
-      <ScatterChart
-        data={[
-          { minutes: 2, triage: 4.8, escalations: 4.2 },
-          { minutes: 6, triage: 4.1, escalations: 3.8 },
-        ]}
-        series={[
-          { key: 'triage', label: 'Triage' },
-          { key: 'escalations', label: 'Escalations' },
-        ]}
-        x={{ key: 'minutes' }}
-        label="Walk"
-      />,
-    )
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-
-    const live = container.querySelector('[aria-live="polite"]') as HTMLElement
-    await userEvent.keyboard('{ArrowRight}')
-    expect(live.textContent).toBe('2, 4.8: Triage')
-
-    // Up/Down switch series at the same row.
-    await userEvent.keyboard('{ArrowDown}')
-    expect(live.textContent).toBe('2, 4.2: Escalations')
-  })
-
-  it('reports row index, series key and row on Enter', async () => {
-    const onSelect = vi.fn()
-    const { container } = render(
-      <ScatterChart
-        data={ROWS}
-        series={ONE}
-        x={{ key: 'minutes' }}
-        onSelect={onSelect}
-        label="Select"
-      />,
-    )
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-
-    await userEvent.keyboard('{ArrowRight}{ArrowRight}{Enter}')
-    expect(onSelect).toHaveBeenCalledWith({ index: 1, key: 'csat', datum: ROWS[1] })
-  })
-
   it('dev-warns above the palette’s cap and names the token', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const over = theme.chartCap + 1
@@ -224,4 +181,10 @@ chartBoxLaw({
   member: 'ScatterChart',
   entries: states.entries,
   adapter: reactAdapter,
+})
+
+/* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
+scatterChartReadingLaw({
+  shell: 'React',
+  mount: async (props) => render(<ScatterChart {...props} />),
 })

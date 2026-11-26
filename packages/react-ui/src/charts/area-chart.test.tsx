@@ -3,6 +3,7 @@ import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { chartBoxLaw } from '@polymorph/conformance/chart-box'
+import { areaChartReadingLaw } from '@polymorph/conformance/chart-reading'
 import { assertGoverned, type ChartDatum } from '@polymorph/react'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { reactAdapter } from '../conformance/react'
@@ -11,8 +12,10 @@ import { states } from './area-chart.states'
 
 /**
  * Browser checks: the axis reaches the **total**, not the tallest band; a gap
- * breaks the band instead of bridging it; and the percent variant never shows a
- * share without the value beside it.
+ * breaks the band instead of bridging it; the percent variant never shows a
+ * share without the value beside it; and a linear x has no brush and no sync
+ * group. The reading position, its keys and the brush's keys are the law's
+ * (`@polymorph/conformance/chart-reading`), which this file calls for React.
  */
 
 beforeAll(installTestTheme)
@@ -116,39 +119,6 @@ describe('AreaChart', () => {
     expect(screen.getByRole('table', { name: /Signed — data/ }).textContent).toContain('-8')
   })
 
-  it('shows the crosshair only while a position is being read', async () => {
-    const { container } = render(
-      <AreaChart data={WEEKS} series={PRIORITY} x={{ key: 'week' }} label="Crosshair" />,
-    )
-    expect(container.querySelector('[class*="crosshair"]')).toBeNull()
-
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}')
-    const crosshair = container.querySelector('[class*="crosshair"]')
-    expect(crosshair).toBeTruthy()
-    // The active state is the crosshair's attribute; the bands never dim.
-    expect(crosshair?.hasAttribute('data-active')).toBe(true)
-  })
-
-  it('announces every series at the reading position', async () => {
-    const { container } = render(
-      <AreaChart data={WEEKS} series={PRIORITY} x={{ key: 'week' }} label="Keyboard" />,
-    )
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-
-    const live = container.querySelector('[aria-live="polite"]') as HTMLElement
-    // A cursor left over the plot would set the reading position, and the first
-    // arrow would step from there. `test-setup.ts` moves the cursor away; this
-    // assertion names the failure if that stops working.
-    expect(live.textContent, 'a resting pointer had already set the position').toBe('')
-
-    await userEvent.keyboard('{ArrowRight}')
-    expect(live.textContent).toContain('Urgent 12')
-    expect(live.textContent).toContain('Normal 68')
-  })
-
   it('carries value and share into the twin in the percent variant', async () => {
     render(
       <AreaChart
@@ -187,32 +157,6 @@ describe('AreaChart', () => {
     const table = screen.getByRole('table', { name: /Reseat — data/ })
     expect(table.textContent).toContain('High')
     expect(table.textContent).toContain('34')
-  })
-
-  it('brushes a time x from the reading position and emits the rows’ ISO strings', async () => {
-    const onBrushEnd = vi.fn()
-    const days: ChartDatum[] = [
-      { day: '2026-07-01', urgent: 4, high: 9 },
-      { day: '2026-07-02', urgent: 6, high: 7 },
-      { day: '2026-07-03', urgent: 5, high: 8 },
-    ]
-    const { container } = render(
-      <AreaChart
-        data={days}
-        series={[
-          { key: 'urgent', label: 'Urgent' },
-          { key: 'high', label: 'High' },
-        ]}
-        x={{ key: 'day', scale: 'time' }}
-        onBrushEnd={onBrushEnd}
-        label="Brushable"
-      />,
-    )
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}{Shift>}{ArrowRight}{ArrowRight}{/Shift}{Enter}')
-    expect(onBrushEnd).toHaveBeenCalledTimes(1)
-    expect(onBrushEnd).toHaveBeenCalledWith(['2026-07-01', '2026-07-03'])
   })
 
   it('warns once that a linear x belongs to LineChart and still draws the chart', () => {
@@ -323,23 +267,6 @@ describe('AreaChart', () => {
     }
   })
 
-  it('calls onSelect with the row at the reading position', async () => {
-    const onSelect = vi.fn()
-    const { container } = render(
-      <AreaChart
-        data={WEEKS}
-        series={PRIORITY}
-        x={{ key: 'week' }}
-        onSelect={onSelect}
-        label="Selectable"
-      />,
-    )
-    const plot = container.querySelector('[tabindex="0"]') as HTMLElement
-    plot.focus()
-    await userEvent.keyboard('{ArrowRight}{Enter}')
-    expect(onSelect).toHaveBeenCalledWith({ index: 0, datum: WEEKS[0] })
-  })
-
   it('draws annotations in the percent variant’s ratio domain', () => {
     const { container } = render(
       <AreaChart
@@ -361,3 +288,9 @@ describe('AreaChart', () => {
 
 /* No part of a state is drawn past the chart's inline edges (`@polymorph/conformance/chart-box`). */
 chartBoxLaw({ shell: 'React', member: 'AreaChart', entries: states.entries, adapter: reactAdapter })
+
+/* The reading position and its keys, as every shell holds them (`@polymorph/conformance/chart-reading`). */
+areaChartReadingLaw({
+  shell: 'React',
+  mount: async (props) => render(<AreaChart {...props} />),
+})
