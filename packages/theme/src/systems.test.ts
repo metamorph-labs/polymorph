@@ -48,6 +48,25 @@ describe('system schema', () => {
     )
   })
 
+  it('takes an optional heading slot, and refuses a slot it does not know', () => {
+    const fonts = exampleQuietSystem.fonts
+    const withFonts = (value: unknown) =>
+      systemSchema.safeParse({ ...exampleQuietSystem, fonts: value })
+    expect(fonts.heading).toBeUndefined()
+    expect(withFonts(fonts).success).toBe(true)
+    const heading = { family: 'Source Serif 4 Variable', fallback: 'serif' }
+    expect(
+      parseSystem({ ...exampleQuietSystem, fonts: { ...fonts, heading } }).fonts.heading,
+    ).toEqual(heading)
+    // A slot the vocabulary has no role for, and a field a slot does not take.
+    expect(withFonts({ ...fonts, title: { family: 'Inter' } }).success).toBe(false)
+    expect(withFonts({ ...fonts, heading: { family: 'Inter', weight: 600 } }).success).toBe(false)
+    expect(withFonts({ ...fonts, heading: { fallback: 'serif' } }).success).toBe(false)
+    // The three other slots stay required.
+    const { mono: _mono, ...withoutMono } = fonts
+    expect(withFonts(withoutMono).success).toBe(false)
+  })
+
   it('rejects extra keys, because the colour seeds belong in a palette', () => {
     expect(systemSchema.safeParse({ ...exampleQuietSystem, accentHue: 200 }).success).toBe(false)
     expect(systemSchema.safeParse({ ...exampleQuietSystem, chromaBudget: 'high' }).success).toBe(

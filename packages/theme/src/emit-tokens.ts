@@ -20,7 +20,7 @@ import {
   type ColorRoleValues,
   type GradientRole,
 } from './roles'
-import { FALLBACK_CLASSES, FONT_ROLES, type FallbackClass, type FontRole } from './seeds'
+import { FALLBACK_CLASSES, FONT_ROLES, fontSlot, type FallbackClass, type FontRole } from './seeds'
 import {
   MODE_PREFERENCES,
   MODES,
@@ -335,7 +335,10 @@ export interface TokenDocument {
     /** `chart.cap`: the any-neighbour series cap, the same in both modes. */
     chartCap: number
   }
-  /** `font.body`, `font.display`, `font.mono`. */
+  /**
+   * `font.body`, `font.display`, `font.mono`, `font.heading`. A system that
+   * states no heading slot has the body slot's values under `heading`.
+   */
   fonts: Record<FontRole, TokenFont>
   floor: { controlHeight: number; hitTarget: number; raised: RaisedToken[] }
   invariant: InvariantTokens
@@ -492,14 +495,16 @@ export function emitTokenDocument(
   ]
   const weightsOf = (role: FontRole): number[] =>
     // No step names the mono slot. Recipes set it at the text steps (code,
-    // kbd, JSON), so it needs the text steps' weights.
-    role === 'mono'
+    // kbd, JSON), so it needs the text steps' weights. The body slot needs
+    // them too: recipes set it at a heading step's weight (Text's emphasis
+    // takes `text.xl`'s), though no heading step names it.
+    role === 'mono' || role === 'body'
       ? ascending(TEXT_STEPS.map((step) => tokens.text[step].weight))
       : ascending(styles.filter((style) => style.family === role).map((style) => style.weight))
 
   const fonts = Object.fromEntries(
     FONT_ROLES.map((role) => {
-      const seeded = theme.seeds.fonts[role].family
+      const seeded = fontSlot(theme.seeds.fonts, role).family
       const font: TokenFont = {
         family: seeded.replace(/\s+Variable$/, ''),
         variable: /\s+Variable$/.test(seeded),

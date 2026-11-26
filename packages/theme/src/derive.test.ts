@@ -25,7 +25,7 @@ import {
 } from './derive'
 import { exampleQuietTheme } from './examples'
 import { resolveTheme } from './resolve-theme'
-import { DISPLAY_STEPS, SPACE_STEPS, TEXT_STEPS } from './tokens'
+import { DISPLAY_STEPS, HEADING_TEXT_STEPS, SPACE_STEPS, TEXT_STEPS } from './tokens'
 
 const base = exampleQuietTheme.axes
 
@@ -108,10 +108,19 @@ describe('type scale', () => {
     expect(seen.size).toBe(TYPE_PERSONALITIES.length)
   })
 
-  it('routes text at the body family and display at the display family', () => {
+  it('routes the body steps at the body slot, the heading steps at the heading slot and display at the display slot', () => {
     const { text, display } = deriveNonColorTokens(base)
-    expect(text.md.family).toBe('body')
-    expect(display.md.family).toBe('display')
+    expect(TEXT_STEPS.map((step) => [step, text[step].family])).toEqual([
+      ['xs', 'body'],
+      ['sm', 'body'],
+      ['md', 'body'],
+      ['lg', 'heading'],
+      ['xl', 'heading'],
+      ['2xl', 'heading'],
+      ['3xl', 'heading'],
+    ])
+    expect(HEADING_TEXT_STEPS).toEqual(['lg', 'xl', '2xl', '3xl'])
+    for (const step of DISPLAY_STEPS) expect(display[step].family).toBe('display')
   })
 })
 
@@ -461,6 +470,42 @@ describe('font stacks', () => {
     )
     expect(serif.body).toContain('ui-serif')
     expect(sans.mono).toContain('ui-monospace')
+  })
+
+  it('gives a heading slot the system leaves out the body stack, its fallback class included', () => {
+    const seeds = {
+      ...exampleQuietTheme.seeds,
+      fonts: {
+        ...exampleQuietTheme.seeds.fonts,
+        body: { family: 'Lora', fallback: 'serif' as const },
+      },
+    }
+    const stacks = deriveFontStacks(base, seeds)
+    expect(seeds.fonts.heading).toBeUndefined()
+    expect(stacks.heading).toBe(stacks.body)
+    expect(stacks.heading).toContain('ui-serif')
+  })
+
+  it('gives a heading slot of its own its family, and the personality’s fallback class when it names none', () => {
+    const fonts = { ...exampleQuietTheme.seeds.fonts, heading: { family: 'Source Serif 4' } }
+    const sans = deriveFontStacks(axesWith({ typePersonality: 'grotesque' }), {
+      ...exampleQuietTheme.seeds,
+      fonts,
+    })
+    expect(sans.heading.startsWith('"Source Serif 4", ui-sans-serif')).toBe(true)
+    expect(sans.body).toBe(
+      deriveFontStacks(axesWith({ typePersonality: 'grotesque' }), exampleQuietTheme.seeds).body,
+    )
+    const editorial = deriveFontStacks(axesWith({ typePersonality: 'editorial' }), {
+      ...exampleQuietTheme.seeds,
+      fonts,
+    })
+    expect(editorial.heading.startsWith('"Source Serif 4", ui-serif')).toBe(true)
+    const declared = deriveFontStacks(axesWith({ typePersonality: 'grotesque' }), {
+      ...exampleQuietTheme.seeds,
+      fonts: { ...fonts, heading: { family: 'Source Serif 4', fallback: 'serif' } },
+    })
+    expect(declared.heading.startsWith('"Source Serif 4", ui-serif')).toBe(true)
   })
 
   it('quotes multi-word family names', () => {

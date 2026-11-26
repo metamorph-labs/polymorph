@@ -350,13 +350,14 @@ export function emitThemeCSS(theme: ResolvedTheme, options: EmitThemeOptions = {
   const base = [
     // Axis flags first, because recipes' style queries read them.
     ...EXPOSED_AXES.map((axis) => declare(`axis.${axis}`, theme.axes[axis])),
-    // A display stack equal to the body stack is written as a reference to it.
-    // A stack is the sheet's longest value, and a system with one family for
-    // both roles would otherwise write it twice.
+    // A display or heading stack equal to the body stack is written as a
+    // reference to it. A stack is the sheet's longest value, and a system with
+    // one family for both roles would otherwise write it twice. A system that
+    // states no heading slot always has the reference.
     ...FONT_ROLES.map((role) =>
       declare(
         `font.${role}`,
-        role === 'display' && theme.fonts.display === theme.fonts.body
+        role !== 'body' && role !== 'mono' && theme.fonts[role] === theme.fonts.body
           ? `var(${cssVarName('font.body')})`
           : theme.fonts[role],
       ),

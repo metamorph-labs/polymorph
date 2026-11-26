@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import type { Density, MotionTemperament } from './axes'
 import type { ColorRole } from './roles'
-import type { FontRole } from './seeds'
+import { FONT_ROLES, type FontRole } from './seeds'
 import type { Mode } from './theme'
 
 /**
@@ -19,6 +19,14 @@ export type SpaceStep = (typeof SPACE_STEPS)[number]
 
 export const TEXT_STEPS = ['xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl'] as const
 export type TextStep = (typeof TEXT_STEPS)[number]
+
+/**
+ * The text steps drawn in the heading slot: the steps the type-usage table
+ * gives headings and titles (`design/components/README.md`), from section
+ * headings at `lg` to `3xl`. The steps under them are body sizes and draw in
+ * the body slot.
+ */
+export const HEADING_TEXT_STEPS = ['lg', 'xl', '2xl', '3xl'] as const satisfies readonly TextStep[]
 
 export const DISPLAY_STEPS = ['sm', 'md', 'lg'] as const
 export type DisplayStep = (typeof DISPLAY_STEPS)[number]
@@ -219,7 +227,7 @@ export const typeStyleSchema = z.strictObject({
   size: z.string().min(1),
   lineHeight: z.number().positive(),
   weight: z.number().int().min(1).max(1000),
-  family: z.enum(['body', 'display', 'mono']),
+  family: z.enum(FONT_ROLES),
   tracking: z.string().min(1),
 })
 export type TypeStyle = z.infer<typeof typeStyleSchema> & { family: FontRole }

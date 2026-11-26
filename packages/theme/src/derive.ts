@@ -14,13 +14,14 @@ import { cssVar } from './css-vars'
 import { minSizeForWeight } from './pairings'
 import { PLATFORM_FLOORS } from './platforms'
 import type { ColorRole } from './roles'
-import type { FallbackClass, FontRole, Seeds } from './seeds'
+import { fontSlot, type FallbackClass, type FontRole, type Seeds } from './seeds'
 // Type-only, because `systems` imports this file's values (GEOMETRY_RADII) and
 // a value import back would create a runtime cycle.
 import type { SystemOverrides } from './systems'
 import type { Mode } from './theme'
 import {
   DISPLAY_STEPS,
+  HEADING_TEXT_STEPS,
   SPACE_STEPS,
   TEXT_STEPS,
   type CubicBezier,
@@ -238,6 +239,7 @@ function deriveTextScale(
     return personality.bodyWeight
   }
 
+  const headings: readonly TextStep[] = HEADING_TEXT_STEPS
   const entries = TEXT_STEPS.map((step, index) => {
     const set = step === 'sm' ? override?.sm : step === 'xs' ? override?.xs : undefined
     const px = set ?? typeSizePx(index - baseIndex, ratio, base)
@@ -245,7 +247,9 @@ function deriveTextScale(
       size: rem(px),
       lineHeight: LINE_HEIGHTS[step],
       weight: weightFor(step, px),
-      family: 'body',
+      // The heading steps draw in the heading slot, which is the body slot in
+      // a system that states none (`fontSlot`).
+      family: headings.includes(step) ? 'heading' : 'body',
       tracking: trackingFor(px, personality),
     }
     return [step, style] as const
@@ -1095,14 +1099,23 @@ const FALLBACK_STACKS: Record<FallbackClass, string> = {
  */
 export function deriveFontStacks(axes: Axes, seeds: Seeds): Record<FontRole, string> {
   const stack = (role: FontRole): string =>
-    `${quote(seeds.fonts[role].family)}, ${FALLBACK_STACKS[fontFallbackClass(axes, seeds, role)]}`
-  return { body: stack('body'), display: stack('display'), mono: stack('mono') }
+    `${quote(fontSlot(seeds.fonts, role).family)}, ${FALLBACK_STACKS[fontFallbackClass(axes, seeds, role)]}`
+  return {
+    body: stack('body'),
+    display: stack('display'),
+    mono: stack('mono'),
+    heading: stack('heading'),
+  }
 }
 
-/** A slot's fallback class: the seeded one, else the personality's, and always mono for mono. */
+/**
+ * A slot's fallback class: the seeded one, else the personality's, and always
+ * mono for mono. A heading slot the system leaves out is the body slot, its
+ * class included, so its stack is the body's.
+ */
 export function fontFallbackClass(axes: Axes, seeds: Seeds, role: FontRole): FallbackClass {
   const byPersonality: FallbackClass = axes.typePersonality === 'editorial' ? 'serif' : 'sans'
-  return seeds.fonts[role].fallback ?? (role === 'mono' ? 'mono' : byPersonality)
+  return fontSlot(seeds.fonts, role).fallback ?? (role === 'mono' ? 'mono' : byPersonality)
 }
 
 // ------------------------------------------------------------------ assembly

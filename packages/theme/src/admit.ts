@@ -11,6 +11,7 @@ import { GRADIENT_BASE, type ColorRole } from './roles'
 import {
   fontPackage,
   FONT_ROLES,
+  fontSlot,
   GRADIENT_STOP_PINS,
   type FontFamilies,
   type FontRole,
@@ -139,11 +140,14 @@ function schemaFaults(
   }))
 }
 
-/** The install list: one entry per family, with every role it fills. */
+/**
+ * The install list: one entry per family, with every role it fills. A heading
+ * slot the system leaves out is filled by the body family.
+ */
 function admittedFonts(fonts: FontFamilies): AdmittedFont[] {
   const byFamily = new Map<string, AdmittedFont>()
   for (const role of FONT_ROLES) {
-    const family = fonts[role].family
+    const family = fontSlot(fonts, role).family
     const entry = byFamily.get(family)
     if (entry) entry.roles.push(role)
     else byFamily.set(family, { roles: [role], family, package: fontPackage(family) })

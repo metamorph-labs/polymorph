@@ -15,7 +15,7 @@ import { moreContrastOf, resolveTheme } from './resolve-theme'
 import { COLOR_ROLES } from './roles'
 import { composeTheme } from './systems'
 import { MODES, type ResolvedTheme } from './theme'
-import { SPACE_STEPS, TEXT_STEPS } from './tokens'
+import { HEADING_TEXT_STEPS, SPACE_STEPS, TEXT_STEPS } from './tokens'
 
 const quiet = resolveTheme(exampleQuietTheme)
 const stark = resolveTheme(exampleStarkTheme)
@@ -148,6 +148,40 @@ describe('emitThemeCSS', () => {
 
     const apart = emitThemeCSS({ ...quiet, fonts: { ...fonts, display: `"Other", serif` } })
     expect(apart).toContain('--pm-font-display: "Other", serif;')
+  })
+
+  it('writes the heading stack of a system that states no heading slot as a reference to the body stack', () => {
+    expect(exampleQuietSystem.fonts.heading).toBeUndefined()
+    expect(css).toContain('--pm-font-heading: var(--pm-font-body);')
+    for (const step of TEXT_STEPS) {
+      const role = (HEADING_TEXT_STEPS as readonly string[]).includes(step) ? 'heading' : 'body'
+      expect(css, step).toContain(`--pm-text-${step}-family: var(--pm-font-${role});`)
+    }
+  })
+
+  it('draws the heading steps in a heading slot a system states, and changes nothing else', () => {
+    const headed = resolveTheme(
+      composeTheme(
+        {
+          ...exampleQuietSystem,
+          fonts: {
+            ...exampleQuietSystem.fonts,
+            heading: { family: 'Source Serif 4', fallback: 'serif' },
+          },
+        },
+        exampleVioletPalette,
+      ),
+    )
+    const sheet = emitThemeCSS(headed)
+    expect(sheet).toContain('--pm-font-heading: "Source Serif 4", ui-serif,')
+    expect(sheet).toContain('--pm-text-2xl-family: var(--pm-font-heading);')
+    // Every other line is the line the system without the slot writes.
+    const lines = (text: string) => text.split('\n')
+    const changed = lines(sheet).filter((line) => !lines(css).includes(line))
+    expect(changed.map((line) => line.trim())).toEqual([
+      `--pm-font-heading: ${headed.fonts.heading};`,
+    ])
+    expect(lines(sheet)).toHaveLength(lines(css).length)
   })
 
   it('borrows the opposite mode for inverse tone, and only where it differs', () => {
