@@ -29,7 +29,8 @@ ${commands(run, 'card --framework <framework>')}
 If the session also has an MCP server named \`polymorph\`, its tools do the same jobs:
 \`get_system_card\` for \`card\`, \`search_components\` for \`search\`, \`get_component\` for
 \`component\`, \`validate\`, \`fix\`, \`emit_screen\` for \`emit\` and \`render_screen\` for \`render\`.
-Pass the app's framework as \`framework\` to every one that takes it. A server started for no
+Pass the app's framework as \`framework\` to every one that takes it. \`--json\` on a verb prints the
+tool's answer as JSON and nothing else, for a script that reads it. A server started for no
 project, as a plugin's is, cannot read the framework from the project, and reads code as React's.
 
 ## 1. Find the framework and how the app writes screens
@@ -54,7 +55,8 @@ ${commands(run, 'card --framework <framework>')}
 The card lists every member with its props, the variants and tones each takes, its compound parts
 (such as ${f.part('Table', 'Row')}), the icon roles, the token families, the red rules and the
 exception ladder. \`polymorph/system-card.md\` holds the card as it was when the project was set up.
-The command answers for the release it names.
+The command answers for the release it names. Read it once when the work starts. For one member
+after that, \`component\` is shorter and has more.
 
 A member or a prop that is not in the card does not exist. Do not invent one, and do not bring in
 components from another interface library.
@@ -103,13 +105,15 @@ to write, with the framework's extension: \`.tsx\` for React and Solid, \`.vue\`
 \`.ts\` for an Angular standalone component.
 
 The emitted component holds no state and no logic. A container you write renders it, owns the
-state, and passes the data and the callbacks the spec declares as \`inputs\`. Never edit an emitted
+state, and passes the data and the callbacks the spec declares as \`inputs\`.
+[references/code.md](references/code.md) shows one. Never edit an emitted
 file: change the spec and emit it again.
 
 ## 5. Or write the screen in code
 
 Import members from the framework's vocabulary package, or from the vendored directory in a project
-that vendors. Then check the file:
+that vendors. [references/code.md](references/code.md) has the import line for each framework, a
+worked screen, and what the app wires around it. Then check the file:
 
 ${commands(run, 'validate src/pages/Settings.tsx --framework <framework>')}
 
@@ -201,7 +205,9 @@ or spreads the fragment \`polymorph.eslint.js\` that \`init\` and \`add\` write.
           '@metamorph-labs/polymorph-* package, or that has a polymorph.json or ' +
           'polymorph/system-card.md. Covers reading the system card, choosing members, writing a ' +
           'screen spec or framework code, validating it against the red rules, fixing violations, ' +
-          'emitting a spec, and rendering it at phone and desktop width to read its layout faults.',
+          'emitting a spec, and rendering it at phone and desktop width to read its layout faults. ' +
+          'Its references cover a screen written in code and its container, an AI chat or ' +
+          'assistant screen, charts and dashboards, and rich text with mentions and comments.',
         body,
       ),
     },

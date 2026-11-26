@@ -24,7 +24,7 @@ import { digest, readManifest } from './manifest'
 import { ESLINT_FRAGMENT } from './patch'
 import { escapes } from './plan'
 import { row } from './readings'
-import { SKILL_NAMES, skillFiles } from './skills'
+import { SKILL_NAMES, SKILL_USES, skillFiles } from './skills'
 
 /**
  * `polymorph agents`: the files a coding agent reads in a project, written
@@ -512,8 +512,8 @@ function agentsText(
   )
   lines.push(
     bullet(
-      `The skills ${listed(SKILL_NAMES.map((name) => `\`${name}\``))}, in ` +
-        `${listed(where.skillDirs.map((dir) => `\`${dir}/\``))}, hold the procedures.`,
+      `The skills in ${listed(where.skillDirs.map((dir) => `\`${dir}/\``))} hold the ` +
+        `procedures: ${SKILL_NAMES.map((name) => `\`${name}\` (${SKILL_USES[name]})`).join('; ')}.`,
     ),
   )
   if (where.servers.length > 0) lines.push(bullet(serverSentence(options, where.servers)))

@@ -27,7 +27,13 @@ import { screenSkill } from './skills/screen'
 import { setupSkill } from './skills/setup'
 import { themeSkill } from './skills/theme'
 
-export { SKILL_NAMES, SkillFactError, type SkillFile, type SkillName } from './skills/facts'
+export {
+  SKILL_NAMES,
+  SKILL_USES,
+  SkillFactError,
+  type SkillFile,
+  type SkillName,
+} from './skills/facts'
 
 /**
  * Every file of every skill, at its path below a skills directory

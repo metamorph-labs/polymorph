@@ -79,6 +79,10 @@ they are. \`--force\` overwrites edited files. \`--remove <harness>\` stops writ
 and removes the files only it reads that nobody edited. An older release refuses to write over a
 newer one's files.
 
+Each MCP entry runs \`${run} mcp --project <path>\`, which starts the server over stdio for the
+harness's client. Run it by hand only to see that it starts. With \`--read-only\` in place of the
+project it offers no tool that writes a file.
+
 ## Moving to a newer release
 
 Every command in this skill names the release it runs. To move to a newer one, run the same

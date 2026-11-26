@@ -186,6 +186,21 @@ export const SKILL_NAMES = [
 ] as const
 export type SkillName = (typeof SKILL_NAMES)[number]
 
+/**
+ * The job each skill is for, in a few words. The always-loaded text and the
+ * plugin's README list the skills with it, so a harness that matches no skill
+ * description still learns which one to read.
+ */
+export const SKILL_USES: Record<SkillName, string> = {
+  'polymorph-screen': 'any screen: a form, a table, a chart, a chat with a model, formatted text',
+  'polymorph-rules': 'a red-rule violation, or a need no member covers',
+  'polymorph-setup': 'installing, vendoring, upgrading, the agent files',
+  'polymorph-theme': 'how the app looks',
+  'polymorph-runtime-screen': 'a screen a model writes while the product runs',
+  'polymorph-agent-bridge': 'an agent on the page that operates the members',
+  'polymorph-native': 'a SwiftUI or Compose screen',
+}
+
 /** A fenced shell block of commands, each starting with `run`. */
 export function commands(run: string, ...lines: string[]): string {
   return ['```sh', ...lines.map((line) => `${run} ${line}`), '```'].join('\n')

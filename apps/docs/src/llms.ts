@@ -92,7 +92,9 @@ export function llmsTxt(registry: Registry, origin = ''): string {
       '`--json` prints the tool’s answer.',
     `- A coding agent's files in an app that exists: \`${toolsCommand(registry)} agents\`. It ` +
       'writes a block in `AGENTS.md`, the skills (`polymorph-screen`, `polymorph-rules`, ' +
-      '`polymorph-setup`, `polymorph-theme`) and the MCP server for Claude Code, Codex and Cursor. ' +
+      '`polymorph-setup`, `polymorph-theme`, `polymorph-runtime-screen`, ' +
+      '`polymorph-agent-bridge`, `polymorph-native`) and the MCP server for Claude Code, Codex ' +
+      'and Cursor. ' +
       `Claude Code and Codex can install the same skills and server as a plugin from the ` +
       `repository's marketplace instead: \`claude plugin marketplace add metamorph-labs/polymorph\`.`,
     '',

@@ -2,7 +2,7 @@ import { PUBLISHED_NAMES, TOOLS_PACKAGE, type Registry } from '@polymorph/regist
 
 import { commandLine } from './agents'
 import type { Program } from './init-app'
-import { SKILL_NAMES, skillFiles } from './skills'
+import { SKILL_NAMES, SKILL_USES, skillFiles } from './skills'
 
 /**
  * The repository's plugin for coding agents, as data: one plugin directory
@@ -98,15 +98,18 @@ const TEXT = {
   shortDescription: 'Build UI with a design system',
   description:
     'Build interfaces with the Polymorph design system: skills for screens, red-rule ' +
-    'violations, setup and themes, and an MCP server that reads the vocabulary, checks code ' +
-    'and screen specs against the red rules, and draws a screen at phone and desktop width.',
+    'violations, setup, themes, screens a model writes at run time, agents on the page and ' +
+    'native apps, and an MCP server that reads the vocabulary, checks code and screen specs ' +
+    'against the red rules, and draws a screen at phone and desktop width.',
   longDescription: [
     'Polymorph is an open-source design system: one closed vocabulary of interface components ' +
       'for React, Vue, Svelte, Solid, Angular and plain HTML, a theme engine, and lint rules ' +
       '(the red rules) that keep design decisions out of application code.',
     'This plugin gives a coding agent the procedures and the tools to work in an app built ' +
       'with it. Its skills cover building a screen, answering a red-rule violation by the ' +
-      'exception ladder, adding polymorph to a project, and changing the theme. The MCP server ' +
+      'exception ladder, adding polymorph to a project, changing the theme, drawing a screen a ' +
+      'model writes while the product runs, letting an agent on the page operate the members, ' +
+      'and building a SwiftUI or Compose screen. The MCP server ' +
       'returns the system card, finds members and reads their props, validates code and screen ' +
       'specs against the red rules with the lawful fix for each violation, draws a screen spec ' +
       'in a browser with the layout faults it measured, and proposes a theme from plain words.',
@@ -380,7 +383,7 @@ export function pluginFiles(registry: Registry): PluginFile[] {
  * reads it for what the plugin runs, sends and fetches.
  */
 function readme(registry: Registry, run: string, server: string): string {
-  const skills = SKILL_NAMES.map((name) => `- \`${name}\``).join('\n')
+  const skills = SKILL_NAMES.map((name) => `- \`${name}\`: ${SKILL_USES[name]}`).join('\n')
   return `# Polymorph for coding agents
 
 Polymorph is an open-source design system: one closed vocabulary of interface components for
@@ -395,8 +398,9 @@ they need to build with it in your app: skills and an MCP server.
 
 ${skills}
 
-Each skill is a procedure with the exact commands: building a screen and checking it, answering a
-red-rule violation by the exception ladder, adding polymorph to a project, and changing the theme.
+Each skill is a procedure with the exact commands and code. A skill's \`references/\` files hold
+what one branch of its procedure needs, such as a chart, a conversation with a model or formatted
+text in \`polymorph-screen\`.
 
 ## What it runs
 
