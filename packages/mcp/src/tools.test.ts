@@ -573,6 +573,43 @@ describe('propose_theme', () => {
     }
   })
 
+  it('carries a heading face the system states, and none for a system without one', () => {
+    const plain = proposeTheme(context, { intent: 'calmer', basedOn: { system: 'plain' } })
+    expect((plain.system as { fonts: object }).fonts).not.toHaveProperty('heading')
+
+    // The catalogue states no heading face, so the test gives plain one.
+    const headed: Registry = {
+      ...registry,
+      theme: {
+        ...registry.theme,
+        systems: registry.theme.systems.map((system) =>
+          system.name !== 'plain'
+            ? system
+            : {
+                ...system,
+                fonts: [
+                  ...system.fonts.map((font) => ({
+                    ...font,
+                    roles: font.roles.filter((role) => role !== 'heading'),
+                  })),
+                  {
+                    roles: ['heading'],
+                    family: 'Source Serif 4 Variable',
+                    package: '@fontsource-variable/source-serif-4',
+                  },
+                ],
+              },
+        ),
+      },
+    }
+    const answer = proposeTheme(
+      { registry: headed },
+      { intent: 'calmer', basedOn: { system: 'plain' } },
+    )
+    expect(answer.lawful).toBe(true)
+    expect(parseSystem(answer.system).fonts.heading).toEqual({ family: 'Source Serif 4 Variable' })
+  })
+
   it('clamps at the end of a scale', () => {
     // Ten "calmer"s cannot take a budget below `none` or motion below `none`,
     // and a seed cannot leave the range the schema allows. Repetition is the

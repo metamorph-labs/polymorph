@@ -1,5 +1,6 @@
 import {
   FONT_ROLES,
+  fontSlot,
   gallerySlug,
   setMode,
   setMotionTemperament,
@@ -101,7 +102,7 @@ const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => r
 async function loadFonts(systemName: string): Promise<void> {
   const system = SYSTEMS.find((candidate) => candidate.name === systemName)
   if (system === undefined) return
-  const families = new Set(FONT_ROLES.map((role) => system.fonts[role].family))
+  const families = new Set(FONT_ROLES.map((role) => fontSlot(system.fonts, role).family))
   // A family that fails to load leaves its fallback stack, and the failed request is reported
   // by the tool, which sees every request the page makes.
   await Promise.all([...families].map((family) => FAMILY_LOADERS[family]?.().catch(() => {})))

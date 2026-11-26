@@ -1,4 +1,4 @@
-import { FONT_ROLES } from '@polymorph/engine'
+import { FONT_ROLES, fontSlot } from '@polymorph/engine'
 import { describe, expect, it } from 'vitest'
 
 import { FAMILY_LOADERS } from './fonts'
@@ -11,7 +11,7 @@ describe('the font map covers the catalogue', () => {
     // covers it when current. This law catches a stale map: a system edited without rerunning
     // `pnpm registry` (or an install).
     const missing = SYSTEMS.flatMap((system) =>
-      FONT_ROLES.map((role) => system.fonts[role].family).filter(
+      FONT_ROLES.map((role) => fontSlot(system.fonts, role).family).filter(
         (family) => !(family in FAMILY_LOADERS),
       ),
     )

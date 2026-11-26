@@ -1,4 +1,4 @@
-import { DATA_ATTRS, FONT_ROLES } from '@polymorph/engine'
+import { DATA_ATTRS, FONT_ROLES, fontSlot } from '@polymorph/engine'
 
 import { DRAFT_SYSTEM, draftFontFamilies } from './draft-boot'
 import { DEFAULT_SYSTEM, SYSTEMS } from './themes'
@@ -63,7 +63,7 @@ function loadSystemFonts(name: string): void {
 
   const system = SYSTEMS.find((candidate) => candidate.name === name)
   if (!system) return
-  loadFontFamilies(FONT_ROLES.map((role) => system.fonts[role].family))
+  loadFontFamilies(FONT_ROLES.map((role) => fontSlot(system.fonts, role).family))
 }
 
 /**

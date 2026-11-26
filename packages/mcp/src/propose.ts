@@ -45,7 +45,8 @@ import type { Registry, RegistryPalette, RegistrySystem } from '@polymorph/regis
 /** A candidate pair, mid-projection. Axis values stay strings until the schema runs. */
 interface Candidate {
   axes: Record<string, string>
-  fonts: Record<'body' | 'display' | 'mono', { family: string }>
+  /** `heading` only where the system states a heading face of its own. */
+  fonts: Record<'body' | 'display' | 'mono', { family: string }> & { heading?: { family: string } }
   defaultMode: string
   accentHue: number
   gradientHue?: number
@@ -536,20 +537,28 @@ function catalogueOf(registry: Registry): Catalogue {
   }
 }
 
-/** The catalogue publishes a family per *package*, listing the roles it serves. */
+/**
+ * The catalogue publishes a family per *package*, listing the roles it serves.
+ * The body family lists `heading` when the system states no heading slot, so a
+ * heading family is carried only when it is another family than the body's,
+ * and a proposal from a system without the slot has none either.
+ */
 function fontsOf(system: RegistrySystem): Candidate['fonts'] {
   const slots: Candidate['fonts'] = {
     body: { family: '' },
     display: { family: '' },
     mono: { family: '' },
   }
+  let heading: string | undefined
   for (const requirement of system.fonts) {
     for (const role of requirement.roles) {
       if (role === 'body' || role === 'display' || role === 'mono') {
         slots[role] = { family: requirement.family }
       }
+      if (role === 'heading') heading = requirement.family
     }
   }
+  if (heading !== undefined && heading !== slots.body.family) slots.heading = { family: heading }
   return slots
 }
 

@@ -1,4 +1,11 @@
-import { AXIS_NAMES, composeTheme, emitThemeCSS, FONT_ROLES, resolveTheme } from '@polymorph/engine'
+import {
+  AXIS_NAMES,
+  composeTheme,
+  emitThemeCSS,
+  FONT_ROLES,
+  fontSlot,
+  resolveTheme,
+} from '@polymorph/engine'
 
 import { deriveDraft, diffDraftTokens, saveable, serializeDraft, type Draft } from './draft'
 
@@ -76,7 +83,7 @@ export function renderHandoff(draft: Draft, systemName: string, paletteName: str
   push()
   push('| Font role | Family |')
   push('| --- | --- |')
-  for (const role of FONT_ROLES) push(`| ${role} | ${step(system.fonts[role].family)} |`)
+  for (const role of FONT_ROLES) push(`| ${role} | ${step(fontSlot(system.fonts, role).family)} |`)
   push()
 
   if (amendments.length > 0) {
