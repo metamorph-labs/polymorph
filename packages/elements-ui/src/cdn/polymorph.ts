@@ -24,8 +24,8 @@
  * chunk the first `<poly-screen>` to connect fetches, and the validator a
  * chunk its `check()` fetches. `loadScreen` resolves to what a page's own
  * script draws and checks a screen with, and builds a model's prompt with:
- * `drawScreen`, `parsePartial`, `checkScreen`, `runtimeCard` and
- * `outputContract`. A page that does neither fetches none of it.
+ * `drawScreen`, `parsePartial`, `checkScreen`, `checkAnswer`, `runtimeCard`
+ * and `outputContract`. A page that does neither fetches none of it.
  */
 // First in `polymorph.css`: the base layer, the host rule and the rules for an element that has
 // not rendered, before any member's recipe.
@@ -48,7 +48,7 @@ export { restore, toast } from '@polymorph/elements/loader'
 /** Loads the agent bridge: `createAgentBridge`, `agentTools` and `registerWebMCP`. */
 export const loadAgentBridge = () => import('@polymorph/engine/agent')
 
-/** Loads the run-time screens: `drawScreen`, `parsePartial`, `checkScreen`, `runtimeCard` and `outputContract`. */
+/** Loads the run-time screens: `drawScreen`, `parsePartial`, `checkScreen`, `checkAnswer`, `runtimeCard` and `outputContract`. */
 export const loadScreen = () => import('../screen/api')
 
 applyAgentSetting(document.documentElement.getAttribute(AGENT_ATTRIBUTE))

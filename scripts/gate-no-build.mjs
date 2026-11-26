@@ -1132,18 +1132,28 @@ async function screen(run, context) {
     const screen = await window.screenPage.loadScreen()
     const document = JSON.parse(window.document.querySelector('#document').text)
     return {
-      functions: ['drawScreen', 'parsePartial', 'checkScreen', 'runtimeCard', 'outputContract']
+      functions: [
+        'drawScreen',
+        'parsePartial',
+        'checkScreen',
+        'checkAnswer',
+        'runtimeCard',
+        'outputContract',
+      ]
         .filter((name) => typeof screen[name] === 'function')
         .join(),
       lawful: screen.checkScreen(document).ok,
       unknown: screen.checkScreen({ ...document, root: { component: 'Buton' } }).faults.length,
       card: screen.runtimeCard({ members: ['Stack', 'Button'] }).includes('Button'),
       partial: screen.parsePartial(JSON.stringify(document).slice(0, 40)).complete,
+      cut: screen.checkAnswer(JSON.stringify(document).slice(0, 40)).ok,
+      answered: screen.checkAnswer(`Here it is.\n\`\`\`json\n${JSON.stringify(document)}\n\`\`\``),
     }
   })
   run.check(
-    'screen: loadScreen resolves to drawScreen, parsePartial, checkScreen, runtimeCard and outputContract',
-    loaded.functions === 'drawScreen,parsePartial,checkScreen,runtimeCard,outputContract',
+    'screen: loadScreen resolves to drawScreen, parsePartial, checkScreen, checkAnswer, runtimeCard and outputContract',
+    loaded.functions ===
+      'drawScreen,parsePartial,checkScreen,checkAnswer,runtimeCard,outputContract',
     loaded.functions,
   )
   run.check(
@@ -1153,6 +1163,11 @@ async function screen(run, context) {
   )
   run.check('screen: runtimeCard lists the members it is given', loaded.card)
   run.check('screen: parsePartial reads a cut as not complete', loaded.partial === false)
+  run.check(
+    'screen: checkAnswer faults an answer cut short, and passes the whole answer with its prose',
+    loaded.cut === false && loaded.answered.ok && loaded.answered.prose === 'Here it is.',
+    JSON.stringify({ cut: loaded.cut, ok: loaded.answered.ok, prose: loaded.answered.prose }),
+  )
   run.check(
     'screen: loadScreen fetches the validator and the card',
     fetched(requests, parts.validator).length > 0 && fetched(requests, parts.card).length > 0,

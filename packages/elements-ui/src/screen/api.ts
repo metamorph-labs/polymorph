@@ -4,21 +4,28 @@ import {
   type CardOptions,
 } from '@polymorph/screen/card'
 
-import { checkScreen, type CheckOptions, type ScreenCheck } from './check'
+import {
+  checkAnswer,
+  checkScreen,
+  type AnswerCheck,
+  type CheckOptions,
+  type ScreenCheck,
+} from './check'
 import { draw, type DrawOptions, type Drawing, type DrawUpdate, type FaultDisplay } from './draw'
 
 /**
  * What a page's own script draws and checks a run-time screen with: the
  * module `@polymorph/elements-ui/screen` exports, and the one `loadScreen()`
  * resolves to on a page with no build. Every function is the elements':
- * `checkScreen`, `runtimeCard` and `outputContract` check against, and
- * describe, the members the elements draw.
+ * `checkScreen`, `checkAnswer`, `runtimeCard` and `outputContract` check
+ * against, and describe, the members the elements draw.
  */
 
 export { parsePartial, type PartialDocument } from '@polymorph/screen/partial'
 export type { JsonValue, ScreenAction, ScreenFault } from '@polymorph/screen'
-export { checkScreen }
-export type { CheckOptions, DrawOptions, DrawUpdate, FaultDisplay, ScreenCheck }
+export { checkAnswer, checkScreen }
+export type { AnswerCheck, CheckOptions, DrawOptions, DrawUpdate, FaultDisplay, ScreenCheck }
+export type { AddressPolicy } from '@polymorph/screen'
 
 /** A drawing, with what `checkScreen` says of the document it draws now. */
 export interface ScreenDrawing extends Drawing {
@@ -35,7 +42,7 @@ export interface ScreenDrawing extends Drawing {
  */
 export function drawScreen(container: Element, options: DrawOptions = {}): ScreenDrawing {
   let document = options.document
-  const members = options.members
+  const { members, addresses } = options
   const drawing = draw(container, options)
   return {
     get values() {
@@ -52,7 +59,10 @@ export function drawScreen(container: Element, options: DrawOptions = {}): Scree
       drawing.update(change)
     },
     check() {
-      return checkScreen(document, members === undefined ? {} : { members })
+      return checkScreen(document, {
+        ...(members === undefined ? {} : { members }),
+        ...(addresses === undefined ? {} : { addresses }),
+      })
     },
     dispose() {
       drawing.dispose()
@@ -60,7 +70,7 @@ export function drawScreen(container: Element, options: DrawOptions = {}): Scree
   }
 }
 
-/** What a host passes the card: the members it allows. */
+/** What a host passes the card: the members it allows, and whether it takes addresses. */
 export type ScreenCardOptions = Omit<CardOptions, 'framework'>
 
 /** The text a host puts in a model's system prompt so the model writes a screen the elements draw. */

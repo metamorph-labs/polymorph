@@ -6,6 +6,7 @@ import { parsePartial } from '@polymorph/screen/partial'
 import { VOCABULARY } from '@polymorph/screen/vocabulary'
 import {
   createScreen,
+  type ScreenOptions,
   type Screen,
   type ScreenAction,
   type ScreenFault,
@@ -73,6 +74,16 @@ export interface ScreenSource {
    */
   allow?: readonly string[]
   /**
+   * Whether the screen passes addresses: `allowed` (the default), each held
+   * to the schemes a screen may hold, or `refused`, none. Under `refused`, no
+   * link target, picture or recording the document writes or binds reaches a
+   * member, each is a fault, and a member that cannot be drawn without one
+   * (`Link`, `Image`, `Markdown`) is not drawn. The same value builds the card
+   * (`runtimeCard({ members, addresses })`) and checks the answer. Read when
+   * the screen is made: a different value makes a new screen.
+   */
+  addresses?: ScreenOptions['addresses']
+  /**
    * What fills a data input the host gave no value for: nothing (`absent`, the
    * default), or a sample of its type (`sample`), which a picture of the screen
    * asks for. Read when the screen is made.
@@ -127,9 +138,13 @@ export function useScreen(source: ScreenSource): Screen {
     cut: read === null ? (source.cut ?? null) : read.cut,
   }
 
-  // A screen depends on the members it may draw and on how it fills an input, so a change to
-  // either makes a new one. The key is the two as text.
-  const key = JSON.stringify([source.fill ?? 'absent', source.allow ?? null])
+  // A screen depends on the members it may draw, the addresses it passes and how it fills an
+  // input, so a change to any makes a new one. The key is the three as text.
+  const key = JSON.stringify([
+    source.fill ?? 'absent',
+    source.allow ?? null,
+    source.addresses ?? 'allowed',
+  ])
   const make = () => ({
     key,
     given,
@@ -138,6 +153,7 @@ export function useScreen(source: ScreenSource): Screen {
       vocabulary: VOCABULARY,
       framework: 'react',
       fill: source.fill ?? 'absent',
+      addresses: source.addresses ?? 'allowed',
       ...(source.allow === undefined ? {} : { members: source.allow }),
     }),
   })

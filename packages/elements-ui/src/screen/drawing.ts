@@ -1,4 +1,5 @@
 import { PolyElement, PolymorphEvent } from '@polymorph/elements'
+import type { AddressPolicy } from '@polymorph/screen'
 import { parsePartial } from '@polymorph/screen/partial'
 import type { ScreenAction, ScreenFault } from '@polymorph/screen/walk'
 
@@ -24,6 +25,7 @@ export interface ScreenState {
   members: readonly string[] | undefined
   /** Why the `members` the page gave cannot be read, or `null`. The element then allows none. */
   membersFault: string | null
+  addresses: AddressPolicy
   faults: FaultDisplay
 }
 
@@ -155,6 +157,7 @@ export function control(host: HTMLElement, read: () => ScreenState): Controller 
       cut: source.cut,
       streaming: source.streaming,
       faults: state.faults,
+      addresses: state.addresses,
       onAction,
       onFault,
       ...(state.data === undefined ? {} : { data: state.data }),
@@ -198,10 +201,12 @@ export function control(host: HTMLElement, read: () => ScreenState): Controller 
         state.members === undefined ||
         members.length !== state.members.length ||
         members.some((name, at) => name !== state.members?.[at]))
+    const changedAddresses = next.addresses !== state.addresses
     state = next
     source = sourceOf(host, state)
-    if (changedMembers) {
-      // The members a host allows decide what the walk draws from the start, so the drawing starts again.
+    if (changedMembers || changedAddresses) {
+      // The members a host allows and the addresses it takes decide what the walk draws from the
+      // start, so the drawing starts again.
       drawing.dispose()
       drawing = open()
     } else {
