@@ -51,14 +51,14 @@ ${commands(run, 'add tabs --framework <framework>')}
 ## 2. A screen in React
 
 \`\`\`tsx
-import { Button, DataTable, ListPage, SearchInput } from '@polymorph/react-ui'
+import { DataTable, Link, ListPage, SearchInput } from '@polymorph/react-ui'
 import { useState } from 'react'
 
 import type { Invoice } from './invoices'
 
 export function InvoicesPage(props: {
   invoices: Invoice[]
-  onNew: () => void
+  navigate: (href: string) => void
   onOpen: (invoice: Invoice) => void
 }) {
   const [query, setQuery] = useState('')
@@ -69,7 +69,11 @@ export function InvoicesPage(props: {
   return (
     <ListPage
       title="Invoices"
-      actions={<Button icon="add" label="New invoice" onClick={props.onNew} />}
+      actions={
+        <Link href="/invoices/new" variant="button" buttonVariant="solid" onNavigate={props.navigate}>
+          New invoice
+        </Link>
+      }
       filters={
         <SearchInput aria-label="Search invoices" size="sm" value={query} onChange={setQuery} />
       }
@@ -99,9 +103,12 @@ export function InvoicesPage(props: {
   nothing).
 - The screen holds its state (\`query\`) and derives what it shows (\`shown\`) as it renders.
   Polymorph has no data layer: data arrives as props or from the app's own fetching.
-- The page's one main action is a ${f.m('Button')} with no ${f.p('Button', 'variant')}: solid and
-  accent. Every other Button there is ${f.v('Button', 'variant', 'outline')} or
-  ${f.v('Button', 'variant', 'ghost')}.
+- The page's one main action is solid and accent. Here it goes to another page, so it is a
+  ${f.m('Link')} with ${f.v('Link', 'variant', 'button')} and
+  ${f.v('Link', 'buttonVariant', 'solid')}. An action that does the work in place is a
+  ${f.m('Button')} with no ${f.p('Button', 'variant')}. Every other Button there is
+  ${f.v('Button', 'variant', 'outline')} or ${f.v('Button', 'variant', 'ghost')}. [app.md](app.md)
+  has the rule for navigation.
 
 ## 3. The same screen in another framework
 
@@ -121,10 +128,11 @@ handle its change event. A Solid component reads \`props.foo\` and never destruc
 \`\`\`ts
 @Component({
   selector: 'app-invoices-page',
-  imports: [Button, DataTable, ListPage, SearchInput],
+  imports: [DataTable, Link, ListPage, SearchInput],
   template: \`
     <pm-list-page title="Invoices" [empty]="invoices().length === 0" [emptyState]="none">
-      <pm-button slot="actions" icon="add" label="New invoice" (click)="create.emit()" />
+      <pm-link slot="actions" href="/invoices/new" variant="button" buttonVariant="solid"
+        (navigate)="navigate.emit($event)">New invoice</pm-link>
       <pm-search-input slot="filters" aria-label="Search invoices" size="sm"
         [value]="query()" (change)="query.set($event)" />
       <pm-data-table label="Invoices" [columns]="columns" [data]="shown()" [getRowId]="rowId"
@@ -134,7 +142,7 @@ handle its change event. A Solid component reads \`props.foo\` and never destruc
 })
 export class InvoicesPage {
   readonly invoices = input.required<Invoice[]>()
-  readonly create = output()
+  readonly navigate = output<string>()
   readonly open = output<Invoice>()
   protected readonly columns = [{ key: 'customer', header: 'Customer' }]
   protected readonly none = { title: 'No invoices yet' }
@@ -148,7 +156,7 @@ export class InvoicesPage {
 
 \`\`\`html
 <poly-list-page title="Invoices" empty-state='{"title":"No invoices yet"}'>
-  <poly-button slot="actions" icon="add" label="New invoice"></poly-button>
+  <poly-link slot="actions" href="/invoices/new" variant="button" button-variant="solid">New invoice</poly-link>
   <poly-data-table label="Invoices"
     columns='[{"key":"customer","header":"Customer"},{"key":"total","header":"Total","numeric":true}]'
     empty-state='{"icon":"search","title":"No invoice matches the search"}'></poly-data-table>
@@ -201,7 +209,7 @@ export function Invoices(props: { invoices: Invoice[]; navigate: (href: string) 
       onQueryChange={setQuery}
       getRowId={(invoice) => invoice.id}
       onOpen={(invoice) => props.navigate(\`/invoices/\${invoice.id}\`)}
-      onNew={() => props.navigate('/invoices/new')}
+      onNavigate={props.navigate}
     />
   )
 }
@@ -213,6 +221,17 @@ export function Invoices(props: { invoices: Invoice[]; navigate: (href: string) 
 | \`svelte\` | \`let query = $state('')\`, \`const shown = $derived(…)\`; callbacks are props, \`onQueryChange={(value) => (query = value)}\` |
 | \`solid\` | \`const [query, setQuery] = createSignal('')\`; a derived value is a function, \`invoices={shown()}\` |
 | \`angular\` | the class in \`imports\`, written \`<app-invoices-view>\`; callbacks are inputs, \`[onQueryChange]="setQuery"\`, each an arrow-function property so it keeps \`this\`: \`protected readonly setQuery = (value: string) => this.query.set(value)\` |
+
+While the data has not arrived, the container passes \`true\` to each chart's
+${f.p('LineChart', 'loading')} and to ${f.m('DataTable')}'s ${f.p('DataTable', 'loading')}, with
+empty rows: a chart draws a skeleton on the first load and dims its last frame on a refetch.
+Empty rows without \`loading\` draw the chart's empty sentence, its \`messages.empty\`. A failed
+load is no member's state: the screen shows an ${f.m('Alert')} with
+${f.v('Alert', 'tone', 'danger')}, a ${f.p('Alert', 'title')} and a retry
+${f.p('Alert', 'action')} in the chart's panel. An Alert with no title and no children draws
+nothing, its action included, so a spec binds its title to an input the container leaves empty
+until a load fails. ${f.m('Dashboard')} and ${f.m('Stat')} take no loading prop, and the stat row
+draws nothing while ${f.p('Dashboard', 'stats')} is empty.
 
 - Never edit the emitted file. Change the spec and emit it again.
 - An emitted screen imports its members from \`@polymorph/<framework>-ui\`. In a project that vendors
@@ -257,6 +276,10 @@ root below. In another app, check each line.
 - The toast viewport is mounted once, outside the routes and outside any error boundary.
 - In React a ${f.m('Tooltip')} needs ${tooltipProvider} above it. ${f.m('AppShell')} brings its own;
   a root without AppShell wraps the app in one.
+- Polymorph has no router and no data layer. The router is the app's own dependency, which the app
+  installs: a package outside \`@polymorph\` is allowed for routing and for data, and the red rules
+  pass a router's imports and components. Its provider goes inside the two above, around the
+  routes. This root uses React Router.
 
 \`\`\`tsx
 import 'virtual:polymorph/theme'
@@ -264,6 +287,7 @@ import 'virtual:polymorph/theme'
 import { ToastHost, TooltipProvider } from '@polymorph/react-ui'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
 
 import { App } from './App'
 
@@ -273,7 +297,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ToastHost messages={TOASTS}>
       <TooltipProvider>
-        <App />
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
       </TooltipProvider>
     </ToastHost>
   </StrictMode>,
@@ -288,6 +314,12 @@ createRoot(document.getElementById('root')!).render(
 <!-- elements: once, in <body> -->
 <poly-toast-viewport></poly-toast-viewport>
 \`\`\`
+
+A new page is mounted by the app's router, or by the root in an app without one. \`init\` wrote a
+placeholder screen, Welcome, from \`src/screens/welcome.json\`, and its root component
+(\`src/App.tsx\`, \`src/App.vue\`, \`src/App.svelte\` or \`src/app.ts\`) renders it. Replace what
+the root component renders with the app's routes, one page per route, and delete the Welcome spec
+and the file emitted from it once nothing renders them.
 
 - **Mode.** ${f.m('ModeSwitch')} with a ${f.p('ModeSwitch', 'label')} and no
   ${f.p('ModeSwitch', 'value')} shows the reader's choice of light, dark or system and applies it.
@@ -305,34 +337,53 @@ createRoot(document.getElementById('root')!).render(
 ${commands(run, 'component FormField --framework <framework>')}
 
 \`\`\`tsx
-import { Button, Card, FormField, FormPage, Input, Select, Stack, toast } from '@polymorph/react-ui'
+import {
+  Button,
+  Card,
+  FormField,
+  FormPage,
+  Input,
+  Select,
+  Stack,
+  Textarea,
+  toast,
+} from '@polymorph/react-ui'
 import { useState } from 'react'
 
-const TERMS = [
-  { value: '30', label: '30 days' },
-  { value: '60', label: '60 days' },
+const CHANNELS = [
+  { value: 'email', label: 'Email' },
+  { value: 'chat', label: 'Chat' },
+  { value: 'phone', label: 'Phone' },
 ]
 
-export function NewInvoicePage(props: {
-  save: (draft: { customer: string; terms: string }) => Promise<void>
+export interface TicketDraft {
+  subject: string
+  channel: string
+  details: string
+}
+
+export function NewTicketPage(props: {
+  save: (draft: TicketDraft) => Promise<void>
   onDone: () => void
 }) {
-  const [customer, setCustomer] = useState('')
-  const [terms, setTerms] = useState('30')
+  const [subject, setSubject] = useState('')
+  const [channel, setChannel] = useState<string | undefined>(undefined)
+  const [details, setDetails] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [saving, setSaving] = useState(false)
-  const customerError = submitted && customer.trim() === '' ? 'Name the customer.' : undefined
+  const subjectError = submitted && subject.trim() === '' ? 'Give the ticket a subject.' : undefined
+  const channelError = submitted && channel === undefined ? 'Choose a channel.' : undefined
 
   async function submit() {
     setSubmitted(true)
-    if (customer.trim() === '') return
+    if (subject.trim() === '' || channel === undefined) return
     setSaving(true)
     try {
-      await props.save({ customer, terms })
-      toast.success('Invoice created')
+      await props.save({ subject, channel, details })
+      toast.success('Ticket created')
       props.onDone()
     } catch {
-      toast.danger('The invoice was not saved', { description: 'Try again in a moment.' })
+      toast.danger('The ticket was not saved', { description: 'Try again in a moment.' })
     } finally {
       setSaving(false)
     }
@@ -340,17 +391,25 @@ export function NewInvoicePage(props: {
 
   return (
     <FormPage
-      title="New invoice"
+      title="New ticket"
       onSubmit={submit}
-      actions={<Button type="submit" label="Create invoice" loading={saving} />}
+      actions={<Button type="submit" label="Create ticket" loading={saving} />}
     >
       <Card>
         <Stack gap={5}>
-          <FormField label="Customer" required error={customerError}>
-            <Input value={customer} onChange={setCustomer} />
+          <FormField label="Subject" required error={subjectError}>
+            <Input value={subject} onChange={setSubject} />
           </FormField>
-          <FormField label="Payment terms">
-            <Select options={TERMS} value={terms} onChange={(value) => setTerms(value ?? '30')} />
+          <FormField label="Channel" required error={channelError}>
+            <Select
+              options={CHANNELS}
+              placeholder="Choose a channel"
+              value={channel}
+              onChange={(value) => setChannel(value ?? undefined)}
+            />
+          </FormField>
+          <FormField label="Details">
+            <Textarea rows={5} value={details} onChange={setDetails} />
           </FormField>
         </Stack>
       </Card>
@@ -358,6 +417,9 @@ export function NewInvoicePage(props: {
   )
 }
 \`\`\`
+
+The route that mounts the page passes the router's navigation as \`onDone\`: in React Router,
+\`onDone={() => navigate('/tickets')}\`, with \`navigate\` from \`useNavigate()\`.
 
 - ${f.m('FormPage')} with ${f.p('FormPage', 'onSubmit')} renders a real \`<form>\`: Enter submits
   from any field, and a failed submit moves focus to the first invalid field. Its
@@ -369,6 +431,14 @@ export function NewInvoicePage(props: {
   well. Two fields side by side are a ${f.m('Grid')} with ${f.p('Grid', 'columns')} of 2.
 - Errors are computed from the values and a \`submitted\` flag, so none shows before the first
   submit. A server's error for a field goes in that field's error.
+- ${f.m('Input')}'s and ${f.m('Textarea')}'s ${f.p('Input', 'onChange')} hand over the text as a
+  \`string\`, then the change event, so \`onChange={setSubject}\` stores it.
+  ${f.m('Select')}'s hands over \`string | null\`.
+- A ${f.m('Select')} with no choice yet has a ${f.p('Select', 'placeholder')} and a
+  ${f.p('Select', 'value')} of \`undefined\`: hold it as \`string | undefined\`, and store
+  \`value ?? undefined\`. \`null\` is the choice ${f.p('Select', 'emptyOption')} names, such as a
+  filter's "All", and is lawful only with it. Never \`''\`: below \`30rem\` the Select opens as a
+  sheet, whose trigger draws \`''\` blank, without the placeholder.
 - While the request runs, the submit Button takes ${f.p('Button', 'loading')}, and a click does
   nothing.
 - A long form also lists its errors above the fields in ${f.m('ErrorSummary')}, whose
@@ -474,5 +544,11 @@ export function Shell(props: { path: string; navigate: (href: string) => void; c
   ${f.p('CursorPagination', 'previousHref')} and ${f.p('CursorPagination', 'nextHref')}.
 - An \`onClick\` on an \`<a>\` is a red-rule violation. A link that routes is a Link with
   \`onNavigate\`, and work that changes data is a Button.
+- An action that goes to another page, such as a page's "New ticket", is a ${f.m('Link')} with
+  ${f.v('Link', 'variant', 'button')}, never a ${f.m('Button')} whose handler calls the router. It
+  stays an \`<a href>\`, so it opens in a new tab and copies as an address, and it takes a
+  Button's look. Its ${f.p('Link', 'buttonVariant')} is \`soft\` unless set: set
+  ${f.v('Link', 'buttonVariant', 'solid')} when it is the page's one main action. It has no icon,
+  no loading and no disabled state.
 `.trimStart()
 }

@@ -83,7 +83,7 @@ Some screens have a procedure of their own. Read its file before you write the s
 | The screen | Read |
 | --- | --- |
 | Is written in code, or is the container of an emitted spec | [references/code.md](references/code.md) |
-| Needs the app around it: the root's providers, the mode, a form, a toast, a dialog, navigation | [references/app.md](references/app.md) |
+| Needs the app around it: the root's providers, the router, the mode, a form, a toast, a dialog, navigation | [references/app.md](references/app.md) |
 | Holds a conversation with a model | [references/chat.md](references/chat.md) |
 | Draws a chart | [references/charts.md](references/charts.md) |
 | Takes or shows formatted text, mentions or comments on words | [references/rich-text.md](references/rich-text.md) |
@@ -148,14 +148,30 @@ comment for a polymorph rule. Run \`validate\` again until it exits 0.
 
 ## 7. Look at the screen
 
-${commands(run, `render src/screens/inbox.json --system ${DEFAULT_SYSTEM}`)}
+${commands(run, `render src/screens/inbox.json --system ${DEFAULT_SYSTEM}`, `render src/screens/inbox.json --system ${DEFAULT_SYSTEM} --data src/screens/inbox.data.json`)}
 
 \`render\` draws a spec in a browser at a phone width (375 by 812) and a desktop width (1440 by
-900), writes the pictures beside the spec (\`src/screens/inbox.render/sampled-phone.png\`), and lists
-the layout faults it measured in each. Open the pictures and look at them. With no data, each input
-is sampled from its type, so the pictures show where content goes. \`--data <file>\` draws the screen
-with a JSON value for each input, and \`--empty <file>\` adds a second drawing with its values laid
-over those.
+900), and lists the layout faults it measured in each. It writes the pictures into a directory
+beside the spec, \`src/screens/inbox.render/\`, named for what it drew and the width:
+
+| Drawn | Pictures |
+| --- | --- |
+| No data: each input sampled from its type, a list as empty | \`sampled-phone.png\`, \`sampled-desktop.png\` |
+| \`--data <file>\`: the file's value for each input | \`populated-phone.png\`, \`populated-desktop.png\` |
+| \`--empty <file>\`: its values laid over \`--data\`'s, a second drawing | \`empty-phone.png\`, \`empty-desktop.png\` |
+
+The \`--data\` file is sample data for the pictures, which the app never reads: a JSON object keyed
+by input name, kept beside the spec (\`src/screens/inbox.data.json\`). A callback input takes no
+value there, because the page stubs it.
+
+\`render\` draws with the shipped themes only. \`--system\` names a shipped system, \`--palette\` a
+shipped palette (the system's own when left out) and \`--mode\` \`light\` or \`dark\` (the system's
+default when left out); \`axes\` lists them. It reads no theme document of the app's and not
+\`vite.config\`. Name the shipped pair the app's theme started from: \`init\` copies them into
+\`src/theme/\` under their shipped names. A change the app made to its theme does not reach the
+pictures.
+
+Open the pictures and look at them, then read the faults:
 
 | Fault | What to change |
 | --- | --- |
@@ -166,10 +182,9 @@ over those.
 | \`no-gap\` | Two members touch. Put them in a ${f.m('Stack')} or ${f.m('Inline')} with a ${f.p('Stack', 'gap')}. |
 | \`unseen-focus\` | A control's focus mark is hidden. Do not put the control in a box that clips it. |
 
-Change the composition or a prop to fix a fault, never a style. \`--system\` names a shipped system:
-the one the app's theme starts from, or \`${DEFAULT_SYSTEM}\`. \`axes\` lists them. The first \`render\`
-on a machine may answer that its browser is missing, with the command that downloads it. Run that
-command once, then render again.
+Change the composition or a prop to fix a fault, never a style. The first \`render\` on a machine
+may answer that its browser is missing, with the command that downloads it. Run that command once,
+then render again.
 
 \`render\` draws specs only. For a screen written in code, run the app and look at it in a browser
 when the session can.
@@ -224,6 +239,7 @@ or spreads the fragment \`polymorph.eslint.js\` that \`init\` and \`add\` write.
 
 /** The spec format's outline, which does not change with the vocabulary. */
 function specReference(registry: Registry): string {
+  const f = new Facts(registry)
   const rungs = registry.exceptions.ladder
     .filter((rung) => rung.declaredAs !== null && rung.declaredAs !== 'patch')
     .map((rung) => rung.rung)
@@ -272,12 +288,51 @@ framework.
 ## Elements and values
 
 An element is \`{ "component", "props"?, "children"?, "exception"? }\`. \`component\` is a member or
-one of its parts (such as ${new Facts(registry).part('Table', 'Row')}), as the card lists them for the
+one of its parts (such as ${f.part('Table', 'Row')}), as the card lists them for the
 app's framework.
 
 A value, as a prop or a child, is a string, a number, a boolean, \`null\`, an element, a list, a
 binding \`{ "$": "inputName" }\`, or a structured object \`{ "$object": { … } }\` for data a prop
 takes.
+
+A prop whose type is a node, such as ${f.m('Dashboard')}'s ${f.p('Dashboard', 'actions')} and
+${f.p('Dashboard', 'primary')}, takes an element as its value, or a list of elements, which \`emit\`
+writes as a fragment. This \`root\` is a dashboard whose action goes to another page and whose main
+column is one ${f.part('Dashboard', 'Panel')} holding a chart. Its spec declares the inputs
+\`byDay\`, \`loading\` and \`onNavigate\`:
+
+\`\`\`json
+{
+  "component": "Dashboard",
+  "props": {
+    "title": "Support",
+    "actions": {
+      "component": "Link",
+      "props": { "href": "/tickets/new", "variant": "button", "buttonVariant": "solid", "onNavigate": { "$": "onNavigate" } },
+      "children": ["New ticket"]
+    },
+    "primary": {
+      "component": "Dashboard.Panel",
+      "props": { "title": "Opened and resolved" },
+      "children": [
+        {
+          "component": "LineChart",
+          "props": {
+            "label": "Tickets opened and resolved by day",
+            "data": { "$": "byDay" },
+            "loading": { "$": "loading" },
+            "series": [
+              { "$object": { "key": "opened", "label": "Opened" } },
+              { "$object": { "key": "resolved", "label": "Resolved" } }
+            ],
+            "x": { "$object": { "key": "day", "scale": "time", "label": "Day" } }
+          }
+        }
+      ]
+    }
+  }
+}
+\`\`\`
 
 A binding names a declared input, or a dotted path into one (\`draft.subject\`). It is never an
 expression: no call, operator or index. A value the screen needs computed, such as a count or a

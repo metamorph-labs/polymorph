@@ -140,9 +140,12 @@ ${families.join('\n')}
 
 A row is a ${datum}: an object of strings, numbers and \`null\`. \`null\` is a gap: a line breaks
 and a bar is absent. It is never drawn as zero. Rows draw in the order given, so sort them in the
-app. A time is an ISO 8601 string, and a date-only string (\`2026-07-01\`) never shifts by time
-zone. Values are numbers: the chart formats them with a \`format\`. Only ${f.m('DonutChart')}'s
-${f.p('DonutChart', 'center')} is a string the app formats.
+app. A ${f.m('Heatmap')} sorts nothing either: its columns and its rows, from the top, are the
+\`x\` and \`y\` values in the order each first appears in the rows. A pair the rows lack draws as
+the surface, and a second row for a pair is ignored. A time is an ISO 8601 string, and a date-only
+string (\`2026-07-01\`) never shifts by time zone. Values are numbers: the chart formats them with a
+\`format\`. Only ${f.m('DonutChart')}'s ${f.p('DonutChart', 'center')} is a string the app formats.
+\`component <Name>\` prints the fields of each data type the member's props take.
 
 \`\`\`tsx
 import { DonutChart, Heatmap, Histogram, LineChart } from '${VOCABULARY}'
@@ -187,8 +190,7 @@ import { DonutChart, Heatmap, Histogram, LineChart } from '${VOCABULARY}'
   ${f.m('LineChart')} takes all three, ${f.m('AreaChart')} \`band\` or \`time\`,
   ${f.m('ScatterChart')} \`linear\` (its default) or \`time\`, and ${f.m('BarChart')} \`band\`
   only. In a ${f.m('ScatterChart')} each series is a y field of the same rows.
-- ${f.m('RadarChart')} takes ${f.p('RadarChart', 'axes')} \`[{ key, label }]\` and one row per
-  axis. ${f.m('FunnelChart')} takes ${f.p('FunnelChart', 'stages')}, first to last.
+- ${f.m('RadarChart')} takes ${f.p('RadarChart', 'axes')} and one row per axis. ${f.m('FunnelChart')} takes ${f.p('FunnelChart', 'stages')}, first to last.
   ${f.m('Treemap')} takes ${f.p('Treemap', 'items')}, where an item with
   ${f.field('TreemapItem', 'children')} is a group.
 
@@ -219,9 +221,10 @@ In a screen spec, data is bound to an input, and every plain object, a nested on
 }
 \`\`\`
 
-\`render\` draws a spec's chart only with rows. Pass them with \`--data\`: a JSON object whose keys
-are the spec's data inputs, such as \`{ "byChannel": [ … ] }\`. Sampled inputs draw the empty
-state.
+\`render\` draws a spec's chart only with rows. Pass them with \`--data\`: a JSON file of sample
+rows beside the spec, an object whose keys are the spec's data inputs, such as
+\`{ "byChannel": [ … ] }\`. The pictures are then \`populated-phone.png\` and
+\`populated-desktop.png\`. Sampled inputs draw the empty state.
 
 ${commands(run, `render src/screens/tickets.json --system ${DEFAULT_SYSTEM} --data src/screens/tickets.data.json`)}
 
@@ -239,15 +242,15 @@ ${f.p('BarChart', 'messages')} is set as a property from script:
 | ${f.p('BarChart', 'label')} | Required. The chart's accessible name and the start of its summary sentence. It is not drawn: the panel's title names the chart on screen. | ${having('label')} |
 | ${f.p('BarChart', 'size')} | The height, \`sm\`, \`md\` or \`lg\`. The width is always the container's. | ${having('size')} |
 | ${f.p('BarChart', 'x')}, ${f.p('LineChart', 'y')} | \`x.label\` heads the first column of the chart's table of values (a ${f.m('Heatmap')}'s is \`y.label\`); no axis title is drawn. \`format\` is ${styles}: \`percent\` takes ratios, and \`currency\` takes a \`currency\` code. \`y.domain: 'zero'\` anchors a line at zero. | ${having('x')} |
-| ${f.p('BarChart', 'series')} | ${series('key')} and ${series('label')} for each series; ${series('slot')}, ${series('tone')} and ${series('icon')} are optional. Two or more series draw a legend, whose keys hide and show a series. The legend is not a prop. | ${having('series')} |
-| ${f.p('BarChart', 'tooltip')} | \`{ indicator, hideLabel }\`, where \`indicator\` is \`'dot'\` or \`'line'\`. \`false\` removes it for print and keeps the keyboard reading and the table. | ${having('tooltip')} |
+| ${f.p('BarChart', 'series')} | A ${series('key')} and a ${series('label')} for each series; ${series('slot')} and ${series('tone')} set its colour (section 4). Two or more series draw a legend, whose keys hide and show a series. The legend is not a prop. | ${having('series')} |
+| ${f.p('BarChart', 'tooltip')} | How the reading's tooltip looks. \`false\` removes it for print and keeps the keyboard reading and the table. | ${having('tooltip')} |
 | ${f.p('BarChart', 'onSelect')} | Called on Enter, Space or a click at the reading position, with what is there: \`{ index, key, datum }\` on a bar. \`component\` prints each member's payload. | ${having('onSelect')} |
 | ${f.p('LineChart', 'onBrushEnd')} | A range a person selected with Shift and the arrows or the pointer: ISO strings on a \`time\` x, numbers on a \`linear\` one. It does not filter the chart: put the range in app state. | ${having('onBrushEnd')} |
 | ${f.p('LineChart', 'syncId')} | The same string on sibling charts moves their reading together, by x value. | ${having('syncId')} |
-| ${f.p('BarChart', 'annotations')} | \`{ kind: 'line', value, label? }\`, \`{ kind: 'band', from, to, label? }\` or \`{ kind: 'point', x, y, label }\`: a target, a window, an event. | ${having('annotations')} |
-| ${f.p('BarChart', 'baseline')} | \`{ value, label }\`: one target line. | ${having('baseline')} |
-| ${f.p('BarChart', 'emphasis')} | A series' \`key\`. That series keeps its colour, and the rest turn grey. | ${having('emphasis')} |
-| ${f.p('BarChart', 'loading')} | A skeleton on the first load, and the previous frame dimmed on a refetch. An error is not a chart state: show an ${f.m('Alert')} beside the chart. \`data={[]}\` draws the empty state with its own sentence. | ${having('loading')} |
+| ${f.p('BarChart', 'annotations')} | Marks over the plot, by \`kind\`: a \`line\` for a target, a \`band\` for a window, a \`point\` for an event. | ${having('annotations')} |
+| ${f.p('BarChart', 'baseline')} | One target line. | ${having('baseline')} |
+| ${f.p('BarChart', 'emphasis')} | A series' \`key\`. That series keeps its colour, and every other series turns grey unless it has a ${series('tone')}. | ${having('emphasis')} |
+| ${f.p('BarChart', 'loading')} | A skeleton on the first load, and the previous frame dimmed on a refetch. It wins over the empty state, so pass it with \`data={[]}\` until the rows arrive. An error is not a chart state: show an ${f.m('Alert')} beside the chart. \`data={[]}\` alone draws the empty state with its own sentence. | ${having('loading')} |
 | ${f.p('BarChart', 'messages')}, ${f.p('BarChart', 'locale')} | Every sentence a chart says, for another language. Pass every key, and the same object to every chart: spread ${catalog} and replace keys, \`{ ...DEFAULT_CHART_MESSAGES, empty: 'Nothing this week' }\`. | ${having('messages')} |
 
 A series takes the next of eight colours in the order it is declared, so filtering the data never
@@ -268,11 +271,19 @@ fonts and its motion. None of these is a prop, and another palette recolours eve
 
 | Asked for | Answer |
 | --- | --- |
-| Another colour for this series | ${series('slot')}, 1 to 8: another of the palette's eight colours. Two series never share one. ${f.m('DonutChart')}'s segments take ${f.field('DonutSegment', 'slot')} too. |
+| Another colour for this series | ${series('slot')}, 1 to 8: the palette's colour at that place, not a value. Two series never share one. ${f.m('DonutChart')}'s segments take ${f.field('DonutSegment', 'slot')} too. |
 | This series means good or bad | ${series('tone')}: ${tones}. It takes the status colour, and is not set with ${series('slot')}. |
-| Make one series stand out | ${f.p('LineChart', 'emphasis')} with its key. |
-| The charts in the brand's colour | The palette's accent hue: the first series colour follows it. That is a theme change (\`polymorph-theme\`). |
-| An exact colour value for one series | Not available. No prop and no theme field takes a series colour. Say so, and offer the answers above. |
+| Make one series stand out | ${f.p('LineChart', 'emphasis')} with its key. Every other series without a ${series('tone')} turns grey. |
+
+**An exact colour for one series**, such as "opened in our brand orange #FF6A00", is not available:
+no prop and no theme field takes a colour value for a series. Tell the developer so, then offer
+what exists. Slot 1, which the first series takes, follows the palette's accent hue; in a palette
+with no hue (\`chromaBudget\` \`none\` or \`ink\`, as \`neutral\` is) it is orange. \`render\` shows
+it. ${f.p('LineChart', 'emphasis')} greys every other series: "make resolved stand out" with it
+turns opened grey, so ask which of the two matters more before you set it. In a palette with a hue,
+moving its \`accentHue\` to the brand's hue moves slot 1 there, turns the other seven slots with
+it, and changes every accent colour in the app, not only the charts. That is the owner's decision
+about the whole app: offer it, and make it only when asked, with the \`polymorph-theme\` skill.
 
 ## 5. Keyboard and screen readers
 
