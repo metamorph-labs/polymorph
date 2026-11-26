@@ -19,41 +19,43 @@ export const states: ComponentStates = {
       expect: { 'data-state': 'closed', 'data-size': 'md', 'data-placeholder': '' },
     },
     { name: 'with value', render: entry2, expect: { 'data-placeholder': null } },
-    { name: 'sizes side by side', render: entry3 },
-    { name: 'size sm', render: entry4, expect: { 'data-size': 'sm' } },
-    { name: 'size lg', render: entry5, expect: { 'data-size': 'lg' } },
-    { name: 'open', render: entry6, expect: { 'data-state': 'open' } },
-    { name: 'open with selection', render: entry7, expect: { 'data-state': 'open' } },
-    { name: 'empty choice, selected', render: entry8, expect: { 'data-placeholder': null } },
-    { name: 'empty choice, open', render: entry9, expect: { 'data-state': 'open' } },
-    { name: 'open with a disabled option', render: entry10, expect: { 'data-state': 'open' } },
+    { name: 'nothing chosen, held as null', render: entry3, expect: { 'data-placeholder': '' } },
+    { name: 'sizes side by side', render: entry4 },
+    { name: 'size sm', render: entry5, expect: { 'data-size': 'sm' } },
+    { name: 'size lg', render: entry6, expect: { 'data-size': 'lg' } },
+    { name: 'open', render: entry7, expect: { 'data-state': 'open' } },
+    { name: 'open with selection', render: entry8, expect: { 'data-state': 'open' } },
+    { name: 'empty choice, selected', render: entry9, expect: { 'data-placeholder': null } },
+    { name: 'empty choice, open', render: entry10, expect: { 'data-state': 'open' } },
+    { name: 'open with a disabled option', render: entry11, expect: { 'data-state': 'open' } },
     {
       name: 'grouped, open — group labels present, options selectable',
-      render: entry11,
+      render: entry12,
       expect: { 'data-state': 'open' },
     },
     {
       name: 'descriptions, open — two-line items',
-      render: entry12,
+      render: entry13,
       expect: { 'data-state': 'open' },
     },
-    { name: 'invalid', render: entry13, expect: { 'data-invalid': '' } },
-    { name: 'disabled', render: entry14, expect: { 'data-disabled': '' } },
+    { name: 'invalid', render: entry14, expect: { 'data-invalid': '' } },
+    { name: 'disabled', render: entry15, expect: { 'data-disabled': '' } },
   ],
 }
 </script>
 
 {#snippet entry1(overrides: Overrides)}<Select options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} placeholder="Choose a priority" aria-label="Priority" {...overrides} />{/snippet}
 {#snippet entry2(overrides: Overrides)}<Select options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} defaultValue="high" aria-label="Priority" {...overrides} />{/snippet}
-{#snippet entry3(overrides: Overrides)}<Inline gap={3}><Select size="sm" options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} defaultValue="normal" aria-label="Priority (sm)" {...overrides} /><Select size="md" options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} defaultValue="normal" aria-label="Priority (md)" /><Select size="lg" options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} defaultValue="normal" aria-label="Priority (lg)" /></Inline>{/snippet}
-{#snippet entry4(overrides: Overrides)}<Select size="sm" options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} defaultValue="normal" aria-label="Priority" {...overrides} />{/snippet}
-{#snippet entry5(overrides: Overrides)}<Select size="lg" options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} defaultValue="normal" aria-label="Priority" {...overrides} />{/snippet}
-{#snippet entry6(overrides: Overrides)}<Select defaultOpen={true} options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} placeholder="Choose a priority" aria-label="Priority, open" {...overrides} />{/snippet}
-{#snippet entry7(overrides: Overrides)}<Select defaultOpen={true} options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} defaultValue="high" aria-label="Priority, open with a selection" {...overrides} />{/snippet}
-{#snippet entry8(overrides: Overrides)}<Select options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} emptyOption="All statuses" defaultValue={null} aria-label="Status" {...overrides} />{/snippet}
-{#snippet entry9(overrides: Overrides)}<Select defaultOpen={true} options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} emptyOption="All statuses" aria-label="Status, open on the empty choice" {...overrides} />{/snippet}
-{#snippet entry10(overrides: Overrides)}<Select defaultOpen={true} options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'archived', label: 'Archived', disabled: true }]} defaultValue="high" aria-label="Priority, with a disabled option" {...overrides} />{/snippet}
-{#snippet entry11(overrides: Overrides)}<Select defaultOpen={true} options={[{ label: 'Queues', options: [{ value: 'billing', label: 'Billing' }, { value: 'onboarding', label: 'Onboarding' }] }, { label: 'Archived', options: [{ value: 'q3', label: 'Q3 backlog' }, { value: 'legacy', label: 'Legacy imports' }] }]} placeholder="Choose a queue" aria-label="Queue, grouped" {...overrides} />{/snippet}
-{#snippet entry12(overrides: Overrides)}<Select defaultOpen={true} options={[{ value: 'urgent', label: 'Urgent', description: 'Answer within the hour' }, { value: 'high', label: 'High', description: 'Same business day' }, { value: 'normal', label: 'Normal', description: 'Within two days' }]} defaultValue="high" aria-label="Priority, with descriptions" {...overrides} />{/snippet}
-{#snippet entry13(overrides: Overrides)}<Select invalid={true} options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} placeholder="Required" aria-label="Priority" {...overrides} />{/snippet}
-{#snippet entry14(overrides: Overrides)}<Select disabled={true} options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} defaultValue="normal" aria-label="Priority" {...overrides} />{/snippet}
+{#snippet entry3(overrides: Overrides)}<Select options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} placeholder="Choose a priority" value={null} aria-label="Priority" {...overrides} />{/snippet}
+{#snippet entry4(overrides: Overrides)}<Inline gap={3}><Select size="sm" options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} defaultValue="normal" aria-label="Priority (sm)" {...overrides} /><Select size="md" options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} defaultValue="normal" aria-label="Priority (md)" /><Select size="lg" options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} defaultValue="normal" aria-label="Priority (lg)" /></Inline>{/snippet}
+{#snippet entry5(overrides: Overrides)}<Select size="sm" options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} defaultValue="normal" aria-label="Priority" {...overrides} />{/snippet}
+{#snippet entry6(overrides: Overrides)}<Select size="lg" options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} defaultValue="normal" aria-label="Priority" {...overrides} />{/snippet}
+{#snippet entry7(overrides: Overrides)}<Select defaultOpen={true} options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} placeholder="Choose a priority" aria-label="Priority, open" {...overrides} />{/snippet}
+{#snippet entry8(overrides: Overrides)}<Select defaultOpen={true} options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} defaultValue="high" aria-label="Priority, open with a selection" {...overrides} />{/snippet}
+{#snippet entry9(overrides: Overrides)}<Select options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} emptyOption="All statuses" defaultValue={null} aria-label="Status" {...overrides} />{/snippet}
+{#snippet entry10(overrides: Overrides)}<Select defaultOpen={true} options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} emptyOption="All statuses" aria-label="Status, open on the empty choice" {...overrides} />{/snippet}
+{#snippet entry11(overrides: Overrides)}<Select defaultOpen={true} options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'archived', label: 'Archived', disabled: true }]} defaultValue="high" aria-label="Priority, with a disabled option" {...overrides} />{/snippet}
+{#snippet entry12(overrides: Overrides)}<Select defaultOpen={true} options={[{ label: 'Queues', options: [{ value: 'billing', label: 'Billing' }, { value: 'onboarding', label: 'Onboarding' }] }, { label: 'Archived', options: [{ value: 'q3', label: 'Q3 backlog' }, { value: 'legacy', label: 'Legacy imports' }] }]} placeholder="Choose a queue" aria-label="Queue, grouped" {...overrides} />{/snippet}
+{#snippet entry13(overrides: Overrides)}<Select defaultOpen={true} options={[{ value: 'urgent', label: 'Urgent', description: 'Answer within the hour' }, { value: 'high', label: 'High', description: 'Same business day' }, { value: 'normal', label: 'Normal', description: 'Within two days' }]} defaultValue="high" aria-label="Priority, with descriptions" {...overrides} />{/snippet}
+{#snippet entry14(overrides: Overrides)}<Select invalid={true} options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} placeholder="Required" aria-label="Priority" {...overrides} />{/snippet}
+{#snippet entry15(overrides: Overrides)}<Select disabled={true} options={[{ value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }]} defaultValue="normal" aria-label="Priority" {...overrides} />{/snippet}

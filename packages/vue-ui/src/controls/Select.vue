@@ -79,7 +79,10 @@ export interface SelectProps {
   presentation?: 'auto' | 'popover'
   size?: 'sm' | 'md' | 'lg'
   /**
-   * `null` is the empty choice, which is allowed only when `emptyOption` is set.
+   * The chosen option's value. Controlled when given. `null` is nothing chosen: the trigger
+   * shows the placeholder, or the empty choice when `emptyOption` is set. A caller clears the
+   * choice with `null`, because `undefined` is no value, which hands the choice back to the
+   * member.
    */
   value?: string | null
 }

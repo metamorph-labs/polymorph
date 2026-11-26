@@ -27,6 +27,16 @@ export const states: ComponentStates = {
       expect: { 'data-placeholder': null },
     },
     {
+      name: 'nothing chosen, held as null',
+      html: `<poly-select options='[{"value":"urgent","label":"Urgent"},{"value":"high","label":"High"},{"value":"normal","label":"Normal"},{"value":"low","label":"Low"}]' placeholder="Choose a priority" aria-label="Priority"></poly-select>`,
+      subject: 'poly-select',
+      setup: (find) => {
+        const e0 = find('poly-select', 0)
+        e0.value = null
+      },
+      expect: { 'data-placeholder': '' },
+    },
+    {
       name: 'sizes side by side',
       html: `<poly-inline gap="3">
   <poly-select size="sm" options='[{"value":"urgent","label":"Urgent"},{"value":"high","label":"High"},{"value":"normal","label":"Normal"},{"value":"low","label":"Low"}]' default-value="normal" aria-label="Priority (sm)"></poly-select>

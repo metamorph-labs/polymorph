@@ -39,6 +39,7 @@
     "./dialog-fit": "./src/dialog-fit.ts",
     "./form-page-row": "./src/form-page-row.ts",
     "./tree-select": "./src/tree-select.ts",
+    "./select-value": "./src/select-value.ts",
     "./rating": "./src/rating.ts",
     "./inline-edit": "./src/inline-edit.ts",
     "./table-of-contents": "./src/table-of-contents.ts",

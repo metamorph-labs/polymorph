@@ -320,6 +320,16 @@ export default describeMember({
       expect: { 'data-placeholder': null },
     },
     {
+      name: 'nothing chosen, held as null',
+      props: {
+        options: PRIORITIES,
+        placeholder: 'Choose a priority',
+        value: null,
+        'aria-label': 'Priority',
+      },
+      expect: { 'data-placeholder': '' },
+    },
+    {
       name: 'sizes side by side',
       many: {
         within: { member: 'Inline', props: { gap: 3 } },

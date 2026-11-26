@@ -81,7 +81,12 @@ export interface SelectProps {
   emptyOption?: string
   invalid?: boolean
   disabled?: boolean
-  /** `null` is the empty choice, which is allowed only when `emptyOption` is set. */
+  /**
+   * The chosen option's value. Controlled when given. `null` is nothing chosen: the trigger
+   * shows the placeholder, or the empty choice when `emptyOption` is set. A caller clears the
+   * choice with `null`, because `undefined` is no value, which hands the choice back to the
+   * member.
+   */
   value?: string | null
   defaultValue?: string | null
   onChange?: (value: string | null) => void
@@ -169,10 +174,16 @@ export function Select({
     'Select: `placeholder` and `emptyOption` are mutually exclusive — a placeholder is the ' +
       'absence of a value and the empty choice is one. `emptyOption` wins; drop the placeholder.',
   )
+  // Whether the caller has passed a value since the member mounted. React reads `undefined` as
+  // "uncontrolled", so a caller that held a value and then passes `undefined` hands the choice
+  // back to the member, which shows its own last pick: a form that resets to `undefined` keeps
+  // showing the old choice. The warning names `null`, which clears it.
+  const [held, setHeld] = useState(value !== undefined)
+  if (value !== undefined && !held) setHeld(true)
   useDevWarning(
-    !offersEmpty && (value === null || defaultValue === null),
-    'Select: `null` means the empty choice, which exists only when `emptyOption` is set. ' +
-      'Give the empty choice a label, or pass one of `options`.',
+    held && value === undefined,
+    'Select: `value` went from a value to `undefined`, which hands the choice back to the ' +
+      'member, and it keeps showing its last pick. Pass `null` to clear the choice.',
   )
 
   // The empty choice is always the first item. Screens cannot reorder it, so every
@@ -194,18 +205,10 @@ export function Select({
   // Radix is always controlled by the member's value: by `value` when the caller gives it, and
   // by the mirror when not. So one setter changes the value in both forms, for a person's pick
   // and for an agent's `choose`, and crossing the `30rem` breakpoint, which remounts the other
-  // version, keeps the current selection. A controlled `null` is the empty choice. An
-  // uncontrolled one is too when `emptyOption` is set, because a filter that opens with a blank
-  // trigger is the bug the empty choice prevents; without it, it is Radix's `''`, nothing chosen,
-  // so the placeholder shows.
-  const radixValue =
-    value !== undefined
-      ? (value ?? EMPTY_CHOICE)
-      : chosen === null
-        ? offersEmpty
-          ? EMPTY_CHOICE
-          : ''
-        : chosen
+  // version, keeps the current selection. `null`, controlled or not, is nothing chosen. With
+  // `emptyOption` set it is the empty choice, because a filter that opens with a blank trigger is
+  // the bug the empty choice prevents; without it, it is Radix's `''`, so the placeholder shows.
+  const radixValue = selected === null ? (offersEmpty ? EMPTY_CHOICE : '') : selected
 
   /**
    * Open state is always mirrored here, as in ContextMenu. The root is always controlled,
@@ -291,10 +294,10 @@ export function Select({
   if (sheeting) {
     // The trigger shows a real value whenever an item is selected, including the empty
     // choice, because "All" is a chosen state, not a missing value. `data-placeholder`
-    // matches Radix's rule exactly: present only while no item is selected, which never
+    // follows Radix's rule exactly: present while Radix's value would be `''`, which never
     // happens when an empty choice is offered.
-    const shownOption = flat.find((option) => option.value === (selected ?? EMPTY_CHOICE))
-    const placeholderShown = shownOption === undefined && selected === null
+    const shownOption = flat.find((option) => option.value === radixValue)
+    const placeholderShown = radixValue === ''
 
     // Closing only sets state. The effect above restores focus after the containment
     // is released.

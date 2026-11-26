@@ -47,6 +47,24 @@ export const states: ComponentStates = {
       expect: { 'data-placeholder': null },
     },
     {
+      name: 'nothing chosen, held as null',
+      render: (overrides = {}) => (
+        <Select
+          options={[
+            { value: 'urgent', label: 'Urgent' },
+            { value: 'high', label: 'High' },
+            { value: 'normal', label: 'Normal' },
+            { value: 'low', label: 'Low' },
+          ]}
+          placeholder="Choose a priority"
+          value={null}
+          aria-label="Priority"
+          {...overrides}
+        />
+      ),
+      expect: { 'data-placeholder': '' },
+    },
+    {
       name: 'sizes side by side',
       render: (overrides = {}) => (
         <Inline gap={3}>

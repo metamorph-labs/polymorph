@@ -1,9 +1,12 @@
+import { tick } from 'svelte'
 import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
+import { selectValueLaw, SELECT_VALUE_LAW_OPTIONS } from '@polymorph/conformance/select-value'
 import { installTestTheme } from '@polymorph/engine/testing'
 
 import { render } from '../mount'
+import { live } from '../testing/live.svelte'
 import Select from './Select.svelte'
 
 /**
@@ -51,4 +54,30 @@ describe('Select with an empty choice', () => {
     expect(trigger()?.textContent).toContain('All statuses')
     expect(trigger()?.hasAttribute('data-placeholder')).toBe(false)
   })
+})
+
+/**
+ * The value the application holds, `null` for nothing chosen, as
+ * `@polymorph/conformance/select-value` states it for every web shell.
+ */
+selectValueLaw({
+  shell: 'Svelte',
+  async mount({ value, placeholder, emptyOption, name, onChange }) {
+    const held = live({
+      'aria-label': 'Priority',
+      options: SELECT_VALUE_LAW_OPTIONS,
+      ...(placeholder === undefined ? {} : { placeholder }),
+      ...(emptyOption === undefined ? {} : { emptyOption }),
+      name,
+      value,
+      onChange,
+    })
+    await render(Select, held)
+    return {
+      set(next) {
+        held.value = next
+        return tick()
+      },
+    }
+  },
 })

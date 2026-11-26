@@ -65,6 +65,19 @@ export const states: ComponentStates = {
       expect: { 'data-placeholder': null },
     },
     {
+      // `null` held by the application is nothing chosen, so the placeholder shows.
+      name: 'nothing chosen, held as null',
+      render: () => (
+        <Select
+          options={PRIORITIES}
+          placeholder="Choose a priority"
+          value={null}
+          aria-label="Priority"
+        />
+      ),
+      expect: { 'data-placeholder': '' },
+    },
+    {
       name: 'sizes side by side',
       render: () => (
         <Inline gap={3}>

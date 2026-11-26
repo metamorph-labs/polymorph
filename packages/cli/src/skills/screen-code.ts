@@ -367,16 +367,16 @@ export function NewTicketPage(props: {
   onDone: () => void
 }) {
   const [subject, setSubject] = useState('')
-  const [channel, setChannel] = useState<string | undefined>(undefined)
+  const [channel, setChannel] = useState<string | null>(null)
   const [details, setDetails] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [saving, setSaving] = useState(false)
   const subjectError = submitted && subject.trim() === '' ? 'Give the ticket a subject.' : undefined
-  const channelError = submitted && channel === undefined ? 'Choose a channel.' : undefined
+  const channelError = submitted && channel === null ? 'Choose a channel.' : undefined
 
   async function submit() {
     setSubmitted(true)
-    if (subject.trim() === '' || channel === undefined) return
+    if (subject.trim() === '' || channel === null) return
     setSaving(true)
     try {
       await props.save({ subject, channel, details })
@@ -405,7 +405,7 @@ export function NewTicketPage(props: {
               options={CHANNELS}
               placeholder="Choose a channel"
               value={channel}
-              onChange={(value) => setChannel(value ?? undefined)}
+              onChange={setChannel}
             />
           </FormField>
           <FormField label="Details">
@@ -434,11 +434,13 @@ The route that mounts the page passes the router's navigation as \`onDone\`: in 
 - ${f.m('Input')}'s and ${f.m('Textarea')}'s ${f.p('Input', 'onChange')} hand over the text as a
   \`string\`, then the change event, so \`onChange={setSubject}\` stores it.
   ${f.m('Select')}'s hands over \`string | null\`.
-- A ${f.m('Select')} with no choice yet has a ${f.p('Select', 'placeholder')} and a
-  ${f.p('Select', 'value')} of \`undefined\`: hold it as \`string | undefined\`, and store
-  \`value ?? undefined\`. \`null\` is the choice ${f.p('Select', 'emptyOption')} names, such as a
-  filter's "All", and is lawful only with it. Never \`''\`: below \`30rem\` the Select opens as a
-  sheet, whose trigger draws \`''\` blank, without the placeholder.
+- A ${f.m('Select')}'s ${f.p('Select', 'value')} is \`string | null\`, and \`null\` is nothing chosen:
+  the trigger shows its ${f.p('Select', 'placeholder')}. Start it at \`null\`, store what
+  ${f.p('Select', 'onChange')} hands over as it is, and set \`null\` to clear the choice, as a form
+  does when it resets after a save. With ${f.p('Select', 'emptyOption')}, \`null\` is that choice,
+  such as a filter's "All". Never \`undefined\`: a Select given \`undefined\` holds the choice
+  itself, as one given no ${f.p('Select', 'value')} does, and stops following the form's state.
+  Never \`''\`: no option has it.
 - While the request runs, the submit Button takes ${f.p('Button', 'loading')}, and a click does
   nothing.
 - A long form also lists its errors above the fields in ${f.m('ErrorSummary')}, whose
