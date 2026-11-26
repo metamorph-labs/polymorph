@@ -111,7 +111,7 @@ public struct PMStat: PMStatRendering {
       if props.delta != nil, loading {
         // No direction, value or sentiment for a number that has not arrived.
         PMSkeleton(props: PMSkeletonProps(textStep: .sm, width: .width9))
-      } else if props.description != nil, props.delta == nil, loading {
+      } else if props.description != nil, loading {
         PMSkeleton(props: PMSkeletonProps(textStep: .xs, width: .width10))
       } else if let delta = props.delta, let positive {
         HStack(spacing: space.s1) {
