@@ -262,11 +262,22 @@ ${both(f, 'PMCalendarDate')}, and a member's props passed as a value, ${both(f, 
 The reference for the platform has the rule in full, where the generated \`Contracts.swift\` or
 \`Contracts.kt\` that declares every name is, and the command that prints one declaration.
 
-## 4. Write the screen to the screen contract
+## 4. Emit the screen from a spec
 
 A native screen is a stateless view of two values: the model, which is the data it shows, and the
 actions, which are the code the app supplies. The app owns the store that holds the model, the
-router and every asynchronous task.
+router and every asynchronous task. Write the screen as a spec whose \`platform\` is \`ios\` or
+\`android\` (step 6 has one), and emit the view from the repository's root:
+
+${commands(run, 'emit screens/orders.json Sources/AppScreens/OrdersView.swift', 'emit screens/orders.json app/src/main/kotlin/com/acme/orders/OrdersScreen.kt')}
+
+\`emit\` checks the spec as \`validate\` does, writes nothing when it finds a fault, and prints
+each fault at its path. The \`platform\` decides the file: \`.swift\` for \`ios\`, \`.kt\` for
+\`android\`, and no \`--framework\`. It writes below the directory it runs in, which holds the
+app's \`Package.swift\`, \`.xcodeproj\`, \`.xcworkspace\` or Gradle build and takes only that
+platform's screens. A Kotlin file declares the package its directory names below \`kotlin/\`.
+After a change to the spec, emit again: \`emit\` replaces its own file, hand edits included, and
+refuses any other.
 
 | Part | SwiftUI | Compose |
 | --- | --- | --- |
@@ -275,7 +286,9 @@ router and every asynchronous task.
 | The view | \`@MainActor struct <Name>View: View\` with \`let model\` and \`let actions\` | \`@Composable fun <Name>Screen(model, actions)\` |
 | Actions that do nothing, until the store is wired | \`static let inert\` on the actions | \`object <Name>Inert : <Name>Actions\` |
 
-The view keeps five rules:
+A spec has no condition, loop or handler body, so a view that draws a part only when the model
+says so, or a ${x(f, 'PMBespoke', IOS_UI)} zone's drawing, is written by hand in the same shape.
+Every view keeps five rules, which an emitted one keeps by construction:
 
 1. Its root is a page archetype: ${all(n.archetypes.map((name) => f.m(name)))}. It passes
    \`model.loadStatus\`, a ${x(f, 'PMLoadStatus', IOS_UI)}, to the archetype, which draws the four
@@ -305,8 +318,8 @@ navigation bar's back button and the edge swipe on iOS, the back gesture on Andr
 hides it, and the app does not hide it either. ${f.m('DetailPage')}'s ${f.p('DetailPage', 'onBack')}
 is an action too, which the app implements by popping the same router.
 
-The reference for the platform has two worked screens, a settings page and a list, and the store,
-the route and the root around the list.
+The reference for the platform has two worked screens, a settings page and a list, in the shape
+\`emit\` writes, and the store, the route and the root around the list.
 
 ## 5. Install the theme at the root
 
@@ -351,12 +364,12 @@ checks, in this order:
    compile. The reference for the platform has the command.
 2. Search the view files, not the store's or the route's, for what a screen may not write. The
    reference for the platform has the search. Replace each hit as the table below says.
-3. Check the composition as a spec. Write the view's tree as a screen spec whose \`platform\` is
-   \`ios\` or \`android\`, and run \`${run} validate orders.json --framework react\`. \`validate\`
-   takes no \`--platform\` flag: the spec's own field carries the platform, and \`react\` is the
-   one framework it accepts with a native spec. It needs no \`package.json\`. It names a member the
-   platform lacks with its substitute, a part the platform lacks with the parts it has, a prop the
-   member does not take, and a required prop left out.
+3. Check the composition as a spec. \`emit\` checked the spec of an emitted view. For a view
+   written by hand, write its tree as a screen spec whose \`platform\` is \`ios\` or \`android\`, and
+   run \`${run} validate orders.json --framework react\`. \`validate\` takes no \`--platform\` flag:
+   the spec's own field carries the platform, and \`react\` is the one framework it accepts with a
+   native spec. It names a member the platform lacks with its substitute, a part the platform lacks
+   with the parts it has, a prop the member does not take, and a required prop left out.
 4. Run the app in the simulator or an emulator when the session can, in light and dark mode, at a
    phone's width and at the largest text size.
 
@@ -372,10 +385,11 @@ checks, in this order:
 | State, a task or navigation | The store and the route (step 4) |
 | What no member draws | A ${x(f, 'PMBespoke', IOS_UI)} zone with its \`reason\`, drawn from the theme's tokens (the reference has one) |
 
-The spec for check 3 spells each prop as the web does (\`aria-label\`, \`variant\` and \`tone\`),
-writes a plain object such as an empty state as \`{ "$object": { … } }\`, and binds every value
-the app supplies to an input. On a native archetype it may also bind \`onRetry\` to an action. The
-\`polymorph-screen\` skill has the format. This is the list screen the references work, for iOS:
+A spec, for \`emit\` or for check 3, spells each prop as the web does (\`aria-label\`, \`variant\` and
+\`tone\`), writes a plain object such as an empty state as \`{ "$object": { … } }\`, and binds every
+value the app supplies to an input. On a native archetype it may also bind \`onRetry\` to an action.
+The \`polymorph-screen\` skill has the format. This is the list screen the references work, for iOS
+(\`"platform": "android"\` and \`"name": "OrdersScreen"\` make it Android's):
 
 ${listSpec('ios')}
 
@@ -391,9 +405,6 @@ needs. The change belongs in a polymorph release.
 
 ## What you cannot do here
 
-- Emit a native screen from a spec. \`emit\` writes only into a directory with a \`package.json\`
-  or \`polymorph.json\`, and a native repository has neither, so write the view by hand in the
-  contract's shape (step 4), and check its composition as a spec (step 6).
 - Draw a native screen with the tools. \`render\` draws web specs in a browser.
 - Change a member. \`add\` and \`update\` copy web members only. Never edit the package's copy
   (\`.build/checkouts/polymorph\`, Xcode's package cache or Gradle's): a change to a member is a
@@ -414,10 +425,10 @@ needs. The change belongs in a polymorph release.
           'polymorph on iOS, Android, SwiftUI, Compose or Flutter. Covers the Swift package and ' +
           'JitPack lines, the PM-prefixed names (PMButton, PMBadgeTone, PMDateRange) and where ' +
           'they are declared, the native screen contract (model, actions, a stateless view, ' +
-          'four load states), a list screen (ListPage, FilterBar, DataTable) with its store and ' +
-          'navigation, installing a pairing with pmTheme or ProvidePMTheme and its fonts, the ' +
-          'members and parts a platform adapts or lacks, and checking a screen when no lint ' +
-          'reads Swift or Kotlin.',
+          'four load states), emitting it from a spec, a list screen (ListPage, FilterBar, ' +
+          'DataTable) with its store and navigation, installing a pairing with pmTheme or ' +
+          'ProvidePMTheme and its fonts, the members and parts a platform adapts or lacks, and ' +
+          'checking a screen no lint reads.',
         body,
       ),
     },
@@ -518,8 +529,8 @@ sed -n '/^public enum PMBadgeTone/,/^}/p' "$C"
 
 ## A worked screen: settings
 
-This view compiles against the package at the release tag. It is the shape the screen contract
-asks for, and the shape to write by hand.
+This view compiles against the package at the release tag. It is the shape \`emit\` writes from a
+spec, and the shape a view written by hand keeps.
 
 \`\`\`swift
 import PolymorphUI
@@ -636,7 +647,8 @@ ${f.m('FilterBar')} with the search field in ${f.p('FilterBar', 'search')} and t
 its children, and its body is a ${f.m('DataTable')}. On iOS ${f.m('DateRangePicker')} is
 adapted: ${renders.rangeIos}. ${f.m('DataTable')} is adapted too: ${renders.tableIos}, a row's
 cells stacked in the list. A tap on a row calls ${f.p('DataTable', 'onRowClick')} with the row.
-This view is what the spec in the skill's step 6 describes, with \`onRetry\` bound as well.
+\`emit\` writes this view, apart from its comments, from the spec in the skill's step 6 with
+\`onRetry\` bound as well.
 
 \`\`\`swift
 import PolymorphUI
@@ -1067,8 +1079,8 @@ sed -n '/^enum class PMBadgeTone(/,/^}/p' "$K/Contracts.kt"
 
 ## A worked screen: settings
 
-This file compiles against the package at the release tag. It is the shape the screen contract
-asks for, and the shape to write by hand.
+This file compiles against the package at the release tag. It is the shape \`emit\` writes from a
+spec, and the shape a screen written by hand keeps.
 
 \`\`\`kotlin
 package com.example.app
@@ -1156,8 +1168,8 @@ ${f.m('FilterBar')} with the search field in ${f.p('FilterBar', 'search')} and t
 its children, and its body is a ${f.m('DataTable')}. On Android ${f.m('DateRangePicker')} is
 Material's own date range picker. ${f.m('DataTable')} is adapted: ${renders.tableAndroid}, a row's
 cells stacked in the list. A tap on a row calls ${f.p('DataTable', 'onRowClick')} with the row.
-This screen is what the spec in the skill's step 6 describes, for \`"platform": "android"\` and with
-\`onRetry\` bound as well.
+\`emit\` writes this screen, apart from its comments and its package line, from the spec in the
+skill's step 6 made Android's, with \`onRetry\` bound as well.
 
 \`\`\`kotlin
 package com.example.app

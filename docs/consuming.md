@@ -1420,11 +1420,11 @@ rendering; its entry names the substitute, and the system card for `ios` leaves 
 defaults a spec names for text (a dialog's "Close") are looked up in the app's own string
 catalog, so the app translates them there.
 
-A screen is written as a spec whose `platform` is `ios` and emitted as SwiftUI, from a checkout:
-`pnpm emit <spec.json> InboxView.swift`, or the MCP tool `emit_screen` with a `.swift` path. The
-tool, and `polymorph emit`, write only into a directory that holds a `package.json` or a
-`polymorph.json`, which a Swift package or an Xcode project does not. `pnpm emit` writes to any
-path, so a checkout can write into the app's repository. The file holds the screen's model, its
+A screen is written as a spec whose `platform` is `ios` and emitted as SwiftUI, at the root of the
+app's repository: `npx -y @metamorph-labs/polymorph@latest emit <spec.json> <View>.swift`, or the
+MCP tool `emit_screen` with a `.swift` path. A Swift package or an Xcode project with no
+`package.json` takes the `.swift` screens and nothing else ([tooling.md](tooling.md#the-project)),
+and from a checkout `pnpm emit <spec.json> <View>.swift` writes to any path. The file holds the screen's model, its
 actions and a stateless view; the app owns navigation, state and asynchronous work
 ([native.md](native.md), `design/native/screen-contract.md`). A tenant's theme known only at run
 time reaches the device as a token document, which `PMTheme(tokenDocument:)` reads
@@ -1502,11 +1502,11 @@ through composition locals: its translations of the spec's default strings (`Loc
 image loader (`LocalPMImageLoader`), a file picker (`LocalPMFilePicker`) and an image encoder
 (`LocalPMImageEncoder`, which writes ImageEditor's framed image in its file type).
 
-A screen is written as a spec whose `platform` is `android` and emitted as Compose, from a
-checkout: `pnpm emit <spec.json> InboxScreen.kt`, or the MCP tool `emit_screen` with a `.kt` path.
-The tool, and `polymorph emit`, write only into a directory that holds a `package.json` or a
-`polymorph.json`, which an Android project does not. `pnpm emit` writes to any path, so a checkout
-can write into the app's repository.
+A screen is written as a spec whose `platform` is `android` and emitted as Compose, at the root of
+the app's Gradle build: `npx -y @metamorph-labs/polymorph@latest emit <spec.json> <path>/<Screen>.kt`,
+or the MCP tool `emit_screen` with a `.kt` path. A Gradle build with no `package.json` takes the
+`.kt` screens and nothing else ([tooling.md](tooling.md#the-project)), and from a checkout
+`pnpm emit <spec.json> <Screen>.kt` writes to any path.
 [`platforms/android/README.md`](../platforms/android/README.md) has the rest, and
 [native.md](native.md) has the members and the emitter.
 
