@@ -25,6 +25,7 @@ name: the unscoped \`polymorph\` package on npm is someone else's.
 | \`polymorph.json\` with \`files\`, and member source under its \`dir\` (\`src/polymorph/\`) | Vendoring: the members are copied into the repository as source the team owns |
 | \`polymorph.json\` with \`"framework": "elements"\` | A page with no build: the elements are copied into a static directory |
 | An app with none of these | An existing app without polymorph: vendoring is one command; the packages route is a few manual steps |
+| \`Package.swift\` or an Xcode project with PolymorphUI, a Gradle build with \`dev.polymorph\` or \`com.github.metamorph-labs.polymorph\`, or a \`pubspec.yaml\` that names polymorph_tokens | A native app: the \`polymorph-native\` skill |
 
 ## A new app
 
