@@ -12,9 +12,9 @@ export class SkillFactError extends Error {
  * What a text names in code font that is not a member: an export of a package, or a declaration
  * in a native source file. `Facts.x` records each with where it is declared, as a module
  * (`@polymorph/react/screen`) or a path below the repository root, and `agents.test.ts` holds
- * every one to that source.
+ * every one to that source. A name two texts take from two sources is held to both.
  */
-export const NAMED = new Map<string, string>()
+export const NAMED = new Map<string, Set<string>>()
 
 /**
  * What the texts say about members, read from the registry. Every member,
@@ -44,11 +44,7 @@ export class Facts {
    * directory at the path `from`. It is for what a text names that is not a member.
    */
   x(name: string, from: string): string {
-    const known = NAMED.get(name)
-    if (known !== undefined && known !== from) {
-      throw new SkillFactError(`${name} is named from ${known} and from ${from}`)
-    }
-    NAMED.set(name, from)
+    NAMED.set(name, (NAMED.get(name) ?? new Set()).add(from))
     return `\`${name}\``
   }
 

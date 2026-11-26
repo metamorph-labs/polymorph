@@ -78,7 +78,8 @@ Common cases:
 - An icon set or an inline \`<svg>\`: ${f.m('Icon')} with a role from the card as its
   ${f.roleProp('Icon')}. A glyph no role names is a ${f.m('Bespoke')} zone until the vocabulary adds
   a role.
-- A chart library: the chart members. A chart they cannot draw goes in a ${f.m('Bespoke')} zone.
+- A chart library: the chart members. A chart they cannot draw goes in a ${f.m('Bespoke')} zone
+  when the file draws it by hand, or in ${f.m('ThirdParty')} around a library that draws it.
 - A motion library: members animate their own states. Motion the vocabulary has no member for goes
   in a ${f.m('Bespoke')} zone.
 - A stylesheet import: delete it. Another library's own stylesheet is imported in the file that

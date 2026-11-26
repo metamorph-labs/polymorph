@@ -200,6 +200,8 @@ function faults(command: string): string[] {
     problems.push(`${verb.name} needs ${required} argument(s): \`${verb.usage}\``)
   }
   for (const item of positionals) {
+    // Only `kind:name` is an item of the catalogue. `theme schema palette` names a document.
+    if (!item.includes(':')) continue
     const [kind, name] = item.split(':')
     if (kind === 'theme' && !registry.theme.systems.some((system) => system.name === name)) {
       problems.push(`no system "${name}"`)
@@ -256,6 +258,8 @@ describe('every command a text names', () => {
     expect(faults('add theme:nothing')).not.toEqual([])
     expect(faults('component Modal')).not.toEqual([])
     expect(faults('theme propose "calm" --based-on journal/umber')).toEqual([])
+    expect(faults('theme schema palette --out palette.schema.json')).toEqual([])
+    expect(faults('add palette:nothing --framework react')).not.toEqual([])
   })
 
   it('never runs the unscoped package, which is someone else’s', () => {
@@ -527,7 +531,11 @@ describe('every name a text takes from a package or a native source', () => {
   texts()
 
   it('is declared where the text says it is', () => {
-    expect([...NAMED].flatMap(([name, from]) => nameFault(name, from) ?? [])).toEqual([])
+    expect(
+      [...NAMED].flatMap(([name, sources]) =>
+        [...sources].flatMap((from) => nameFault(name, from) ?? []),
+      ),
+    ).toEqual([])
   })
 
   it('reads a name its source lacks, and a source that is not there, as a fault', () => {
