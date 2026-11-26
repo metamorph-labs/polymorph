@@ -9,6 +9,8 @@ import { main, VERBS, type Cli, type ToolCaller } from '@polymorph/cli'
 import { buildRegistry, type Registry } from '@polymorph/registry'
 import { afterAll, beforeAll, describe, expect, expectTypeOf, it } from 'vitest'
 
+// The run-time core by path: this package does not depend on it, and its card is held to it here.
+import { runtimeCard } from '../../screen/src/card'
 import { toolCaller } from './oneshot'
 import { createServer, encoded, TOOL_NAMES, TOOLS, WRITE_TOOL_NAMES } from './server'
 import type {
@@ -208,6 +210,8 @@ describe('the one-shot caller answers as the server does', () => {
 
   const calls: [string, Record<string, unknown>][] = [
     ['get_system_card', { framework: 'vue' }],
+    ['get_system_card', { runtime: true, members: ['Stack', 'Card'], addresses: 'refused' }],
+    ['get_system_card', { runtime: true, framework: 'vue' }],
     ['search_components', { query: 'dialog', limit: 3 }],
     ['get_component', { name: 'Modal' }],
     ['validate', { code: RAW_BUTTON, filename: 'src/App.tsx' }],
@@ -249,6 +253,11 @@ describe('`--json` prints exactly the tool’s answer', () => {
   const cases: [string[], string, Record<string, unknown>][] = [
     [['card', '--framework', 'svelte'], 'get_system_card', { framework: 'svelte' }],
     [
+      ['card', '--runtime', '--members', 'Stack,Card', '--addresses', 'refused'],
+      'get_system_card',
+      { runtime: true, members: ['Stack', 'Card'], addresses: 'refused' },
+    ],
+    [
       ['search', 'date', 'picker', '--limit', '2'],
       'search_components',
       { query: 'date picker', limit: 2 },
@@ -283,6 +292,77 @@ describe('`--json` prints exactly the tool’s answer', () => {
     const { code, out } = await polymorph(root, ['component', 'Modal', '--json'])
     expect(code).toBe(1)
     expect(JSON.parse(out)).toEqual({ error: expect.stringContaining('did you mean') as string })
+  })
+})
+
+describe('polymorph card --runtime', () => {
+  const root = project()
+
+  /** Each command line, and the options `runtimeCard` is given for it. */
+  const cases: [string[], Parameters<typeof runtimeCard>[0]][] = [
+    [[], {}],
+    [['--framework', 'elements'], { framework: 'elements' }],
+    [['--members', 'Stack,Card,Text,Button'], { members: ['Stack', 'Card', 'Text', 'Button'] }],
+    [['--addresses', 'refused'], { addresses: 'refused' }],
+    [
+      [
+        '--framework',
+        'elements',
+        '--members',
+        'Stack, Card, Link, Markdown',
+        '--addresses',
+        'refused',
+      ],
+      {
+        framework: 'elements',
+        members: ['Stack', 'Card', 'Link', 'Markdown'],
+        addresses: 'refused',
+      },
+    ],
+  ]
+
+  it('prints the text `runtimeCard` returns for the same options, and its length on stderr', async () => {
+    for (const [flags, options] of cases) {
+      const { code, out, err } = await polymorph(root, ['card', '--runtime', ...flags])
+      const card = runtimeCard(options)
+      expect(code, flags.join(' ')).toBe(0)
+      expect(out === card, flags.join(' ')).toBe(true)
+      expect(err).toBe(`The run-time card is ${card.length} characters.`)
+    }
+  }, 60_000)
+
+  it('prints the card alone on stdout under `--json`, as a JSON string', async () => {
+    const { out, err } = await polymorph(root, ['card', '--runtime', '--members', 'Text', '--json'])
+    expect(JSON.parse(out)).toBe(runtimeCard({ members: ['Text'] }))
+    expect(err).toMatch(/^The run-time card is \d+ characters\.$/)
+  })
+
+  it('refuses a framework or a platform no run-time renderer draws in, and a member it does not have', async () => {
+    for (const flags of [
+      ['--framework', 'vue'],
+      ['--platform', 'ios'],
+      ['--members', 'Stack,Modal'],
+      ['--addresses', 'none'],
+    ]) {
+      const { code, out } = await polymorph(root, ['card', '--runtime', ...flags])
+      expect(code, flags.join(' ')).toBe(1)
+      expect(out, flags.join(' ')).not.toContain('# Writing a screen')
+    }
+    const { out } = await polymorph(root, ['card', '--runtime', '--members', 'Stack,Modal'])
+    expect(out).toContain('no member called "Modal"')
+  })
+
+  it('reads `--members` and `--addresses` only with `--runtime`, and asks no tool without it', async () => {
+    let asked = 0
+    const { code, out } = await polymorph(root, ['card', '--members', 'Stack'], {
+      tools: () => {
+        asked += 1
+        return Promise.resolve({ value: '', images: [], isError: false })
+      },
+    })
+    expect(code).toBe(2)
+    expect(out).toContain('add `--runtime`')
+    expect(asked).toBe(0)
   })
 })
 

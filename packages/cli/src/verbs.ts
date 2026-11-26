@@ -189,16 +189,38 @@ export const VERBS: readonly Verb[] = [
     name: 'card',
     group: 'look up',
     summary: 'Print the system card: every member, the tokens, the red rules and the ladder.',
-    usage: 'polymorph card [--framework <name>] [--platform <name>] [--json]',
+    usage:
+      'polymorph card [--framework <name>] [--platform <name>] [--runtime] [--members <list>] ' +
+      '[--addresses <policy>] [--json]',
     flags: [
       {
         name: 'framework',
         value: 'name',
         summary:
           '`react` (default), `vue`, `svelte`, `solid`, `angular` or `elements`: the card ' +
-          'for an app in that framework',
+          'for an app in that framework; with `--runtime`, `react` or `elements`',
       },
       { ...PLATFORM, summary: '`web` (default), `ios` or `android`: the card for that platform' },
+      {
+        name: 'runtime',
+        summary:
+          'print the run-time card a product puts in its model’s system prompt instead, and its ' +
+          'length in characters on stderr',
+      },
+      {
+        name: 'members',
+        value: 'list',
+        summary:
+          'with `--runtime`, the members the product allows, comma-separated; omitted, the ' +
+          'framework’s default',
+      },
+      {
+        name: 'addresses',
+        value: 'policy',
+        summary:
+          'with `--runtime`, `allowed` (default) or `refused`: a product that shows no link and ' +
+          'loads no picture a model chose',
+      },
       JSON_FLAG,
     ],
     tools: ['get_system_card'],

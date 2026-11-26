@@ -69,6 +69,7 @@ export {
   saveTheme,
   ScreenUnavailableError,
   searchComponents,
+  SystemCardError,
   UnfinishedInstallError,
   UnknownComponentError,
   UnknownItemError,

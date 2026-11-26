@@ -5,6 +5,7 @@ import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/
 import { z } from 'zod'
 
 import {
+  ADDRESS_POLICIES,
   emitScreen,
   EscapingDirError,
   fix,
@@ -23,6 +24,7 @@ import {
   saveTheme,
   ScreenUnavailableError,
   searchComponents,
+  SystemCardError,
   UnfinishedInstallError,
   UnknownComponentError,
   UnknownItemError,
@@ -352,10 +354,46 @@ export const TOOLS: readonly ToolEntry[] = [
       'and what each platform renders natively, adapts or lacks. Read this first — it is a few ' +
       'thousand tokens and answers most questions outright. Pass `platform` for the vocabulary ' +
       'as it exists on one platform, and `framework` for a Vue, Svelte, Solid, Angular or ' +
-      'elements app.',
-    inputSchema: { platform: PLATFORM_ARGUMENT, framework: FRAMEWORK_ARGUMENT },
+      'elements app. Pass `runtime: true` for the run-time card instead: the text a product ' +
+      'puts in its model’s system prompt for a screen the model writes while the product runs, ' +
+      'for `react` or `elements`, the `members` the product allows and its `addresses`.',
+    inputSchema: {
+      platform: PLATFORM_ARGUMENT,
+      framework: FRAMEWORK_ARGUMENT,
+      runtime: z
+        .boolean()
+        .optional()
+        .describe(
+          'The run-time card in place of the system card: what `runtimeCard` from ' +
+            '`@polymorph/screen/card` returns for the same `framework`, `members` and ' +
+            '`addresses`. `framework` is `react` (the default) or `elements`.',
+        ),
+      members: z
+        .array(z.string())
+        .optional()
+        .describe(
+          'With `runtime`: the members and exception primitives the product allows, by name; ' +
+            'a part comes with its member. Omitted, every member the framework draws but ' +
+            '`ThirdParty` and, in React, `Toast`.',
+        ),
+      addresses: z
+        .enum(ADDRESS_POLICIES)
+        .optional()
+        .describe(
+          'With `runtime`: `allowed` (the default), or `refused` for a product that shows no ' +
+            'link and loads no picture a model chose. Refused, the card lists no prop that ' +
+            'takes an address and no member that cannot be drawn without one.',
+        ),
+    },
     annotations: READS,
-    answer: (context, args) => answered(getSystemCard(context, args)),
+    answer: (context, args) => {
+      try {
+        return answered(getSystemCard(context, args))
+      } catch (error) {
+        if (error instanceof SystemCardError) return refused(error.message)
+        throw error
+      }
+    },
   }),
   tool({
     name: 'get_theme_axes',
