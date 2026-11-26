@@ -76,32 +76,33 @@ export function disabledTabStops(root: ParentNode = document.body): string[] {
   return faults
 }
 
-/** A states fixture as the law reads it. */
-export interface DisabledLawGallery<Entry> {
+/** A states fixture as the law reads it: the member and its entries. */
+export interface DisabledLawGallery {
   readonly component: string
-  readonly entries: readonly Entry[]
+  readonly entries: readonly { readonly name: string; readonly rendersNothing?: boolean }[]
 }
 
-export interface DisabledLaw<
-  Entry extends { readonly name: string; readonly rendersNothing?: boolean },
-  Gallery extends DisabledLawGallery<Entry>,
-> {
+export interface DisabledLaw<Gallery extends DisabledLawGallery> {
   /** The shell's name as the law's titles say it: `Vue`. */
   readonly shell: string
   /** Every states fixture the shell ships (its `galleries.ts`). */
   readonly galleries: readonly Gallery[]
   /** Mounts one entry of a fixture, as the shell's other laws mount it. */
-  mount(gallery: Gallery, entry: Entry): Promise<{ unmount: () => void }> | { unmount: () => void }
+  mount(
+    gallery: Gallery,
+    entry: Gallery['entries'][number],
+  ): Promise<{ unmount: () => void }> | { unmount: () => void }
 }
 
 /** One frame, after which a machine that sets its attributes once it has mounted has set them. */
 const frame = () => new Promise<void>((settle) => requestAnimationFrame(() => settle()))
 
 /** Runs the law for one shell. Call it once, at the top level of the shell's `src/laws.test`. */
-export function disabledLaw<
-  Entry extends { readonly name: string; readonly rendersNothing?: boolean },
-  Gallery extends DisabledLawGallery<Entry>,
->({ shell, galleries, mount }: DisabledLaw<Entry, Gallery>): void {
+export function disabledLaw<Gallery extends DisabledLawGallery>({
+  shell,
+  galleries,
+  mount,
+}: DisabledLaw<Gallery>): void {
   describe(`a disabled control is not a tab stop — every fixture entry, the ${shell} shell`, () => {
     for (const gallery of galleries) {
       it(gallery.component, { timeout: 120_000 }, async () => {
