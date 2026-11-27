@@ -1226,7 +1226,7 @@ export const SPEC_DEFAULTS: readonly SpecDefaultEntry[] = [
   {
     name: 'tagInputRemoved',
     spec: 'design/components/tag-input.md',
-    doc: 'What TagInput announces when a tag is removed.',
+    doc: "TagInput's `removedLabel`: what it announces when a tag is removed.",
     english: '{tag} removed, {count} remain',
     parameters: [
       { name: 'tag', type: 'string' },

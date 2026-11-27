@@ -712,7 +712,8 @@ enum PMStrings {
       comment: "A tag field holds as many tags as it can.")
   }
 
-  /// What TagInput announces when a tag is removed (`design/components/tag-input.md`).
+  /// TagInput's `removedLabel`: what it announces when a tag is removed
+  /// (`design/components/tag-input.md`).
   static func tagInputRemoved(tag: String, count: Double) -> String {
     String(
       localized: "\(tag) removed, \(Int(count)) remain",

@@ -36,6 +36,8 @@ import TagInputChip from './TagInputChip'
 
 export type TagInputCountLabel = (tags: { count: number; max?: number; atMax: boolean }) => string
 
+export type TagInputRemovedLabel = (tag: string, count: number) => string
+
 export interface TagInputProps {
   'aria-describedby'?: string
   /**
@@ -74,6 +76,11 @@ export interface TagInputProps {
    */
   placeholder?: string
   /**
+   * What a removal announces in the host's words, the localization seam; the default is `{tag}
+   * removed, {count} remain`.
+   */
+  removedLabel?: TagInputRemovedLabel
+  /**
    * The accessible name of a chip's remove button. It is a function because the tag is data and
    * the text around it comes from the app's message catalog. Defaults to `Remove {tag}`.
    */
@@ -99,9 +106,10 @@ export default function TagInput(given: TagInputProps): JSX.Element {
       removeLabel: (tag: string) => `Remove ${tag}`,
       countLabel: ({ count, max, atMax }: Parameters<TagInputCountLabel>[0]) =>
         atMax ? `Maximum of ${max} added` : `${count} added`,
+      removedLabel: (tag: string, count: number) => `${tag} removed, ${count} remain`,
     } as Defaults<
       TagInputProps,
-      'validate' | 'size' | 'disabled' | 'invalid' | 'removeLabel' | 'countLabel'
+      'validate' | 'size' | 'disabled' | 'invalid' | 'removeLabel' | 'countLabel' | 'removedLabel'
     >,
     claimSlot(given, 'field'),
   )
@@ -154,7 +162,7 @@ export default function TagInput(given: TagInputProps): JSX.Element {
       const at = before.indexOf(tag)
       const target = at === -1 || at + 1 >= before.length ? null : removeButton.value(at + 1)
       commit.value(before.filter((other) => other !== tag))
-      announcement.value = `${tag} removed, ${before.length - 1} remain`
+      announcement.value = props.removedLabel(tag, before.length - 1)
       if (target) target.focus()
       else field.value?.focus()
     })

@@ -30,6 +30,7 @@ It has no substrate: an Input-style container that holds a list of chips and a r
 | `name`, `id` | native passthrough | — | serializes as comma-joined hidden input for forms |
 | `removeLabel` | `(tag: string) => string` | `` (tag) => `Remove ${tag}` `` | the accessible name of a chip's remove control *(the localization seam)*. A function, because the tag is data and the surrounding sentence comes from the message catalog |
 | `countLabel` | `(tags: { count: number; max?: number; atMax: boolean }) => string` | `` ({ count, max, atMax }) => atMax ? `Maximum of ${max} added` : `${count} added` `` | the count sentence in the field's description (FormField integration, below) *(the localization seam)*. A function of the number of tags, `max`, and `atMax`, which the member resolves, because the plural and the order of the words come from the message catalog |
+| `removedLabel` | `(tag: string, count: number) => string` | `` (tag, count) => `${tag} removed, ${count} remain` `` | what a removal announces (A11y, below) *(the localization seam)*. A function of the removed tag and how many tags remain, because the tag is data and the plural and the order of the words come from the message catalog |
 
 Commit keys: Enter and comma; paste splits on commas/newlines and validates each;
 Backspace in an empty input removes the last chip; a chip's remove button and its
@@ -113,7 +114,8 @@ The container is not a button; clicking it focuses the inner input. Chips are a 
 list without `role="listbox"` (`<ul>` with labelled remove buttons). The WAI grid-chip
 pattern is heavier than remove-only chips need; it is for chips that can be edited.
 The count is read as part of the field's description ("{n} added"), in the host's words from
-`countLabel`. Removals announce through `aria-live="polite"` ("{tag} removed, {n} remain"). The
+`countLabel`. Removals announce through `aria-live="polite"` ("{tag} removed, {n} remain"), in
+the host's words from `removedLabel`. The
 consuming app explains the comma/Enter commit in the field description; there is no
 hard-coded copy here.
 

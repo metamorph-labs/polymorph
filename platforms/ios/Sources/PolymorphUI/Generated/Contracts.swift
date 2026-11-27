@@ -8254,6 +8254,9 @@ public struct PMTagInputProps {
   public var onChange: (@MainActor ([String]) -> Void)?
   /// Shown only while empty. The chips are the value, and a placeholder beside them is clutter.
   public var placeholder: String?
+  /// What a removal announces in the host's words, the localization seam; the default is `{tag}
+  /// removed, {count} remain`.
+  public var removedLabel: (@MainActor (String, Double) -> String)?
   /// The accessible name of a chip's remove button. It is a function because the tag is data and
   /// the text around it comes from the app's message catalog. Defaults to `Remove {tag}`.
   public var removeLabel: (@MainActor (String) -> String)?
@@ -8279,6 +8282,7 @@ public struct PMTagInputProps {
     onBlur: (@MainActor () -> Void)? = nil,
     onChange: (@MainActor ([String]) -> Void)? = nil,
     placeholder: String? = nil,
+    removedLabel: (@MainActor (String, Double) -> String)? = nil,
     removeLabel: (@MainActor (String) -> String)? = nil,
     size: PMControlSize? = nil,
     validate: (@MainActor (String) -> String?)? = nil,
@@ -8298,6 +8302,7 @@ public struct PMTagInputProps {
     self.onBlur = onBlur
     self.onChange = onChange
     self.placeholder = placeholder
+    self.removedLabel = removedLabel
     self.removeLabel = removeLabel
     self.size = size
     self.validate = validate

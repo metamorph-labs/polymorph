@@ -22,6 +22,8 @@ import TagInputChip from './TagInputChip.svelte'
 
 export type TagInputCountLabel = (tags: { count: number; max?: number; atMax: boolean }) => string
 
+export type TagInputRemovedLabel = (tag: string, count: number) => string
+
 export interface TagInputProps {
   'aria-describedby'?: string
   /**
@@ -60,6 +62,11 @@ export interface TagInputProps {
    */
   placeholder?: string
   /**
+   * What a removal announces in the host's words, the localization seam; the default is `{tag}
+   * removed, {count} remain`.
+   */
+  removedLabel?: TagInputRemovedLabel
+  /**
    * The accessible name of a chip's remove button. It is a function because the tag is data and
    * the text around it comes from the app's message catalog. Defaults to `Remove {tag}`.
    */
@@ -94,6 +101,7 @@ let {
   onBlur,
   onChange,
   placeholder,
+  removedLabel = (tag: string, count: number) => `${tag} removed, ${count} remain`,
   removeLabel = (tag: string) => `Remove ${tag}`,
   size = 'md',
   validate = (raw: string) => (raw.trim() === '' ? null : raw.trim()),
@@ -170,7 +178,7 @@ const remove = $derived((tag: string) => {
   const at = before.indexOf(tag)
   const target = at === -1 || at + 1 >= before.length ? null : removeButton(at + 1)
   commit(before.filter((other) => other !== tag))
-  announcement = `${tag} removed, ${before.length - 1} remain`
+  announcement = removedLabel(tag, before.length - 1)
   if (target) target.focus()
   else field?.focus()
 })

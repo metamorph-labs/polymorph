@@ -420,7 +420,10 @@ data class PMStrings(
      * (`design/components/tag-input.md`).
      */
     val tagInputMaximum: (max: Double) -> String = { max -> "Maximum of ${max.toInt()} added" },
-    /** What TagInput announces when a tag is removed (`design/components/tag-input.md`). */
+    /**
+     * TagInput's `removedLabel`: what it announces when a tag is removed
+     * (`design/components/tag-input.md`).
+     */
     val tagInputRemoved: (tag: String, count: Double) -> String =
         { tag, count -> "${tag} removed, ${count.toInt()} remain" },
     /** Calendar's `messages`: the month buttons' names (`design/components/calendar.md`). */

@@ -3,13 +3,15 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { installTestTheme } from '@polymorph/engine/testing'
 
 /**
- * The law for what a TagInput's count says (`design/components/tag-input.md`,
- * FormField integration), which every web shell's TagInput test calls with a
- * mount of its own. The count is visually hidden text that the field's
- * description names, and no contract statement reads a description
- * (`docs/conformance.md`). This law reads the sentence a shell says by default
- * and the one a host passes in `countLabel`, with what `countLabel` is given,
- * before and after a chip is removed.
+ * The law for what a TagInput says of its count (`design/components/tag-input.md`,
+ * FormField integration and A11y), which every web shell's TagInput test calls
+ * with a mount of its own: the count in the field's description, and the
+ * removal its live region announces with how many tags remain. The count is
+ * visually hidden text that the field's description names, and no contract
+ * statement reads a description or the words of an announcement
+ * (`docs/conformance.md`). This law reads the sentences a shell says by default
+ * and the ones a host passes in `countLabel` and `removedLabel`, with what each
+ * is given.
  */
 
 /** What `countLabel` is given: the count, with whether the field is full resolved. */
@@ -25,6 +27,7 @@ export interface TagInputCountLawProps {
   defaultValue: string[]
   max?: number
   countLabel?: (tags: TagInputCountFacts) => string
+  removedLabel?: (tag: string, count: number) => string
 }
 
 export interface TagInputCountLaw {
@@ -61,6 +64,20 @@ const described = (): string =>
     .replace(/\s+/g, ' ')
     .trim()
 
+/** What the live region says: the removal announcement. */
+const announced = (): string => {
+  const region = root().querySelector<HTMLElement>('[aria-live="polite"]')
+  if (region === null) throw new Error('the TagInput has no polite live region')
+  return (region.textContent ?? '').replace(/\s+/g, ' ').trim()
+}
+
+/** Presses the remove button of the first chip, as a pointer does. */
+const removeFirst = (): void => {
+  const remove = root().querySelector<HTMLButtonElement>('li button')
+  if (remove === null) throw new Error('the TagInput drew no remove button')
+  remove.click()
+}
+
 /** A host's sentence in French, and the facts it was given, last call last. */
 function french() {
   const given: TagInputCountFacts[] = []
@@ -72,8 +89,18 @@ function french() {
   return { given, countLabel }
 }
 
+/** A host's removal announcement in French, and the tag and count it was given, last call last. */
+function frenchRemoval() {
+  const given: [string, number][] = []
+  const removedLabel = (tag: string, count: number) => {
+    given.push([tag, count])
+    return `${tag} retirée, il en reste ${count}`
+  }
+  return { given, removedLabel }
+}
+
 export function tagInputCountLaw({ shell, mount }: TagInputCountLaw): void {
-  describe(`${shell} TagInput — what its count says`, () => {
+  describe(`${shell} TagInput — what it says of its count`, () => {
     beforeAll(installTestTheme)
 
     it('says how many tags it holds, and the maximum once it holds that many, in English by default', async () => {
@@ -125,11 +152,29 @@ export function tagInputCountLaw({ shell, mount }: TagInputCountLaw): void {
         max: 3,
         countLabel: host.countLabel,
       })
-      const remove = root().querySelector<HTMLButtonElement>('li button')
-      if (remove === null) throw new Error('the TagInput drew no remove button')
-      remove.click()
+      removeFirst()
       await vi.waitFor(() => expect(described()).toBe('2 étiquettes'))
       expect(host.given.at(-1)).toEqual({ count: 2, max: 3, atMax: false })
+    })
+
+    it('announces a removal with how many tags remain, in English by default', async () => {
+      await mount({ 'aria-label': 'Labels', defaultValue: ['billing', 'refund', 'vip'] })
+      expect(announced()).toBe('')
+      removeFirst()
+      await vi.waitFor(() => expect(announced()).toBe('billing removed, 2 remain'))
+    })
+
+    it('announces the host’s sentence from removedLabel, given the tag and how many remain', async () => {
+      const host = frenchRemoval()
+      await mount({
+        'aria-label': 'Étiquettes',
+        defaultValue: ['facturation', 'remboursement', 'vip'],
+        removedLabel: host.removedLabel,
+      })
+      removeFirst()
+      await vi.waitFor(() => expect(announced()).toBe('facturation retirée, il en reste 2'))
+      expect(host.given.at(-1)).toEqual(['facturation', 2])
+      expect(root().textContent).not.toMatch(/removed|remain/)
     })
   })
 }

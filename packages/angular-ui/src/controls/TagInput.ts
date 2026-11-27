@@ -33,6 +33,8 @@ import { TagInputChip, type TagInputChipProps } from './TagInputChip'
 
 export type TagInputCountLabel = (tags: { count: number; max?: number; atMax: boolean }) => string
 
+export type TagInputRemovedLabel = (tag: string, count: number) => string
+
 /** Free-text tags: the inputs it takes, by the React member's prop names. */
 export interface TagInputProps {
   'aria-describedby'?: string
@@ -65,6 +67,11 @@ export interface TagInputProps {
    * Shown only while empty. The chips are the value, and a placeholder beside them is clutter.
    */
   placeholder?: string
+  /**
+   * What a removal announces in the host's words, the localization seam; the default is `{tag}
+   * removed, {count} remain`.
+   */
+  removedLabel?: TagInputRemovedLabel
   /**
    * The accessible name of a chip's remove button. It is a function because the tag is data and
    * the text around it comes from the app's message catalog. Defaults to `Remove {tag}`.
@@ -212,6 +219,19 @@ export class TagInput {
    */
   readonly placeholder = input<TagInputProps['placeholder']>(undefined)
   /**
+   * What a removal announces in the host's words, the localization seam; the default is `{tag}
+   * removed, {count} remain`.
+   */
+  readonly removedLabel = input<
+    Exclude<TagInputProps['removedLabel'], undefined>,
+    TagInputProps['removedLabel']
+  >((tag: string, count: number) => `${tag} removed, ${count} remain`, {
+    transform: (value: TagInputProps['removedLabel']) =>
+      value === undefined
+        ? (tag: string, count: number) => `${tag} removed, ${count} remain`
+        : value,
+  })
+  /**
    * The accessible name of a chip's remove button. It is a function because the tag is data and
    * the text around it comes from the app's message catalog. Defaults to `Remove {tag}`.
    */
@@ -260,6 +280,7 @@ export class TagInput {
       max: () => this.max(),
       name: () => this.name(),
       placeholder: () => this.placeholder(),
+      removedLabel: () => this.removedLabel(),
       removeLabel: () => this.removeLabel(),
       size: () => this.size(),
       validate: () => this.validate(),
@@ -317,7 +338,7 @@ export class TagInput {
     const at = before.indexOf(tag)
     const target = at === -1 || at + 1 >= before.length ? null : this.removeButton.value(at + 1)
     this.commit.value(before.filter((other) => other !== tag))
-    this.announcement.value = `${tag} removed, ${before.length - 1} remain`
+    this.announcement.value = this.$p.removedLabel(tag, before.length - 1)
     if (target) target.focus()
     else this.field.value?.focus()
   })

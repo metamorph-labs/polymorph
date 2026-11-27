@@ -23,8 +23,9 @@
 // The entry is named by `ariaLabel` or its FormField's label and described by
 // the count, "{n} added" or "Maximum of {max} added", or the app's words from
 // `countLabel`, then by the field's message, "Invalid" first while invalid. Each remove button is named by
-// `removeLabel` ("Remove {tag}" by default), and a removal is announced,
-// "{tag} removed, {n} remain". `name`, `id` and the `aria-*by` ids have no
+// `removeLabel` ("Remove {tag}" by default), and a removal is announced in the
+// words of `removedLabel`, "{tag} removed, {n} remain" by default. `name`,
+// `id` and the `aria-*by` ids have no
 // SwiftUI counterpart.
 
 import PolymorphTokens
@@ -201,9 +202,14 @@ public struct PMTagInput: PMTagInputRendering {
     let next = values.filter { $0 != tag }
     draft = next
     props.onChange?(next)
-    AccessibilityNotification.Announcement(
-      PMStrings.tagInputRemoved(tag: tag, count: Double(next.count))
-    ).post()
+    AccessibilityNotification.Announcement(removal(of: tag, remain: next.count)).post()
+  }
+
+  /// What the removal of `tag` announces, with `remain` tags left: the app's
+  /// words from `removedLabel`, or the string catalog's.
+  func removal(of tag: String, remain: Int) -> String {
+    let count = Double(remain)
+    return props.removedLabel?(tag, count) ?? PMStrings.tagInputRemoved(tag: tag, count: count)
   }
 
   /// The refusal: the field drawn invalid for one control duration.

@@ -53,6 +53,8 @@ export default describeMember({
   types: {
     // A function, not two words, because the plural and the order of the words are the catalog's.
     TagInputCountLabel: '(tags: { count: number; max?: number; atMax: boolean }) => string',
+    // Named because the cards print the name in fewer characters than the signature.
+    TagInputRemovedLabel: '(tag: string, count: number) => string',
   },
   defaults: {
     // Trim, and refuse the empty string.
@@ -63,6 +65,7 @@ export default describeMember({
     removeLabel: '(tag: string) => `Remove ${tag}`',
     countLabel:
       '({ count, max, atMax }: Parameters<TagInputCountLabel>[0]) => (atMax ? `Maximum of ${max} added` : `${count} added`)',
+    removedLabel: '(tag: string, count: number) => `${tag} removed, ${count} remain`',
   },
   statics: { controlKind: lit('field') },
   state: {
@@ -108,7 +111,7 @@ export default describeMember({
       const at = before.indexOf(tag)
       const target = at === -1 || at + 1 >= before.length ? null : removeButton(at + 1)
       commit(before.filter((other) => other !== tag))
-      announcement = \`\${tag} removed, \${before.length - 1} remain\`
+      announcement = removedLabel(tag, before.length - 1)
       if (target) target.focus()
       else field?.focus()
     }`,
@@ -295,7 +298,8 @@ export default describeMember({
       el('span', { part: 'count', class: ['reader'], attrs: { id: 'countId' } }, [
         text('countLabel({ count: values.length, max, atMax })'),
       ]),
-      // A removal is announced, because the chip and the focus on it are gone.
+      // A removal is announced, in the host's words from `removedLabel`, because the chip and
+      // the focus on it are gone.
       el('span', { part: 'announcer', class: ['reader'], attrs: { 'aria-live': lit('polite') } }, [
         text('announcement'),
       ]),

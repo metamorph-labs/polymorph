@@ -1,5 +1,5 @@
 import { CalendarDate } from '@internationalized/date'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { userEvent } from 'vitest/browser'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
@@ -76,7 +76,7 @@ describe('a host’s language reaches every name the vocabulary would otherwise 
     expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()
   })
 
-  it('TagInput — a chip’s remove control, with the tag as data, and the count', () => {
+  it('TagInput — a chip’s remove control, with the tag as data, the count and a removal', () => {
     render(
       <TagInput
         aria-label="Étiquettes"
@@ -86,11 +86,15 @@ describe('a host’s language reaches every name the vocabulary would otherwise 
         countLabel={({ count, max, atMax }) =>
           atMax ? `${max} étiquette au maximum` : `${count} étiquettes`
         }
+        removedLabel={(tag, count) => `${tag} retirée, il en reste ${count}`}
       />,
     )
-    expect(screen.getByRole('button', { name: 'Retirer urgent' })).toBeTruthy()
     expect(screen.getByRole('textbox', { description: '1 étiquette au maximum' })).toBeTruthy()
     expect(screen.queryByText(/added/)).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retirer urgent' }))
+    expect(screen.getByText('urgent retirée, il en reste 0')).toBeTruthy()
+    expect(screen.queryByText(/removed|remain/)).toBeNull()
   })
 
   it('Stepper — the spoken position and state, as one sentence', () => {
@@ -334,5 +338,7 @@ describe('and a host that passes nothing still hears the generic English', () =>
     expect(screen.getByText('3 of 9 results')).toBeTruthy()
     expect(screen.getByText('up 12% — positive')).toBeTruthy()
     expect(screen.getByRole('textbox', { name: 'Labels', description: '2 added' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove urgent' }))
+    expect(screen.getByText('urgent removed, 1 remain')).toBeTruthy()
   })
 })

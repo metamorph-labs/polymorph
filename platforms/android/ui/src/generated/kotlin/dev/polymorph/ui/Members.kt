@@ -2508,12 +2508,13 @@ fun PMTagInput(
     onBlur: (() -> Unit)? = null,
     onChange: ((List<String>) -> Unit)? = null,
     placeholder: String? = null,
+    removedLabel: ((String, Double) -> String)? = null,
     removeLabel: ((String) -> String)? = null,
     size: PMControlSize? = null,
     validate: ((String) -> String?)? = null,
     value: List<String>? = null,
 ) {
-    PMTagInput.Render(PMTagInputProps(ariaDescribedby = ariaDescribedby, ariaLabel = ariaLabel, ariaLabelledby = ariaLabelledby, ariaRequired = ariaRequired, countLabel = countLabel, defaultValue = defaultValue, disabled = disabled, id = id, invalid = invalid, max = max, name = name, onBlur = onBlur, onChange = onChange, placeholder = placeholder, removeLabel = removeLabel, size = size, validate = validate, value = value))
+    PMTagInput.Render(PMTagInputProps(ariaDescribedby = ariaDescribedby, ariaLabel = ariaLabel, ariaLabelledby = ariaLabelledby, ariaRequired = ariaRequired, countLabel = countLabel, defaultValue = defaultValue, disabled = disabled, id = id, invalid = invalid, max = max, name = name, onBlur = onBlur, onChange = onChange, placeholder = placeholder, removedLabel = removedLabel, removeLabel = removeLabel, size = size, validate = validate, value = value))
 }
 
 /**

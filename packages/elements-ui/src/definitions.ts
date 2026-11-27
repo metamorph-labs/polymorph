@@ -716,6 +716,7 @@ export const DEFINITIONS: Readonly<Record<string, ElementDefinition>> = {
       max: 'number',
       name: 'string',
       placeholder: 'string',
+      removedLabel: 'property',
       removeLabel: 'property',
       size: 'string',
       validate: 'property',

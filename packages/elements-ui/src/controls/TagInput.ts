@@ -24,6 +24,7 @@ export const definition: ElementDefinition = {
     max: 'number',
     name: 'string',
     placeholder: 'string',
+    removedLabel: 'property',
     removeLabel: 'property',
     size: 'string',
     validate: 'property',
@@ -49,6 +50,7 @@ export type PolyTagInputElement = MemberElement<
   | 'max'
   | 'name'
   | 'placeholder'
+  | 'removedLabel'
   | 'removeLabel'
   | 'size'
   | 'validate'

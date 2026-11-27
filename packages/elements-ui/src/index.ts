@@ -709,6 +709,7 @@ export type {
   TabsProps,
   TagInputCountLabel,
   TagInputProps,
+  TagInputRemovedLabel,
   TextProps,
   TextSize,
   TextTone,

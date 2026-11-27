@@ -33,7 +33,8 @@
 // `countLabel`), and while invalid it
 // reports its error (the FormField's message, else "Invalid"). Each remove
 // button is named by `removeLabel` ("Remove {tag}" by default), and a removal
-// is announced politely ("{tag} removed, {n} remain"). A remove button pressed
+// is announced politely in the words of `removedLabel` ("{tag} removed, {n}
+// remain" by default). A remove button pressed
 // from the keyboard hands focus to the next chip's, or to the entry; a touch
 // leaves focus where it is, so the keyboard does not open.
 //
@@ -175,7 +176,8 @@ object PMTagInput : PMTagInputRendering {
             val next = values.filter { it != tag }
             change(next)
             leaving = leaving + (index to tag)
-            announcement = strings.tagInputRemoved(tag, next.size.toDouble())
+            val remain = next.size.toDouble()
+            announcement = props.removedLabel?.invoke(tag, remain) ?: strings.tagInputRemoved(tag, remain)
             if (handOff) (values.getOrNull(index + 1)?.let { removers[it] } ?: entry).requestFocus()
         }
         // A comma or a line break commits the text before it; text a

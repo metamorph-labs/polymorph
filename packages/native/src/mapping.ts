@@ -1823,6 +1823,7 @@ export const FUNCTION_ALIASES: Readonly<Record<string, string>> = {
   StatDeltaLabel:
     '(delta: { value: string; direction: DeltaDirection; positive: boolean }) => string',
   TagInputCountLabel: '(tags: { count: number; max?: number; atMax: boolean }) => string',
+  TagInputRemovedLabel: '(tag: string, count: number) => string',
 }
 
 /**

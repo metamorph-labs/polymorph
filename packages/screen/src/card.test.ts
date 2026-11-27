@@ -54,8 +54,13 @@ import { VOCABULARY } from './vocabulary'
  * wrote `aria` as a prop holding an object. The other says a control's name is
  * used once in a screen, because two forms on one screen each named a field
  * `email`.
+ *
+ * It also includes TagInput's `removedLabel`, the seam for the sentence a
+ * screen-reader user hears when a tag is removed. Its type is printed by its
+ * name, the shortest form, and no sentence of TagInput's own on the card was
+ * left to shorten in its place.
  */
-const BUDGET_CHARS = 60_800
+const BUDGET_CHARS = 60_824
 const SUBSET_BUDGET_CHARS = 13_600
 
 /** What a host that draws forms, lists and simple pages might allow. */

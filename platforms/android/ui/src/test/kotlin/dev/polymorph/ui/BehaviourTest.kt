@@ -955,6 +955,34 @@ class BehaviourTest {
     }
 
     /**
+     * A removal says `removedLabel`, the app's words, through the field's
+     * polite live region (`tag-input.md`, A11y), given the tag and how many
+     * tags remain, and `PMStrings`' sentence when the app passes none.
+     */
+    @Test
+    fun aTagInputAnnouncesARemovalInTheAppsWords() {
+        val polite = SemanticsMatcher("a polite live region") {
+            it.config.getOrNull(SemanticsProperties.LiveRegion) == LiveRegionMode.Polite
+        }
+        val given = mutableListOf<Pair<String, Double>>()
+        val french: (String, Double) -> String = { tag, count ->
+            given += tag to count
+            "$tag retirée, il en reste ${count.toInt()}"
+        }
+        val strings = PMStrings()
+        for ((label, heard) in listOf(french to "a retirée, il en reste 1", null to strings.tagInputRemoved("a", 1.0))) {
+            runComposeUiTest {
+                setContent { Scene { PMTagInput(ariaLabel = "Labels", defaultValue = listOf("a", "b"), removedLabel = label) } }
+                onNode(hasContentDescription(strings.tagInputRemove("a")) and hasClickAction(), useUnmergedTree = true)
+                    .performSemanticsAction(SemanticsActions.OnClick)
+                waitForIdle()
+                onAllNodes(polite and hasContentDescription(heard), useUnmergedTree = true).assertCountEquals(1)
+            }
+        }
+        assertEquals(listOf("a" to 1.0), given)
+    }
+
+    /**
      * The action key with nothing to do hides the keyboard: NumberInput's Done
      * with nothing to submit, SearchInput's Search outside a form, Combobox's
      * Done, and Done in an empty TagInput. MultiSelect's search field does the

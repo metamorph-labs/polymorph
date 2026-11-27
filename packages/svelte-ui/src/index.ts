@@ -510,7 +510,11 @@ export const Tabs = /* @__PURE__ */ Object.assign(TabsRoot, { Content: TabsConte
 export type { TabsContentProps } from './overlays/TabsContent.svelte'
 export type { TabDescriptor, TabsOrientation, TabsProps } from './overlays/Tabs.svelte'
 export { default as TagInput } from './controls/TagInput.svelte'
-export type { TagInputCountLabel, TagInputProps } from './controls/TagInput.svelte'
+export type {
+  TagInputCountLabel,
+  TagInputProps,
+  TagInputRemovedLabel,
+} from './controls/TagInput.svelte'
 export { default as Text } from './structure/Text.svelte'
 export type { TextProps, TextSize, TextTone } from './structure/Text.svelte'
 export { default as Textarea } from './controls/Textarea.svelte'

@@ -5680,6 +5680,11 @@ data class PMTagInputProps(
      */
     val placeholder: String? = null,
     /**
+     * What a removal announces in the host's words, the localization seam; the default is `{tag}
+     * removed, {count} remain`.
+     */
+    val removedLabel: ((String, Double) -> String)? = null,
+    /**
      * The accessible name of a chip's remove button. It is a function because the tag is data and
      * the text around it comes from the app's message catalog. Defaults to `Remove {tag}`.
      */

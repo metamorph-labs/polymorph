@@ -56,6 +56,12 @@ function trimNonEmpty(raw: string): string | null {
  */
 export type TagInputCountLabel = (tags: { count: number; max?: number; atMax: boolean }) => string
 
+/**
+ * The sentence announced when a tag is removed, given the tag and how many tags remain. A
+ * named type because the cards print the name in fewer characters than the signature.
+ */
+export type TagInputRemovedLabel = (tag: string, count: number) => string
+
 export interface TagInputProps {
   value?: string[]
   defaultValue?: string[]
@@ -96,6 +102,11 @@ export interface TagInputProps {
    * seam; the default is `{count} added`, or `Maximum of {max} added` at the maximum.
    */
   countLabel?: TagInputCountLabel
+  /**
+   * What a removal announces in the host's words, the localization seam; the default is
+   * `{tag} removed, {count} remain`.
+   */
+  removedLabel?: TagInputRemovedLabel
   /** Wired by FormField; set directly only when there is no visible label. */
   'aria-label'?: string
   'aria-labelledby'?: string
@@ -107,6 +118,8 @@ const defaultRemoveLabel = (tag: string) => `Remove ${tag}`
 
 const defaultCountLabel: TagInputCountLabel = ({ count, max, atMax }) =>
   atMax ? `Maximum of ${max} added` : `${count} added`
+
+const defaultRemovedLabel: TagInputRemovedLabel = (tag, count) => `${tag} removed, ${count} remain`
 
 export function TagInput({
   value,
@@ -123,6 +136,7 @@ export function TagInput({
   id,
   removeLabel = defaultRemoveLabel,
   countLabel = defaultCountLabel,
+  removedLabel = defaultRemovedLabel,
   'aria-label': ariaLabel,
   'aria-labelledby': labelledBy,
   'aria-describedby': describedBy,
@@ -230,7 +244,7 @@ export function TagInput({
     flushSync(() => setRemoving(tag))
     setRemoving(null)
     commit(values.filter((value) => value !== tag))
-    setAnnouncement(`${tag} removed, ${values.length - 1} remain`)
+    setAnnouncement(removedLabel(tag, values.length - 1))
 
     // Focus moves to the chip that took its place, or back to the field. Never to
     // `<body>`, which is where focus goes by default when a focused button is removed.
@@ -444,7 +458,8 @@ export function TagInput({
       </span>
 
       {/* Removals are announced because screen-reader users cannot see them happen:
-          the chip is gone, and so is the focus that was on it. */}
+          the chip is gone, and so is the focus that was on it. The words are the host's
+          from `removedLabel`. */}
       <span className={styles.reader} aria-live="polite">
         {announcement}
       </span>

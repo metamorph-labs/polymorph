@@ -371,6 +371,25 @@
       XCTAssertEqual(given.last?.atMax, true)
     }
 
+    /// A removal announces `removedLabel`, the app's words (`tag-input.md`,
+    /// A11y), given the tag and how many tags remain, and the string catalog's
+    /// sentence when the app passes none.
+    func testATagInputAnnouncesARemovalInTheAppsWords() {
+      var given: [String] = []
+      let french = PMTagInput(
+        props: PMTagInputProps(
+          ariaLabel: "Étiquettes", defaultValue: ["a", "b"],
+          removedLabel: { tag, count in
+            given.append("\(tag) \(Int(count))")
+            return "\(tag) retirée, il en reste \(Int(count))"
+          }))
+      XCTAssertEqual(french.removal(of: "a", remain: 1), "a retirée, il en reste 1")
+      XCTAssertEqual(given, ["a 1"])
+      let english = PMTagInput(props: PMTagInputProps(ariaLabel: "Labels", defaultValue: ["a", "b"]))
+      XCTAssertEqual(
+        english.removal(of: "a", remain: 1), PMStrings.tagInputRemoved(tag: "a", count: 1))
+    }
+
     func testClosingTheListClearsTheSearchText() throws {
       var typed: [String] = []
       var chosen: [String?] = []

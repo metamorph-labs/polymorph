@@ -4,7 +4,8 @@ import { mountComponent } from '../mount'
 import { TagInput } from './TagInput'
 
 /**
- * What a TagInput's count says in the Angular shell (`design/components/tag-input.md`),
+ * What a TagInput says of its count in the Angular shell, in its description and
+ * when a tag is removed (`design/components/tag-input.md`),
  * as `@polymorph/conformance/tag-input-count` states it for every web shell.
  */
 tagInputCountLaw({

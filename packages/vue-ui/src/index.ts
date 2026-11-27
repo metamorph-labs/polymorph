@@ -498,7 +498,11 @@ export const Tabs = /* @__PURE__ */ Object.assign(TabsRoot, { Content: TabsConte
 export type { TabsContentProps } from './overlays/TabsContent.vue'
 export type { TabDescriptor, TabsOrientation, TabsProps } from './overlays/Tabs.vue'
 export { default as TagInput } from './controls/TagInput.vue'
-export type { TagInputCountLabel, TagInputProps } from './controls/TagInput.vue'
+export type {
+  TagInputCountLabel,
+  TagInputProps,
+  TagInputRemovedLabel,
+} from './controls/TagInput.vue'
 export { default as Text } from './structure/Text.vue'
 export type { TextProps, TextSize, TextTone } from './structure/Text.vue'
 export { default as Textarea } from './controls/Textarea.vue'
