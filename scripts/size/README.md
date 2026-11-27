@@ -61,8 +61,7 @@ keyboard focus (`nameTip` in `@polymorph/engine`, `design/components/button.md`)
 the Button's call to it and the class its bubble is drawn with. Without the tip the fixture is
 65.5 kB, 0.48 kB under 66 kB, which is less than the tip, so the ceiling is the next kilobyte.
 
-`elements-button`'s JavaScript ceiling is 44 kB, and the fixture measures 43.1 kB, for the same
-tip. Five elements call it (Button, SplitButton, CopyButton, AvatarButton and Pagination), so the
+`elements-button` carries the same tip. Five elements call it (Button, SplitButton, CopyButton, AvatarButton and Pagination), so the
 build writes it as a chunk of its own, which compresses about 0.1 kB larger than the same code
 inside Button's chunk. Without the tip the fixture is 41.75 kB. Keeping the tip in Button's chunk
 would fit 43 kB, and would make a page with only a CopyButton fetch Button's chunk. The Vue, Svelte,
@@ -72,8 +71,17 @@ Four more fixtures draw an icon-only Button and carry the same tip, and each was
 of its ceiling without it. `dialog` (the close Button) measures 87.6 kB against 86.7 kB without the
 tip, and its ceiling is 88 kB. `agent-bridge` measures 76.9 kB against 76.0 kB, and its ceiling is
 77 kB. `elements-agent` and `elements-screen` are the `elements-button` page with more on it, so
-they grow by what that page grows by: 45.2 kB against 43.8 kB, with a ceiling of 46 kB, and 86.1 kB
-against 84.9 kB.
+they grow by what that page grows by: 45.2 kB against 43.8 kB, and 86.1 kB against 84.9 kB.
+
+The three pages that load `polymorph.js` also carry the theme runtime's mode code, so
+`elements-button`'s JavaScript ceiling is 45 kB, `elements-agent`'s 47 kB and `elements-screen`'s
+89 kB. `polymorph.js` hands the runtime the house systems' default modes as it runs
+(`hydrateMode`), so a `<poly-mode-switch>` shows the mode the page opened in, and a page whose
+preference is System follows the device when it changes. Without the call the runtime is part of
+ModeSwitch's chunk, and a page with no ModeSwitch does not fetch it. With it the runtime is a chunk
+every page fetches, 0.78 kB gzipped, and the attribute names it writes are a chunk of 0.23 kB,
+which the charts share. The three pages measure 44.4 kB, 46.6 kB and 88.4 kB, against 43.4 kB,
+45.6 kB and 87.3 kB without it.
 
 `runtime-engine`'s JavaScript ceiling is 54 kB, and the fixture measures 53.6 kB against 52.6 kB
 before three choices a system or a palette may state: the pin for the accent gradient's second
@@ -140,7 +148,8 @@ that loads `polymorph.js` fetches the editor only when it uses `poly-rich-text-i
 editor is in that element's chunk.
 
 `elements-screen`'s ceilings are set as `elements-button`'s are, from its measurement, 87.3 kB,
-rounded up to the next kilobyte: 88 kB. Of that, 1.2 kB is three things the run-time screen does on
+rounded up to the next kilobyte: 88 kB, and 89 kB with the theme runtime's mode code (above). Of
+the 87.3 kB, 1.2 kB is three things the run-time screen does on
 the page: the reader returns the model's prose and the state of the document's fence, the walk and
 the shared checks refuse every address for a host that takes none, and the vocabulary table names
 the measures a chart's summary receives. `pnpm size --why elements-screen` shows no package the

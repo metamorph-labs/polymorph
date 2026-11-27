@@ -340,6 +340,26 @@ describe('the published build', () => {
       expect(cdn('prepaint.js').trim()).toBe(prepaintScript({ modes: Object.fromEntries(modes) }))
     })
 
+    it('hand the theme runtime, from both scripts, the default modes prepaint.js carries', () => {
+      // `prepaintScript` writes the map as JSON after `M=`, sorted by system.
+      const literal = /\bM=(\{[^}]*\})/.exec(cdn('prepaint.js'))?.[1]
+      expect(literal, 'prepaint.js carries no map of default modes').toBeDefined()
+      const painted = Object.entries(JSON.parse(literal as string) as Record<string, string>)
+      expect(painted.length).toBeGreaterThan(0)
+      // The same entries in the same order, as an object literal: the minifier may drop a key's
+      // quotes, and writes a string in any of the three quotes.
+      const quote = '["\'`]'
+      const name = (text: string) => text.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&')
+      const map = new RegExp(
+        `\\{${painted
+          .map(
+            ([system, mode]) => `${quote}?${name(system)}${quote}?:${quote}${name(mode)}${quote}`,
+          )
+          .join(',')}\\}`,
+      )
+      for (const file of ['polymorph.js', 'polymorph-all.js']) expect(cdn(file), file).toMatch(map)
+    })
+
     it('define every tag from polymorph.js, each loading a chunk of its own', () => {
       const loaded = chunks()
       expect([...loaded.keys()].sort()).toEqual(Object.keys(DEFINITIONS).sort())

@@ -159,19 +159,32 @@ function noBuildAssets(): Plugin {
 }
 
 /**
+ * Each house system whose `defaultMode` is `light` or `dark`, sorted by name.
+ * It is the map `prepaint.js` carries and the map both scripts hand the theme
+ * runtime's `hydrateMode` (`src/cdn/house-modes.ts`), so the mode the
+ * pre-paint script applies is the preference a ModeSwitch shows. Every other
+ * house system follows the device, and neither map names it.
+ */
+function noBuildModes(): Record<string, 'light' | 'dark'> {
+  const modes = readdirSync(path('../../design/systems'))
+    .filter((name) => name.endsWith('.json'))
+    .flatMap((file) => {
+      const system = designDocument(`systems/${file}`)
+      const mode = system['defaultMode'] as ModePreference
+      return mode === 'light' || mode === 'dark' ? [[String(system['name']), mode] as const] : []
+    })
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+  return Object.fromEntries(modes)
+}
+
+/**
  * The prepaint script of a page with no build, built with each house system's
  * default mode, so a page that wears a system that opens dark is dark from
  * the first paint. The page names its pairing on `<html>`, where the script
  * reads it, so it needs no fallback system.
  */
 function noBuildPrepaint(): string {
-  const modes = readdirSync(path('../../design/systems'))
-    .filter((name) => name.endsWith('.json'))
-    .map((file) => {
-      const system = designDocument(`systems/${file}`)
-      return [String(system['name']), system['defaultMode'] as ModePreference] as const
-    })
-  return prepaintScript({ modes: Object.fromEntries(modes) })
+  return prepaintScript({ modes: noBuildModes() })
 }
 
 /**
@@ -237,10 +250,16 @@ function sharedStylesheet(): Plugin {
  * `development`, which keeps the members' and the elements' warnings: nothing
  * lints a page written in HTML, so the console is where its author learns of
  * an attribute an element could not read.
+ *
+ * It also writes in `__PM_HOUSE_MODES__`, the house systems' default modes
+ * (`noBuildModes`), which both scripts hand the theme runtime.
  */
 function noBuild(all: boolean): UserConfig {
   return {
-    define: { 'process.env.NODE_ENV': JSON.stringify('development') },
+    define: {
+      'process.env.NODE_ENV': JSON.stringify('development'),
+      __PM_HOUSE_MODES__: JSON.stringify(noBuildModes()),
+    },
     plugins: [
       reachThroughPlugin(),
       solid({ hot: false }),

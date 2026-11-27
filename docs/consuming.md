@@ -1208,8 +1208,12 @@ npx -y @metamorph-labs/polymorph@^<version> --help
   so a stored mode, system or palette applies before the first paint. `<html data-system
   data-palette>` names the pairing the page wears. The script is built with each house system's
   `defaultMode`, so a page that wears `terminal` opens dark for a reader who has not chosen a
-  mode. Nothing on the page calls `hydrateTheme`, so a `<poly-mode-switch>` there shows System
-  until the reader chooses, even on a page that opened dark.
+  mode. `polymorph.js` and `polymorph-all.js` hand the theme runtime the same modes as they run
+  (`hydrateMode`), so a `<poly-mode-switch>` shows what the page wears: Dark on a page wearing
+  `terminal`, System on a page wearing a system that follows the device, and the reader's choice
+  once they have made one. While the preference is System, the page follows the device's mode
+  when it changes. A system the house catalogue does not hold follows the device in the script
+  and in the switch.
 - **`polymorph.js` is a module script.** It defines every `poly-*` tag at once and loads each
   member's code, a chunk of its own, the first time one of its elements renders, so a page loads
   the members it uses. `polymorph-all.js` loads every member in one file. A module script does not

@@ -35,7 +35,7 @@ Terms used on this page:
 | `pnpm layout` | no page of the built workbench has a layout fault: every member's gallery, the Relay screens and the sample pages, at a phone's width and a desktop's ([The layout scan](#the-layout-scan)) | yes |
 | `pnpm build:packages` | the published builds of `@polymorph/engine`, `@polymorph/rules`, `@polymorph/screen`, `@polymorph/react`, `@polymorph/react-ui`, `@polymorph/vue`, `@polymorph/vue-ui`, `@polymorph/svelte`, `@polymorph/svelte-ui`, `@polymorph/solid`, `@polymorph/solid-ui`, `@polymorph/elements`, `@polymorph/elements-ui` (with the files a page with no build loads, `dist/cdn/`), `@polymorph/angular`, `@polymorph/angular-ui` and `@polymorph/tools` (the CLI and the MCP server, with the registry, the source tree and the screen page they ship) | yes |
 | `pnpm size` | what a consumer ships stays under its budget | yes |
-| `pnpm gate:no-build` | a page with no build, served as plain files, loads the elements' no-build files and works: before and after the tags are defined, from markup, in a form, through an overlay, through htmx-style and morphing swaps and page snapshots, and drawing a run-time screen ([The static-page check](#the-static-page-check)) | yes, on Chromium, on the builds `pnpm build:packages` made; `pnpm gate:engines` runs it on Firefox and WebKit |
+| `pnpm gate:no-build` | a page with no build, served as plain files, loads the elements' no-build files and works: before and after the tags are defined, from markup, in a form, through an overlay, through htmx-style and morphing swaps and page snapshots, drawing a run-time screen, and in the mode its system opens in ([The static-page check](#the-static-page-check)) | yes, on Chromium, on the builds `pnpm build:packages` made; `pnpm gate:engines` runs it on Firefox and WebKit |
 | `pnpm gate:next` | a Next.js App Router application built from the published builds, on Turbopack, on webpack and on the development server: the members' stylesheets reach each page, the pages hydrate, the theme installs, and the red rules run ([The Next.js gate](#the-nextjs-gate)) | yes, last, on the builds `pnpm build:packages` made |
 | `pnpm gate:ios` | the SwiftUI members: contracts, example screens, native laws, `swift build`, the package added by URL, `swift test`, the simulator type check, and the accessibility audit on an iPhone simulator ([The iOS gate](#the-ios-gate)) | no: its own gate, which needs Xcode, and an iOS simulator runtime for the audit |
 | `pnpm gate:android` | the Compose members: contracts, example screens, Kotlin laws, the JVM build and harness, the Android library, and the accessibility audit under Robolectric ([The Android gate](#the-android-gate)) | no: its own gate, which needs a JDK, and an Android SDK for the Android library and the audit |
@@ -601,6 +601,10 @@ writes after the test projects have run. On each engine it checks:
   or the card, and `loadScreen` fetches those two;
 - an attribute an element cannot read is reported in the console by `polymorph.js` and by
   `polymorph-all.js`, and the element renders without that prop;
+- on a light device with nothing stored, a page wearing `terminal`, whose system opens dark, is
+  dark and its `<poly-mode-switch>` shows Dark, with either script; a page wearing `plain`, whose
+  system follows the device, shows System and turns dark when the device does; a press stores the
+  choice, and the next load shows it;
 - no page logs an error or fails a request.
 
 ```sh

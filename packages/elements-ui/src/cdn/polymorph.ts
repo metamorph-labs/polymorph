@@ -26,6 +26,11 @@
  * script draws and checks a screen with, and builds a model's prompt with:
  * `drawScreen`, `parsePartial`, `checkScreen`, `checkAnswer`, `runtimeCard`
  * and `outputContract`. A page that does neither fetches none of it.
+ *
+ * It hands the theme runtime the house systems' default modes before it
+ * defines a tag (`house-modes.ts`), so a `<poly-mode-switch>` shows the
+ * preference the pre-paint script applied, and a page whose preference is
+ * `system` follows the device.
  */
 // First in `polymorph.css`: the base layer, the host rule and the rules for an element that has
 // not rendered, before any member's recipe.
@@ -34,12 +39,15 @@ import '@polymorph/elements/host.css'
 import '@polymorph/elements/pending.css'
 
 import { defineAll } from '@polymorph/elements/loader'
+import { hydrateMode } from '@polymorph/engine/runtime'
 import { AGENT_ATTRIBUTE, applyAgentSetting } from '@polymorph/engine/webmcp'
 
 import { DEFINITIONS } from '../definitions'
 import { LOADERS } from '../loaders'
 import { definePolyScreen } from '../screen/element'
+import { HOUSE_MODES } from './house-modes'
 
+hydrateMode(HOUSE_MODES)
 defineAll(DEFINITIONS, LOADERS)
 definePolyScreen()
 
