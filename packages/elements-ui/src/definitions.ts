@@ -1917,6 +1917,7 @@ export const DEFINITIONS: Readonly<Record<string, ElementDefinition>> = {
     member: 'Stat',
     props: {
       delta: 'json',
+      deltaLabel: 'property',
       description: 'string',
       footer: 'json',
       icon: 'string',

@@ -91,26 +91,46 @@ value="1"
 [pmOverrides]="overrides()"
 ></pm-stat>}
 @case (12) {<pm-stat
-label="Response time"
-[value]="e12()"
-icon="time"
-[loading]="e13()"
+label="First response"
+value="26m"
+[delta]="e12()"
+[spark]="e13()"
 [pmOverrides]="overrides()"
 ></pm-stat>}
 @case (13) {<pm-stat
-label="Resolved"
-value="342"
-[delta]="e14()"
-[loading]="e15()"
+label="Revenue"
+[value]="e14()"
+[trend]="e15()"
+[spark]="e16()"
 [pmOverrides]="overrides()"
 ></pm-stat>}
 @case (14) {<pm-stat
+label="Open tickets"
+value="128"
+[spark]="e17()"
+[pmOverrides]="overrides()"
+></pm-stat>}
+@case (15) {<pm-stat
+label="Response time"
+[value]="e18()"
+icon="time"
+[loading]="e19()"
+[pmOverrides]="overrides()"
+></pm-stat>}
+@case (16) {<pm-stat
+label="Resolved"
+value="342"
+[delta]="e20()"
+[loading]="e21()"
+[pmOverrides]="overrides()"
+></pm-stat>}
+@case (17) {<pm-stat
 label="Solved this week"
 value="1,204"
-[trend]="e16()"
-[spark]="e17()"
-[footer]="e18()"
-[loading]="e19()"
+[trend]="e22()"
+[spark]="e23()"
+[footer]="e24()"
+[loading]="e25()"
 [pmOverrides]="overrides()"
 ></pm-stat>}
 }`,
@@ -163,35 +183,59 @@ export class StatStates {
     return { direction: 'down', label: '2 fewer' }
   }
 
-  protected e12(): StatProps['value'] {
-    return ''
+  protected e12(): StatProps['delta'] {
+    return { value: '16m', direction: 'down', positive: true }
   }
 
-  protected e13(): StatProps['loading'] {
-    return true
+  protected e13(): StatProps['spark'] {
+    return [42, 40, 41, 38, 35, 36, 33, 31, 32, 29, 27, 26]
   }
 
-  protected e14(): StatProps['delta'] {
-    return { value: '12%', direction: 'up' }
+  protected e14(): StatProps['value'] {
+    return '$48,200'
   }
 
-  protected e15(): StatProps['loading'] {
-    return true
-  }
-
-  protected e16(): StatProps['trend'] {
+  protected e15(): StatProps['trend'] {
     return { direction: 'up', label: '+12.5%' }
+  }
+
+  protected e16(): StatProps['spark'] {
+    return [180, 195, 190, 210, 220, 216, 240, 251, 248, 262, 270, 284]
   }
 
   protected e17(): StatProps['spark'] {
     return [180, 195, 190, 210, 220, 216, 240, 251, 248, 262, 270, 284]
   }
 
-  protected e18(): StatProps['footer'] {
-    return { primary: 'Trending up this month', secondary: 'Against the same week last month' }
+  protected e18(): StatProps['value'] {
+    return ''
   }
 
   protected e19(): StatProps['loading'] {
+    return true
+  }
+
+  protected e20(): StatProps['delta'] {
+    return { value: '12%', direction: 'up' }
+  }
+
+  protected e21(): StatProps['loading'] {
+    return true
+  }
+
+  protected e22(): StatProps['trend'] {
+    return { direction: 'up', label: '+12.5%' }
+  }
+
+  protected e23(): StatProps['spark'] {
+    return [180, 195, 190, 210, 220, 216, 240, 251, 248, 262, 270, 284]
+  }
+
+  protected e24(): StatProps['footer'] {
+    return { primary: 'Trending up this month', secondary: 'Against the same week last month' }
+  }
+
+  protected e25(): StatProps['loading'] {
     return true
   }
 }
@@ -212,6 +256,11 @@ export const states: ComponentStates = {
     { name: 'trend down — the same chip, the other way' },
     { name: 'a footer with no trend — the glyph goes with the chip' },
     { name: 'a trend with no footer — the whole card is the number' },
+    {
+      name: 'spark trending down beside a down-positive delta — direction is not sentiment, as a shape',
+    },
+    { name: 'spark with the trend chip — words and shape together' },
+    { name: 'spark alone' },
     {
       name: 'loading — the label stays and the number holds its place',
       expect: { 'data-loading': '', 'aria-busy': 'true' },

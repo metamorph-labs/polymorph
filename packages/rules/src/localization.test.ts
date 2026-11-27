@@ -17,9 +17,10 @@ import { describe, expect, it } from 'vitest'
  * cannot see it.
  *
  * This law enforces that. A string literal passed directly to a naming
- * attribute, or written as JSX text, cannot be replaced, and fails. A default
- * in a destructuring pattern is allowed, because that is how a prop supplies
- * replaceable text.
+ * attribute, or written among an element's children as JSX text or as an
+ * expression (a literal or a template between braces), cannot be replaced, and
+ * fails. A default in a destructuring pattern or in a module-level function is
+ * allowed, because that is how a prop supplies replaceable text.
  *
  * Runs in node, not a browser, because it reads source text.
  */
@@ -88,17 +89,21 @@ function shipped(dir: string): string[] {
  * The fixed text an expression can evaluate to, including inside branches.
  *
  * A literal, or a template whose fixed parts contain a word. The same applies
- * inside a ternary's branches and behind a `??` or `||` fallback, because
- * `open ? `Hide the table for ${label}` : `Show …`` and `y?.label ?? 'Count'`
- * are each a sentence no prop can replace, and the chart tier has used both. An
- * identifier, a call or a member access is a value from a prop.
+ * inside a ternary's branches, behind a `??` or `||` fallback and inside a
+ * template's substitutions, because `open ? `Hide the table for ${label}` :
+ * `Show …``, `y?.label ?? 'Count'` and `${positive ? 'positive' : 'negative'}`
+ * are each a word no prop can replace. An identifier, a call or a member access
+ * is a value from a prop.
  */
 function literals(value: ts.Expression | undefined): string[] {
   if (value === undefined) return []
   if (ts.isParenthesizedExpression(value)) return literals(value.expression)
   if (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value)) return [value.text]
   if (ts.isTemplateExpression(value)) {
-    return [[value.head.text, ...value.templateSpans.map((span) => span.literal.text)].join(' ')]
+    return [
+      [value.head.text, ...value.templateSpans.map((span) => span.literal.text)].join(' '),
+      ...value.templateSpans.flatMap((span) => literals(span.expression)),
+    ]
   }
   if (ts.isConditionalExpression(value)) {
     return [...literals(value.whenTrue), ...literals(value.whenFalse)]
@@ -163,6 +168,18 @@ function bakedProse(code: string, where: string): string[] {
       findings.push(`${at(node)} — text "${node.text.trim()}"`)
     }
 
+    // The same text written as an expression among the children, a literal or a
+    // template between braces. A person reads it, or a screen reader hears it
+    // from a visually hidden span, as JSX text is read and heard.
+    if (
+      ts.isJsxExpression(node) &&
+      (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent))
+    ) {
+      for (const text of literals(node.expression)) {
+        if (WORD.test(text)) findings.push(`${at(node)} — text {"${text}"}`)
+      }
+    }
+
     ts.forEachChild(node, visit)
   }
 
@@ -170,8 +187,28 @@ function bakedProse(code: string, where: string): string[] {
   return findings
 }
 
+/**
+ * Words members write among their children that no prop replaces yet, as
+ * `file — what`. Each is a defect: a host cannot translate them. They are
+ * named here so that the law holds every other member, and the law fails on an
+ * entry it no longer finds, so a member given its seam leaves the list.
+ */
+const UNSEAMED: readonly string[] = [
+  'packages/react-ui/src/controls/TagInput.tsx — text {"Maximum of   added"}',
+  'packages/react-ui/src/controls/TagInput.tsx — text {"  added"}',
+  'packages/react-ui/src/overlays/Command.tsx — text {"Loading commands…"}',
+  'packages/react-ui/src/overlays/Command.tsx — text {"  commands"}',
+  'packages/react-ui/src/structure/CodeBlock.tsx — text {"Copied"}',
+]
+
+/** A finding without its line number, as `UNSEAMED` names it. */
+const unplaced = (finding: string) => finding.replace(/:\d+ — /, ' — ')
+
 describe('no member renders text its host cannot replace', () => {
   const files = TIERS.flatMap((tier) => shipped(resolve(UI, tier)))
+  const findings = files.flatMap((file) =>
+    bakedProse(readFileSync(file, 'utf8'), relative(ROOT, file)),
+  )
 
   it('reads the whole vocabulary, the chart tier included', () => {
     // A law that matched no files would always pass.
@@ -181,11 +218,13 @@ describe('no member renders text its host cannot replace', () => {
     expect(files.some((file) => file.endsWith('charts/frame/ChartTwin.tsx'))).toBe(true)
   })
 
-  it('finds no literal passed to a naming attribute, and no JSX text', () => {
-    const findings = files.flatMap((file) =>
-      bakedProse(readFileSync(file, 'utf8'), relative(ROOT, file)),
-    )
-    expect(findings).toEqual([])
+  it('finds no literal passed to a naming attribute, and no text among the children', () => {
+    expect(findings.filter((finding) => !UNSEAMED.includes(unplaced(finding)))).toEqual([])
+  })
+
+  it('still finds each sentence it lists as having no seam', () => {
+    const found = new Set(findings.map(unplaced))
+    expect(UNSEAMED.filter((entry) => !found.has(entry))).toEqual([])
   })
 })
 
@@ -218,6 +257,28 @@ describe('the law detects violations', () => {
     expect(found("const a = <Twin columns={[{ key: 'share', label: 'Share' }]} />")).toEqual([
       'label: "Share"',
     ])
+  })
+
+  it('catches text written as an expression among the children, and a word inside a substitution', () => {
+    expect(found('const a = <span>{`${count} selected`}</span>')).toEqual(['text {"  selected"}'])
+    expect(found("const a = <>{loading ? 'Loading' : label}</>")).toEqual(['text {"Loading"}'])
+    // A delta's sentence written in place: no fixed part of the template holds
+    // a word, and the judgement is a ternary inside a substitution.
+    expect(
+      found(
+        "const a = <span>{`${delta.direction} ${delta.value} — ${positive ? 'positive' : 'negative'}`}</span>",
+      ),
+    ).toEqual(['text {"positive"}', 'text {"negative"}'])
+    expect(found("const a = <Glyph aria-label={`${count} ${one ? 'item' : 'items'}`} />")).toEqual([
+      'aria-label="item"',
+      'aria-label="items"',
+    ])
+  })
+
+  it('allows a call, a prop and a template of values among the children', () => {
+    expect(found('const a = <span>{deltaLabel({ value, direction, positive })}</span>')).toEqual([])
+    expect(found('const a = <span>{children}</span>')).toEqual([])
+    expect(found('const a = <span>{`${count} — ${total}`}</span>')).toEqual([])
   })
 
   it('allows a defaults object and a catalog read', () => {

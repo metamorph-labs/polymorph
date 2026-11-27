@@ -118,6 +118,38 @@ export const states: ComponentStates = {
         }),
     },
     {
+      name: 'spark trending down beside a down-positive delta — direction is not sentiment, as a shape',
+      render: (overrides = {}) =>
+        h(Stat, {
+          label: 'First response',
+          value: '26m',
+          delta: { value: '16m', direction: 'down', positive: true },
+          spark: [42, 40, 41, 38, 35, 36, 33, 31, 32, 29, 27, 26],
+          ...overrides,
+        }),
+    },
+    {
+      name: 'spark with the trend chip — words and shape together',
+      render: (overrides = {}) =>
+        h(Stat, {
+          label: 'Revenue',
+          value: '$48,200',
+          trend: { direction: 'up', label: '+12.5%' },
+          spark: [180, 195, 190, 210, 220, 216, 240, 251, 248, 262, 270, 284],
+          ...overrides,
+        }),
+    },
+    {
+      name: 'spark alone',
+      render: (overrides = {}) =>
+        h(Stat, {
+          label: 'Open tickets',
+          value: '128',
+          spark: [180, 195, 190, 210, 220, 216, 240, 251, 248, 262, 270, 284],
+          ...overrides,
+        }),
+    },
+    {
       name: 'loading — the label stays and the number holds its place',
       render: (overrides = {}) =>
         h(Stat, { label: 'Response time', value: '', icon: 'time', loading: true, ...overrides }),

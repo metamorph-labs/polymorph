@@ -68,6 +68,7 @@ export default function Dashboard(given: DashboardProps): JSX.Element {
                     numeric={stat.numeric}
                     icon={stat.icon}
                     delta={stat.delta}
+                    deltaLabel={stat.deltaLabel}
                     trend={stat.trend}
                     spark={stat.spark}
                     sparkLabel={stat.sparkLabel}

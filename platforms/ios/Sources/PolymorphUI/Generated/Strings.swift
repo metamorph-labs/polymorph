@@ -138,8 +138,8 @@ enum PMStrings {
     String(localized: "negative", comment: "A stat's change is bad news.")
   }
 
-  /// A Stat delta's spoken text, which the arrow and the colour show: "up 12% — positive"
-  /// (`design/components/stat.md`).
+  /// Stat's `deltaLabel`: the delta's spoken text, which the arrow and the colour show: "up 12% —
+  /// positive" (`design/components/stat.md`).
   static func delta(direction: String, value: String, sentiment: String) -> String {
     String(
       localized: "\(direction) \(value) — \(sentiment)",

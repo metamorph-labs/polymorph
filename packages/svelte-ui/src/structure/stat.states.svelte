@@ -25,18 +25,24 @@ export const states: ComponentStates = {
     { name: 'a footer with no trend — the glyph goes with the chip', render: entry11 },
     { name: 'a trend with no footer — the whole card is the number', render: entry12 },
     {
-      name: 'loading — the label stays and the number holds its place',
+      name: 'spark trending down beside a down-positive delta — direction is not sentiment, as a shape',
       render: entry13,
+    },
+    { name: 'spark with the trend chip — words and shape together', render: entry14 },
+    { name: 'spark alone', render: entry15 },
+    {
+      name: 'loading — the label stays and the number holds its place',
+      render: entry16,
       expect: { 'data-loading': '', 'aria-busy': 'true' },
     },
     {
       name: 'loading with a delta — no sentiment before the number',
-      render: entry14,
+      render: entry17,
       expect: { 'data-loading': '', 'aria-busy': 'true' },
     },
     {
       name: 'loading a dashboard card — the chip, the spark and the footer hold their places',
-      render: entry15,
+      render: entry18,
       expect: { 'data-loading': '', 'aria-busy': 'true' },
     },
   ],
@@ -55,6 +61,9 @@ export const states: ComponentStates = {
 {#snippet entry10(overrides: Overrides)}<Stat label="Median response" value="2h 23m" trend={{ direction: 'down', label: '−18%' }} footer={{ primary: 'Faster than last week', secondary: 'Across every open queue' }} {...overrides} />{/snippet}
 {#snippet entry11(overrides: Overrides)}<Stat label="Open tickets" value="128" footer={{ primary: 'Steady all week', secondary: 'Nothing has been waiting past a day' }} {...overrides} />{/snippet}
 {#snippet entry12(overrides: Overrides)}<Stat label="Urgent" value="1" trend={{ direction: 'down', label: '2 fewer' }} {...overrides} />{/snippet}
-{#snippet entry13(overrides: Overrides)}<Stat label="Response time" value="" icon="time" loading={true} {...overrides} />{/snippet}
-{#snippet entry14(overrides: Overrides)}<Stat label="Resolved" value="342" delta={{ value: '12%', direction: 'up' }} loading={true} {...overrides} />{/snippet}
-{#snippet entry15(overrides: Overrides)}<Stat label="Solved this week" value="1,204" trend={{ direction: 'up', label: '+12.5%' }} spark={[180, 195, 190, 210, 220, 216, 240, 251, 248, 262, 270, 284]} footer={{ primary: 'Trending up this month', secondary: 'Against the same week last month' }} loading={true} {...overrides} />{/snippet}
+{#snippet entry13(overrides: Overrides)}<Stat label="First response" value="26m" delta={{ value: '16m', direction: 'down', positive: true }} spark={[42, 40, 41, 38, 35, 36, 33, 31, 32, 29, 27, 26]} {...overrides} />{/snippet}
+{#snippet entry14(overrides: Overrides)}<Stat label="Revenue" value="$48,200" trend={{ direction: 'up', label: '+12.5%' }} spark={[180, 195, 190, 210, 220, 216, 240, 251, 248, 262, 270, 284]} {...overrides} />{/snippet}
+{#snippet entry15(overrides: Overrides)}<Stat label="Open tickets" value="128" spark={[180, 195, 190, 210, 220, 216, 240, 251, 248, 262, 270, 284]} {...overrides} />{/snippet}
+{#snippet entry16(overrides: Overrides)}<Stat label="Response time" value="" icon="time" loading={true} {...overrides} />{/snippet}
+{#snippet entry17(overrides: Overrides)}<Stat label="Resolved" value="342" delta={{ value: '12%', direction: 'up' }} loading={true} {...overrides} />{/snippet}
+{#snippet entry18(overrides: Overrides)}<Stat label="Solved this week" value="1,204" trend={{ direction: 'up', label: '+12.5%' }} spark={[180, 195, 190, 210, 220, 216, 240, 251, 248, 262, 270, 284]} footer={{ primary: 'Trending up this month', secondary: 'Against the same week last month' }} loading={true} {...overrides} />{/snippet}

@@ -60,6 +60,7 @@ defineSlots<{
             :numeric="stat.numeric"
             :icon="stat.icon"
             :delta="stat.delta"
+            :deltaLabel="stat.deltaLabel"
             :trend="stat.trend"
             :spark="stat.spark"
             :sparkLabel="stat.sparkLabel"

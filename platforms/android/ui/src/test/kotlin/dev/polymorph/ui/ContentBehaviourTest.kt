@@ -639,4 +639,29 @@ class ContentBehaviourTest {
         onNode(member("Stat") and hasContentDescription("Lädt")).assertExists()
         onAllNodes(hasContentDescription(PMStrings().loading), useUnmergedTree = true).assertCountEquals(0)
     }
+
+    /**
+     * `deltaLabel` speaks the delta in the app's words (`stat.md`, A11y), from
+     * its value, its direction and the sentiment the stat resolves: down is
+     * bad news unless the app says otherwise.
+     */
+    @Test
+    fun aStatSpeaksItsDeltaInTheAppsWords() = runComposeUiTest {
+        setContent {
+            Scene {
+                PMStat(
+                    delta = PMStatDelta("8%", PMDeltaDirection.Down),
+                    deltaLabel = { delta ->
+                        val moved = if (delta.direction == PMDeltaDirection.Down) "gesunken" else "gestiegen"
+                        "$moved um ${delta.value}, ${if (delta.positive) "gut" else "schlecht"}"
+                    },
+                    label = "Umsatz",
+                    value = "41.900 €",
+                )
+            }
+        }
+        onNode(member("Stat") and hasContentDescription("gesunken um 8%, schlecht")).assertExists()
+        onAllNodes(hasContentDescription(PMStrings().negative, substring = true), useUnmergedTree = true)
+            .assertCountEquals(0)
+    }
 }

@@ -501,6 +501,29 @@
       XCTAssertNotNil(scene.element(named: "Umsatz, Lädt"))
     }
 
+    /// `deltaLabel` speaks the delta in the app's words (`stat.md`, A11y), from
+    /// its value, its direction and the sentiment the stat resolves: down is
+    /// bad news unless the app says otherwise.
+    func testAStatSpeaksItsDeltaInTheAppsWords() {
+      let scene = Scene(
+        PMStat(
+          props: PMStatProps(
+            delta: PMStatDelta(value: "8%", direction: .down),
+            deltaLabel: { delta in
+              "\(delta.direction == .down ? "gesunken" : "gestiegen") um \(delta.value), "
+                + (delta.positive ? "gut" : "schlecht")
+            },
+            label: "Umsatz", value: "41.900 €")))
+      defer { scene.close() }
+      let read = Scene.elements(in: scene.host).flatMap { element in
+        ["accessibilityLabel", "accessibilityValue", "accessibilityTitle"].compactMap {
+          attribute(element, $0)
+        }
+      }
+      XCTAssertTrue(read.contains { $0.contains("gesunken um 8%, schlecht") }, "read: \(read)")
+      XCTAssertFalse(read.contains { $0.contains(PMStrings.negative) }, "read: \(read)")
+    }
+
     private func frame(_ element: NSObject) -> CGRect {
       (element.value(forKey: "accessibilityFrame") as? NSValue)?.rectValue ?? .zero
     }

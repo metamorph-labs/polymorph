@@ -368,7 +368,14 @@ export type { SkeletonProps, SkeletonShape } from './structure/Skeleton'
 export { Spinner } from './structure/Spinner'
 export type { SpinnerProps } from './structure/Spinner'
 export { Stat } from './structure/Stat'
-export type { DeltaDirection, StatDelta, StatFooter, StatProps, StatTrend } from './structure/Stat'
+export type {
+  DeltaDirection,
+  StatDelta,
+  StatDeltaLabel,
+  StatFooter,
+  StatProps,
+  StatTrend,
+} from './structure/Stat'
 export { Stepper } from './structure/Stepper'
 export type {
   Step,

@@ -1550,6 +1550,16 @@ export const SHAPES: Readonly<Record<string, Shape>> = {
       },
     ],
   },
+  StatDeltaFacts: {
+    native:
+      'The web’s `StatDeltaLabel` takes the delta as an inline object; a native closure takes it ' +
+      'as a named value.',
+    fields: [
+      { name: 'value', type: 'string' },
+      { name: 'direction', type: 'DeltaDirection' },
+      { name: 'positive', type: 'boolean', doc: 'The sentiment, resolved from the direction.' },
+    ],
+  },
   StatFooter: {
     fields: [
       { name: 'primary', type: 'string' },
@@ -1796,6 +1806,8 @@ export const SHAPES: Readonly<Record<string, Shape>> = {
  */
 export const FUNCTION_ALIASES: Readonly<Record<string, string>> = {
   StepperSpoken: '(step: { position: number; count: number; state: StepperSpokenState }) => string',
+  StatDeltaLabel:
+    '(delta: { value: string; direction: DeltaDirection; positive: boolean }) => string',
 }
 
 /**

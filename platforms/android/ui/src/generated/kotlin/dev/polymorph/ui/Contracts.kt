@@ -5329,11 +5329,16 @@ fun interface PMStackRendering {
 // Stat
 
 /**
- * Stat's props (`design/components/stat.md`): A key number with its label and direction of change.
- * On Android it is adapted: without the spark; the trend chip carries the direction.
+ * Stat's props (`design/components/stat.md`): A key number and how it moved. On Android it is
+ * adapted: without the spark; the trend chip carries the direction.
  */
 data class PMStatProps(
     val delta: PMStatDelta? = null,
+    /**
+     * The delta's spoken sentence in the host's words, the localization seam; the default is
+     * `{direction} {value} — positive` or `— negative`.
+     */
+    val deltaLabel: ((PMStatDeltaFacts) -> String)? = null,
     /** Shown when there is no delta, such as "vs last week". */
     val description: String? = null,
     /** The two-line footer: the interpretation, then the period it covers. */
@@ -7184,6 +7189,18 @@ data class PMStatDelta(
     val direction: PMDeltaDirection,
     /** Defaults to true when `direction` is up. Direction and sentiment are separate. */
     val positive: Boolean? = null,
+)
+
+/**
+ * An object type the web writes inline, field for field (`SHAPES` in
+ * `packages/native/src/mapping.ts`). The web’s `StatDeltaLabel` takes the delta as an inline
+ * object; a native closure takes it as a named value.
+ */
+data class PMStatDeltaFacts(
+    val value: String,
+    val direction: PMDeltaDirection,
+    /** The sentiment, resolved from the direction. */
+    val positive: Boolean,
 )
 
 /** The web's `StatFooter`, field for field (`SHAPES` in `packages/native/src/mapping.ts`). */

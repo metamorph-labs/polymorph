@@ -5,8 +5,7 @@ import { Skeleton } from './Skeleton'
 import styles from '@polymorph/recipes/structure/stat.module.css'
 
 /**
- * A key number with its label and direction of change
- * (`design/components/stat.md`).
+ * A key number and how it moved (`design/components/stat.md`).
  *
  * Content, not a surface: Dashboard wraps these in Cards, so a Stat's own box
  * would nest. `value` is pre-formatted, because separators, currency, precision
@@ -29,6 +28,17 @@ export interface StatDelta {
    */
   positive?: boolean
 }
+
+/**
+ * The delta's spoken sentence, given its value, its direction and its
+ * sentiment resolved (`positive` is never absent here). A function, not three
+ * words, because the order of the words is grammar and belongs to the catalog.
+ */
+export type StatDeltaLabel = (delta: {
+  value: string
+  direction: DeltaDirection
+  positive: boolean
+}) => string
 
 /**
  * The movement, as a neutral outline chip on the label row, the way the
@@ -65,6 +75,11 @@ export interface StatProps {
   numeric?: boolean
   icon?: IconRole
   delta?: StatDelta
+  /**
+   * The delta's spoken sentence in the host's words, the localization seam;
+   * the default is `{direction} {value} — positive` or `— negative`.
+   */
+  deltaLabel?: StatDeltaLabel
   /** The neutral movement chip, top-right. See `StatTrend` for why it is not `delta`. */
   trend?: StatTrend
   /**
@@ -99,12 +114,16 @@ export interface StatProps {
 
 const defaultSparkLabel = (label: string) => `${label}, recent trend`
 
+const defaultDeltaLabel: StatDeltaLabel = ({ value, direction, positive }) =>
+  `${direction} ${value} — ${positive ? 'positive' : 'negative'}`
+
 export function Stat({
   label,
   value,
   numeric = true,
   icon,
   delta,
+  deltaLabel = defaultDeltaLabel,
   trend,
   spark,
   sparkLabel = defaultSparkLabel,
@@ -195,10 +214,14 @@ export function Stat({
 
           {/*
            * Spoken text: colour and the arrow are not read aloud, so this states
-           * the direction and the sentiment.
+           * the direction and the sentiment, in the host's words from `deltaLabel`.
            */}
           <span className={styles.spoken}>
-            {`${delta.direction} ${delta.value} — ${positive ? 'positive' : 'negative'}`}
+            {deltaLabel({
+              value: delta.value,
+              direction: delta.direction,
+              positive: positive === true,
+            })}
           </span>
         </span>
       )}

@@ -60,25 +60,26 @@ data-member="dashboard"
 [numeric]="e13(stat)"
 [icon]="e14(stat)"
 [delta]="e15(stat)"
-[trend]="e16(stat)"
-[spark]="e17(stat)"
-[sparkLabel]="e18(stat)"
-[description]="e19(stat)"
-[footer]="e20(stat)"
-[loading]="e21(stat)"
-[loadingLabel]="e22(stat)"
+[deltaLabel]="e16(stat)"
+[trend]="e17(stat)"
+[spark]="e18(stat)"
+[sparkLabel]="e19(stat)"
+[description]="e20(stat)"
+[footer]="e21(stat)"
+[loading]="e22(stat)"
+[loadingLabel]="e23(stat)"
 ></pm-stat></pm-card>}</div>}
 <!-- body -->
 <div
-[attr.class]="e23()"
-[attr.data-secondary]="e24()"
+[attr.class]="e24()"
+[attr.data-secondary]="e25()"
 ><!-- primary -->
 <div
-[attr.class]="e25()"
+[attr.class]="e26()"
 ><ng-container [pmSlotOutlet]="'primary'" [pmSlotOf]="$" /></div>
-@if (e26()) {<!-- secondary -->
+@if (e27()) {<!-- secondary -->
 <div
-[attr.class]="e27()"
+[attr.class]="e28()"
 ><ng-container [pmSlotOutlet]="'secondary'" [pmSlotOf]="$" /></div>}</div></div>`,
 })
 export class Dashboard {
@@ -170,58 +171,63 @@ export class Dashboard {
     return stat.delta
   }
 
-  protected e16(stat: Each<ReturnType<Dashboard['e9']>>): StatProps['trend'] {
+  protected e16(stat: Each<ReturnType<Dashboard['e9']>>): StatProps['deltaLabel'] {
+    if (!(this.$p.stats !== undefined && this.$p.stats.length > 0)) return undefined as never
+    return stat.deltaLabel
+  }
+
+  protected e17(stat: Each<ReturnType<Dashboard['e9']>>): StatProps['trend'] {
     if (!(this.$p.stats !== undefined && this.$p.stats.length > 0)) return undefined as never
     return stat.trend
   }
 
-  protected e17(stat: Each<ReturnType<Dashboard['e9']>>): StatProps['spark'] {
+  protected e18(stat: Each<ReturnType<Dashboard['e9']>>): StatProps['spark'] {
     if (!(this.$p.stats !== undefined && this.$p.stats.length > 0)) return undefined as never
     return stat.spark
   }
 
-  protected e18(stat: Each<ReturnType<Dashboard['e9']>>): StatProps['sparkLabel'] {
+  protected e19(stat: Each<ReturnType<Dashboard['e9']>>): StatProps['sparkLabel'] {
     if (!(this.$p.stats !== undefined && this.$p.stats.length > 0)) return undefined as never
     return stat.sparkLabel
   }
 
-  protected e19(stat: Each<ReturnType<Dashboard['e9']>>): StatProps['description'] {
+  protected e20(stat: Each<ReturnType<Dashboard['e9']>>): StatProps['description'] {
     if (!(this.$p.stats !== undefined && this.$p.stats.length > 0)) return undefined as never
     return stat.description
   }
 
-  protected e20(stat: Each<ReturnType<Dashboard['e9']>>): StatProps['footer'] {
+  protected e21(stat: Each<ReturnType<Dashboard['e9']>>): StatProps['footer'] {
     if (!(this.$p.stats !== undefined && this.$p.stats.length > 0)) return undefined as never
     return stat.footer
   }
 
-  protected e21(stat: Each<ReturnType<Dashboard['e9']>>): StatProps['loading'] {
+  protected e22(stat: Each<ReturnType<Dashboard['e9']>>): StatProps['loading'] {
     if (!(this.$p.stats !== undefined && this.$p.stats.length > 0)) return undefined as never
     return stat.loading
   }
 
-  protected e22(stat: Each<ReturnType<Dashboard['e9']>>): StatProps['loadingLabel'] {
+  protected e23(stat: Each<ReturnType<Dashboard['e9']>>): StatProps['loadingLabel'] {
     if (!(this.$p.stats !== undefined && this.$p.stats.length > 0)) return undefined as never
     return stat.loadingLabel
   }
 
-  protected e23() {
+  protected e24() {
     return styles.body
   }
 
-  protected e24() {
+  protected e25() {
     return this.$.filled('secondary') ? '' : undefined
   }
 
-  protected e25() {
+  protected e26() {
     return styles.primary
   }
 
-  protected e26() {
+  protected e27() {
     return this.$.filled('secondary')
   }
 
-  protected e27() {
+  protected e28() {
     if (!this.$.filled('secondary')) return undefined as never
     return styles.secondary
   }

@@ -99,6 +99,8 @@ describe('a data prop’s type is read through the types it names', () => {
     ['PagerMessages', typeNode('{ next: string; page: (page: number) => string }')],
     ['LooseMessages', typeNode('{ next?: string; count?: (count: number) => string }')],
     ['Spoken', typeNode('(step: number) => string')],
+    ['NamedLoose', typeNode('{ label: string; spoken?: Spoken }')],
+    ['NamedStrict', typeNode('{ label: string; spoken: Spoken }')],
     ['Leaf', typeNode("{ kind?: 'item'; label: string; onSelect: () => void }")],
     ['Entry', typeNode("Leaf | { kind: 'sub'; label: string; items: Leaf[] }")],
     ['Topbar', typeNode('{ leading?: VNode; trailing?: VNode }')],
@@ -117,6 +119,12 @@ describe('a data prop’s type is read through the types it names', () => {
     expect(dataShape('Spoken | undefined', types).functions).toBe(true)
     // A function the type leaves optional is one JSON can leave out.
     expect(dataShape('LooseMessages | undefined', types).functions).toBe(false)
+  })
+
+  it('reads a field typed by a function alias as the function it names', () => {
+    // A Dashboard's stats hold a Stat's optional `deltaLabel`, a `StatDeltaLabel`.
+    expect(dataShape('NamedLoose[]', types).functions).toBe(false)
+    expect(dataShape('NamedStrict[]', types).functions).toBe(true)
   })
 
   it('finds the callbacks an item requires, at each depth of the value', () => {

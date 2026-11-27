@@ -28,6 +28,7 @@ The placeholders replace their parts while `loading` (Loading, below).
 | `numeric` | `boolean` | `true` | tabular figures for the value (`--pm-font-numeric`) |
 | `icon` | `IconRole` | — | top-right, muted, decorative |
 | `delta` | `{ value: string; direction: 'up' \| 'down'; positive?: boolean }` | — | `positive` defaults to `direction === 'up'`. Direction and sentiment are separate, because down can be good ("open tickets ↓") |
+| `deltaLabel` | `(delta: { value: string; direction: 'up' \| 'down'; positive: boolean }) => string` | `` ({ value, direction, positive }) => `${direction} ${value} — ${positive ? 'positive' : 'negative'}` `` | the delta's spoken sentence (A11y, below), the localization seam. A function of the delta's value, its direction and its resolved `positive`, because the order of the words is grammar and the sentence comes from the message catalog |
 | `trend` | `{ direction: 'up' \| 'down'; label: string }` | — | the movement chip of a dashboard stat card, top-right, as an **outline Badge** in the neutral tone. It is separate from `delta` on purpose. `delta` carries *sentiment*: it is coloured success or danger and announces its judgement, which says whether the number is good news. `trend` says only that the number moved and in which direction. A card uses one or the other, because both would state the same fact twice |
 | `spark` | `readonly number[]` | — | the trend as a shape: a `Sparkline` (`size="sm"`) at the inline end of the value row. Lawful beside `trend`: the chip states the direction in words and the spark shows the path. It replaces neither `delta` nor `footer`. Passed through unchanged; `sparkline.md` owns the drawing, including rendering nothing for fewer than two points |
 | `sparkLabel` | `(label: string) => string` | `` (label) => `${label}, recent trend` `` | the sparkline's accessible name (the localization seam). A function of the stat's `label`, because the surrounding sentence comes from the message catalog |
@@ -105,14 +106,17 @@ aloud or found in the page's text.
 ## States
 
 Entries: plain, with icon, delta up-positive, delta down-positive (the direction ≠
-sentiment case), delta down-negative, description, non-numeric. Trend-up with a
+sentiment case), delta down-negative, delta up-negative (the same case the other way:
+escalations going up), description, non-numeric. Trend-up with a
 footer, trend-down with a footer, a footer with no trend (no glyph without the chip),
 a trend with no footer. Spark trending down beside a down-positive delta
 (response time, the direction ≠ sentiment case as a shape), spark with the trend chip
 (words and shape together), spark alone. Loading with an icon (the label row stays),
 loading with a delta and a value from an earlier load (neither is drawn), loading a
 dashboard card with a trend, a spark and a footer (each holds its place).
-`requiredSelectors`: `[data-positive]`, `[data-direction="down"]`.
+`requiredSelectors`: `[data-positive]`. The recipe colours the delta by sentiment and never by
+direction (Recipe, above), so `data-direction` is drawn on the delta and styled nowhere, and the
+down entries above are what show it.
 
 ## Motion
 
@@ -127,7 +131,9 @@ binding, which stops at `none` and under reduced motion.
 ## A11y
 
 The delta renders visually hidden text ("up 12% — positive"), so colour and the arrow are never
-the only carriers. The judgement is "positive" or "negative". The `trend` chip needs no such text:
+the only carriers. The judgement is "positive" or "negative". `deltaLabel` replaces the whole
+sentence, given the delta's value, its direction and its resolved sentiment, so a host in another
+language says all three in its own words and order. The `trend` chip needs no such text:
 its label is the text, the arrow beside it is decoration, and the chip makes no sentiment claim
 that colour would have to carry.
 

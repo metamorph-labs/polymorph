@@ -100,6 +100,40 @@ export const states: ComponentStates = {
       ),
     },
 
+    /* The path as a shape at the value row's end. */
+    {
+      name: 'spark trending down beside a down-positive delta — direction is not sentiment, as a shape',
+      render: () => (
+        <Stat
+          label="First response"
+          value="26m"
+          delta={{ value: '16m', direction: 'down', positive: true }}
+          spark={[42, 40, 41, 38, 35, 36, 33, 31, 32, 29, 27, 26]}
+        />
+      ),
+    },
+    {
+      name: 'spark with the trend chip — words and shape together',
+      render: () => (
+        <Stat
+          label="Revenue"
+          value="$48,200"
+          trend={{ direction: 'up', label: '+12.5%' }}
+          spark={[180, 195, 190, 210, 220, 216, 240, 251, 248, 262, 270, 284]}
+        />
+      ),
+    },
+    {
+      name: 'spark alone',
+      render: () => (
+        <Stat
+          label="Open tickets"
+          value="128"
+          spark={[180, 195, 190, 210, 220, 216, 240, 251, 248, 262, 270, 284]}
+        />
+      ),
+    },
+
     /*
      * The number has not arrived. The label row is known before it; every part
      * that states the number is a Skeleton of that part's size.
