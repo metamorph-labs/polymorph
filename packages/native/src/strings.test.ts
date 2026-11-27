@@ -41,12 +41,13 @@ describe('the defaults the specs name (`strings.ts`)', () => {
         : [entry.name]
     })
     expect(faults).toEqual([])
-    // The three sentences a count makes agree with one, and say so.
+    // The sentences a count makes agree with one, and say so.
     const one = Object.fromEntries(entries.map((entry) => [entry.name, entry.one]))
     expect(one.options).toBe('{count} option')
     expect(one.multiSelectOptions).toBe('{count} option')
     expect(one.phoneInputCountriesShown).toBe('{count} country')
     expect(one.tagInputRemoved).toBe('{tag} removed, {count} remains')
+    expect(one.suggestions).toBe('{count} suggestion')
   })
 
   it('match a template only where every literal part stands in order', () => {

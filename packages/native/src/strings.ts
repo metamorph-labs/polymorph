@@ -681,6 +681,7 @@ export const SPEC_DEFAULTS: readonly SpecDefaultEntry[] = [
         spec: 'design/components/prompt-input.md',
         doc: 'Announced with the number of suggestions the list shows.',
         english: '{count} suggestions',
+        one: '{count} suggestion',
         parameters: [{ name: 'count', type: 'number' }],
         comment: 'How many suggestions a list under a typed @ or / shows.',
       },

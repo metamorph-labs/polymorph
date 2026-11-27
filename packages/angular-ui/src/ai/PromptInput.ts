@@ -580,7 +580,9 @@ export class PromptInput {
   )
   protected readonly listId = derived(() => `${this.uid}-suggestions`)
   protected readonly say = derived(() => ({
-    suggestions: this.$p.messages.suggestions ?? ((count: number) => `${count} suggestions`),
+    suggestions:
+      this.$p.messages.suggestions ??
+      ((count: number) => (count === 1 ? '1 suggestion' : `${count} suggestions`)),
     loadingSuggestions: this.$p.messages.loadingSuggestions ?? 'Loading suggestions…',
     noSuggestions: this.$p.messages.noSuggestions ?? 'No results',
   }))

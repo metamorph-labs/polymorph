@@ -1354,7 +1354,7 @@ export const SHAPES: Readonly<Record<string, Shape>> = {
         name: 'suggestions',
         type: '(count: number) => string',
         optional: true,
-        doc: 'The status announced while the suggestion list is open. Default: `{count} suggestions`.',
+        doc: 'The status announced while the suggestion list is open. Default: `{count} suggestions`, `1 suggestion` for one.',
       },
       {
         name: 'loadingSuggestions',

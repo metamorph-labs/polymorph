@@ -384,7 +384,8 @@ enum PMStrings {
       },
       suggestions: { count in
         String(
-          localized: "\(Int(count)) suggestions",
+          localized: "%lld suggestions",
+          defaultValue: count == 1 ? "\(Int(count)) suggestion" : "\(Int(count)) suggestions",
           comment: "How many suggestions a list under a typed @ or / shows.")
       },
       loadingSuggestions: String(

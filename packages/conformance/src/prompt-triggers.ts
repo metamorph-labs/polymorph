@@ -318,7 +318,8 @@ export function promptTriggersLaw({ shell, mount, mountInDialog }: PromptTrigger
       await key('Backspace')
       await type('elo')
       await vi.waitFor(() => expect(shown()).toEqual(['Élodie Martin']))
-      await vi.waitFor(() => expect(status()?.textContent).toContain('1 suggestions'))
+      // One suggestion is said in the singular.
+      await vi.waitFor(() => expect(status()?.textContent?.trim()).toBe('1 suggestion'))
     })
 
     it('filters by the start of the label under `startsWith`, and not at all under `false`', async () => {
@@ -396,7 +397,8 @@ export function promptTriggersLaw({ shell, mount, mountInDialog }: PromptTrigger
       await set({ triggers: remote(false, [PEOPLE[1] as PromptLawOption]) })
       await vi.waitFor(() => expect(shown()).toEqual(['Grace Hopper']))
       expect(hiddenRows()).toEqual([])
-      await vi.waitFor(() => expect(status()?.textContent).toContain('1 suggestions'))
+      // One suggestion is said in the singular.
+      await vi.waitFor(() => expect(status()?.textContent?.trim()).toBe('1 suggestion'))
       // The same query again asks nothing.
       expect(onQueryChange).toHaveBeenCalledTimes(3)
     })

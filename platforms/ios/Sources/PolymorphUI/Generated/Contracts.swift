@@ -11059,7 +11059,8 @@ public struct PMPromptInputMessages {
   public var remove: @MainActor (String) -> String
   /// The status announced while a chip’s file uploads.
   public var uploading: @MainActor (String) -> String
-  /// The status announced while the suggestion list is open. Default: `{count} suggestions`.
+  /// The status announced while the suggestion list is open. Default: `{count} suggestions`, `1
+  /// suggestion` for one.
   public var suggestions: (@MainActor (Double) -> String)?
   /// The status while a trigger’s options load. Default: `Loading suggestions…`.
   public var loadingSuggestions: String?

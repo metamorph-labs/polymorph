@@ -293,7 +293,9 @@ export default function PromptInput(given: PromptInputProps): JSX.Element {
     )
     const listId = createDerived(() => `${uid}-suggestions`)
     const say = createDerived(() => ({
-      suggestions: props.messages.suggestions ?? ((count: number) => `${count} suggestions`),
+      suggestions:
+        props.messages.suggestions ??
+        ((count: number) => (count === 1 ? '1 suggestion' : `${count} suggestions`)),
       loadingSuggestions: props.messages.loadingSuggestions ?? 'Loading suggestions…',
       noSuggestions: props.messages.noSuggestions ?? 'No results',
     }))

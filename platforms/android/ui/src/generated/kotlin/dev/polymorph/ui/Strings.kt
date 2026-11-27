@@ -240,7 +240,7 @@ data class PMStrings(
         attach = "Attach",
         remove = { name -> "Remove ${name}" },
         uploading = { name -> "${name}: uploading" },
-        suggestions = { count -> "${count.toInt()} suggestions" },
+        suggestions = { count -> if (count == 1.0) "${count.toInt()} suggestion" else "${count.toInt()} suggestions" },
         loadingSuggestions = "Loading suggestions…",
         noSuggestions = "No results",
     ),
