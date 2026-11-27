@@ -114,7 +114,9 @@ a trend with no footer. Spark trending down beside a down-positive delta
 (words and shape together), spark alone. Loading with an icon (the label row stays),
 loading with a delta and a value from an earlier load (neither is drawn), loading a
 dashboard card with a trend, a spark and a footer (each holds its place).
-`requiredSelectors`: `[data-positive]`, `[data-direction="down"]`.
+`requiredSelectors`: `[data-positive]`. The recipe colours the delta by sentiment and never by
+direction (Recipe, above), so `data-direction` is drawn on the delta and styled nowhere, and the
+down entries above are what show it.
 
 ## Motion
 

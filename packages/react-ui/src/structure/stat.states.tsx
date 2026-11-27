@@ -169,5 +169,5 @@ export const states: ComponentStates = {
     },
   ],
 
-  requiredSelectors: ['[data-positive]', '[data-direction="down"]'],
+  requiredSelectors: ['[data-positive]'],
 }
