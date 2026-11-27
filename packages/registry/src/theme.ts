@@ -57,7 +57,7 @@ export interface RegistrySystem {
   /** All eight, stringified, in `AXIS_NAMES` order. */
   axes: Record<string, string>
   /**
-   * The webfonts the system's three slots need, one entry per family.
+   * The webfonts the system's font slots need, one entry per family.
    *
    * It names the npm package, not only the family, because apps load fonts and
    * the library never bundles them. An installer given only a family name would

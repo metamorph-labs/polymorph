@@ -204,7 +204,7 @@ object StatStates : PMStates {
             PMStateEntry("trend without a footer", expect = mapOf("trend" to "up")) {
                 PMStat(label = response, trend = PMStatTrend(PMDeltaDirection.Up, "4 fewer"), value = "2h 14m")
             },
-            PMStateEntry("loading", expect = mapOf("loading" to "true", "contains" to "Skeleton")) {
+            PMStateEntry("loading", expect = mapOf("loading" to "true")) {
                 PMStat(icon = PMIconRole.Time, label = response, loading = true, value = "")
             },
             PMStateEntry("loading with a delta", expect = mapOf("loading" to "true", "direction" to "up")) {

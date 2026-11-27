@@ -513,9 +513,8 @@ export function renderSystemCard(registry: Registry, options: CardOptions = {}):
     '',
     '## Theme — systems, palettes, pairings',
     '',
-    'A **system** is the structural personality: the eight axes below, the font',
-    'slots (body, display, mono, and heading, which is the body slot when a system',
-    'leaves it out), presentation defaults. A **palette** is the colour voice: accent hue,',
+    'A **system** is the structural personality: the eight axes below, four font',
+    'slots (heading optional), presentation defaults. A **palette** is the colour voice: accent hue,',
     'optional gradient partner, neutral tint, chroma budget. A **pairing** is one of',
     'each, worn by the DOM (`data-system` + `data-palette`); every palette is lawful',
     'on every system, and everything else derives from those decisions.',
@@ -531,8 +530,7 @@ export function renderSystemCard(registry: Registry, options: CardOptions = {}):
 
   write(
     '',
-    '**Systems.** `(kind, mode) — default palette · axes` in the order above. The mode is a ' +
-      'first visit’s; without one it follows the device.',
+    '**Systems.** `(kind, mode) — default palette · axes` in the order above. No mode: it follows the device.',
     '',
   )
   for (const system of registry.theme.systems) {

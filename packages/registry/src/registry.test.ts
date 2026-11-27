@@ -877,9 +877,12 @@ describe('the theme catalogue comes from the engine', () => {
       expect(Object.keys(system.axes).sort(), system.name).toEqual(
         registry.theme.axes.map((axis) => axis.name).sort(),
       )
+      // Every role, the heading role included: a system that states no heading
+      // slot draws its headings in the body slot, so that family carries both.
       expect(system.fonts.flatMap((font) => font.roles).sort(), system.name).toEqual([
         'body',
         'display',
+        'heading',
         'mono',
       ])
       // The default pairing must exist, or the eager sheet would be missing

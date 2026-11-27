@@ -480,8 +480,12 @@ const prepaint = (unstored: string, declare = ''): string =>
  *
  * It knows no system, so a reader who stored no mode follows the device. A
  * page whose systems open in `light` or `dark` inlines `prepaintScript` instead.
+ *
+ * The call that builds it is marked pure, so a bundler drops the script from
+ * an application that does not inline it. Unmarked, a call is kept, and every
+ * application that imports the runtime would carry the script's text.
  */
-export const PREPAINT_SCRIPT = prepaint(`'system'`)
+export const PREPAINT_SCRIPT = /* @__PURE__ */ prepaint(`'system'`)
 
 /** What `prepaintScript` builds the pre-paint script for. */
 export interface PrepaintOptions {
