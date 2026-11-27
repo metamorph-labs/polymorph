@@ -8228,14 +8228,16 @@ public protocol PMTabsRendering: View {
 
 // MARK: - TagInput
 
-/// TagInput's props (`design/components/tag-input.md`): Free-text entry of several values, shown as
-/// chips.
+/// TagInput's props (`design/components/tag-input.md`): Free-text tags.
 public struct PMTagInputProps {
   public var ariaDescribedby: String?
   /// Wired by FormField; set directly only when there is no visible label.
   public var ariaLabel: String?
   public var ariaLabelledby: String?
   public var ariaRequired: Bool?
+  /// The count sentence in the host's words, part of the field's description, the localization
+  /// seam; the default is `{count} added`, or `Maximum of {max} added` at the maximum.
+  public var countLabel: (@MainActor (PMTagInputCountFacts) -> String)?
   public var defaultValue: [String]?
   public var disabled: Bool?
   public var id: String?
@@ -8267,6 +8269,7 @@ public struct PMTagInputProps {
     ariaLabel: String? = nil,
     ariaLabelledby: String? = nil,
     ariaRequired: Bool? = nil,
+    countLabel: (@MainActor (PMTagInputCountFacts) -> String)? = nil,
     defaultValue: [String]? = nil,
     disabled: Bool? = nil,
     id: String? = nil,
@@ -8285,6 +8288,7 @@ public struct PMTagInputProps {
     self.ariaLabel = ariaLabel
     self.ariaLabelledby = ariaLabelledby
     self.ariaRequired = ariaRequired
+    self.countLabel = countLabel
     self.defaultValue = defaultValue
     self.disabled = disabled
     self.id = id
@@ -11578,6 +11582,27 @@ public struct PMTableOfContentsItem {
     self.id = id
     self.label = label
     self.level = level
+  }
+}
+
+/// An object type the web writes inline, field for field (`SHAPES` in
+/// `packages/native/src/mapping.ts`). The web’s `TagInputCountLabel` takes the count as an inline
+/// object; a native closure takes it as a named value.
+public struct PMTagInputCountFacts {
+  /// How many tags the field holds.
+  public var count: Double
+  public var max: Double?
+  /// The field holds `max` tags, resolved by the member.
+  public var atMax: Bool
+
+  public init(
+    count: Double,
+    max: Double? = nil,
+    atMax: Bool
+  ) {
+    self.count = count
+    self.max = max
+    self.atMax = atMax
   }
 }
 

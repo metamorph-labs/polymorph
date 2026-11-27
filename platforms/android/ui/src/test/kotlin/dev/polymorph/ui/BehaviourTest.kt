@@ -925,6 +925,36 @@ class BehaviourTest {
     }
 
     /**
+     * `countLabel` states TagInput's count in the app's words (`tag-input.md`,
+     * FormField integration), given the count, `max` and whether the field
+     * holds it. Without it, the string catalogue's sentence states the count.
+     */
+    @Test
+    fun aTagInputStatesItsCountInTheAppsWords() = runComposeUiTest {
+        val given = mutableListOf<PMTagInputCountFacts>()
+        setContent {
+            Scene {
+                Column {
+                    PMTagInput(ariaLabel = "Labels", defaultValue = listOf("a", "b"), max = 2.0)
+                    PMTagInput(
+                        ariaLabel = "Schlagwörter",
+                        countLabel = { tags ->
+                            given += tags
+                            if (tags.atMax) "höchstens ${tags.max?.toInt()} Schlagwörter" else "${tags.count.toInt()} Schlagwörter"
+                        },
+                        defaultValue = listOf("a", "b"),
+                        max = 2.0,
+                    )
+                }
+            }
+        }
+        val states = { words: String -> SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, words) }
+        onAllNodes(states(PMStrings().tagInputMaximum(2.0)), useUnmergedTree = true).assertCountEquals(1)
+        onAllNodes(states("höchstens 2 Schlagwörter"), useUnmergedTree = true).assertCountEquals(1)
+        assertEquals(PMTagInputCountFacts(2.0, 2.0, atMax = true), given.last())
+    }
+
+    /**
      * The action key with nothing to do hides the keyboard: NumberInput's Done
      * with nothing to submit, SearchInput's Search outside a form, Combobox's
      * Done, and Done in an empty TagInput. MultiSelect's search field does the

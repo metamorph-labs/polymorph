@@ -337,9 +337,10 @@ and the file emitted from it once nothing renders them.
 - **Language.** \`lang\` on \`<html>\`, and \`dir="rtl"\` for a right-to-left language: every member
   follows it. No provider sets a locale or words for the whole app. A member that formats dates or
   numbers takes \`locale\`, and a member with words of its own takes \`messages\` or a prop for its
-  words, such as ${f.m('Stat')}'s ${f.p('Stat', 'deltaLabel')}, ${f.m('Command')}'s ${f.p('Command', 'spoken')} or ${f.m('CodeBlock')}'s ${f.p('CodeBlock', 'copiedLabel')},
-  English when left out. Pass the app's translations to each, as ${toastHost} takes its three
-  words.
+  words, such as ${f.m('Stat')}'s ${f.p('Stat', 'deltaLabel')}, ${f.m('TagInput')}'s
+  ${f.p('TagInput', 'countLabel')}, ${f.m('Command')}'s ${f.p('Command', 'spoken')} or
+  ${f.m('CodeBlock')}'s ${f.p('CodeBlock', 'copiedLabel')}, English when left out. Pass the app's
+  translations to each, as ${toastHost} takes its three words.
 
 ## 2. Forms
 

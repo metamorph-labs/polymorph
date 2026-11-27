@@ -1619,6 +1619,20 @@ export const SHAPES: Readonly<Record<string, Shape>> = {
       },
     ],
   },
+  TagInputCountFacts: {
+    native:
+      'The web’s `TagInputCountLabel` takes the count as an inline object; a native closure ' +
+      'takes it as a named value.',
+    fields: [
+      { name: 'count', type: 'number', doc: 'How many tags the field holds.' },
+      { name: 'max', type: 'number', optional: true },
+      {
+        name: 'atMax',
+        type: 'boolean',
+        doc: 'The field holds `max` tags, resolved by the member.',
+      },
+    ],
+  },
   Time: {
     library: { module: '@internationalized/date', omits: {} },
     fields: [
@@ -1808,6 +1822,7 @@ export const FUNCTION_ALIASES: Readonly<Record<string, string>> = {
   StepperSpoken: '(step: { position: number; count: number; state: StepperSpokenState }) => string',
   StatDeltaLabel:
     '(delta: { value: string; direction: DeltaDirection; positive: boolean }) => string',
+  TagInputCountLabel: '(tags: { count: number; max?: number; atMax: boolean }) => string',
 }
 
 /**

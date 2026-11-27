@@ -28,13 +28,13 @@ import { MotionPresence, MotionSurface } from '@polymorph/react/motion'
 import styles from '@polymorph/recipes/controls/tag-input.module.css'
 
 /**
- * Free-text entry of several values, shown as chips (`design/components/tag-input.md`).
+ * Free-text tags (`design/components/tag-input.md`).
  *
- * Typical uses are emails to invite and labels to attach. There is no substrate: it is
- * an Input-styled container holding a list of chips and one real `<input>`. The
- * component is mostly its commit rules (what counts as a tag, what happens to a
- * duplicate, what Backspace removes). Those are design decisions, not behaviour a library
- * could supply.
+ * It takes several values, each typed and shown as a chip. Typical uses are emails to invite
+ * and labels to attach. There is no substrate: it is an Input-styled container holding a list
+ * of chips and one real `<input>`. The component is mostly its commit rules (what counts as a
+ * tag, what happens to a duplicate, what Backspace removes). Those are design decisions, not
+ * behaviour a library could supply.
  *
  * Choosing from a closed list is Combobox's job. This member never suggests values.
  * Every value in it was typed.
@@ -48,6 +48,13 @@ function trimNonEmpty(raw: string): string | null {
   const tag = raw.trim()
   return tag === '' ? null : tag
 }
+
+/**
+ * The count sentence, given how many tags the field holds, its `max`, and whether it holds
+ * that many (`atMax`, resolved by the member). A function, not two words, because the plural
+ * and the order of the words belong to the catalog.
+ */
+export type TagInputCountLabel = (tags: { count: number; max?: number; atMax: boolean }) => string
 
 export interface TagInputProps {
   value?: string[]
@@ -84,6 +91,11 @@ export interface TagInputProps {
    * `Remove {tag}`.
    */
   removeLabel?: (tag: string) => string
+  /**
+   * The count sentence in the host's words, part of the field's description, the localization
+   * seam; the default is `{count} added`, or `Maximum of {max} added` at the maximum.
+   */
+  countLabel?: TagInputCountLabel
   /** Wired by FormField; set directly only when there is no visible label. */
   'aria-label'?: string
   'aria-labelledby'?: string
@@ -92,6 +104,9 @@ export interface TagInputProps {
 }
 
 const defaultRemoveLabel = (tag: string) => `Remove ${tag}`
+
+const defaultCountLabel: TagInputCountLabel = ({ count, max, atMax }) =>
+  atMax ? `Maximum of ${max} added` : `${count} added`
 
 export function TagInput({
   value,
@@ -107,6 +122,7 @@ export function TagInput({
   name,
   id,
   removeLabel = defaultRemoveLabel,
+  countLabel = defaultCountLabel,
   'aria-label': ariaLabel,
   'aria-labelledby': labelledBy,
   'aria-describedby': describedBy,
@@ -420,10 +436,11 @@ export function TagInput({
        * associations while a screen-reader user is in it.
        *
        * `Maximum of N added` is derived from `max`, so the announced number is the number
-       * the field enforces. There is no second copy of the maximum to go out of sync.
+       * the field enforces. There is no second copy of the maximum to go out of sync. The
+       * words are the host's from `countLabel`.
        */}
       <span className={styles.reader} id={countId}>
-        {atMax ? `Maximum of ${max} added` : `${values.length} added`}
+        {countLabel({ count: values.length, max, atMax })}
       </span>
 
       {/* Removals are announced because screen-reader users cannot see them happen:

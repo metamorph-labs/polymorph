@@ -707,6 +707,7 @@ export type {
   TabsContentProps,
   TabsOrientation,
   TabsProps,
+  TagInputCountLabel,
   TagInputProps,
   TextProps,
   TextSize,

@@ -61,6 +61,7 @@
     "./stat": "./src/stat.ts",
     "./command": "./src/command.ts",
     "./code-block": "./src/code-block.ts",
+    "./tag-input-count": "./src/tag-input-count.ts",
     "./server-render": "./server-render.ts",
     "./dist-lock": "./dist-lock.ts"
   },

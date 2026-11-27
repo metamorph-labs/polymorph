@@ -16,6 +16,7 @@ export const definition: ElementDefinition = {
     'aria-label': 'string',
     'aria-labelledby': 'string',
     'aria-required': 'boolean',
+    countLabel: 'property',
     defaultValue: 'json',
     disabled: 'boolean',
     id: 'string',
@@ -40,6 +41,7 @@ export type PolyTagInputElement = MemberElement<
   | 'aria-label'
   | 'aria-labelledby'
   | 'aria-required'
+  | 'countLabel'
   | 'defaultValue'
   | 'disabled'
   | 'id'

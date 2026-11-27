@@ -29,7 +29,8 @@
 //
 // The entry is named by `ariaLabel` or its FormField's label (else the
 // placeholder), on the part that holds its text (`pmFieldName`), its state is
-// the count ("3 added", or "Maximum of 3 added"), and while invalid it
+// the count ("3 added", or "Maximum of 3 added", or the app's words from
+// `countLabel`), and while invalid it
 // reports its error (the FormField's message, else "Invalid"). Each remove
 // button is named by `removeLabel` ("Remove {tag}" by default), and a removal
 // is announced politely ("{tag} removed, {n} remain"). A remove button pressed
@@ -206,7 +207,10 @@ object PMTagInput : PMTagInputRendering {
             if (facts.disabled) put("disabled", "true")
             if (full) put("state", "at-max")
         }
-        val count = props.max?.takeIf { full }?.let { strings.tagInputMaximum(it) } ?: strings.tagInputAdded(values.size.toDouble())
+        // The count in the app's words from `countLabel`, or the string catalogue's.
+        val count = props.countLabel?.invoke(PMTagInputCountFacts(values.size.toDouble(), props.max, atMax = full))
+            ?: props.max?.takeIf { full }?.let { strings.tagInputMaximum(it) }
+            ?: strings.tagInputAdded(values.size.toDouble())
 
         Box(
             Modifier

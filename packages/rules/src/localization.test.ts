@@ -187,20 +187,6 @@ function bakedProse(code: string, where: string): string[] {
   return findings
 }
 
-/**
- * Words members write among their children that no prop replaces yet, as
- * `file — what`. Each is a defect: a host cannot translate them. They are
- * named here so that the law holds every other member, and the law fails on an
- * entry it no longer finds, so a member given its seam leaves the list.
- */
-const UNSEAMED: readonly string[] = [
-  'packages/react-ui/src/controls/TagInput.tsx — text {"Maximum of   added"}',
-  'packages/react-ui/src/controls/TagInput.tsx — text {"  added"}',
-]
-
-/** A finding without its line number, as `UNSEAMED` names it. */
-const unplaced = (finding: string) => finding.replace(/:\d+ — /, ' — ')
-
 describe('no member renders text its host cannot replace', () => {
   const files = TIERS.flatMap((tier) => shipped(resolve(UI, tier)))
   const findings = files.flatMap((file) =>
@@ -216,12 +202,7 @@ describe('no member renders text its host cannot replace', () => {
   })
 
   it('finds no literal passed to a naming attribute, and no text among the children', () => {
-    expect(findings.filter((finding) => !UNSEAMED.includes(unplaced(finding)))).toEqual([])
-  })
-
-  it('still finds each sentence it lists as having no seam', () => {
-    const found = new Set(findings.map(unplaced))
-    expect(UNSEAMED.filter((entry) => !found.has(entry))).toEqual([])
+    expect(findings).toEqual([])
   })
 })
 

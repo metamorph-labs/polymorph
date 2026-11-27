@@ -334,6 +334,43 @@
       XCTAssertEqual(field.stringValue, "", "a full field holds no text")
     }
 
+    /// `countLabel` states the count in the app's words (`tag-input.md`,
+    /// FormField integration), given the count, `max` and whether the field
+    /// holds it. Without it, the string catalog's sentence states the count.
+    func testATagInputStatesItsCountInTheAppsWords() {
+      var given: [PMTagInputCountFacts] = []
+      let read = { (scene: Scene) in
+        Scene.elements(in: scene.host).flatMap { element in
+          ["accessibilityHelp", "accessibilityLabel", "accessibilityValue", "accessibilityTitle"]
+            .compactMap { attribute(element, $0) }
+        }
+      }
+      let english = Scene(
+        PMTagInput(props: PMTagInputProps(ariaLabel: "Labels", defaultValue: ["a", "b"], max: 2)))
+      let catalog = read(english)
+      english.close()
+      XCTAssertTrue(
+        catalog.contains { $0.contains(PMStrings.tagInputMaximum(max: 2)) }, "read: \(catalog)")
+
+      let scene = Scene(
+        PMTagInput(
+          props: PMTagInputProps(
+            ariaLabel: "Schlagwörter",
+            countLabel: { tags in
+              given.append(tags)
+              return tags.atMax
+                ? "höchstens \(Int(tags.max ?? 0)) Schlagwörter" : "\(Int(tags.count)) Schlagwörter"
+            },
+            defaultValue: ["a", "b"], max: 2)))
+      defer { scene.close() }
+      let words = read(scene)
+      XCTAssertTrue(words.contains { $0.contains("höchstens 2 Schlagwörter") }, "read: \(words)")
+      XCTAssertFalse(words.contains { $0.contains(PMStrings.tagInputMaximum(max: 2)) })
+      XCTAssertEqual(given.last?.count, 2)
+      XCTAssertEqual(given.last?.max, 2)
+      XCTAssertEqual(given.last?.atMax, true)
+    }
+
     func testClosingTheListClearsTheSearchText() throws {
       var typed: [String] = []
       var chosen: [String?] = []
