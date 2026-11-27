@@ -12,7 +12,8 @@
 //
 // The stat is one element: its label, value and delta read as one statement.
 // The delta is spoken with its direction and its sentiment, because neither the
-// arrow nor the colour is read aloud.
+// arrow nor the colour is read aloud. `deltaLabel` gives the sentence in the
+// app's words, and the string catalog's "up 12% — positive" stands in for it.
 //
 // `spark` draws a small Sparkline at the value row's end, the path beside the
 // number, sitting on the value's baseline; the row's two ends hold the two, so
@@ -121,9 +122,9 @@ public struct PMStat: PMStatRendering {
         .pmTextStyle(theme.text.sm)
         .foregroundStyle((positive ? colors.successText : colors.dangerText).color)
         .accessibilityElement(children: .ignore)
-        // "up 12% — positive": the arrow and the colour say what assistive
-        // technology would not hear.
-        .accessibilityLabel(Text(PMStrings.delta(delta, positive: positive)))
+        // "up 12% — positive", or the app's words from `deltaLabel`: the arrow
+        // and the colour say what assistive technology would not hear.
+        .accessibilityLabel(Text(spoken(delta, positive: positive)))
       } else if let description = props.description {
         Text(description)
           .pmTextStyle(theme.text.xs)
@@ -162,6 +163,13 @@ public struct PMStat: PMStatRendering {
     .frame(maxWidth: .infinity, alignment: .leading)
     .accessibilityElement(children: .combine)
     .pmMember("Stat", attributes(positive: positive, loading: loading))
+  }
+
+  /// The delta's spoken sentence: the app's, from `deltaLabel`, or the string
+  /// catalog's.
+  private func spoken(_ delta: PMStatDelta, positive: Bool) -> String {
+    let facts = PMStatDeltaFacts(value: delta.value, direction: delta.direction, positive: positive)
+    return props.deltaLabel?(facts) ?? PMStrings.delta(delta, positive: positive)
   }
 
   private func attributes(positive: Bool?, loading: Bool) -> [String: String] {

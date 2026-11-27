@@ -100,8 +100,8 @@ data class PMStrings(
     /** A Stat delta's sentiment when the change is bad news (`design/components/stat.md`). */
     val negative: String = "negative",
     /**
-     * A Stat delta's spoken text, which the arrow and the colour show: "up 12% — positive"
-     * (`design/components/stat.md`).
+     * Stat's `deltaLabel`: the delta's spoken text, which the arrow and the colour show: "up 12% —
+     * positive" (`design/components/stat.md`).
      */
     val delta: (direction: String, value: String, sentiment: String) -> String =
         { direction, value, sentiment -> "${direction} ${value} — ${sentiment}" },

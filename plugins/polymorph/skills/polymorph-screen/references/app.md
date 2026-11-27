@@ -66,8 +66,9 @@ and the file emitted from it once nothing renders them.
   `prefers-color-scheme` rule and no second stylesheet.
 - **Language.** `lang` on `<html>`, and `dir="rtl"` for a right-to-left language: every member
   follows it. No provider sets a locale or words for the whole app. A member that formats dates or
-  numbers takes `locale`, and a member with words of its own takes `messages`, English when left
-  out. Pass the app's translations to each, as `ToastHost` takes its three words.
+  numbers takes `locale`, and a member with words of its own takes `messages` or a prop for each
+  phrase, such as `Stat`'s `deltaLabel`, English when left out. Pass the
+  app's translations to each, as `ToastHost` takes its three words.
 
 ## 2. Forms
 

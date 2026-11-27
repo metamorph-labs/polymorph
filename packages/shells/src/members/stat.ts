@@ -5,8 +5,9 @@ import { cond, describeMember, el, flag, identity, lit, member, text, when } fro
  * direction of change. Content, not a surface: Dashboard wraps Stats in Cards.
  * `value` arrives formatted. `delta` is the sentiment line, coloured by
  * whether the change is good, with the direction and the sentiment spoken in
- * words; `trend` is the neutral movement chip, which the footer's glyph
- * repeats; `spark` is the path as a Sparkline at the value row's end. While
+ * the words `deltaLabel` gives; `trend` is the neutral movement chip, which the
+ * footer's glyph repeats; `spark` is the path as a Sparkline at the value row's
+ * end. While
  * `loading`, the label row stays and each part that states the number is a
  * Skeleton of that part's size, the value's named by `loadingLabel`.
  */
@@ -17,11 +18,16 @@ export default describeMember({
   types: {
     DeltaDirection: "'up' | 'down'",
     StatDelta: '{ value: string; direction: DeltaDirection; positive?: boolean }',
+    // A function, not three words, because the order of the words is the catalog's grammar.
+    StatDeltaLabel:
+      '(delta: { value: string; direction: DeltaDirection; positive: boolean }) => string',
     StatTrend: '{ direction: DeltaDirection; label: string }',
     StatFooter: '{ primary: string; secondary: string }',
   },
   defaults: {
     numeric: 'true',
+    deltaLabel:
+      "({ value, direction, positive }: Parameters<StatDeltaLabel>[0]) => `${direction} ${value} — ${positive ? 'positive' : 'negative'}`",
     sparkLabel: '(label: string) => `${label}, recent trend`',
     loading: 'false',
     loadingLabel: "'Loading'",
@@ -109,9 +115,12 @@ export default describeMember({
             [
               member('Icon', { name: 'delta.direction', size: lit('sm') }),
               el('span', { attrs: { 'aria-hidden': lit('true') } }, [text('delta.value')]),
-              // Colour and the arrow are not read aloud, so the direction and the sentiment are words.
+              // Colour and the arrow are not read aloud, so the direction and the sentiment are
+              // words, the host's from `deltaLabel`.
               el('span', { part: 'spoken', class: ['spoken'] }, [
-                text("`${delta.direction} ${delta.value} — ${positive ? 'positive' : 'negative'}`"),
+                text(
+                  'deltaLabel({ value: delta.value, direction: delta.direction, positive: positive === true })',
+                ),
               ]),
             ],
           ),

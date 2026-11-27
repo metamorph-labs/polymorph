@@ -2322,6 +2322,7 @@ fun PMStack(
 @Composable
 fun PMStat(
     delta: PMStatDelta? = null,
+    deltaLabel: ((PMStatDeltaFacts) -> String)? = null,
     description: String? = null,
     footer: PMStatFooter? = null,
     icon: PMIconRole? = null,
@@ -2334,7 +2335,7 @@ fun PMStat(
     trend: PMStatTrend? = null,
     value: String,
 ) {
-    PMStat.Render(PMStatProps(delta = delta, description = description, footer = footer, icon = icon, label = label, loading = loading, loadingLabel = loadingLabel, numeric = numeric, spark = spark, sparkLabel = sparkLabel, trend = trend, value = value))
+    PMStat.Render(PMStatProps(delta = delta, deltaLabel = deltaLabel, description = description, footer = footer, icon = icon, label = label, loading = loading, loadingLabel = loadingLabel, numeric = numeric, spark = spark, sparkLabel = sparkLabel, trend = trend, value = value))
 }
 
 /**

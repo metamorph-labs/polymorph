@@ -13,6 +13,7 @@ export const definition: ElementDefinition = {
   member: 'Stat',
   props: {
     delta: 'json',
+    deltaLabel: 'property',
     description: 'string',
     footer: 'json',
     icon: 'string',
@@ -33,6 +34,7 @@ export const definition: ElementDefinition = {
 export type PolyStatElement = MemberElement<
   StatProps,
   | 'delta'
+  | 'deltaLabel'
   | 'description'
   | 'footer'
   | 'icon'

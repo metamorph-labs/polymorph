@@ -327,8 +327,18 @@ export function dataShape(type: string, types: DataTypes): DataShape {
   const callbacks = new Map<string, Callback>()
   const nodes = new Set<string>()
 
+  /** A function type, written out or named by a type alias the types declare (`StatDeltaLabel`). */
   const isFunction = (node: ts.TypeNode): boolean => {
     if (ts.isParenthesizedTypeNode(node)) return isFunction(node.type)
+    if (ts.isTypeReferenceNode(node) && node.typeArguments === undefined) {
+      const declared = types.get(node.typeName.getText())
+      return (
+        declared !== undefined &&
+        !Array.isArray(declared) &&
+        ts.isTypeNode(declared as ts.Node) &&
+        isFunction(declared as ts.TypeNode)
+      )
+    }
     return ts.isFunctionTypeNode(node) || ts.isConstructorTypeNode(node)
   }
   const isNode = (node: ts.TypeNode): boolean => {

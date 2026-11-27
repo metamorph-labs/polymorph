@@ -244,7 +244,7 @@ export const SPEC_DEFAULTS: readonly SpecDefaultEntry[] = [
   {
     name: 'delta',
     spec: 'design/components/stat.md',
-    doc: 'A Stat delta\'s spoken text, which the arrow and the colour show: "up 12% — positive".',
+    doc: 'Stat\'s `deltaLabel`: the delta\'s spoken text, which the arrow and the colour show: "up 12% — positive".',
     english: '{direction} {value} — {sentiment}',
     parameters: [
       { name: 'direction', type: 'string' },

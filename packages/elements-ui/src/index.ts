@@ -681,6 +681,7 @@ export type {
   StackJustify,
   StackProps,
   StatDelta,
+  StatDeltaLabel,
   StatFooter,
   StatProps,
   StatTrend,

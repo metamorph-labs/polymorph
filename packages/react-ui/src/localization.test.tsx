@@ -224,7 +224,7 @@ describe('a host’s language reaches every name the vocabulary would otherwise 
     expect(screen.getByText('échap')).toBeTruthy()
   })
 
-  it('Stat and Carousel — a derived name, a loading name and a spoken role', () => {
+  it('Stat and Carousel — a derived name, a spoken delta, a loading name and a spoken role', () => {
     render(
       <Stat
         label="Refus"
@@ -234,6 +234,20 @@ describe('a host’s language reaches every name the vocabulary would otherwise 
       />,
     )
     expect(screen.getByRole('img', { name: 'Refus, tendance récente' })).toBeTruthy()
+    cleanup()
+
+    const { container } = render(
+      <Stat
+        label="Refus"
+        value="12"
+        delta={{ value: '3', direction: 'down', positive: true }}
+        deltaLabel={({ value, positive }) =>
+          `en baisse de ${value}, ${positive ? 'bon' : 'mauvais'}`
+        }
+      />,
+    )
+    expect(container.textContent).toContain('en baisse de 3, bon')
+    expect(container.textContent).not.toContain('positive')
     cleanup()
 
     render(<Stat label="Refus" value="" loading loadingLabel="Chargement" />)
@@ -265,11 +279,13 @@ describe('and a host that passes nothing still hears the generic English', () =>
         <Alert onDismiss={noop}>Degraded</Alert>
         <Input aria-label="Name" defaultValue="x" clearable />
         <FilterBar isFiltered onClear={noop} resultCount={{ shown: 3, total: 9 }} />
+        <Stat label="Resolved" value="342" delta={{ value: '12%', direction: 'up' }} />
       </>,
     )
     expect(screen.getByRole('button', { name: 'Dismiss' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Clear' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Clear filters' })).toBeTruthy()
     expect(screen.getByText('3 of 9 results')).toBeTruthy()
+    expect(screen.getByText('up 12% — positive')).toBeTruthy()
   })
 })

@@ -12,7 +12,8 @@
 //
 // The stat is one node: its label, value and delta read as one statement. The
 // delta is spoken with its direction and its sentiment, because neither the
-// arrow nor the colour is read aloud.
+// arrow nor the colour is read aloud. `deltaLabel` gives the sentence in the
+// app's words, and `PMStrings`' "up 12% — positive" stands in for it.
 //
 // `loading` says the number has not arrived. The label row stays, and the value
 // and each part the caller passes that states the number (the trend chip, the
@@ -118,14 +119,15 @@ object PMStat : PMStatRendering {
             } else if (delta != null && positive != null) {
                 val tone = (if (positive) colors.successText else colors.dangerText).color
                 Row(
-                    // "up 12% — positive": the arrow and the colour say what
-                    // TalkBack would not hear.
+                    // "up 12% — positive", or the app's words from `deltaLabel`:
+                    // the arrow and the colour say what TalkBack would not hear.
                     modifier = Modifier.clearAndSetSemantics {
-                        contentDescription = strings.delta(
-                            if (delta.direction == PMDeltaDirection.Up) strings.up else strings.down,
-                            delta.value,
-                            if (positive) strings.positive else strings.negative,
-                        )
+                        contentDescription = props.deltaLabel?.invoke(PMStatDeltaFacts(delta.value, delta.direction, positive))
+                            ?: strings.delta(
+                                if (delta.direction == PMDeltaDirection.Up) strings.up else strings.down,
+                                delta.value,
+                                if (positive) strings.positive else strings.negative,
+                            )
                     },
                     horizontalArrangement = Arrangement.spacedBy(space.s1),
                     verticalAlignment = Alignment.CenterVertically,

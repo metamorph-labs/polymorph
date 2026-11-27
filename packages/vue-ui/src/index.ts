@@ -445,6 +445,7 @@ export { default as Stat } from './structure/Stat.vue'
 export type {
   DeltaDirection,
   StatDelta,
+  StatDeltaLabel,
   StatFooter,
   StatProps,
   StatTrend,

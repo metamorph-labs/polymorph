@@ -7810,9 +7810,12 @@ public protocol PMStackRendering: View {
 
 // MARK: - Stat
 
-/// Stat's props (`design/components/stat.md`): A key number with its label and direction of change.
+/// Stat's props (`design/components/stat.md`): A key number and how it moved.
 public struct PMStatProps {
   public var delta: PMStatDelta?
+  /// The delta's spoken sentence in the host's words, the localization seam; the default is
+  /// `{direction} {value} — positive` or `— negative`.
+  public var deltaLabel: (@MainActor (PMStatDeltaFacts) -> String)?
   /// Shown when there is no delta, such as "vs last week".
   public var description: String?
   /// The two-line footer: the interpretation, then the period it covers.
@@ -7842,6 +7845,7 @@ public struct PMStatProps {
 
   public init(
     delta: PMStatDelta? = nil,
+    deltaLabel: (@MainActor (PMStatDeltaFacts) -> String)? = nil,
     description: String? = nil,
     footer: PMStatFooter? = nil,
     icon: PMIconRole? = nil,
@@ -7855,6 +7859,7 @@ public struct PMStatProps {
     value: String
   ) {
     self.delta = delta
+    self.deltaLabel = deltaLabel
     self.description = description
     self.footer = footer
     self.icon = icon
@@ -11423,6 +11428,26 @@ public struct PMStatDelta {
     value: String,
     direction: PMDeltaDirection,
     positive: Bool? = nil
+  ) {
+    self.value = value
+    self.direction = direction
+    self.positive = positive
+  }
+}
+
+/// An object type the web writes inline, field for field (`SHAPES` in
+/// `packages/native/src/mapping.ts`). The web’s `StatDeltaLabel` takes the delta as an inline
+/// object; a native closure takes it as a named value.
+public struct PMStatDeltaFacts {
+  public var value: String
+  public var direction: PMDeltaDirection
+  /// The sentiment, resolved from the direction.
+  public var positive: Bool
+
+  public init(
+    value: String,
+    direction: PMDeltaDirection,
+    positive: Bool
   ) {
     self.value = value
     self.direction = direction
