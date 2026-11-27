@@ -188,11 +188,17 @@ export type Node =
  * (`onCheckedChange`) to the member's emitted events; `details` is the
  * callback's argument. The machine's connected API is `api`, and an element
  * spreads one of its prop getters through `spread`.
+ *
+ * `without` names actions of the machine's implementation that the member
+ * does without: each runs as a no-op. An action that speaks a fixed English
+ * sentence, which no prop of the machine replaces, is named here (Combobox's
+ * `announceHighlightedItem`).
  */
 export interface MachineBinding {
   of: string
   context: Readonly<Record<string, Expr>>
   events?: Readonly<Record<string, { emit: string; payload: Expr } | { run: Expr }>>
+  without?: readonly string[]
 }
 
 /** The edge a sheet's panel is pinned to. */

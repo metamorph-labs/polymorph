@@ -12,6 +12,7 @@ import type {
   FixtureChild,
   FixtureValue,
   Handler,
+  MachineBinding,
   MemberShell,
   Node,
   Presence,
@@ -921,6 +922,19 @@ export const unexported = (name: string, framework: string): boolean => {
 /** The foundation's types a framework's index re-exports, by name, sorted. */
 export function foundationTypeExports(framework: string): string[] {
   return FOUNDATION_TYPE_EXPORTS.filter((name) => !unexported(name, framework))
+}
+
+/**
+ * The machine a member binds, as every renderer writes it: Zag's `zag.machine`,
+ * or a copy whose actions the binding does without (`without`) are no-ops. The
+ * copy keeps the machine's type, so its props and its connected API are typed
+ * as Zag's.
+ */
+export function machineSource(binding: MachineBinding): string {
+  const without = binding.without ?? []
+  if (without.length === 0) return 'zag.machine'
+  const quiet = without.map((action) => `${key(action)}: () => {}`).join(', ')
+  return `({ ...zag.machine, implementations: { ...zag.machine.implementations, actions: { ...zag.machine.implementations?.actions, ${quiet} } } } as typeof zag.machine)`
 }
 
 /* -------------------------------------------------------------------------- */

@@ -43,6 +43,7 @@ import {
   isPrimitive,
   jsString,
   key,
+  machineSource,
   locations as whereEach,
   partShell,
   presenceEntries,
@@ -1755,7 +1756,7 @@ export function renderAngularMember(
       `protected readonly documentDirection = useDirection(${place === undefined ? '' : `() => ${scriptExpr(place)}`})`,
     )
     fields.push(
-      `protected readonly service: { readonly value: zag.Service } = setup(() => useMachine(zag.machine, () => ({ ${machineContext.join(', ')} }) as Partial<zag.Props>))`,
+      `protected readonly service: { readonly value: zag.Service } = setup(() => useMachine(${machineSource(shell.machine)}, () => ({ ${machineContext.join(', ')} }) as Partial<zag.Props>))`,
     )
     fields.push(
       'protected readonly api: { readonly value: ReturnType<typeof zag.connect> } = derived(() => zag.connect(this.service.value, normalizeProps))',
