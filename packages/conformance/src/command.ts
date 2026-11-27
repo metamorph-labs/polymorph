@@ -42,6 +42,15 @@ function status(): HTMLElement {
   return element
 }
 
+/** The search field of the palette mounted last. */
+function field(): HTMLInputElement {
+  const input = [
+    ...document.querySelectorAll<HTMLInputElement>('[data-member="command"] input'),
+  ].at(-1)
+  if (input === undefined) throw new Error('the Command drew no field')
+  return input
+}
+
 /** Waits until the status region says `expected`. */
 async function says(expected: string): Promise<void> {
   await vi.waitFor(() => expect(status().textContent?.trim()).toBe(expected), {
@@ -80,6 +89,13 @@ export function commandLaw({ shell, adapter }: CommandLaw): void {
       await says('4 commands')
     })
 
+    it('says one command in the singular, in English by default', async () => {
+      await mount()
+      await says('4 commands')
+      await userEvent.type(field(), 'archive')
+      await says('1 command')
+    })
+
     it('says the commands are loading, in English by default', async () => {
       await mount({ loading: true })
       await says('Loading commands…')
@@ -109,11 +125,7 @@ export function commandLaw({ shell, adapter }: CommandLaw): void {
       const host = french()
       await mount({ spoken: host.spoken })
       await says('4 commandes')
-      const input = [
-        ...document.querySelectorAll<HTMLInputElement>('[data-member="command"] input'),
-      ].at(-1)
-      if (input === undefined) throw new Error('the Command drew no field')
-      await userEvent.type(input, 'archive')
+      await userEvent.type(field(), 'archive')
       await says('1 commande')
       expect(host.given.at(-1)).toEqual({ loading: false, count: 1 })
     })

@@ -25,11 +25,11 @@ owns modality and focus. The Combobox collection hooks own the input, the filter
 | `open` / `onOpenChange` | `boolean` | required | the app owns the ⌘K binding, because a global hotkey is app policy |
 | `items` | `{ id: string; label: string; icon?: IconRole; hint?: string; group?: string; keywords?: string[]; disabled?: boolean; onSelect: () => void }[]` | required | `group` labels split items into groups in the given order. `keywords` add matches without being shown |
 | `placeholder` | `string` | `"Type a command…"` | apps localize by passing |
-| `label` | `string` | `"Command palette"` | the dialog's accessible name (its visually hidden title). Apps localize by passing |
+| `label` | `string` | `"Command palette"` | the dialog's accessible name (its visually hidden title), and the listbox's in the generated members (A11y, below). Apps localize by passing |
 | `escapeHint` | `string` | `"esc"` | the dismiss key's label beside the search field. It is localizable because keyboards are not all labelled in English |
 | `filter` | `'contains' \| false` | `'contains'` | `false` means the app filters (async command sources). The locale-aware default is `useFilter`'s |
 | `loading` / `emptyMessage` | as Combobox | — | async loading, same shapes as Combobox |
-| `spoken` | `(status: { loading: boolean; count: number }) => string` | `` ({ loading, count }) => loading ? 'Loading commands…' : `${count} commands` `` | what the status region says while the commands load and once some are shown (A11y, below), the localization seam. One function rather than two phrases, as Stepper's `spoken`, because the words around the number are grammar. With nothing shown, the region says `emptyMessage` |
+| `spoken` | `(status: { loading: boolean; count: number }) => string` | `` ({ loading, count }) => loading ? 'Loading commands…' : count === 1 ? '1 command' : `${count} commands` `` | what the status region says while the commands load and once some are shown (A11y, below), the localization seam. One function rather than two phrases, as Stepper's `spoken`, because the words around the number are grammar. With nothing shown, the region says `emptyMessage` |
 | `closeOnSelect` | `boolean` | `true` | selection runs `onSelect`, then closes. Use `false` for palettes that chain |
 
 An item, as `items` takes it:
@@ -117,10 +117,12 @@ exactly one focus manager, and it is Radix. Inside, the Combobox pattern applies
 `role="option"`s (`aria-labelledby` group headers). Escape clears the query if it is not empty,
 else closes (APG). An Escape an input method is handling clears nothing: it abandons the
 composition. Result counts announce politely, as in Combobox: one status region says "Loading
-commands…" while `loading`, `emptyMessage` when nothing is shown, and "4 commands" otherwise.
-`spoken` replaces the loading and count sentences, given whether the commands load and how many
-the query shows, so a host says both in its own words and number grammar. The palette's own label
-is `aria-label="Command palette"` on the dialog.
+commands…" while `loading`, `emptyMessage` when nothing is shown, "1 command" for one command and
+"4 commands" for any other number. `spoken` replaces the loading and count sentences, given
+whether the commands load and how many the query shows, so a host says both in its own words and
+number grammar. The palette's own label is `aria-label="Command palette"` on the dialog. The
+listbox is named `Suggestions` on React, by React Aria in the page's locale, and by `label` in the
+members generated from the description, which have no word of their own to translate.
 
 ```contract
 role panel dialog when open

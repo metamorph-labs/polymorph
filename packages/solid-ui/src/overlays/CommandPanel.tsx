@@ -30,6 +30,7 @@ import type { CommandItem, CommandSpoken } from './Command'
 
 export interface CommandPanelProps {
   items: CommandItem[]
+  label: string
   placeholder: string
   escapeHint: string
   filter: 'contains' | false
@@ -155,7 +156,7 @@ export default function CommandPanel(given: CommandPanelProps): JSX.Element {
               class: styles.listbox,
               hidden: undefined,
               'aria-labelledby': undefined,
-              'aria-label': 'Suggestions',
+              'aria-label': props.label,
             })}
           >
             <Each of={runs.value} by={(run) => run.map((item) => item.id).join(' ')} renew>

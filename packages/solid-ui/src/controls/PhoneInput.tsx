@@ -291,7 +291,11 @@ export default function PhoneInput(given: PhoneInputProps): JSX.Element {
               invalid={props.invalid}
               disabled={props.disabled}
               id={countryId.value}
-              messages={{ showOptions: say.value.showCountries, options: say.value.countriesShown }}
+              messages={{
+                showOptions: say.value.showCountries,
+                options: say.value.countriesShown,
+                list: say.value.country,
+              }}
               emptyMessage={say.value.noCountry}
               aria-label={say.value.country}
               aria-labelledby={countryLabelledby.value}

@@ -27,6 +27,7 @@ import type { CommandItem, CommandSpoken } from './Command.svelte'
 
 export interface CommandPanelProps {
   items: CommandItem[]
+  label: string
   placeholder: string
   escapeHint: string
   filter: 'contains' | false
@@ -41,6 +42,7 @@ export interface CommandPanelProps {
 <script lang="ts">
 let {
   items,
+  label: labelOwn,
   placeholder,
   escapeHint,
   filter,
@@ -51,7 +53,10 @@ let {
   onCommand,
 }: CommandPanelProps = $props()
 const uid = $props.id()
-const joined = joinSlot(undefined, () => ({}))
+const joined = joinSlot(undefined, () => ({ label: labelOwn }))
+const label = $derived(
+  joined.passed['label'] === undefined ? labelOwn : (joined.passed['label'] as typeof labelOwn),
+)
 let query = $state('')
 const collator = $derived(new Intl.Collator(undefined, { usage: 'search', sensitivity: 'base' }))
 const needle = $derived(query.normalize('NFC'))
@@ -138,7 +143,7 @@ watchEffect(effect2, { watch: () => api.highlightedValue ?? firstEnabled })
       class={styles.listbox}
       hidden={undefined}
       aria-labelledby={undefined}
-      aria-label="Suggestions"
+      aria-label={label}
       >{#each runs as run, at (run.map((item) => item.id).join(' '))
         }{#if run[0]?.group === undefined
           }{#each run as item (`${query}/${item.id}`)

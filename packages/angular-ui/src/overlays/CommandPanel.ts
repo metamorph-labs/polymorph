@@ -36,6 +36,7 @@ import type { CommandItem, CommandSpoken } from './Command'
 /** Command.Panel: the search row, the listbox and the status inside the palette, mounted with the panel so each opening starts from an empty query: the inputs it takes, by the React member's prop names. */
 export interface CommandPanelProps {
   items: CommandItem[]
+  label: string
   placeholder: string
   escapeHint: string
   filter: 'contains' | false
@@ -130,6 +131,7 @@ aria-live="polite"
 })
 export class CommandPanel {
   readonly items = input.required<CommandPanelProps['items']>()
+  readonly label = input.required<CommandPanelProps['label']>()
   readonly placeholder = input.required<CommandPanelProps['placeholder']>()
   readonly escapeHint = input.required<CommandPanelProps['escapeHint']>()
   readonly filter = input.required<CommandPanelProps['filter']>()
@@ -142,6 +144,7 @@ export class CommandPanel {
     events: ['queryChange', 'command'],
     props: {
       items: () => this.items(),
+      label: () => this.label(),
       placeholder: () => this.placeholder(),
       escapeHint: () => this.escapeHint(),
       filter: () => this.filter(),
@@ -272,7 +275,7 @@ export class CommandPanel {
       class: styles.listbox,
       hidden: undefined,
       'aria-labelledby': undefined,
-      'aria-label': 'Suggestions',
+      'aria-label': this.$p.label,
     })
   }
 

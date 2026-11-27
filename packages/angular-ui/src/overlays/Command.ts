@@ -78,7 +78,8 @@ export interface CommandProps {
   placeholder?: string
   /**
    * The status region's words in the host's language, the localization seam; the default says
-   * `Loading commands…` or `4 commands`. With nothing shown, the region says `emptyMessage`.
+   * `Loading commands…`, `1 command` or `4 commands`. With nothing shown, the region says
+   * `emptyMessage`.
    */
   spoken?: CommandSpoken
 }
@@ -104,12 +105,13 @@ export interface CommandProps {
 [pmRef]="panel"
 ><pm-command-panel
 [items]="e6()"
-[placeholder]="e7()"
-[escapeHint]="e8()"
-[filter]="e9()"
-[loading]="e10()"
-[emptyMessage]="e11()"
-[spoken]="e12()"
+[label]="e7()"
+[placeholder]="e8()"
+[escapeHint]="e9()"
+[filter]="e10()"
+[loading]="e11()"
+[emptyMessage]="e12()"
+[spoken]="e13()"
 (queryChange)="h1($event)"
 (command)="h2()"
 ></pm-command-panel></div></div>}</ng-template>`,
@@ -176,16 +178,17 @@ export class Command {
   })
   /**
    * The status region's words in the host's language, the localization seam; the default says
-   * `Loading commands…` or `4 commands`. With nothing shown, the region says `emptyMessage`.
+   * `Loading commands…`, `1 command` or `4 commands`. With nothing shown, the region says
+   * `emptyMessage`.
    */
   readonly spoken = input<Exclude<CommandProps['spoken'], undefined>, CommandProps['spoken']>(
     ({ loading, count }: Parameters<CommandSpoken>[0]) =>
-      loading ? 'Loading commands…' : `${count} commands`,
+      loading ? 'Loading commands…' : count === 1 ? '1 command' : `${count} commands`,
     {
       transform: (value: CommandProps['spoken']) =>
         value === undefined
           ? ({ loading, count }: Parameters<CommandSpoken>[0]) =>
-              loading ? 'Loading commands…' : `${count} commands`
+              loading ? 'Loading commands…' : count === 1 ? '1 command' : `${count} commands`
           : value,
     },
   )
@@ -293,32 +296,37 @@ export class Command {
     return this.$p.items
   }
 
-  protected e7(): CommandPanelProps['placeholder'] {
+  protected e7(): CommandPanelProps['label'] {
+    if (!this.panelPresent.value()) return undefined as never
+    return this.$p.label
+  }
+
+  protected e8(): CommandPanelProps['placeholder'] {
     if (!this.panelPresent.value()) return undefined as never
     return this.$p.placeholder
   }
 
-  protected e8(): CommandPanelProps['escapeHint'] {
+  protected e9(): CommandPanelProps['escapeHint'] {
     if (!this.panelPresent.value()) return undefined as never
     return this.$p.escapeHint
   }
 
-  protected e9(): CommandPanelProps['filter'] {
+  protected e10(): CommandPanelProps['filter'] {
     if (!this.panelPresent.value()) return undefined as never
     return this.$p.filter
   }
 
-  protected e10(): CommandPanelProps['loading'] {
+  protected e11(): CommandPanelProps['loading'] {
     if (!this.panelPresent.value()) return undefined as never
     return this.$p.loading
   }
 
-  protected e11(): CommandPanelProps['emptyMessage'] {
+  protected e12(): CommandPanelProps['emptyMessage'] {
     if (!this.panelPresent.value()) return undefined as never
     return this.$p.emptyMessage
   }
 
-  protected e12(): CommandPanelProps['spoken'] {
+  protected e13(): CommandPanelProps['spoken'] {
     if (!this.panelPresent.value()) return undefined as never
     return this.$p.spoken
   }

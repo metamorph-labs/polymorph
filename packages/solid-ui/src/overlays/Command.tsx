@@ -74,7 +74,8 @@ export interface CommandProps {
   placeholder?: string
   /**
    * The status region's words in the host's language, the localization seam; the default says
-   * `Loading commands…` or `4 commands`. With nothing shown, the region says `emptyMessage`.
+   * `Loading commands…`, `1 command` or `4 commands`. With nothing shown, the region says
+   * `emptyMessage`.
    */
   spoken?: CommandSpoken
 }
@@ -90,7 +91,7 @@ export default function Command(given: CommandProps): JSX.Element {
       loading: false,
       emptyMessage: 'No results',
       spoken: ({ loading, count }: Parameters<CommandSpoken>[0]) =>
-        loading ? 'Loading commands…' : `${count} commands`,
+        loading ? 'Loading commands…' : count === 1 ? '1 command' : `${count} commands`,
       closeOnSelect: true,
     } as Defaults<
       CommandProps,
@@ -207,6 +208,7 @@ export default function Command(given: CommandProps): JSX.Element {
                 >
                   <CommandPanel
                     items={props.items}
+                    label={props.label}
                     placeholder={props.placeholder}
                     escapeHint={props.escapeHint}
                     filter={props.filter}

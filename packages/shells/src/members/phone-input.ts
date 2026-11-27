@@ -161,7 +161,9 @@ export default describeMember({
                 invalid: 'invalid',
                 disabled: 'disabled',
                 id: 'countryId',
-                messages: '{ showOptions: say.showCountries, options: say.countriesShown }',
+                // The list of countries is named by the word that names their field.
+                messages:
+                  '{ showOptions: say.showCountries, options: say.countriesShown, list: say.country }',
                 emptyMessage: 'say.noCountry',
                 'aria-label': 'say.country',
                 'aria-labelledby': 'countryLabelledby',

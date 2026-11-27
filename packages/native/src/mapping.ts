@@ -621,6 +621,12 @@ export const SHAPES: Readonly<Record<string, Shape>> = {
         optional: true,
         doc: 'The async status naming the result count. Default: `{count} options`.',
       },
+      {
+        name: 'list',
+        type: 'string',
+        optional: true,
+        doc: 'The list’s accessible name on the web. Default: `Suggestions`.',
+      },
     ],
   },
   ComboboxOption: {

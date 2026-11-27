@@ -464,10 +464,6 @@ async function readDescriptions(): Promise<{ file: string; shell: MemberShell }[
  * on an entry it no longer finds, so a member given its seam leaves the list.
  */
 const UNSEAMED_IN_DESCRIPTIONS: readonly string[] = [
-  // The list's name and the plane's role description, which React Aria says in the locale's words.
-  'packages/shells/src/members/color-input.ts — <input> aria-roledescription: "2d slider"',
-  'packages/shells/src/members/combobox.ts — <ul> aria-label: "Suggestions"',
-  'packages/shells/src/members/command.ts — <ul> aria-label: "Suggestions"',
   // The React member writes it too, in the `ai` tier, which the React reading does not read.
   'packages/shells/src/members/artifact-pane.ts — Spinner label: " : still being written"',
   // An empty segment's value, and a range's two halves, which React Aria says in the locale's words.

@@ -79,8 +79,8 @@ export interface CommandProps {
   emptyMessage?: string
   /**
    * The status region's words in the host's language, the localization seam;
-   * the default says `Loading commands…` or `4 commands`. With nothing shown,
-   * the region says `emptyMessage`.
+   * the default says `Loading commands…`, `1 command` or `4 commands`. With
+   * nothing shown, the region says `emptyMessage`.
    */
   spoken?: CommandSpoken
   /** `false` for chained palettes, where the query stays after a command runs. */
@@ -90,7 +90,7 @@ export interface CommandProps {
 const SKELETON_ROWS = [0, 1, 2]
 
 const defaultSpoken: CommandSpoken = ({ loading, count }) =>
-  loading ? 'Loading commands…' : `${count} commands`
+  loading ? 'Loading commands…' : count === 1 ? '1 command' : `${count} commands`
 
 export function Command({
   open,

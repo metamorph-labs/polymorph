@@ -19,6 +19,7 @@ import type { CommandItem, CommandSpoken } from './Command.vue'
 
 export interface CommandPanelProps {
   items: CommandItem[]
+  label: string
   placeholder: string
   escapeHint: string
   filter: 'contains' | false
@@ -134,7 +135,7 @@ watch(() => api.value.highlightedValue ?? firstEnabled.value, effect2, { flush: 
       :class="styles.listbox"
       :hidden="undefined"
       :aria-labelledby="undefined"
-      aria-label="Suggestions"
+      :aria-label="label"
     >
       <template v-for="(run, at) in runs" :key="run.map((item) => item.id).join(' ')">
         <template v-if="run[0]?.group === undefined">

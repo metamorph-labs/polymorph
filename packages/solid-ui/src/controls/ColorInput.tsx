@@ -264,7 +264,6 @@ export default function ColorInput(given: ColorInputProps): JSX.Element {
                   value={color.value.getChannelValue('saturation')}
                   disabled={props.disabled}
                   aria-label={api.value.getAreaThumbProps()['aria-label']}
-                  aria-roledescription="2d slider"
                   aria-valuetext={api.value.getAreaThumbProps()['aria-valuetext']}
                   oninput={($event: InputEvent) => fromRange.value('saturation', $event)}
                 />

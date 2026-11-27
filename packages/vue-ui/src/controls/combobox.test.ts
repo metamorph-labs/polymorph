@@ -1,4 +1,3 @@
-import { getByRole } from '@testing-library/dom'
 import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { h } from 'vue'
@@ -11,52 +10,16 @@ import { states } from './combobox.states'
 
 /**
  * Combobox in the Vue shell, where it shows what the React member's React Aria
- * hooks show (`packages/react-ui/src/controls/Combobox.tsx`): the open
- * listbox's name, whichever way the field is named, and the scroll edge that
- * asks for the next page.
+ * hooks show (`packages/react-ui/src/controls/Combobox.tsx`): the scroll edge
+ * that asks for the next page. The open list's name, whichever way the field is
+ * named, is `@polymorph/conformance/combobox-list`'s, in `combobox-list.test.ts`.
  */
 
 beforeAll(installTestTheme)
 
-const PEOPLE = [
-  { value: 'ada', label: 'Ada Lovelace' },
-  { value: 'grace', label: 'Grace Hopper' },
-  { value: 'alan', label: 'Alan Turing' },
-]
-
 const MANY = Array.from({ length: 40 }, (_, at) => ({ value: `p${at}`, label: `Person ${at}` }))
 
 const listbox = () => document.querySelector<HTMLElement>('[role="listbox"]') as HTMLElement
-
-describe('the listbox’s name', () => {
-  it('is Suggestions when a label element names the field', async () => {
-    await mount(() =>
-      h('div', [
-        h('label', { for: 'assignee' }, 'Assignee'),
-        h(Combobox, { id: 'assignee', options: PEOPLE, defaultOpen: true }),
-      ]),
-    )
-    await vi.waitFor(() => expect(listbox()).not.toBeNull())
-    expect(getByRole(document.body, 'listbox', { name: 'Suggestions' })).toBe(listbox())
-  })
-
-  it('is Suggestions when the field is named by its own label', async () => {
-    await mount(() => h(Combobox, { ariaLabel: 'Assignee', options: PEOPLE, defaultOpen: true }))
-    await vi.waitFor(() => expect(listbox()).not.toBeNull())
-    expect(getByRole(document.body, 'listbox', { name: 'Suggestions' })).toBe(listbox())
-  })
-
-  it('adds the field’s label when a reference names the field', async () => {
-    await mount(() =>
-      h('div', [
-        h('span', { id: 'assignee-label' }, 'Assignee'),
-        h(Combobox, { ariaLabelledby: 'assignee-label', options: PEOPLE, defaultOpen: true }),
-      ]),
-    )
-    await vi.waitFor(() => expect(listbox()).not.toBeNull())
-    expect(getByRole(document.body, 'listbox', { name: 'Suggestions Assignee' })).toBe(listbox())
-  })
-})
 
 describe('paging', () => {
   it('asks for the next page within 32px of the scroll end, and not before', async () => {

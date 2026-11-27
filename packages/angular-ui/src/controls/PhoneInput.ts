@@ -497,7 +497,11 @@ export class PhoneInput {
 
   protected e27(): ComboboxProps['messages'] {
     if (this.$p.readOnly) return undefined as never
-    return { showOptions: this.say.value.showCountries, options: this.say.value.countriesShown }
+    return {
+      showOptions: this.say.value.showCountries,
+      options: this.say.value.countriesShown,
+      list: this.say.value.country,
+    }
   }
 
   protected e28(): ComboboxProps['emptyMessage'] {

@@ -70,7 +70,7 @@ const rail = (channel: 'hue' | 'alpha'): Node =>
  * its thumb under the pointer. Its two channels are two hidden range inputs
  * behind one tab stop: the saturation input takes focus, its arrows move both
  * axes through the machine's keyboard model, and the brightness input is
- * hidden from assistive technology, so a form listing counts one 2D slider.
+ * hidden from assistive technology, so a form listing counts one slider.
  */
 const plane: Node = el(
   'div',
@@ -98,8 +98,9 @@ const plane: Node = el(
             step: "color.getChannelRange('saturation').step",
             value: "color.getChannelValue('saturation')",
             disabled: 'disabled',
+            // No role description: React Aria's "2D slider" is said in the page's locale, and a
+            // fixed English one could not be, so the plane is heard as the slider it is.
             'aria-label': "api.getAreaThumbProps()['aria-label']",
-            'aria-roledescription': lit('2d slider'),
             'aria-valuetext': "api.getAreaThumbProps()['aria-valuetext']",
           },
           on: { input: run("fromRange('saturation', $event)") },

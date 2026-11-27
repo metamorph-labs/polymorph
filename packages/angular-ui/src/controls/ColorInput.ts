@@ -124,7 +124,6 @@ type="range"
 [value]="e20()"
 [attr.disabled]="e9()"
 [attr.aria-label]="e21()"
-aria-roledescription="2d slider"
 [attr.aria-valuetext]="e22()"
 (input)="h1($event)"
 />

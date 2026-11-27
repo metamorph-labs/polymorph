@@ -2073,8 +2073,8 @@ public enum PMComboboxPresentation: String, CaseIterable, Sendable {
   case popover
 }
 
-/// Combobox's props (`design/components/combobox.md`): Text-filtered single choice from a list. On
-/// iOS it is adapted: a text field; suggestions in a sheet on iPhone, anchored on iPad.
+/// Combobox's props (`design/components/combobox.md`): Filtered single choice. On iOS it is
+/// adapted: a text field; suggestions in a sheet on iPhone, anchored on iPad.
 public struct PMComboboxProps {
   /// Keeps free text. Blur keeps the draft instead of restoring the selected label. A commit that
   /// matches nothing sets the *selection* to `null` and keeps the text, which the app reads through
@@ -9763,17 +9763,21 @@ public struct PMComboboxMessages {
   public var loadingOptions: String?
   /// The async status naming the result count. Default: `{count} options`.
   public var options: (@MainActor (Double) -> String)?
+  /// The list’s accessible name on the web. Default: `Suggestions`.
+  public var list: String?
 
   public init(
     showOptions: String? = nil,
     clear: String? = nil,
     loadingOptions: String? = nil,
-    options: (@MainActor (Double) -> String)? = nil
+    options: (@MainActor (Double) -> String)? = nil,
+    list: String? = nil
   ) {
     self.showOptions = showOptions
     self.clear = clear
     self.loadingOptions = loadingOptions
     self.options = options
+    self.list = list
   }
 }
 

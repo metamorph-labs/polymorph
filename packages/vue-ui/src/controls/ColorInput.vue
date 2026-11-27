@@ -236,7 +236,6 @@ onBeforeUnmount(() => release1?.())
                 :value="color.getChannelValue('saturation')"
                 :disabled="disabled"
                 :aria-label="api.getAreaThumbProps()['aria-label']"
-                aria-roledescription="2d slider"
                 :aria-valuetext="api.getAreaThumbProps()['aria-valuetext']"
                 @input="fromRange('saturation', $event)"
               />

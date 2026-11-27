@@ -54,10 +54,10 @@ const popup = (): Node[] => [
       attrs: {
         // Present through the panel's exit, which `hidden` would cut short.
         hidden: 'undefined',
-        // Named as React Aria names a combobox's listbox, in English, which React Aria
-        // localizes: "Suggestions", then the field's label when a reference names the field.
-        // A field named only by a `<label for>` leaves the listbox its own name.
-        'aria-label': lit('Suggestions'),
+        // Named as React Aria names a combobox's listbox: the list's word, then the field's
+        // label when a reference names the field. A field named only by a `<label for>`
+        // leaves the listbox its own word, which a host replaces through `messages.list`.
+        'aria-label': 'say.list',
         'aria-labelledby':
           'ariaLabelledby === undefined ? undefined : `${api.getContentProps().id} ${ariaLabelledby}`',
       },
@@ -137,7 +137,7 @@ export default describeMember({
 
     ComboboxOption: '{ value: string; label: string; description?: string; disabled?: boolean }',
     ComboboxMessages:
-      '{ showOptions?: string; clear?: string; loadingOptions?: string; options?: (count: number) => string }',
+      '{ showOptions?: string; clear?: string; loadingOptions?: string; options?: (count: number) => string; list?: string }',
   },
   defaults: {
     allowsCustomValue: 'false',
@@ -161,7 +161,7 @@ export default describeMember({
   },
   derived: {
     sheeting: "presentation === 'auto' && phone",
-    say: "{ showOptions: 'Show options', clear: 'Clear', loadingOptions: 'Loading options…', options: (count: number) => `${count} options`, ...messages }",
+    say: "{ showOptions: 'Show options', clear: 'Clear', loadingOptions: 'Loading options…', options: (count: number) => `${count} options`, list: 'Suggestions', ...messages }",
     collator: "new Intl.Collator(undefined, { usage: 'search', sensitivity: 'base' })",
     needle: "(inputValue ?? query).normalize('NFC')",
     matches:

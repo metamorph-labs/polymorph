@@ -11,10 +11,10 @@ import Command from './Command.vue'
 
 /**
  * Command in the Vue shell, where it shows what the React palette shows
- * (`packages/react-ui/src/overlays/Command.tsx`): the listbox named as React
- * Aria names a combobox's listbox, apart from the field, and the panel growing
- * from its top edge, as the React member's surface grows from the side and
- * alignment it is given.
+ * (`packages/react-ui/src/overlays/Command.tsx`): the listbox named apart from
+ * the field, by the palette's `label` (React Aria names the React one
+ * `Suggestions`), and the panel growing from its top edge, as the React
+ * member's surface grows from the side and alignment it is given.
  */
 
 beforeAll(installTestTheme)
@@ -29,17 +29,18 @@ const listbox = () => document.querySelector<HTMLElement>('[role="listbox"]')
 const field = () => document.querySelector<HTMLInputElement>('[role="combobox"]')
 
 describe('the palette', () => {
-  it('names its listbox Suggestions and its field by the placeholder', async () => {
+  it('names its listbox by its label and its field by the placeholder', async () => {
     await mount(() =>
       h(Command, {
         open: true,
         onOpenChange: () => {},
         items: ITEMS,
+        label: 'Ticket commands',
         placeholder: 'Search the commands…',
       }),
     )
     await vi.waitFor(() => expect(listbox()).not.toBeNull())
-    expect(listbox()?.getAttribute('aria-label')).toBe('Suggestions')
+    expect(listbox()?.getAttribute('aria-label')).toBe('Ticket commands')
     expect(listbox()?.hasAttribute('aria-labelledby')).toBe(false)
     expect(field()?.getAttribute('aria-label')).toBe('Search the commands…')
   })

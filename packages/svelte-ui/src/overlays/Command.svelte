@@ -69,7 +69,8 @@ export interface CommandProps {
   placeholder?: string
   /**
    * The status region's words in the host's language, the localization seam; the default says
-   * `Loading commands…` or `4 commands`. With nothing shown, the region says `emptyMessage`.
+   * `Loading commands…`, `1 command` or `4 commands`. With nothing shown, the region says
+   * `emptyMessage`.
    */
   spoken?: CommandSpoken
 }
@@ -88,7 +89,7 @@ let {
   open,
   placeholder = 'Type a command…',
   spoken = ({ loading, count }: Parameters<CommandSpoken>[0]) =>
-    loading ? 'Loading commands…' : `${count} commands`,
+    loading ? 'Loading commands…' : count === 1 ? '1 command' : `${count} commands`,
 }: CommandProps = $props()
 const uid = $props.id()
 const joined = joinSlot(undefined, () => ({ label: labelOwn }))
@@ -188,6 +189,7 @@ onDestroy(() => release2?.())
           data-member="command"
           ><CommandPanel
             {items}
+            {label}
             {placeholder}
             {escapeHint}
             {filter}

@@ -1349,7 +1349,7 @@ enum class PMComboboxPresentation(val value: String) {
     Popover("popover"),
 }
 
-/** Combobox's props (`design/components/combobox.md`): Text-filtered single choice from a list. */
+/** Combobox's props (`design/components/combobox.md`): Filtered single choice. */
 data class PMComboboxProps(
     /**
      * Keeps free text. Blur keeps the draft instead of restoring the selected label. A commit that
@@ -6397,6 +6397,8 @@ data class PMComboboxMessages(
     val loadingOptions: String? = null,
     /** The async status naming the result count. Default: `{count} options`. */
     val options: ((Double) -> String)? = null,
+    /** The list’s accessible name on the web. Default: `Suggestions`. */
+    val list: String? = null,
 )
 
 /** The web's `ComboboxOption`, field for field (`SHAPES` in `packages/native/src/mapping.ts`). */

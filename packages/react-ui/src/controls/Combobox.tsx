@@ -19,7 +19,7 @@ import { Skeleton } from '../structure/Skeleton'
 import styles from '@polymorph/recipes/controls/combobox.module.css'
 
 /**
- * Text-filtered single choice from a list (`design/components/combobox.md`).
+ * Filtered single choice (`design/components/combobox.md`).
  *
  * Two libraries each do one job, and the boundary between them defines the design (the focus
  * boundary in `design/components/README-substrates.md`). **React Aria owns the collection**:
@@ -62,14 +62,20 @@ export interface ComboboxMessages {
   loadingOptions?: string
   /** The async status naming the result count. Default: `{count} options`. */
   options?: (count: number) => string
+  /**
+   * The list's accessible name, followed by the field's label where `aria-labelledby` names the
+   * field. Default: `Suggestions`, which React Aria says in the page's locale.
+   */
+  list?: string
 }
 
+/** Every default but `list`'s, which is React Aria's word in the page's locale. */
 const MESSAGES = {
   showOptions: 'Show options',
   clear: 'Clear',
   loadingOptions: 'Loading options…',
   options: (count: number) => `${count} options`,
-} satisfies Required<ComboboxMessages>
+} satisfies Required<Omit<ComboboxMessages, 'list'>>
 
 export interface ComboboxProps {
   /** The *current* list. In async use, the app supplies a new list for each query. */
@@ -367,7 +373,9 @@ export function Combobox({
   const popup = (
     <>
       <ComboboxListBox
-        options={listBoxProps}
+        options={
+          say.list === undefined ? listBoxProps : { ...listBoxProps, 'aria-label': say.list }
+        }
         state={state}
         listBoxRef={listBoxRef}
         onScroll={onLoadMore === undefined ? undefined : handleListScroll}

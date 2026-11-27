@@ -62,6 +62,8 @@
     "./command": "./src/command.ts",
     "./code-block": "./src/code-block.ts",
     "./tag-input-count": "./src/tag-input-count.ts",
+    "./combobox-list": "./src/combobox-list.ts",
+    "./described-names": "./src/described-names.ts",
     "./server-render": "./server-render.ts",
     "./dist-lock": "./dist-lock.ts"
   },

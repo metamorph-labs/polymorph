@@ -144,7 +144,7 @@ export default describeMember({
     loading: 'false',
     emptyMessage: lit('No results'),
     spoken:
-      "({ loading, count }: Parameters<CommandSpoken>[0]) => loading ? 'Loading commands…' : `${count} commands`",
+      "({ loading, count }: Parameters<CommandSpoken>[0]) => loading ? 'Loading commands…' : count === 1 ? '1 command' : `${count} commands`",
     closeOnSelect: 'true',
   },
   // The field's text, as the panel reports it, for the Escape that closes; and where focus was
@@ -231,6 +231,7 @@ export default describeMember({
               'CommandPanel',
               {
                 items: 'items',
+                label: 'label',
                 placeholder: 'placeholder',
                 escapeHint: 'escapeHint',
                 filter: 'filter',
@@ -259,6 +260,7 @@ export default describeMember({
         'the search row, the listbox and the status inside the palette, mounted with the panel so each opening starts from an empty query',
       props: {
         items: { type: 'CommandItem[]' },
+        label: { type: 'string' },
         placeholder: { type: 'string' },
         escapeHint: { type: 'string' },
         filter: { type: "'contains' | false" },
@@ -348,12 +350,13 @@ export default describeMember({
               part: 'list',
               class: ['listbox'],
               spread: ['api.getContentProps()'],
-              // Named as React Aria names a combobox's listbox, in English, which React Aria
-              // localizes; no label element exists for the machine's reference.
+              // Named by the palette's label, as the panel is: React Aria's word for the React
+              // listbox is one this member has no prop for. No label element exists for the
+              // machine's reference.
               attrs: {
                 hidden: 'undefined',
                 'aria-labelledby': 'undefined',
-                'aria-label': lit('Suggestions'),
+                'aria-label': 'label',
               },
             },
             [

@@ -375,6 +375,16 @@ export const UNDRAWN: readonly UndrawnProps[] = [
     android: ['DatePicker', 'DateRangePicker'],
   },
   {
+    props: ['ComboboxMessages.list'],
+    reason:
+      'It names the web’s listbox, whose role requires a name. The SwiftUI list is rows under a ' +
+      'search field in the sheet or popover the field opens, and the Compose list is Material’s ' +
+      'dropdown menu under the editable field. Neither rendering names that list: VoiceOver and ' +
+      'TalkBack read the field, then each row.',
+    ios: ['Combobox'],
+    android: ['Combobox'],
+  },
+  {
     props: ['MultiSelectMessages.showOptions'],
     reason:
       'It names the chevron’s button. In Compose the chevron is drawn only: a press anywhere ' +

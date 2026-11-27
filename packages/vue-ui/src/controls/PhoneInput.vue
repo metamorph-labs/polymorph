@@ -271,7 +271,11 @@ onBeforeUnmount(() => release4?.())
         :invalid="invalid"
         :disabled="disabled"
         :id="countryId"
-        :messages="{ showOptions: say.showCountries, options: say.countriesShown }"
+        :messages="{
+          showOptions: say.showCountries,
+          options: say.countriesShown,
+          list: say.country,
+        }"
         :emptyMessage="say.noCountry"
         :aria-label="say.country"
         :aria-labelledby="countryLabelledby"

@@ -115,8 +115,11 @@ member itself, composed, so its dialog name, its focus contract and its Escape
 are all inherited, not restated. The plane uses React Aria's two-channel model:
 two visually hidden range inputs (saturation, brightness) behind one tab stop.
 Arrows move x, PageUp/PageDown move y by a page, and the unfocused channel is
-`aria-hidden`, so a form listing counts one "2d slider". Each rail is one hidden
-range input, named with the substrate's own channel names. The hex field is a
+`aria-hidden`, so a form listing counts one slider for the plane, whose value
+text names both channels. React Aria describes it as a "2D slider" in the
+page's locale. The generated members give it no role description, because a
+fixed English one could not be translated, so it is heard as a slider. Each
+rail is one hidden range input, named with the substrate's own channel names. The hex field is a
 labelled Input wired through FormField like every other field, and the four ARIA
 hooks pass through to it.
 
