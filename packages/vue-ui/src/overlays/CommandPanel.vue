@@ -15,7 +15,7 @@ import { Icon, composingKey, useDirection } from '@polymorph/vue'
 import styles from '@polymorph/recipes/overlays/command.module.css'
 import Kbd from '../structure/Kbd.vue'
 import Skeleton from '../structure/Skeleton.vue'
-import type { CommandItem } from './Command.vue'
+import type { CommandItem, CommandSpoken } from './Command.vue'
 
 export interface CommandPanelProps {
   items: CommandItem[]
@@ -24,6 +24,7 @@ export interface CommandPanelProps {
   filter: 'contains' | false
   loading: boolean
   emptyMessage: string
+  spoken: CommandSpoken
 }
 
 defineOptions({ name: 'CommandPanel', inheritAttrs: false })
@@ -66,11 +67,9 @@ const runs = computed(() =>
 const firstEnabled = computed(() => shown.value.find((item) => item.disabled !== true)?.id)
 const showEmpty = computed(() => !props.loading && shown.value.length === 0)
 const announcement = computed(() =>
-  props.loading
-    ? 'Loading commands…'
-    : shown.value.length === 0
-      ? props.emptyMessage
-      : `${shown.value.length} commands`,
+  showEmpty.value
+    ? props.emptyMessage
+    : props.spoken({ loading: props.loading, count: shown.value.length }),
 )
 const documentDirection = useDirection()
 const service = useMachine(

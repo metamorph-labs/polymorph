@@ -23,7 +23,7 @@ import {
 import styles from '@polymorph/recipes/overlays/command.module.css'
 import Kbd from '../structure/Kbd.svelte'
 import Skeleton from '../structure/Skeleton.svelte'
-import type { CommandItem } from './Command.svelte'
+import type { CommandItem, CommandSpoken } from './Command.svelte'
 
 export interface CommandPanelProps {
   items: CommandItem[]
@@ -32,6 +32,7 @@ export interface CommandPanelProps {
   filter: 'contains' | false
   loading: boolean
   emptyMessage: string
+  spoken: CommandSpoken
   onQueryChange?: (query: string) => void
   onCommand?: () => void
 }
@@ -45,6 +46,7 @@ let {
   filter,
   loading,
   emptyMessage,
+  spoken,
   onQueryChange,
   onCommand,
 }: CommandPanelProps = $props()
@@ -79,9 +81,7 @@ const runs = $derived(
 )
 const firstEnabled = $derived(shown.find((item) => item.disabled !== true)?.id)
 const showEmpty = $derived(!loading && shown.length === 0)
-const announcement = $derived(
-  loading ? 'Loading commands…' : shown.length === 0 ? emptyMessage : `${shown.length} commands`,
-)
+const announcement = $derived(showEmpty ? emptyMessage : spoken({ loading, count: shown.length }))
 const documentDirection = useDirection()
 const service = useMachine(
   zag.machine,

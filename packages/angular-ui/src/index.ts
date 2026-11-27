@@ -164,7 +164,7 @@ export type {
   ComboboxProps,
 } from './controls/Combobox'
 export { Command } from './overlays/Command'
-export type { CommandItem, CommandProps } from './overlays/Command'
+export type { CommandItem, CommandProps, CommandSpoken } from './overlays/Command'
 export { CommentThread } from './structure/CommentThread'
 export type { CommentThreadMessages, CommentThreadProps } from './structure/CommentThread'
 export { CommentThreadComment } from './structure/CommentThreadComment'

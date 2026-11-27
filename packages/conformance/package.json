@@ -59,6 +59,8 @@
     "./engines": "./src/engines.ts",
     "./server-passed": "./src/server-passed.ts",
     "./stat": "./src/stat.ts",
+    "./command": "./src/command.ts",
+    "./code-block": "./src/code-block.ts",
     "./server-render": "./server-render.ts",
     "./dist-lock": "./dist-lock.ts"
   },

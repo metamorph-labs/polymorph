@@ -11,13 +11,16 @@ import CodeBlock, { type CodeBlockProps } from '@polymorph/solid-ui/structure/Co
 export const definition: ElementDefinition = {
   tag: 'poly-code-block',
   member: 'CodeBlock',
-  props: { copyable: 'boolean', copyLabel: 'string', label: 'string' },
+  props: { copiedLabel: 'string', copyable: 'boolean', copyLabel: 'string', label: 'string' },
   events: {},
   slots: ['children'],
 }
 
 /** The `<poly-code-block>` element. */
-export type PolyCodeBlockElement = MemberElement<CodeBlockProps, 'copyable' | 'copyLabel' | 'label'>
+export type PolyCodeBlockElement = MemberElement<
+  CodeBlockProps,
+  'copiedLabel' | 'copyable' | 'copyLabel' | 'label'
+>
 
 export const PolyCodeBlock = define(definition, CodeBlock)
 

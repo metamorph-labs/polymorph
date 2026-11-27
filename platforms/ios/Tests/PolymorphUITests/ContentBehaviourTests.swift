@@ -6,10 +6,10 @@
 
   @testable import PolymorphUI
 
-  /// What Plan, TableOfContents, CommentThread, Tour, RichTextContent and a
-  /// loading Stat say and do, read through the accessibility tree AppKit
-  /// publishes, as an assistive client reads it, and the logic each computes
-  /// from its props.
+  /// What Plan, TableOfContents, CommentThread, Tour, RichTextContent, a
+  /// loading Stat and a CodeBlock's copy say and do, read through the
+  /// accessibility tree AppKit publishes, as an assistive client reads it, and
+  /// the logic each computes from its props.
   /// The scene is `BehaviourTests.Scene`.
   @MainActor
   final class ContentBehaviourTests: XCTestCase {
@@ -522,6 +522,18 @@
       }
       XCTAssertTrue(read.contains { $0.contains("gesunken um 8%, schlecht") }, "read: \(read)")
       XCTAssertFalse(read.contains { $0.contains(PMStrings.negative) }, "read: \(read)")
+    }
+
+    // MARK: CodeBlock
+
+    /// A copy announces `copiedLabel`, the app's words (`code-block.md`,
+    /// A11y), and the string catalog's "Copied" when the app passes none.
+    func testACodeBlockAnnouncesACopyInTheAppsWords() {
+      let given = PMCodeBlock(
+        props: PMCodeBlockProps(children: "pnpm install", copiedLabel: "Kopiert", copyable: true))
+      XCTAssertEqual(given.confirmation, "Kopiert")
+      let absent = PMCodeBlock(props: PMCodeBlockProps(children: "pnpm install", copyable: true))
+      XCTAssertEqual(absent.confirmation, PMStrings.copied)
     }
 
     private func frame(_ element: NSObject) -> CGRect {

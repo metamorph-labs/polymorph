@@ -5,8 +5,10 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { assertGoverned } from '@polymorph/react'
 import { tokenColor, tokenLength } from '../controls/token-probe'
+import { commandLaw } from '@polymorph/conformance/command'
 import { createAgentBridge } from '@polymorph/engine/agent'
 import { installTestTheme } from '@polymorph/engine/testing'
+import { reactAdapter } from '../conformance/react'
 import { Command, type CommandItem, type CommandProps } from './Command'
 
 /**
@@ -488,3 +490,9 @@ describe('an agent', () => {
     }
   })
 })
+
+/**
+ * What the status region says, by default and in a host's words from
+ * `spoken`, is the law every shell runs (`@polymorph/conformance/command`).
+ */
+commandLaw({ shell: 'React', adapter: reactAdapter })

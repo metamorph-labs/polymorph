@@ -113,7 +113,7 @@ data class PMStrings(
     /** CodeBlock's `copyLabel`: the copy control's name (`design/components/code-block.md`). */
     val copy: String = "Copy",
     /**
-     * What CodeBlock's copy control announces once the code is on the clipboard
+     * CodeBlock's `copiedLabel`: what its copy control announces once the code is on the clipboard
      * (`design/components/code-block.md`).
      */
     val copied: String = "Copied",

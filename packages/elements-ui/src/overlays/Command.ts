@@ -21,6 +21,7 @@ export const definition: ElementDefinition = {
     loading: 'boolean',
     open: 'boolean',
     placeholder: 'string',
+    spoken: 'property',
   },
   events: { onOpenChange: { type: 'poly-open-change' } },
   slots: [],
@@ -40,6 +41,7 @@ export type PolyCommandElement = MemberElement<
   | 'loading'
   | 'open'
   | 'placeholder'
+  | 'spoken'
 >
 
 export const PolyCommand = define(definition, Command)

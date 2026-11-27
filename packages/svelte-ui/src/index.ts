@@ -174,7 +174,7 @@ export type {
   ComboboxProps,
 } from './controls/Combobox.svelte'
 export { default as Command } from './overlays/Command.svelte'
-export type { CommandItem, CommandProps } from './overlays/Command.svelte'
+export type { CommandItem, CommandProps, CommandSpoken } from './overlays/Command.svelte'
 import CommentThreadRoot from './structure/CommentThread.svelte'
 import CommentThreadComment from './structure/CommentThreadComment.svelte'
 export const CommentThread = /* @__PURE__ */ Object.assign(CommentThreadRoot, {

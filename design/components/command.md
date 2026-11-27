@@ -29,6 +29,7 @@ owns modality and focus. The Combobox collection hooks own the input, the filter
 | `escapeHint` | `string` | `"esc"` | the dismiss key's label beside the search field. It is localizable because keyboards are not all labelled in English |
 | `filter` | `'contains' \| false` | `'contains'` | `false` means the app filters (async command sources). The locale-aware default is `useFilter`'s |
 | `loading` / `emptyMessage` | as Combobox | — | async loading, same shapes as Combobox |
+| `spoken` | `(status: { loading: boolean; count: number }) => string` | `` ({ loading, count }) => loading ? 'Loading commands…' : `${count} commands` `` | what the status region says while the commands load and once some are shown (A11y, below), the localization seam. One function rather than two phrases, as Stepper's `spoken`, because the words around the number are grammar. With nothing shown, the region says `emptyMessage` |
 | `closeOnSelect` | `boolean` | `true` | selection runs `onSelect`, then closes. Use `false` for palettes that chain |
 
 An item, as `items` takes it:
@@ -115,8 +116,11 @@ exactly one focus manager, and it is Radix. Inside, the Combobox pattern applies
 `role="combobox"` input, `aria-activedescendant`, `role="listbox"` with grouped
 `role="option"`s (`aria-labelledby` group headers). Escape clears the query if it is not empty,
 else closes (APG). An Escape an input method is handling clears nothing: it abandons the
-composition. Result counts announce politely, as in Combobox. The palette's own label is
-`aria-label="Command palette"` on the dialog.
+composition. Result counts announce politely, as in Combobox: one status region says "Loading
+commands…" while `loading`, `emptyMessage` when nothing is shown, and "4 commands" otherwise.
+`spoken` replaces the loading and count sentences, given whether the commands load and how many
+the query shows, so a host says both in its own words and number grammar. The palette's own label
+is `aria-label="Command palette"` on the dialog.
 
 ```contract
 role panel dialog when open

@@ -23,7 +23,7 @@ import styles from '@polymorph/recipes/overlays/command.module.css'
 import { useModalFocus } from './modal-focus'
 
 /**
- * The command palette (`design/components/command.md`).
+ * Command palette (`design/components/command.md`).
  *
  * **Composed, not imported.** `cmdk` is rejected
  * (`design/components/README-substrates.md`, the command palette) because of
@@ -52,6 +52,14 @@ export interface CommandItem {
   onSelect: () => void
 }
 
+/**
+ * What the status region says while the commands load and once some are shown,
+ * given whether they load and how many the query shows. One function rather
+ * than two phrases, as Stepper's `spoken`, because the words around a number
+ * are grammar and belong to the message catalog.
+ */
+export type CommandSpoken = (status: { loading: boolean; count: number }) => string
+
 export interface CommandProps {
   /** The app owns the ⌘K binding, because a global hotkey is app policy, not vocabulary. */
   open: boolean
@@ -69,11 +77,20 @@ export interface CommandProps {
   filter?: 'contains' | false
   loading?: boolean
   emptyMessage?: string
+  /**
+   * The status region's words in the host's language, the localization seam;
+   * the default says `Loading commands…` or `4 commands`. With nothing shown,
+   * the region says `emptyMessage`.
+   */
+  spoken?: CommandSpoken
   /** `false` for chained palettes, where the query stays after a command runs. */
   closeOnSelect?: boolean
 }
 
 const SKELETON_ROWS = [0, 1, 2]
+
+const defaultSpoken: CommandSpoken = ({ loading, count }) =>
+  loading ? 'Loading commands…' : `${count} commands`
 
 export function Command({
   open,
@@ -85,6 +102,7 @@ export function Command({
   filter = 'contains',
   loading = false,
   emptyMessage = 'No results',
+  spoken = defaultSpoken,
   closeOnSelect = true,
 }: CommandProps) {
   const focus = useModalFocus('primary')
@@ -140,6 +158,7 @@ export function Command({
                 filter={filter}
                 loading={loading}
                 emptyMessage={emptyMessage}
+                spoken={spoken}
                 closeOnSelect={closeOnSelect}
                 onOpenChange={onOpenChange}
               />
@@ -166,6 +185,7 @@ function CommandPanel({
   filter,
   loading,
   emptyMessage,
+  spoken,
   closeOnSelect,
   onOpenChange,
 }: {
@@ -179,6 +199,7 @@ function CommandPanel({
   filter: 'contains' | false
   loading: boolean
   emptyMessage: string
+  spoken: CommandSpoken
   closeOnSelect: boolean
   onOpenChange: (open: boolean) => void
 }) {
@@ -326,7 +347,7 @@ function CommandPanel({
         </div>
 
         <div role="status" aria-live="polite" className={styles.status}>
-          {loading ? 'Loading commands…' : count === 0 ? emptyMessage : `${count} commands`}
+          {showEmpty ? emptyMessage : spoken({ loading, count })}
         </div>
       </MotionSurface>
     </DialogPrimitive.Content>

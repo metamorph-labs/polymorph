@@ -31,7 +31,7 @@ import {
 import styles from '@polymorph/recipes/overlays/command.module.css'
 import { Kbd } from '../structure/Kbd'
 import { Skeleton } from '../structure/Skeleton'
-import type { CommandItem } from './Command'
+import type { CommandItem, CommandSpoken } from './Command'
 
 /** Command.Panel: the search row, the listbox and the status inside the palette, mounted with the panel so each opening starts from an empty query: the inputs it takes, by the React member's prop names. */
 export interface CommandPanelProps {
@@ -41,6 +41,7 @@ export interface CommandPanelProps {
   filter: 'contains' | false
   loading: boolean
   emptyMessage: string
+  spoken: CommandSpoken
 }
 
 /** Command.Panel: the search row, the listbox and the status inside the palette, mounted with the panel so each opening starts from an empty query. */
@@ -134,6 +135,7 @@ export class CommandPanel {
   readonly filter = input.required<CommandPanelProps['filter']>()
   readonly loading = input.required<CommandPanelProps['loading']>()
   readonly emptyMessage = input.required<CommandPanelProps['emptyMessage']>()
+  readonly spoken = input.required<CommandPanelProps['spoken']>()
   readonly onQueryChange = output<string>({ alias: 'queryChange' })
   readonly onCommand = output<void>({ alias: 'command' })
   protected readonly $ = useMember({
@@ -145,6 +147,7 @@ export class CommandPanel {
       filter: () => this.filter(),
       loading: () => this.loading(),
       emptyMessage: () => this.emptyMessage(),
+      spoken: () => this.spoken(),
     },
   })
   protected readonly $p = this.$.props
@@ -188,11 +191,9 @@ export class CommandPanel {
   )
   protected readonly showEmpty = derived(() => !this.$p.loading && this.shown.value.length === 0)
   protected readonly announcement = derived(() =>
-    this.$p.loading
-      ? 'Loading commands…'
-      : this.shown.value.length === 0
-        ? this.$p.emptyMessage
-        : `${this.shown.value.length} commands`,
+    this.showEmpty.value
+      ? this.$p.emptyMessage
+      : this.$p.spoken({ loading: this.$p.loading, count: this.shown.value.length }),
   )
   protected readonly documentDirection = useDirection()
   protected readonly service: { readonly value: zag.Service } = setup(() =>

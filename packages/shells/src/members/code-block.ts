@@ -44,13 +44,19 @@ const block: Node = el(
  *
  * `copyable` wraps the block with the corner control, which writes the slot's
  * text to the clipboard and confirms a successful write for the feedback time
- * CopyButton uses. A refused write leaves a plain copy control.
+ * CopyButton uses, in `copiedLabel`'s words. A refused write leaves a plain
+ * copy control.
  */
 export default describeMember({
   member: 'CodeBlock',
   dir: 'structure',
   recipe: 'structure/code-block',
-  defaults: { label: lit('Code block'), copyable: 'false', copyLabel: lit('Copy') },
+  defaults: {
+    label: lit('Code block'),
+    copyable: 'false',
+    copyLabel: lit('Copy'),
+    copiedLabel: lit('Copied'),
+  },
   state: { overflowing: 'false', copied: 'false', copies: '0' },
   derived: {
     copy: '() => void navigator.clipboard.writeText(slotText(slots.default)).then(() => { copied = true; copies += 1 }, () => undefined)',
@@ -87,7 +93,7 @@ export default describeMember({
         ]),
         // Polite, because a copy never justifies an interruption.
         el('span', { class: ['reader'], attrs: { 'aria-live': lit('polite') } }, [
-          text("copied ? 'Copied' : ''"),
+          text("copied ? copiedLabel : ''"),
         ]),
       ]),
     ],

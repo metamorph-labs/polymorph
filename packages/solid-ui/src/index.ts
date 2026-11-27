@@ -166,7 +166,7 @@ export type {
   ComboboxProps,
 } from './controls/Combobox'
 export { default as Command } from './overlays/Command'
-export type { CommandItem, CommandProps } from './overlays/Command'
+export type { CommandItem, CommandProps, CommandSpoken } from './overlays/Command'
 import CommentThreadRoot from './structure/CommentThread'
 import CommentThreadComment from './structure/CommentThreadComment'
 export const CommentThread = /* @__PURE__ */ Object.assign(CommentThreadRoot, {
