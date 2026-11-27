@@ -133,6 +133,8 @@ export default describeMember({
   types: {
     CommandItem:
       '{ id: string; label: string; icon?: IconRole; hint?: string; group?: string; keywords?: string[]; disabled?: boolean; onSelect: () => void }',
+    // A function, not two phrases, because the words around the number are the catalog's grammar.
+    CommandSpoken: '(status: { loading: boolean; count: number }) => string',
   },
   defaults: {
     placeholder: lit('Type a command…'),
@@ -141,6 +143,8 @@ export default describeMember({
     filter: lit('contains'),
     loading: 'false',
     emptyMessage: lit('No results'),
+    spoken:
+      "({ loading, count }: Parameters<CommandSpoken>[0]) => loading ? 'Loading commands…' : `${count} commands`",
     closeOnSelect: 'true',
   },
   // The field's text, as the panel reports it, for the Escape that closes; and where focus was
@@ -232,6 +236,7 @@ export default describeMember({
                 filter: 'filter',
                 loading: 'loading',
                 emptyMessage: 'emptyMessage',
+                spoken: 'spoken',
               },
               {
                 on: {
@@ -259,6 +264,7 @@ export default describeMember({
         filter: { type: "'contains' | false" },
         loading: { type: 'boolean' },
         emptyMessage: { type: 'string' },
+        spoken: { type: 'CommandSpoken' },
         onQueryChange: { type: '(query: string) => void', optional: true },
         onCommand: { type: '() => void', optional: true },
       },
@@ -278,9 +284,8 @@ export default describeMember({
         runs: 'shown.reduce((into, item) => (item.group !== undefined && into.at(-1)?.[0]?.group === item.group ? into.at(-1)?.push(item) : into.push([item]), into), [] as CommandItem[][])',
         firstEnabled: 'shown.find((item) => item.disabled !== true)?.id',
         showEmpty: '!loading && shown.length === 0',
-        // The only live region: loading, the count and the empty message.
-        announcement:
-          "loading ? 'Loading commands…' : shown.length === 0 ? emptyMessage : `${shown.length} commands`",
+        // The only live region: the empty message, or the loading and count words `spoken` gives.
+        announcement: 'showEmpty ? emptyMessage : spoken({ loading, count: shown.length })',
       },
       machine: {
         of: 'combobox',

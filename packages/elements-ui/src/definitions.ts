@@ -96,7 +96,7 @@ export const DEFINITIONS: Readonly<Record<string, ElementDefinition>> = {
   'poly-code-block': {
     tag: 'poly-code-block',
     member: 'CodeBlock',
-    props: { copyable: 'boolean', copyLabel: 'string', label: 'string' },
+    props: { copiedLabel: 'string', copyable: 'boolean', copyLabel: 'string', label: 'string' },
     events: {},
     slots: ['children'],
   },
@@ -1273,6 +1273,7 @@ export const DEFINITIONS: Readonly<Record<string, ElementDefinition>> = {
       loading: 'boolean',
       open: 'boolean',
       placeholder: 'string',
+      spoken: 'property',
     },
     events: { onOpenChange: { type: 'poly-open-change' } },
     slots: [],

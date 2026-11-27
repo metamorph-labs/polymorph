@@ -26,7 +26,7 @@ import {
 import styles from '@polymorph/recipes/overlays/command.module.css'
 import Kbd from '../structure/Kbd'
 import Skeleton from '../structure/Skeleton'
-import type { CommandItem } from './Command'
+import type { CommandItem, CommandSpoken } from './Command'
 
 export interface CommandPanelProps {
   items: CommandItem[]
@@ -35,6 +35,7 @@ export interface CommandPanelProps {
   filter: 'contains' | false
   loading: boolean
   emptyMessage: string
+  spoken: CommandSpoken
   onQueryChange?: (query: string) => void
   onCommand?: () => void
 }
@@ -79,11 +80,9 @@ export default function CommandPanel(given: CommandPanelProps): JSX.Element {
     const firstEnabled = createDerived(() => shown.value.find((item) => item.disabled !== true)?.id)
     const showEmpty = createDerived(() => !props.loading && shown.value.length === 0)
     const announcement = createDerived(() =>
-      props.loading
-        ? 'Loading commands…'
-        : shown.value.length === 0
-          ? props.emptyMessage
-          : `${shown.value.length} commands`,
+      showEmpty.value
+        ? props.emptyMessage
+        : props.spoken({ loading: props.loading, count: shown.value.length }),
     )
     const documentDirection = useDirection()
     const service = useMachine(

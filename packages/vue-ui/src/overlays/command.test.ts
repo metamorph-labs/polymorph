@@ -2,8 +2,10 @@ import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { h, ref } from 'vue'
 
+import { commandLaw } from '@polymorph/conformance/command'
 import { installTestTheme } from '@polymorph/engine/testing'
 
+import { vueAdapter } from '../conformance/vue'
 import { mount } from '../mount'
 import Command from './Command.vue'
 
@@ -99,3 +101,9 @@ describe('the query and an input method', () => {
     expect(onOpenChange).not.toHaveBeenCalled()
   })
 })
+
+/**
+ * What the status region says, by default and in a host's words from
+ * `spoken`, as `@polymorph/conformance/command` states it for every web shell.
+ */
+commandLaw({ shell: 'Vue', adapter: vueAdapter })

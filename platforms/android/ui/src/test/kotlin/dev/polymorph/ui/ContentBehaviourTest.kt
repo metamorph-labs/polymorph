@@ -16,6 +16,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.SemanticsMatcher
@@ -34,9 +35,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * What Plan, TableOfContents, CommentThread, Tour, RichTextContent and a
- * loading Stat say and do, composed by Compose for desktop's test host and
- * read through its semantics, and the logic each computes from its props.
+ * What Plan, TableOfContents, CommentThread, Tour, RichTextContent, a
+ * loading Stat and a CodeBlock's copy say and do, composed by Compose for
+ * desktop's test host and read through its semantics, and the logic each
+ * computes from its props.
  */
 @OptIn(ExperimentalTestApi::class)
 class ContentBehaviourTest {
@@ -663,5 +665,52 @@ class ContentBehaviourTest {
         onNode(member("Stat") and hasContentDescription("gesunken um 8%, schlecht")).assertExists()
         onAllNodes(hasContentDescription(PMStrings().negative, substring = true), useUnmergedTree = true)
             .assertCountEquals(0)
+    }
+
+    /* CodeBlock ------------------------------------------------------------- */
+
+    /** A text clipboard the test holds, so a copy reaches no system clipboard. */
+    @Suppress("DEPRECATION")
+    private class HeldClipboard : androidx.compose.ui.platform.ClipboardManager {
+        var held: AnnotatedString? = null
+
+        override fun getText(): AnnotatedString? = held
+
+        override fun setText(annotatedString: AnnotatedString) {
+            held = annotatedString
+        }
+    }
+
+    /**
+     * A copy says `copiedLabel`, the app's words, through the block's polite
+     * live region (`code-block.md`, A11y), and `PMStrings`' "Copied" when the
+     * app passes none.
+     */
+    @Suppress("DEPRECATION")
+    @Test
+    fun aCodeBlockAnnouncesACopyInTheAppsWords() {
+        val polite = SemanticsMatcher("a polite live region") {
+            it.config.getOrNull(SemanticsProperties.LiveRegion) == LiveRegionMode.Polite
+        }
+        for ((given, heard) in listOf("Kopiert" to "Kopiert", null to PMStrings().copied)) {
+            runComposeUiTest {
+                mainClock.autoAdvance = false
+                val clipboard = HeldClipboard()
+                setContent {
+                    CompositionLocalProvider(androidx.compose.ui.platform.LocalClipboardManager provides clipboard) {
+                        Scene { PMCodeBlock(children = "pnpm install", copiedLabel = given, copyable = true) }
+                    }
+                }
+                mainClock.advanceTimeByFrame()
+                onNode(member("Button") and hasContentDescription(PMStrings().copy))
+                    .performSemanticsAction(SemanticsActions.OnClick)
+                mainClock.advanceTimeByFrame()
+                assertEquals("pnpm install", clipboard.held?.text)
+                onAllNodes(polite and hasContentDescription(heard), useUnmergedTree = true).assertCountEquals(1)
+                if (given != null) {
+                    onAllNodes(hasContentDescription(PMStrings().copied), useUnmergedTree = true).assertCountEquals(0)
+                }
+            }
+        }
     }
 }

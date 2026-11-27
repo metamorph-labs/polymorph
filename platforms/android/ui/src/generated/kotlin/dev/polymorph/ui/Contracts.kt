@@ -1241,13 +1241,12 @@ fun interface PMCodeRendering {
 
 // CodeBlock
 
-/**
- * CodeBlock's props (`design/components/code-block.md`): Block of code, such as an install command
- * or config sample.
- */
+/** CodeBlock's props (`design/components/code-block.md`): Verbatim code. */
 data class PMCodeBlockProps(
     /** The code, rendered verbatim including whitespace. */
     val children: String,
+    /** What a screen reader hears after a copy, default `'Copied'`; apps pass a localized one. */
+    val copiedLabel: String? = null,
     /** Draws the copy control, the block's only control. */
     val copyable: Boolean? = null,
     /** The copy control's accessible name, default `'Copy'`; apps pass a localized one. */

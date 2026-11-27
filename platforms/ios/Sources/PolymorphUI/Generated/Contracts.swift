@@ -1919,11 +1919,12 @@ public protocol PMCodeRendering: View {
 
 // MARK: - CodeBlock
 
-/// CodeBlock's props (`design/components/code-block.md`): Block of code, such as an install command
-/// or config sample.
+/// CodeBlock's props (`design/components/code-block.md`): Verbatim code.
 public struct PMCodeBlockProps {
   /// The code, rendered verbatim including whitespace.
   public var children: String
+  /// What a screen reader hears after a copy, default `'Copied'`; apps pass a localized one.
+  public var copiedLabel: String?
   /// Draws the copy control, the block's only control.
   public var copyable: Bool?
   /// The copy control's accessible name, default `'Copy'`; apps pass a localized one.
@@ -1934,11 +1935,13 @@ public struct PMCodeBlockProps {
 
   public init(
     children: String,
+    copiedLabel: String? = nil,
     copyable: Bool? = nil,
     copyLabel: String? = nil,
     label: String? = nil
   ) {
     self.children = children
+    self.copiedLabel = copiedLabel
     self.copyable = copyable
     self.copyLabel = copyLabel
     self.label = label

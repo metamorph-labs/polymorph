@@ -202,7 +202,7 @@ export { SettingsPage } from './archetypes/SettingsPage'
 export type { SettingsPageProps } from './archetypes/SettingsPage'
 
 export { Command } from './overlays/Command'
-export type { CommandItem, CommandProps } from './overlays/Command'
+export type { CommandItem, CommandProps, CommandSpoken } from './overlays/Command'
 export { ConfirmDialog } from './overlays/ConfirmDialog'
 export type { ConfirmDialogProps, ConfirmTone } from './overlays/ConfirmDialog'
 export { ContextMenu } from './overlays/ContextMenu'

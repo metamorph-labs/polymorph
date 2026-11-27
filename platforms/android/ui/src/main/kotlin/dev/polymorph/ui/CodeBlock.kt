@@ -13,9 +13,10 @@
 // block reserves the control's width at the trailing end, so the longest line
 // scrolls clear of it rather than under it. A press puts the code on the
 // clipboard (`rememberPMCopy`), swaps the glyph to `confirm` with a fade over
-// the control duration, says "Copied" through a polite live region, and swaps
-// back after 2000ms (`PMSpecDefault.copyFeedbackMs`); a second press restarts
-// the time. Syntax highlighting is a non-goal, as on the web.
+// the control duration, says `copiedLabel` ("Copied") through a polite live
+// region, and swaps back after 2000ms (`PMSpecDefault.copyFeedbackMs`); a
+// second press restarts the time. Syntax highlighting is a non-goal, as on
+// the web.
 
 package dev.polymorph.ui
 
@@ -116,7 +117,7 @@ object PMCodeBlock : PMCodeBlockRendering {
                     )
                 }
                 // The web's polite live region: the outcome, once per press.
-                PMAnnouncement(if (copied) strings.copied else null)
+                PMAnnouncement(if (copied) props.copiedLabel ?: strings.copied else null)
             }
         }
     }

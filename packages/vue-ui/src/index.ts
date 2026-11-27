@@ -170,7 +170,7 @@ export type {
   ComboboxProps,
 } from './controls/Combobox.vue'
 export { default as Command } from './overlays/Command.vue'
-export type { CommandItem, CommandProps } from './overlays/Command.vue'
+export type { CommandItem, CommandProps, CommandSpoken } from './overlays/Command.vue'
 import CommentThreadRoot from './structure/CommentThread.vue'
 import CommentThreadComment from './structure/CommentThreadComment.vue'
 export const CommentThread = /* @__PURE__ */ Object.assign(CommentThreadRoot, {

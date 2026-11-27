@@ -12,7 +12,8 @@
 // `space-4` from the corner. The block reserves its width at the trailing end,
 // so the longest line scrolls clear of the control rather than under it. A
 // press puts the code on the pasteboard, swaps the glyph to `confirm` for
-// 2000ms (the fade at the control duration) and announces "Copied" politely.
+// 2000ms (the fade at the control duration) and announces `copiedLabel`
+// politely, the string catalog's "Copied" when the app passes none.
 // Syntax highlighting is a non-goal, as on the web.
 
 import PolymorphTokens
@@ -111,12 +112,16 @@ public struct PMCodeBlock: PMCodeBlockRendering {
       .pmMember("CodeBlock", attributes)
   }
 
+  /// What a press announces: the app's words from `copiedLabel`, or the
+  /// string catalog's.
+  var confirmation: String { props.copiedLabel ?? PMStrings.copied }
+
   private func copy() {
     PMClipboard.copy(props.children)
     copied = true
     presses += 1
     // The web's polite live region: the outcome, once.
-    AccessibilityNotification.Announcement(PMStrings.copied).post()
+    AccessibilityNotification.Announcement(confirmation).post()
   }
 }
 

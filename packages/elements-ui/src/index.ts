@@ -469,6 +469,7 @@ export type {
   ComboboxProps,
   CommandItem,
   CommandProps,
+  CommandSpoken,
   CommentThreadCommentProps,
   CommentThreadMessages,
   CommentThreadProps,

@@ -270,7 +270,7 @@ export const SPEC_DEFAULTS: readonly SpecDefaultEntry[] = [
   {
     name: 'copied',
     spec: 'design/components/code-block.md',
-    doc: "What CodeBlock's copy control announces once the code is on the clipboard.",
+    doc: "CodeBlock's `copiedLabel`: what its copy control announces once the code is on the clipboard.",
     english: 'Copied',
     comment: 'Announced after text was copied to the clipboard.',
   },

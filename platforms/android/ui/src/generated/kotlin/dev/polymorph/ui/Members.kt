@@ -607,11 +607,12 @@ fun PMCode(
 @Composable
 fun PMCodeBlock(
     children: String,
+    copiedLabel: String? = null,
     copyable: Boolean? = null,
     copyLabel: String? = null,
     label: String? = null,
 ) {
-    PMCodeBlock.Render(PMCodeBlockProps(children = children, copyable = copyable, copyLabel = copyLabel, label = label))
+    PMCodeBlock.Render(PMCodeBlockProps(children = children, copiedLabel = copiedLabel, copyable = copyable, copyLabel = copyLabel, label = label))
 }
 
 /**

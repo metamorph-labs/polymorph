@@ -157,7 +157,7 @@ enum PMStrings {
     String(localized: "Copy", comment: "The accessible name of a button that copies text.")
   }
 
-  /// What CodeBlock's copy control announces once the code is on the clipboard
+  /// CodeBlock's `copiedLabel`: what its copy control announces once the code is on the clipboard
   /// (`design/components/code-block.md`).
   static var copied: String {
     String(localized: "Copied", comment: "Announced after text was copied to the clipboard.")

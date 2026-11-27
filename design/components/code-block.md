@@ -20,6 +20,8 @@ interface CodeBlockProps {
   copyable?: boolean
   /** The copy control's accessible name. Default 'Copy'. */
   copyLabel?: string
+  /** What a screen reader hears after a copy. Default 'Copied'. */
+  copiedLabel?: string
 }
 ```
 
@@ -60,7 +62,6 @@ is keyboard-reachable (`tabindex=0` when overflowing, with a label), because a
 keyboard reader cannot see the overflow of a pannable region that a keyboard cannot
 reach. The copy control is a real Button outside the scroll region, so it is
 reachable whether or not the block pans. The confirmation is announced politely
-("Copied") from a visually hidden live region. It is fixed English, for the same
-reason `label` has a default: an outcome must be announced even when the app
-supplies no text. CopyButton provides the localization point for a copy confirmation
-(`copiedLabel`, `copy-button.md`); this control does not expose one.
+from a visually hidden live region, in `copiedLabel`'s words, as CopyButton's is
+(`copy-button.md`). Its default, "Copied", exists for the same reason `label` has
+one: an outcome must be announced even when the app supplies no text.

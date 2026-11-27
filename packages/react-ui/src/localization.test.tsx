@@ -1,6 +1,7 @@
 import { CalendarDate } from '@internationalized/date'
 import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { userEvent } from 'vitest/browser'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { installTestTheme } from '@polymorph/engine/testing'
 import { AppShell } from './archetypes/AppShell'
@@ -15,6 +16,7 @@ import { Drawer } from './overlays/Drawer'
 import { Alert } from './structure/Alert'
 import { Breadcrumbs } from './structure/Breadcrumbs'
 import { Carousel } from './structure/Carousel'
+import { CodeBlock } from './structure/CodeBlock'
 import { DataTable } from './structure/DataTable'
 import { FilterBar } from './structure/FilterBar'
 import { Stat } from './structure/Stat'
@@ -209,8 +211,10 @@ describe('a host’s language reaches every name the vocabulary would otherwise 
     expect(screen.queryByRole('link', { name: 'Skip to content' })).toBeNull()
   })
 
-  it('Command — the dialog’s name and the key cap', () => {
-    render(
+  it('Command — the dialog’s name, the key cap and the status region’s words', async () => {
+    const spoken = ({ loading, count }: { loading: boolean; count: number }) =>
+      loading ? 'Chargement…' : `${count} commande${count === 1 ? '' : 's'}`
+    const { rerender } = render(
       <Command
         open
         onOpenChange={noop}
@@ -218,10 +222,45 @@ describe('a host’s language reaches every name the vocabulary would otherwise 
         label="Palette de commandes"
         escapeHint="échap"
         placeholder="Saisir une commande…"
+        spoken={spoken}
       />,
     )
     expect(screen.getByRole('dialog', { name: 'Palette de commandes' })).toBeTruthy()
     expect(screen.getByText('échap')).toBeTruthy()
+    await vi.waitFor(() => expect(screen.getByRole('status').textContent).toBe('1 commande'))
+    rerender(
+      <Command
+        open
+        onOpenChange={noop}
+        items={[]}
+        loading
+        label="Palette de commandes"
+        placeholder="Saisir une commande…"
+        spoken={spoken}
+      />,
+    )
+    expect(screen.getByRole('status').textContent).toBe('Chargement…')
+  })
+
+  it('CodeBlock — the copy control’s name and its confirmation', async () => {
+    const original = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: () => Promise.resolve() },
+    })
+    try {
+      const { container } = render(
+        <CodeBlock copyable copyLabel="Copier" copiedLabel="Copié">
+          pnpm install
+        </CodeBlock>,
+      )
+      await userEvent.click(screen.getByRole('button', { name: 'Copier' }))
+      const region = container.querySelector('[aria-live="polite"]')
+      await vi.waitFor(() => expect(region?.textContent).toBe('Copié'))
+    } finally {
+      if (original === undefined) Reflect.deleteProperty(navigator, 'clipboard')
+      else Object.defineProperty(navigator, 'clipboard', original)
+    }
   })
 
   it('Stat and Carousel — a derived name, a spoken delta, a loading name and a spoken role', () => {

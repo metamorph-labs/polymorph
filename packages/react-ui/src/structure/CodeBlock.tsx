@@ -7,7 +7,8 @@ import { memberAttr } from '@polymorph/react'
 import styles from '@polymorph/recipes/structure/code-block.module.css'
 
 /**
- * Block of code, such as an install command or config sample (`design/components/code-block.md`).
+ * Verbatim code (`design/components/code-block.md`). An install command or a
+ * config sample is shown as written.
  *
  * The block is its own scroll container (container-first, `docs/layout.md`), so
  * wide code never makes the page scroll sideways.
@@ -46,6 +47,8 @@ export interface CodeBlockProps {
   copyable?: boolean
   /** The copy control's accessible name, default `'Copy'`; apps pass a localized one. */
   copyLabel?: string
+  /** What a screen reader hears after a copy, default `'Copied'`; apps pass a localized one. */
+  copiedLabel?: string
 }
 
 export function CodeBlock({
@@ -53,6 +56,7 @@ export function CodeBlock({
   label = SCROLL_REGION_LABEL,
   copyable = false,
   copyLabel = 'Copy',
+  copiedLabel = 'Copied',
 }: CodeBlockProps) {
   const block = useRef<HTMLPreElement>(null)
   const [overflowing, setOverflowing] = useState(false)
@@ -133,9 +137,9 @@ export function CodeBlock({
       </div>
 
       {/* Announces the result politely, because a copy never justifies an
-          interruption. Fixed English here; CopyButton takes `copiedLabel`. */}
+          interruption. */}
       <span className={styles.reader} aria-live="polite">
-        {copied ? 'Copied' : ''}
+        {copied ? copiedLabel : ''}
       </span>
     </div>
   )
