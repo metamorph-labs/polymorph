@@ -50,8 +50,9 @@ runtime holds and stores. A default the member held would be a second answer to 
 this page wear", and the two would disagree after the first `setMode` from anywhere else. On a
 first visit nothing is stored, and the preference is the worn system's `defaultMode`, which
 hydration applies: Dark is checked on a page whose system opens dark, and System on one whose
-system follows the device. On a page that never calls `hydrateTheme`, such as a page with no
-build, it is `system`.
+system follows the device. A page with no build hydrates the mode alone (`hydrateMode`, which
+`polymorph.js` calls with the house systems' modes), so the same holds there. On a page that
+calls neither `hydrateTheme` nor `hydrateMode`, it is `system`.
 
 There are no per-option props. The three choices are the runtime's three preferences, and a
 choice the runtime cannot apply has no segment.

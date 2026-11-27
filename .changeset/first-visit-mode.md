@@ -29,8 +29,7 @@ where it followed the device before. To keep following the device, write
   Next.js root layout imports in place of `PREPAINT_SCRIPT`. The theme module's catalogue carries
   `modes`. Run `polymorph update` to take both.
 - `prepaint.js` for a page with no build, and the page `polymorph init --framework elements`
-  writes, carry the house systems' default modes. Nothing on such a page calls `hydrateTheme`, so
-  a `<poly-mode-switch>` there shows System until the reader chooses.
+  writes, carry the house systems' default modes.
 - On iOS and Android, `theme.preferredColorScheme` and `theme.preferredDark` read the same field,
   so they are `nil` and null for every house pairing but `terminal_petrol`. An app that passes the
   preferred mode for one of them follows the device where it was held light.

@@ -43,6 +43,10 @@
  *  - an attribute an element cannot read is reported in the console, by
  *    either script, and the element renders without that prop: the files
  *    name no `process`, which a browser does not have;
+ *  - on a light device with nothing stored, a page wearing `terminal`, whose
+ *    system opens dark, shows Dark in its ModeSwitch with either script, and a
+ *    page wearing `plain` shows System and follows the device when it turns
+ *    dark; a press stores the choice, and the next load shows it;
  *  - no page logs an error.
  *
  * `node scripts/gate-no-build.mjs [engine…] [stage…] [--no-build]`: an
@@ -85,6 +89,7 @@ const STAGE_NAMES = [
   'reports',
   'all',
   'screen',
+  'mode',
 ]
 
 const args = process.argv.slice(2)
@@ -1177,6 +1182,132 @@ async function screen(run, context) {
   await page.close()
 }
 
+/**
+ * The mode a page wears and its ModeSwitch shows, on a light device. Each
+ * script tells the theme runtime the house systems' default modes, the map
+ * `prepaint.js` carries. With nothing stored, a page wearing `terminal`, whose
+ * system opens dark, is dark and its ModeSwitch shows Dark, and a page wearing
+ * `plain`, whose system follows the device, shows System and follows the
+ * device when it changes. A press stores the choice, and the next load shows
+ * it. The pages are `index.html` and `all.html`, served wearing the system
+ * named, each in a context of its own, so nothing another stage stored is read.
+ */
+async function mode(run, context) {
+  const PALETTES = { plain: 'neutral', terminal: 'petrol' }
+  const contexts = []
+
+  /** Adds a ModeSwitch to the page and waits for it to render. */
+  async function addSwitch(page) {
+    await page.evaluate(() => {
+      const modeSwitch = document.createElement('poly-mode-switch')
+      modeSwitch.setAttribute('label', 'Appearance')
+      document.body.append(modeSwitch)
+    })
+    await settled(page)
+  }
+
+  /** The page at `path`, served wearing `system` with its own palette, on a light device with nothing stored. */
+  async function open(path, system) {
+    const own = await context.browser().newContext({ colorScheme: 'light' })
+    contexts.push(own)
+    const page = await run.page(own)
+    await page.route(`${origin}${path}`, async (route) => {
+      const response = await route.fetch()
+      const body = (await response.text())
+        .replace(
+          'data-system="plain" data-palette="neutral"',
+          `data-system="${system}" data-palette="${PALETTES[system]}"`,
+        )
+        .replace('/polymorph/themes/plain.css', `/polymorph/themes/${system}.css`)
+      await route.fulfill({ response, body })
+    })
+    await page.goto(`${origin}${path}`, { waitUntil: 'load' })
+    await settled(page)
+    await addSwitch(page)
+    return page
+  }
+
+  const worn = (page) => page.evaluate(() => document.documentElement.dataset.mode)
+  const shown = async (page) =>
+    (
+      await page
+        .getByRole('radiogroup', { name: 'Appearance' })
+        .getByRole('radio', { checked: true })
+        .textContent()
+    )?.trim()
+  const becomes = (page, value) =>
+    page
+      .waitForFunction((value) => document.documentElement.dataset.mode === value, value, {
+        timeout: 5_000,
+      })
+      .then(
+        () => true,
+        () => false,
+      )
+
+  try {
+    for (const [script, path] of [
+      ['polymorph.js', '/'],
+      ['polymorph-all.js', '/all.html'],
+    ]) {
+      const page = await open(path, 'terminal')
+      run.check(`${script}: a page wearing terminal opens dark`, (await worn(page)) === 'dark')
+      const terminal = await shown(page)
+      run.check(
+        `${script}: its ModeSwitch shows Dark, the system's default, with nothing stored`,
+        terminal === 'Dark',
+        `shows ${terminal}`,
+      )
+      await page.close()
+    }
+
+    {
+      const page = await open('/', 'plain')
+      const plain = await shown(page)
+      run.check(
+        "mode: a page wearing plain shows System, the system's default, with nothing stored",
+        plain === 'System' && (await worn(page)) === 'light',
+        `shows ${plain}, wears ${await worn(page)}`,
+      )
+      await page.emulateMedia({ colorScheme: 'dark' })
+      run.check(
+        'mode: a page wearing plain follows the device when it turns dark',
+        await becomes(page, 'dark'),
+      )
+      run.check('mode: the ModeSwitch still shows System', (await shown(page)) === 'System')
+      await page.close()
+    }
+
+    {
+      const page = await open('/', 'terminal')
+      await page
+        .getByRole('radiogroup', { name: 'Appearance' })
+        .getByRole('radio', { name: 'System' })
+        .click()
+      run.check(
+        'mode: a press of System applies the light device’s mode',
+        await becomes(page, 'light'),
+      )
+      run.check(
+        'mode: a press stores the choice',
+        (await page.evaluate(() => localStorage.getItem('pm-mode'))) === 'system',
+      )
+      await page.reload({ waitUntil: 'load' })
+      await settled(page)
+      await addSwitch(page)
+      const stored = await shown(page)
+      run.check(
+        'mode: the next load shows the stored choice',
+        stored === 'System' && (await worn(page)) === 'light',
+        `shows ${stored}, wears ${await worn(page)}`,
+      )
+      await page.close()
+    }
+  } finally {
+    for (const own of contexts) await own.close()
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /* The run                                                                    */
 /* -------------------------------------------------------------------------- */
@@ -1198,6 +1329,7 @@ for (const engine of selected) {
       reports,
       all,
       screen,
+      mode,
     ]
     for (const stage of stages.filter(
       ({ name }) => stagesNamed.length === 0 || stagesNamed.includes(name),

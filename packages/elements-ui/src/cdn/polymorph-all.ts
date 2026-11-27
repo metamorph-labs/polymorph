@@ -14,6 +14,10 @@
  * The bridge and the tools' definitions are in this file, so with `on-call`
  * and with `eager` alike the tools register at load and nothing is fetched
  * later.
+ *
+ * It hands the theme runtime the house systems' default modes as it runs
+ * (`house-modes.ts`), as `polymorph.js` does. An element renders its member in
+ * a microtask, so the runtime holds them before any member reads the mode.
  */
 // First in `polymorph.css`: the base layer, the host rule and the rules for an element that has
 // not rendered, before any member's recipe.
@@ -22,10 +26,13 @@ import '@polymorph/elements/host.css'
 import '@polymorph/elements/pending.css'
 import '../index'
 
+import { hydrateMode } from '@polymorph/engine/runtime'
 import { AGENT_ATTRIBUTE, applyAgentSetting } from '@polymorph/engine/webmcp'
 
 import { definePolyScreen } from '../screen/element'
+import { HOUSE_MODES } from './house-modes'
 
+hydrateMode(HOUSE_MODES)
 definePolyScreen()
 
 export { restore, toast } from '@polymorph/elements'
