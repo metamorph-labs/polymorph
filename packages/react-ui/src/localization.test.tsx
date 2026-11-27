@@ -74,15 +74,21 @@ describe('a host’s language reaches every name the vocabulary would otherwise 
     expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()
   })
 
-  it('TagInput — a chip’s remove control, with the tag as data', () => {
+  it('TagInput — a chip’s remove control, with the tag as data, and the count', () => {
     render(
       <TagInput
         aria-label="Étiquettes"
         defaultValue={['urgent']}
+        max={1}
         removeLabel={(tag) => `Retirer ${tag}`}
+        countLabel={({ count, max, atMax }) =>
+          atMax ? `${max} étiquette au maximum` : `${count} étiquettes`
+        }
       />,
     )
     expect(screen.getByRole('button', { name: 'Retirer urgent' })).toBeTruthy()
+    expect(screen.getByRole('textbox', { description: '1 étiquette au maximum' })).toBeTruthy()
+    expect(screen.queryByText(/added/)).toBeNull()
   })
 
   it('Stepper — the spoken position and state, as one sentence', () => {
@@ -280,6 +286,7 @@ describe('and a host that passes nothing still hears the generic English', () =>
         <Input aria-label="Name" defaultValue="x" clearable />
         <FilterBar isFiltered onClear={noop} resultCount={{ shown: 3, total: 9 }} />
         <Stat label="Resolved" value="342" delta={{ value: '12%', direction: 'up' }} />
+        <TagInput aria-label="Labels" defaultValue={['urgent', 'billing']} />
       </>,
     )
     expect(screen.getByRole('button', { name: 'Dismiss' })).toBeTruthy()
@@ -287,5 +294,6 @@ describe('and a host that passes nothing still hears the generic English', () =>
     expect(screen.getByRole('button', { name: 'Clear filters' })).toBeTruthy()
     expect(screen.getByText('3 of 9 results')).toBeTruthy()
     expect(screen.getByText('up 12% — positive')).toBeTruthy()
+    expect(screen.getByRole('textbox', { name: 'Labels', description: '2 added' })).toBeTruthy()
   })
 })

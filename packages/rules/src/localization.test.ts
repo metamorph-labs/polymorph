@@ -194,8 +194,6 @@ function bakedProse(code: string, where: string): string[] {
  * entry it no longer finds, so a member given its seam leaves the list.
  */
 const UNSEAMED: readonly string[] = [
-  'packages/react-ui/src/controls/TagInput.tsx — text {"Maximum of   added"}',
-  'packages/react-ui/src/controls/TagInput.tsx — text {"  added"}',
   'packages/react-ui/src/overlays/Command.tsx — text {"Loading commands…"}',
   'packages/react-ui/src/overlays/Command.tsx — text {"  commands"}',
   'packages/react-ui/src/structure/CodeBlock.tsx — text {"Copied"}',

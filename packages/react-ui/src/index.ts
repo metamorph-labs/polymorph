@@ -149,7 +149,7 @@ export type {
 export { Switch } from './controls/Switch'
 export type { SwitchProps } from './controls/Switch'
 export { TagInput } from './controls/TagInput'
-export type { TagInputProps } from './controls/TagInput'
+export type { TagInputCountLabel, TagInputProps } from './controls/TagInput'
 export { Textarea } from './controls/Textarea'
 export type { TextareaProps, TextareaResize } from './controls/Textarea'
 export { CONTROL_SIZES } from '@polymorph/react'

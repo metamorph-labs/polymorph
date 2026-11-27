@@ -477,7 +477,7 @@ export const Tabs = /* @__PURE__ */ Object.assign(TabsRoot, { Content: TabsConte
 export type { TabsContentProps } from './overlays/TabsContent'
 export type { TabDescriptor, TabsOrientation, TabsProps } from './overlays/Tabs'
 export { default as TagInput } from './controls/TagInput'
-export type { TagInputProps } from './controls/TagInput'
+export type { TagInputCountLabel, TagInputProps } from './controls/TagInput'
 export { default as Text } from './structure/Text'
 export type { TextProps, TextSize, TextTone } from './structure/Text'
 export { default as Textarea } from './controls/Textarea'

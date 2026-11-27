@@ -2497,6 +2497,7 @@ fun PMTagInput(
     ariaLabel: String? = null,
     ariaLabelledby: String? = null,
     ariaRequired: Boolean? = null,
+    countLabel: ((PMTagInputCountFacts) -> String)? = null,
     defaultValue: List<String>? = null,
     disabled: Boolean? = null,
     id: String? = null,
@@ -2511,7 +2512,7 @@ fun PMTagInput(
     validate: ((String) -> String?)? = null,
     value: List<String>? = null,
 ) {
-    PMTagInput.Render(PMTagInputProps(ariaDescribedby = ariaDescribedby, ariaLabel = ariaLabel, ariaLabelledby = ariaLabelledby, ariaRequired = ariaRequired, defaultValue = defaultValue, disabled = disabled, id = id, invalid = invalid, max = max, name = name, onBlur = onBlur, onChange = onChange, placeholder = placeholder, removeLabel = removeLabel, size = size, validate = validate, value = value))
+    PMTagInput.Render(PMTagInputProps(ariaDescribedby = ariaDescribedby, ariaLabel = ariaLabel, ariaLabelledby = ariaLabelledby, ariaRequired = ariaRequired, countLabel = countLabel, defaultValue = defaultValue, disabled = disabled, id = id, invalid = invalid, max = max, name = name, onBlur = onBlur, onChange = onChange, placeholder = placeholder, removeLabel = removeLabel, size = size, validate = validate, value = value))
 }
 
 /**

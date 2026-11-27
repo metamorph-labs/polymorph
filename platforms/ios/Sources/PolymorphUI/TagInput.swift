@@ -21,8 +21,8 @@
 // without their remove buttons.
 //
 // The entry is named by `ariaLabel` or its FormField's label and described by
-// the count, "{n} added" or "Maximum of {max} added", then by the field's
-// message, "Invalid" first while invalid. Each remove button is named by
+// the count, "{n} added" or "Maximum of {max} added", or the app's words from
+// `countLabel`, then by the field's message, "Invalid" first while invalid. Each remove button is named by
 // `removeLabel` ("Remove {tag}" by default), and a removal is announced,
 // "{tag} removed, {n} remain". `name`, `id` and the `aria-*by` ids have no
 // SwiftUI counterpart.
@@ -93,7 +93,7 @@ public struct PMTagInput: PMTagInputRendering {
     let colors = theme.colors
     let prompt: Text? =
       tags.isEmpty ? props.placeholder.map { Text($0).foregroundStyle(colors.textMuted.color) } : nil
-    let hint = [PMStrings.tagInputCount(tags.count, max: props.max), field?.hint].compactMap { $0 }
+    let hint = [count(tags), field?.hint].compactMap { $0 }
     return TextField(name ?? "", text: $text, prompt: prompt)
       .textFieldStyle(.plain)
       .pmTextStyle(metrics.text)
@@ -116,6 +116,12 @@ public struct PMTagInput: PMTagInputRendering {
         return .handled
       }
       .pmFieldHint(invalid: invalid, hint.joined(separator: ", "))
+  }
+
+  /// The count sentence: the app's, from `countLabel`, or the string catalog's.
+  private func count(_ tags: [String]) -> String {
+    let facts = PMTagInputCountFacts(count: Double(tags.count), max: props.max, atMax: atMax)
+    return props.countLabel?(facts) ?? PMStrings.tagInputCount(tags.count, max: props.max)
   }
 
   /// The tags: the controlled `value` when given, otherwise the field's own.

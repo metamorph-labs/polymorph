@@ -708,6 +708,7 @@ export const DEFINITIONS: Readonly<Record<string, ElementDefinition>> = {
       'aria-label': 'string',
       'aria-labelledby': 'string',
       'aria-required': 'boolean',
+      countLabel: 'property',
       defaultValue: 'json',
       disabled: 'boolean',
       id: 'string',

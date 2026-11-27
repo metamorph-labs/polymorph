@@ -1210,7 +1210,7 @@ export const SPEC_DEFAULTS: readonly SpecDefaultEntry[] = [
   {
     name: 'tagInputAdded',
     spec: 'design/components/tag-input.md',
-    doc: "TagInput's count, part of the field's description.",
+    doc: "TagInput's `countLabel`: the count, part of the field's description.",
     english: '{count} added',
     parameters: [{ name: 'count', type: 'number' }],
     comment: 'How many tags a field holds.',
@@ -1218,7 +1218,7 @@ export const SPEC_DEFAULTS: readonly SpecDefaultEntry[] = [
   {
     name: 'tagInputMaximum',
     spec: 'design/components/tag-input.md',
-    doc: "TagInput's count once the field holds `max` tags.",
+    doc: "TagInput's `countLabel`: the count once the field holds `max` tags.",
     english: 'Maximum of {max} added',
     parameters: [{ name: 'max', type: 'number' }],
     comment: 'A tag field holds as many tags as it can.',

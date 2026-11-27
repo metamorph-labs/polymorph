@@ -410,9 +410,15 @@ data class PMStrings(
     val numberInputDecrement: String = "Decrease",
     /** TagInput's `removeLabel`: a chip's remove button (`design/components/tag-input.md`). */
     val tagInputRemove: (tag: String) -> String = { tag -> "Remove ${tag}" },
-    /** TagInput's count, part of the field's description (`design/components/tag-input.md`). */
+    /**
+     * TagInput's `countLabel`: the count, part of the field's description
+     * (`design/components/tag-input.md`).
+     */
     val tagInputAdded: (count: Double) -> String = { count -> "${count.toInt()} added" },
-    /** TagInput's count once the field holds `max` tags (`design/components/tag-input.md`). */
+    /**
+     * TagInput's `countLabel`: the count once the field holds `max` tags
+     * (`design/components/tag-input.md`).
+     */
     val tagInputMaximum: (max: Double) -> String = { max -> "Maximum of ${max.toInt()} added" },
     /** What TagInput announces when a tag is removed (`design/components/tag-input.md`). */
     val tagInputRemoved: (tag: String, count: Double) -> String =

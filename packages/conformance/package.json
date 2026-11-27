@@ -59,6 +59,7 @@
     "./engines": "./src/engines.ts",
     "./server-passed": "./src/server-passed.ts",
     "./stat": "./src/stat.ts",
+    "./tag-input-count": "./src/tag-input-count.ts",
     "./server-render": "./server-render.ts",
     "./dist-lock": "./dist-lock.ts"
   },

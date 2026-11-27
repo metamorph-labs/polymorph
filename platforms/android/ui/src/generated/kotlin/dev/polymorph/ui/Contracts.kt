@@ -5646,16 +5646,18 @@ interface PMTabsRendering {
 
 // TagInput
 
-/**
- * TagInput's props (`design/components/tag-input.md`): Free-text entry of several values, shown as
- * chips.
- */
+/** TagInput's props (`design/components/tag-input.md`): Free-text tags. */
 data class PMTagInputProps(
     val ariaDescribedby: String? = null,
     /** Wired by FormField; set directly only when there is no visible label. */
     val ariaLabel: String? = null,
     val ariaLabelledby: String? = null,
     val ariaRequired: Boolean? = null,
+    /**
+     * The count sentence in the host's words, part of the field's description, the localization
+     * seam; the default is `{count} added`, or `Maximum of {max} added` at the maximum.
+     */
+    val countLabel: ((PMTagInputCountFacts) -> String)? = null,
     val defaultValue: List<String>? = null,
     val disabled: Boolean? = null,
     val id: String? = null,
@@ -7270,6 +7272,19 @@ data class PMTableOfContentsItem(
     val label: String,
     /** 2 for a subsection of the item before it, drawn one step in. Default 1. */
     val level: PMTableOfContentsItemLevel? = null,
+)
+
+/**
+ * An object type the web writes inline, field for field (`SHAPES` in
+ * `packages/native/src/mapping.ts`). The web’s `TagInputCountLabel` takes the count as an inline
+ * object; a native closure takes it as a named value.
+ */
+data class PMTagInputCountFacts(
+    /** How many tags the field holds. */
+    val count: Double,
+    val max: Double? = null,
+    /** The field holds `max` tags, resolved by the member. */
+    val atMax: Boolean,
 )
 
 /**

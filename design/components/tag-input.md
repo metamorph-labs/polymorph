@@ -23,12 +23,13 @@ It has no substrate: an Input-style container that holds a list of chips and a r
 | `placeholder` | `string` | — | shown only while empty (the chips are the value, so a placeholder behind them is clutter) |
 | `validate` | `(raw: string) => string \| null` | trim + non-empty | return the normalized tag, or `null` to reject it. A rejection sets `data-invalid` on the container for one control duration, as feedback without a message; persistent errors belong to FormField |
 | `allowDuplicates` | `false` | fixed | a duplicate flashes the existing chip (see Motion) instead of being added |
-| `max` | `number` | — | at max: the input **stays and becomes read-only**, and the container accepts no more tags *(Unmounting the input at max is rejected: it would remove FormField's `<label for>` target, leaving a visible label pointing at nothing, and with it the description, the required flag and `aria-invalid`. Disabling it is rejected too: a disabled input leaves the tab order and the focusable tree, so the label's target could not be reached, and a keyboard user would reach the chips' remove buttons with nothing before them to say what they belong to. `readOnly` is the HTML state for a field that takes no text: focusable, labelled, announced as read-only. Enter adds nothing and typing does nothing. Backspace still removes the last chip, so a full field can make room without a mouse, and the chips stay removable. The description says `Maximum of {max} added`, derived from the prop.)* |
+| `max` | `number` | — | at max: the input **stays and becomes read-only**, and the container accepts no more tags *(Unmounting the input at max is rejected: it would remove FormField's `<label for>` target, leaving a visible label pointing at nothing, and with it the description, the required flag and `aria-invalid`. Disabling it is rejected too: a disabled input leaves the tab order and the focusable tree, so the label's target could not be reached, and a keyboard user would reach the chips' remove buttons with nothing before them to say what they belong to. `readOnly` is the HTML state for a field that takes no text: focusable, labelled, announced as read-only. Enter adds nothing and typing does nothing. Backspace still removes the last chip, so a full field can make room without a mouse, and the chips stay removable. The description says `Maximum of {max} added`, or `countLabel`'s sentence, derived from the prop.)* |
 | `size` | `'sm' \| 'md' \| 'lg'` | `'md'` | container min-height = control height; chips one size |
 | `onBlur` | `(event) => void` | — | container-level: fires when focus leaves the whole field. Chips and input are one control, so moving focus from a chip to the input is not a blur *(for touched validation)* |
 | `disabled` / `invalid` | `boolean` | `false` | |
 | `name`, `id` | native passthrough | — | serializes as comma-joined hidden input for forms |
 | `removeLabel` | `(tag: string) => string` | `` (tag) => `Remove ${tag}` `` | the accessible name of a chip's remove control *(the localization seam)*. A function, because the tag is data and the surrounding sentence comes from the message catalog |
+| `countLabel` | `(tags: { count: number; max?: number; atMax: boolean }) => string` | `` ({ count, max, atMax }) => atMax ? `Maximum of ${max} added` : `${count} added` `` | the count sentence in the field's description (FormField integration, below) *(the localization seam)*. A function of the number of tags, `max`, and `atMax`, which the member resolves, because the plural and the order of the words come from the message catalog |
 
 Commit keys: Enter and comma; paste splits on commas/newlines and validates each;
 Backspace in an empty input removes the last chip; a chip's remove button and its
@@ -67,7 +68,9 @@ chips have no remove button, reserve nothing, and stand `--pm-space-1` apart.
 Like Input: FormField's label targets the inner input, `aria-describedby` and
 `aria-invalid` are wired through, and `invalid` comes from context as for Input. The chip
 count is part of the field's accessible description: "{n} added", and "Maximum of {max}
-added" once the limit is reached. Both use one element, because it is the same message.
+added" once the limit is reached. `countLabel` replaces the whole sentence in both cases, given
+the count, `max` and whether the field holds it, so a host in another language says them in its
+own words and order. Both use one element, because it is the same message.
 A description id that appeared only at max would change the association while a screen
 reader is in the field. The inner input is therefore always rendered and always
 focusable (see `max`). `name` serializes into a hidden input that also carries the
@@ -109,7 +112,8 @@ every `data-state` is styled at its resting value).
 The container is not a button; clicking it focuses the inner input. Chips are a simple
 list without `role="listbox"` (`<ul>` with labelled remove buttons). The WAI grid-chip
 pattern is heavier than remove-only chips need; it is for chips that can be edited.
-Removals announce through `aria-live="polite"` ("{tag} removed, {n} remain"). The
+The count is read as part of the field's description ("{n} added"), in the host's words from
+`countLabel`. Removals announce through `aria-live="polite"` ("{tag} removed, {n} remain"). The
 consuming app explains the comma/Enter commit in the field description; there is no
 hard-coded copy here.
 

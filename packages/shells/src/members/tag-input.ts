@@ -50,6 +50,10 @@ export default describeMember({
   member: 'TagInput',
   dir: 'controls',
   recipe: 'controls/tag-input',
+  types: {
+    // A function, not two words, because the plural and the order of the words are the catalog's.
+    TagInputCountLabel: '(tags: { count: number; max?: number; atMax: boolean }) => string',
+  },
   defaults: {
     // Trim, and refuse the empty string.
     validate: "(raw: string) => (raw.trim() === '' ? null : raw.trim())",
@@ -57,6 +61,8 @@ export default describeMember({
     disabled: 'false',
     invalid: 'false',
     removeLabel: '(tag: string) => `Remove ${tag}`',
+    countLabel:
+      '({ count, max, atMax }: Parameters<TagInputCountLabel>[0]) => (atMax ? `Maximum of ${max} added` : `${count} added`)',
   },
   statics: { controlKind: lit('field') },
   state: {
@@ -284,10 +290,10 @@ export default describeMember({
           paste: run('receivePaste($event)'),
         },
       }),
-      // The count, and at the maximum the reason: one element, so the field's
-      // associations never change while a reader is in it.
+      // The count, and at the maximum the reason, in the host's words from `countLabel`: one
+      // element, so the field's associations never change while a reader is in it.
       el('span', { part: 'count', class: ['reader'], attrs: { id: 'countId' } }, [
-        text('atMax ? `Maximum of ${max} added` : `${values.length} added`'),
+        text('countLabel({ count: values.length, max, atMax })'),
       ]),
       // A removal is announced, because the chip and the focus on it are gone.
       el('span', { part: 'announcer', class: ['reader'], attrs: { 'aria-live': lit('polite') } }, [

@@ -698,12 +698,14 @@ enum PMStrings {
     String(localized: "Remove \(tag)", comment: "The button that removes one tag from a field.")
   }
 
-  /// TagInput's count, part of the field's description (`design/components/tag-input.md`).
+  /// TagInput's `countLabel`: the count, part of the field's description
+  /// (`design/components/tag-input.md`).
   static func tagInputAdded(count: Double) -> String {
     String(localized: "\(Int(count)) added", comment: "How many tags a field holds.")
   }
 
-  /// TagInput's count once the field holds `max` tags (`design/components/tag-input.md`).
+  /// TagInput's `countLabel`: the count once the field holds `max` tags
+  /// (`design/components/tag-input.md`).
   static func tagInputMaximum(max: Double) -> String {
     String(
       localized: "Maximum of \(Int(max)) added",
