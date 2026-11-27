@@ -223,7 +223,20 @@ export default function Combobox(given: ComboboxProps): JSX.Element {
         ...zag.machine,
         implementations: {
           ...zag.machine.implementations,
-          actions: { ...zag.machine.implementations?.actions, announceHighlightedItem: () => {} },
+          actions: {
+            ...zag.machine.implementations?.actions,
+            announceHighlightedItem: (params) =>
+              zag.machine.implementations?.actions?.announceHighlightedItem?.({
+                ...params,
+                context: {
+                  ...params.context,
+                  get: ((name: string) =>
+                    name === 'value'
+                      ? []
+                      : params.context.get(name as never)) as typeof params.context.get,
+                },
+              }),
+          },
         },
       } as typeof zag.machine,
       () =>

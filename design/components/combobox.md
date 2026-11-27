@@ -143,11 +143,13 @@ without moving DOM focus. Escape closes the list and, in the same press, reverts
 the selected option's label, which is React Aria's order: with nothing selected the draft
 clears, and a committed selection is never cleared by Escape. Loading and empty states announce
 politely ("Loading options…", then "{n} options", "1 option" for one, or the empty message)
-through one live region, so the option count is not announced twice. On Apple platforms React
-Aria also speaks the highlighted option in an assertive region of its own, in the page's locale.
-Zag's machine does the same with ", selected" in English after a chosen option, so the generated
-members do without that announcement: the input names the highlighted option as its
-`aria-activedescendant`, and each option carries `aria-selected`. The listbox is named by `messages.list`, then by the
+through one live region, so the option count is not announced twice. On Apple platforms, where
+VoiceOver in Safari does not follow a combobox's `aria-activedescendant`, the highlighted option
+is also spoken in an assertive region of its own as the arrows move it. React's is React Aria's
+sentence, in the page's locale. A generated member's is its machine's, run as though nothing
+were chosen, so it says the option's label alone and never Zag's English ", selected". The cost:
+on Apple platforms a generated Combobox does not say which highlighted option is the chosen one,
+which the option carries as `aria-selected`. The listbox is named by `messages.list`, then by the
 field's label where `aria-labelledby` names the field: "Suggestions Assignee". Where `aria-label`
 names the field, or only a `<label for>` does, as FormField's does, the list's name is
 `messages.list` alone, and on React the chevron's name follows it, because React Aria labels the

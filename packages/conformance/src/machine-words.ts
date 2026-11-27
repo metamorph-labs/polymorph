@@ -1,5 +1,5 @@
 import { userEvent } from 'vitest/browser'
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { installTestTheme } from '@polymorph/engine/testing'
 
@@ -19,15 +19,16 @@ import { harness } from './harness'
  *   carries no role description (A11y).
  * - ColorInput's plane and rails are named and valued by `messages`
  *   (`design/components/color-input.md`, A11y).
- * - Combobox and MultiSelect do without the announcement their machine makes
- *   on Apple platforms, which says ", selected" in English after a chosen
- *   option (`design/components/combobox.md`, A11y).
+ * - Combobox's and MultiSelect's machine speaks the highlighted option on
+ *   Apple platforms in a live region of its own, and says the option's label
+ *   alone, never ", selected" in English after a chosen one
+ *   (`design/components/combobox.md`, A11y).
  *
  * The React shell holds the host's words alone: its defaults are React Aria's
- * (`defaultsFromReactAria`), and React Aria's combobox keeps its own
- * announcement on Apple platforms, in the page's locale. The generated shells
- * hold the English defaults too, which are their machine's words as it wrote
- * them, and the announcement's absence.
+ * (`defaultsFromReactAria`), React Aria's combobox speaks the highlighted
+ * option in its own sentence in the page's locale, and React's MultiSelect has
+ * no such region. The generated shells hold the English defaults too, which
+ * are their machine's words as it wrote them, and the announcement's words.
  */
 
 /** The members the law mounts. */
@@ -84,24 +85,14 @@ const PEOPLE = [
 ]
 
 /**
- * Makes the page read as an Apple platform, as Zag's `isApple` reads it, for
- * the duration of a test, and returns the restore. A browser on another
- * platform would otherwise never take the branch the law holds.
+ * Whether the page's platform reads as Apple's as Zag reads it (`isApple` in
+ * `@zag-js/dom-query`): the user agent data's platform, or else the
+ * navigator's, starts with Mac, iPhone or iPad. Zag's combobox speaks the
+ * highlighted option only there, and every engine reads as Apple on a Mac.
  */
-function onApple(): () => void {
-  const restores: (() => void)[] = []
-  const agent = (navigator as Navigator & { userAgentData?: { platform: string } }).userAgentData
-  if (agent !== undefined && !/^Mac/i.test(agent.platform)) {
-    Object.defineProperty(agent, 'platform', { value: 'macOS', configurable: true })
-    restores.push(() => Reflect.deleteProperty(agent, 'platform'))
-  }
-  if (agent === undefined && !/^Mac/i.test(navigator.platform)) {
-    Object.defineProperty(navigator, 'platform', { value: 'MacIntel', configurable: true })
-    restores.push(() => Reflect.deleteProperty(navigator, 'platform'))
-  }
-  return () => {
-    for (const restore of restores) restore()
-  }
+function readsAsApple(): boolean {
+  const agent = (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData
+  return /^(Mac|iPhone|iPad)/i.test(agent?.platform ?? navigator.platform)
 }
 
 /** The member's field: the element of its own that holds its combobox input. */
@@ -116,7 +107,8 @@ function field(member: string): HTMLInputElement {
 
 /**
  * What every live region outside the member's elements says: Zag's announcer
- * is one, added to the body. The member's own regions are in its field.
+ * is one, added to the body when it first speaks. The member's own regions are
+ * in its field.
  */
 function spokenOutside(member: string): string[] {
   const own = [...document.querySelectorAll<HTMLElement>(`[data-member="${member}"]`)]
@@ -136,12 +128,6 @@ export function machineWordsLaw({
 }: MachineWordsLaw): void {
   describe(`${shell} — the words a machine wrote, in the member’s own`, () => {
     beforeAll(installTestTheme)
-
-    let restore: (() => void) | undefined
-    afterEach(() => {
-      restore?.()
-      restore = undefined
-    })
 
     it('names NumberInput’s steppers in the host’s words from messages', async () => {
       await mount('NumberInput', {
@@ -243,8 +229,7 @@ export function machineWordsLaw({
     })
 
     for (const member of ['Combobox', 'MultiSelect'] as const) {
-      it(`says nothing of ${member}’s highlighted option outside the member on an Apple platform`, async () => {
-        restore = onApple()
+      it(`speaks ${member}’s highlighted chosen option by its label alone, never “, selected”`, async () => {
         const value =
           member === 'Combobox' ? { defaultValue: 'grace' } : { defaultValue: ['grace'] }
         await mount(member, {
@@ -254,14 +239,28 @@ export function machineWordsLaw({
           ...value,
         })
         const name = member === 'Combobox' ? 'combobox' : 'multi-select'
-        field(name).focus()
-        // The highlight moves onto the chosen option and off it, as the arrows move it.
-        for (const key of ['{ArrowDown}', '{ArrowUp}', '{ArrowUp}', '{ArrowDown}']) {
-          await userEvent.keyboard(key)
+        const input = field(name)
+        input.focus()
+        // The arrows move the highlight onto the chosen option, Grace Hopper.
+        const highlighted = () =>
+          document.getElementById(input.getAttribute('aria-activedescendant') ?? '')?.textContent
+        for (
+          let step = 0;
+          step < PEOPLE.length && highlighted()?.includes('Grace') !== true;
+          step++
+        ) {
+          await userEvent.keyboard('{ArrowDown}')
         }
+        expect(highlighted()).toContain('Grace Hopper')
         // Zag's announcer writes its words a moment after it adds its region.
         await new Promise((resolve) => setTimeout(resolve, 100))
-        expect(spokenOutside(name)).toEqual([])
+        expect(spokenOutside(name).filter((text) => /selected/i.test(text))).toEqual([])
+        if (readsAsApple()) {
+          await vi.waitFor(() => expect(spokenOutside(name)).toEqual(['Grace Hopper']), {
+            timeout: 1000,
+            interval: 25,
+          })
+        }
       })
     }
   })

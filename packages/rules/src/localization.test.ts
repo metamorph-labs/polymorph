@@ -598,8 +598,14 @@ describe('the reading of the descriptions detects violations', () => {
  * a live region's `announce`. A description then replaces each word it
  * reaches: it sets the attribute on the element that spreads the getter, or
  * passes the translation in the machine's `translations`, built from the
- * member's words; it never copies the attribute from the getter onto another
- * element; and it names a speaking action in its binding's `without`.
+ * member's words; and it never copies the attribute from the getter onto
+ * another element. An action speaks its words where the reading can tell
+ * they follow the chosen value: the branch that writes them is taken when
+ * `context.get("value")` holds the option, as Zag's combobox writes
+ * ", selected". A description removes them by naming the action in its
+ * binding's `unchosen`, or by holding the machine's value empty, as Command's
+ * panel does. Words an action says whatever is chosen cannot be removed, so
+ * the reading fails on them.
  *
  * It cannot see a word the machine writes from a variable, because a variable
  * that holds a host's word and one that holds an English key read alike:
@@ -627,6 +633,8 @@ interface SpokenAction {
   action: string
   /** What it announces, as the action writes it. */
   source: string
+  /** Whether it says its words only when the option is in the machine's `value`. */
+  chosenOnly: boolean
 }
 
 /** What one machine's installed sources write. */
@@ -670,14 +678,31 @@ const KEYED_WORDS: readonly GetterWord[] = [
 ]
 
 /**
- * When an action's words are said, where that is narrower than always, by
- * `machine.action`. Zag's combobox adds ", selected" after an option only
- * when the option is in the machine's value, so a machine whose value is
- * always empty (Command's panel) announces the option's label alone, which is
- * the host's word.
+ * Whether an announcement's words are said only for a chosen option: the
+ * argument is a choice whose branch with words is taken on a flag the action
+ * reads from `context.get("value")`, as Zag's combobox chooses between the
+ * option's label with ", selected" after it and the label alone.
  */
-const SPOKEN_WHEN: Readonly<Record<string, (binding: MachineBinding) => boolean>> = {
-  'combobox.announceHighlightedItem': (binding) => binding.context.value?.trim() !== '[]',
+function chosenOnly(argument: ts.Expression, action: ts.Node): boolean {
+  let choice = argument
+  while (ts.isParenthesizedExpression(choice)) choice = choice.expression
+  if (!ts.isConditionalExpression(choice) || !ts.isIdentifier(choice.condition)) return false
+  const speaks = (branch: ts.Expression) => literals(branch).some((text) => WORD.test(text))
+  if (!speaks(choice.whenTrue) || speaks(choice.whenFalse)) return false
+  const flag = choice.condition.text
+  let reads = false
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isVariableDeclaration(node) &&
+      node.name.getText() === flag &&
+      node.initializer?.getText().includes('context.get("value")') === true
+    ) {
+      reads = true
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(action)
+  return reads
 }
 
 /** Whether a node, or any string or template inside it, holds a word. */
@@ -761,7 +786,12 @@ function machineWords(machine: string, files: Readonly<Record<string, string>>):
               inner.arguments[0] !== undefined &&
               holdsWord(inner.arguments[0])
             ) {
-              actions.push({ machine, action: name, source: inner.arguments[0].getText() })
+              actions.push({
+                machine,
+                action: name,
+                source: inner.arguments[0].getText(),
+                chosenOnly: chosenOnly(inner.arguments[0], action),
+              })
             }
             ts.forEachChild(inner, speak)
           }
@@ -921,14 +951,16 @@ function machineProse(
     const binding = unit.own
     if (binding === undefined) continue
     const machine = words(binding.of)
+    // A machine whose value is always empty chooses nothing, so no action says a chosen word.
+    const choosesNothing = binding.context.value?.trim() === '[]'
     for (const action of machine.actions) {
-      if (binding.without?.includes(action.action)) continue
-      if (SPOKEN_WHEN[`${binding.of}.${action.action}`]?.(binding) === false) continue
+      const unchosen = binding.unchosen?.includes(action.action) === true
+      if (action.chosenOnly && (unchosen || choosesNothing)) continue
       findings.add(`${where} — ${unit.name}${binding.of} ${action.action} speaks`)
     }
-    for (const dropped of binding.without ?? []) {
-      if (!machine.implemented.includes(dropped)) {
-        findings.add(`${where} — ${unit.name}${binding.of} has no action ${dropped} to do without`)
+    for (const named of binding.unchosen ?? []) {
+      if (!machine.implemented.includes(named)) {
+        findings.add(`${where} — ${unit.name}${binding.of} has no action ${named} to run unchosen`)
       }
     }
   }
@@ -968,9 +1000,10 @@ describe('no description lets a machine’s own words reach a person', async () 
         'getIncrementTriggerProps aria-label',
       ],
     )
-    expect(words('combobox').actions.map((action) => action.action)).toEqual([
-      'announceHighlightedItem',
-    ])
+    // Zag's combobox says ", selected" only after a chosen option, so `unchosen` removes it.
+    expect(
+      words('combobox').actions.map((action) => `${action.action} ${String(action.chosenOnly)}`),
+    ).toEqual(['announceHighlightedItem true'])
   })
 
   it('finds each word it lists by hand where the installed getter writes it', () => {
@@ -1030,8 +1063,17 @@ describe('the reading of the machines’ words detects what reaches a person', (
     var machine = createMachine({
       implementations: {
         actions: {
-          announceHighlightedItem({ refs }) {
+          announceHighlightedItem({ context, refs }) {
+            const value = context.get("highlightedValue");
+            const isSelected = value ? context.get("value").includes(value) : false;
             refs.get("liveRegion")?.announce(isSelected ? \`\${optionText}, selected\` : optionText);
+          },
+          announceCount({ refs }) {
+            refs.get("liveRegion")?.announce(\`\${count} results\`);
+          },
+          announceState({ prop, refs }) {
+            const busy = prop("loading");
+            refs.get("liveRegion")?.announce(busy ? "Loading" : label);
           },
           announceValue({ refs }) {
             refs.get("liveRegion")?.announce(formatted);
@@ -1040,8 +1082,11 @@ describe('the reading of the machines’ words detects what reaches a person', (
       },
     });`
   const read = machineWords('probe', { 'probe.connect.mjs': CONNECT, 'probe.machine.mjs': MACHINE })
-  const found = (shell: Described) =>
-    machineProse(shell, 'fixture', () => read).map((line) => line.split(' — ')[1])
+  // The getters alone, so each finding of a test of an element is the element's.
+  const getters = { ...read, actions: [] }
+  const found = (shell: Described, words: MachineWords = getters) =>
+    machineProse(shell, 'fixture', () => words).map((line) => line.split(' — ')[1])
+  const spoken = (shell: Described) => found(shell, read)
   const field = (
     attrs: Readonly<Record<string, string>> = {},
     spread = 'api.getInputProps()',
@@ -1057,33 +1102,49 @@ describe('the reading of the machines’ words detects what reaches a person', (
       'getIncrementTriggerProps aria-label',
     ])
     expect(read.getters[1]?.translation).toBe('incrementLabel')
+    expect(read.implemented).toEqual([
+      'announceHighlightedItem',
+      'announceCount',
+      'announceState',
+      'announceValue',
+    ])
+  })
+
+  it('reads an action that announces words, and whether it says them only for a chosen option', () => {
     expect(read.actions).toEqual([
       {
         machine: 'probe',
         action: 'announceHighlightedItem',
         source: 'isSelected ? `${optionText}, selected` : optionText',
+        chosenOnly: true,
+      },
+      {
+        machine: 'probe',
+        action: 'announceCount',
+        source: '`${count} results`',
+        chosenOnly: false,
+      },
+      {
+        machine: 'probe',
+        action: 'announceState',
+        source: 'busy ? "Loading" : label',
+        chosenOnly: false,
       },
     ])
-    expect(read.implemented).toEqual(['announceHighlightedItem', 'announceValue'])
   })
 
   it('catches a spread getter whose word the element leaves, and one copied onto another element', () => {
-    const dropped = { without: ['announceHighlightedItem'] }
-    expect(found(bound(field(), dropped))).toEqual(['probe getInputProps aria-roledescription'])
+    expect(found(bound(field()))).toEqual(['probe getInputProps aria-roledescription'])
     expect(
       found(
         bound(
           el('input', { attrs: { 'aria-label': "api.getInputProps()['aria-roledescription']" } }),
-          dropped,
         ),
       ),
     ).toEqual(['probe getInputProps aria-roledescription, copied'])
     expect(
       found(
-        bound(
-          field({ 'aria-roledescription': "api.getInputProps()['aria-roledescription']" }),
-          dropped,
-        ),
+        bound(field({ 'aria-roledescription': "api.getInputProps()['aria-roledescription']" })),
       ),
     ).toEqual([
       'probe getInputProps aria-roledescription',
@@ -1091,47 +1152,50 @@ describe('the reading of the machines’ words detects what reaches a person', (
     ])
   })
 
-  it('catches a translation the machine is not given, and an action the member keeps', () => {
-    // The getters alone, so each finding below is the stepper's.
-    const quiet = { ...read, actions: [] }
+  it('catches a translation the machine is not given', () => {
     const stepper = (machine: Partial<MachineBinding> = {}) =>
-      machineProse(
-        bound(field({}, 'api.getIncrementTriggerProps()'), machine),
-        'fixture',
-        () => quiet,
-      ).map((line) => line.split(' — ')[1])
+      found(bound(field({}, 'api.getIncrementTriggerProps()'), machine))
     expect(stepper()).toEqual(['probe getIncrementTriggerProps aria-label'])
     expect(stepper({ context: { translations: "{ incrementLabel: 'Up' }" } })).toEqual([
       'probe getIncrementTriggerProps aria-label',
     ])
-    expect(found(bound([]))).toEqual(['probe announceHighlightedItem speaks'])
-    expect(found(bound([], { without: ['announceItem'] }))).toEqual([
+  })
+
+  it('catches each action that speaks words its binding does not remove', () => {
+    expect(spoken(bound([]))).toEqual([
       'probe announceHighlightedItem speaks',
-      'probe has no action announceItem to do without',
+      'probe announceCount speaks',
+      'probe announceState speaks',
+    ])
+    // Running unchosen removes only words said for a chosen option.
+    expect(spoken(bound([], { unchosen: ['announceCount'] }))).toEqual([
+      'probe announceHighlightedItem speaks',
+      'probe announceCount speaks',
+      'probe announceState speaks',
+    ])
+    expect(spoken(bound([], { unchosen: ['announceHighlightedItem', 'announceItem'] }))).toEqual([
+      'probe announceCount speaks',
+      'probe announceState speaks',
+      'probe has no action announceItem to run unchosen',
     ])
   })
 
-  it('allows a word the element replaces, a translation from the member’s words and a dropped action', () => {
-    const dropped = { without: ['announceHighlightedItem'] }
-    expect(found(bound(field({ 'aria-roledescription': 'undefined' }), dropped))).toEqual([])
+  it('allows a word the element replaces, a translation from the member’s words and an action run unchosen', () => {
+    expect(found(bound(field({ 'aria-roledescription': 'undefined' })))).toEqual([])
     expect(
       found(
         bound(field({}, 'api.getIncrementTriggerProps()'), {
-          ...dropped,
           context: { translations: '{ incrementLabel: say.increment }' },
         }),
       ),
     ).toEqual([])
-    // A combobox whose value is always empty says no option is selected, so its option's
-    // label alone, which is the host's word.
-    const combobox = machineWords('combobox', { 'combobox.machine.mjs': MACHINE })
-    expect(
-      machineProse(
-        { template: [], machine: { of: 'combobox', context: { value: '[]' } } },
-        'fixture',
-        () => combobox,
-      ),
-    ).toEqual([])
+    const chosen = machineWords('probe', {
+      'probe.machine.mjs': MACHINE.replace(/announceCount[\s\S]*?(?=announceValue)/, ''),
+    })
+    expect(chosen.actions.map((action) => action.action)).toEqual(['announceHighlightedItem'])
+    expect(found(bound([], { unchosen: ['announceHighlightedItem'] }), chosen)).toEqual([])
+    // A machine whose value is always empty chooses nothing, so it says the option's label alone.
+    expect(found(bound([], { context: { value: '[]' } }), chosen)).toEqual([])
   })
 
   it('reads a part’s own machine, and its owner’s through `owner.api`', () => {
