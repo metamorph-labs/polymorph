@@ -22,9 +22,9 @@ export type TextStep = (typeof TEXT_STEPS)[number]
 
 /**
  * The text steps drawn in the heading slot: the steps the type-usage table
- * gives headings and titles (`design/components/README.md`), from section
- * headings at `lg` to `3xl`. The steps under them are body sizes and draw in
- * the body slot.
+ * gives headings and titles (`design/components/README.md`), from Heading's
+ * level 3 at `lg` to a Stat's value at `3xl`. The steps under them are body
+ * sizes and draw in the body slot.
  */
 export const HEADING_TEXT_STEPS = ['lg', 'xl', '2xl', '3xl'] as const satisfies readonly TextStep[]
 

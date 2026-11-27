@@ -233,12 +233,14 @@ beside its own ring.
 
 | Context | Step |
 | --- | --- |
-| Control labels, table cells, toast description | `text.sm` |
+| Control labels, table cells, toast titles and descriptions | `text.sm` |
 | Metadata, badges, table headers, tooltip body, field descriptions/errors | `text.xs` |
-| Body copy, lg-control labels | `text.md` |
-| Card titles, toast titles, section headings | `text.lg` |
-| Dialog titles | `text.xl` |
-| Page titles (PageHeader) | `text.2xl` |
+| The section-heading recipe: the titles of Card, Dashboard.Panel and SettingsRow.Group, in the overline style below | `text.xs` |
+| Body copy, lg-control labels, Heading level 4 | `text.md` |
+| Heading level 3, EmptyState titles | `text.lg` |
+| Heading level 2, Dialog and Drawer titles | `text.xl` |
+| Page titles (PageHeader, DetailPage, AuthPage) | `text.2xl` |
+| A Stat's value | `text.3xl` |
 | Hero/display moments only | `display.*` |
 
 `text.xs` to `text.md` draw in the body slot, `text.lg` to `text.3xl` in the heading slot (the body

@@ -166,7 +166,7 @@ slot's `--pm-font-<slot>`:
 | Slot | Steps | Draws |
 | --- | --- | --- |
 | `body` | `text.xs`, `text.sm`, `text.md` | paragraphs, controls, labels, table cells |
-| `heading` | `text.lg`, `text.xl`, `text.2xl`, `text.3xl` | section headings, Heading's levels, dialog and page titles, Stat's value |
+| `heading` | `text.lg`, `text.xl`, `text.2xl`, `text.3xl` | Heading's levels, EmptyState's title, dialog and page titles, Stat's value |
 | `display` | `display.sm`, `display.md`, `display.lg` | Hero's title |
 | `mono` | none; recipes set it at a text step's size | code, keys, JSON |
 
