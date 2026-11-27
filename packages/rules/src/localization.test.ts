@@ -1,8 +1,23 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
+
+import {
+  cond,
+  each,
+  el,
+  lit,
+  member,
+  portal,
+  slot,
+  text,
+  words,
+  type MemberShell,
+  type Node as DescribedNode,
+} from '../../shells/src/dsl'
 
 /**
  * Localization: no member renders text its host cannot replace.
@@ -20,7 +35,9 @@ import { describe, expect, it } from 'vitest'
  * attribute, or written among an element's children as JSX text or as an
  * expression (a literal or a template between braces), cannot be replaced, and
  * fails. A default in a destructuring pattern or in a module-level function is
- * allowed, because that is how a prop supplies replaceable text.
+ * allowed, because that is how a prop supplies replaceable text. The
+ * descriptions every other web renderer is generated from are read the same
+ * way, below.
  *
  * Runs in node, not a browser, because it reads source text.
  */
@@ -94,26 +111,35 @@ function shipped(dir: string): string[] {
  * `Show …``, `y?.label ?? 'Count'` and `${positive ? 'positive' : 'negative'}`
  * are each a word no prop can replace. An identifier, a call or a member access
  * is a value from a prop.
+ *
+ * `defaults` names the fallbacks that are a prop's default, which the reading
+ * of the descriptions passes: the right side of a `??` or `||` whose left side
+ * it accepts is not read.
  */
-function literals(value: ts.Expression | undefined): string[] {
+function literals(
+  value: ts.Expression | undefined,
+  defaults?: (left: ts.Expression) => boolean,
+): string[] {
   if (value === undefined) return []
-  if (ts.isParenthesizedExpression(value)) return literals(value.expression)
+  const read = (inner: ts.Expression | undefined) => literals(inner, defaults)
+  if (ts.isParenthesizedExpression(value)) return read(value.expression)
   if (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value)) return [value.text]
   if (ts.isTemplateExpression(value)) {
     return [
       [value.head.text, ...value.templateSpans.map((span) => span.literal.text)].join(' '),
-      ...value.templateSpans.flatMap((span) => literals(span.expression)),
+      ...value.templateSpans.flatMap((span) => read(span.expression)),
     ]
   }
   if (ts.isConditionalExpression(value)) {
-    return [...literals(value.whenTrue), ...literals(value.whenFalse)]
+    return [...read(value.whenTrue), ...read(value.whenFalse)]
   }
   if (
     ts.isBinaryExpression(value) &&
     (value.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken ||
       value.operatorToken.kind === ts.SyntaxKind.BarBarToken)
   ) {
-    return [...literals(value.left), ...literals(value.right)]
+    if (defaults?.(value.left) === true) return read(value.left)
+    return [...read(value.left), ...read(value.right)]
   }
   return []
 }
@@ -276,5 +302,280 @@ describe('the law detects violations', () => {
     expect(found('const a = <button aria-label={removeLabel(tag)} />')).toEqual([])
     expect(found('const a = <span aria-hidden="true">…</span>')).toEqual([])
     expect(found('const a = <Kbd>⌘K</Kbd>')).toEqual([])
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* The descriptions                                                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The descriptions the Vue, Svelte, Solid and Angular members and the elements
+ * are generated from (`docs/shells.md`). A description writes its own
+ * attributes and text, so a word the React member takes from a library that
+ * translates it (React Aria's "Suggestions") can be English in every generated
+ * member, where the reading of the React source above cannot see it.
+ *
+ * This reading walks each description's anatomy as `pnpm shells` reads it, so
+ * the helpers and constants a description builds it from are read too: an
+ * element's attributes, a composed member's props, the props a slot passes,
+ * a machine's context and every text node. Each value is an expression, which
+ * the reading parses and reads as the React reading reads a JSX expression. A
+ * description's `defaults` and `derived` values are not read, because a prop's
+ * default is how a member supplies replaceable text. A fallback after a prop
+ * that carries words (`removeLabel ?? \`Remove ${name}\``,
+ * `say.skipToContent ?? 'Skip to content'`) is that prop's default too.
+ */
+const DESCRIPTIONS = resolve(ROOT, 'packages/shells/src/members')
+
+/** Whether an attribute or a prop carries words a person reads or hears. */
+const naming = (name: string): boolean => NAMING_ATTRIBUTES.has(name) || name.endsWith('Label')
+
+/**
+ * Whether an expression reads a prop that carries words: one named as words
+ * are (`removeLabel`, `label`), or the member's `messages`, which a
+ * description also reads through the `say` it merges them into.
+ */
+function readsWords(expression: ts.Expression): boolean {
+  let root = expression
+  while (
+    ts.isPropertyAccessExpression(root) ||
+    ts.isElementAccessExpression(root) ||
+    ts.isParenthesizedExpression(root)
+  ) {
+    root = root.expression
+  }
+  return ts.isIdentifier(root) && (naming(root.text) || ['messages', 'say'].includes(root.text))
+}
+
+/** One of a description's expressions, parsed. */
+function parsed(source: string): ts.Expression {
+  const file = ts.createSourceFile('expression.ts', `(${source})`, ts.ScriptTarget.ESNext, true)
+  const [statement] = file.statements
+  if (statement === undefined || !ts.isExpressionStatement(statement)) {
+    throw new Error(`not an expression: ${source}`)
+  }
+  return statement.expression
+}
+
+/**
+ * The fixed words a value written to `name` holds, and those of a property
+ * named as words inside it, one level down: `columns: "[{ label: 'Share' }]"`
+ * names a column as `label` names a control.
+ */
+function fixedWords(name: string, source: string): { name: string; text: string }[] {
+  const value = parsed(source)
+  const found = naming(name) ? literals(value, readsWords).map((text) => ({ name, text })) : []
+  const visit = (node: ts.Node): void => {
+    if (ts.isPropertyAssignment(node)) {
+      const inner = node.name.getText().replace(/['"]/g, '')
+      if (naming(inner)) {
+        found.push(...literals(node.initializer, readsWords).map((text) => ({ name: inner, text })))
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(value)
+  return found.filter(({ text }) => WORD.test(text))
+}
+
+/** What the reading walks: a description's anatomy, its parts' and its machines'. */
+type Described = Pick<MemberShell, 'template' | 'machine' | 'parts'>
+
+/**
+ * Every fixed word a description writes where a person reads or hears it, as
+ * `where — what`, each once. `where` is only a label. Nothing is read from disk.
+ */
+function describedProse(shell: Described, where: string): string[] {
+  const findings = new Set<string>()
+  const note = (what: string, values: Readonly<Record<string, string>> | undefined) => {
+    for (const [name, source] of Object.entries(values ?? {})) {
+      for (const word of fixedWords(name, source)) {
+        findings.add(`${where} — ${what} ${word.name}: "${word.text}"`)
+      }
+    }
+  }
+  const walk = (nodes: DescribedNode | readonly DescribedNode[] | undefined): void => {
+    for (const node of ([] as DescribedNode[]).concat(nodes ?? [])) {
+      switch (node.kind) {
+        case 'element':
+          note(`<${typeof node.tag === 'string' ? node.tag : 'element'}>`, node.attrs)
+          walk(node.children)
+          break
+        case 'member':
+          note(node.name, node.props)
+          for (const content of Object.values(node.slots ?? {})) walk(content)
+          break
+        case 'slot':
+          note(`slot ${node.name}`, node.pass)
+          walk(node.fallback)
+          break
+        case 'text':
+          if (node.value !== undefined && WORD.test(node.value)) {
+            findings.add(`${where} — words "${node.value}"`)
+          }
+          if (node.expr !== undefined) {
+            for (const text of literals(parsed(node.expr), readsWords)) {
+              if (WORD.test(text)) findings.add(`${where} — text "${text}"`)
+            }
+          }
+          break
+        case 'if':
+          for (const branch of node.branches) walk(branch.then)
+          walk(node.otherwise)
+          break
+        case 'each':
+        case 'portal':
+          walk(node.children)
+          break
+        case 'render':
+          // A node the caller passed, drawn as it is.
+          break
+      }
+    }
+  }
+  walk(shell.template)
+  note('machine', shell.machine?.context)
+  for (const part of shell.parts ?? []) {
+    walk(part.template)
+    note('machine', part.machine?.context)
+  }
+  return [...findings]
+}
+
+/** Every description, by its file, as `pnpm shells` finds them (`loadMembers`). */
+async function readDescriptions(): Promise<{ file: string; shell: MemberShell }[]> {
+  const files = readdirSync(DESCRIPTIONS)
+    .filter((name) => name.endsWith('.ts') && name !== 'index.ts' && !name.endsWith('.test.ts'))
+    .sort()
+  return Promise.all(
+    files.map(async (name) => {
+      const path = join(DESCRIPTIONS, name)
+      const module = (await import(pathToFileURL(path).href)) as { default: MemberShell }
+      return { file: relative(ROOT, path), shell: module.default }
+    }),
+  )
+}
+
+/**
+ * Words descriptions write that no prop replaces yet, as `file — what`. Each
+ * is a defect: a host cannot translate them in the generated members. They are
+ * named here so that the law holds every other description, and the law fails
+ * on an entry it no longer finds, so a member given its seam leaves the list.
+ */
+const UNSEAMED_IN_DESCRIPTIONS: readonly string[] = [
+  // The list's name and the plane's role description, which React Aria says in the locale's words.
+  'packages/shells/src/members/color-input.ts — <input> aria-roledescription: "2d slider"',
+  'packages/shells/src/members/combobox.ts — <ul> aria-label: "Suggestions"',
+  'packages/shells/src/members/command.ts — <ul> aria-label: "Suggestions"',
+  // The React member writes it too, in the `ai` tier, which the React reading does not read.
+  'packages/shells/src/members/artifact-pane.ts — Spinner label: " : still being written"',
+  // An empty segment's value, and a range's two halves, which React Aria says in the locale's words.
+  'packages/shells/src/members/date-picker.ts — <div> aria-valuetext: "Empty"',
+  'packages/shells/src/members/date-range-picker.ts — <div> aria-label: "Start date"',
+  'packages/shells/src/members/date-range-picker.ts — <div> aria-valuetext: "Empty"',
+  'packages/shells/src/members/date-range-picker.ts — <div> aria-label: "End date"',
+  'packages/shells/src/members/time-input.ts — <div> aria-valuetext: "Empty"',
+]
+
+describe('no description renders text its host cannot replace', async () => {
+  const described = await readDescriptions()
+  const findings = described.flatMap(({ file, shell }) => describedProse(shell, file))
+
+  it('reads every description', () => {
+    // A law that matched no files would always pass.
+    expect(described.length).toBeGreaterThan(100)
+    for (const file of ['combobox.ts', 'command.ts', 'color-input.ts', 'date-range-picker.ts']) {
+      expect(described.some((entry) => entry.file.endsWith(`members/${file}`))).toBe(true)
+    }
+  })
+
+  it('finds no fixed word in a naming attribute or prop, and none in a text node', () => {
+    expect(findings.filter((finding) => !UNSEAMED_IN_DESCRIPTIONS.includes(finding))).toEqual([])
+  })
+
+  it('still finds each word it lists as having no seam', () => {
+    expect(UNSEAMED_IN_DESCRIPTIONS.filter((entry) => !findings.includes(entry))).toEqual([])
+  })
+})
+
+describe('the reading of the descriptions detects violations', () => {
+  const found = (shell: Described) =>
+    describedProse(shell, 'fixture').map((line) => line.split(' — ')[1])
+  /** What an anatomy alone writes. */
+  const drawn = (template: DescribedNode | readonly DescribedNode[]) => found({ template })
+
+  it('catches a fixed name and a fixed role description on an element', () => {
+    expect(drawn(el('ul', { attrs: { 'aria-label': lit('Suggestions') } }))).toEqual([
+      '<ul> aria-label: "Suggestions"',
+    ])
+    expect(drawn(el('input', { attrs: { 'aria-roledescription': lit('2d slider') } }))).toEqual([
+      '<input> aria-roledescription: "2d slider"',
+    ])
+    expect(drawn(el('span', { attrs: { title: '`${count} hidden`' } }))).toEqual([
+      '<span> title: "  hidden"',
+    ])
+  })
+
+  it('catches a word in text, written as it is or in an expression', () => {
+    expect(drawn(words('Skip to content'))).toEqual(['words "Skip to content"'])
+    expect(drawn(text("loading ? 'Loading commands…' : label"))).toEqual([
+      'text "Loading commands…"',
+    ])
+    expect(drawn(text('`${count} commands`'))).toEqual(['text "  commands"'])
+  })
+
+  it('catches a composed member’s naming prop, a slot’s passed prop and a machine’s name', () => {
+    expect(drawn(member('Spinner', { label: '`${title}: still being written`' }))).toEqual([
+      'Spinner label: " : still being written"',
+    ])
+    expect(drawn(slot('default', { pass: { label: lit('Subject') } }))).toEqual([
+      'slot default label: "Subject"',
+    ])
+    expect(
+      found({ template: [], machine: { of: 'dialog', context: { 'aria-label': lit('Palette') } } }),
+    ).toEqual(['machine aria-label: "Palette"'])
+    expect(drawn(member('Twin', { columns: "[{ key: 'share', label: 'Share' }]" }))).toEqual([
+      'Twin label: "Share"',
+    ])
+  })
+
+  it('reads inside a condition, a loop, a portal, a member’s slot and a part', () => {
+    expect(
+      drawn(
+        portal(
+          cond('open', [el('p', {}, [words('Nothing here')])], [text("'Closed'")]),
+          each('rows', 'row', 'row.id', [member('Badge', { label: lit('New') })]),
+          member('Kbd', {}, { slots: { default: [words('Escape')] } }),
+        ),
+      ),
+    ).toEqual(['words "Nothing here"', 'text "Closed"', 'Badge label: "New"', 'words "Escape"'])
+    const parts: Described['parts'] = [
+      {
+        name: 'Panel',
+        public: false,
+        purpose: 'a part',
+        template: el('ul', { attrs: { 'aria-label': lit('Suggestions') } }),
+      },
+    ]
+    expect(found({ template: [], parts })).toEqual(['<ul> aria-label: "Suggestions"'])
+  })
+
+  it('catches a fallback after a value that is not words', () => {
+    expect(drawn(text("option.label ?? 'Untitled'"))).toEqual(['text "Untitled"'])
+  })
+
+  it('allows a prop, a derived value, a call, a prop’s default and an attribute no one reads', () => {
+    expect(
+      drawn(el('ul', { attrs: { 'aria-label': 'label', 'aria-labelledby': 'ariaLabelledby' } })),
+    ).toEqual([])
+    expect(drawn(text('announcement'))).toEqual([])
+    expect(drawn(text('say.options(count)'))).toEqual([])
+    expect(drawn(text("say.skipToContent ?? 'Skip to content'"))).toEqual([])
+    expect(drawn(member('Button', { label: 'removeLabel ?? `Remove ${name}`' }))).toEqual([])
+    expect(drawn(el('div', { attrs: { 'data-state': "api.open ? 'open' : 'closed'" } }))).toEqual(
+      [],
+    )
+    expect(drawn([words(' *'), text('`${count} — ${total}`')])).toEqual([])
   })
 })
