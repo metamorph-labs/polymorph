@@ -190,6 +190,9 @@ object StatStates : PMStates {
             PMStateEntry("delta down negative", expect = mapOf("direction" to "down", "positive" to "false")) {
                 PMStat(delta = PMStatDelta("4%", PMDeltaDirection.Down), label = revenue, value = "$41,900")
             },
+            PMStateEntry("delta up negative", expect = mapOf("direction" to "up", "positive" to "false")) {
+                PMStat(delta = PMStatDelta("4", PMDeltaDirection.Up, positive = false), label = "Escalations", value = "17")
+            },
             PMStateEntry("description") { PMStat(description = "vs last week", label = open, value = "128") },
             PMStateEntry("non-numeric") { PMStat(label = plan, numeric = false, value = "Business") },
             PMStateEntry("trend up with a footer", expect = mapOf("trend" to "up", "footer" to "true")) {

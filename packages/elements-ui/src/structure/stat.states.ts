@@ -74,6 +74,21 @@ export const states: ComponentStates = {
       subject: 'poly-stat',
     },
     {
+      name: 'spark trending down beside a down-positive delta — direction is not sentiment, as a shape',
+      html: `<poly-stat label="First response" value="26m" delta='{"value":"16m","direction":"down","positive":true}' spark='[42,40,41,38,35,36,33,31,32,29,27,26]'></poly-stat>`,
+      subject: 'poly-stat',
+    },
+    {
+      name: 'spark with the trend chip — words and shape together',
+      html: `<poly-stat label="Revenue" value="$48,200" trend='{"direction":"up","label":"+12.5%"}' spark='[180,195,190,210,220,216,240,251,248,262,270,284]'></poly-stat>`,
+      subject: 'poly-stat',
+    },
+    {
+      name: 'spark alone',
+      html: `<poly-stat label="Open tickets" value="128" spark='[180,195,190,210,220,216,240,251,248,262,270,284]'></poly-stat>`,
+      subject: 'poly-stat',
+    },
+    {
       name: 'loading — the label stays and the number holds its place',
       html: `<poly-stat label="Response time" value icon="time" loading></poly-stat>`,
       subject: 'poly-stat',

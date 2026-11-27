@@ -105,7 +105,8 @@ aloud or found in the page's text.
 ## States
 
 Entries: plain, with icon, delta up-positive, delta down-positive (the direction ≠
-sentiment case), delta down-negative, description, non-numeric. Trend-up with a
+sentiment case), delta down-negative, delta up-negative (the same case the other way:
+escalations going up), description, non-numeric. Trend-up with a
 footer, trend-down with a footer, a footer with no trend (no glyph without the chip),
 a trend with no footer. Spark trending down beside a down-positive delta
 (response time, the direction ≠ sentiment case as a shape), spark with the trend chip

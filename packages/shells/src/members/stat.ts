@@ -218,6 +218,32 @@ export default describeMember({
       props: { label: 'Urgent', value: '1', trend: { direction: 'down', label: '2 fewer' } },
     },
     {
+      name: 'spark trending down beside a down-positive delta — direction is not sentiment, as a shape',
+      props: {
+        label: 'First response',
+        value: '26m',
+        delta: { value: '16m', direction: 'down', positive: true },
+        spark: [42, 40, 41, 38, 35, 36, 33, 31, 32, 29, 27, 26],
+      },
+    },
+    {
+      name: 'spark with the trend chip — words and shape together',
+      props: {
+        label: 'Revenue',
+        value: '$48,200',
+        trend: { direction: 'up', label: '+12.5%' },
+        spark: [180, 195, 190, 210, 220, 216, 240, 251, 248, 262, 270, 284],
+      },
+    },
+    {
+      name: 'spark alone',
+      props: {
+        label: 'Open tickets',
+        value: '128',
+        spark: [180, 195, 190, 210, 220, 216, 240, 251, 248, 262, 270, 284],
+      },
+    },
+    {
       name: 'loading — the label stays and the number holds its place',
       props: { label: 'Response time', value: '', icon: 'time', loading: true },
       expect: { 'data-loading': '', 'aria-busy': 'true' },

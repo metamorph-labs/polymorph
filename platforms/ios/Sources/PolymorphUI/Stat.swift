@@ -225,6 +225,9 @@ public struct StatStates: PMStates {
       PMStateEntry("delta down negative", expect: ["direction": "down", "positive": "false"]) {
         stat(Self.revenue, "$41,900", delta: PMStatDelta(value: "4%", direction: .down))
       },
+      PMStateEntry("delta up negative", expect: ["direction": "up", "positive": "false"]) {
+        stat("Escalations", "17", delta: PMStatDelta(value: "4", direction: .up, positive: false))
+      },
       PMStateEntry("description") { stat(description: "vs last week") },
       PMStateEntry("non-numeric") { stat(Self.plan, "Business", numeric: false) },
       PMStateEntry("trend up with a footer", expect: ["trend": "up", "footer": "true"]) {
