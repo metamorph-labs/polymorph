@@ -59,6 +59,17 @@ exports[`the quiet example > matches its snapshot 1`] = `
         500,
         600
       ]
+    },
+    "heading": {
+      "family": "Inter",
+      "variable": false,
+      "fallback": "sans",
+      "style": "normal",
+      "weights": [
+        400,
+        500,
+        600
+      ]
     }
   },
   "floor": {
@@ -126,7 +137,7 @@ exports[`the quiet example > matches its snapshot 1`] = `
     "text.lg.lineHeight": 1.45,
     "text.lg.weight": 400,
     "text.lg.family": {
-      "ref": "font.body",
+      "ref": "font.heading",
       "family": "Inter"
     },
     "text.lg.tracking": {
@@ -141,7 +152,7 @@ exports[`the quiet example > matches its snapshot 1`] = `
     "text.xl.lineHeight": 1.35,
     "text.xl.weight": 500,
     "text.xl.family": {
-      "ref": "font.body",
+      "ref": "font.heading",
       "family": "Inter"
     },
     "text.xl.tracking": {
@@ -156,7 +167,7 @@ exports[`the quiet example > matches its snapshot 1`] = `
     "text.2xl.lineHeight": 1.25,
     "text.2xl.weight": 600,
     "text.2xl.family": {
-      "ref": "font.body",
+      "ref": "font.heading",
       "family": "Inter"
     },
     "text.2xl.tracking": {
@@ -171,7 +182,7 @@ exports[`the quiet example > matches its snapshot 1`] = `
     "text.3xl.lineHeight": 1.2,
     "text.3xl.weight": 600,
     "text.3xl.family": {
-      "ref": "font.body",
+      "ref": "font.heading",
       "family": "Inter"
     },
     "text.3xl.tracking": {
