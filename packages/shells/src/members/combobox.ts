@@ -54,9 +54,10 @@ const popup = (): Node[] => [
       attrs: {
         // Present through the panel's exit, which `hidden` would cut short.
         hidden: 'undefined',
-        // Named as React Aria names a combobox's listbox: the list's word, then the field's
-        // label when a reference names the field. A field named only by a `<label for>`
-        // leaves the listbox its own word, which a host replaces through `messages.list`.
+        // The list's word, then the field's label when a reference names the field, as React
+        // Aria names a combobox's listbox. A field named only by a `<label for>` leaves the
+        // listbox its own word, which a host replaces through `messages.list`. React Aria adds
+        // the chevron's name where no reference names the field; this member does not.
         'aria-label': 'say.list',
         'aria-labelledby':
           'ariaLabelledby === undefined ? undefined : `${api.getContentProps().id} ${ariaLabelledby}`',

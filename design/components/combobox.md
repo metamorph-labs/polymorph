@@ -146,8 +146,9 @@ politely ("Loading options…", then "{n} options" or the empty message) through
 so the option count is not announced twice. The listbox is named by `messages.list`, then by the
 field's label where `aria-labelledby` names the field: "Suggestions Assignee". Where `aria-label`
 names the field, or only a `<label for>` does, as FormField's does, the list's name is
-`messages.list` alone. React's default is React Aria's "Suggestions", which React Aria says in the
-page's locale; a generated member's default is English. RTL: the existing origin helper flips popper alignment.
+`messages.list` alone, and on React the chevron's name follows it, because React Aria labels the
+list by the button that opens it: "Suggestions Show options". React's default is React Aria's
+"Suggestions", which React Aria says in the page's locale; a generated member's default is English. RTL: the existing origin helper flips popper alignment.
 
 ```contract
 role trigger combobox

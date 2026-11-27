@@ -21,6 +21,7 @@ it.
 
 `Combobox`'s `messages` takes `list`, the open list's accessible name, on every web renderer. Left
 out, the name is "Suggestions", as before, followed by the field's label where `aria-labelledby`
-names the field; on React the default stays React Aria's word in the page's locale. The SwiftUI
+names the field; on React the default stays React Aria's word in the page's locale, followed by
+the chevron's name where no reference names the field, as before. The SwiftUI
 and Compose contracts carry the field, and their lists, which have no name of their own, do not
 draw it. `Combobox`'s purpose on the cards is "Filtered single choice".
