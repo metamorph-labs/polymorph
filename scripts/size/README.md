@@ -137,8 +137,8 @@ not on the page: the codecs are a module of their own, which only a member that 
 time imports, so the date library comes in the chunks of those members. Button's chunk and
 Badge's, which Button composes, are under two kilobytes, and Icon's chunk is mostly the glyph data of every icon role. No other member reaches the page, because each element imports its Solid member by the
 member's own module rather than by the Solid vocabulary's index, which attaches every compound's
-parts. The page measures 41.03 kB, so its ceiling is 43 kB. About a quarter of a kilobyte of that
-is the Solid foundation's hydration conventions, which the Solid members carry and an element never
+parts. The page's ceiling is its measurement rounded up to the next kilobyte (above). About a
+quarter of a kilobyte of the page is the Solid foundation's hydration conventions, which the Solid members carry and an element never
 uses, because an element renders its member in the browser. The CSS is `polymorph.css`, every recipe with the forms that reach through an element,
 which a page loads whichever members it uses, and the theme sheet. `elements-all` is the Solid
 vocabulary whole with Solid's runtime, the elements' bridge and the agent bridge; its largest third-party parts are the
