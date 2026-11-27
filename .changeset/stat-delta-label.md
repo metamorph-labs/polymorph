@@ -10,7 +10,8 @@
 ---
 
 `Stat` takes `deltaLabel`, the sentence a screen reader hears for its delta, as a function of the
-delta's `value`, its `direction` and its resolved `positive`. Every web framework and `<poly-stat>`
+delta's `value`, its `direction` and its resolved `positive` (its type is exported as
+`StatDeltaLabel`). Every web framework and `<poly-stat>`
 said "up 12% — positive" in English whatever the page's language. Pass `deltaLabel` to say it in
 the app's words and word order; left out, the sentence is the same as before. A
 Dashboard's `stats` entries pass it through in every framework, and `<poly-stat>` takes it as a

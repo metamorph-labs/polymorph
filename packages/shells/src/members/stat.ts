@@ -7,9 +7,8 @@ import { cond, describeMember, el, flag, identity, lit, member, text, when } fro
  * whether the change is good, with the direction and the sentiment spoken in
  * the words `deltaLabel` gives; `trend` is the neutral movement chip, which the
  * footer's glyph repeats; `spark` is the path as a Sparkline at the value row's
- * end. While
- * `loading`, the label row stays and each part that states the number is a
- * Skeleton of that part's size, the value's named by `loadingLabel`.
+ * end. While `loading`, the label row stays and each part that states the
+ * number is a Skeleton of that part's size, the value's named by `loadingLabel`.
  */
 export default describeMember({
   member: 'Stat',
