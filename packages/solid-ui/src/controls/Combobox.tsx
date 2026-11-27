@@ -180,7 +180,7 @@ export default function Combobox(given: ComboboxProps): JSX.Element {
       showOptions: 'Show options',
       clear: 'Clear',
       loadingOptions: 'Loading options…',
-      options: (count: number) => `${count} options`,
+      options: (count: number) => (count === 1 ? '1 option' : `${count} options`),
       list: 'Suggestions',
       ...props.messages,
     }))
@@ -219,7 +219,13 @@ export default function Combobox(given: ComboboxProps): JSX.Element {
     )
     const documentDirection = useDirection(() => input.value)
     const service = useMachine(
-      zag.machine,
+      {
+        ...zag.machine,
+        implementations: {
+          ...zag.machine.implementations,
+          actions: { ...zag.machine.implementations?.actions, announceHighlightedItem: () => {} },
+        },
+      } as typeof zag.machine,
       () =>
         ({
           id: uid,

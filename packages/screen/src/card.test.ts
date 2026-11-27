@@ -59,8 +59,13 @@ import { VOCABULARY } from './vocabulary'
  * screen-reader user hears when a tag is removed. Its type is printed by its
  * name, the shortest form, and no sentence of TagInput's own on the card was
  * left to shorten in its place.
+ *
+ * It also includes NumberInput's and ColorInput's `messages`, the seams for the
+ * names and value texts their Zag machines wrote in English in the generated
+ * members. Each type is printed by its name, and NumberInput's, ColorInput's,
+ * MultiSelect's and PhoneInput's purposes are shorter in their place.
  */
-const BUDGET_CHARS = 60_824
+const BUDGET_CHARS = 60_996
 const SUBSET_BUDGET_CHARS = 13_600
 
 /** What a host that draws forms, lists and simple pages might allow. */

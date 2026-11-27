@@ -716,7 +716,10 @@ enum PMStrings {
   /// (`design/components/tag-input.md`).
   static func tagInputRemoved(tag: String, count: Double) -> String {
     String(
-      localized: "\(tag) removed, \(Int(count)) remain",
+      localized: "%@ removed, %lld remain",
+      defaultValue: count == 1
+        ? "\(tag) removed, \(Int(count)) remains"
+        : "\(tag) removed, \(Int(count)) remain",
       comment: "Announced when a tag is removed: the tag and how many are left.")
   }
 
@@ -782,7 +785,10 @@ enum PMStrings {
   /// PhoneInput's `messages.countriesShown`: announced with the number of countries the list shows
   /// (`design/components/phone-input.md`).
   static func phoneInputCountriesShown(count: Double) -> String {
-    String(localized: "\(Int(count)) countries", comment: "How many countries a list shows.")
+    String(
+      localized: "%lld countries",
+      defaultValue: count == 1 ? "\(Int(count)) country" : "\(Int(count)) countries",
+      comment: "How many countries a list shows.")
   }
 
   /// PhoneInput's `messages.noCountry`: the list's one row when nothing matches the typed text
@@ -806,7 +812,10 @@ enum PMStrings {
         localized: "Loading options…",
         comment: "Announced while a list of options loads."),
       options: { count in
-        String(localized: "\(Int(count)) options", comment: "How many options a list shows.")
+        String(
+          localized: "%lld options",
+          defaultValue: count == 1 ? "\(Int(count)) option" : "\(Int(count)) options",
+          comment: "How many options a list shows.")
       })
   }
 
@@ -969,7 +978,10 @@ enum PMStrings {
   /// MultiSelect's `messages.options`: announced with the number of options the list shows
   /// (`design/components/multi-select.md`).
   static func multiSelectOptions(count: Double) -> String {
-    String(localized: "\(Int(count)) options", comment: "How many options a list shows.")
+    String(
+      localized: "%lld options",
+      defaultValue: count == 1 ? "\(Int(count)) option" : "\(Int(count)) options",
+      comment: "How many options a list shows.")
   }
 
   /// Meter's `messages`: the status glyph's names (`design/components/meter.md`).

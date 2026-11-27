@@ -647,13 +647,14 @@ fun PMColorInput(
     disabled: Boolean? = null,
     id: String? = null,
     invalid: Boolean? = null,
+    messages: PMColorInputMessages? = null,
     name: String? = null,
     onChange: ((String) -> Unit)? = null,
     pickerLabel: String,
     size: PMControlSize? = null,
     value: String? = null,
 ) {
-    PMColorInput.Render(PMColorInputProps(alpha = alpha, ariaDescribedby = ariaDescribedby, ariaLabel = ariaLabel, ariaLabelledby = ariaLabelledby, ariaRequired = ariaRequired, defaultOpen = defaultOpen, defaultValue = defaultValue, disabled = disabled, id = id, invalid = invalid, name = name, onChange = onChange, pickerLabel = pickerLabel, size = size, value = value))
+    PMColorInput.Render(PMColorInputProps(alpha = alpha, ariaDescribedby = ariaDescribedby, ariaLabel = ariaLabel, ariaLabelledby = ariaLabelledby, ariaRequired = ariaRequired, defaultOpen = defaultOpen, defaultValue = defaultValue, disabled = disabled, id = id, invalid = invalid, messages = messages, name = name, onChange = onChange, pickerLabel = pickerLabel, size = size, value = value))
 }
 
 /**
@@ -1674,6 +1675,7 @@ fun PMNumberInput(
     id: String? = null,
     invalid: Boolean? = null,
     max: Double? = null,
+    messages: PMNumberInputMessages? = null,
     min: Double? = null,
     name: String? = null,
     onBlur: (() -> Unit)? = null,
@@ -1687,7 +1689,7 @@ fun PMNumberInput(
     suffix: String? = null,
     value: PMSome<Double?>? = null,
 ) {
-    PMNumberInput.Render(PMNumberInputProps(ariaDescribedby = ariaDescribedby, ariaLabel = ariaLabel, ariaLabelledby = ariaLabelledby, ariaRequired = ariaRequired, defaultValue = defaultValue, disabled = disabled, format = format, id = id, invalid = invalid, max = max, min = min, name = name, onBlur = onBlur, onChange = onChange, onFocus = onFocus, placeholder = placeholder, prefix = prefix, readOnly = readOnly, size = size, step = step, suffix = suffix, value = value))
+    PMNumberInput.Render(PMNumberInputProps(ariaDescribedby = ariaDescribedby, ariaLabel = ariaLabel, ariaLabelledby = ariaLabelledby, ariaRequired = ariaRequired, defaultValue = defaultValue, disabled = disabled, format = format, id = id, invalid = invalid, max = max, messages = messages, min = min, name = name, onBlur = onBlur, onChange = onChange, onFocus = onFocus, placeholder = placeholder, prefix = prefix, readOnly = readOnly, size = size, step = step, suffix = suffix, value = value))
 }
 
 /**

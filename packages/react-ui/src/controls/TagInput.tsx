@@ -104,7 +104,7 @@ export interface TagInputProps {
   countLabel?: TagInputCountLabel
   /**
    * What a removal announces in the host's words, the localization seam; the default is
-   * `{tag} removed, {count} remain`.
+   * `{tag} removed, {count} remain`, and `{tag} removed, 1 remains` when one tag remains.
    */
   removedLabel?: TagInputRemovedLabel
   /** Wired by FormField; set directly only when there is no visible label. */
@@ -119,7 +119,8 @@ const defaultRemoveLabel = (tag: string) => `Remove ${tag}`
 const defaultCountLabel: TagInputCountLabel = ({ count, max, atMax }) =>
   atMax ? `Maximum of ${max} added` : `${count} added`
 
-const defaultRemovedLabel: TagInputRemovedLabel = (tag, count) => `${tag} removed, ${count} remain`
+const defaultRemovedLabel: TagInputRemovedLabel = (tag, count) =>
+  count === 1 ? `${tag} removed, 1 remains` : `${tag} removed, ${count} remain`
 
 export function TagInput({
   value,

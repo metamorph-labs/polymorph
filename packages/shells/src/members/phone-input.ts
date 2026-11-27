@@ -44,7 +44,7 @@ export default describeMember({
   },
   derived: {
     language: LANGUAGE,
-    say: "{ country: 'Country calling code', showCountries: 'Show countries', countriesShown: (count: number) => `${count} countries`, noCountry: 'No matching country', ...messages }",
+    say: "{ country: 'Country calling code', showCountries: 'Show countries', countriesShown: (count: number) => (count === 1 ? '1 country' : `${count} countries`), noCountry: 'No matching country', ...messages }",
     current: 'value ?? kept',
     drawn: 'readPhone(current, { country: chosen, countries })',
     country: 'drawn.country',

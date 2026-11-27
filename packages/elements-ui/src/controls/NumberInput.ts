@@ -22,6 +22,7 @@ export const definition: ElementDefinition = {
     id: 'string',
     invalid: 'boolean',
     max: 'number',
+    messages: 'json',
     min: 'number',
     name: 'string',
     placeholder: 'string',
@@ -54,6 +55,7 @@ export type PolyNumberInputElement = MemberElement<
   | 'id'
   | 'invalid'
   | 'max'
+  | 'messages'
   | 'min'
   | 'name'
   | 'placeholder'

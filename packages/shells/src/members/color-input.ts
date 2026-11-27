@@ -21,7 +21,7 @@ const THUMB_AS_PICTURE = {
 /** `dragging` on the thumb the pointer holds, Slider's spelling of the machine's drag. */
 const dragged = (id: string) => `held === '${id}' ? 'dragging' : undefined`
 
-/** A channel rail: hue, or alpha over the checker. */
+/** A channel rail: hue, or alpha over the checker, named and valued in the member's words. */
 const rail = (channel: 'hue' | 'alpha'): Node =>
   el(
     'div',
@@ -55,8 +55,8 @@ const rail = (channel: 'hue' | 'alpha'): Node =>
               step: `color.getChannelRange('${channel}').step`,
               value: `color.getChannelValue('${channel}')`,
               disabled: 'disabled',
-              'aria-label': `api.getChannelSliderThumbProps({ channel: '${channel}' })['aria-label']`,
-              'aria-valuetext': `api.getChannelSliderThumbProps({ channel: '${channel}' })['aria-valuetext']`,
+              'aria-label': `say.${channel}`,
+              'aria-valuetext': `say.railValue(say.${channel}, color.getChannelValue('${channel}'))`,
             },
             on: { input: run(`fromRange('${channel}', $event)`) },
           }),
@@ -100,8 +100,9 @@ const plane: Node = el(
             disabled: 'disabled',
             // No role description: React Aria's "2D slider" is said in the page's locale, and a
             // fixed English one could not be, so the plane is heard as the slider it is.
-            'aria-label': "api.getAreaThumbProps()['aria-label']",
-            'aria-valuetext': "api.getAreaThumbProps()['aria-valuetext']",
+            'aria-label': 'say.plane',
+            'aria-valuetext':
+              "say.planeValue(color.getChannelValue('saturation'), color.getChannelValue('brightness'))",
           },
           on: { input: run("fromRange('saturation', $event)") },
         }),
@@ -144,6 +145,10 @@ export default describeMember({
   dir: 'controls',
   recipe: 'controls/color-input',
   recipes: { a11y: 'conventions/a11y' },
+  types: {
+    ColorInputMessages:
+      '{ plane?: string; planeValue?: (saturation: number, brightness: number) => string; hue?: string; alpha?: string; railValue?: (name: string, value: number) => string }',
+  },
   defaults: { alpha: 'false', size: lit('md'), disabled: 'false', invalid: 'false' },
   state: {
     // The chosen colour as an HSB string, once the reader has chosen one.
@@ -152,6 +157,8 @@ export default describeMember({
     draft: 'null as string | null',
   },
   derived: {
+    // The sliders' names and value texts, the machine's own English words by default.
+    say: "{ plane: 'saturation and brightness', planeValue: (saturation: number, brightness: number) => `saturation ${saturation}, brightness ${brightness}`, hue: 'hue', alpha: 'alpha', railValue: (name: string, value: number) => `${name} ${value}`, ...messages }",
     // Three, six or eight digits, `#` optional; no alpha unless the member has the channel.
     parseHex:
       "(text: string) => ((bare: string) => (/^([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(bare) ? ((parsed) => (alpha ? parsed : parsed.withChannelValue('alpha', 1)))(zag.parse(`#${bare}`).toFormat('hsba')) : null))(text.trim().replace(/^#/, ''))",

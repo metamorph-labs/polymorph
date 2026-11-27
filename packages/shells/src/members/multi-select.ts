@@ -171,11 +171,12 @@ const popup = (): Node[] => [
  * (`phone`), the popup is drawn in the bottom sheet, as Combobox's is.
  *
  * While the list is open the machine keeps an assertive live region of its
- * own, in which it speaks the highlighted option on Apple platforms only,
- * where VoiceOver does not follow `aria-activedescendant`. React Aria's
- * combobox does the same for React's Combobox; React's MultiSelect, built on
- * the listbox hooks alone, has no such announcer. The machine has no option
- * that drops it, so the member keeps it.
+ * own, in which it speaks the highlighted option on Apple platforms only, with
+ * ", selected" in English after a chosen one. React's MultiSelect, built on the
+ * listbox hooks alone, has no such announcer, so the member does without it
+ * (`without`): the field carries the highlighted option as its active
+ * descendant, each option its chosen state, and the member's own region says
+ * what a removal or a refusal changed.
  *
  * The handlers live in script. Their local names are none of the member's
  * own, because a block body's declarations are not scope the renderer knows.
@@ -216,7 +217,7 @@ export default describeMember({
     values: 'value ?? uncontrolled',
     text: 'inputValue ?? uncontrolledText',
     sheeting: "presentation === 'auto' && phone",
-    say: '{ add: (text: string) => `Add "${text}"`, added: (value: string, count: number) => `${value} added, ${count} selected`, removed: (label: string, count: number) => `${label} removed, ${count} selected`, refused: (text: string) => `Cannot add "${text}"`, alreadySelected: (value: string) => `"${value}" is already selected`, selected: (count: number, max: number | undefined) => (max !== undefined && count >= max ? `Maximum of ${max} selected` : `${count} selected`), showOptions: \'Show options\', remove: (label: string) => `Remove ${label}`, loadingOptions: \'Loading options…\', options: (count: number) => `${count} options`, ...messages }',
+    say: '{ add: (text: string) => `Add "${text}"`, added: (value: string, count: number) => `${value} added, ${count} selected`, removed: (label: string, count: number) => `${label} removed, ${count} selected`, refused: (text: string) => `Cannot add "${text}"`, alreadySelected: (value: string) => `"${value}" is already selected`, selected: (count: number, max: number | undefined) => (max !== undefined && count >= max ? `Maximum of ${max} selected` : `${count} selected`), showOptions: \'Show options\', remove: (label: string) => `Remove ${label}`, loadingOptions: \'Loading options…\', options: (count: number) => (count === 1 ? \'1 option\' : `${count} options`), ...messages }',
     atMax: 'max !== undefined && values.length >= max',
     countId: '`${uid}-count`',
     labels: 'new Map(options.map((option) => [option.value, option.label] as const))',
@@ -448,6 +449,7 @@ export default describeMember({
       onInteractOutside:
         '(event) => ((target) => (frame?.contains(target) || panel?.contains(target)) && event.preventDefault())(event.detail.originalEvent.target as Node | null)',
     },
+    without: ['announceHighlightedItem'],
     events: {
       onValueChange: { run: 'pick(details.value)' },
       onInputValueChange: { run: 'commitText(details.inputValue)' },

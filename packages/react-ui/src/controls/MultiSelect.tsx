@@ -33,7 +33,8 @@ import { Skeleton } from '../structure/Skeleton'
 import styles from '@polymorph/recipes/controls/multi-select.module.css'
 
 /**
- * Picks several values from a filterable closed list (`design/components/multi-select.md`).
+ * Filtered multiple choice (`design/components/multi-select.md`). The reader picks several values
+ * from a filterable closed list.
  *
  * Typical uses are assignees, labels and watchers. The value type changes (`string` to
  * `string[]`), so this is a separate member and not a Combobox mode.
@@ -88,7 +89,7 @@ export interface MultiSelectMessages {
   remove?: (label: string) => string
   /** The async status while the list loads. Default: `Loading options…`. */
   loadingOptions?: string
-  /** The async status naming the result count. Default: `{count} options`. */
+  /** The async status naming the result count. Default: `{count} options`, `1 option` for one. */
   options?: (count: number) => string
 }
 
@@ -103,7 +104,7 @@ const MESSAGES = {
   showOptions: 'Show options',
   remove: (label: string) => `Remove ${label}`,
   loadingOptions: 'Loading options…',
-  options: (count: number) => `${count} options`,
+  options: (count: number) => (count === 1 ? '1 option' : `${count} options`),
 } satisfies Required<MultiSelectMessages>
 
 export interface MultiSelectProps {

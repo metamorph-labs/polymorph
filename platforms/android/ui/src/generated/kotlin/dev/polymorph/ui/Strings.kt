@@ -425,7 +425,7 @@ data class PMStrings(
      * (`design/components/tag-input.md`).
      */
     val tagInputRemoved: (tag: String, count: Double) -> String =
-        { tag, count -> "${tag} removed, ${count.toInt()} remain" },
+        { tag, count -> if (count == 1.0) "${tag} removed, ${count.toInt()} remains" else "${tag} removed, ${count.toInt()} remain" },
     /** Calendar's `messages`: the month buttons' names (`design/components/calendar.md`). */
     val calendarMessages: PMCalendarMessages = PMCalendarMessages(
         previousMonth = "Previous month",
@@ -534,7 +534,7 @@ data class PMStrings(
      * (`design/components/phone-input.md`).
      */
     val phoneInputCountriesShown: (count: Double) -> String =
-        { count -> "${count.toInt()} countries" },
+        { count -> if (count == 1.0) "${count.toInt()} country" else "${count.toInt()} countries" },
     /**
      * PhoneInput's `messages.noCountry`: the list's one row when nothing matches the typed text
      * (`design/components/phone-input.md`).
@@ -545,7 +545,7 @@ data class PMStrings(
         showOptions = "Show options",
         clear = "Clear",
         loadingOptions = "Loading options…",
-        options = { count -> "${count.toInt()} options" },
+        options = { count -> if (count == 1.0) "${count.toInt()} option" else "${count.toInt()} options" },
     ),
     /**
      * Combobox's `emptyMessage`: the one line an empty list shows
@@ -663,7 +663,8 @@ data class PMStrings(
      * MultiSelect's `messages.options`: announced with the number of options the list shows
      * (`design/components/multi-select.md`).
      */
-    val multiSelectOptions: (count: Double) -> String = { count -> "${count.toInt()} options" },
+    val multiSelectOptions: (count: Double) -> String =
+        { count -> if (count == 1.0) "${count.toInt()} option" else "${count.toInt()} options" },
     /** Meter's `messages`: the status glyph's names (`design/components/meter.md`). */
     val meterMessages: PMMeterMessages = PMMeterMessages(
         warning = "High",

@@ -675,11 +675,11 @@ function iconRoleSources(
 /* -------------------------------------------------------------------------- */
 
 /** A Kotlin string template of a default's text: `{count}` is `${count.toInt()}`, `{name}` `$name`. */
-function kotlinTemplate(entry: SpecDefault): string {
+function kotlinTemplate(entry: SpecDefault, text = entry.english): string {
   const types = new Map(
     (entry.parameters ?? []).map((parameter) => [parameter.name, parameter.type]),
   )
-  const parts = entry.english.split(/(\{\w+\})/)
+  const parts = text.split(/(\{\w+\})/)
   return `"${parts
     .map((part) => {
       const parameter = /^\{(\w+)\}$/.exec(part)?.[1]
@@ -695,11 +695,19 @@ function kotlinTemplate(entry: SpecDefault): string {
     .join('')}"`
 }
 
-/** A default's value: its text, or a function of its parameters for a template. */
+/**
+ * A default's value: its text, or a function of its parameters for a template,
+ * which says its form for one when `count` is one. An app's `PMStrings` replaces
+ * the whole function, so its own is called for every count.
+ */
 function kotlinDefault(entry: SpecDefault): string {
   const parameters = entry.parameters ?? []
   if (parameters.length === 0) return kotlinString(entry.english)
-  return `{ ${parameters.map((parameter) => parameter.name).join(', ')} -> ${kotlinTemplate(entry)} }`
+  const body =
+    entry.one === undefined
+      ? kotlinTemplate(entry)
+      : `if (count == 1.0) ${kotlinTemplate(entry, entry.one)} else ${kotlinTemplate(entry)}`
+  return `{ ${parameters.map((parameter) => parameter.name).join(', ')} -> ${body} }`
 }
 
 /** A default's Kotlin type: `String`, or a function of its parameters returning one. */

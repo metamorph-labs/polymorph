@@ -299,7 +299,7 @@ describe('removing', () => {
     )
     await userEvent.click(removeButton('billing') as HTMLElement)
     const live = host.querySelector('[aria-live="polite"]') as HTMLElement
-    await vi.waitFor(() => expect(live.textContent?.trim()).toBe('billing removed, 1 remain'))
+    await vi.waitFor(() => expect(live.textContent?.trim()).toBe('billing removed, 1 remains'))
     const described = (field()?.getAttribute('aria-describedby') ?? '')
       .split(' ')
       .map((id) => document.getElementById(id)?.textContent?.trim())

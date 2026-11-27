@@ -199,7 +199,7 @@ const say = $derived({
   showOptions: 'Show options',
   clear: 'Clear',
   loadingOptions: 'Loading options…',
-  options: (count: number) => `${count} options`,
+  options: (count: number) => (count === 1 ? '1 option' : `${count} options`),
   list: 'Suggestions',
   ...messages,
 })
@@ -227,7 +227,13 @@ const requestMore = $derived(
 const emitBlur = $derived((event: FocusEvent) => setTimeout(() => onBlur?.(event)))
 const documentDirection = useDirection(() => input)
 const service = useMachine(
-  zag.machine,
+  {
+    ...zag.machine,
+    implementations: {
+      ...zag.machine.implementations,
+      actions: { ...zag.machine.implementations?.actions, announceHighlightedItem: () => {} },
+    },
+  } as typeof zag.machine,
   () =>
     ({
       id: uid,

@@ -22,6 +22,7 @@ export const definition: ElementDefinition = {
     disabled: 'boolean',
     id: 'string',
     invalid: 'boolean',
+    messages: 'json',
     name: 'string',
     pickerLabel: 'string',
     size: 'string',
@@ -45,6 +46,7 @@ export type PolyColorInputElement = MemberElement<
   | 'disabled'
   | 'id'
   | 'invalid'
+  | 'messages'
   | 'name'
   | 'pickerLabel'
   | 'size'

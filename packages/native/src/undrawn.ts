@@ -275,6 +275,16 @@ export const UNDRAWN: readonly UndrawnProps[] = [
     ios: ['ColorInput', 'Select'],
   },
   {
+    props: ['messages'],
+    reason:
+      'They name and value the web’s colour plane and rails, which are hidden range inputs. ' +
+      'SwiftUI’s ColorPicker is the system’s, which names its own controls in the system’s ' +
+      'language. The Compose plane and rails are drag surfaces hidden from TalkBack, which ' +
+      'reaches the colour through the hex entry.',
+    ios: ['ColorInput'],
+    android: ['ColorInput'],
+  },
+  {
     props: ['presentation'],
     reason:
       'It chooses between the web’s anchored panel and its sheet on a narrow viewport. Each ' +

@@ -323,7 +323,7 @@ describe('removing', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Remove billing' }))
 
     const live = root.querySelector('[aria-live="polite"]') as HTMLElement
-    expect(live.textContent).toBe('billing removed, 1 remain')
+    expect(live.textContent).toBe('billing removed, 1 remains')
   })
 
   it('offers no removes at all when disabled', () => {

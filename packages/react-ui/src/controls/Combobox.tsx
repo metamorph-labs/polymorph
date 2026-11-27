@@ -60,7 +60,7 @@ export interface ComboboxMessages {
   clear?: string
   /** The async status while the list loads. Default: `Loading options…`. */
   loadingOptions?: string
-  /** The async status naming the result count. Default: `{count} options`. */
+  /** The async status naming the result count. Default: `{count} options`, `1 option` for one. */
   options?: (count: number) => string
   /**
    * The list's accessible name, followed by the field's label where `aria-labelledby` names the
@@ -74,7 +74,7 @@ const MESSAGES = {
   showOptions: 'Show options',
   clear: 'Clear',
   loadingOptions: 'Loading options…',
-  options: (count: number) => `${count} options`,
+  options: (count: number) => (count === 1 ? '1 option' : `${count} options`),
 } satisfies Required<Omit<ComboboxMessages, 'list'>>
 
 export interface ComboboxProps {

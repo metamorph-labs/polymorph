@@ -16,7 +16,8 @@ import {
 import styles from '@polymorph/recipes/controls/number-input.module.css'
 
 /**
- * A field that holds, formats and steps a number (`design/components/number-input.md`).
+ * A number field that formats and steps (`design/components/number-input.md`). It holds the
+ * value as a number.
  *
  * It formats values as the chart tier does. The boundary comes from `input.md`: Input's
  * `onChange` returns a string for every `type`, including `number`. Once the app holds
@@ -54,6 +55,17 @@ export interface NumberFormat extends Omit<ValueFormat, 'style' | 'granularity'>
   style?: Exclude<ValueFormat['style'], 'date' | 'compact'> // 'decimal' | 'percent' | 'currency'
 }
 
+/**
+ * The steppers' names, the localization seam. Partial: an omitted name keeps React Aria's, which
+ * React Aria says in the page's locale with the field's label after it ("Increase Seats").
+ */
+export interface NumberInputMessages {
+  /** The step-up button's name. */
+  increment?: string
+  /** The step-down button's name. */
+  decrement?: string
+}
+
 export interface NumberInputProps {
   /** `null` is the empty field. */
   value?: number | null
@@ -88,6 +100,8 @@ export interface NumberInputProps {
   id?: string
   /** Posts the **plain number** on a hidden input, never the formatted text. */
   name?: string
+  /** The steppers' names in the host's words. */
+  messages?: NumberInputMessages
   /** Wired by FormField; set directly only when there is no visible label. */
   'aria-label'?: string
   'aria-labelledby'?: string
@@ -137,6 +151,7 @@ export function NumberInput({
   invalid = false,
   id,
   name,
+  messages,
   'aria-label': ariaLabel,
   'aria-labelledby': labelledBy,
   'aria-describedby': describedBy,
@@ -189,6 +204,9 @@ export function NumberInput({
         : (event: FocusEvent<Element>) => onFocus(event as FocusEvent<HTMLInputElement>),
     /* Disables the wheel. The spec names this prop so the choice is documented. */
     isWheelDisabled: true,
+    /* A host's names only: absent, React Aria names each stepper in the page's locale. */
+    incrementAriaLabel: messages?.increment,
+    decrementAriaLabel: messages?.decrement,
     'aria-label': ariaLabel,
     'aria-labelledby': labelledBy,
     'aria-describedby': describedBy,

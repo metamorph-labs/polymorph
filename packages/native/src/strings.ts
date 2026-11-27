@@ -17,6 +17,13 @@
  * A default only one platform's members speak names that platform
  * (`platforms`), and only that platform's contracts declare it, so the other
  * platform's string catalog does not carry it unused.
+ *
+ * A default that is a function of a `count` and says it with a noun or a verb
+ * that agrees with it names its English form for one (`one`). The generated
+ * default says that form when the count is one, inside the same entry, so an
+ * app that already replaces the entry still receives every count: on Android
+ * its `PMStrings` function is called for one too, and on iOS the entry keeps
+ * its key in the app's string catalog, where a translation can vary by plural.
  */
 
 import type { NativePlatform } from './mapping'
@@ -42,6 +49,11 @@ export interface SpecDefault {
   english: string
   /** The parameters, in order, of a default that is a function. */
   parameters?: readonly SpecDefaultParameter[]
+  /**
+   * The English text when the parameter `count` is one, with the same
+   * parameters in the same order: `{count} option` beside `{count} options`.
+   */
+  one?: string
   /** What the text is, for a translator. */
   comment: string
   /** The platforms whose members speak it, when not both. */
@@ -1228,6 +1240,7 @@ export const SPEC_DEFAULTS: readonly SpecDefaultEntry[] = [
     spec: 'design/components/tag-input.md',
     doc: "TagInput's `removedLabel`: what it announces when a tag is removed.",
     english: '{tag} removed, {count} remain',
+    one: '{tag} removed, {count} remains',
     parameters: [
       { name: 'tag', type: 'string' },
       { name: 'count', type: 'number' },
@@ -1364,6 +1377,7 @@ export const SPEC_DEFAULTS: readonly SpecDefaultEntry[] = [
     spec: 'design/components/phone-input.md',
     doc: "PhoneInput's `messages.countriesShown`: announced with the number of countries the list shows.",
     english: '{count} countries',
+    one: '{count} country',
     parameters: [{ name: 'count', type: 'number' }],
     comment: 'How many countries a list shows.',
   },
@@ -1406,6 +1420,7 @@ export const SPEC_DEFAULTS: readonly SpecDefaultEntry[] = [
         spec: 'design/components/combobox.md',
         doc: 'Announced with the number of options the list shows.',
         english: '{count} options',
+        one: '{count} option',
         parameters: [{ name: 'count', type: 'number' }],
         comment: 'How many options a list shows.',
       },
@@ -1593,6 +1608,7 @@ export const SPEC_DEFAULTS: readonly SpecDefaultEntry[] = [
     spec: 'design/components/multi-select.md',
     doc: "MultiSelect's `messages.options`: announced with the number of options the list shows.",
     english: '{count} options',
+    one: '{count} option',
     parameters: [{ name: 'count', type: 'number' }],
     comment: 'How many options a list shows.',
   },

@@ -64,6 +64,8 @@
     "./tag-input-count": "./src/tag-input-count.ts",
     "./combobox-list": "./src/combobox-list.ts",
     "./described-names": "./src/described-names.ts",
+    "./machine-words": "./src/machine-words.ts",
+    "./option-count": "./src/option-count.ts",
     "./server-render": "./server-render.ts",
     "./dist-lock": "./dist-lock.ts"
   },

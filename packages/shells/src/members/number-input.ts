@@ -30,9 +30,11 @@ const affix = (prop: string) =>
  * NumberInput (`design/components/number-input.md`): a parsed, formatted
  * number. Zag's machine owns the text, the formatting and the keys (the
  * arrows step, Home and End go to the rails). The field stays a textbox, as
- * the spec's contract has it, with the machine's own role description, so the
- * range attributes a spinbutton would carry are left off it; the value is in
- * the field's text.
+ * the spec's contract has it, so the range attributes a spinbutton would carry
+ * are left off it; the value is in the field's text. It carries no role
+ * description: React Aria's "number field" is said in the page's locale, and
+ * the machine's fixed "numberfield" could not be. The steppers are named by
+ * `messages`, which the machine takes as its translations.
  *
  * `change` reports committed numbers, never drafts: typed text commits on blur
  * and Enter, a step commits as it fires, and unparseable text restores the
@@ -48,8 +50,13 @@ export default describeMember({
   types: {
     NumberFormat:
       "{ style?: 'decimal' | 'percent' | 'currency'; currency?: string; maximumFractionDigits?: number }",
+    NumberInputMessages: '{ increment?: string; decrement?: string }',
   },
   defaults: { size: lit('md'), disabled: 'false', readOnly: 'false', invalid: 'false' },
+  derived: {
+    // The steppers' names, the machine's own English words by default.
+    say: "{ increment: 'increment value', decrement: 'decrease value', ...messages }",
+  },
   state: {
     // The number last committed: the parent's `value` when it controls one.
     committed: 'value === undefined ? (defaultValue ?? null) : value',
@@ -72,6 +79,8 @@ export default describeMember({
       allowMouseWheel: 'false',
       // The caller's id names the field, and the steppers' `aria-controls` follow it.
       ids: 'id === undefined ? undefined : { input: id }',
+      // The steppers' names, in the member's words.
+      translations: '{ incrementLabel: say.increment, decrementLabel: say.decrement }',
     },
     events: {
       // Typing is a draft. A blur or Enter commits through `onValueCommit`, and the
@@ -149,6 +158,7 @@ export default describeMember({
           name: 'undefined',
           placeholder: 'placeholder',
           role: 'undefined',
+          'aria-roledescription': 'undefined',
           'aria-valuemin': 'undefined',
           'aria-valuemax': 'undefined',
           'aria-valuenow': 'undefined',

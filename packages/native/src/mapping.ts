@@ -595,6 +595,40 @@ export const SHAPES: Readonly<Record<string, Shape>> = {
       },
     ],
   },
+  ColorInputMessages: {
+    fields: [
+      {
+        name: 'plane',
+        type: 'string',
+        optional: true,
+        doc: 'The web’s saturation and brightness plane’s name. Default: `saturation and brightness`.',
+      },
+      {
+        name: 'planeValue',
+        type: '(saturation: number, brightness: number) => string',
+        optional: true,
+        doc: 'The plane’s value text. Default: `saturation {saturation}, brightness {brightness}`.',
+      },
+      {
+        name: 'hue',
+        type: 'string',
+        optional: true,
+        doc: 'The web’s hue rail’s name. Default: `hue`.',
+      },
+      {
+        name: 'alpha',
+        type: 'string',
+        optional: true,
+        doc: 'The web’s alpha rail’s name. Default: `alpha`.',
+      },
+      {
+        name: 'railValue',
+        type: '(name: string, value: number) => string',
+        optional: true,
+        doc: 'A rail’s value text, given its name and its value. Default: `{name} {value}`.',
+      },
+    ],
+  },
   ComboboxMessages: {
     fields: [
       {
@@ -619,7 +653,7 @@ export const SHAPES: Readonly<Record<string, Shape>> = {
         name: 'options',
         type: '(count: number) => string',
         optional: true,
-        doc: 'The async status naming the result count. Default: `{count} options`.',
+        doc: 'The async status naming the result count. Default: `{count} options`, `1 option` for one.',
       },
       {
         name: 'list',
@@ -1180,7 +1214,7 @@ export const SHAPES: Readonly<Record<string, Shape>> = {
         name: 'options',
         type: '(count: number) => string',
         optional: true,
-        doc: 'The async status naming the result count. Default: `{count} options`.',
+        doc: 'The async status naming the result count. Default: `{count} options`, `1 option` for one.',
       },
     ],
   },
@@ -1207,6 +1241,22 @@ export const SHAPES: Readonly<Record<string, Shape>> = {
         web: "Exclude<ValueFormat['style'], 'date' | 'compact'>",
         optional: true,
         doc: '`percent` takes ratios (0–1), and the field shows them multiplied by 100.',
+      },
+    ],
+  },
+  NumberInputMessages: {
+    fields: [
+      {
+        name: 'increment',
+        type: 'string',
+        optional: true,
+        doc: 'The step-up button’s name. Default: the strings catalogue’s `numberInputIncrement`.',
+      },
+      {
+        name: 'decrement',
+        type: 'string',
+        optional: true,
+        doc: 'The step-down button’s name. Default: the strings catalogue’s `numberInputDecrement`.',
       },
     ],
   },
@@ -1265,7 +1315,7 @@ export const SHAPES: Readonly<Record<string, Shape>> = {
         name: 'countriesShown',
         type: '(count: number) => string',
         optional: true,
-        doc: 'Announced while the list is open. Default: `{count} countries`.',
+        doc: 'Announced while the list is open. Default: `{count} countries`, `1 country` for one.',
       },
       {
         name: 'noCountry',

@@ -297,7 +297,9 @@ export default describeMember({
           // The listbox is the panel: always open, with no dismissal of its own.
           open: 'true',
           disableLayer: 'true',
-          // No stored selection: an item is a command, and a command runs twice.
+          // No stored selection: an item is a command, and a command runs twice. So the machine's
+          // announcement of the highlighted item on Apple platforms is the item's label alone,
+          // never followed by its English ", selected".
           value: '[]',
           closeOnSelect: 'false',
           // The query stays after a command runs, for a palette that chains.

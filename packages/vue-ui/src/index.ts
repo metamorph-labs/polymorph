@@ -161,7 +161,7 @@ export type { CodeBlockProps } from './structure/CodeBlock.vue'
 export { default as Collapsible } from './structure/Collapsible.vue'
 export type { CollapsibleProps } from './structure/Collapsible.vue'
 export { default as ColorInput } from './controls/ColorInput.vue'
-export type { ColorInputProps } from './controls/ColorInput.vue'
+export type { ColorInputMessages, ColorInputProps } from './controls/ColorInput.vue'
 export { default as Combobox } from './controls/Combobox.vue'
 export type {
   ComboboxFilter,
@@ -327,7 +327,11 @@ export type {
   MultiSelectProps,
 } from './controls/MultiSelect.vue'
 export { default as NumberInput } from './controls/NumberInput.vue'
-export type { NumberFormat, NumberInputProps } from './controls/NumberInput.vue'
+export type {
+  NumberFormat,
+  NumberInputMessages,
+  NumberInputProps,
+} from './controls/NumberInput.vue'
 export { default as OTPInput } from './controls/OTPInput.vue'
 export type { OTPInputProps, OTPLength } from './controls/OTPInput.vue'
 export { default as PageHeader } from './structure/PageHeader.vue'

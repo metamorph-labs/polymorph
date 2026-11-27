@@ -46,7 +46,7 @@ the application stores as the reader wrote it.
 interface PhoneInputMessages {
   country?: string // the country control's name; default "Country calling code"
   showCountries?: string // the list button's name; default "Show countries"
-  countriesShown?: (count: number) => string // announced while the list is open; default "{count} countries"
+  countriesShown?: (count: number) => string // announced while the list is open; default "{count} countries", "1 country" for one
   noCountry?: string // the list's one row when nothing matches; default "No matching country"
 }
 ```

@@ -165,7 +165,7 @@ export type { CodeBlockProps } from './structure/CodeBlock.svelte'
 export { default as Collapsible } from './structure/Collapsible.svelte'
 export type { CollapsibleProps } from './structure/Collapsible.svelte'
 export { default as ColorInput } from './controls/ColorInput.svelte'
-export type { ColorInputProps } from './controls/ColorInput.svelte'
+export type { ColorInputMessages, ColorInputProps } from './controls/ColorInput.svelte'
 export { default as Combobox } from './controls/Combobox.svelte'
 export type {
   ComboboxFilter,
@@ -335,7 +335,11 @@ export type {
   MultiSelectProps,
 } from './controls/MultiSelect.svelte'
 export { default as NumberInput } from './controls/NumberInput.svelte'
-export type { NumberFormat, NumberInputProps } from './controls/NumberInput.svelte'
+export type {
+  NumberFormat,
+  NumberInputMessages,
+  NumberInputProps,
+} from './controls/NumberInput.svelte'
 export { default as OTPInput } from './controls/OTPInput.svelte'
 export type { OTPInputProps, OTPLength } from './controls/OTPInput.svelte'
 export { default as PageHeader } from './structure/PageHeader.svelte'

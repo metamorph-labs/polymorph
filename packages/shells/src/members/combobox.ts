@@ -162,7 +162,7 @@ export default describeMember({
   },
   derived: {
     sheeting: "presentation === 'auto' && phone",
-    say: "{ showOptions: 'Show options', clear: 'Clear', loadingOptions: 'Loading options…', options: (count: number) => `${count} options`, list: 'Suggestions', ...messages }",
+    say: "{ showOptions: 'Show options', clear: 'Clear', loadingOptions: 'Loading options…', options: (count: number) => (count === 1 ? '1 option' : `${count} options`), list: 'Suggestions', ...messages }",
     collator: "new Intl.Collator(undefined, { usage: 'search', sensitivity: 'base' })",
     needle: "(inputValue ?? query).normalize('NFC')",
     matches:
@@ -209,6 +209,10 @@ export default describeMember({
       onPointerDownOutside:
         '(event) => panel?.contains(event.detail.originalEvent.target as Node) && event.preventDefault()',
     },
+    // The machine speaks the highlighted option on Apple platforms, with ", selected" in English
+    // after a chosen one, in a live region of its own. The field carries the highlighted option
+    // as its active descendant and each option its chosen state, so the member does without it.
+    without: ['announceHighlightedItem'],
     events: {
       onValueChange: { emit: 'change', payload: 'details.value[0] ?? null' },
       onInputValueChange: {

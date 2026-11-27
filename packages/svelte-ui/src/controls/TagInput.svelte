@@ -63,7 +63,7 @@ export interface TagInputProps {
   placeholder?: string
   /**
    * What a removal announces in the host's words, the localization seam; the default is `{tag}
-   * removed, {count} remain`.
+   * removed, {count} remain`, and `{tag} removed, 1 remains` when one tag remains.
    */
   removedLabel?: TagInputRemovedLabel
   /**
@@ -101,7 +101,8 @@ let {
   onBlur,
   onChange,
   placeholder,
-  removedLabel = (tag: string, count: number) => `${tag} removed, ${count} remain`,
+  removedLabel = (tag: string, count: number) =>
+    count === 1 ? `${tag} removed, 1 remains` : `${tag} removed, ${count} remain`,
   removeLabel = (tag: string) => `Remove ${tag}`,
   size = 'md',
   validate = (raw: string) => (raw.trim() === '' ? null : raw.trim()),

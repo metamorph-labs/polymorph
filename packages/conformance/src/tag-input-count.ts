@@ -164,6 +164,12 @@ export function tagInputCountLaw({ shell, mount }: TagInputCountLaw): void {
       await vi.waitFor(() => expect(announced()).toBe('billing removed, 2 remain'))
     })
 
+    it('announces a removal that leaves one tag in the singular, in English by default', async () => {
+      await mount({ 'aria-label': 'Labels', defaultValue: ['billing', 'refund'] })
+      removeFirst()
+      await vi.waitFor(() => expect(announced()).toBe('billing removed, 1 remains'))
+    })
+
     it('announces the host’s sentence from removedLabel, given the tag and how many remain', async () => {
       const host = frenchRemoval()
       await mount({
