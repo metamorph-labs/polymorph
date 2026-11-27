@@ -163,7 +163,7 @@ let applied: ModePreference | null = null
  */
 let defaulted = false
 
-/** Each installed system's `defaultMode`, from the catalogue `hydrateTheme` received. */
+/** Each installed system's `defaultMode`, as `hydrateTheme` or `hydrateMode` received it. */
 let defaultModes: Readonly<Record<string, ModePreference>> = {}
 
 /**
@@ -250,8 +250,8 @@ function applyMode(preference: ModePreference): void {
  * The preference this document wears, which may be `system`: the one the last
  * `setMode` applied, the system's default that hydration applied, or before
  * either the stored one. With nothing stored it is the worn system's
- * `defaultMode` where the catalogue hydration received names it, and `system`
- * where it does not. The pre-paint script applies the same, so the two agree
+ * `defaultMode` where the modes hydration received name it, and `system`
+ * where they do not. The pre-paint script applies the same, so the two agree
  * until a `setMode`.
  */
 export function getModePreference(): ModePreference {
@@ -393,10 +393,11 @@ function migrateLegacyTheme(installed?: InstalledCatalogue): void {
  * are never written back: only `setSystem` or `setPalette` stores a
  * preference, so later default changes still reach this user.
  *
- * **The mode.** A stored preference is applied. With none stored, the worn
- * system's default (`installed.modes`) is applied and not stored, for the same
- * reason: only `setMode` stores a mode, so a reader who never chose one follows
- * the system's default, and the next system's after a `setSystem`.
+ * **The mode** is `hydrateMode`'s step, with `installed.modes`. A stored
+ * preference is applied. With none stored, the worn system's default is
+ * applied and not stored, for the same reason: only `setMode` stores a mode, so
+ * a reader who never chose one follows the system's default, and the next
+ * system's after a `setSystem`.
  */
 export function hydrateTheme(fallbackSystem?: string, installed?: InstalledCatalogue): void {
   migrateLegacyTheme(installed)
@@ -433,7 +434,27 @@ export function hydrateTheme(fallbackSystem?: string, installed?: InstalledCatal
   const motion = read(STORAGE_KEYS.motion)
   if (motion) apply(DATA_ATTRS.motion, motion)
 
-  defaultModes = installed?.modes ?? {}
+  hydrateMode(installed?.modes)
+}
+
+/**
+ * The mode step of `hydrateTheme`, and nothing else, for a page that names
+ * its pairing in its markup and installs no catalogue the runtime can know,
+ * such as a page with no build. It applies a choice this document made, else
+ * the stored one, else the worn system's default from `modes`, which it does
+ * not store, and re-attaches the `prefers-color-scheme` listener when the
+ * preference is `system`. So `getModePreference`, `readMode` and a ModeSwitch
+ * read the preference the pre-paint script applied.
+ *
+ * `modes` maps each system to its `defaultMode`, as `InstalledCatalogue.modes`
+ * does, and a system it does not name follows the device. It reads no stored
+ * system or palette and judges none stale, because it has no catalogue to
+ * judge them by: the pairing stays as the pre-paint script and the markup left
+ * it. A repeat call is safe, and the last call's `modes` is the one `setSystem`
+ * reads.
+ */
+export function hydrateMode(modes: Readonly<Record<string, ModePreference>> = {}): void {
+  defaultModes = modes
   // A choice this document made, then a stored one, then the default.
   const chosen = applied !== null && !defaulted ? applied : storedMode()
   if (chosen !== null) setMode(chosen)

@@ -23,8 +23,8 @@ It contains:
   the axes and schemas, `resolveTheme`, the emitters (`emitThemeCSS` for the web; `emitSwift`,
   `emitKotlin` and `emitDart` for the SwiftUI, Compose and Dart token packages;
   `emitTokenDocument`, the same decisions as JSON), `admitTheme`, the runtime
-  (`installThemeCSS`, `setSystem`, `setPalette`, `setMode`, `hydrateTheme`, `PREPAINT_SCRIPT`,
-  `prepaintScript`)
+  (`installThemeCSS`, `setSystem`, `setPalette`, `setMode`, `hydrateTheme`, `hydrateMode`,
+  `PREPAINT_SCRIPT`, `prepaintScript`)
   and the `--pm-*` token contract. See [docs/theming.md](../../docs/theming.md).
 - **Build-time theming.** `@polymorph/engine/vite` exports `polymorphTheme`, a Vite plugin that
   runs the theme engine when the application builds, fails the build on a law fault, and

@@ -810,7 +810,7 @@ Each place that writes the script for a page builds it with the systems it knows
 | --- | --- |
 | the build-time plugin, `@polymorph/engine/vite` | the listed systems and `defaultSystem`; it inlines the script next to the default `data-system` and `data-palette` it writes on `<html>` |
 | `polymorph add theme:<system>` and `polymorph update` | the installed systems, read from the application's copies of their documents, and the first as the fallback; it patches the script into `index.html` and writes it as `themes/prepaint.ts`, for a root layout that has no `index.html` |
-| `polymorph init --framework elements` and `prepaint.js` | the house systems; the page names its pairing on `<html>` |
+| `polymorph init --framework elements` and `prepaint.js` | the house systems; the page names its pairing on `<html>`, and `polymorph.js` hands the runtime the same modes (`hydrateMode`) |
 | the workbench and the docs site (`vite.config.ts`) | the house systems and `design/defaults.json`'s system |
 
 A page whose themes arrive at run time inlines `prepaintScript` with the systems it can know
@@ -825,6 +825,14 @@ stored palette is cleared. A stored palette that is not installed is replaced by
 system's default. Fallbacks are never written to storage. Only an explicit
 `setSystem`/`setPalette` stores a preference. A value under the older single key `pm-theme` is
 migrated once.
+
+`hydrateMode(modes)` is the mode step of `hydrateTheme` alone, for a page that names its pairing
+in its markup and has no catalogue to give the runtime. It takes each system's `defaultMode`, as
+`installed.modes` does, applies the mode `hydrateTheme` would apply, and re-attaches the
+listener when the preference is `system`. It reads no stored system or palette and judges none
+stale, because without a catalogue it cannot tell a renamed system from one the page installed
+itself. A page with no build calls it from `polymorph.js` and `polymorph-all.js`, with the map
+`prepaint.js` carries.
 
 ### Nested theme scopes
 

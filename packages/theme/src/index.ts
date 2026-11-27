@@ -344,6 +344,7 @@ export {
   getPalette,
   getSystem,
   hasPairingCSS,
+  hydrateMode,
   hydrateTheme,
   installThemeCSS,
   PREPAINT_SCRIPT,
