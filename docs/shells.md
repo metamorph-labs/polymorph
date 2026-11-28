@@ -1088,7 +1088,10 @@ attributes merged (`mergeParts`), to the foundation's `Spread` directive (`[pmSp
 writes each entry as Vue writes a spread object: a listener, a DOM property where the element has
 one and an attribute otherwise, a style property, a class. Any other element binds its attributes
 directly: a presence attribute (`disabled`, `hidden`) is written or removed, never `"false"`, and a
-form control's `value` and `checked` are its DOM properties.
+form control's `value` and `checked` are its DOM properties. A range input's `min`, `max` and
+`step` are DOM properties too, bound before its `value`: Angular sets an element's properties
+before its attributes, and a range input clamps a value to the bounds it has when the value is
+set, so ColorInput's hue of 255 would read 100.
 
 **The host element.** An Angular component renders inside an element of its own, which React, Vue,
 Svelte and Solid do not have. A member's host draws no box, carries no attribute but its

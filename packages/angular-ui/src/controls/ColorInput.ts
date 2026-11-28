@@ -129,10 +129,10 @@ type="button"
 [pmSpread]="e15()"
 ><input
 [attr.class]="e16()"
+[min]="e17()"
+[max]="e18()"
+[step]="e19()"
 type="range"
-[attr.min]="e17()"
-[attr.max]="e18()"
-[attr.step]="e19()"
 [value]="e20()"
 [attr.disabled]="e9()"
 [attr.aria-label]="e21()"
@@ -141,10 +141,10 @@ type="range"
 />
 <input
 [attr.class]="e16()"
+[min]="e23()"
+[max]="e24()"
+[step]="e25()"
 type="range"
-[attr.min]="e23()"
-[attr.max]="e24()"
-[attr.step]="e25()"
 [value]="e26()"
 [attr.disabled]="e9()"
 tabindex="-1"
@@ -163,10 +163,10 @@ aria-hidden="true"
 [pmSpread]="e30()"
 ><input
 [attr.class]="e16()"
+[min]="e31()"
+[max]="e32()"
+[step]="e33()"
 type="range"
-[attr.min]="e31()"
-[attr.max]="e32()"
-[attr.step]="e33()"
 [value]="e34()"
 [attr.disabled]="e9()"
 [attr.aria-label]="e35()"
@@ -185,10 +185,10 @@ aria-hidden="true"
 [pmSpread]="e41()"
 ><input
 [attr.class]="e42()"
+[min]="e43()"
+[max]="e44()"
+[step]="e45()"
 type="range"
-[attr.min]="e43()"
-[attr.max]="e44()"
-[attr.step]="e45()"
 [value]="e46()"
 [attr.disabled]="e47()"
 [attr.aria-label]="e48()"
@@ -499,15 +499,15 @@ export class ColorInput {
   }
 
   protected e17() {
-    return this.color.value.getChannelRange('saturation').minValue
+    return fieldValue(this.color.value.getChannelRange('saturation').minValue)
   }
 
   protected e18() {
-    return this.color.value.getChannelRange('saturation').maxValue
+    return fieldValue(this.color.value.getChannelRange('saturation').maxValue)
   }
 
   protected e19() {
-    return this.color.value.getChannelRange('saturation').step
+    return fieldValue(this.color.value.getChannelRange('saturation').step)
   }
 
   protected e20() {
@@ -530,15 +530,15 @@ export class ColorInput {
   }
 
   protected e23() {
-    return this.color.value.getChannelRange('brightness').minValue
+    return fieldValue(this.color.value.getChannelRange('brightness').minValue)
   }
 
   protected e24() {
-    return this.color.value.getChannelRange('brightness').maxValue
+    return fieldValue(this.color.value.getChannelRange('brightness').maxValue)
   }
 
   protected e25() {
-    return this.color.value.getChannelRange('brightness').step
+    return fieldValue(this.color.value.getChannelRange('brightness').step)
   }
 
   protected e26() {
@@ -582,15 +582,15 @@ export class ColorInput {
   }
 
   protected e31() {
-    return this.color.value.getChannelRange('hue').minValue
+    return fieldValue(this.color.value.getChannelRange('hue').minValue)
   }
 
   protected e32() {
-    return this.color.value.getChannelRange('hue').maxValue
+    return fieldValue(this.color.value.getChannelRange('hue').maxValue)
   }
 
   protected e33() {
-    return this.color.value.getChannelRange('hue').step
+    return fieldValue(this.color.value.getChannelRange('hue').step)
   }
 
   protected e34() {
@@ -656,17 +656,17 @@ export class ColorInput {
 
   protected e43() {
     if (!this.$p.alpha) return undefined as never
-    return this.color.value.getChannelRange('alpha').minValue
+    return fieldValue(this.color.value.getChannelRange('alpha').minValue)
   }
 
   protected e44() {
     if (!this.$p.alpha) return undefined as never
-    return this.color.value.getChannelRange('alpha').maxValue
+    return fieldValue(this.color.value.getChannelRange('alpha').maxValue)
   }
 
   protected e45() {
     if (!this.$p.alpha) return undefined as never
-    return this.color.value.getChannelRange('alpha').step
+    return fieldValue(this.color.value.getChannelRange('alpha').step)
   }
 
   protected e46() {
