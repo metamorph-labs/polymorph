@@ -167,6 +167,22 @@ the tables a native screen is held to, is
 - **One theme per app**, installed at its root: `.pmTheme(theme)` in SwiftUI, a
   `CompositionLocal` the app provides in Compose.
 
+The members a screen composes have contracts of their own, generated from the registry:
+`PM<Member>Props` in `Contracts.swift` (`packages/native/src/contracts.ts`) and in `Contracts.kt`
+(`packages/native/src/kotlin.ts`), and a part's `PM<Member><Part>Props`. Both write a member's
+props in one order. A page archetype other than `AppShell` starts with `loadStatus` and then
+`onRetry`. The web's props follow in the order the registry lists them, which is by name, with
+`variant` and `tone` as one `appearance` where the first of the two falls. The Swift struct's
+fields and its initialiser's parameters, the Kotlin class's constructor parameters and the
+parameters of the composable `Members.kt` declares for the member are all in that order, except
+that the composable takes `children` last, so it can trail. A new prop takes its place by its
+name, so it moves every prop after it one place. Props are passed by name on both platforms:
+Swift's initialiser has a label for every parameter, which a call writes in that order, and the
+screen emitter names every argument of a Kotlin call, which Kotlin matches by name in any order.
+A new optional prop therefore leaves each such call as it was. Kotlin also accepts arguments by
+position, and a call that passed props that way would bind each to whatever prop is now in its
+place.
+
 A spec for `ios` or `android` is emitted to this contract (below). The two emitters share the
 type table, the walk over the tree and the faults (`packages/spec/src/emit-native.ts`); each
 spells the result in its own language.
