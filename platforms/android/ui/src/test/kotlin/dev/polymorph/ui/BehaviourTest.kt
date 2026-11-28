@@ -925,6 +925,27 @@ class BehaviourTest {
     }
 
     /**
+     * The open list says how many options it shows through a polite live
+     * region, as the web's status does (`multi-select.md`), in the app's words,
+     * `messages.options`, and in `PMStrings`' words when the app passes none.
+     */
+    @Test
+    fun aMultiSelectListSaysItsCountInTheAppsWords() {
+        val polite = SemanticsMatcher("a polite live region") {
+            it.config.getOrNull(SemanticsProperties.LiveRegion) == LiveRegionMode.Polite
+        }
+        val team = listOf(PMMultiSelectOption(value = "ana", label = "Ana Ruiz"), PMMultiSelectOption(value = "ben", label = "Ben Okafor"))
+        val french = PMMultiSelectMessages(options = { count -> "${count.toInt()} personnes" })
+        for ((messages, heard) in listOf(french to "2 personnes", null to PMStrings().multiSelectOptions(2.0))) {
+            runComposeUiTest {
+                setContent { Scene { PMMultiSelect(ariaLabel = "Assignees", defaultOpen = true, messages = messages, options = team) } }
+                waitForIdle()
+                onAllNodes(polite and hasContentDescription(heard), useUnmergedTree = true).assertCountEquals(1)
+            }
+        }
+    }
+
+    /**
      * `countLabel` states TagInput's count in the app's words (`tag-input.md`,
      * FormField integration), given the count, `max` and whether the field
      * holds it. Without it, the string catalogue's sentence states the count.

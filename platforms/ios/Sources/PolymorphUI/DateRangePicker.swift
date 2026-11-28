@@ -22,10 +22,11 @@
 // button, which reports `nil`. `value` with `onChange` is the controlled
 // pair.
 //
-// The two dates are named by `ariaLabel` or the FormField's label, each with
-// its date as its value, and say "Invalid" first in their hint while
-// invalid. `startName`, `endName`, `id` and the `aria-*by` ids have no
-// SwiftUI counterpart.
+// Each date is named by `ariaLabel` or the FormField's label and then its
+// end's word, `messages.start` or `messages.end` ("Start date", "End date"),
+// as the web names each half's segments, with its date as its value, and says
+// "Invalid" first in its hint while invalid. `startName`, `endName`, `id` and
+// the `aria-*by` ids have no SwiftUI counterpart.
 
 import PolymorphTokens
 import SwiftUI
@@ -166,21 +167,23 @@ private struct PMDateRangeField: View {
     // One row while it fits; otherwise, at the largest text sizes, the end on
     // a line of its own with the buttons, so the field grows taller rather
     // than past the window.
+    let start = props.messages?.start ?? PMStrings.dateRangePickerStart
+    let finish = props.messages?.end ?? PMStrings.dateRangePickerEnd
     ViewThatFits(in: .horizontal) {
       HStack(spacing: metrics.gap) {
-        end(value?.start)
+        end(value?.start, word: start)
         dash
-        end(value?.end)
+        end(value?.end, word: finish)
         Spacer(minLength: 0)
         buttons(metrics)
       }
       VStack(alignment: .leading, spacing: 0) {
         HStack(spacing: metrics.gap) {
-          end(value?.start)
+          end(value?.start, word: start)
           dash
         }
         HStack(spacing: metrics.gap) {
-          end(value?.end)
+          end(value?.end, word: finish)
           Spacer(minLength: 0)
           buttons(metrics)
         }
@@ -215,8 +218,9 @@ private struct PMDateRangeField: View {
         size: size, appearance: .ghostNeutral))
   }
 
-  /// One end: its date, or the locale's pattern while the range is empty.
-  private func end(_ day: PMCalendarDate?) -> some View {
+  /// One end: its date, or the locale's pattern while the range is empty,
+  /// named by the field's name and then `word`, "Stay, Start date".
+  private func end(_ day: PMCalendarDate?, word: String) -> some View {
     let calendar = PMDates.calendar(locale)
     let text = day.flatMap { PMDates.date($0, in: calendar) }.map {
       $0.formatted(.dateTime.day().month(.abbreviated).year().locale(locale))
@@ -233,7 +237,7 @@ private struct PMDateRangeField: View {
         .pmHitRegion(height: PMControlMetrics(size, theme).height)
     }
     .buttonStyle(.plain)
-    .accessibilityLabel(Text(name))
+    .accessibilityLabel(Text(name.isEmpty ? word : "\(name), \(word)"))
     .accessibilityValue(Text(text ?? ""))
     .pmFieldHint(invalid: invalid, hint)
   }

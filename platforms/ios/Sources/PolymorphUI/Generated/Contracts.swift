@@ -10043,9 +10043,11 @@ public struct PMDateRangePickerMessages {
   public var chooseRange: String
   /// What an unfilled segment says as its value on the web. Default: `Empty`.
   public var empty: String?
-  /// The start’s name on the web, said with each of its segments. Default: `Start date`.
+  /// The start’s name, said after the field’s: with each of its segments on the web, and with its
+  /// date on iOS. Default: `Start date`.
   public var start: String?
-  /// The end’s name on the web, said with each of its segments. Default: `End date`.
+  /// The end’s name, said after the field’s: with each of its segments on the web, and with its
+  /// date on iOS. Default: `End date`.
   public var end: String?
 
   public init(

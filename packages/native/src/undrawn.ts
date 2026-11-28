@@ -277,8 +277,10 @@ export const UNDRAWN: readonly UndrawnProps[] = [
   {
     props: [
       'messages',
+      'ColorInputMessages.plane',
       'ColorInputMessages.planeValue',
       'ColorInputMessages.hue',
+      'ColorInputMessages.alpha',
       'ColorInputMessages.railValue',
     ],
     reason:
@@ -288,15 +290,6 @@ export const UNDRAWN: readonly UndrawnProps[] = [
       'reaches the colour through the hex entry.',
     ios: ['ColorInput'],
     android: ['ColorInput'],
-  },
-  {
-    props: ['ColorInputMessages.plane'],
-    reason:
-      'The plane’s name, which no native rendering draws, for the reason the entry above gives. ' +
-      'Android is not listed because its ColorInput reads a field of that name, the colour ' +
-      'model’s `plane`, which the law counts as a read. `ColorInputMessages.alpha` is listed for ' +
-      'neither platform for the same reason: each ColorInput reads the member’s own `alpha`.',
-    ios: ['ColorInput'],
   },
   {
     props: ['presentation'],
@@ -411,12 +404,22 @@ export const UNDRAWN: readonly UndrawnProps[] = [
   {
     props: ['DatePickerMessages.empty', 'DateRangePickerMessages.empty', 'TimeInputMessages.empty'],
     reason:
-      'What the web’s unfilled segment says as its value. The Compose date fields are a button ' +
-      'whose value is the date, and the time segments are text fields, which TalkBack reads as ' +
-      'empty in the platform’s own words. iOS is not listed because a SwiftUI foundation file ' +
-      'reads a field of that name, a chart catalogue’s `empty`, which the law counts as a read; ' +
-      'the SwiftUI date and time fields say no value while they are empty.',
+      'What the web’s unfilled segment, a spinbutton, says as its value. No native date or time ' +
+      'field has segments. An empty SwiftUI date or time field, and each end of an empty range, ' +
+      'is a button named by the field with no value, which VoiceOver reads as it reads any ' +
+      'button. The Compose date fields are a button whose value is the date, set only while ' +
+      'there is one, and the time segments are text fields, which TalkBack reads as empty in the ' +
+      'platform’s own words.',
+    ios: ['DatePicker', 'DateRangePicker', 'TimeInput'],
     android: ['DatePicker', 'DateRangePicker', 'TimeInput'],
+  },
+  {
+    props: ['DateRangePickerMessages.start', 'DateRangePickerMessages.end'],
+    reason:
+      'The names of the web’s two halves, said with each of their segments. The Compose field ' +
+      'is one button, named by the field, whose value is both dates joined by an en dash, so no ' +
+      'part a person reaches is one end.',
+    android: ['DateRangePicker'],
   },
   {
     props: ['MultiSelectMessages.showOptions'],
@@ -432,7 +435,18 @@ export const UNDRAWN: readonly UndrawnProps[] = [
       'PromptInputMessages.loadingSuggestions',
       'PromptInputMessages.noSuggestions',
       'PromptTrigger.char',
+      'PromptTrigger.label',
+      'PromptTrigger.options',
+      'PromptTrigger.at',
+      'PromptTrigger.filter',
+      'PromptTrigger.loading',
       'PromptTrigger.onQueryChange',
+      'PromptTrigger.onSelect',
+      'PromptTriggerOption.id',
+      'PromptTriggerOption.label',
+      'PromptTriggerOption.description',
+      'PromptTriggerOption.icon',
+      'PromptTriggerOption.insert',
     ],
     reason:
       'The suggestion list a trigger opens. SwiftUI’s text field reports no caret position on ' +
@@ -445,14 +459,6 @@ export const UNDRAWN: readonly UndrawnProps[] = [
     android: ['PromptInput'],
   },
   {
-    props: ['PromptTriggerOption.insert'],
-    reason:
-      'The text a pick writes, which no native rendering draws, for the reason the entry above ' +
-      'gives. iOS is not listed because a SwiftUI foundation file reads a field of that name, a ' +
-      'set’s `insert`, which the law counts as a read.',
-    android: ['PromptInput'],
-  },
-  {
     props: ['CarouselSlide.id'],
     reason:
       'The web keys each slide’s element by it. Compose’s pager keys its pages by their ' +
@@ -460,22 +466,33 @@ export const UNDRAWN: readonly UndrawnProps[] = [
     android: ['Carousel'],
   },
   {
-    props: ['TourStep.side'],
+    props: ['TourStep.target', 'TourStep.side'],
     reason:
-      'The side of its target a step’s panel opens on. `Tour.Target` has no contract on either ' +
-      'platform, because the registry publishes no part for it, so no view of a native screen ' +
-      'carries a target’s name. Every step is drawn as the spec draws a step whose target is not ' +
-      'on the page, in a sheet that points at nothing, with no side to open on.',
+      'The name of the `Tour.Target` a step points at, and the side of it the step’s panel opens ' +
+      'on. `Tour.Target` has no contract on either platform, because the registry publishes no ' +
+      'part for it, so no view of a native screen carries a target’s name. Every step is drawn as ' +
+      'the spec draws a step whose target is not on the page, in a sheet that points at nothing, ' +
+      'with no side to open on.',
     ios: ['Tour'],
     android: ['Tour'],
   },
   {
-    props: ['TourStep.target'],
+    props: ['TourStep.id'],
     reason:
-      'The name of the `Tour.Target` a step points at, which no native view carries, for the ' +
-      'reason the entry above gives. Android is not listed because a Compose foundation file ' +
-      'reads a field of that name, a Markdown link’s `target`, which the law counts as a read.',
+      'The step’s key, which the web writes as the panel’s `data-step` and hands to an agent. ' +
+      'The SwiftUI rendering keeps the open step by its index, as `step` and `onStepChange` ' +
+      'give it, and records the id in its identifier, `member:Tour step=<id>`.',
     ios: ['Tour'],
+  },
+  {
+    props: ['MenuSubmenuEntry.icon'],
+    reason:
+      'The glyph beside a submenu’s label in the web’s popper. Each native menu draws a submenu ' +
+      'as the web’s sheet does, flattened into its label and its items, because neither a sheet ' +
+      'nor a touch popover cascades, and the label takes the group-label recipe, which has no ' +
+      'glyph.',
+    ios: ['Menu'],
+    android: ['Menu'],
   },
   {
     props: ['keepMounted'],
@@ -502,6 +519,10 @@ export const UNDRAWN: readonly UndrawnProps[] = [
       'messages',
       'RichTextContentMessages.selectionBar',
       'RichTextContentMessages.selectionBarReady',
+      'RichTextContentSelection.range',
+      'RichTextContentSelection.text',
+      'RichTextRange.start',
+      'RichTextRange.end',
     ],
     reason:
       'The selection bar: the app’s controls for the words a reader selected, given the ' +
@@ -525,6 +546,9 @@ export const UNDRAWN: readonly UndrawnProps[] = [
       'RichTextContentMessages.selectionBar',
       'RichTextContentMessages.selectionBarReady',
       'RichTextContentSelection.range',
+      'RichTextContentSelection.text',
+      'RichTextRange.start',
+      'RichTextRange.end',
     ],
     reason:
       'The selection bar, and the words it is named and announced by. The Compose rendering’s ' +

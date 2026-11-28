@@ -286,6 +286,31 @@
       XCTAssertNotNil(english.element(role: .button, named: PMStrings.numberInputDecrement))
     }
 
+    /// Each end of a range is named by the field's name and then its own word,
+    /// `messages.start` or `messages.end`, as the web names each half
+    /// (`date-range-picker.md`, FormField integration), and by the catalogue's
+    /// words when the app passes none. An empty end has no value.
+    func testTheRangeEndsAreNamedInTheAppsWords() throws {
+      let french = Scene(
+        PMDateRangePicker(
+          props: PMDateRangePickerProps(
+            ariaLabel: "Séjour",
+            messages: PMDateRangePickerMessages(
+              previousMonth: "Mois précédent", nextMonth: "Mois suivant",
+              showCalendar: "Afficher le calendrier", clear: "Effacer",
+              chooseRange: "Choisir les dates", start: "Arrivée", end: "Départ"))))
+      defer { french.close() }
+      XCTAssertNotNil(french.element(role: .button, named: "Séjour, Arrivée"))
+      XCTAssertNotNil(french.element(role: .button, named: "Séjour, Départ"))
+      XCTAssertNil(french.element(role: .button, named: "Séjour"))
+      let english = Scene(PMDateRangePicker(props: PMDateRangePickerProps(ariaLabel: "Stay")))
+      defer { english.close() }
+      let start = try XCTUnwrap(
+        english.element(role: .button, named: "Stay, \(PMStrings.dateRangePickerStart)"))
+      XCTAssertNotNil(english.element(role: .button, named: "Stay, \(PMStrings.dateRangePickerEnd)"))
+      XCTAssertEqual(attribute(start, "accessibilityValue") ?? "", "", "an empty end has no value")
+    }
+
     func testTheRevealToggleRevealsWithoutFocusingTheField() throws {
       let scene = Scene(
         PMPasswordInput(

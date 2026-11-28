@@ -25,8 +25,8 @@ whatever the page's language. Each is optional; left out, every member says what
   written, "{title}: still being written" by default, on every web renderer and on SwiftUI and
   Compose, which say the string catalogue's sentence when it is left out, as before.
 
-The SwiftUI and Compose contracts carry the new `messages` fields and `TimeInput`'s `messages`,
-which the native date and time fields do not draw: those fields say no value while empty, and
-name their dates without a half's name. `ArtifactPane`'s purpose on the cards is "A side pane for
-one artifact a turn produced", and `DateRangePicker`'s "A date range *field*: two segmented dates
-and a calendar popup".
+The SwiftUI and Compose contracts carry the new `messages` fields and `TimeInput`'s `messages`.
+The native date and time fields say no value while empty, so they do not draw `empty`, and the
+SwiftUI range field names each of its two dates with `start` or `end`. `ArtifactPane`'s purpose
+on the cards is "A side pane for one artifact a turn produced", and `DateRangePicker`'s "A date
+range *field*: two segmented dates and a calendar popup".

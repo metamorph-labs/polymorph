@@ -753,6 +753,22 @@ enum PMStrings {
       comment: "The name of the calendar a date range field opens.")
   }
 
+  /// DateRangePicker's `messages.start`: the start's name, said after the field's
+  /// (`design/components/date-range-picker.md`).
+  static var dateRangePickerStart: String {
+    String(
+      localized: "Start date",
+      comment: "The first date of a date range field, said after the field's name.")
+  }
+
+  /// DateRangePicker's `messages.end`: the end's name, said after the field's
+  /// (`design/components/date-range-picker.md`).
+  static var dateRangePickerEnd: String {
+    String(
+      localized: "End date",
+      comment: "The last date of a date range field, said after the field's name.")
+  }
+
   /// MonthInput's `messages` (`design/components/month-input.md`).
   static var monthInputMessages: PMMonthInputMessages {
     PMMonthInputMessages(

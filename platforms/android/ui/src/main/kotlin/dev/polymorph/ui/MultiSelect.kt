@@ -30,7 +30,11 @@
 // the keyboard. At `max` the unchosen options are dimmed and cannot be
 // chosen, the chosen ones can still be removed, and the offer is withdrawn.
 // Scrolling the list to its end, while not loading, asks for more once per
-// length of `options` (`onLoadMore`).
+// length of `options` (`onLoadMore`). The open list says politely what it
+// holds, as the web's status does: `messages.loadingOptions` while it loads,
+// the empty row's words when nothing matches and nothing is offered, and
+// otherwise the count of options shown, `messages.options` ("{count}
+// options").
 //
 // `onChange` reports the chosen values in the options' order, a custom value
 // last, never the order they were ticked. Adding and removing are announced
@@ -382,12 +386,12 @@ object PMMultiSelect : PMMultiSelectRendering {
                     )
                 }
             }
-            // The list's loading and its empty line, read politely.
+            // The list's loading, its empty line and its count, read politely, as the web's status.
             PMAnnouncement(
                 when {
                     loading -> props.messages?.loadingOptions ?: strings.multiSelectLoading
-                    shown.isEmpty() && offer == null -> empty
-                    else -> null
+                    shown.isEmpty() -> if (offer == null) empty else null
+                    else -> (props.messages?.options ?: strings.multiSelectOptions)(shown.size.toDouble())
                 },
             )
         }

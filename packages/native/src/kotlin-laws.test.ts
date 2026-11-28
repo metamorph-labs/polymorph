@@ -697,6 +697,87 @@ describe('the Kotlin laws detect faults', () => {
       }),
     ).toEqual([recorded('Badge.pinned'), recorded('Badge.sticky')])
   })
+
+  it('drawn props reads a shape’s field only from a value of that shape', () => {
+    const contract = [
+      'data class PMRangeFieldProps(',
+      '    val items: List<PMRangeFieldItem>,',
+      '    val messages: PMRangeFieldMessages? = null,',
+      '    val value: PMRangeFieldRange? = null,',
+      ')',
+      'data class PMRangeFieldMessages(',
+      '    val start: String? = null,',
+      '    val end: String? = null,',
+      '    val clear: String? = null,',
+      '    val empty: String? = null,',
+      ')',
+      'data class PMRangeFieldRange(',
+      '    val start: String,',
+      '    val end: String,',
+      ')',
+      'data class PMRangeFieldItem(',
+      '    val label: String,',
+      '    val hint: String? = null,',
+      ')',
+    ].join('\n')
+    // The member reads its range's `start` and `end`, which are not its
+    // messages' `start` and `end`, and neither is the `end` of a foundation
+    // class of its own. It reads `clear` through a local and each item's
+    // `label` and `hint` through a lambda's parameter, and hands its messages
+    // to a foundation function that reads `empty`.
+    const member = `
+      object PMRangeField : PMRangeFieldRendering {
+          @Composable
+          override fun Render(props: PMRangeFieldProps) {
+              val messages = props.messages
+              Text(props.value?.start ?: "")
+              Text(props.value?.end ?: "")
+              Text(messages?.clear ?: "")
+              Text(pmEmptyWord(props.messages))
+              props.items.forEach { item -> Text(item.label + (item.hint ?: "")) }
+          }
+      }
+    `
+    const foundation = `
+      fun pmEmptyWord(messages: PMRangeFieldMessages?): String = messages?.empty ?: ""
+      class PMLegendEdge(val end: String)
+      fun pmEdge(edge: PMLegendEdge): String = edge.end
+    `
+    const check = (declared: readonly UndrawnProps[]) =>
+      undrawnViolations({
+        language: 'kotlin',
+        platform: 'android',
+        contract,
+        files: [
+          { path: 'RangeField.kt', source: member },
+          { path: 'PolymorphUISample.kt', source: foundation },
+        ],
+        isFoundation: (path) => path.startsWith('PolymorphUI'),
+        memberOf: memberOfKotlinFile,
+        members: ['RangeField'],
+        declared,
+      })
+    const undeclared = (name: string) =>
+      `${name}: the contract carries it and the rendering on android never reads it — draw it, or declare it in undrawn.ts with the reason`
+
+    expect(check([])).toEqual([
+      undeclared('RangeField.RangeFieldMessages.start'),
+      undeclared('RangeField.RangeFieldMessages.end'),
+    ])
+    const entry = (props: string[]): UndrawnProps => ({
+      props,
+      reason: 'r',
+      android: ['RangeField'],
+    })
+    expect(check([entry(['RangeFieldMessages.start', 'RangeFieldMessages.end'])])).toEqual([])
+    expect(
+      check([
+        entry(['RangeFieldMessages.start', 'RangeFieldMessages.end', 'RangeFieldMessages.empty']),
+      ]),
+    ).toEqual([
+      'undrawn.ts (RangeFieldMessages.start, RangeFieldMessages.end, RangeFieldMessages.empty): RangeField.RangeFieldMessages.empty is read by its rendering on android — remove it from the entry',
+    ])
+  })
 })
 
 /**
