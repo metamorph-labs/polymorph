@@ -470,7 +470,7 @@ differ from React Aria. Anchoring a start with Enter moves focus to the next day
 does. A span drawn across a refused day is not limited to the available run around its anchor. The
 words a field says that `Intl` cannot supply, a range end's name (`Start date`, `End date`) and an
 unfilled segment's value (`Empty`), default to English, where React Aria says its own in the
-page's locale; `messages` (`start`, `end`, `empty`) replaces them on every renderer.
+page's locale; `messages` (`start`, `end`, `empty`) replaces them on every web renderer.
 
 DurationInput's counts are drawn the same way, as editable spinbuttons that move, take digits and
 erase as a date field's segments do, but from the engine's duration arithmetic
