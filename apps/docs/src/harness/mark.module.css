@@ -1,11 +1,13 @@
 /* The site's mark (`Mark.tsx`). Harness CSS: a brand mark is the site's own
    drawing, and no member draws one. It reads only tokens, so it follows the
-   pairing. */
+   pairing. It takes the text colour, as the name beside it does, and its width
+   follows from the drawing's proportions. */
 
 .mark {
   display: block;
   flex: none;
-  inline-size: var(--pm-space-5);
-  block-size: var(--pm-space-5);
-  fill: var(--pm-accent-bg);
+  inline-size: auto;
+  block-size: var(--pm-space-6);
+  fill: var(--pm-text-primary);
+  stroke: var(--pm-text-primary);
 }

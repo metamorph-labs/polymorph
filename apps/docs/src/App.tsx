@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { ChunkBoundary } from './ChunkBoundary'
 import { Mark } from './harness/Mark'
+import { RepositoryLink } from './harness/RepositoryLink'
 import { RouteAnnouncer } from './harness/RouteAnnouncer'
 import {
   ComponentDetailPage,
@@ -188,15 +189,7 @@ export function App() {
               }}
               onModeChange={onModeChange}
             />
-            <Link
-              variant="button"
-              buttonVariant="ghost"
-              tone="neutral"
-              href={SITE.repository}
-              external
-            >
-              GitHub
-            </Link>
+            <RepositoryLink />
           </>
         ),
       }}

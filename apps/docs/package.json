@@ -29,6 +29,7 @@
     "@polymorph/engine": "workspace:*",
     "@polymorph/react": "workspace:*",
     "@polymorph/react-ui": "workspace:*",
+    "@polymorph/recipes": "workspace:*",
     "@polymorph/registry": "workspace:*",
     "@polymorph/theme": "workspace:*",
     "react": "^19.2.8",
