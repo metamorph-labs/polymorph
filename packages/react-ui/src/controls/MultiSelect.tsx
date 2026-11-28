@@ -2,6 +2,7 @@
 
 import * as PopoverPrimitive from '@radix-ui/react-popover'
 import {
+  useCallback,
   useEffect,
   useId,
   useRef,
@@ -21,6 +22,7 @@ import {
   type ControlSize,
   dataAttrs,
   dataFlag,
+  fieldLabelIds,
   holdFieldEscape,
   Icon,
   lineStartKey,
@@ -709,6 +711,7 @@ export function MultiSelect({
         state={state}
         listBoxRef={listBoxRef}
         listboxId={listboxId}
+        inputRef={inputRef}
         label={ariaLabel}
         labelledBy={labelledBy}
         mintKey={mint}
@@ -952,11 +955,19 @@ export function MultiSelect({
 /**
  * The listbox, mounted with the panel, split out as in Combobox. `useListBox`'s mount
  * effects must run when the popup exists, not once while the field is closed.
+ *
+ * It takes the field's own name, as the input has it: `aria-labelledby`, else `aria-label`,
+ * else the labels that name the input. A `<label for>` names the input alone, as FormField's
+ * label does, so the list refers to those labels by id (`fieldLabelIds`), and a label whose
+ * words change is heard with its new words. The ids are read once the list is in the document,
+ * each time it opens, so a label drawn after the field mounted names it too. A second render
+ * names the list, and React makes it before the browser paints.
  */
 function MultiSelectListBox({
   state,
   listBoxRef,
   listboxId,
+  inputRef,
   label,
   labelledBy,
   mintKey,
@@ -965,11 +976,22 @@ function MultiSelectListBox({
   state: ListState<MultiSelectOption>
   listBoxRef: RefObject<HTMLUListElement | null>
   listboxId: string
+  inputRef: RefObject<HTMLInputElement | null>
   label: string | undefined
   labelledBy: string | undefined
   mintKey: string | null
   onScroll?: (event: UIEvent<HTMLUListElement>) => void
 }) {
+  const unnamed = label === undefined && labelledBy === undefined
+  const [fieldLabels, setFieldLabels] = useState<string>()
+  const attachList = useCallback(
+    (node: HTMLUListElement | null) => {
+      listBoxRef.current = node
+      if (node !== null && unnamed) setFieldLabels(fieldLabelIds(inputRef.current, listboxId))
+    },
+    [listBoxRef, inputRef, listboxId, unnamed],
+  )
+
   const { listBoxProps } = useListBox(
     {
       id: listboxId,
@@ -989,15 +1011,16 @@ function MultiSelectListBox({
        * Aria documents this option for rows that disappear when selected.
        */
       shouldSelectOnPressUp: true,
-      'aria-label': label,
-      'aria-labelledby': labelledBy,
+      // One of the two, never both: React Aria would join them into a name the input lacks.
+      'aria-label': labelledBy === undefined ? label : undefined,
+      'aria-labelledby': unnamed ? fieldLabels : labelledBy,
     },
     state,
     listBoxRef,
   )
 
   return (
-    <ul {...listBoxProps} ref={listBoxRef} className={styles.listbox} onScroll={onScroll}>
+    <ul {...listBoxProps} ref={attachList} className={styles.listbox} onScroll={onScroll}>
       {[...state.collection].map((node) => (
         <MultiSelectItem
           key={node.key}

@@ -18,6 +18,7 @@ import {
   agentMember,
   attributes,
   composingKey,
+  fieldLabelIds,
   holdFieldEscape,
   joinSlot,
   lineStartKey,
@@ -222,6 +223,7 @@ let refused = $state(false)
 let announcement = $state('')
 let loadMoreAt = $state(-1)
 let settled = $state(false)
+let fieldLabels = $state(undefined as string | undefined)
 let chipList = $state<HTMLElement | null>(null)
 let frame = $state<HTMLElement | null>(null)
 let list = $state<HTMLElement | null>(null)
@@ -248,6 +250,7 @@ const say = $derived({
   ...messages,
 })
 const atMax = $derived(max !== undefined && values.length >= max)
+const unnamed = $derived(ariaLabel === undefined && ariaLabelledby === undefined)
 const countId = $derived(`${uid}-count`)
 const labels = $derived(new Map(options.map((option) => [option.value, option.label] as const)))
 const labelOf = $derived((entry: string) => labels.get(entry) ?? entry)
@@ -567,9 +570,13 @@ const effect5 = () => {
   api.open && api.highlightedValue !== null && api.highlightedValue === lastReal && requestMore()
 }
 watchEffect(effect5, { watch: () => api.highlightedValue })
-let release6: (() => void) | undefined
 const effect6 = () => {
-  release6?.()
+  api.open && unnamed && (fieldLabels = fieldLabelIds(textField, uid))
+}
+watchEffect(effect6, { watch: () => api.open && unnamed })
+let release7: (() => void) | undefined
+const effect7 = () => {
+  release7?.()
   const ran = agentMember({
     member: 'MultiSelect',
     element: () => textField,
@@ -620,12 +627,12 @@ const effect6 = () => {
       close: () => api.setOpen(false),
     },
   })
-  release6 = () => {
+  release7 = () => {
     ran()
   }
 }
-watchEffect(effect6)
-onDestroy(() => release6?.())
+watchEffect(effect7)
+onDestroy(() => release7?.())
 </script>
 
 {@render joined.start?.()
@@ -706,7 +713,7 @@ onDestroy(() => release6?.())
             class={styles.listbox}
             hidden={undefined}
             aria-label={ariaLabelledby === undefined ? ariaLabel : undefined}
-            aria-labelledby={ariaLabelledby}
+            aria-labelledby={unnamed ? fieldLabels : ariaLabelledby}
             >{#each rows as row, at (row.value)
               }<li
                 {...attributes(api.getItemProps({ item: row }))}
@@ -767,7 +774,7 @@ onDestroy(() => release6?.())
               class={styles.listbox}
               hidden={undefined}
               aria-label={ariaLabelledby === undefined ? ariaLabel : undefined}
-              aria-labelledby={ariaLabelledby}
+              aria-labelledby={unnamed ? fieldLabels : ariaLabelledby}
               >{#each rows as row, at (row.value)
                 }<li
                   {...attributes(api.getItemProps({ item: row }))}

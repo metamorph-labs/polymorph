@@ -25,6 +25,7 @@ import {
   afterRender,
   agentMember,
   composingKey,
+  fieldLabelIds,
   holdFieldEscape,
   lineStartKey,
   useDirection,
@@ -172,6 +173,7 @@ const refused = ref(false)
 const announcement = ref('')
 const loadMoreAt = ref(-1)
 const settled = ref(false)
+const fieldLabels = ref(undefined as string | undefined)
 const chipList = useTemplateRef<HTMLElement>('chipList')
 const frame = useTemplateRef<HTMLElement>('frame')
 const list = useTemplateRef<HTMLElement>('list')
@@ -198,6 +200,7 @@ const say = computed(() => ({
   ...props.messages,
 }))
 const atMax = computed(() => props.max !== undefined && values.value.length >= props.max)
+const unnamed = computed(() => props.ariaLabel === undefined && props.ariaLabelledby === undefined)
 const countId = computed(() => `${uid}-count`)
 const labels = computed(
   () => new Map(props.options.map((option) => [option.value, option.label] as const)),
@@ -570,9 +573,14 @@ const effect5 = () => {
 }
 onMounted(effect5)
 watch(() => api.value.highlightedValue, effect5, { flush: 'post' })
-let release6: (() => void) | undefined
 const effect6 = () => {
-  release6?.()
+  api.value.open && unnamed.value && (fieldLabels.value = fieldLabelIds(textField.value, uid))
+}
+onMounted(effect6)
+watch(() => api.value.open && unnamed.value, effect6, { flush: 'post' })
+let release7: (() => void) | undefined
+const effect7 = () => {
+  release7?.()
   const ran = agentMember({
     member: 'MultiSelect',
     element: () => textField.value,
@@ -623,12 +631,12 @@ const effect6 = () => {
       close: () => api.value.setOpen(false),
     },
   })
-  release6 = () => {
+  release7 = () => {
     ran()
   }
 }
-onMounted(effect6)
-onBeforeUnmount(() => release6?.())
+onMounted(effect7)
+onBeforeUnmount(() => release7?.())
 </script>
 
 <template>
@@ -732,7 +740,7 @@ onBeforeUnmount(() => release6?.())
           :class="styles.listbox"
           :hidden="undefined"
           :aria-label="ariaLabelledby === undefined ? ariaLabel : undefined"
-          :aria-labelledby="ariaLabelledby"
+          :aria-labelledby="unnamed ? fieldLabels : ariaLabelledby"
           @scroll="
             (list?.scrollHeight ?? 0) - (list?.scrollTop ?? 0) - (list?.clientHeight ?? 0) <= 32 &&
             requestMore()
@@ -803,7 +811,7 @@ onBeforeUnmount(() => release6?.())
             :class="styles.listbox"
             :hidden="undefined"
             :aria-label="ariaLabelledby === undefined ? ariaLabel : undefined"
-            :aria-labelledby="ariaLabelledby"
+            :aria-labelledby="unnamed ? fieldLabels : ariaLabelledby"
             @scroll="
               (list?.scrollHeight ?? 0) - (list?.scrollTop ?? 0) - (list?.clientHeight ?? 0) <=
                 32 && requestMore()

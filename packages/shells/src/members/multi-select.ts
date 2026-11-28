@@ -59,8 +59,10 @@ const popup = (): Node[] => [
       attrs: {
         // Present through the panel's exit, which `hidden` would cut short.
         hidden: 'undefined',
+        // The field's own name: its `aria-labelledby`, else its `aria-label`, else the labels a
+        // `<label for>` gives it, as FormField's label does.
         'aria-label': 'ariaLabelledby === undefined ? ariaLabel : undefined',
-        'aria-labelledby': 'ariaLabelledby',
+        'aria-labelledby': 'unnamed ? fieldLabels : ariaLabelledby',
       },
       // The scroll trigger for paging: the end is reached within 32px of the bottom, about one
       // option row, which allows for a wheel's last notch.
@@ -212,6 +214,8 @@ export default describeMember({
     loadMoreAt: '-1',
     // Whether the member has mounted: only a chip that joins after it plays its enter.
     settled: 'false',
+    // The ids of the labels that name the field, read as the list opens (`fieldLabelIds`).
+    fieldLabels: 'undefined as string | undefined',
   },
   derived: {
     values: 'value ?? uncontrolled',
@@ -219,6 +223,8 @@ export default describeMember({
     sheeting: "presentation === 'auto' && phone",
     say: '{ add: (text: string) => `Add "${text}"`, added: (value: string, count: number) => `${value} added, ${count} selected`, removed: (label: string, count: number) => `${label} removed, ${count} selected`, refused: (text: string) => `Cannot add "${text}"`, alreadySelected: (value: string) => `"${value}" is already selected`, selected: (count: number, max: number | undefined) => (max !== undefined && count >= max ? `Maximum of ${max} selected` : `${count} selected`), showOptions: \'Show options\', remove: (label: string) => `Remove ${label}`, loadingOptions: \'Loading options…\', options: (count: number) => (count === 1 ? \'1 option\' : `${count} options`), ...messages }',
     atMax: 'max !== undefined && values.length >= max',
+    // Whether no prop names the field, so only its labels do.
+    unnamed: 'ariaLabel === undefined && ariaLabelledby === undefined',
     countId: '`${uid}-count`',
     labels: 'new Map(options.map((option) => [option.value, option.label] as const))',
     labelOf: '(entry: string) => labels.get(entry) ?? entry',
@@ -525,6 +531,12 @@ export default describeMember({
     {
       watch: 'api.highlightedValue',
       run: 'api.open && api.highlightedValue !== null && api.highlightedValue === lastReal && requestMore()',
+    },
+    // An open list that no prop names refers to the field's labels, read each time it opens, so a
+    // label drawn after the field mounted names it too.
+    {
+      watch: 'api.open && unnamed',
+      run: 'api.open && unnamed && (fieldLabels = fieldLabelIds(textField, uid))',
     },
   ],
   template: [

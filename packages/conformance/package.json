@@ -68,6 +68,7 @@
     "./artifact-pane": "./src/artifact-pane.ts",
     "./machine-words": "./src/machine-words.ts",
     "./option-count": "./src/option-count.ts",
+    "./multi-select-list": "./src/multi-select-list.ts",
     "./server-render": "./server-render.ts",
     "./dist-lock": "./dist-lock.ts"
   },

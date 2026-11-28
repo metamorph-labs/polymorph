@@ -103,6 +103,7 @@ export { fitTextarea } from './conventions/autosize'
 
 export { composingKey } from './conventions/composition'
 export { holdFieldEscape } from './conventions/field-escape'
+export { fieldLabelIds } from './conventions/field-labels'
 export { lineStartKey } from './conventions/line-keys'
 export { focusAfterListRemoval } from './conventions/removal-focus'
 export type { PressedRemoval } from './conventions/removal-focus'

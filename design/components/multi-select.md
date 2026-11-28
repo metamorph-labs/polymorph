@@ -147,6 +147,13 @@ are in one element, for TagInput's reason: a description id that appeared only a
 change the field's associations while a screen reader user is in it. So the inner input is never
 conditional and never unfocusable.
 
+The open list takes the field's own name: the field's `aria-labelledby`, else its `aria-label`,
+else the labels that name the inner input. FormField's label names the input by `for`, which
+names the input alone, so the list refers to that label by id, as it does to any label of the
+input, and gives a label with no id one when the list opens. The browser then
+names the list as it names the field: the label's required mark, hidden from assistive software,
+is left out, and a label whose words change is heard with its new words.
+
 ## States
 
 | Entry | Render | Expect |

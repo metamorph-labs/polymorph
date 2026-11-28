@@ -205,6 +205,8 @@ export const ENGINE_HELPERS: readonly string[] = [
   // Keys an input method is handling, and Escape held for a text field inside a dialog.
   'composingKey',
   'holdFieldEscape',
+  // The labels that name a field, which MultiSelect's list refers to when no prop names the field.
+  'fieldLabelIds',
   // The arrow key toward a line's start in an element's writing direction (TagInput's chips).
   'lineStartKey',
   // Where focus goes once a removed file or attachment has left its list.

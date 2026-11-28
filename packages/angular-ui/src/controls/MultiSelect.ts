@@ -20,6 +20,7 @@ import {
   composingKey,
   derived,
   elementRef,
+  fieldLabelIds,
   fieldValue,
   holdFieldEscape,
   lineStartKey,
@@ -523,6 +524,7 @@ export class MultiSelect {
   protected readonly announcement = cell(() => '')
   protected readonly loadMoreAt = cell(() => -1)
   protected readonly settled = cell(() => false)
+  protected readonly fieldLabels = cell(() => undefined as string | undefined)
   protected readonly chipList = elementRef<HTMLElement>()
   protected readonly frame = elementRef<HTMLElement>()
   protected readonly list = elementRef<HTMLElement>()
@@ -550,6 +552,9 @@ export class MultiSelect {
   }))
   protected readonly atMax = derived(
     () => this.$p.max !== undefined && this.values.value.length >= this.$p.max,
+  )
+  protected readonly unnamed = derived(
+    () => this.$p['aria-label'] === undefined && this.$p['aria-labelledby'] === undefined,
   )
   protected readonly countId = derived(() => `${this.uid}-count`)
   protected readonly labels = derived(
@@ -898,7 +903,7 @@ export class MultiSelect {
     ),
   )
   private release2: (() => void) | undefined
-  private release6: (() => void) | undefined
+  private release7: (() => void) | undefined
 
   constructor() {
     mountEffect(() => this.effect1())
@@ -923,8 +928,13 @@ export class MultiSelect {
       () => this.effect5(),
       true,
     )
-    inject(DestroyRef).onDestroy(() => this.release6?.())
-    mountEffect(() => this.effect6())
+    watchEffect(
+      () => this.api.value.open && this.unnamed.value,
+      () => this.effect6(),
+      true,
+    )
+    inject(DestroyRef).onDestroy(() => this.release7?.())
+    mountEffect(() => this.effect7())
   }
 
   protected e1() {
@@ -1190,7 +1200,7 @@ export class MultiSelect {
       class: styles.listbox,
       hidden: undefined,
       'aria-label': this.$p['aria-labelledby'] === undefined ? this.$p['aria-label'] : undefined,
-      'aria-labelledby': this.$p['aria-labelledby'],
+      'aria-labelledby': this.unnamed.value ? this.fieldLabels.value : this.$p['aria-labelledby'],
       onScroll: () => this.h9(),
     })
   }
@@ -1378,7 +1388,7 @@ export class MultiSelect {
       class: styles.listbox,
       hidden: undefined,
       'aria-label': this.$p['aria-labelledby'] === undefined ? this.$p['aria-label'] : undefined,
-      'aria-labelledby': this.$p['aria-labelledby'],
+      'aria-labelledby': this.unnamed.value ? this.fieldLabels.value : this.$p['aria-labelledby'],
       onScroll: () => this.h10(),
     })
   }
@@ -1540,7 +1550,15 @@ export class MultiSelect {
   }
 
   private effect6(): void {
-    this.release6?.()
+    void (
+      this.api.value.open &&
+      this.unnamed.value &&
+      (this.fieldLabels.value = fieldLabelIds(this.textField.value, this.uid))
+    )
+  }
+
+  private effect7(): void {
+    this.release7?.()
     const ran = agentMember({
       member: 'MultiSelect',
       element: () => this.textField.value,
@@ -1592,7 +1610,7 @@ export class MultiSelect {
         close: () => this.api.value.setOpen(false),
       },
     })
-    this.release6 = () => {
+    this.release7 = () => {
       ran()
     }
   }

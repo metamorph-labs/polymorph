@@ -32,6 +32,7 @@ import {
   createCell,
   createDerived,
   elementRef,
+  fieldLabelIds,
   holdFieldEscape,
   lineStartKey,
   mergeParts,
@@ -213,6 +214,7 @@ export default function MultiSelect(given: MultiSelectProps): JSX.Element {
     const announcement = createCell('')
     const loadMoreAt = createCell(-1)
     const settled = createCell(false)
+    const fieldLabels = createCell(undefined as string | undefined)
     const values = createDerived(() => props.value ?? uncontrolled.value)
     const text = createDerived(() => props.inputValue ?? uncontrolledText.value)
     const sheeting = createDerived(() => props.presentation === 'auto' && phone())
@@ -231,6 +233,9 @@ export default function MultiSelect(given: MultiSelectProps): JSX.Element {
       ...props.messages,
     }))
     const atMax = createDerived(() => props.max !== undefined && values.value.length >= props.max)
+    const unnamed = createDerived(
+      () => props['aria-label'] === undefined && props['aria-labelledby'] === undefined,
+    )
     const countId = createDerived(() => `${uid}-count`)
     const labels = createDerived(
       () => new Map(props.options.map((option) => [option.value, option.label] as const)),
@@ -629,9 +634,21 @@ export default function MultiSelect(given: MultiSelectProps): JSX.Element {
       effect5,
       true,
     )
-    let release6: (() => void) | undefined
     const effect6 = () => {
-      release6?.()
+      void (
+        api.value.open &&
+        unnamed.value &&
+        (fieldLabels.value = fieldLabelIds(textField.value, uid))
+      )
+    }
+    watchEffect(
+      createMemo(() => api.value.open && unnamed.value),
+      effect6,
+      true,
+    )
+    let release7: (() => void) | undefined
+    const effect7 = () => {
+      release7?.()
       const ran = agentMember({
         member: 'MultiSelect',
         element: () => textField.value,
@@ -682,12 +699,12 @@ export default function MultiSelect(given: MultiSelectProps): JSX.Element {
           close: () => api.value.setOpen(false),
         },
       })
-      release6 = () => {
+      release7 = () => {
         ran()
       }
     }
-    onMount(effect6)
-    onCleanup(() => release6?.())
+    onMount(effect7)
+    onCleanup(() => release7?.())
     return (
       <>
         {/* field */}
@@ -812,7 +829,9 @@ export default function MultiSelect(given: MultiSelectProps): JSX.Element {
                         hidden: undefined,
                         'aria-label':
                           props['aria-labelledby'] === undefined ? props['aria-label'] : undefined,
-                        'aria-labelledby': props['aria-labelledby'],
+                        'aria-labelledby': unnamed.value
+                          ? fieldLabels.value
+                          : props['aria-labelledby'],
                         onscroll: () =>
                           (list.value?.scrollHeight ?? 0) -
                             (list.value?.scrollTop ?? 0) -
@@ -909,7 +928,9 @@ export default function MultiSelect(given: MultiSelectProps): JSX.Element {
                             props['aria-labelledby'] === undefined
                               ? props['aria-label']
                               : undefined,
-                          'aria-labelledby': props['aria-labelledby'],
+                          'aria-labelledby': unnamed.value
+                            ? fieldLabels.value
+                            : props['aria-labelledby'],
                           onscroll: () =>
                             (list.value?.scrollHeight ?? 0) -
                               (list.value?.scrollTop ?? 0) -
