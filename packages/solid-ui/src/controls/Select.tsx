@@ -17,8 +17,10 @@ import {
   afresh,
   agentMember,
   claimSlot,
+  createCell,
   createDerived,
   elementRef,
+  fieldLabelIds,
   followHighlight,
   mergeParts,
   returnFocus,
@@ -114,7 +116,11 @@ export default function Select(given: SelectProps): JSX.Element {
     const sheetPanel = elementRef<HTMLElement>()
     const trigger = elementRef<HTMLElement>()
     const phone = useMediaQuery('phone')
+    const fieldLabels = createCell(undefined as string | undefined)
     const sheeting = createDerived(() => props.presentation === 'auto' && phone())
+    const unnamed = createDerived(
+      () => props['aria-label'] === undefined && props['aria-labelledby'] === undefined,
+    )
     const emptyChoice = createDerived(() => ({
       value: '__polymorph-empty-choice__',
       label: props.emptyOption ?? '',
@@ -220,9 +226,21 @@ export default function Select(given: SelectProps): JSX.Element {
       effect3,
       true,
     )
-    let release4: (() => void) | undefined
     const effect4 = () => {
-      release4?.()
+      void (
+        api.value.open &&
+        unnamed.value &&
+        (fieldLabels.value = fieldLabelIds(trigger.value, uid))
+      )
+    }
+    watchEffect(
+      createMemo(() => api.value.open && unnamed.value),
+      effect4,
+      true,
+    )
+    let release5: (() => void) | undefined
+    const effect5 = () => {
+      release5?.()
       const ran = agentMember({
         member: 'Select',
         element: () => trigger.value,
@@ -253,12 +271,12 @@ export default function Select(given: SelectProps): JSX.Element {
           close: () => api.value.setOpen(false),
         },
       })
-      release4 = () => {
+      release5 = () => {
         ran()
       }
     }
-    onMount(effect4)
-    onCleanup(() => release4?.())
+    onMount(effect5)
+    onCleanup(() => release5?.())
     return (
       <>
         {/* trigger */}
@@ -314,6 +332,11 @@ export default function Select(given: SelectProps): JSX.Element {
                         '--radix-select-content-transform-origin': 'var(--transform-origin)',
                       },
                       hidden: undefined,
+                      'aria-label':
+                        props['aria-labelledby'] === undefined ? props['aria-label'] : undefined,
+                      'aria-labelledby': unnamed.value
+                        ? fieldLabels.value
+                        : props['aria-labelledby'],
                       'data-size': props.size,
                       'data-member': 'select',
                       onfocus: () => followHighlight(panel.value, api.value.highlightedValue),
@@ -440,6 +463,11 @@ export default function Select(given: SelectProps): JSX.Element {
                       {...mergeParts(api.value.getContentProps(), {
                         class: styles.sheetList,
                         hidden: undefined,
+                        'aria-label':
+                          props['aria-labelledby'] === undefined ? props['aria-label'] : undefined,
+                        'aria-labelledby': unnamed.value
+                          ? fieldLabels.value
+                          : props['aria-labelledby'],
                         'data-size': props.size,
                         'data-member': 'select',
                         onfocus: () => followHighlight(panel.value, api.value.highlightedValue),

@@ -16,6 +16,7 @@ import {
   Portal,
   agentMember,
   attributes,
+  fieldLabelIds,
   followHighlight,
   joinSlot,
   mergeParts,
@@ -140,12 +141,14 @@ const invalid = $derived(
     ? invalidOwn
     : (joined.passed['invalid'] as typeof invalidOwn),
 )
+let fieldLabels = $state(undefined as string | undefined)
 let panel = $state<HTMLElement | null>(null)
 let scrim = $state<HTMLElement | null>(null)
 let sheetPanel = $state<HTMLElement | null>(null)
 let trigger = $state<HTMLElement | null>(null)
 const phone = useMediaQuery('phone')
 const sheeting = $derived(presentation === 'auto' && phone.current)
+const unnamed = $derived(ariaLabel === undefined && ariaLabelledby === undefined)
 const emptyChoice = $derived({
   value: '__polymorph-empty-choice__',
   label: emptyOption ?? '',
@@ -233,9 +236,13 @@ const effect3 = () => {
   followHighlight(panel, api.highlightedValue)
 }
 watchEffect(effect3, { watch: () => api.highlightedValue })
-let release4: (() => void) | undefined
 const effect4 = () => {
-  release4?.()
+  api.open && unnamed && (fieldLabels = fieldLabelIds(trigger, uid))
+}
+watchEffect(effect4, { watch: () => api.open && unnamed })
+let release5: (() => void) | undefined
+const effect5 = () => {
+  release5?.()
   const ran = agentMember({
     member: 'Select',
     element: () => trigger,
@@ -265,12 +272,12 @@ const effect4 = () => {
       close: () => api.setOpen(false),
     },
   })
-  release4 = () => {
+  release5 = () => {
     ran()
   }
 }
-watchEffect(effect4)
-onDestroy(() => release4?.())
+watchEffect(effect5)
+onDestroy(() => release5?.())
 </script>
 
 {@render joined.start?.()
@@ -312,6 +319,8 @@ onDestroy(() => release4?.())
           style:--radix-select-content-available-height={'var(--available-height)'}
           style:--radix-select-content-transform-origin={'var(--transform-origin)'}
           hidden={undefined}
+          aria-label={ariaLabelledby === undefined ? ariaLabel : undefined}
+          aria-labelledby={unnamed ? fieldLabels : ariaLabelledby}
           data-size={size}
           data-member="select"
           ><div class={styles.viewport}
@@ -395,6 +404,8 @@ onDestroy(() => release4?.())
             {...attributes(mergeParts(api.getContentProps(), { onFocus: () => { followHighlight(panel, api.highlightedValue) } }))}
             class={styles.sheetList}
             hidden={undefined}
+            aria-label={ariaLabelledby === undefined ? ariaLabel : undefined}
+            aria-labelledby={unnamed ? fieldLabels : ariaLabelledby}
             data-size={size}
             data-member="select"
             >{#if emptyOption !== undefined

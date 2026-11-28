@@ -1,7 +1,7 @@
 'use client'
 
 import * as SelectPrimitive from '@radix-ui/react-select'
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { useListBox, useListBoxSection, useOption } from 'react-aria'
 import {
   Item,
@@ -15,6 +15,7 @@ import {
 
 import {
   type ControlSize,
+  fieldLabelIds,
   Icon,
   memberAttr,
   useAgentMember,
@@ -228,6 +229,24 @@ export function Select({
   const listboxId = `${generatedId}-listbox`
 
   /**
+   * The list's name, in the popper and in the sheet, is the field's own: `aria-labelledby`,
+   * else `aria-label`, else the labels that name the trigger. A `<label for>` names the
+   * trigger alone, as FormField's label does, so the list refers to those labels by id
+   * (`fieldLabelIds`), read once the list is in the document, each time it opens. Radix names
+   * its list from nothing, so the popper's takes the name as props, which Radix sets on it.
+   */
+  const unnamed = ariaLabel === undefined && labelledBy === undefined
+  const [fieldLabels, setFieldLabels] = useState<string>()
+  const readLabels = useCallback(
+    (list: HTMLElement | null) => {
+      if (list !== null && unnamed) setFieldLabels(fieldLabelIds(triggerRef.current, generatedId))
+    },
+    [unnamed, generatedId],
+  )
+  const listLabel = labelledBy === undefined ? ariaLabel : undefined
+  const listLabelledBy = unnamed ? fieldLabels : labelledBy
+
+  /**
    * Focus returns to the trigger whenever the sheet closes (Escape, the scrim, or a
    * selection), as Radix does for the popper. Only this member restores focus (sheet.tsx
    * does not). It restores in an effect rather than at dismiss time, because the sheet's
@@ -361,8 +380,9 @@ export function Select({
             offersEmpty={offersEmpty}
             size={size}
             id={listboxId}
-            label={ariaLabel}
-            labelledBy={labelledBy}
+            label={listLabel}
+            labelledBy={listLabelledBy}
+            onList={readLabels}
             onPick={(reported) => {
               // As in Radix, choosing the current value closes without reporting a
               // change.
@@ -421,6 +441,9 @@ export function Select({
             hairline gap, deliberately not a density-scaled token. It keeps the panel's
             border from merging with the trigger's into one double-thickness line. */}
         <SelectPrimitive.Content
+          ref={readLabels}
+          aria-label={listLabel}
+          aria-labelledby={listLabelledBy}
           className={styles.content}
           position="popper"
           side="bottom"
@@ -485,6 +508,7 @@ function SelectSheetList({
   id,
   label,
   labelledBy,
+  onList,
   onPick,
 }: {
   items: (SelectOption | SelectOptionGroup)[]
@@ -494,9 +518,18 @@ function SelectSheetList({
   id: string
   label: string | undefined
   labelledBy: string | undefined
+  /** Called with the list once it is in the document, and with `null` once it leaves. */
+  onList: (list: HTMLUListElement | null) => void
   onPick: (reported: string | null) => void
 }) {
   const listRef = useRef<HTMLUListElement>(null)
+  const attachList = useCallback(
+    (node: HTMLUListElement | null) => {
+      listRef.current = node
+      onList(node)
+    },
+    [onList],
+  )
   const emptyKey = useId()
 
   const keyFor = (optionValue: string): string =>
@@ -560,7 +593,7 @@ function SelectSheetList({
   return (
     <ul
       {...listBoxProps}
-      ref={listRef}
+      ref={attachList}
       className={styles.sheetList}
       data-size={size}
       {...memberAttr('Select')}

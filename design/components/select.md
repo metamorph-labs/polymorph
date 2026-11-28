@@ -167,7 +167,12 @@ the selection).
 
 Radix defaults (listbox pattern, typeahead, arrow/home/end, Escape, focus return).
 Additions: the trigger takes part in FormField wiring (`id`/`aria-describedby`/
-`aria-invalid`). The panel's max-height is the Radix available-height variable, so
+`aria-invalid`). The list takes the field's own name, in the popper and in the sheet: the
+trigger's `aria-labelledby`, else its `aria-label`, else the labels that name the trigger.
+FormField's label names the trigger by `for`, which names the trigger alone, so the list refers
+to that label by id, as it does to any label of the trigger, and gives a label with no id one
+when the list opens. The label's required mark, hidden from assistive software, is left out of
+the name, and a label whose words change is heard with its new words. The panel's max-height is the Radix available-height variable, so
 keyboard scrolling never traps. Item text never truncates silently; the panel grows to the
 longest label, up to the viewport. Groups are Radix `Group`/`Label`, so a screen reader
 names each group's options by its label, and the visible label is the one announced.

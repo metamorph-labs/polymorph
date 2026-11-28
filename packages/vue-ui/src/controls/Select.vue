@@ -6,7 +6,7 @@
  * framework-neutral description. Never edit it by hand: change the description and
  * run `pnpm shells`.
  */
-import { computed, onBeforeUnmount, onMounted, useId, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch } from 'vue'
 
 import * as zag from '@zag-js/select'
 import { normalizeProps, useMachine } from '@zag-js/vue'
@@ -14,6 +14,7 @@ import { normalizeProps, useMachine } from '@zag-js/vue'
 import {
   Icon,
   agentMember,
+  fieldLabelIds,
   followHighlight,
   returnFocus,
   useDirection,
@@ -99,12 +100,14 @@ const props = withDefaults(defineProps<SelectProps>(), {
 })
 const emit = defineEmits<{ change: [value: string | null] }>()
 const uid = useId()
+const fieldLabels = ref(undefined as string | undefined)
 const panel = useTemplateRef<HTMLElement>('panel')
 const scrim = useTemplateRef<HTMLElement>('scrim')
 const sheetPanel = useTemplateRef<HTMLElement>('sheetPanel')
 const trigger = useTemplateRef<HTMLElement>('trigger')
 const phone = useMediaQuery('phone')
 const sheeting = computed(() => props.presentation === 'auto' && phone.value)
+const unnamed = computed(() => props.ariaLabel === undefined && props.ariaLabelledby === undefined)
 const emptyChoice = computed(() => ({
   value: '__polymorph-empty-choice__',
   label: props.emptyOption ?? '',
@@ -189,9 +192,14 @@ const effect3 = () => {
 }
 onMounted(effect3)
 watch(() => api.value.highlightedValue, effect3, { flush: 'post' })
-let release4: (() => void) | undefined
 const effect4 = () => {
-  release4?.()
+  api.value.open && unnamed.value && (fieldLabels.value = fieldLabelIds(trigger.value, uid))
+}
+onMounted(effect4)
+watch(() => api.value.open && unnamed.value, effect4, { flush: 'post' })
+let release5: (() => void) | undefined
+const effect5 = () => {
+  release5?.()
   const ran = agentMember({
     member: 'Select',
     element: () => trigger.value,
@@ -221,12 +229,12 @@ const effect4 = () => {
       close: () => api.value.setOpen(false),
     },
   })
-  release4 = () => {
+  release5 = () => {
     ran()
   }
 }
-onMounted(effect4)
-onBeforeUnmount(() => release4?.())
+onMounted(effect5)
+onBeforeUnmount(() => release5?.())
 </script>
 
 <template>
@@ -276,6 +284,8 @@ onBeforeUnmount(() => release4?.())
           '--radix-select-content-transform-origin': 'var(--transform-origin)',
         }"
         :hidden="undefined"
+        :aria-label="ariaLabelledby === undefined ? ariaLabel : undefined"
+        :aria-labelledby="unnamed ? fieldLabels : ariaLabelledby"
         :data-size="size"
         data-member="select"
         @focus="followHighlight(panel, api.highlightedValue)"
@@ -382,6 +392,8 @@ onBeforeUnmount(() => release4?.())
           v-bind="api.getContentProps()"
           :class="styles.sheetList"
           :hidden="undefined"
+          :aria-label="ariaLabelledby === undefined ? ariaLabel : undefined"
+          :aria-labelledby="unnamed ? fieldLabels : ariaLabelledby"
           :data-size="size"
           data-member="select"
           @focus="followHighlight(panel, api.highlightedValue)"

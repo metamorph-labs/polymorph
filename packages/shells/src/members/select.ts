@@ -115,6 +115,17 @@ const listContent = (): Node[] => [
 const SHEET_STATE = "api.open ? 'open' : 'closed'"
 
 /**
+ * The list's name, the field's own, in the anchored panel and in the sheet: its
+ * `aria-labelledby`, else its `aria-label`, else the labels that name the
+ * trigger, as FormField's label does. The machine's own reference names a label
+ * element the member does not draw.
+ */
+const LIST_NAME = {
+  'aria-label': 'ariaLabelledby === undefined ? ariaLabel : undefined',
+  'aria-labelledby': 'unnamed ? fieldLabels : ariaLabelledby',
+}
+
+/**
  * Select (`design/components/select.md`): one value from a closed list. Zag's
  * machine owns the value, the highlighted option, typeahead and dismissal.
  *
@@ -135,9 +146,15 @@ export default describeMember({
   },
   defaults: { size: lit('md'), invalid: 'false', disabled: 'false', presentation: lit('auto') },
   media: { phone: 'phone' },
+  state: {
+    // The ids of the labels that name the trigger, read as the list opens (`fieldLabelIds`).
+    fieldLabels: 'undefined as string | undefined',
+  },
   derived: {
     // The sheet form under `'auto'` and below the threshold; `'popover'` keeps the anchored panel.
     sheeting: "presentation === 'auto' && phone",
+    // Whether no prop names the field, so only its labels do.
+    unnamed: 'ariaLabel === undefined && ariaLabelledby === undefined',
     emptyChoice: `{ value: ${EMPTY}, label: emptyOption ?? '', description: undefined, disabled: false }`,
     // The machine's flat list, the empty choice first.
     flat: "[...(emptyOption === undefined ? [] : [emptyChoice]), ...options.flatMap((entry) => ('options' in entry ? entry.options : [entry]))]",
@@ -205,6 +222,12 @@ export default describeMember({
     // Closing returns focus to the trigger. Not on mount: a closed Select has closed nothing.
     { watch: 'api.open', mount: false, run: 'api.open || returnFocus(trigger, panel)' },
     { watch: 'api.highlightedValue', run: 'followHighlight(panel, api.highlightedValue)' },
+    // An open list that no prop names refers to the trigger's labels, read each time it opens, so
+    // a label drawn after the field mounted names it too.
+    {
+      watch: 'api.open && unnamed',
+      run: 'api.open && unnamed && (fieldLabels = fieldLabelIds(trigger, uid))',
+    },
   ],
   template: [
     el(
@@ -256,7 +279,12 @@ export default describeMember({
               part: 'panel',
               class: ['content'],
               spread: ['api.getContentProps()'],
-              attrs: { hidden: 'undefined', 'data-size': 'size', ...identity('Select') },
+              attrs: {
+                hidden: 'undefined',
+                ...LIST_NAME,
+                'data-size': 'size',
+                ...identity('Select'),
+              },
               // The machine focuses the list; focus goes on to the highlighted option.
               on: { focus: run('followHighlight(panel, api.highlightedValue)') },
               // The recipe reads the positioner's measurements under Radix's names; Zag's
@@ -296,7 +324,12 @@ export default describeMember({
                   part: 'panel',
                   class: ['sheetList'],
                   spread: ['api.getContentProps()'],
-                  attrs: { hidden: 'undefined', 'data-size': 'size', ...identity('Select') },
+                  attrs: {
+                    hidden: 'undefined',
+                    ...LIST_NAME,
+                    'data-size': 'size',
+                    ...identity('Select'),
+                  },
                   on: { focus: run('followHighlight(panel, api.highlightedValue)') },
                   ref: 'panel',
                 },

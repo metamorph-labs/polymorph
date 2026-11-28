@@ -16,8 +16,10 @@ import {
   Ref,
   Spread,
   agentMember,
+  cell,
   derived,
   elementRef,
+  fieldLabelIds,
   fieldValue,
   followHighlight,
   mergeParts,
@@ -347,12 +349,16 @@ export class Select {
   })
   protected readonly $p = this.$.props
   protected readonly uid = uniqueId()
+  protected readonly fieldLabels = cell(() => undefined as string | undefined)
   protected readonly panel = elementRef<HTMLElement>()
   protected readonly scrim = elementRef<HTMLElement>()
   protected readonly sheetPanel = elementRef<HTMLElement>()
   protected readonly trigger = elementRef<HTMLElement>()
   protected readonly phone = useMediaQuery('phone')
   protected readonly sheeting = derived(() => this.$p.presentation === 'auto' && this.phone())
+  protected readonly unnamed = derived(
+    () => this.$p['aria-label'] === undefined && this.$p['aria-labelledby'] === undefined,
+  )
   protected readonly emptyChoice = derived(() => ({
     value: '__polymorph-empty-choice__',
     label: this.$p.emptyOption ?? '',
@@ -440,7 +446,7 @@ export class Select {
       'dialog.scrim',
     ),
   )
-  private release4: (() => void) | undefined
+  private release5: (() => void) | undefined
 
   constructor() {
     watchEffect(
@@ -458,8 +464,13 @@ export class Select {
       () => this.effect3(),
       true,
     )
-    inject(DestroyRef).onDestroy(() => this.release4?.())
-    mountEffect(() => this.effect4())
+    watchEffect(
+      () => this.api.value.open && this.unnamed.value,
+      () => this.effect4(),
+      true,
+    )
+    inject(DestroyRef).onDestroy(() => this.release5?.())
+    mountEffect(() => this.effect5())
   }
 
   protected e1() {
@@ -545,6 +556,8 @@ export class Select {
         '--radix-select-content-transform-origin': 'var(--transform-origin)',
       },
       hidden: undefined,
+      'aria-label': this.$p['aria-labelledby'] === undefined ? this.$p['aria-label'] : undefined,
+      'aria-labelledby': this.unnamed.value ? this.fieldLabels.value : this.$p['aria-labelledby'],
       'data-size': this.$p.size,
       'data-member': 'select',
       onFocus: () => this.h1(),
@@ -833,6 +846,8 @@ export class Select {
     return mergeParts(this.api.value.getContentProps(), {
       class: styles.sheetList,
       hidden: undefined,
+      'aria-label': this.$p['aria-labelledby'] === undefined ? this.$p['aria-label'] : undefined,
+      'aria-labelledby': this.unnamed.value ? this.fieldLabels.value : this.$p['aria-labelledby'],
       'data-size': this.$p.size,
       'data-member': 'select',
       onFocus: () => this.h5(),
@@ -1092,7 +1107,15 @@ export class Select {
   }
 
   private effect4(): void {
-    this.release4?.()
+    void (
+      this.api.value.open &&
+      this.unnamed.value &&
+      (this.fieldLabels.value = fieldLabelIds(this.trigger.value, this.uid))
+    )
+  }
+
+  private effect5(): void {
+    this.release5?.()
     const ran = agentMember({
       member: 'Select',
       element: () => this.trigger.value,
@@ -1123,7 +1146,7 @@ export class Select {
         close: () => this.api.value.setOpen(false),
       },
     })
-    this.release4 = () => {
+    this.release5 = () => {
       ran()
     }
   }
