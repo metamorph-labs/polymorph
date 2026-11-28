@@ -1,17 +1,26 @@
 import styles from './mark.module.css'
+import { MARK_PATH } from './mark-path'
 
 /**
- * The site's mark: one square with four different corners, sharp, slight, soft
- * and round. The corner radius is the first thing a system's geometry axis
- * changes, so the mark shows four systems' answers on one shape.
+ * The site's mark: a flower of five folded petals, drawn in line. One sheet folds into many
+ * forms, as one vocabulary takes many looks.
+ *
+ * The path is the brand's drawing, whose lines are too thin to read at the size a top bar draws
+ * it. A stroke in the fill's colour thickens every line by the same amount, and the view box is
+ * the drawing's bounds plus half that stroke on each side.
  *
  * It is decorative. The name beside it is the link's text, so the drawing is
  * hidden from assistive technology.
  */
 export function Mark() {
   return (
-    <svg className={styles.mark} viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-      <path d="M10 0H20V14A6 6 0 0 1 14 20H3A3 3 0 0 1 0 17V10A10 10 0 0 1 10 0Z" />
+    <svg
+      className={styles.mark}
+      viewBox="133.25 -8 580.75 536"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d={MARK_PATH} fillRule="evenodd" strokeWidth="16" strokeLinejoin="round" />
     </svg>
   )
 }
