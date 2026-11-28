@@ -275,7 +275,12 @@ export const UNDRAWN: readonly UndrawnProps[] = [
     ios: ['ColorInput', 'Select'],
   },
   {
-    props: ['messages'],
+    props: [
+      'messages',
+      'ColorInputMessages.planeValue',
+      'ColorInputMessages.hue',
+      'ColorInputMessages.railValue',
+    ],
     reason:
       'They name and value the web’s colour plane and rails, which are hidden range inputs. ' +
       'SwiftUI’s ColorPicker is the system’s, which names its own controls in the system’s ' +
@@ -283,6 +288,15 @@ export const UNDRAWN: readonly UndrawnProps[] = [
       'reaches the colour through the hex entry.',
     ios: ['ColorInput'],
     android: ['ColorInput'],
+  },
+  {
+    props: ['ColorInputMessages.plane'],
+    reason:
+      'The plane’s name, which no native rendering draws, for the reason the entry above gives. ' +
+      'Android is not listed because its ColorInput reads a field of that name, the colour ' +
+      'model’s `plane`, which the law counts as a read. `ColorInputMessages.alpha` is listed for ' +
+      'neither platform for the same reason: each ColorInput reads the member’s own `alpha`.',
+    ios: ['ColorInput'],
   },
   {
     props: ['presentation'],

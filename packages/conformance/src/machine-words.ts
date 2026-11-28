@@ -16,7 +16,7 @@ import { harness } from './harness'
  * - NumberInput's steppers are named by `messages.increment` and
  *   `messages.decrement` (`design/components/number-input.md`, Icons), which
  *   the description passes to its machine as its translations, and its field
- *   carries no role description (A11y).
+ *   carries no role description, as the spec's A11y section says.
  * - ColorInput's plane and rails are named and valued by `messages`
  *   (`design/components/color-input.md`, A11y).
  * - Combobox's and MultiSelect's machine speaks the highlighted option on
