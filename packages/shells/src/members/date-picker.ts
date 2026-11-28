@@ -104,7 +104,7 @@ export default describeMember({
   recipes: { triggerAnchor: 'overlays/trigger-anchor', sheet: 'overlays/sheet' },
   types: {
     DatePickerMessages:
-      'CalendarMessages & { showCalendar: string; clear: string; chooseDate: string }',
+      'CalendarMessages & { showCalendar: string; clear: string; chooseDate: string; empty?: string }',
   },
   uses: ['CalendarDate', 'CalendarMessages'],
   defaults: {
@@ -125,7 +125,8 @@ export default describeMember({
     reported: `(${SUPPLIED})?.toString() ?? ''`,
   },
   derived: {
-    say: "messages ?? { previousMonth: 'Previous month', nextMonth: 'Next month', showCalendar: 'Show calendar', clear: 'Clear', chooseDate: 'Choose a date' }",
+    // `empty` is optional, so a host's messages written before it keep its English.
+    say: "{ empty: 'Empty', ...(messages ?? { previousMonth: 'Previous month', nextMonth: 'Next month', showCalendar: 'Show calendar', clear: 'Clear', chooseDate: 'Choose a date' }) }",
     language: LANGUAGE,
     // The sheet form under `'auto'` and below the threshold; `'popover'` keeps the anchored panel.
     sheeting: "presentation === 'auto' && phone",

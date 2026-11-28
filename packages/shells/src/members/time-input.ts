@@ -52,6 +52,7 @@ export default describeMember({
   member: 'TimeInput',
   dir: 'controls',
   recipe: 'controls/time-input',
+  types: { TimeInputMessages: '{ empty: string }' },
   defaults: {
     granularity: lit('minute'),
     size: lit('md'),
@@ -68,6 +69,7 @@ export default describeMember({
     reported: `(${SUPPLIED})?.toString() ?? ''`,
   },
   derived: {
+    say: "messages ?? { empty: 'Empty' }",
     language: LANGUAGE,
     fieldOptions: options('language'),
     segments: 'fieldSegments(draft, fieldOptions)',

@@ -31,6 +31,12 @@ import styles from '@polymorph/recipes/controls/time-input.module.css'
  * nothing, which would mislead users.
  */
 
+/** The one word the field says that `Intl` cannot supply, localizable by passing (WCAG 3.1.2). */
+export interface TimeInputMessages {
+  /** What an unfilled segment says as its value. Without `messages`, React Aria's `Empty`. */
+  empty: string
+}
+
 export interface TimeInputProps {
   /**
    * `@internationalized/date`'s `Time`: a plain time of day with no date and no time
@@ -62,6 +68,8 @@ export interface TimeInputProps {
   /** Serializes the ISO-8601 time in `Time`'s own format, such as `"09:30:00"`. */
   name?: string
   id?: string
+  /** Defaults to generic English (`Empty`). Localized hosts pass strings from their catalog. */
+  messages?: TimeInputMessages
   /** Wired by FormField; set directly only when there is no visible label. */
   'aria-label'?: string
   'aria-labelledby'?: string
@@ -103,6 +111,7 @@ function TimeField({
   invalid = false,
   name,
   id,
+  messages,
   'aria-label': ariaLabel,
   'aria-labelledby': labelledBy,
   'aria-describedby': describedBy,
@@ -194,6 +203,7 @@ function TimeField({
             state={state}
             disabled={disabled}
             styles={segmentStyles}
+            empty={messages?.empty}
           />
         ))}
       </div>

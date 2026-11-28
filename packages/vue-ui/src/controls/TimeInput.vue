@@ -21,6 +21,10 @@ import {
 } from '@polymorph/vue'
 import styles from '@polymorph/recipes/controls/time-input.module.css'
 
+export interface TimeInputMessages {
+  empty: string
+}
+
 export interface TimeInputProps {
   ariaDescribedby?: string
   /**
@@ -47,6 +51,10 @@ export interface TimeInputProps {
    * Sets the segment order, the day period names and the separator.
    */
   locale?: string
+  /**
+   * Defaults to generic English (`Empty`). Localized hosts pass strings from their catalog.
+   */
+  messages?: TimeInputMessages
   /**
    * Serializes the ISO-8601 time in `Time`'s own format, such as `"09:30:00"`.
    */
@@ -90,6 +98,7 @@ const reported = ref(
   (props.value !== undefined ? props.value : props.defaultValue)?.toString() ?? '',
 )
 const field = useTemplateRef<HTMLElement>('field')
+const say = computed(() => props.messages ?? { empty: 'Empty' })
 const language = computed(() => props.locale ?? browserLanguage.value ?? 'en-US')
 const fieldOptions = computed(() => ({
   locale: language.value,
@@ -292,7 +301,7 @@ onBeforeUnmount(() => release3?.())
           :aria-valuenow="segment.placeholder ? undefined : segment.value"
           :aria-valuemin="segment.min"
           :aria-valuemax="segment.max"
-          :aria-valuetext="segment.placeholder ? 'Empty' : segment.text"
+          :aria-valuetext="segment.placeholder ? say.empty : segment.text"
           :aria-required="ariaRequired ? 'true' : undefined"
           :aria-readonly="readOnly ? 'true' : undefined"
           :aria-disabled="disabled ? 'true' : undefined"

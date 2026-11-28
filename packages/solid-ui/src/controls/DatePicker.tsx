@@ -53,6 +53,7 @@ export type DatePickerMessages = CalendarMessages & {
   showCalendar: string
   clear: string
   chooseDate: string
+  empty?: string
 }
 
 export interface DatePickerProps {
@@ -149,16 +150,16 @@ export default function DatePicker(given: DatePickerProps): JSX.Element {
     const reported = createCell(
       (props.value !== undefined ? props.value : props.defaultValue)?.toString() ?? '',
     )
-    const say = createDerived(
-      () =>
-        props.messages ?? {
-          previousMonth: 'Previous month',
-          nextMonth: 'Next month',
-          showCalendar: 'Show calendar',
-          clear: 'Clear',
-          chooseDate: 'Choose a date',
-        },
-    )
+    const say = createDerived(() => ({
+      empty: 'Empty',
+      ...(props.messages ?? {
+        previousMonth: 'Previous month',
+        nextMonth: 'Next month',
+        showCalendar: 'Show calendar',
+        clear: 'Clear',
+        chooseDate: 'Choose a date',
+      }),
+    }))
     const language = createDerived(() => props.locale ?? browserLanguage.value ?? 'en-US')
     const sheeting = createDerived(() => props.presentation === 'auto' && phone())
     const fieldOptions = createDerived(() => ({
@@ -460,7 +461,7 @@ export default function DatePicker(given: DatePickerProps): JSX.Element {
                       aria-valuenow={segment.placeholder ? undefined : segment.value}
                       aria-valuemin={segment.min}
                       aria-valuemax={segment.max}
-                      aria-valuetext={segment.placeholder ? 'Empty' : segment.text}
+                      aria-valuetext={segment.placeholder ? say.value.empty : segment.text}
                       aria-required={props['aria-required'] ? 'true' : undefined}
                       aria-disabled={props.disabled ? 'true' : undefined}
                       aria-invalid={fieldInvalid.value ? 'true' : undefined}

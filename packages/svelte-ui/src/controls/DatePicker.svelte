@@ -47,6 +47,7 @@ export type DatePickerMessages = CalendarMessages & {
   showCalendar: string
   clear: string
   chooseDate: string
+  empty?: string
 }
 
 export interface DatePickerProps {
@@ -178,15 +179,16 @@ let panel = $state<HTMLElement | null>(null)
 let scrim = $state<HTMLElement | null>(null)
 let sheetPanel = $state<HTMLElement | null>(null)
 const phone = useMediaQuery('phone')
-const say = $derived(
-  messages ?? {
+const say = $derived({
+  empty: 'Empty',
+  ...(messages ?? {
     previousMonth: 'Previous month',
     nextMonth: 'Next month',
     showCalendar: 'Show calendar',
     clear: 'Clear',
     chooseDate: 'Choose a date',
-  },
-)
+  }),
+})
 const language = $derived(locale ?? browserLanguage ?? 'en-US')
 const sheeting = $derived(presentation === 'auto' && phone.current)
 const fieldOptions = $derived({
@@ -430,7 +432,7 @@ onDestroy(() => release4?.())
             aria-valuenow={segment.placeholder ? undefined : segment.value}
             aria-valuemin={segment.min}
             aria-valuemax={segment.max}
-            aria-valuetext={segment.placeholder ? 'Empty' : segment.text}
+            aria-valuetext={segment.placeholder ? say.empty : segment.text}
             aria-required={(ariaRequired) ? 'true' : undefined}
             aria-disabled={(disabled) ? 'true' : undefined}
             aria-invalid={(fieldInvalid) ? 'true' : undefined}

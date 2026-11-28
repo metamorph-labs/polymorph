@@ -28,6 +28,10 @@ import {
 } from '@polymorph/solid'
 import styles from '@polymorph/recipes/controls/time-input.module.css'
 
+export interface TimeInputMessages {
+  empty: string
+}
+
 export interface TimeInputProps {
   'aria-describedby'?: string
   /**
@@ -54,6 +58,10 @@ export interface TimeInputProps {
    * Sets the segment order, the day period names and the separator.
    */
   locale?: string
+  /**
+   * Defaults to generic English (`Empty`). Localized hosts pass strings from their catalog.
+   */
+  messages?: TimeInputMessages
   /**
    * Serializes the ISO-8601 time in `Time`'s own format, such as `"09:30:00"`.
    */
@@ -99,6 +107,7 @@ export default function TimeInput(given: TimeInputProps): JSX.Element {
   const reported = createCell(
     (props.value !== undefined ? props.value : props.defaultValue)?.toString() ?? '',
   )
+  const say = createDerived(() => props.messages ?? { empty: 'Empty' })
   const language = createDerived(() => props.locale ?? browserLanguage.value ?? 'en-US')
   const fieldOptions = createDerived(() => ({
     locale: language.value,
@@ -310,7 +319,7 @@ export default function TimeInput(given: TimeInputProps): JSX.Element {
                   aria-valuenow={segment.placeholder ? undefined : segment.value}
                   aria-valuemin={segment.min}
                   aria-valuemax={segment.max}
-                  aria-valuetext={segment.placeholder ? 'Empty' : segment.text}
+                  aria-valuetext={segment.placeholder ? say.value.empty : segment.text}
                   aria-required={props['aria-required'] ? 'true' : undefined}
                   aria-readonly={props.readOnly ? 'true' : undefined}
                   aria-disabled={props.disabled ? 'true' : undefined}

@@ -140,7 +140,7 @@ export default describeMember({
   types: {
     DateRange: '{ start: CalendarDate; end: CalendarDate }',
     DateRangePickerMessages:
-      'CalendarMessages & { showCalendar: string; clear: string; chooseRange: string }',
+      'CalendarMessages & { showCalendar: string; clear: string; chooseRange: string; empty?: string; start?: string; end?: string }',
   },
   uses: ['CalendarDate', 'CalendarMessages'],
   defaults: {
@@ -163,7 +163,9 @@ export default describeMember({
     anchored: 'false',
   },
   derived: {
-    say: "messages ?? { previousMonth: 'Previous month', nextMonth: 'Next month', showCalendar: 'Show calendar', clear: 'Clear', chooseRange: 'Choose a date range' }",
+    // `empty`, `start` and `end` are optional, so a host's messages written before them keep
+    // their English.
+    say: "{ empty: 'Empty', start: 'Start date', end: 'End date', ...(messages ?? { previousMonth: 'Previous month', nextMonth: 'Next month', showCalendar: 'Show calendar', clear: 'Clear', chooseRange: 'Choose a date range' }) }",
     language: LANGUAGE,
     // The sheet form under `'auto'` and below the threshold; `'popover'` keeps the anchored panel.
     sheeting: "presentation === 'auto' && phone",
@@ -284,12 +286,12 @@ export default describeMember({
         },
       },
       [
-        segmentRow(START, { key: 'start', half: "'Start date'", attrs: { 'data-size': 'size' } }),
+        segmentRow(START, { key: 'start', half: 'say.start', attrs: { 'data-size': 'size' } }),
         // A visual separator only: each segment's name says which end it belongs to.
         el('span', { part: 'dash', class: ['dash'], attrs: { 'aria-hidden': lit('true') } }, [
           words('–'),
         ]),
-        segmentRow(END, { key: 'end', half: "'End date'", attrs: { 'data-size': 'size' } }),
+        segmentRow(END, { key: 'end', half: 'say.end', attrs: { 'data-size': 'size' } }),
         el('span', { class: ['spacer'] }),
         // Each end in ISO form, under its own name, because one name cannot carry two values.
         cond('startName !== undefined', [

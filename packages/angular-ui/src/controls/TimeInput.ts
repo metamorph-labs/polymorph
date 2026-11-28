@@ -32,6 +32,10 @@ import {
 } from '@polymorph/angular'
 import styles from '@polymorph/recipes/controls/time-input.module.css'
 
+export interface TimeInputMessages {
+  empty: string
+}
+
 /** A segmented time-of-day field with no popup: the inputs it takes, by the React member's prop names. */
 export interface TimeInputProps {
   'aria-describedby'?: string
@@ -59,6 +63,10 @@ export interface TimeInputProps {
    * Sets the segment order, the day period names and the separator.
    */
   locale?: string
+  /**
+   * Defaults to generic English (`Empty`). Localized hosts pass strings from their catalog.
+   */
+  messages?: TimeInputMessages
   /**
    * Serializes the ISO-8601 time in `Time`'s own format, such as `"09:30:00"`.
    */
@@ -190,6 +198,10 @@ export class TimeInput {
    */
   readonly locale = input<TimeInputProps['locale']>(undefined)
   /**
+   * Defaults to generic English (`Empty`). Localized hosts pass strings from their catalog.
+   */
+  readonly messages = input<TimeInputProps['messages']>(undefined)
+  /**
    * Serializes the ISO-8601 time in `Time`'s own format, such as `"09:30:00"`.
    */
   readonly name = input<TimeInputProps['name']>(undefined)
@@ -228,6 +240,7 @@ export class TimeInput {
       id: () => this.id(),
       invalid: () => this.invalid(),
       locale: () => this.locale(),
+      messages: () => this.messages(),
       name: () => this.name(),
       readOnly: () => this.readOnly(),
       size: () => this.size(),
@@ -249,6 +262,7 @@ export class TimeInput {
     () => (this.$p.value !== undefined ? this.$p.value : this.$p.defaultValue)?.toString() ?? '',
   )
   protected readonly field = elementRef<HTMLElement>()
+  protected readonly say = derived(() => this.$p.messages ?? { empty: 'Empty' })
   protected readonly language = derived(
     () => this.$p.locale ?? this.browserLanguage.value ?? 'en-US',
   )
@@ -494,7 +508,7 @@ export class TimeInput {
 
   protected e25(segment: Each<ReturnType<TimeInput['e12']>>) {
     if (segment.type === 'literal') return undefined as never
-    return segment.placeholder ? 'Empty' : segment.text
+    return segment.placeholder ? this.say.value.empty : segment.text
   }
 
   protected e26(segment: Each<ReturnType<TimeInput['e12']>>) {

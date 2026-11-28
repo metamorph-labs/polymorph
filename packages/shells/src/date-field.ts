@@ -169,8 +169,12 @@ export function segmentHandlers(field: SegmentField): Record<string, Expr> {
   }
 }
 
-/** What a segment says to assistive software as its value: its text, or that it is empty. */
-const VALUE_TEXT = "segment.placeholder ? 'Empty' : segment.text"
+/**
+ * What a segment says to assistive software as its value: its text, or the
+ * member's word for an empty segment, `say.empty`, which every member that
+ * draws a segment row holds.
+ */
+const VALUE_TEXT = 'segment.placeholder ? say.empty : segment.text'
 
 /**
  * A field's segments, in the locale's order, each a spinbutton, with the

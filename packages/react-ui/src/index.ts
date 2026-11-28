@@ -157,7 +157,7 @@ export type { ControlKind, ControlSize } from '@polymorph/react'
 
 export { Link } from './controls/Link'
 export { TimeInput } from './controls/TimeInput'
-export type { TimeInputProps } from './controls/TimeInput'
+export type { TimeInputMessages, TimeInputProps } from './controls/TimeInput'
 export type { LinkButtonGrid, LinkProps, LinkVariant } from './controls/Link'
 
 export { Icon } from '@polymorph/react'

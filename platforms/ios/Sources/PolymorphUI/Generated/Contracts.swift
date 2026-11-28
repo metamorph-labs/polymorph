@@ -2902,9 +2902,9 @@ public enum PMDateRangePickerPresentation: String, CaseIterable, Sendable {
   case popover
 }
 
-/// DateRangePicker's props (`design/components/date-range-picker.md`): A date range *field* with
-/// two segmented entries and a calendar popup. On iOS it is adapted: two date fields, one range
-/// calendar; a sheet on iPhone, anchored on iPad.
+/// DateRangePicker's props (`design/components/date-range-picker.md`): A date range *field*: two
+/// segmented dates and a calendar popup. On iOS it is adapted: two date fields, one range calendar;
+/// a sheet on iPhone, anchored on iPad.
 public struct PMDateRangePickerProps {
   public var ariaDescribedby: String?
   /// Set by FormField. Set it directly only when there is no visible label.
@@ -8514,6 +8514,8 @@ public struct PMTimeInputProps {
   public var invalid: Bool?
   /// Sets the segment order, the day period names and the separator.
   public var locale: String?
+  /// Defaults to generic English (`Empty`). Localized hosts pass strings from their catalog.
+  public var messages: PMTimeInputMessages?
   /// Serializes the ISO-8601 time in `Time`'s own format, such as `"09:30:00"`.
   public var name: String?
   public var onChange: (@MainActor (PMTime?) -> Void)?
@@ -8538,6 +8540,7 @@ public struct PMTimeInputProps {
     id: String? = nil,
     invalid: Bool? = nil,
     locale: String? = nil,
+    messages: PMTimeInputMessages? = nil,
     name: String? = nil,
     onChange: (@MainActor (PMTime?) -> Void)? = nil,
     readOnly: Bool? = nil,
@@ -8555,6 +8558,7 @@ public struct PMTimeInputProps {
     self.id = id
     self.invalid = invalid
     self.locale = locale
+    self.messages = messages
     self.name = name
     self.onChange = onChange
     self.readOnly = readOnly
@@ -9960,19 +9964,23 @@ public struct PMDatePickerMessages {
   public var clear: String
   /// The popup’s accessible name.
   public var chooseDate: String
+  /// What an unfilled segment says as its value on the web. Default: `Empty`.
+  public var empty: String?
 
   public init(
     previousMonth: String,
     nextMonth: String,
     showCalendar: String,
     clear: String,
-    chooseDate: String
+    chooseDate: String,
+    empty: String? = nil
   ) {
     self.previousMonth = previousMonth
     self.nextMonth = nextMonth
     self.showCalendar = showCalendar
     self.clear = clear
     self.chooseDate = chooseDate
+    self.empty = empty
   }
 }
 
@@ -9999,19 +10007,31 @@ public struct PMDateRangePickerMessages {
   public var clear: String
   /// The popup’s accessible name.
   public var chooseRange: String
+  /// What an unfilled segment says as its value on the web. Default: `Empty`.
+  public var empty: String?
+  /// The start’s name on the web, said with each of its segments. Default: `Start date`.
+  public var start: String?
+  /// The end’s name on the web, said with each of its segments. Default: `End date`.
+  public var end: String?
 
   public init(
     previousMonth: String,
     nextMonth: String,
     showCalendar: String,
     clear: String,
-    chooseRange: String
+    chooseRange: String,
+    empty: String? = nil,
+    start: String? = nil,
+    end: String? = nil
   ) {
     self.previousMonth = previousMonth
     self.nextMonth = nextMonth
     self.showCalendar = showCalendar
     self.clear = clear
     self.chooseRange = chooseRange
+    self.empty = empty
+    self.start = start
+    self.end = end
   }
 }
 
@@ -11639,6 +11659,18 @@ public struct PMTime {
     self.minute = minute
     self.second = second
     self.millisecond = millisecond
+  }
+}
+
+/// The web's `TimeInputMessages`, field for field (`SHAPES` in `packages/native/src/mapping.ts`).
+public struct PMTimeInputMessages {
+  /// What an unfilled segment says as its value on the web.
+  public var empty: String
+
+  public init(
+    empty: String
+  ) {
+    self.empty = empty
   }
 }
 

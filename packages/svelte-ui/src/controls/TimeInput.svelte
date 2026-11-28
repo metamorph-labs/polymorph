@@ -23,6 +23,10 @@ import {
 } from '@polymorph/svelte'
 import styles from '@polymorph/recipes/controls/time-input.module.css'
 
+export interface TimeInputMessages {
+  empty: string
+}
+
 export interface TimeInputProps {
   'aria-describedby'?: string
   /**
@@ -49,6 +53,10 @@ export interface TimeInputProps {
    * Sets the segment order, the day period names and the separator.
    */
   locale?: string
+  /**
+   * Defaults to generic English (`Empty`). Localized hosts pass strings from their catalog.
+   */
+  messages?: TimeInputMessages
   /**
    * Serializes the ISO-8601 time in `Time`'s own format, such as `"09:30:00"`.
    */
@@ -84,6 +92,7 @@ let {
   id: idOwn,
   invalid: invalidOwn = false,
   locale,
+  messages,
   name,
   onChange,
   readOnly = false,
@@ -128,6 +137,7 @@ let typed = $state('')
 // svelte-ignore state_referenced_locally
 let reported = $state((value !== undefined ? value : defaultValue)?.toString() ?? '')
 let field = $state<HTMLElement | null>(null)
+const say = $derived(messages ?? { empty: 'Empty' })
 const language = $derived(locale ?? browserLanguage ?? 'en-US')
 const fieldOptions = $derived({
   locale: language,
@@ -302,7 +312,7 @@ onDestroy(() => release3?.())
             aria-valuenow={segment.placeholder ? undefined : segment.value}
             aria-valuemin={segment.min}
             aria-valuemax={segment.max}
-            aria-valuetext={segment.placeholder ? 'Empty' : segment.text}
+            aria-valuetext={segment.placeholder ? say.empty : segment.text}
             aria-required={(ariaRequired) ? 'true' : undefined}
             aria-readonly={(readOnly) ? 'true' : undefined}
             aria-disabled={(disabled) ? 'true' : undefined}

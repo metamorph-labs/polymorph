@@ -37,20 +37,31 @@ export interface SegmentStyles {
  * omission. `useDateFieldState` clamps each segment to its calendar's range as it is typed, so a
  * `31` in February is never entered and no segment is ever invalid on its own. Only the value can
  * be wrong, and the value carries `data-invalid`.
+ *
+ * `empty` is what an unfilled segment says as its value, where the host gives a word for it.
+ * Without one, the segment says React Aria's word, which React Aria says in the page's locale.
+ * A segment React Aria draws with no value text (a text box on iOS, which VoiceOver cannot focus
+ * as a spinbutton) keeps none.
  */
 export function Segment({
   segment,
   state,
   disabled,
   styles,
+  empty,
 }: {
   segment: DateSegment
   state: DateFieldState
   disabled: boolean
   styles: SegmentStyles
+  empty?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const { segmentProps } = useDateSegment(segment, state, ref)
+  const said =
+    empty !== undefined && segment.isPlaceholder && segmentProps['aria-valuetext'] != null
+      ? { 'aria-valuetext': empty }
+      : {}
 
   if (segment.type === 'literal') {
     return (
@@ -63,6 +74,7 @@ export function Segment({
   return (
     <div
       {...segmentProps}
+      {...said}
       ref={ref}
       className={styles.segment}
       data-segment={segment.type}
@@ -89,12 +101,15 @@ export function DateSegments({
   size,
   disabled,
   styles,
+  empty,
 }: {
   fieldProps: Parameters<typeof useDateField>[0]
   locale: string
   size: ControlSize
   disabled: boolean
   styles: SegmentStyles
+  /** What an unfilled segment says as its value, where the host gives it (`Segment`). */
+  empty?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const state = useDateFieldState({ ...fieldProps, locale, createCalendar })
@@ -109,6 +124,7 @@ export function DateSegments({
           state={state}
           disabled={disabled}
           styles={styles}
+          empty={empty}
         />
       ))}
       {inputProps.name == null ? null : <input {...inputProps} />}

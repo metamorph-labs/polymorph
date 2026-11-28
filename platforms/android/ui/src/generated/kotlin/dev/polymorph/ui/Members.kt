@@ -2583,13 +2583,14 @@ fun PMTimeInput(
     id: String? = null,
     invalid: Boolean? = null,
     locale: String? = null,
+    messages: PMTimeInputMessages? = null,
     name: String? = null,
     onChange: ((PMTime?) -> Unit)? = null,
     readOnly: Boolean? = null,
     size: PMControlSize? = null,
     value: PMSome<PMTime?>? = null,
 ) {
-    PMTimeInput.Render(PMTimeInputProps(ariaDescribedby = ariaDescribedby, ariaLabel = ariaLabel, ariaLabelledby = ariaLabelledby, ariaRequired = ariaRequired, defaultValue = defaultValue, disabled = disabled, granularity = granularity, hourCycle = hourCycle, id = id, invalid = invalid, locale = locale, name = name, onChange = onChange, readOnly = readOnly, size = size, value = value))
+    PMTimeInput.Render(PMTimeInputProps(ariaDescribedby = ariaDescribedby, ariaLabel = ariaLabel, ariaLabelledby = ariaLabelledby, ariaRequired = ariaRequired, defaultValue = defaultValue, disabled = disabled, granularity = granularity, hourCycle = hourCycle, id = id, invalid = invalid, locale = locale, messages = messages, name = name, onChange = onChange, readOnly = readOnly, size = size, value = value))
 }
 
 /**

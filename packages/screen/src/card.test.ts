@@ -60,12 +60,14 @@ import { VOCABULARY } from './vocabulary'
  * name, the shortest form, and no sentence of TagInput's own on the card was
  * left to shorten in its place.
  *
- * It also includes ArtifactPane's `streamingLabel`, the seam for what a
- * screen-reader user hears while an artifact is being written, which the
- * generated members wrote in English. ArtifactPane's purpose is shorter in its
- * place.
+ * It also includes the date fields' words for an unfilled segment and a
+ * range's two halves (`empty`, `start`, `end`, and TimeInput's `messages`) and
+ * ArtifactPane's `streamingLabel`: the seams for words a screen-reader user
+ * hears, which the generated members wrote in English. Each field is printed
+ * under its own name, the shortest that says what it holds, and ArtifactPane's
+ * and DateRangePicker's purposes are shorter in their place.
  */
-const BUDGET_CHARS = 60_840
+const BUDGET_CHARS = 60_967
 const SUBSET_BUDGET_CHARS = 13_600
 
 /** What a host that draws forms, lists and simple pages might allow. */

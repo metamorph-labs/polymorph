@@ -39,6 +39,7 @@ entry works the same without it.
 | `size`                                | `'sm' \| 'md' \| 'lg'` | `'md'`                 | conventions §2. No free-text placeholder; empty segments show their own localized patterns (`date-picker.md`'s law)                                                                                                                                                                                                                                                                 |
 | `disabled` / `readOnly` / `invalid`   | `boolean`              | `false`                | Input's. `readOnly` keeps segments focusable and selectable (platform convention, Input's row); arrows and digits do not edit                                                                                                                                                                                                                                                       |
 | `name` / `id`                         | native passthrough     | —                      | `name` serializes the ISO-8601 time in `Time`'s own form, `"09:30:00"`                                                                                                                                                                                                                                                                                                              |
+| `messages`                            | `{ empty: string }`    | English                | the one word the field says that `Intl` cannot supply *(the localization seam)*: what an unfilled segment says as its value. Left out, the word is `Empty`, which React Aria says in the page's locale on React and a generated member says in English                                                                                                                              |
 
 Attributes: field `data-size`, `data-invalid?`, `data-disabled?`,
 `data-readonly?`; segments `data-segment="hour|minute|dayPeriod"`,
@@ -112,7 +113,8 @@ surfaces that need a glyph; a timestamp inside running text does not").
 ## A11y
 
 `date-picker.md`'s segment pattern in full: a `role="group"` field, and each segment a
-`role="spinbutton"` with `aria-valuetext` (the full formatted time). Arrows increment and
+`role="spinbutton"` with `aria-valuetext` (the full formatted time, or `messages.empty` while the
+segment is unfilled). Arrows increment and
 decrement, digits type in and advance, and left/right move between segments. DOM focus
 never leaves the segments, and with no popup there is no focus hand-off. The dayPeriod
 segment responds to arrows and to the locale's typed initials. `aria-live` on the group

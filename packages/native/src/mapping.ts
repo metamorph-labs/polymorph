@@ -742,6 +742,12 @@ export const SHAPES: Readonly<Record<string, Shape>> = {
       { name: 'showCalendar', type: 'string' },
       { name: 'clear', type: 'string' },
       { name: 'chooseDate', type: 'string', doc: 'The popup’s accessible name.' },
+      {
+        name: 'empty',
+        type: 'string',
+        optional: true,
+        doc: 'What an unfilled segment says as its value on the web. Default: `Empty`.',
+      },
     ],
   },
   DateRange: {
@@ -757,6 +763,24 @@ export const SHAPES: Readonly<Record<string, Shape>> = {
       { name: 'showCalendar', type: 'string' },
       { name: 'clear', type: 'string' },
       { name: 'chooseRange', type: 'string', doc: 'The popup’s accessible name.' },
+      {
+        name: 'empty',
+        type: 'string',
+        optional: true,
+        doc: 'What an unfilled segment says as its value on the web. Default: `Empty`.',
+      },
+      {
+        name: 'start',
+        type: 'string',
+        optional: true,
+        doc: 'The start’s name on the web, said with each of its segments. Default: `Start date`.',
+      },
+      {
+        name: 'end',
+        type: 'string',
+        optional: true,
+        doc: 'The end’s name on the web, said with each of its segments. Default: `End date`.',
+      },
     ],
   },
   DiffMessages: {
@@ -1646,6 +1670,15 @@ export const SHAPES: Readonly<Record<string, Shape>> = {
       { name: 'minute', type: 'number' },
       { name: 'second', type: 'number' },
       { name: 'millisecond', type: 'number' },
+    ],
+  },
+  TimeInputMessages: {
+    fields: [
+      {
+        name: 'empty',
+        type: 'string',
+        doc: 'What an unfilled segment says as its value on the web.',
+      },
     ],
   },
   TimelineEvent: {

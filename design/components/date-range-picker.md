@@ -37,7 +37,7 @@ place where range state lives. An app's preset writes *into* this member by sett
 | `disabled` / `invalid` / `id`               | Input's             | —       |                                                                                                                                                                                                                                                                              |
 | `startName` / `endName`                     | `string`            | —       | two hidden inputs serialize ISO-8601, as DatePicker does, because one `name` cannot carry two values |
 | `presentation`                              | `'auto' \| 'popover'` | `'auto'` | DatePicker's cell verbatim (`date-picker.md`; conventions §12): `'auto'` shows the popup as a sheet below `30rem` with **RangeCalendar inside the sheet verbatim**. `'popover'` keeps the popper at every width. The anchored-span keyboard model, the two-stage Escape and the hand-off are the same in the sheet |
-| `messages` | `{ showCalendar: string; clear: string; chooseRange: string; previousMonth: string; nextMonth: string }` | English | DatePicker's cell, with the popup's name reworded for a range *(the localization seam)* |
+| `messages` | `{ showCalendar: string; clear: string; chooseRange: string; previousMonth: string; nextMonth: string; empty?: string; start?: string; end?: string }` | English | DatePicker's cell, with the popup's name reworded for a range *(the localization seam)*, and the two halves' names: `start` and `end` (FormField integration, below) |
 
 ```ts
 /** The value shape — react-aria's RangeValue, written closed. */
@@ -114,9 +114,12 @@ focus on-close trigger
 ## FormField integration
 
 DatePicker's group wiring verbatim: the label targets the field group, description and error
-go through `aria-describedby` on it, and `invalid` comes from context. The substrate names the
-halves "Start Date" / "End Date" (localized) under the field's label, so a screen reader says
-"Report range, Start Date, month…". The en-dash never carries the meaning.
+go through `aria-describedby` on it, and `invalid` comes from context. Each half's segments are
+named by the half, `messages.start` or `messages.end`, with the field's label, so a screen
+reader says "Report range, Start Date, month…". Left out, the halves' names are React Aria's
+"Start Date" and "End Date" in the page's locale on React, and "Start date" and "End date" in
+English in a generated member. `start`, `end` and `empty` are optional, so a catalog written
+before them still fits. The en-dash never carries the meaning.
 
 ## States
 

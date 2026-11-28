@@ -1986,8 +1986,8 @@ enum class PMDateRangePickerPresentation(val value: String) {
 }
 
 /**
- * DateRangePicker's props (`design/components/date-range-picker.md`): A date range *field* with two
- * segmented entries and a calendar popup.
+ * DateRangePicker's props (`design/components/date-range-picker.md`): A date range *field*: two
+ * segmented dates and a calendar popup.
  */
 data class PMDateRangePickerProps(
     val ariaDescribedby: String? = null,
@@ -5867,6 +5867,8 @@ data class PMTimeInputProps(
     val invalid: Boolean? = null,
     /** Sets the segment order, the day period names and the separator. */
     val locale: String? = null,
+    /** Defaults to generic English (`Empty`). Localized hosts pass strings from their catalog. */
+    val messages: PMTimeInputMessages? = null,
     /** Serializes the ISO-8601 time in `Time`'s own format, such as `"09:30:00"`. */
     val name: String? = null,
     val onChange: ((PMTime?) -> Unit)? = null,
@@ -6509,6 +6511,8 @@ data class PMDatePickerMessages(
     val clear: String,
     /** The popup’s accessible name. */
     val chooseDate: String,
+    /** What an unfilled segment says as its value on the web. Default: `Empty`. */
+    val empty: String? = null,
 )
 
 /** The web's `DateRange`, field for field (`SHAPES` in `packages/native/src/mapping.ts`). */
@@ -6528,6 +6532,12 @@ data class PMDateRangePickerMessages(
     val clear: String,
     /** The popup’s accessible name. */
     val chooseRange: String,
+    /** What an unfilled segment says as its value on the web. Default: `Empty`. */
+    val empty: String? = null,
+    /** The start’s name on the web, said with each of its segments. Default: `Start date`. */
+    val start: String? = null,
+    /** The end’s name on the web, said with each of its segments. Default: `End date`. */
+    val end: String? = null,
 )
 
 /** The web's `DeltaDirection`: "up", "down". */
@@ -7308,6 +7318,14 @@ data class PMTime(
     val minute: Double,
     val second: Double,
     val millisecond: Double,
+)
+
+/**
+ * The web's `TimeInputMessages`, field for field (`SHAPES` in `packages/native/src/mapping.ts`).
+ */
+data class PMTimeInputMessages(
+    /** What an unfilled segment says as its value on the web. */
+    val empty: String,
 )
 
 /** The web's `TimelineEvent`, field for field (`SHAPES` in `packages/native/src/mapping.ts`). */

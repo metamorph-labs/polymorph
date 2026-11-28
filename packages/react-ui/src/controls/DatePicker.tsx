@@ -53,6 +53,8 @@ export interface DatePickerMessages extends CalendarMessages {
   clear: string
   /** The popup's accessible name. */
   chooseDate: string
+  /** What an unfilled segment says as its value. Default: React Aria's `Empty`, in the locale. */
+  empty?: string
 }
 
 const DEFAULT_MESSAGES: DatePickerMessages = {
@@ -333,6 +335,7 @@ function DateField({
         size={size}
         disabled={disabled}
         styles={segmentStyles}
+        empty={messages.empty}
       />
 
       {name === undefined ? null : (

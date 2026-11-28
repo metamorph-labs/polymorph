@@ -34,10 +34,12 @@ never needs the grid.
 | `size` / `placeholder-less` | `'sm' \| 'md' \| 'lg'` | `'md'` | no free-text placeholder. Empty segments show their own pattern (`dd`, `mm`, `yyyy`, localized) |
 | `disabled` / `invalid` / `name` / `id` | Input's | — | `name` serializes ISO-8601 |
 | `presentation` | `'auto' \| 'popover'` | `'auto'` | `'auto'` shows the popup as a sheet below `30rem` (see the sheet section below; conventions §12). `'popover'` keeps the popper at every width. There is no always-`'sheet'` value, because a bottom sheet is wrong on a wide pointer screen and the closed union excludes it |
-| `messages` | `{ showCalendar: string; clear: string; chooseDate: string; previousMonth: string; nextMonth: string }` | English | every label the picker uses that `Intl` cannot supply *(the localization seam)*: the trigger, the clear control, the popup's accessible name, and Calendar's two month labels. Those two are forwarded to Calendar, so one catalog entry serves both |
+| `messages` | `{ showCalendar: string; clear: string; chooseDate: string; previousMonth: string; nextMonth: string; empty?: string }` | English | every label the picker uses that `Intl` cannot supply *(the localization seam)*: the trigger, the clear control, the popup's accessible name, Calendar's two month labels, and `empty`, what an unfilled segment says as its value. The two month labels are forwarded to Calendar, so one catalog entry serves both |
 
 The English `messages` are `Show calendar`, `Clear`, `Choose a date`, `Previous month` and
-`Next month`.
+`Next month`. `empty` is optional, so a catalog written before it still fits: left out, an
+unfilled segment says `Empty`, which React Aria says in the page's locale on React and a
+generated member says in English.
 
 Attributes: field `data-size`, `data-invalid?`, `data-disabled?`,
 `data-state="open|closed"` (popup); segments `data-segment="day|month|year"`
@@ -105,7 +107,8 @@ the patterns' projections apply.
 ## A11y
 
 React Aria's date field pattern: a `role="group"` field, and each segment a
-`role="spinbutton"` with `aria-valuetext` (the full formatted value). Arrows increment and
+`role="spinbutton"` with `aria-valuetext` (the full formatted value, or `messages.empty` while
+the segment is unfilled). Arrows increment and
 decrement, digits type through, and left and right move between segments. DOM focus stays in
 the segments. The trigger opens the popup on a press, Enter or Space, and so does Alt+ArrowDown in
 a segment (React Aria's shortcut); either moves focus to the calendar's focused day.

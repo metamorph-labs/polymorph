@@ -48,7 +48,7 @@ import { DateSegments, type SegmentStyles } from './date-segments'
 import styles from '@polymorph/recipes/controls/date-range-picker.module.css'
 
 /**
- * A date range *field* with two segmented entries and a calendar popup
+ * A date range *field*: two segmented dates and a calendar popup
  * (`design/components/date-range-picker.md`). A range changes the value shape, the cell states and
  * the keyboard model together, so it is a separate member rather than a DatePicker mode.
  *
@@ -80,6 +80,12 @@ export interface DateRangePickerMessages extends CalendarMessages {
   clear: string
   /** The popup's accessible name. */
   chooseRange: string
+  /** What an unfilled segment says as its value. Default: React Aria's `Empty`, in the locale. */
+  empty?: string
+  /** The start's name, said with each of its segments. Default: React Aria's `Start Date`. */
+  start?: string
+  /** The end's name, said with each of its segments. Default: React Aria's `End Date`. */
+  end?: string
 }
 
 const DEFAULT_MESSAGES: DateRangePickerMessages = {
@@ -334,26 +340,37 @@ function RangeField({
       })}
       {...memberAttr('DateRangePicker')}
     >
+      {/* React Aria names each half in the page's locale; a host's word replaces its name. */}
       <DateSegments
-        fieldProps={startFieldProps}
+        fieldProps={
+          messages.start === undefined
+            ? startFieldProps
+            : { ...startFieldProps, 'aria-label': messages.start }
+        }
         locale={resolvedLocale}
         size={size}
         disabled={disabled}
         styles={segmentStyles}
+        empty={messages.empty}
       />
 
-      {/* A visual separator only. React Aria names the halves for screen readers ("Start Date" /
-          "End Date"), so the punctuation carries no meaning. */}
+      {/* A visual separator only. Each half's segments are named by the half, so the punctuation
+          carries no meaning. */}
       <span className={styles.dash} aria-hidden="true">
         –
       </span>
 
       <DateSegments
-        fieldProps={endFieldProps}
+        fieldProps={
+          messages.end === undefined
+            ? endFieldProps
+            : { ...endFieldProps, 'aria-label': messages.end }
+        }
         locale={resolvedLocale}
         size={size}
         disabled={disabled}
         styles={segmentStyles}
+        empty={messages.empty}
       />
 
       <span className={styles.spacer} />

@@ -487,14 +487,7 @@ async function readDescriptions(): Promise<{ file: string; shell: MemberShell }[
  * named here so that the law holds every other description, and the law fails
  * on an entry it no longer finds, so a member given its seam leaves the list.
  */
-const UNSEAMED_IN_DESCRIPTIONS: readonly string[] = [
-  // An empty segment's value, and a range's two halves, which React Aria says in the locale's words.
-  'packages/shells/src/members/date-picker.ts — <div> aria-valuetext: "Empty"',
-  'packages/shells/src/members/date-range-picker.ts — <div> aria-label: "Start date"',
-  'packages/shells/src/members/date-range-picker.ts — <div> aria-valuetext: "Empty"',
-  'packages/shells/src/members/date-range-picker.ts — <div> aria-label: "End date"',
-  'packages/shells/src/members/time-input.ts — <div> aria-valuetext: "Empty"',
-]
+const UNSEAMED_IN_DESCRIPTIONS: readonly string[] = []
 
 describe('no description renders text its host cannot replace', async () => {
   const described = await readDescriptions()

@@ -41,6 +41,7 @@ export type DatePickerMessages = CalendarMessages & {
   showCalendar: string
   clear: string
   chooseDate: string
+  empty?: string
 }
 
 export interface DatePickerProps {
@@ -133,16 +134,16 @@ const panel = useTemplateRef<HTMLElement>('panel')
 const scrim = useTemplateRef<HTMLElement>('scrim')
 const sheetPanel = useTemplateRef<HTMLElement>('sheetPanel')
 const phone = useMediaQuery('phone')
-const say = computed(
-  () =>
-    props.messages ?? {
-      previousMonth: 'Previous month',
-      nextMonth: 'Next month',
-      showCalendar: 'Show calendar',
-      clear: 'Clear',
-      chooseDate: 'Choose a date',
-    },
-)
+const say = computed(() => ({
+  empty: 'Empty',
+  ...(props.messages ?? {
+    previousMonth: 'Previous month',
+    nextMonth: 'Next month',
+    showCalendar: 'Show calendar',
+    clear: 'Clear',
+    chooseDate: 'Choose a date',
+  }),
+}))
 const language = computed(() => props.locale ?? browserLanguage.value ?? 'en-US')
 const sheeting = computed(() => props.presentation === 'auto' && phone.value)
 const fieldOptions = computed(() => ({
@@ -416,7 +417,7 @@ onBeforeUnmount(() => release4?.())
           :aria-valuenow="segment.placeholder ? undefined : segment.value"
           :aria-valuemin="segment.min"
           :aria-valuemax="segment.max"
-          :aria-valuetext="segment.placeholder ? 'Empty' : segment.text"
+          :aria-valuetext="segment.placeholder ? say.empty : segment.text"
           :aria-required="ariaRequired ? 'true' : undefined"
           :aria-disabled="disabled ? 'true' : undefined"
           :aria-invalid="fieldInvalid ? 'true' : undefined"

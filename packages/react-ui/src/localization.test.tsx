@@ -12,6 +12,7 @@ import { DateRangePicker } from './controls/DateRangePicker'
 import { Input } from './controls/Input'
 import { SearchInput } from './controls/SearchInput'
 import { TagInput } from './controls/TagInput'
+import { TimeInput } from './controls/TimeInput'
 import { Command } from './overlays/Command'
 import { Drawer } from './overlays/Drawer'
 import { Alert } from './structure/Alert'
@@ -39,6 +40,10 @@ afterEach(cleanup)
 
 const noop = () => {}
 const EMPTY = { title: 'Rien' }
+
+/** What each segment of the date and time fields on the page says as its value. */
+const valueTexts = () =>
+  screen.getAllByRole('spinbutton').map((segment) => segment.getAttribute('aria-valuetext'))
 
 interface Row {
   id: string
@@ -188,23 +193,48 @@ describe('a host’s language reaches every name the vocabulary would otherwise 
       clear: 'Effacer',
     }
     render(
-      <DatePicker aria-label="Échéance" messages={{ ...dates, chooseDate: 'Choisir une date' }} />,
+      <DatePicker
+        aria-label="Échéance"
+        messages={{ ...dates, chooseDate: 'Choisir une date', empty: 'Vide' }}
+      />,
     )
     expect(screen.getByRole('button', { name: 'Afficher le calendrier' })).toBeTruthy()
+    expect(valueTexts()).toEqual(['Vide', 'Vide', 'Vide'])
     cleanup()
 
     render(
       <DateRangePicker
         aria-label="Période"
-        messages={{ ...dates, chooseRange: 'Choisir une période' }}
+        messages={{
+          ...dates,
+          chooseRange: 'Choisir une période',
+          empty: 'Vide',
+          start: 'Date de début',
+          end: 'Date de fin',
+        }}
       />,
     )
     expect(screen.getByRole('button', { name: 'Afficher le calendrier' })).toBeTruthy()
+    expect(valueTexts()).toEqual(Array(6).fill('Vide'))
+    const names = screen
+      .getAllByRole('spinbutton')
+      .map((segment) => segment.getAttribute('aria-label'))
+    expect(names.slice(0, 3).every((name) => name?.includes('Date de début'))).toBe(true)
+    expect(names.slice(3).every((name) => name?.includes('Date de fin'))).toBe(true)
+    expect(names.some((name) => /start date|end date/i.test(name ?? ''))).toBe(false)
+    cleanup()
+
+    render(<TimeInput aria-label="Ouverture" locale="en-US" messages={{ empty: 'Vide' }} />)
+    expect(valueTexts()).toEqual(['Vide', 'Vide', 'Vide'])
   })
 
   it('ArtifactPane — the status while its artifact is being written', () => {
     render(
-      <ArtifactPane title="deliver.ts" streaming streamingLabel="deliver.ts : en cours d’écriture" />,
+      <ArtifactPane
+        title="deliver.ts"
+        streaming
+        streamingLabel="deliver.ts : en cours d’écriture"
+      />,
     )
     expect(screen.getByRole('status').textContent).toBe('deliver.ts : en cours d’écriture')
   })
@@ -339,6 +369,7 @@ describe('and a host that passes nothing still hears the generic English', () =>
         <Stat label="Resolved" value="342" delta={{ value: '12%', direction: 'up' }} />
         <TagInput aria-label="Labels" defaultValue={['urgent', 'billing']} />
         <ArtifactPane title="deliver.ts" streaming />
+        <TimeInput aria-label="Opens at" locale="en-US" />
       </>,
     )
     expect(screen.getByRole('button', { name: 'Dismiss' })).toBeTruthy()
@@ -350,5 +381,6 @@ describe('and a host that passes nothing still hears the generic English', () =>
     fireEvent.click(screen.getByRole('button', { name: 'Remove urgent' }))
     expect(screen.getByText('urgent removed, 1 remain')).toBeTruthy()
     expect(screen.getByText('deliver.ts: still being written')).toBeTruthy()
+    expect(valueTexts()).toEqual(['Empty', 'Empty', 'Empty'])
   })
 })

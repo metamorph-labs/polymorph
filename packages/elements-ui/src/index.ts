@@ -716,6 +716,7 @@ export type {
   TextareaProps,
   TextareaResize,
   ThirdPartyProps,
+  TimeInputMessages,
   TimeInputProps,
   TimelineEvent,
   TimelineProps,

@@ -24,6 +24,7 @@ export const definition: ElementDefinition = {
     id: 'string',
     invalid: 'boolean',
     locale: 'string',
+    messages: 'json',
     name: 'string',
     readOnly: 'boolean',
     size: 'string',
@@ -48,6 +49,7 @@ export type PolyTimeInputElement = MemberElement<
   | 'id'
   | 'invalid'
   | 'locale'
+  | 'messages'
   | 'name'
   | 'readOnly'
   | 'size'

@@ -59,6 +59,7 @@ export type DatePickerMessages = CalendarMessages & {
   showCalendar: string
   clear: string
   chooseDate: string
+  empty?: string
 }
 
 /** A date *field* with segmented entry and a calendar popup: the inputs it takes, by the React member's prop names. */
@@ -382,16 +383,16 @@ export class DatePicker<
   protected readonly scrim = elementRef<HTMLElement>()
   protected readonly sheetPanel = elementRef<HTMLElement>()
   protected readonly phone = useMediaQuery('phone')
-  protected readonly say = derived(
-    () =>
-      this.$p.messages ?? {
-        previousMonth: 'Previous month',
-        nextMonth: 'Next month',
-        showCalendar: 'Show calendar',
-        clear: 'Clear',
-        chooseDate: 'Choose a date',
-      },
-  )
+  protected readonly say = derived(() => ({
+    empty: 'Empty',
+    ...(this.$p.messages ?? {
+      previousMonth: 'Previous month',
+      nextMonth: 'Next month',
+      showCalendar: 'Show calendar',
+      clear: 'Clear',
+      chooseDate: 'Choose a date',
+    }),
+  }))
   protected readonly language = derived(
     () => this.$p.locale ?? this.browserLanguage.value ?? 'en-US',
   )
@@ -696,7 +697,7 @@ export class DatePicker<
 
   protected e17(segment: Each<ReturnType<DatePicker<Value>['e4']>>) {
     if (segment.type === 'literal') return undefined as never
-    return segment.placeholder ? 'Empty' : segment.text
+    return segment.placeholder ? this.say.value.empty : segment.text
   }
 
   protected e18(segment: Each<ReturnType<DatePicker<Value>['e4']>>) {

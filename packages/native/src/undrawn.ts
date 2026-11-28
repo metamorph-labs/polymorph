@@ -375,6 +375,26 @@ export const UNDRAWN: readonly UndrawnProps[] = [
     android: ['DatePicker', 'DateRangePicker'],
   },
   {
+    props: ['messages'],
+    reason:
+      'TimeInput’s `messages` holds `empty`, what the web’s unfilled segment, a spinbutton, says ' +
+      'as its value. The SwiftUI field is the system’s time picker, which says no value while it ' +
+      'is empty, and the Compose segments are text fields, which TalkBack reads as empty in the ' +
+      'platform’s own words.',
+    ios: ['TimeInput'],
+    android: ['TimeInput'],
+  },
+  {
+    props: ['DatePickerMessages.empty', 'DateRangePickerMessages.empty', 'TimeInputMessages.empty'],
+    reason:
+      'What the web’s unfilled segment says as its value. The Compose date fields are a button ' +
+      'whose value is the date, and the time segments are text fields, which TalkBack reads as ' +
+      'empty in the platform’s own words. iOS is not listed because a SwiftUI foundation file ' +
+      'reads a field of that name, a chart catalogue’s `empty`, which the law counts as a read; ' +
+      'the SwiftUI date and time fields say no value while they are empty.',
+    android: ['DatePicker', 'DateRangePicker', 'TimeInput'],
+  },
+  {
     props: ['MultiSelectMessages.showOptions'],
     reason:
       'It names the chevron’s button. In Compose the chevron is drawn only: a press anywhere ' +

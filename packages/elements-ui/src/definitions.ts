@@ -1049,6 +1049,7 @@ export const DEFINITIONS: Readonly<Record<string, ElementDefinition>> = {
       id: 'string',
       invalid: 'boolean',
       locale: 'string',
+      messages: 'json',
       name: 'string',
       readOnly: 'boolean',
       size: 'string',
