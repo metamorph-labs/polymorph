@@ -11,7 +11,7 @@
 // items, inset `space.3` and `space.4`: the mark (the kind's `sm` glyph in
 // `text.muted`: `terminal`, `document`, `table`, `browser`, and `artifact`
 // with no kind; the `sm` Spinner while the artifact is still written, named
-// "{title}: still being written"), the heading (the title in `text.md` at the
+// `streamingLabel`, "{title}: still being written" by default), the heading (the title in `text.md` at the
 // `text.xl` weight and face, Heading level 4's cell, on one line, then `meta` in
 // `text.xs`, muted), the switch between readings when there are two or more,
 // the app's actions, and the close Button (`ghost/neutral/sm`, icon-only
@@ -106,7 +106,7 @@ object PMArtifactPane : PMArtifactPaneRendering {
             ) {
                 Box(Modifier.align(Alignment.CenterVertically)) {
                     if (streaming) {
-                        PMSpinner(label = strings.artifactStreaming(props.title), size = PMControlSize.Sm)
+                        PMSpinner(label = props.streamingLabel ?: strings.artifactStreaming(props.title), size = PMControlSize.Sm)
                     } else {
                         PMIconView(glyph(props.kind), PMControlSize.Sm, tint = colors.textMuted.color)
                     }

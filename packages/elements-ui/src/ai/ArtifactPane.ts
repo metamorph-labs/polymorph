@@ -17,6 +17,7 @@ export const definition: ElementDefinition = {
     kind: 'string',
     meta: 'string',
     streaming: 'boolean',
+    streamingLabel: 'string',
     title: 'string',
     view: 'string',
     views: 'json',
@@ -38,6 +39,7 @@ export type PolyArtifactPaneElement = MemberElement<
   | 'kind'
   | 'meta'
   | 'streaming'
+  | 'streamingLabel'
   | 'title'
   | 'view'
   | 'views'

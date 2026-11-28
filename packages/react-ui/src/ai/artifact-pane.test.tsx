@@ -4,6 +4,7 @@ import { userEvent } from 'vitest/browser'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { assertGoverned } from '@polymorph/react'
+import { artifactPaneLaw } from '@polymorph/conformance/artifact-pane'
 import { createAgentBridge } from '@polymorph/engine/agent'
 import { installTestTheme } from '@polymorph/engine/testing'
 import { Button } from '../controls/Button'
@@ -18,6 +19,18 @@ import { ArtifactPane, type ArtifactPaneProps } from './ArtifactPane'
  */
 
 beforeAll(installTestTheme)
+
+/**
+ * What the pane says while its artifact is being written, by default and in a
+ * host's words from `streamingLabel`, is the law every shell runs
+ * (`@polymorph/conformance/artifact-pane`).
+ */
+artifactPaneLaw({
+  shell: 'React',
+  async mount(props) {
+    render(<ArtifactPane {...props} />)
+  },
+})
 
 function box(height = 200): HTMLElement {
   const host = document.createElement('div')

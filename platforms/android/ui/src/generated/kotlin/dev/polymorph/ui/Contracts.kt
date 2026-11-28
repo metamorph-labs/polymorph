@@ -342,8 +342,8 @@ enum class PMArtifactPaneKind(val value: String) {
 }
 
 /**
- * ArtifactPane's props (`design/components/artifact-pane.md`): A side pane that shows one artifact
- * a turn produced.
+ * ArtifactPane's props (`design/components/artifact-pane.md`): A side pane for one artifact a turn
+ * produced.
  */
 data class PMArtifactPaneProps(
     /** The header's controls (copy, download, open), as `ghost/neutral/sm` Buttons. */
@@ -364,6 +364,11 @@ data class PMArtifactPaneProps(
     val onViewChange: ((String) -> Unit)? = null,
     /** Whether the artifact is still being written, which shows a spinner and sets `aria-busy`. */
     val streaming: Boolean? = null,
+    /**
+     * The status announced while streaming (default `{title}: still being written`), which apps
+     * pass to localize.
+     */
+    val streamingLabel: String? = null,
     /** The artifact's name, used as the pane's heading and accessible name. */
     val title: String,
     val view: String? = null,

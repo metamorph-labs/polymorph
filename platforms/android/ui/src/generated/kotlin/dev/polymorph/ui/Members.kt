@@ -237,13 +237,14 @@ fun PMArtifactPane(
     onClose: (() -> Unit)? = null,
     onViewChange: ((String) -> Unit)? = null,
     streaming: Boolean? = null,
+    streamingLabel: String? = null,
     title: String,
     view: String? = null,
     views: List<PMArtifactView>? = null,
     viewsLabel: String? = null,
     children: PMContent? = null,
 ) {
-    PMArtifactPane.Render(PMArtifactPaneProps(actions = actions, closeLabel = closeLabel, defaultView = defaultView, kind = kind, meta = meta, onClose = onClose, onViewChange = onViewChange, streaming = streaming, title = title, view = view, views = views, viewsLabel = viewsLabel, children = children))
+    PMArtifactPane.Render(PMArtifactPaneProps(actions = actions, closeLabel = closeLabel, defaultView = defaultView, kind = kind, meta = meta, onClose = onClose, onViewChange = onViewChange, streaming = streaming, streamingLabel = streamingLabel, title = title, view = view, views = views, viewsLabel = viewsLabel, children = children))
 }
 
 /**

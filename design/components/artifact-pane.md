@@ -43,6 +43,7 @@ interface ArtifactPaneProps {
   kind?: 'code' | 'document' | 'data' | 'preview' // decides the mark; absent, the tier's own artifact glyph
   meta?: string // one line under the title, already formatted — "TypeScript · 142 lines"
   streaming?: boolean // still being written: the mark becomes a spinner, the pane reports aria-busy
+  streamingLabel?: string // what a reader hears while streaming; default `{title}: still being written`, apps localize by passing
   actions?: ReactNode // the header's controls — copy, download, open; ghost/neutral/sm Buttons
   onClose?: () => void // supplied ⇒ the close control draws; the app owns the pane's presence
   closeLabel?: string // the close control's name; default Close, localized hosts pass their catalog's
@@ -65,7 +66,7 @@ the shown reading's id.
 | --- | --- |
 | pane | Card's surface exactly: bg `--pm-bg-surface` · border `1px solid --pm-border-subtle` · radius `--pm-radius-surface` · shadow `--pm-shadow-resting, --pm-shadow-inset-top` · column · `block-size: 100%` · `overflow: hidden` |
 | header | wrapping row · gap `--pm-space-2` `--pm-space-3` · padding `--pm-space-3` `--pm-space-4` · `border-block-end 1px solid --pm-border-subtle` · the heading grows from a basis of `calc(--pm-space-10 * 2)`, so in a narrow pane the controls wrap under the title instead of the title being truncated beside them |
-| mark | `sm` glyph by kind (`terminal`, `document`, `table`, `browser`; `artifact` with no kind) · `--pm-text-muted`; while streaming `Spinner size="sm"` named `"{title}: still being written"` |
+| mark | `sm` glyph by kind (`terminal`, `document`, `table`, `browser`; `artifact` with no kind) · `--pm-text-muted`; while streaming `Spinner size="sm"` named `streamingLabel` (default `"{title}: still being written"`) |
 | title | `<h2>` · `text.md` at `--pm-text-xl-weight` in `--pm-text-xl-family` (Heading level 4's cell, because it is a section title beside a thread, not a page title) · `--pm-text-primary` · ellipsis |
 | meta | `text.xs` · `--pm-text-muted` |
 | views | `SegmentedControl size="sm" label={viewsLabel}` |
@@ -111,7 +112,8 @@ tab stop exactly while it overflows. It is named by the same title as a `group`,
 not as a second `region`, because a reader cannot tell apart two landmarks with
 the same name (CodeBlock's rule, with the landmark already above it). The switch
 is SegmentedControl's radio group, named by `viewsLabel`. Streaming is announced
-by the Spinner's status, which includes the title, and the pane is `aria-busy`.
+by the Spinner's status, `streamingLabel`, whose default includes the title, and the pane is
+`aria-busy`.
 Close is a real Button with the app's label. When the app removes the pane while focus is in
 it, after its close control for one, focus moves to the first focusable element after where the
 pane was, else the last one before it, else the page's `main`, by Alert's rule

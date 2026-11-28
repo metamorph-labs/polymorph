@@ -64,6 +64,7 @@
     "./tag-input-count": "./src/tag-input-count.ts",
     "./combobox-list": "./src/combobox-list.ts",
     "./described-names": "./src/described-names.ts",
+    "./artifact-pane": "./src/artifact-pane.ts",
     "./server-render": "./server-render.ts",
     "./dist-lock": "./dist-lock.ts"
   },

@@ -151,7 +151,12 @@ export default describeMember({
           cond(
             'streaming',
             // The spinner's name is the pane's status.
-            [member('Spinner', { size: lit('sm'), label: '`${title}: still being written`' })],
+            [
+              member('Spinner', {
+                size: lit('sm'),
+                label: 'streamingLabel ?? `${title}: still being written`',
+              }),
+            ],
             [member('Icon', { name: 'mark', size: lit('sm') })],
           ),
         ]),

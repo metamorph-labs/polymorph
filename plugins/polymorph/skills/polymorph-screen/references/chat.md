@@ -24,7 +24,7 @@ are not in a conversation with a model. That is `CommentThread`, with
 | `Citation` | An inline numbered link to a source, with a hover preview |
 | `SourceList` | The numbered list of sources a reply cites |
 | `ReasoningDisclosure` | A collapsible section showing the model's reasoning |
-| `ArtifactPane` | A side pane that shows one artifact a turn produced |
+| `ArtifactPane` | A side pane for one artifact a turn produced |
 
 `component <Name>` prints each one's props and, under `## Types`, the fields of the data types
 those props take, such as a trigger, an attachment or a source. Do not build any of these from other

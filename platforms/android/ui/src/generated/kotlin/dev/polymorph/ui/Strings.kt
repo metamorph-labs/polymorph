@@ -323,8 +323,8 @@ data class PMStrings(
     /** ArtifactPane's `viewsLabel`: the switch's name (`design/components/artifact-pane.md`). */
     val artifactViews: String = "View",
     /**
-     * What ArtifactPane's mark says while the artifact is being written: "{title}: still being
-     * written" (`design/components/artifact-pane.md`).
+     * ArtifactPane's `streamingLabel`: what its mark says while the artifact is being written
+     * (`design/components/artifact-pane.md`).
      */
     val artifactStreaming: (title: String) -> String = { title -> "${title}: still being written" },
     /**

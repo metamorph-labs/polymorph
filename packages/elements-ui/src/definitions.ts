@@ -2381,6 +2381,7 @@ export const DEFINITIONS: Readonly<Record<string, ElementDefinition>> = {
       kind: 'string',
       meta: 'string',
       streaming: 'boolean',
+      streamingLabel: 'string',
       title: 'string',
       view: 'string',
       views: 'json',

@@ -7,9 +7,9 @@
   @testable import PolymorphUI
 
   /// What Plan, TableOfContents, CommentThread, Tour, RichTextContent, a
-  /// loading Stat and a CodeBlock's copy say and do, read through the
-  /// accessibility tree AppKit publishes, as an assistive client reads it, and
-  /// the logic each computes from its props.
+  /// loading Stat, a streaming ArtifactPane and a CodeBlock's copy say and do,
+  /// read through the accessibility tree AppKit publishes, as an assistive
+  /// client reads it, and the logic each computes from its props.
   /// The scene is `BehaviourTests.Scene`.
   @MainActor
   final class ContentBehaviourTests: XCTestCase {
@@ -522,6 +522,26 @@
       }
       XCTAssertTrue(read.contains { $0.contains("gesunken um 8%, schlecht") }, "read: \(read)")
       XCTAssertFalse(read.contains { $0.contains(PMStrings.negative) }, "read: \(read)")
+    }
+
+    // MARK: ArtifactPane
+
+    /// While the artifact is being written, the mark's Spinner says
+    /// `streamingLabel`, the app's words (`artifact-pane.md`, A11y), and the
+    /// string catalog's sentence when the app passes none.
+    func testAStreamingArtifactPaneSaysItsStatusInTheAppsWords() {
+      let standard = PMStrings.artifactStreaming(title: "deliver.ts")
+      let given = Scene(
+        PMArtifactPane(
+          props: PMArtifactPaneProps(
+            streaming: true, streamingLabel: "deliver.ts wird geschrieben", title: "deliver.ts")))
+      XCTAssertNotNil(given.element(named: "deliver.ts wird geschrieben"))
+      XCTAssertNil(given.element(named: standard))
+      given.close()
+      let absent = Scene(
+        PMArtifactPane(props: PMArtifactPaneProps(streaming: true, title: "deliver.ts")))
+      defer { absent.close() }
+      XCTAssertNotNil(absent.element(named: standard))
     }
 
     // MARK: CodeBlock

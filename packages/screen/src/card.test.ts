@@ -59,8 +59,13 @@ import { VOCABULARY } from './vocabulary'
  * screen-reader user hears when a tag is removed. Its type is printed by its
  * name, the shortest form, and no sentence of TagInput's own on the card was
  * left to shorten in its place.
+ *
+ * It also includes ArtifactPane's `streamingLabel`, the seam for what a
+ * screen-reader user hears while an artifact is being written, which the
+ * generated members wrote in English. ArtifactPane's purpose is shorter in its
+ * place.
  */
-const BUDGET_CHARS = 60_824
+const BUDGET_CHARS = 60_840
 const SUBSET_BUDGET_CHARS = 13_600
 
 /** What a host that draws forms, lists and simple pages might allow. */

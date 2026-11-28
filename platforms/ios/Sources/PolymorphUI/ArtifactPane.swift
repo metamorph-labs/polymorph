@@ -31,8 +31,8 @@
 // taller than the pane: then it is a container named by the title, as the
 // web's body is a group named by the title once it overflows. The pane is one
 // container named by its title, which is a heading. While streaming, the
-// Spinner announces "{title}: still being written" once, the web's status and
-// `aria-busy`. `view` with `onViewChange` is the controlled pair; without it
+// Spinner announces `streamingLabel` once, "{title}: still being written" by
+// default, the web's status and `aria-busy`. `view` with `onViewChange` is the controlled pair; without it
 // the pane keeps its own, from `defaultView` or the first view.
 //
 // At the glass depth the web draws the surface material; this pane wears
@@ -111,7 +111,9 @@ public struct PMArtifactPane: PMArtifactPaneRendering {
       Group {
         if streaming {
           PMSpinner(
-            props: PMSpinnerProps(label: PMStrings.artifactStreaming(title: props.title), size: .sm))
+            props: PMSpinnerProps(
+              label: props.streamingLabel ?? PMStrings.artifactStreaming(title: props.title),
+              size: .sm))
         } else {
           PMIconView(mark, size: .sm)
         }

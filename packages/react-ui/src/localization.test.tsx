@@ -4,6 +4,7 @@ import { userEvent } from 'vitest/browser'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { installTestTheme } from '@polymorph/engine/testing'
+import { ArtifactPane } from './ai/ArtifactPane'
 import { AppShell } from './archetypes/AppShell'
 import { Calendar } from './controls/Calendar'
 import { DatePicker } from './controls/DatePicker'
@@ -201,6 +202,13 @@ describe('a host’s language reaches every name the vocabulary would otherwise 
     expect(screen.getByRole('button', { name: 'Afficher le calendrier' })).toBeTruthy()
   })
 
+  it('ArtifactPane — the status while its artifact is being written', () => {
+    render(
+      <ArtifactPane title="deliver.ts" streaming streamingLabel="deliver.ts : en cours d’écriture" />,
+    )
+    expect(screen.getByRole('status').textContent).toBe('deliver.ts : en cours d’écriture')
+  })
+
   it('AppShell — the skip link, the first thing a keyboard reader meets', () => {
     render(
       <AppShell
@@ -330,6 +338,7 @@ describe('and a host that passes nothing still hears the generic English', () =>
         <FilterBar isFiltered onClear={noop} resultCount={{ shown: 3, total: 9 }} />
         <Stat label="Resolved" value="342" delta={{ value: '12%', direction: 'up' }} />
         <TagInput aria-label="Labels" defaultValue={['urgent', 'billing']} />
+        <ArtifactPane title="deliver.ts" streaming />
       </>,
     )
     expect(screen.getByRole('button', { name: 'Dismiss' })).toBeTruthy()
@@ -340,5 +349,6 @@ describe('and a host that passes nothing still hears the generic English', () =>
     expect(screen.getByRole('textbox', { name: 'Labels', description: '2 added' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Remove urgent' }))
     expect(screen.getByText('urgent removed, 1 remain')).toBeTruthy()
+    expect(screen.getByText('deliver.ts: still being written')).toBeTruthy()
   })
 })

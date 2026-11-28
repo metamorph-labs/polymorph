@@ -555,8 +555,8 @@ enum PMStrings {
       comment: "The name of the control that switches between readings of an artifact.")
   }
 
-  /// What ArtifactPane's mark says while the artifact is being written: "{title}: still being
-  /// written" (`design/components/artifact-pane.md`).
+  /// ArtifactPane's `streamingLabel`: what its mark says while the artifact is being written
+  /// (`design/components/artifact-pane.md`).
   static func artifactStreaming(title: String) -> String {
     String(
       localized: "\(title): still being written",

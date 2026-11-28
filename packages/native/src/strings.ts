@@ -989,7 +989,7 @@ export const SPEC_DEFAULTS: readonly SpecDefaultEntry[] = [
   {
     name: 'artifactStreaming',
     spec: 'design/components/artifact-pane.md',
-    doc: 'What ArtifactPane\'s mark says while the artifact is being written: "{title}: still being written".',
+    doc: "ArtifactPane's `streamingLabel`: what its mark says while the artifact is being written.",
     english: '{title}: still being written',
     parameters: [{ name: 'title', type: 'string' }],
     comment: "An artifact is still being written: the artifact's name.",

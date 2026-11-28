@@ -627,8 +627,8 @@ public enum PMArtifactPaneKind: String, CaseIterable, Sendable {
   case preview
 }
 
-/// ArtifactPane's props (`design/components/artifact-pane.md`): A side pane that shows one artifact
-/// a turn produced.
+/// ArtifactPane's props (`design/components/artifact-pane.md`): A side pane for one artifact a turn
+/// produced.
 public struct PMArtifactPaneProps {
   /// The header's controls (copy, download, open), as `ghost/neutral/sm` Buttons.
   public var actions: PMContent?
@@ -646,6 +646,9 @@ public struct PMArtifactPaneProps {
   public var onViewChange: (@MainActor (String) -> Void)?
   /// Whether the artifact is still being written, which shows a spinner and sets `aria-busy`.
   public var streaming: Bool?
+  /// The status announced while streaming (default `{title}: still being written`), which apps pass
+  /// to localize.
+  public var streamingLabel: String?
   /// The artifact's name, used as the pane's heading and accessible name.
   public var title: String
   public var view: String?
@@ -665,6 +668,7 @@ public struct PMArtifactPaneProps {
     onClose: (@MainActor () -> Void)? = nil,
     onViewChange: (@MainActor (String) -> Void)? = nil,
     streaming: Bool? = nil,
+    streamingLabel: String? = nil,
     title: String,
     view: String? = nil,
     views: [PMArtifactView]? = nil,
@@ -679,6 +683,7 @@ public struct PMArtifactPaneProps {
     self.onClose = onClose
     self.onViewChange = onViewChange
     self.streaming = streaming
+    self.streamingLabel = streamingLabel
     self.title = title
     self.view = view
     self.views = views

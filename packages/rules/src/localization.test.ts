@@ -35,9 +35,10 @@ import {
  * attribute, or written among an element's children as JSX text or as an
  * expression (a literal or a template between braces), cannot be replaced, and
  * fails. A default in a destructuring pattern or in a module-level function is
- * allowed, because that is how a prop supplies replaceable text. The
- * descriptions every other web renderer is generated from are read the same
- * way, below.
+ * allowed, because that is how a prop supplies replaceable text, and so is a
+ * fallback after a prop that carries words (AttachmentChip's `uploadingLabel
+ * ?? …`), which is that prop's default. The descriptions every other web
+ * renderer is generated from are read the same way, below.
  *
  * Runs in node, not a browser, because it reads source text.
  */
@@ -62,6 +63,7 @@ const UI = resolve(ROOT, 'packages/react-ui/src')
  * member for a French host and checks for any word of the English defaults.
  */
 const TIERS = [
+  'ai',
   'archetypes',
   'charts',
   'controls',
@@ -71,6 +73,9 @@ const TIERS = [
   'overlays',
   'structure',
 ]
+
+/** The directories of `packages/react-ui/src` that ship no member: the conformance runner's adapter. */
+const NOT_TIERS = ['conformance']
 
 /** Attributes whose value a person reads or hears. Any name ending in `Label` also counts. */
 const NAMING_ATTRIBUTES = new Set([
@@ -89,6 +94,26 @@ const NAMING_ATTRIBUTES = new Set([
 
 /** Three letters in a row count as a word. `…`, `·`, `×` and `⌘K` do not. */
 const WORD = /\p{L}{3,}/u
+
+/** Whether an attribute or a prop carries words a person reads or hears. */
+const naming = (name: string): boolean => NAMING_ATTRIBUTES.has(name) || name.endsWith('Label')
+
+/**
+ * Whether an expression reads a prop that carries words: one named as words
+ * are (`removeLabel`, `label`), or the member's `messages`, which a
+ * description also reads through the `say` it merges them into.
+ */
+function readsWords(expression: ts.Expression): boolean {
+  let root = expression
+  while (
+    ts.isPropertyAccessExpression(root) ||
+    ts.isElementAccessExpression(root) ||
+    ts.isParenthesizedExpression(root)
+  ) {
+    root = root.expression
+  }
+  return ts.isIdentifier(root) && (naming(root.text) || ['messages', 'say'].includes(root.text))
+}
 
 function shipped(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -112,9 +137,9 @@ function shipped(dir: string): string[] {
  * are each a word no prop can replace. An identifier, a call or a member access
  * is a value from a prop.
  *
- * `defaults` names the fallbacks that are a prop's default, which the reading
- * of the descriptions passes: the right side of a `??` or `||` whose left side
- * it accepts is not read.
+ * `defaults` names the fallbacks that are a prop's default, which both readings
+ * pass as `readsWords`: the right side of a `??` or `||` whose left side it
+ * accepts is not read.
  */
 function literals(
   value: ts.Expression | undefined,
@@ -169,7 +194,7 @@ function bakedProse(code: string, where: string): string[] {
         const value = ts.isJsxExpression(node.initializer)
           ? node.initializer.expression
           : node.initializer
-        for (const text of literals(value)) {
+        for (const text of literals(value, readsWords)) {
           if (WORD.test(text)) findings.push(`${at(node)} — ${name}="${text}"`)
         }
       }
@@ -184,7 +209,7 @@ function bakedProse(code: string, where: string): string[] {
     if (ts.isPropertyAssignment(node) && atJsxSite(node)) {
       const name = node.name.getText().replace(/['"]/g, '')
       if (NAMING_ATTRIBUTES.has(name) || name.endsWith('Label')) {
-        for (const text of literals(node.initializer)) {
+        for (const text of literals(node.initializer, readsWords)) {
           if (WORD.test(text)) findings.push(`${at(node)} — ${name}: "${text}"`)
         }
       }
@@ -201,7 +226,7 @@ function bakedProse(code: string, where: string): string[] {
       ts.isJsxExpression(node) &&
       (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent))
     ) {
-      for (const text of literals(node.expression)) {
+      for (const text of literals(node.expression, readsWords)) {
         if (WORD.test(text)) findings.push(`${at(node)} — text {"${text}"}`)
       }
     }
@@ -219,12 +244,23 @@ describe('no member renders text its host cannot replace', () => {
     bakedProse(readFileSync(file, 'utf8'), relative(ROOT, file)),
   )
 
-  it('reads the whole vocabulary, the chart tier included', () => {
+  it('reads the whole vocabulary, the chart and AI tiers included', () => {
     // A law that matched no files would always pass.
     expect(files.length).toBeGreaterThan(100)
     expect(files.some((file) => file.endsWith('structure/DataTable.tsx'))).toBe(true)
     expect(files.some((file) => file.endsWith('charts/DonutChart.tsx'))).toBe(true)
     expect(files.some((file) => file.endsWith('charts/frame/ChartTwin.tsx'))).toBe(true)
+    expect(files.some((file) => file.endsWith('ai/ArtifactPane.tsx'))).toBe(true)
+  })
+
+  it('reads every tier, so a new tier is read from its first member', () => {
+    const directories = readdirSync(UI).filter(
+      (name) => name !== '__screenshots__' && statSync(join(UI, name)).isDirectory(),
+    )
+    expect(
+      directories.filter((name) => !TIERS.includes(name) && !NOT_TIERS.includes(name)),
+    ).toEqual([])
+    expect(NOT_TIERS.filter((name) => !directories.includes(name))).toEqual([])
   })
 
   it('finds no literal passed to a naming attribute, and no text among the children', () => {
@@ -297,6 +333,14 @@ describe('the law detects violations', () => {
     ).toEqual([])
   })
 
+  it('allows a fallback that is the default of a prop that carries words', () => {
+    expect(found('const a = <Spinner label={uploadingLabel ?? `${name}: uploading`} />')).toEqual(
+      [],
+    )
+    expect(found("const a = <span>{messages.loading ?? 'Loading'}</span>")).toEqual([])
+    expect(found("const a = <Header label={y?.label ?? 'Count'} />")).toEqual(['label="Count"'])
+  })
+
   it('allows a prop, a call and a glyph', () => {
     expect(found('const a = <Button label={messages.previous} />')).toEqual([])
     expect(found('const a = <button aria-label={removeLabel(tag)} />')).toEqual([])
@@ -327,26 +371,6 @@ describe('the law detects violations', () => {
  * `say.skipToContent ?? 'Skip to content'`) is that prop's default too.
  */
 const DESCRIPTIONS = resolve(ROOT, 'packages/shells/src/members')
-
-/** Whether an attribute or a prop carries words a person reads or hears. */
-const naming = (name: string): boolean => NAMING_ATTRIBUTES.has(name) || name.endsWith('Label')
-
-/**
- * Whether an expression reads a prop that carries words: one named as words
- * are (`removeLabel`, `label`), or the member's `messages`, which a
- * description also reads through the `say` it merges them into.
- */
-function readsWords(expression: ts.Expression): boolean {
-  let root = expression
-  while (
-    ts.isPropertyAccessExpression(root) ||
-    ts.isElementAccessExpression(root) ||
-    ts.isParenthesizedExpression(root)
-  ) {
-    root = root.expression
-  }
-  return ts.isIdentifier(root) && (naming(root.text) || ['messages', 'say'].includes(root.text))
-}
 
 /** One of a description's expressions, parsed. */
 function parsed(source: string): ts.Expression {
@@ -464,8 +488,6 @@ async function readDescriptions(): Promise<{ file: string; shell: MemberShell }[
  * on an entry it no longer finds, so a member given its seam leaves the list.
  */
 const UNSEAMED_IN_DESCRIPTIONS: readonly string[] = [
-  // The React member writes it too, in the `ai` tier, which the React reading does not read.
-  'packages/shells/src/members/artifact-pane.ts — Spinner label: " : still being written"',
   // An empty segment's value, and a range's two halves, which React Aria says in the locale's words.
   'packages/shells/src/members/date-picker.ts — <div> aria-valuetext: "Empty"',
   'packages/shells/src/members/date-range-picker.ts — <div> aria-label: "Start date"',

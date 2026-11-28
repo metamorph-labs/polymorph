@@ -16,7 +16,7 @@ import { Spinner } from '../structure/Spinner'
 import styles from '@polymorph/recipes/ai/artifact-pane.module.css'
 
 /**
- * A side pane that shows one artifact a turn produced
+ * A side pane for one artifact a turn produced
  * (`design/components/artifact-pane.md`). The artifact is too large for the
  * thread: a file, a page, a table or a preview. The pane shows its name, its
  * kind, the app's controls, and a switch between the views the app offers.
@@ -52,6 +52,8 @@ export interface ArtifactPaneProps {
   meta?: string
   /** Whether the artifact is still being written, which shows a spinner and sets `aria-busy`. */
   streaming?: boolean
+  /** The status announced while streaming (default `{title}: still being written`), which apps pass to localize. */
+  streamingLabel?: string
   /** The header's controls (copy, download, open), as `ghost/neutral/sm` Buttons. */
   actions?: ReactNode
   /** Shows the close button when supplied, and the app decides whether the pane stays mounted. */
@@ -85,6 +87,7 @@ export function ArtifactPane({
   kind,
   meta,
   streaming = false,
+  streamingLabel,
   actions,
   onClose,
   closeLabel = 'Close',
@@ -178,7 +181,7 @@ export function ArtifactPane({
         <span className={styles.mark}>
           {streaming ? (
             // The spinner's accessible name is the pane's status text.
-            <Spinner size="sm" label={`${title}: still being written`} />
+            <Spinner size="sm" label={streamingLabel ?? `${title}: still being written`} />
           ) : (
             <Icon name={kind === undefined ? 'artifact' : KIND_ICON[kind]} size="sm" />
           )}

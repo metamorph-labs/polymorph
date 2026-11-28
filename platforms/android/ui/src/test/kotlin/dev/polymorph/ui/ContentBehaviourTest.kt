@@ -36,9 +36,9 @@ import kotlin.test.assertTrue
 
 /**
  * What Plan, TableOfContents, CommentThread, Tour, RichTextContent, a
- * loading Stat and a CodeBlock's copy say and do, composed by Compose for
- * desktop's test host and read through its semantics, and the logic each
- * computes from its props.
+ * loading Stat, a streaming ArtifactPane and a CodeBlock's copy say and do,
+ * composed by Compose for desktop's test host and read through its
+ * semantics, and the logic each computes from its props.
  */
 @OptIn(ExperimentalTestApi::class)
 class ContentBehaviourTest {
@@ -665,6 +665,27 @@ class ContentBehaviourTest {
         onNode(member("Stat") and hasContentDescription("gesunken um 8%, schlecht")).assertExists()
         onAllNodes(hasContentDescription(PMStrings().negative, substring = true), useUnmergedTree = true)
             .assertCountEquals(0)
+    }
+
+    /* ArtifactPane ---------------------------------------------------------- */
+
+    /**
+     * While the artifact is being written, the mark's Spinner says
+     * `streamingLabel`, the app's words (`artifact-pane.md`, A11y), and
+     * `PMStrings`' sentence when the app passes none.
+     */
+    @Test
+    fun aStreamingArtifactPaneSaysItsStatusInTheAppsWords() {
+        val standard = PMStrings().artifactStreaming("deliver.ts")
+        for ((given, heard) in listOf("deliver.ts wird geschrieben" to "deliver.ts wird geschrieben", null to standard)) {
+            runComposeUiTest {
+                setContent { Scene { PMArtifactPane(streaming = true, streamingLabel = given, title = "deliver.ts") } }
+                onNode(member("Spinner") and hasContentDescription(heard), useUnmergedTree = true).assertExists()
+                if (given != null) {
+                    onAllNodes(hasContentDescription(standard), useUnmergedTree = true).assertCountEquals(0)
+                }
+            }
+        }
     }
 
     /* CodeBlock ------------------------------------------------------------- */
