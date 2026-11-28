@@ -490,6 +490,13 @@ describe('the defaults the specs name (`strings.ts`, `Strings.kt`)', () => {
     )
     // A default only the Compose members speak is declared here and not in Swift.
     expect(file).toContain('    val relativeUtc: (moment: String) -> String =')
+    // A form for one is said inside the same function, which an app's PMStrings replaces whole.
+    expect(file).toContain(
+      '{ count -> if (count == 1.0) "${count.toInt()} country" else "${count.toInt()} countries" },\n',
+    )
+    expect(file).toContain(
+      '        options = { count -> if (count == 1.0) "${count.toInt()} option" else "${count.toInt()} options" },\n',
+    )
   })
 })
 

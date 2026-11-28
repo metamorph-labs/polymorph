@@ -43,6 +43,7 @@ import {
   isPrimitive,
   jsString,
   key,
+  machineSource,
   locations,
   partShell,
   presenceEntries,
@@ -1430,7 +1431,7 @@ export function renderSolidMember(
       `const documentDirection = useDirection(${place === undefined ? '' : `() => ${scriptExpr(place)}`})`,
     )
     body.push(
-      `const service = useMachine(zag.machine, () => ({ ${machineContext.join(', ')} }) as Partial<zag.Props>)`,
+      `const service = useMachine(${machineSource(shell.machine)}, () => ({ ${machineContext.join(', ')} }) as Partial<zag.Props>)`,
     )
     body.push('const api = createDerived(() => zag.connect(service, normalizeProps))')
   }

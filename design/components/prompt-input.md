@@ -91,8 +91,8 @@ interface PromptTriggerOption {
 ```
 
 The `messages` keys for the list are optional, so a catalog written before them still type-checks.
-An omitted one keeps its English default: "{count} suggestions", "Loading suggestions…" and "No
-results".
+An omitted one keeps its English default: "{count} suggestions" ("1 suggestion" for one), "Loading
+suggestions…" and "No results".
 
 Attributes: root `data-state="streaming|dragover"` (absent at rest), `data-disabled?`,
 `data-empty?` (no text and no chips; the send control is disabled exactly then),

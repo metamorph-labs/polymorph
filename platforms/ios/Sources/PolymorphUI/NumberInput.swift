@@ -18,8 +18,8 @@
 // the commit, so touched validation reads the committed number.
 //
 // VoiceOver steps the field with its adjustable action, the counterpart of
-// the arrow keys, and the steppers are buttons named "Increase" and
-// "Decrease". `readOnly` shows the formatted value as selectable text with no
+// the arrow keys, and the steppers are buttons named by `messages`, or else
+// "Increase" and "Decrease". `readOnly` shows the formatted value as selectable text with no
 // steppers, because a value that cannot be edited cannot be stepped; a
 // disabled field keeps its steppers, disabled, so the frame keeps its shape.
 // `name`, `id` and the `aria-*by` ids have no SwiftUI counterpart.
@@ -80,11 +80,11 @@ public struct PMNumberInput: PMNumberInputRendering {
       if !readOnly {
         HStack(spacing: 0) {
           stepper(
-            .down, by: -1, label: PMStrings.numberInputDecrement, height: metrics.height,
-            disabled: disabled || !canStep(-1))
+            .down, by: -1, label: props.messages?.decrement ?? PMStrings.numberInputDecrement,
+            height: metrics.height, disabled: disabled || !canStep(-1))
           stepper(
-            .up, by: 1, label: PMStrings.numberInputIncrement, height: metrics.height,
-            disabled: disabled || !canStep(1))
+            .up, by: 1, label: props.messages?.increment ?? PMStrings.numberInputIncrement,
+            height: metrics.height, disabled: disabled || !canStep(1))
         }
       }
     }

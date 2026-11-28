@@ -134,4 +134,24 @@ class MemberLogicTest {
         assertEquals(setOf("engineering"), PMTree.toggled(emptySet(), "engineering"))
         assertEquals(emptySet(), PMTree.toggled(setOf("engineering"), "engineering"))
     }
+
+    /**
+     * What a list or a removal says of a count when the app passes no words:
+     * the singular for one (`combobox.md`, `multi-select.md`, `phone-input.md`,
+     * `prompt-input.md`, `tag-input.md`), as the members read `PMStrings`.
+     */
+    @Test
+    fun aCountSaysOneInTheSingular() {
+        val strings = PMStrings()
+        assertEquals("1 option", strings.comboboxMessages.options?.invoke(1.0))
+        assertEquals("3 options", strings.comboboxMessages.options?.invoke(3.0))
+        assertEquals("1 option", strings.multiSelectOptions(1.0))
+        assertEquals("0 options", strings.multiSelectOptions(0.0))
+        assertEquals("1 country", strings.phoneInputCountriesShown(1.0))
+        assertEquals("2 countries", strings.phoneInputCountriesShown(2.0))
+        assertEquals("a removed, 1 remains", strings.tagInputRemoved("a", 1.0))
+        assertEquals("a removed, 2 remain", strings.tagInputRemoved("a", 2.0))
+        assertEquals("1 suggestion", strings.promptInputMessages.suggestions?.invoke(1.0))
+        assertEquals("4 suggestions", strings.promptInputMessages.suggestions?.invoke(4.0))
+    }
 }

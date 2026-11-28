@@ -182,7 +182,7 @@ export default describeMember({
     active:
       'shown.length === 0 ? -1 : highlight.key === listKey ? Math.min(highlight.index, shown.length - 1) : 0',
     listId: '`${uid}-suggestions`',
-    say: "{ suggestions: messages.suggestions ?? ((count: number) => `${count} suggestions`), loadingSuggestions: messages.loadingSuggestions ?? 'Loading suggestions…', noSuggestions: messages.noSuggestions ?? 'No results' }",
+    say: "{ suggestions: messages.suggestions ?? ((count: number) => (count === 1 ? '1 suggestion' : `${count} suggestions`)), loadingSuggestions: messages.loadingSuggestions ?? 'Loading suggestions…', noSuggestions: messages.noSuggestions ?? 'No results' }",
     // One live region, as Combobox's: a region that mounts with its words announces nothing.
     announcement:
       "!open ? '' : loading ? say.loadingSuggestions : shown.length === 0 ? say.noSuggestions : say.suggestions(shown.length)",

@@ -2003,8 +2003,8 @@ public protocol PMCollapsibleRendering: View {
 
 // MARK: - ColorInput
 
-/// ColorInput's props (`design/components/color-input.md`): A colour field: a swatch, a hex entry
-/// and a picker popover.
+/// ColorInput's props (`design/components/color-input.md`): A colour field with a hex entry and a
+/// picker.
 public struct PMColorInputProps {
   /// Enables the alpha channel: the alpha rail, the eight-digit hex and the checker.
   public var alpha: Bool?
@@ -2019,6 +2019,8 @@ public struct PMColorInputProps {
   public var disabled: Bool?
   public var id: String?
   public var invalid: Bool?
+  /// The picker's sliders' names and value texts in the host's words.
+  public var messages: PMColorInputMessages?
   /// Serializes the hex through a hidden input.
   public var name: String?
   /// Fires continuously while dragging, as Input does, with no separate commit as on Slider.
@@ -2040,6 +2042,7 @@ public struct PMColorInputProps {
     disabled: Bool? = nil,
     id: String? = nil,
     invalid: Bool? = nil,
+    messages: PMColorInputMessages? = nil,
     name: String? = nil,
     onChange: (@MainActor (String) -> Void)? = nil,
     pickerLabel: String,
@@ -2056,6 +2059,7 @@ public struct PMColorInputProps {
     self.disabled = disabled
     self.id = id
     self.invalid = invalid
+    self.messages = messages
     self.name = name
     self.onChange = onChange
     self.pickerLabel = pickerLabel
@@ -5424,9 +5428,8 @@ public enum PMMultiSelectPresentation: String, CaseIterable, Sendable {
   case popover
 }
 
-/// MultiSelect's props (`design/components/multi-select.md`): Picks several values from a
-/// filterable closed list. On iOS it is adapted: a tag field; checklist in a sheet on iPhone,
-/// anchored on iPad.
+/// MultiSelect's props (`design/components/multi-select.md`): Filtered multiple choice. On iOS it
+/// is adapted: a tag field; checklist in a sheet on iPhone, anchored on iPad.
 public struct PMMultiSelectProps {
   /// Allows values outside `options` (the spec's boundary with TagInput). Typed text that matches
   /// no option and passes `validate` appears as an extra last row, `Add "{text}"`, and choosing it
@@ -5563,8 +5566,8 @@ public protocol PMMultiSelectRendering: View {
 
 // MARK: - NumberInput
 
-/// NumberInput's props (`design/components/number-input.md`): A field that holds, formats and steps
-/// a number.
+/// NumberInput's props (`design/components/number-input.md`): A number field that formats and
+/// steps.
 public struct PMNumberInputProps {
   public var ariaDescribedby: String?
   /// Wired by FormField; set directly only when there is no visible label.
@@ -5580,6 +5583,8 @@ public struct PMNumberInputProps {
   public var id: String?
   public var invalid: Bool?
   public var max: Double?
+  /// The steppers' names in the host's words.
+  public var messages: PMNumberInputMessages?
   /// Typed values are clamped at commit. The steppers snap to the step and stop at the limits.
   public var min: Double?
   /// Posts the **plain number** on a hidden input, never the formatted text.
@@ -5612,6 +5617,7 @@ public struct PMNumberInputProps {
     id: String? = nil,
     invalid: Bool? = nil,
     max: Double? = nil,
+    messages: PMNumberInputMessages? = nil,
     min: Double? = nil,
     name: String? = nil,
     onBlur: (@MainActor () -> Void)? = nil,
@@ -5635,6 +5641,7 @@ public struct PMNumberInputProps {
     self.id = id
     self.invalid = invalid
     self.max = max
+    self.messages = messages
     self.min = min
     self.name = name
     self.onBlur = onBlur
@@ -5893,8 +5900,7 @@ public protocol PMPasswordInputRendering: View {
 
 // MARK: - PhoneInput
 
-/// PhoneInput's props (`design/components/phone-input.md`): A phone number, reported as one E.164
-/// string.
+/// PhoneInput's props (`design/components/phone-input.md`): A phone number as one E.164 string.
 public struct PMPhoneInputProps {
   public var ariaDescribedby: String?
   /// Wired by FormField; set directly only when there is no visible label.
@@ -8260,7 +8266,7 @@ public struct PMTagInputProps {
   /// Shown only while empty. The chips are the value, and a placeholder beside them is clutter.
   public var placeholder: String?
   /// What a removal announces in the host's words, the localization seam; the default is `{tag}
-  /// removed, {count} remain`.
+  /// removed, {count} remain`, and `{tag} removed, 1 remains` when one tag remains.
   public var removedLabel: (@MainActor (String, Double) -> String)?
   /// The accessible name of a chip's remove button. It is a function because the tag is data and
   /// the text around it comes from the app's message catalog. Defaults to `Remove {tag}`.
@@ -9753,6 +9759,34 @@ public struct PMCitationSource {
   }
 }
 
+/// The web's `ColorInputMessages`, field for field (`SHAPES` in `packages/native/src/mapping.ts`).
+public struct PMColorInputMessages {
+  /// The web’s saturation and brightness plane’s name. Default: `saturation and brightness`.
+  public var plane: String?
+  /// The plane’s value text. Default: `saturation {saturation}, brightness {brightness}`.
+  public var planeValue: (@MainActor (Double, Double) -> String)?
+  /// The web’s hue rail’s name. Default: `hue`.
+  public var hue: String?
+  /// The web’s alpha rail’s name. Default: `alpha`.
+  public var alpha: String?
+  /// A rail’s value text, given its name and its value. Default: `{name} {value}`.
+  public var railValue: (@MainActor (String, Double) -> String)?
+
+  public init(
+    plane: String? = nil,
+    planeValue: (@MainActor (Double, Double) -> String)? = nil,
+    hue: String? = nil,
+    alpha: String? = nil,
+    railValue: (@MainActor (String, Double) -> String)? = nil
+  ) {
+    self.plane = plane
+    self.planeValue = planeValue
+    self.hue = hue
+    self.alpha = alpha
+    self.railValue = railValue
+  }
+}
+
 /// The web's `ComboboxFilter`: `'contains'`, `'startsWith'`, `false`, one case each (`UNIONS` in
 /// `packages/native/src/mapping.ts`).
 public enum PMComboboxFilter: CaseIterable, Sendable {
@@ -9770,7 +9804,7 @@ public struct PMComboboxMessages {
   public var clear: String?
   /// The async status while the list loads. Default: `Loading options…`.
   public var loadingOptions: String?
-  /// The async status naming the result count. Default: `{count} options`.
+  /// The async status naming the result count. Default: `{count} options`, `1 option` for one.
   public var options: (@MainActor (Double) -> String)?
   /// The list’s accessible name on the web. Default: `Suggestions`.
   public var list: String?
@@ -10842,7 +10876,7 @@ public struct PMMultiSelectMessages {
   public var remove: (@MainActor (String) -> String)?
   /// The async status while the list loads. Default: `Loading options…`.
   public var loadingOptions: String?
-  /// The async status naming the result count. Default: `{count} options`.
+  /// The async status naming the result count. Default: `{count} options`, `1 option` for one.
   public var options: (@MainActor (Double) -> String)?
 
   public init(
@@ -10916,6 +10950,22 @@ public struct PMNumberFormat {
   }
 }
 
+/// The web's `NumberInputMessages`, field for field (`SHAPES` in `packages/native/src/mapping.ts`).
+public struct PMNumberInputMessages {
+  /// The step-up button’s name. Default: the strings catalogue’s `numberInputIncrement`.
+  public var increment: String?
+  /// The step-down button’s name. Default: the strings catalogue’s `numberInputDecrement`.
+  public var decrement: String?
+
+  public init(
+    increment: String? = nil,
+    decrement: String? = nil
+  ) {
+    self.increment = increment
+    self.decrement = decrement
+  }
+}
+
 /// The web's `PaginationMessages`, field for field (`SHAPES` in `packages/native/src/mapping.ts`).
 public struct PMPaginationMessages {
   public var previous: String
@@ -10940,7 +10990,7 @@ public struct PMPhoneInputMessages {
   public var country: String?
   /// The country list button’s name. Default: `Show countries`.
   public var showCountries: String?
-  /// Announced while the list is open. Default: `{count} countries`.
+  /// Announced while the list is open. Default: `{count} countries`, `1 country` for one.
   public var countriesShown: (@MainActor (Double) -> String)?
   /// The list’s one row when nothing matches the typed text. Default: `No matching country`.
   public var noCountry: String?
@@ -11034,7 +11084,8 @@ public struct PMPromptInputMessages {
   public var remove: @MainActor (String) -> String
   /// The status announced while a chip’s file uploads.
   public var uploading: @MainActor (String) -> String
-  /// The status announced while the suggestion list is open. Default: `{count} suggestions`.
+  /// The status announced while the suggestion list is open. Default: `{count} suggestions`, `1
+  /// suggestion` for one.
   public var suggestions: (@MainActor (Double) -> String)?
   /// The status while a trigger’s options load. Default: `Loading suggestions…`.
   public var loadingSuggestions: String?

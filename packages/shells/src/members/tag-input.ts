@@ -65,7 +65,8 @@ export default describeMember({
     removeLabel: '(tag: string) => `Remove ${tag}`',
     countLabel:
       '({ count, max, atMax }: Parameters<TagInputCountLabel>[0]) => (atMax ? `Maximum of ${max} added` : `${count} added`)',
-    removedLabel: '(tag: string, count: number) => `${tag} removed, ${count} remain`',
+    removedLabel:
+      '(tag: string, count: number) => (count === 1 ? `${tag} removed, 1 remains` : `${tag} removed, ${count} remain`)',
   },
   statics: { controlKind: lit('field') },
   state: {

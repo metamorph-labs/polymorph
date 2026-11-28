@@ -32,8 +32,8 @@ import { Input } from './Input'
 import styles from '@polymorph/recipes/controls/color-input.module.css'
 
 /**
- * A colour field: a swatch, a hex entry and a picker popover
- * (`design/components/color-input.md`). The popover is for choosing visually. It relates to
+ * A colour field with a hex entry and a picker (`design/components/color-input.md`). A swatch
+ * opens the picker popover, which is for choosing visually. It relates to
  * colour as DatePicker relates to Calendar: the field works without the popup, and a keyboard user
  * never has to open the picker plane.
  *
@@ -46,6 +46,23 @@ import styles from '@polymorph/recipes/controls/color-input.module.css'
  * The value format is lowercase hex only. A product that uses HSL converts at its own boundary,
  * because display modes in the control would be a product decision made inside the vocabulary.
  */
+
+/**
+ * The picker's sliders in the host's words, the localization seam. Partial: an omitted word keeps
+ * React Aria's, which React Aria says in the page's locale.
+ */
+export interface ColorInputMessages {
+  /** The saturation and brightness plane's name. */
+  plane?: string
+  /** The plane's value text, given both channels. */
+  planeValue?: (saturation: number, brightness: number) => string
+  /** The hue rail's name. */
+  hue?: string
+  /** The alpha rail's name. */
+  alpha?: string
+  /** A rail's value text, given the rail's name and its value. */
+  railValue?: (name: string, value: number) => string
+}
 
 export interface ColorInputProps {
   /** Lowercase hex: `#rrggbb`, or `#rrggbbaa` with `alpha`. */
@@ -65,6 +82,8 @@ export interface ColorInputProps {
   name?: string
   /** Opens the picker on mount, for galleries and tests. Screens let the user open it. */
   defaultOpen?: boolean
+  /** The picker's sliders' names and value texts in the host's words. */
+  messages?: ColorInputMessages
   /** Set by FormField. Set it directly only when there is no visible label. */
   'aria-label'?: string
   'aria-labelledby'?: string
@@ -101,6 +120,7 @@ export function ColorInput({
   id,
   name,
   defaultOpen,
+  messages,
   'aria-label': ariaLabel,
   'aria-labelledby': labelledBy,
   'aria-describedby': describedBy,
@@ -206,6 +226,7 @@ export function ColorInput({
             alpha={alpha}
             disabled={disabled}
             locale={locale}
+            messages={messages}
           />
         </Popover>
       </PopoverPanelMember>
@@ -252,9 +273,10 @@ interface PickerProps {
   alpha: boolean
   disabled: boolean
   locale: string
+  messages: ColorInputMessages | undefined
 }
 
-function Picker({ color, onChange, alpha, disabled, locale }: PickerProps) {
+function Picker({ color, onChange, alpha, disabled, locale, messages }: PickerProps) {
   const areaState = useColorAreaState({
     value: color,
     onChange,
@@ -266,9 +288,11 @@ function Picker({ color, onChange, alpha, disabled, locale }: PickerProps) {
 
   return (
     <div className={styles.picker}>
-      <Plane state={areaState} disabled={disabled} />
-      <Rail state={hueState} channel="hue" disabled={disabled} />
-      {alpha ? <Rail state={alphaState} channel="alpha" checker disabled={disabled} /> : null}
+      <Plane state={areaState} disabled={disabled} messages={messages} />
+      <Rail state={hueState} channel="hue" disabled={disabled} messages={messages} />
+      {alpha ? (
+        <Rail state={alphaState} channel="alpha" checker disabled={disabled} messages={messages} />
+      ) : null}
     </div>
   )
 }
@@ -277,9 +301,18 @@ function Picker({ color, onChange, alpha, disabled, locale }: PickerProps) {
  * The saturation × brightness plane. React Aria returns the gradient, the thumb position and the
  * RTL maths in its style props. The two hidden range inputs are its accessibility model: one tab
  * stop per channel, with arrows moving both axes from either. The composite-field selector draws
- * the ring on the thumb when either input has focus.
+ * the ring on the thumb when either input has focus. A host's `plane` and `planeValue` name and
+ * value both inputs; absent, React Aria's words stay.
  */
-function Plane({ state, disabled }: { state: ColorAreaState; disabled: boolean }) {
+function Plane({
+  state,
+  disabled,
+  messages,
+}: {
+  state: ColorAreaState
+  disabled: boolean
+  messages: ColorInputMessages | undefined
+}) {
   const containerRef = useRef<HTMLDivElement>(null)
   const inputXRef = useRef<HTMLInputElement>(null)
   const inputYRef = useRef<HTMLInputElement>(null)
@@ -287,6 +320,17 @@ function Plane({ state, disabled }: { state: ColorAreaState; disabled: boolean }
     { containerRef, inputXRef, inputYRef, isDisabled: disabled },
     state,
   )
+  const hostWords = {
+    ...(messages?.plane === undefined ? {} : { 'aria-label': messages.plane }),
+    ...(messages?.planeValue === undefined
+      ? {}
+      : {
+          'aria-valuetext': messages.planeValue(
+            state.value.getChannelValue('saturation'),
+            state.value.getChannelValue('brightness'),
+          ),
+        }),
+  }
 
   return (
     <div
@@ -306,8 +350,8 @@ function Plane({ state, disabled }: { state: ColorAreaState; disabled: boolean }
           } as CSSProperties
         }
       >
-        <input ref={inputXRef} {...xInputProps} />
-        <input ref={inputYRef} {...yInputProps} />
+        <input ref={inputXRef} {...xInputProps} {...hostWords} />
+        <input ref={inputYRef} {...yInputProps} {...hostWords} />
       </span>
     </div>
   )
@@ -316,25 +360,37 @@ function Plane({ state, disabled }: { state: ColorAreaState; disabled: boolean }
 /**
  * One channel as a rail: hue, or alpha over the checker. React Aria's track style carries the
  * gradient. It is moved onto an inner layer so the checker, which the theme owns, can sit beneath
- * the fade, which the colour model owns.
+ * the fade, which the colour model owns. A host's word for the channel names the rail, and its
+ * `railValue` values it; absent, React Aria's words stay.
  */
 function Rail({
   state,
   channel,
   checker = false,
   disabled,
+  messages,
 }: {
   state: ColorSliderState
   channel: 'hue' | 'alpha'
   checker?: boolean
   disabled: boolean
+  messages: ColorInputMessages | undefined
 }) {
+  const { locale } = useLocale()
   const trackRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const name = messages?.[channel]
   const { trackProps, thumbProps, inputProps } = useColorSlider(
-    { channel, trackRef, inputRef, isDisabled: disabled },
+    { channel, trackRef, inputRef, isDisabled: disabled, 'aria-label': name },
     state,
   )
+  const valueText =
+    messages?.railValue === undefined
+      ? inputProps['aria-valuetext']
+      : messages.railValue(
+          name ?? state.value.getChannelName(channel, locale),
+          state.value.getChannelValue(channel),
+        )
   const { background, ...trackStyle } = (trackProps.style ?? {}) as CSSProperties
 
   return (
@@ -357,7 +413,7 @@ function Rail({
           } as CSSProperties
         }
       >
-        <input ref={inputRef} {...inputProps} />
+        <input ref={inputRef} {...inputProps} aria-valuetext={valueText} />
       </span>
     </div>
   )

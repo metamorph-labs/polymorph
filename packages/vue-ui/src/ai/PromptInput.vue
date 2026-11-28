@@ -251,7 +251,9 @@ const active = computed(() =>
 )
 const listId = computed(() => `${uid}-suggestions`)
 const say = computed(() => ({
-  suggestions: props.messages.suggestions ?? ((count: number) => `${count} suggestions`),
+  suggestions:
+    props.messages.suggestions ??
+    ((count: number) => (count === 1 ? '1 suggestion' : `${count} suggestions`)),
   loadingSuggestions: props.messages.loadingSuggestions ?? 'Loading suggestions…',
   noSuggestions: props.messages.noSuggestions ?? 'No results',
 }))

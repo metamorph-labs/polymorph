@@ -12,6 +12,7 @@ import type {
   FixtureChild,
   FixtureValue,
   Handler,
+  MachineBinding,
   MemberShell,
   Node,
   Presence,
@@ -921,6 +922,26 @@ export const unexported = (name: string, framework: string): boolean => {
 /** The foundation's types a framework's index re-exports, by name, sorted. */
 export function foundationTypeExports(framework: string): string[] {
   return FOUNDATION_TYPE_EXPORTS.filter((name) => !unexported(name, framework))
+}
+
+/**
+ * The machine a member binds, as every renderer writes it: Zag's `zag.machine`,
+ * or a copy in which each action the binding names in `unchosen` calls Zag's
+ * own with a context whose `value` reads as empty. The action keeps Zag's
+ * platform check, lookup and live region, and takes none of its branches for a
+ * chosen option. The copy keeps the machine's type, so its props and its
+ * connected API are typed as Zag's.
+ */
+export function machineSource(binding: MachineBinding): string {
+  const unchosen = binding.unchosen ?? []
+  if (unchosen.length === 0) return 'zag.machine'
+  const actions = unchosen
+    .map(
+      (action) =>
+        `${key(action)}: (params) => zag.machine.implementations?.actions?.${isIdentifier(action) ? action : `[${jsString(action)}]`}?.({ ...params, context: { ...params.context, get: ((name: string) => (name === 'value' ? [] : params.context.get(name as never))) as typeof params.context.get } })`,
+    )
+    .join(', ')
+  return `({ ...zag.machine, implementations: { ...zag.machine.implementations, actions: { ...zag.machine.implementations?.actions, ${actions} } } } as typeof zag.machine)`
 }
 
 /* -------------------------------------------------------------------------- */

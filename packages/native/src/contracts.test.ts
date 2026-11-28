@@ -192,6 +192,20 @@ describe(`the generated contracts (${GENERATED})`, () => {
     // Only the Compose member says UTC, so the app's string catalog does not carry it.
     expect(file).not.toContain('relativeUtc')
     expect(file).toContain('localized: "Add \\"\\(text)\\"",')
+    // A form for one is the default value when the count is one, under the text's own key, so an
+    // app's translation of the key still receives every count.
+    expect(file).toContain(
+      [
+        '  static func phoneInputCountriesShown(count: Double) -> String {',
+        '    String(',
+        '      localized: "%lld countries",',
+        '      defaultValue: count == 1 ? "\\(Int(count)) country" : "\\(Int(count)) countries",',
+        '      comment: "How many countries a list shows.")',
+        '  }',
+      ].join('\n'),
+    )
+    expect(file).toContain('      localized: "%@ removed, %lld remain",\n')
+    expect(file).toContain('        localized: "%lld options",\n')
   })
 
   it('write every number the recipes write into PMRecipe, by its unit', () => {

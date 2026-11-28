@@ -289,7 +289,9 @@ const active = $derived(
 )
 const listId = $derived(`${uid}-suggestions`)
 const say = $derived({
-  suggestions: messages.suggestions ?? ((count: number) => `${count} suggestions`),
+  suggestions:
+    messages.suggestions ??
+    ((count: number) => (count === 1 ? '1 suggestion' : `${count} suggestions`)),
   loadingSuggestions: messages.loadingSuggestions ?? 'Loading suggestions…',
   noSuggestions: messages.noSuggestions ?? 'No results',
 })

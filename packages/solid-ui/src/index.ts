@@ -157,7 +157,7 @@ export type { CodeBlockProps } from './structure/CodeBlock'
 export { default as Collapsible } from './structure/Collapsible'
 export type { CollapsibleProps } from './structure/Collapsible'
 export { default as ColorInput } from './controls/ColorInput'
-export type { ColorInputProps } from './controls/ColorInput'
+export type { ColorInputMessages, ColorInputProps } from './controls/ColorInput'
 export { default as Combobox } from './controls/Combobox'
 export type {
   ComboboxFilter,
@@ -316,7 +316,7 @@ export type {
   MultiSelectProps,
 } from './controls/MultiSelect'
 export { default as NumberInput } from './controls/NumberInput'
-export type { NumberFormat, NumberInputProps } from './controls/NumberInput'
+export type { NumberFormat, NumberInputMessages, NumberInputProps } from './controls/NumberInput'
 export { default as OTPInput } from './controls/OTPInput'
 export type { OTPInputProps, OTPLength } from './controls/OTPInput'
 export { default as PageHeader } from './structure/PageHeader'

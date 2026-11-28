@@ -21,9 +21,9 @@
 // `min`, or to zero. `onBlur` fires after the commit. With a hardware
 // keyboard, the up and down arrows step and Home and End go to `min` and
 // `max`. TalkBack steps the field with its custom actions, named as the
-// steppers are ("Increase" and "Decrease"); the steppers are buttons TalkBack
-// reaches and the keyboard's focus order leaves out, as the web leaves them
-// out of the Tab order.
+// steppers are, by `messages` or else "Increase" and "Decrease"; the steppers
+// are buttons TalkBack reaches and the keyboard's focus order leaves out, as
+// the web leaves them out of the Tab order.
 //
 // `format` formats the shown text: `decimal` (up to three fraction digits),
 // `percent` (the ratio multiplied by 100, whole by default) or `currency` in
@@ -149,8 +149,9 @@ object PMNumberInput : PMNumberInputRendering {
             if (facts.disabled) put("disabled", "true")
             if (facts.readOnly) put("readonly", "true")
         }
-        val increase = strings.numberInputIncrement
-        val decrease = strings.numberInputDecrement
+        // The app's names for the steppers, or the strings catalogue's.
+        val increase = props.messages?.increment ?: strings.numberInputIncrement
+        val decrease = props.messages?.decrement ?: strings.numberInputDecrement
 
         BasicTextField(
             value = shown,

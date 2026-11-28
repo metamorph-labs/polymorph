@@ -22,11 +22,32 @@ describe('the defaults the specs name (`strings.ts`)', () => {
   it('are each held to the spec that names them: the whole text is in it, a value in each parameter', () => {
     const faults = entries.flatMap((entry) => {
       const spec = readFileSync(resolve(ROOT, entry.spec), 'utf8')
-      return specNames(entry.english, spec)
-        ? []
-        : [`${entry.name}: "${entry.english}" is not in ${entry.spec}`]
+      return [entry.english, ...(entry.one === undefined ? [] : [entry.one])].flatMap((text) =>
+        specNames(text, spec) ? [] : [`${entry.name}: "${text}" is not in ${entry.spec}`],
+      )
     })
     expect(faults).toEqual([])
+  })
+
+  it('give a form for one only to a default of a count, with its parameters in their order', () => {
+    const written = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1])
+    const faults = entries.flatMap((entry) => {
+      if (entry.one === undefined) return []
+      const counted = (entry.parameters ?? []).some(
+        (parameter) => parameter.name === 'count' && parameter.type === 'number',
+      )
+      return counted && written(entry.one).join() === written(entry.english).join()
+        ? []
+        : [entry.name]
+    })
+    expect(faults).toEqual([])
+    // The sentences a count makes agree with one, and say so.
+    const one = Object.fromEntries(entries.map((entry) => [entry.name, entry.one]))
+    expect(one.options).toBe('{count} option')
+    expect(one.multiSelectOptions).toBe('{count} option')
+    expect(one.phoneInputCountriesShown).toBe('{count} country')
+    expect(one.tagInputRemoved).toBe('{tag} removed, {count} remains')
+    expect(one.suggestions).toBe('{count} suggestion')
   })
 
   it('match a template only where every literal part stands in order', () => {

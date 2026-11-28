@@ -7,9 +7,11 @@ import { installTestTheme } from '@polymorph/engine/testing'
 import { ArtifactPane } from './ai/ArtifactPane'
 import { AppShell } from './archetypes/AppShell'
 import { Calendar } from './controls/Calendar'
+import { ColorInput } from './controls/ColorInput'
 import { DatePicker } from './controls/DatePicker'
 import { DateRangePicker } from './controls/DateRangePicker'
 import { Input } from './controls/Input'
+import { NumberInput } from './controls/NumberInput'
 import { SearchInput } from './controls/SearchInput'
 import { TagInput } from './controls/TagInput'
 import { TimeInput } from './controls/TimeInput'
@@ -80,6 +82,46 @@ describe('a host’s language reaches every name the vocabulary would otherwise 
     render(<Drawer open title="Détails" closeLabel="Fermer" />)
     expect(screen.getByRole('button', { name: 'Fermer' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()
+  })
+
+  it('NumberInput — the steppers, over React Aria’s names', () => {
+    render(
+      <NumberInput
+        aria-label="Sièges"
+        defaultValue={5}
+        messages={{ increment: 'Augmenter', decrement: 'Diminuer' }}
+      />,
+    )
+    expect(screen.getByRole('button', { name: 'Augmenter' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Diminuer' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Increase|Decrease/ })).toBeNull()
+  })
+
+  it('ColorInput — the plane and the rails, over React Aria’s names and value texts', async () => {
+    render(
+      <ColorInput
+        pickerLabel="Choisir la couleur"
+        aria-label="Couleur"
+        alpha
+        defaultValue="#8864f0cc"
+        defaultOpen
+        messages={{
+          plane: 'Saturation et luminosité',
+          planeValue: (saturation, brightness) =>
+            `saturation ${Math.round(saturation)}, luminosité ${Math.round(brightness)}`,
+          hue: 'Teinte',
+          alpha: 'Opacité',
+          railValue: (name, value) => `${name} ${Math.round(value)}`,
+        }}
+      />,
+    )
+    const plane = await screen.findAllByRole('slider', { name: 'Saturation et luminosité' })
+    expect(plane[0]?.getAttribute('aria-valuetext')).toMatch(/^saturation \d+, luminosité \d+$/)
+    expect(screen.getByRole('slider', { name: 'Teinte' }).getAttribute('aria-valuetext')).toMatch(
+      /^Teinte \d+$/,
+    )
+    expect(screen.getByRole('slider', { name: 'Opacité' })).toBeTruthy()
+    expect(screen.queryByRole('slider', { name: /Hue|Alpha|Color picker/ })).toBeNull()
   })
 
   it('TagInput — a chip’s remove control, with the tag as data, the count and a removal', () => {
@@ -379,7 +421,7 @@ describe('and a host that passes nothing still hears the generic English', () =>
     expect(screen.getByText('up 12% — positive')).toBeTruthy()
     expect(screen.getByRole('textbox', { name: 'Labels', description: '2 added' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Remove urgent' }))
-    expect(screen.getByText('urgent removed, 1 remain')).toBeTruthy()
+    expect(screen.getByText('urgent removed, 1 remains')).toBeTruthy()
     expect(screen.getByText('deliver.ts: still being written')).toBeTruthy()
     expect(valueTexts()).toEqual(['Empty', 'Empty', 'Empty'])
   })

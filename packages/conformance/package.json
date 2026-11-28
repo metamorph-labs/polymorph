@@ -66,6 +66,8 @@
     "./described-names": "./src/described-names.ts",
     "./date-words": "./src/date-words.ts",
     "./artifact-pane": "./src/artifact-pane.ts",
+    "./machine-words": "./src/machine-words.ts",
+    "./option-count": "./src/option-count.ts",
     "./server-render": "./server-render.ts",
     "./dist-lock": "./dist-lock.ts"
   },

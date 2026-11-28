@@ -575,35 +575,69 @@ function caseNameOf(role: string): string {
 /**
  * A default's text as the body of a `String(localized:)` literal: `"` and `\`
  * escaped, a `{count}` number interpolated as `\(Int(count))` (`%lld` in the
- * string catalog) and a `{name}` string as `\(name)` (`%@`).
+ * string catalog) and a `{name}` string as `\(name)` (`%@`). `key` writes the
+ * string catalog's key instead, each parameter as its format specifier.
  */
-function swiftTemplate(entry: SpecDefault): string {
+function swiftTemplate(entry: SpecDefault, text = entry.english, key = false): string {
   const types = new Map(
     (entry.parameters ?? []).map((parameter) => [parameter.name, parameter.type]),
   )
-  return entry.english
+  return text
     .split(/(\{\w+\})/)
     .map((part) => {
       const parameter = /^\{(\w+)\}$/.exec(part)?.[1]
-      if (parameter === undefined) return swiftString(part).slice(1, -1)
+      if (parameter === undefined) {
+        const literal = swiftString(part).slice(1, -1)
+        return key ? literal.replace(/%/g, '%%') : literal
+      }
       const type = types.get(parameter)
       if (type === undefined) {
         throw new Error(
           `native contracts: the default ${entry.name} writes {${parameter}}, which it does not declare`,
         )
       }
+      if (key) return type === 'number' ? '%lld' : '%@'
       return type === 'number' ? `\\(Int(${parameter}))` : `\\(${parameter})`
     })
     .join('')
 }
 
+/** The parameters a default's text writes, in order. */
+const written = (text: string): string[] =>
+  [...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1] as string)
+
 /**
  * `String(localized: "…", comment: "…")` after `lead` (a field's label, or
- * nothing), on one line at `indent`, or over three when one is too long.
+ * nothing), on one line at `indent`, or over three when one is too long. A
+ * default with a form for one is looked up by its text's key, and its default
+ * value is that form when `count` is one, so the app's translation of the key
+ * receives every count, one included.
  */
 function localized(entry: SpecDefault, indent: string, lead = ''): string[] {
-  const value = `"${swiftTemplate(entry)}"`
   const comment = swiftString(entry.comment)
+  if (entry.one !== undefined) {
+    if (written(entry.one).join() !== written(entry.english).join()) {
+      throw new Error(
+        `native contracts: the default ${entry.name}'s form for one writes other parameters than its text`,
+      )
+    }
+    const one = `"${swiftTemplate(entry, entry.one)}"`
+    const other = `"${swiftTemplate(entry)}"`
+    const choice = `${indent}  defaultValue: count == 1 ? ${one} : ${other},`
+    return [
+      `${indent}${lead}String(`,
+      `${indent}  localized: "${swiftTemplate(entry, entry.english, true)}",`,
+      ...(choice.length <= 100
+        ? [choice]
+        : [
+            `${indent}  defaultValue: count == 1`,
+            `${indent}    ? ${one}`,
+            `${indent}    : ${other},`,
+          ]),
+      `${indent}  comment: ${comment})`,
+    ]
+  }
+  const value = `"${swiftTemplate(entry)}"`
   const line = `${indent}${lead}String(localized: ${value}, comment: ${comment})`
   if (line.length <= 100) return [line]
   return [

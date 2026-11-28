@@ -44,6 +44,7 @@ product would then need a way around it.
 | `disabled` / `invalid` | `boolean` | `false` | |
 | `id` / `name` | `string` | — | `name` serializes the hex through a hidden input |
 | `defaultOpen` | `boolean` | — | opens the picker on mount, for galleries and tests; screens let the reader open it |
+| `messages` | `ColorInputMessages` | — | *(WCAG 3.1.2)* the picker's sliders in the host's words: the plane's name (`plane`) and value text (`planeValue`, given saturation and brightness), each rail's name (`hue`, `alpha`) and a rail's value text (`railValue`, given the rail's name and its value). Partial: an omitted word keeps its default, React Aria's in the page's locale on React, and in the generated members "saturation and brightness", "saturation {s}, brightness {b}", "hue", "alpha" and "{name} {value}" (A11y, below) |
 
 Attributes: root `data-size`, `data-disabled?`, `data-invalid?`, `data-alpha?`.
 The plane and rail thumbs carry `data-state="dragging"` while held. The
@@ -119,7 +120,12 @@ Arrows move x, PageUp/PageDown move y by a page, and the unfocused channel is
 text names both channels. React Aria describes it as a "2D slider" in the
 page's locale. The generated members give it no role description, because a
 fixed English one could not be translated, so it is heard as a slider. Each
-rail is one hidden range input, named with the substrate's own channel names. The hex field is a
+rail is one hidden range input. `messages` names and values the plane and each
+rail; without it, React's are React Aria's words in the page's locale, and the
+generated members' are the English words their machine wrote: the plane is
+"saturation and brightness" with "saturation 50, brightness 80" as its value
+text, and a rail is named by its channel, "hue" or "alpha", with "hue 120" as
+its value text. The hex field is a
 labelled Input wired through FormField like every other field, and the four ARIA
 hooks pass through to it.
 

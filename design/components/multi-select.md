@@ -200,7 +200,13 @@ selected". A mint announces the same way, "{value} added, {n} selected", because
 from a row labelled "Add" is a change the user should hear in the same way as its removal. A
 *refused* commit is announced in the same region (see "Refusal is answered"). Loading and empty
 announce politely as in Combobox, through one live region, so the option count is not announced
-twice. All these sentences, and the chevron, chip-remove and count labels, go through `messages`,
+twice: "{n} options", and "1 option" for one. On Apple platforms the generated members' machine
+also speaks the highlighted option in an assertive region of its own, because VoiceOver in Safari
+does not follow the input's `aria-activedescendant`. It runs as though nothing were chosen, so it
+says the option's label alone and never Zag's English ", selected". The cost: on Apple platforms a
+generated MultiSelect does not say which highlighted options are chosen, which each option
+carries as `aria-selected`. React's MultiSelect, built on the listbox hooks, has no such region;
+that is a difference between the renderers. All these sentences, and the chevron, chip-remove and count labels, go through `messages`,
 because announced text a product cannot translate is announced in the wrong language (WCAG
 3.1.2).
 RTL: popper alignment flips with the existing origin helper.

@@ -140,7 +140,7 @@ const say = computed(() => ({
   showOptions: 'Show options',
   clear: 'Clear',
   loadingOptions: 'Loading options…',
-  options: (count: number) => `${count} options`,
+  options: (count: number) => (count === 1 ? '1 option' : `${count} options`),
   list: 'Suggestions',
   ...props.messages,
 }))
@@ -177,7 +177,26 @@ const requestMore = computed(
 const emitBlur = computed(() => (event: FocusEvent) => setTimeout(() => emit('blur', event)))
 const documentDirection = useDirection(() => input.value)
 const service = useMachine(
-  zag.machine,
+  {
+    ...zag.machine,
+    implementations: {
+      ...zag.machine.implementations,
+      actions: {
+        ...zag.machine.implementations?.actions,
+        announceHighlightedItem: (params) =>
+          zag.machine.implementations?.actions?.announceHighlightedItem?.({
+            ...params,
+            context: {
+              ...params.context,
+              get: ((name: string) =>
+                name === 'value'
+                  ? []
+                  : params.context.get(name as never)) as typeof params.context.get,
+            },
+          }),
+      },
+    },
+  } as typeof zag.machine,
   computed(() => ({
     id: uid,
     dir: documentDirection.value,

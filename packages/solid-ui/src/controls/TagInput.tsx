@@ -77,7 +77,7 @@ export interface TagInputProps {
   placeholder?: string
   /**
    * What a removal announces in the host's words, the localization seam; the default is `{tag}
-   * removed, {count} remain`.
+   * removed, {count} remain`, and `{tag} removed, 1 remains` when one tag remains.
    */
   removedLabel?: TagInputRemovedLabel
   /**
@@ -106,7 +106,8 @@ export default function TagInput(given: TagInputProps): JSX.Element {
       removeLabel: (tag: string) => `Remove ${tag}`,
       countLabel: ({ count, max, atMax }: Parameters<TagInputCountLabel>[0]) =>
         atMax ? `Maximum of ${max} added` : `${count} added`,
-      removedLabel: (tag: string, count: number) => `${tag} removed, ${count} remain`,
+      removedLabel: (tag: string, count: number) =>
+        count === 1 ? `${tag} removed, 1 remains` : `${tag} removed, ${count} remain`,
     } as Defaults<
       TagInputProps,
       'validate' | 'size' | 'disabled' | 'invalid' | 'removeLabel' | 'countLabel' | 'removedLabel'

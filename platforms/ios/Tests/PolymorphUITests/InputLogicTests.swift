@@ -225,6 +225,21 @@ final class InputLogicTests: XCTestCase {
       PMPhones.options(locale: english, countries: ["GB"], include: "GB").map(\.region), ["GB"])
   }
 
+  /// What a list says of its count when the app passes no words: the singular
+  /// for one (`combobox.md`, `multi-select.md`, `phone-input.md`,
+  /// `prompt-input.md`), as the members read the string catalog.
+  func testACountSaysOneInTheSingular() {
+    let options = PMStrings.combobox(nil).options
+    XCTAssertEqual(options(1), "1 option")
+    XCTAssertEqual(options(3), "3 options")
+    XCTAssertEqual(PMStrings.multiSelectOptions(count: 1), "1 option")
+    XCTAssertEqual(PMStrings.multiSelectOptions(count: 0), "0 options")
+    XCTAssertEqual(PMStrings.phoneInputCountriesShown(count: 1), "1 country")
+    XCTAssertEqual(PMStrings.phoneInputCountriesShown(count: 2), "2 countries")
+    XCTAssertEqual(PMStrings.promptInputMessages.suggestions?(1), "1 suggestion")
+    XCTAssertEqual(PMStrings.promptInputMessages.suggestions?(4), "4 suggestions")
+  }
+
   func testTheDefaultCountry() {
     XCTAssertEqual(PMPhones.defaultCountry("gb", nil), "GB")
     XCTAssertEqual(PMPhones.defaultCountry(nil, ["FR", "DE"]), "FR")

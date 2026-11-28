@@ -43,6 +43,7 @@ import {
   isPrimitive,
   jsString,
   key,
+  machineSource,
   locations as whereEach,
   partShell,
   presenceEntries,
@@ -281,6 +282,15 @@ const PROPERTY_ATTRIBUTES: Readonly<Record<string, readonly string[]>> = {
   indeterminate: ['input'],
   selected: ['option'],
 }
+
+/**
+ * A range input's bounds, bound as properties before its `value`. Angular sets
+ * an element's property bindings before its attribute bindings, and a range
+ * input clamps and rounds the value it is given to the bounds it has then: a
+ * hue of 255 set before `max="360"` reads 100. Properties keep the order they
+ * are written in, so the bounds come first.
+ */
+const RANGE_BOUNDS = ['min', 'max', 'step']
 
 /* -------------------------------------------------------------------------- */
 /* The member's interface: inputs, outputs and slots from the registry         */
@@ -1165,17 +1175,27 @@ export function renderAngularMember(
   const renderNodes = (nodes: readonly Node[], at: At): string =>
     join(nodes.map((node) => renderNode(node, at)))
 
-  /** An attribute an element takes, as Angular binds it, by React's and Vue's rules for the name. */
-  const attributeBinding = (tag: string, name: string, expr: Expr, at: At): string => {
+  /**
+   * An attribute an element takes, as Angular binds it, by React's and Vue's rules for the name;
+   * `range` is whether the element is a range input, whose bounds are properties.
+   */
+  const attributeBinding = (
+    tag: string,
+    name: string,
+    expr: Expr,
+    at: At,
+    range = false,
+  ): string => {
     const literal = staticString(expr)
-    const property = PROPERTY_ATTRIBUTES[name]?.includes(tag) === true
+    const bound = range && RANGE_BOUNDS.includes(name)
+    const property = PROPERTY_ATTRIBUTES[name]?.includes(tag) === true || bound
     if (literal !== null && plain(literal) && !property && !PRESENCE_ATTRIBUTES.has(name)) {
       return `${name}="${literal}"`
     }
     if (property) {
-      if (name === 'value') foundationValues.add('fieldValue')
-      return name === 'value'
-        ? `[value]="${value(expr, at, (code) => `fieldValue(${code})`)}"`
+      if (name === 'value' || bound) foundationValues.add('fieldValue')
+      return name === 'value' || bound
+        ? `[${name}]="${value(expr, at, (code) => `fieldValue(${code})`)}"`
         : `[${name}]="${value(expr, at, (code) => `Boolean(${code})`)}"`
     }
     if (PRESENCE_ATTRIBUTES.has(name)) {
@@ -1265,8 +1285,16 @@ export function renderAngularMember(
       }
       for (const [property, expr] of Object.entries(node.geometry ?? {}))
         parts.push(`[style.${property}]="${value(expr, at)}"`)
-      for (const [name, expr] of Object.entries(node.attrs ?? {}))
-        parts.push(attributeBinding(tag, name, expr, at))
+      const range = tag === 'input' && staticString(node.attrs?.type ?? '') === 'range'
+      const attrs = Object.entries(node.attrs ?? {})
+      // A range input's bounds before its value, which Angular sets in the order written.
+      const ordered = range
+        ? [
+            ...attrs.filter(([name]) => RANGE_BOUNDS.includes(name)),
+            ...attrs.filter(([name]) => !RANGE_BOUNDS.includes(name)),
+          ]
+        : attrs
+      for (const [name, expr] of ordered) parts.push(attributeBinding(tag, name, expr, at, range))
       for (const [event, handler] of on)
         parts.push(`(${event})="${handlerMethod(handler, at, eventType(event))}"`)
     }
@@ -1755,7 +1783,7 @@ export function renderAngularMember(
       `protected readonly documentDirection = useDirection(${place === undefined ? '' : `() => ${scriptExpr(place)}`})`,
     )
     fields.push(
-      `protected readonly service: { readonly value: zag.Service } = setup(() => useMachine(zag.machine, () => ({ ${machineContext.join(', ')} }) as Partial<zag.Props>))`,
+      `protected readonly service: { readonly value: zag.Service } = setup(() => useMachine(${machineSource(shell.machine)}, () => ({ ${machineContext.join(', ')} }) as Partial<zag.Props>))`,
     )
     fields.push(
       'protected readonly api: { readonly value: ReturnType<typeof zag.connect> } = derived(() => zag.connect(this.service.value, normalizeProps))',

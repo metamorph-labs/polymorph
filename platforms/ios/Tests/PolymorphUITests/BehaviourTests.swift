@@ -268,6 +268,24 @@
       XCTAssertEqual(focused, 0, "the click on a stepper does not focus the field")
     }
 
+    /// The steppers are named by `messages` (`number-input.md`, Icons), the app's
+    /// words, and by the string catalog's names when the app passes none.
+    func testTheSteppersAreNamedInTheAppsWords() throws {
+      let french = Scene(
+        PMNumberInput(
+          props: PMNumberInputProps(
+            ariaLabel: "Agents", defaultValue: 5,
+            messages: PMNumberInputMessages(increment: "Augmenter", decrement: "Diminuer"))))
+      defer { french.close() }
+      XCTAssertNotNil(french.element(role: .button, named: "Augmenter"))
+      XCTAssertNotNil(french.element(role: .button, named: "Diminuer"))
+      XCTAssertNil(french.element(role: .button, named: PMStrings.numberInputIncrement))
+      let english = Scene(
+        PMNumberInput(props: PMNumberInputProps(ariaLabel: "Agents", defaultValue: 5)))
+      defer { english.close() }
+      XCTAssertNotNil(english.element(role: .button, named: PMStrings.numberInputDecrement))
+    }
+
     func testTheRevealToggleRevealsWithoutFocusingTheField() throws {
       let scene = Scene(
         PMPasswordInput(
@@ -388,6 +406,9 @@
       let english = PMTagInput(props: PMTagInputProps(ariaLabel: "Labels", defaultValue: ["a", "b"]))
       XCTAssertEqual(
         english.removal(of: "a", remain: 1), PMStrings.tagInputRemoved(tag: "a", count: 1))
+      // The catalog's sentence says the verb in the singular for the one tag left.
+      XCTAssertEqual(english.removal(of: "a", remain: 1), "a removed, 1 remains")
+      XCTAssertEqual(english.removal(of: "a", remain: 2), "a removed, 2 remain")
     }
 
     func testClosingTheListClearsTheSearchText() throws {

@@ -66,8 +66,13 @@ import { VOCABULARY } from './vocabulary'
  * hears, which the generated members wrote in English. Each field is printed
  * under its own name, the shortest that says what it holds, and ArtifactPane's
  * and DateRangePicker's purposes are shorter in their place.
+ *
+ * It also includes NumberInput's and ColorInput's `messages`, the seams for the
+ * names and value texts their Zag machines wrote in English in the generated
+ * members. Each type is printed by its name, and NumberInput's, ColorInput's,
+ * MultiSelect's and PhoneInput's purposes are shorter in their place.
  */
-const BUDGET_CHARS = 60_967
+const BUDGET_CHARS = 61_141
 const SUBSET_BUDGET_CHARS = 13_600
 
 /** What a host that draws forms, lists and simple pages might allow. */

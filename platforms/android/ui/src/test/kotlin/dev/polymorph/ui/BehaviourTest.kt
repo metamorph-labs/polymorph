@@ -983,6 +983,28 @@ class BehaviourTest {
     }
 
     /**
+     * The steppers and the field's step actions are named by `messages`
+     * (`number-input.md`, Icons), the app's words, and by `PMStrings`' names
+     * when the app passes none.
+     */
+    @Test
+    fun theSteppersAreNamedInTheAppsWords() {
+        val strings = PMStrings()
+        val french = PMNumberInputMessages(increment = "Augmenter", decrement = "Diminuer")
+        for ((messages, names) in listOf(
+            french to listOf("Augmenter", "Diminuer"),
+            null to listOf(strings.numberInputIncrement, strings.numberInputDecrement),
+        )) {
+            runComposeUiTest {
+                setContent { Scene { PMNumberInput(ariaLabel = "Seats", defaultValue = PMSome(5.0), messages = messages) } }
+                for (name in names) {
+                    onAllNodes(hasContentDescription(name) and hasClickAction(), useUnmergedTree = true).assertCountEquals(1)
+                }
+            }
+        }
+    }
+
+    /**
      * The action key with nothing to do hides the keyboard: NumberInput's Done
      * with nothing to submit, SearchInput's Search outside a form, Combobox's
      * Done, and Done in an empty TagInput. MultiSelect's search field does the

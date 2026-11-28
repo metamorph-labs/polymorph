@@ -69,7 +69,7 @@ export interface TagInputProps {
   placeholder?: string
   /**
    * What a removal announces in the host's words, the localization seam; the default is `{tag}
-   * removed, {count} remain`.
+   * removed, {count} remain`, and `{tag} removed, 1 remains` when one tag remains.
    */
   removedLabel?: TagInputRemovedLabel
   /**
@@ -220,17 +220,22 @@ export class TagInput {
   readonly placeholder = input<TagInputProps['placeholder']>(undefined)
   /**
    * What a removal announces in the host's words, the localization seam; the default is `{tag}
-   * removed, {count} remain`.
+   * removed, {count} remain`, and `{tag} removed, 1 remains` when one tag remains.
    */
   readonly removedLabel = input<
     Exclude<TagInputProps['removedLabel'], undefined>,
     TagInputProps['removedLabel']
-  >((tag: string, count: number) => `${tag} removed, ${count} remain`, {
-    transform: (value: TagInputProps['removedLabel']) =>
-      value === undefined
-        ? (tag: string, count: number) => `${tag} removed, ${count} remain`
-        : value,
-  })
+  >(
+    (tag: string, count: number) =>
+      count === 1 ? `${tag} removed, 1 remains` : `${tag} removed, ${count} remain`,
+    {
+      transform: (value: TagInputProps['removedLabel']) =>
+        value === undefined
+          ? (tag: string, count: number) =>
+              count === 1 ? `${tag} removed, 1 remains` : `${tag} removed, ${count} remain`
+          : value,
+    },
+  )
   /**
    * The accessible name of a chip's remove button. It is a function because the tag is data and
    * the text around it comes from the app's message catalog. Defaults to `Remove {tag}`.

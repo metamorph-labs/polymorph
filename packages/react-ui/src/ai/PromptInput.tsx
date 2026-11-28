@@ -80,7 +80,10 @@ export interface PromptInputMessages {
   remove: (name: string) => string
   /** The status announced while a chip's file uploads. */
   uploading: (name: string) => string
-  /** The status announced while the suggestion list is open. Default: `{count} suggestions`. */
+  /**
+   * The status announced while the suggestion list is open. Default: `{count} suggestions`,
+   * `1 suggestion` for one.
+   */
   suggestions?: (count: number) => string
   /** The status while a trigger's options load. Default: `Loading suggestions…`. */
   loadingSuggestions?: string
@@ -199,7 +202,7 @@ const DEFAULT_MESSAGES = {
   attach: 'Attach',
   remove: (name: string) => `Remove ${name}`,
   uploading: (name: string) => `${name}: uploading`,
-  suggestions: (count: number) => `${count} suggestions`,
+  suggestions: (count: number) => (count === 1 ? '1 suggestion' : `${count} suggestions`),
   loadingSuggestions: 'Loading suggestions…',
   noSuggestions: 'No results',
 } satisfies Required<PromptInputMessages>

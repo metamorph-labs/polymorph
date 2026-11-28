@@ -1308,9 +1308,9 @@ fun interface PMCollapsibleRendering {
 // ColorInput
 
 /**
- * ColorInput's props (`design/components/color-input.md`): A colour field: a swatch, a hex entry
- * and a picker popover. On Android it is adapted: the hex field, with the picker in a bottom sheet
- * on phones and anchored on tablets; Android has no system colour picker.
+ * ColorInput's props (`design/components/color-input.md`): A colour field with a hex entry and a
+ * picker. On Android it is adapted: the hex field, with the picker in a bottom sheet on phones and
+ * anchored on tablets; Android has no system colour picker.
  */
 data class PMColorInputProps(
     /** Enables the alpha channel: the alpha rail, the eight-digit hex and the checker. */
@@ -1326,6 +1326,8 @@ data class PMColorInputProps(
     val disabled: Boolean? = null,
     val id: String? = null,
     val invalid: Boolean? = null,
+    /** The picker's sliders' names and value texts in the host's words. */
+    val messages: PMColorInputMessages? = null,
     /** Serializes the hex through a hidden input. */
     val name: String? = null,
     /** Fires continuously while dragging, as Input does, with no separate commit as on Slider. */
@@ -3663,10 +3665,9 @@ enum class PMMultiSelectPresentation(val value: String) {
 }
 
 /**
- * MultiSelect's props (`design/components/multi-select.md`): Picks several values from a filterable
- * closed list. On Android it is adapted: a field of the chosen chips whose options are a checklist
- * in a modal bottom sheet on phones and anchored on tablets, because Material has no multi-select
- * field.
+ * MultiSelect's props (`design/components/multi-select.md`): Filtered multiple choice. On Android
+ * it is adapted: a field of the chosen chips whose options are a checklist in a modal bottom sheet
+ * on phones and anchored on tablets, because Material has no multi-select field.
  */
 data class PMMultiSelectProps(
     /**
@@ -3770,8 +3771,7 @@ fun interface PMMultiSelectRendering {
 // NumberInput
 
 /**
- * NumberInput's props (`design/components/number-input.md`): A field that holds, formats and steps
- * a number.
+ * NumberInput's props (`design/components/number-input.md`): A number field that formats and steps.
  */
 data class PMNumberInputProps(
     val ariaDescribedby: String? = null,
@@ -3790,6 +3790,8 @@ data class PMNumberInputProps(
     val id: String? = null,
     val invalid: Boolean? = null,
     val max: Double? = null,
+    /** The steppers' names in the host's words. */
+    val messages: PMNumberInputMessages? = null,
     /** Typed values are clamped at commit. The steppers snap to the step and stop at the limits. */
     val min: Double? = null,
     /** Posts the **plain number** on a hidden input, never the formatted text. */
@@ -3992,10 +3994,7 @@ fun interface PMPasswordInputRendering {
 
 // PhoneInput
 
-/**
- * PhoneInput's props (`design/components/phone-input.md`): A phone number, reported as one E.164
- * string.
- */
+/** PhoneInput's props (`design/components/phone-input.md`): A phone number as one E.164 string. */
 data class PMPhoneInputProps(
     val ariaDescribedby: String? = null,
     /** Wired by FormField; set directly only when there is no visible label. */
@@ -5686,7 +5685,7 @@ data class PMTagInputProps(
     val placeholder: String? = null,
     /**
      * What a removal announces in the host's words, the localization seam; the default is `{tag}
-     * removed, {count} remain`.
+     * removed, {count} remain`, and `{tag} removed, 1 remains` when one tag remains.
      */
     val removedLabel: ((String, Double) -> String)? = null,
     /**
@@ -6384,6 +6383,22 @@ data class PMCitationSource(
 )
 
 /**
+ * The web's `ColorInputMessages`, field for field (`SHAPES` in `packages/native/src/mapping.ts`).
+ */
+data class PMColorInputMessages(
+    /** The web’s saturation and brightness plane’s name. Default: `saturation and brightness`. */
+    val plane: String? = null,
+    /** The plane’s value text. Default: `saturation {saturation}, brightness {brightness}`. */
+    val planeValue: ((Double, Double) -> String)? = null,
+    /** The web’s hue rail’s name. Default: `hue`. */
+    val hue: String? = null,
+    /** The web’s alpha rail’s name. Default: `alpha`. */
+    val alpha: String? = null,
+    /** A rail’s value text, given its name and its value. Default: `{name} {value}`. */
+    val railValue: ((String, Double) -> String)? = null,
+)
+
+/**
  * The web's `ComboboxFilter`: `'contains'`, `'startsWith'`, `false`, one case each (`UNIONS` in
  * `packages/native/src/mapping.ts`).
  */
@@ -6402,7 +6417,7 @@ data class PMComboboxMessages(
     val clear: String? = null,
     /** The async status while the list loads. Default: `Loading options…`. */
     val loadingOptions: String? = null,
-    /** The async status naming the result count. Default: `{count} options`. */
+    /** The async status naming the result count. Default: `{count} options`, `1 option` for one. */
     val options: ((Double) -> String)? = null,
     /** The list’s accessible name on the web. Default: `Suggestions`. */
     val list: String? = null,
@@ -6895,7 +6910,7 @@ data class PMMultiSelectMessages(
     val remove: ((String) -> String)? = null,
     /** The async status while the list loads. Default: `Loading options…`. */
     val loadingOptions: String? = null,
-    /** The async status naming the result count. Default: `{count} options`. */
+    /** The async status naming the result count. Default: `{count} options`, `1 option` for one. */
     val options: ((Double) -> String)? = null,
 )
 
@@ -6926,6 +6941,16 @@ data class PMNumberFormat(
 )
 
 /**
+ * The web's `NumberInputMessages`, field for field (`SHAPES` in `packages/native/src/mapping.ts`).
+ */
+data class PMNumberInputMessages(
+    /** The step-up button’s name. Default: the strings catalogue’s `numberInputIncrement`. */
+    val increment: String? = null,
+    /** The step-down button’s name. Default: the strings catalogue’s `numberInputDecrement`. */
+    val decrement: String? = null,
+)
+
+/**
  * The web's `PaginationMessages`, field for field (`SHAPES` in `packages/native/src/mapping.ts`).
  */
 data class PMPaginationMessages(
@@ -6943,7 +6968,7 @@ data class PMPhoneInputMessages(
     val country: String? = null,
     /** The country list button’s name. Default: `Show countries`. */
     val showCountries: String? = null,
-    /** Announced while the list is open. Default: `{count} countries`. */
+    /** Announced while the list is open. Default: `{count} countries`, `1 country` for one. */
     val countriesShown: ((Double) -> String)? = null,
     /** The list’s one row when nothing matches the typed text. Default: `No matching country`. */
     val noCountry: String? = null,
@@ -6995,7 +7020,10 @@ data class PMPromptInputMessages(
     val remove: (String) -> String,
     /** The status announced while a chip’s file uploads. */
     val uploading: (String) -> String,
-    /** The status announced while the suggestion list is open. Default: `{count} suggestions`. */
+    /**
+     * The status announced while the suggestion list is open. Default: `{count} suggestions`, `1
+     * suggestion` for one.
+     */
     val suggestions: ((Double) -> String)? = null,
     /** The status while a trigger’s options load. Default: `Loading suggestions…`. */
     val loadingSuggestions: String? = null,

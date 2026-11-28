@@ -35,6 +35,7 @@ How it differs from its neighbours:
 | `prefix` / `suffix`                                              | `string`                          | —       | `input.md`'s affix rules, unchanged: strings only, muted, `aria-hidden` decoration; a unit that matters belongs in FormField's text. Use the format first. Affixes are for what Intl cannot express ("/mo", "per seat"), and an affix that repeats what `style: 'currency'` already shows is redundant |
 | `size` / `placeholder` / `disabled` / `readOnly` / `invalid` / `id` | Input's                        | —       | same as Input |
 | `name`                                                           | `string`                          | —       | posts the **plain number**, never the formatted text. The substrate puts it on a hidden input (react-aria's own mechanism), so `"$1,234.56"` cannot reach a server that expected `1234.56` |
+| `messages`                                                       | `NumberInputMessages`             | —       | *(WCAG 3.1.2)* the steppers' names, localized by passing them: `increment` and `decrement`. Partial: an omitted name keeps its default, React Aria's "Increase" and "Decrease" with the field's label on React, which React Aria says in the page's locale, and "increment value" and "decrease value" in the generated members (Icons, below) |
 
 ```ts
 /**
@@ -129,15 +130,21 @@ itself looks like the field is editing the user's input. At `none`: instant thro
 
 ## Icons
 
-`up` / `down`, decorative, on real buttons that the substrate names ("Increase" / "Decrease",
-localized, linked to the field's own label, with `aria-controls` pointing at the input).
+`up` / `down`, decorative, on real buttons named by `messages.increment` and `messages.decrement`,
+with `aria-controls` pointing at the input. Without them, React's are named by React Aria
+("Increase" / "Decrease", localized, linked to the field's own label), and the members generated
+from the description by their machine's English words, "increment value" and "decrease value",
+which the description passes to the machine as its translations.
 
 ## A11y
 
 The input is deliberately **not** a spinbutton. The substrate makes it a text field with
-`aria-roledescription` "number field" and `inputMode` `numeric`/`decimal` (for the right software
-keyboard), because a focusable spinbutton misbehaves under VoiceOver. This is react-aria's
-finding, adopted with the substrate. Arrow Up/Down step from the keyboard, and Home/End go to the
+`inputMode` `numeric`/`decimal` (for the right software keyboard), because a focusable spinbutton
+misbehaves under VoiceOver. This is react-aria's finding, adopted with the substrate. On React the
+field carries React Aria's `aria-roledescription` "number field", in the page's locale. The
+generated members give it no role description, because their machine's is the fixed English
+"numberfield", which VoiceOver would say in place of the field's role, so they are heard as the
+text field they are. Arrow Up/Down step from the keyboard, and Home/End go to the
 min and max. `autoCorrect`/`spellCheck` are off, because a number is not prose. The stepper
 buttons are real and reachable by pointer and assistive tech, but **excluded from the Tab
 order**. Arrows on the input already step, so two extra Tab stops per field would cost keyboard
@@ -146,7 +153,6 @@ add none of their own.
 
 ```contract
 role field textbox
-attr field aria-roledescription when with value
 key ArrowUp increments on field when with value
 key ArrowDown decrements on field when with value
 key Home decrements on field when with value

@@ -34,6 +34,7 @@ import {
   BORROWED_TYPE,
   IDENTITY_KEY,
   key,
+  machineSource,
   presenceEntries,
   presenceExpressions,
   relativeFile,
@@ -1008,7 +1009,7 @@ export function renderVueMember(
       `const documentDirection = useDirection(${place === undefined ? '' : `() => ${scriptExpr(place)}`})`,
     )
     lines.push(
-      `const service = useMachine(zag.machine, computed(() => ({ ${context.join(', ')} })))`,
+      `const service = useMachine(${machineSource(shell.machine)}, computed(() => ({ ${context.join(', ')} })))`,
     )
     lines.push('const api = computed(() => zag.connect(service, normalizeProps))')
   }

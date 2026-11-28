@@ -53,6 +53,7 @@ import {
   isIdentifier,
   isPrimitive,
   key,
+  machineSource,
   jsString,
   locations,
   partShell,
@@ -1152,7 +1153,7 @@ export function renderSvelteMember(
       `const documentDirection = useDirection(${place === undefined ? '' : `() => ${sx(place)}`})`,
     )
     body.push(
-      `const service = useMachine(zag.machine, () => ({ ${machineContext.join(', ')} }) as Partial<zag.Props>)`,
+      `const service = useMachine(${machineSource(shell.machine)}, () => ({ ${machineContext.join(', ')} }) as Partial<zag.Props>)`,
     )
     body.push('const api = $derived(zag.connect(service, normalizeProps))')
   }

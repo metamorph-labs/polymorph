@@ -31,7 +31,7 @@ component is a defect.
 | `inputValue` / `onInputChange` | `string` | uncontrolled | controlled pair for async apps driving queries |
 | `allowsCustomValue` | `boolean` | `false` | free text **is kept**. Blur keeps the draft instead of restoring the selected label. A commit that matches nothing sets the *selection* to `null` and keeps the text. The app reads the typed value through the controlled `inputValue` pair. These are React Aria's semantics, passed through, not reimplemented. When no option is selected, `name` serializes the typed text, because for this field the text is the value |
 | `onLoadMore` | `() => void` | — | *(paging)* fires when the highlight reaches the last row **or** the open listbox is scrolled to its end, while `loading` is false, at most once per `options` length. The app appends the next page to `options` and sets `loading`. The skeleton rows already render below the existing rows, so loading more reuses the loading recipe. The highlight position is the primary trigger *(WCAG 2.1.1: when the page fits the panel, keyboard navigation cannot reach a scroll edge, and assistive tech does not scroll)* |
-| `messages` | `ComboboxMessages` | English | *(WCAG 3.1.2)* the member's other strings, localized by passing them, as with `emptyMessage`: the chevron and clear labels, the async status ("Loading options…", "{n} options") and the list's name (`list`, "Suggestions"; A11y, below). Partial: an omitted string keeps its English default |
+| `messages` | `ComboboxMessages` | English | *(WCAG 3.1.2)* the member's other strings, localized by passing them, as with `emptyMessage`: the chevron and clear labels, the async status ("Loading options…", "{n} options", "1 option" for one) and the list's name (`list`, "Suggestions"; A11y, below). Partial: an omitted string keeps its English default |
 | `filter` | `'contains' \| 'startsWith' \| false` | `'contains'` | `useFilter` (locale-aware, through Intl). **`false` means the app has filtered** (async), so the member must not filter server results again |
 | `loading` | `boolean` | `false` | async loading; see below |
 | `emptyMessage` | `string` | `"No results"` | apps localize by passing |
@@ -142,8 +142,14 @@ React Aria's combobox pattern: `role="combobox"` + `aria-expanded` +
 without moving DOM focus. Escape closes the list and, in the same press, reverts the draft to
 the selected option's label, which is React Aria's order: with nothing selected the draft
 clears, and a committed selection is never cleared by Escape. Loading and empty states announce
-politely ("Loading options…", then "{n} options" or the empty message) through one live region,
-so the option count is not announced twice. The listbox is named by `messages.list`, then by the
+politely ("Loading options…", then "{n} options", "1 option" for one, or the empty message)
+through one live region, so the option count is not announced twice. On Apple platforms, where
+VoiceOver in Safari does not follow a combobox's `aria-activedescendant`, the highlighted option
+is also spoken in an assertive region of its own as the arrows move it. React's is React Aria's
+sentence, in the page's locale. A generated member's is its machine's, run as though nothing
+were chosen, so it says the option's label alone and never Zag's English ", selected". The cost:
+on Apple platforms a generated Combobox does not say which highlighted option is the chosen one,
+which the option carries as `aria-selected`. The listbox is named by `messages.list`, then by the
 field's label where `aria-labelledby` names the field: "Suggestions Assignee". Where `aria-label`
 names the field, or only a `<label for>` does, as FormField's does, the list's name is
 `messages.list` alone, and on React the chevron's name follows it, because React Aria labels the

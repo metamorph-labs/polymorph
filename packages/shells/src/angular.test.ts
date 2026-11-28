@@ -186,6 +186,36 @@ describe('the Angular renderer writes the anatomy as a template over the class�
     expect(source).toContain("protected e3(item: Each<ReturnType<Probe['e1']>>)")
   })
 
+  it('binds a range input’s bounds as properties before its value, which Angular sets first', () => {
+    // Angular sets property bindings before attribute bindings, and a range input clamps a value
+    // to the bounds it has when the value is set: a hue of 255 before `max` reads 100.
+    const source = probe(
+      {
+        template: el('input', {
+          attrs: { type: "'range'", value: 'hue', min: '0', max: 'top', step: '1' },
+        }),
+      },
+      [
+        { name: 'hue', type: 'number', optional: false },
+        { name: 'top', type: 'number', optional: false },
+      ],
+    )
+    expect(source).toMatch(
+      /<input\n\[min\]="e1\(\)"\n\[max\]="e2\(\)"\n\[step\]="e3\(\)"\ntype="range"\n\[value\]="e4\(\)"/,
+    )
+    expect(source).toContain('return fieldValue(this.$p.top)')
+    // Another input keeps its bounds as attributes, which a value outside them does not move.
+    const field = probe(
+      { template: el('input', { attrs: { type: 'kind', value: 'hue', max: 'top' } }) },
+      [
+        { name: 'kind', type: 'string', optional: false },
+        { name: 'hue', type: 'number', optional: false },
+        { name: 'top', type: 'number', optional: false },
+      ],
+    )
+    expect(field).toContain('[attr.max]=')
+  })
+
   it('writes a machine’s prop getters and the element’s own attributes as one object for `Spread`', () => {
     const source = probe({
       template: el('div', {

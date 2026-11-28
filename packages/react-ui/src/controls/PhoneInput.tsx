@@ -24,7 +24,7 @@ import { Input } from './Input'
 import styles from '@polymorph/recipes/controls/phone-input.module.css'
 
 /**
- * A phone number, reported as one E.164 string (`design/components/phone-input.md`).
+ * A phone number as one E.164 string (`design/components/phone-input.md`).
  *
  * The reader chooses a country, which gives the calling code, and types the national number. It
  * is a Combobox for the country and an Input for the number in one group. The engine's phone
@@ -42,7 +42,7 @@ export interface PhoneInputMessages {
   country?: string
   /** The country list button's name. Default: `Show countries`. */
   showCountries?: string
-  /** Announced while the list is open. Default: `{count} countries`. */
+  /** Announced while the list is open. Default: `{count} countries`, `1 country` for one. */
   countriesShown?: (count: number) => string
   /** The list's one row when nothing matches the typed text. Default: `No matching country`. */
   noCountry?: string
@@ -51,7 +51,7 @@ export interface PhoneInputMessages {
 const MESSAGES = {
   country: 'Country calling code',
   showCountries: 'Show countries',
-  countriesShown: (count: number) => `${count} countries`,
+  countriesShown: (count: number) => (count === 1 ? '1 country' : `${count} countries`),
   noCountry: 'No matching country',
 } satisfies Required<PhoneInputMessages>
 

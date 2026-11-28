@@ -162,7 +162,7 @@ export default describeMember({
   },
   derived: {
     sheeting: "presentation === 'auto' && phone",
-    say: "{ showOptions: 'Show options', clear: 'Clear', loadingOptions: 'Loading options…', options: (count: number) => `${count} options`, list: 'Suggestions', ...messages }",
+    say: "{ showOptions: 'Show options', clear: 'Clear', loadingOptions: 'Loading options…', options: (count: number) => (count === 1 ? '1 option' : `${count} options`), list: 'Suggestions', ...messages }",
     collator: "new Intl.Collator(undefined, { usage: 'search', sensitivity: 'base' })",
     needle: "(inputValue ?? query).normalize('NFC')",
     matches:
@@ -209,6 +209,11 @@ export default describeMember({
       onPointerDownOutside:
         '(event) => panel?.contains(event.detail.originalEvent.target as Node) && event.preventDefault()',
     },
+    // On Apple platforms the machine speaks the highlighted option in a live region of its own,
+    // because Safari's VoiceOver does not follow a combobox's active descendant. It adds
+    // ", selected" in English after a chosen option, so it runs as though nothing were chosen:
+    // it says the option's label alone, and the option carries `aria-selected`.
+    unchosen: ['announceHighlightedItem'],
     events: {
       onValueChange: { emit: 'change', payload: 'details.value[0] ?? null' },
       onInputValueChange: {
