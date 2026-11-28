@@ -103,9 +103,8 @@ const service = useMachine(
   })),
 )
 const api = computed(() => zag.connect(service, normalizeProps))
-const named = computed(() =>
-  [props.label, api.value.visibleRangeText.formatted].filter(Boolean).join(', '),
-)
+const title = computed(() => api.value.visibleRangeText.start)
+const named = computed(() => [props.label, title.value].filter(Boolean).join(', '))
 const previewing = computed(
   () =>
     api.value.value.length === 1 &&
@@ -182,7 +181,7 @@ watch(() => api.value.value.length, effect2, { flush: 'post' })
       />
       <!-- title -->
       <span :class="styles.title" aria-live="polite">
-        {{ api.visibleRangeText.formatted }}
+        {{ title }}
       </span>
       <Button
         variant="ghost"

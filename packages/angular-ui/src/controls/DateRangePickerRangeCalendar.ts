@@ -212,8 +212,9 @@ export class DateRangePickerRangeCalendar {
   protected readonly api: { readonly value: ReturnType<typeof zag.connect> } = derived(() =>
     zag.connect(this.service.value, normalizeProps),
   )
+  protected readonly title = derived(() => this.api.value.visibleRangeText.start)
   protected readonly named = derived(() =>
-    [this.$p.label, this.api.value.visibleRangeText.formatted].filter(Boolean).join(', '),
+    [this.$p.label, this.title.value].filter(Boolean).join(', '),
   )
   protected readonly previewing = derived(
     () =>
@@ -304,7 +305,7 @@ export class DateRangePickerRangeCalendar {
   }
 
   protected e7() {
-    return this.api.value.visibleRangeText.formatted
+    return this.title.value
   }
 
   protected e8(): ButtonProps['label'] {

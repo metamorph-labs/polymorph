@@ -121,7 +121,8 @@ const service = useMachine(
     }) as Partial<zag.Props>,
 )
 const api = $derived(zag.connect(service, normalizeProps))
-const named = $derived([label, api.visibleRangeText.formatted].filter(Boolean).join(', '))
+const title = $derived(api.visibleRangeText.start)
+const named = $derived([label, title].filter(Boolean).join(', '))
 const previewing = $derived(
   api.value.length === 1 &&
     api.weeks.some((week) =>
@@ -192,7 +193,7 @@ watchEffect(effect2, { watch: () => api.value.length })
         label={messages.previousMonth}
         disabled={disabled || api.getPrevTriggerProps().disabled === true}
         onClick={() => { api.goToPrev() }}
-      /><span class={styles.title} aria-live="polite">{api.visibleRangeText.formatted}</span
+      /><span class={styles.title} aria-live="polite">{title}</span
       ><Button
         variant="ghost"
         tone="neutral"

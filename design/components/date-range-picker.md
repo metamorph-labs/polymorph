@@ -154,7 +154,10 @@ the grid.
 ## A11y
 
 Grid semantics per `calendar.md` (real `<table>`, roving tabindex, `aria-live`
-month label). Each day's accessible name is the full formatted date, and the
+month label). The grid shows one month, so its title says that month and its year once, in the
+field's locale ("June 2026" in `en-US`), and the calendar and its grid are named by
+`messages.chooseRange` followed by the title ("Choose a date range, June 2026"). Each day's
+accessible name is the full formatted date, and the
 substrate describes the committed span on its cells ("Selected Range: …"), so colour is never
 the only sign that a day is in the range. Segments are spinbuttons per `date-picker.md`, and
 the group announces each completed date once. RTL: segment order, popper alignment and the

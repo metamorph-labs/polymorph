@@ -437,7 +437,11 @@ export default describeMember({
         english: "language.toLowerCase().startsWith('en')",
         // Today is the reader's today, in the reader's time zone.
         zone: 'Intl.DateTimeFormat().resolvedOptions().timeZone',
-        named: "[label, api.visibleRangeText.formatted].filter(Boolean).join(', ')",
+        // The grid shows one month, so its title is the month and year once, as React Aria's is:
+        // the visible range's start. In range mode Zag's `formatted` joins the start and the end,
+        // the same month twice.
+        title: 'api.visibleRangeText.start',
+        named: "[label, title].filter(Boolean).join(', ')",
         // React Aria's words for a day, in English only (`DAY_NAME`): a day in the range is
         // selected, as each day of a RangeCalendar's highlighted range is.
         dayName: DAY_NAME,
@@ -517,7 +521,7 @@ export default describeMember({
             ),
             // Live, because the grid cannot announce a month change itself.
             el('span', { part: 'title', class: ['title'], attrs: { 'aria-live': lit('polite') } }, [
-              text('api.visibleRangeText.formatted'),
+              text('title'),
             ]),
             member(
               'Button',

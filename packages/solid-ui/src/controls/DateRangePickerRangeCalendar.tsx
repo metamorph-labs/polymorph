@@ -116,9 +116,8 @@ export default function DateRangePickerRangeCalendar(
         }) as Partial<zag.Props>,
     )
     const api = createDerived(() => zag.connect(service, normalizeProps))
-    const named = createDerived(() =>
-      [props.label, api.value.visibleRangeText.formatted].filter(Boolean).join(', '),
-    )
+    const title = createDerived(() => api.value.visibleRangeText.start)
+    const named = createDerived(() => [props.label, title.value].filter(Boolean).join(', '))
     const previewing = createDerived(
       () =>
         api.value.value.length === 1 &&
@@ -199,7 +198,7 @@ export default function DateRangePickerRangeCalendar(
           />
           {/* title */}
           <span class={styles.title} aria-live="polite">
-            {api.value.visibleRangeText.formatted}
+            {title.value}
           </span>
           <Button
             variant="ghost"
