@@ -6549,9 +6549,15 @@ data class PMDateRangePickerMessages(
     val chooseRange: String,
     /** What an unfilled segment says as its value on the web. Default: `Empty`. */
     val empty: String? = null,
-    /** The start’s name on the web, said with each of its segments. Default: `Start date`. */
+    /**
+     * The start’s name, said after the field’s: with each of its segments on the web, and with its
+     * date on iOS. Default: `Start date`.
+     */
     val start: String? = null,
-    /** The end’s name on the web, said with each of its segments. Default: `End date`. */
+    /**
+     * The end’s name, said after the field’s: with each of its segments on the web, and with its
+     * date on iOS. Default: `End date`.
+     */
     val end: String? = null,
 )
 

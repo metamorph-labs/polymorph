@@ -119,7 +119,11 @@ named by the half, `messages.start` or `messages.end`, with the field's label, s
 reader says "Report range, Start Date, month…". Left out, the halves' names are React Aria's
 "Start Date" and "End Date" in the page's locale on React, and "Start date" and "End date" in
 English in a generated member. `start`, `end` and `empty` are optional, so a catalog written
-before them still fits. The en-dash never carries the meaning.
+before them still fits. The en-dash never carries the meaning. On iOS each of the field's two
+dates is a button named the same way, the field's label and then its half's word ("Report range,
+Start date"), with its date as its value and none while the range is empty. On Android the two
+dates are one button named by the field, whose value is both dates, so `start` and `end` name
+nothing there.
 
 ## States
 

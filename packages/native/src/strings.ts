@@ -1292,6 +1292,23 @@ export const SPEC_DEFAULTS: readonly SpecDefaultEntry[] = [
     comment: 'The name of the calendar a date range field opens.',
   },
   {
+    name: 'dateRangePickerStart',
+    spec: 'design/components/date-range-picker.md',
+    doc: "DateRangePicker's `messages.start`: the start's name, said after the field's.",
+    english: 'Start date',
+    comment: "The first date of a date range field, said after the field's name.",
+    // The Compose field is one button, which names neither end.
+    platforms: ['ios'],
+  },
+  {
+    name: 'dateRangePickerEnd',
+    spec: 'design/components/date-range-picker.md',
+    doc: "DateRangePicker's `messages.end`: the end's name, said after the field's.",
+    english: 'End date',
+    comment: "The last date of a date range field, said after the field's name.",
+    platforms: ['ios'],
+  },
+  {
     name: 'monthInputMessages',
     type: 'MonthInputMessages',
     spec: 'design/components/month-input.md',
