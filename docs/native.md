@@ -73,7 +73,9 @@ kinds:
   Textarea's `resize`, a sticky header in a scroll container the member does not own;
 - what a platform map adapts a member without: Citation's hover preview, Stat's spark on Android;
 - a name, a level or a state for something the platform's own control does not have: a month
-  button in Material's range picker, a heading's level on Android, a busy region on Android;
+  button in Material's range picker, a range's two ends in Compose's date field, which is one
+  button, a heading's level on Android, a busy region on Android, the value an unfilled date
+  segment says, where no native field has segments;
 - what the platform's text does not report: RichTextContent's selection bar (`selectionActions`
   and its `messages`) on iOS, because a SwiftUI Text with selection on copies its whole text and
   reports no selected range, and on Android, where the member's text is not selectable and
@@ -84,7 +86,12 @@ the identifier counts, whatever the rendering does with the value. A presence ch
 `props.rowDetail != nil` counts as a read, and so does a value read into a property that nothing
 draws. A reviewer still checks what a read does. The law reads source text: a read is
 `props.<field>` under a binding `props: PM<Member>Props`, and a field of another shape of the
-contract is read where a field of its name is read. Three things are exempt:
+contract is read where `.<field>` is written on a value of that shape. The law follows the value
+by the types the source writes and the values it hands on: `props.messages`, a parameter or a
+local typed as the shape, a local that starts with such a value, a closure's or a loop's
+parameter over a list of it, a pattern that binds a case's value, and a helper in a foundation
+file the value is handed to. A range's `start` is therefore not a read of a message's `start`.
+Three things are exempt:
 
 - a field the contract types `PMUnsupported…`, which is declared by its type and carries no
   value;

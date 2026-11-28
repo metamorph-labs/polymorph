@@ -32,12 +32,23 @@
  *   value to another member's props counts when that member reads the field it
  *   lands in, so a prop passed on to a member that drops it is not drawn.
  * - **A field of any other struct of the contract** (a shape a prop holds:
- *   `PMDataTableMessages`, `PMCitationSource`) is read where a field of its
- *   name is read, `.<field>`, in the file of the member the shape is named for
- *   or in a foundation file, and anywhere when no member's name starts the
- *   shape's. This rule goes by the name alone, so it cannot tell a shape's
- *   `label` from another value's. A shape the hand-written sources build is
- *   left out: the member writes it for the app to read, as an event's payload.
+ *   `PMDataTableMessages`, `PMCitationSource`) is read where `.<field>` is
+ *   written on a value of that struct, in the file of the member the shape is
+ *   named for or in a foundation file, and anywhere when no member's name
+ *   starts the shape's. A range's `start` is not a read of a message's
+ *   `start`. The law follows a value by the types the source writes and the
+ *   values it hands on (`typingOf`): a field the contract types as the struct
+ *   (`props.messages`), a name whose type is written as the struct (a
+ *   parameter, for its body; a property or a local), a local that starts with
+ *   such a value (`let messages = props.messages ?? …`), a case's value that a
+ *   pattern or a smart cast binds, a parameter of a closure or a loop handed a
+ *   list of the struct or the value itself, a key path's root, a function's
+ *   written result, and a parameter of a closure that is the value of a
+ *   function-typed field of the contract. An extension of the struct reads its
+ *   fields by their names alone. A write, `.<field> = …`, is not a read, and a
+ *   read from a value whose type the source does not say counts for no
+ *   struct. A shape the hand-written sources build is left out: the member
+ *   writes it for the app to read, as an event's payload.
  *
  * Three things are exempt:
  *
@@ -576,6 +587,854 @@ export function drawnFields(
   return drawn
 }
 
+/**
+ * A value's type as the law follows it: a struct by name, a list of a type,
+ * Kotlin's `PMSome` around one, or an element with its index (Swift's
+ * `enumerated()` pair, Kotlin's `IndexedValue`).
+ */
+type Shape =
+  | { readonly struct: string }
+  | { readonly list: Shape }
+  | { readonly some: Shape }
+  | { readonly pair: Shape }
+
+const shapeKey = (shape: Shape): string =>
+  'struct' in shape
+    ? shape.struct
+    : 'list' in shape
+      ? `[${shapeKey(shape.list)}]`
+      : 'some' in shape
+        ? `some(${shapeKey(shape.some)})`
+        : `pair(${shapeKey(shape.pair)})`
+
+/** The structs a law reads fields of: each struct's name, then each field's written type. */
+type Structs = ReadonlyMap<string, ReadonlyMap<string, string>>
+
+/** The collections whose first type argument is their element. */
+const COLLECTIONS = new Set([
+  'Array',
+  'ArraySlice',
+  'Collection',
+  'Iterable',
+  'List',
+  'MutableList',
+  'MutableSet',
+  'Sequence',
+  'Set',
+])
+
+/**
+ * The shape a written type names: `PMDateRange?`, `[PMAccordionItem]`,
+ * `List<PMAccordionItem>`, `PMSome<PMDateRange?>? = null`. A function, a
+ * tuple, a dictionary, a dotted name and a type whose name does not start
+ * with `PM` name none.
+ */
+function shapeOfType(written: string): Shape | undefined {
+  const type = written
+    .replace(/\s=\s[\s\S]*$/, '')
+    .trim()
+    .replace(/^(?:@\w+(?:\([^)]*\))?\s*|inout\s+)+/, '')
+    .replace(/[?!]+$/, '')
+    .trim()
+  const square = /^\[([\s\S]*)\]$/.exec(type)
+  if (square !== null) {
+    const inner = square[1] as string
+    let depth = 0
+    for (const char of inner) {
+      if ('([<'.includes(char)) depth += 1
+      else if (')]>'.includes(char)) depth -= 1
+      else if (char === ':' && depth === 0) return undefined
+    }
+    const element = shapeOfType(inner)
+    return element === undefined ? undefined : { list: element }
+  }
+  const named = /^([A-Za-z_]\w*)\s*(?:<([\s\S]*)>)?$/.exec(type)
+  if (named === null) return undefined
+  const name = named[1] as string
+  const argument = named[2]
+  if (argument !== undefined && (COLLECTIONS.has(name) || name === 'PMSome')) {
+    const comma = topLevelComma(argument, 0, argument.length)
+    const inner = shapeOfType(comma === -1 ? argument : argument.slice(0, comma))
+    if (inner === undefined) return undefined
+    return name === 'PMSome' ? { some: inner } : { list: inner }
+  }
+  return /^PM[A-Z]/.test(name) ? { struct: name } : undefined
+}
+
+/**
+ * The shape of each parameter of a written function type, in order:
+ * `(@MainActor (PMFilterResultCount) -> String)?` in Swift,
+ * `((PMFilterResultCount) -> String)? = null` in Kotlin.
+ */
+function parameterShapes(written: string): Shape[][] {
+  let type = written
+    .replace(/\s=\s[\s\S]*$/, '')
+    .trim()
+    .replace(/\?$/, '')
+  // The parentheses around an optional function type.
+  while (type.startsWith('(') && closeOf(type, 0) === type.length - 1)
+    type = type.slice(1, -1).trim()
+  type = type.replace(/^(?:@\w+\s*)+/, '')
+  if (!type.startsWith('(')) return []
+  const close = closeOf(type, 0)
+  if (!/^\s*->/.test(type.slice(close + 1))) return []
+  const list = type.slice(1, close)
+  const shapes: Shape[][] = []
+  for (let from = 0; from <= list.length;) {
+    const comma = topLevelComma(list, from, list.length)
+    const to = comma === -1 ? list.length : comma
+    const part = list.slice(from, to).replace(/^\s*\w+\s*:(?!:)/, '')
+    const shape = shapeOfType(part)
+    shapes.push(shape === undefined ? [] : [shape])
+    from = to + 1
+  }
+  return shapes
+}
+
+/** The methods of a list that return one of its elements. */
+const ELEMENT_METHODS = new Set([
+  'elementAt',
+  'find',
+  'first',
+  'firstOrNull',
+  'getOrNull',
+  'last',
+  'lastOrNull',
+  'randomElement',
+  'single',
+  'singleOrNull',
+])
+
+/** The methods of a list that return a list of its elements. */
+const LIST_METHODS = new Set([
+  'drop',
+  'dropFirst',
+  'dropLast',
+  'filter',
+  'filterNot',
+  'orEmpty',
+  'prefix',
+  'reversed',
+  'shuffled',
+  'sorted',
+  'sortedBy',
+  'sortedByDescending',
+  'suffix',
+  'take',
+])
+
+/** The methods of a list that pair each element with its index. */
+const INDEXED_METHODS = new Set(['enumerated', 'withIndex'])
+
+/** Kotlin's methods whose lambda takes an element's index, then the element. */
+const INDEXED_LAMBDAS = new Set([
+  'filterIndexed',
+  'forEachIndexed',
+  'itemsIndexed',
+  'mapIndexed',
+  'mapIndexedNotNull',
+])
+
+/**
+ * Kotlin's scope functions: their lambda takes the value itself, and
+ * `takeIf`, `takeUnless`, `also` and `apply` return it.
+ */
+const SCOPE_FUNCTIONS = new Set(['also', 'apply', 'let', 'run', 'takeIf', 'takeUnless'])
+const RETURNS_RECEIVER = new Set(['also', 'apply', 'takeIf', 'takeUnless'])
+
+/** The words before which a `.` starts an implicit member, not a member of the word. */
+const KEYWORDS = new Set([
+  'as',
+  'await',
+  'case',
+  'default',
+  'else',
+  'for',
+  'guard',
+  'if',
+  'in',
+  'is',
+  'let',
+  'return',
+  'switch',
+  'throw',
+  'try',
+  'val',
+  'var',
+  'when',
+  'where',
+  'while',
+])
+
+/** What a closure's parameters stand for. */
+interface Subject {
+  /** The value the closure is handed: a list whose elements it takes, or a value it takes whole. */
+  shapes: readonly Shape[]
+  /** The method the closure is handed to, when it is one: `map`, `let`, `forEachIndexed`. */
+  method?: string
+  /** Each parameter's shapes, when the closure is the value of a function-typed contract field. */
+  fixed?: readonly (readonly Shape[])[]
+}
+
+/** The shapes of parameter `index` of a closure with `count` parameters. */
+function parameterOf(subject: Subject, index: number, count: number): Shape[] {
+  if (subject.fixed !== undefined) return [...(subject.fixed[index] ?? [])]
+  const method = subject.method ?? ''
+  if (SCOPE_FUNCTIONS.has(method)) return index === 0 ? [...subject.shapes] : []
+  const indexed = INDEXED_LAMBDAS.has(method)
+  const found: Shape[] = []
+  for (const shape of subject.shapes) {
+    if (!('list' in shape)) {
+      if (index === 0) found.push(shape)
+      continue
+    }
+    const element = shape.list
+    if (indexed) {
+      if (index === 1) found.push(element)
+    } else if ('pair' in element && count > 1) {
+      if (index === 1) found.push(element.pair)
+    } else {
+      found.push(element)
+    }
+  }
+  return found
+}
+
+interface Closure {
+  open: number
+  close: number
+  subject: Subject
+}
+
+/** What one file says about the values its names hold. */
+interface Typing {
+  code: string
+  /** The contract's structs, and Kotlin's sealed cases that carry a value (`PMMenuEntry.Label`). */
+  structs: Structs
+  /**
+   * Each name's shapes, for the whole file: from the type written for a
+   * property or a local, the value a local starts with, a pattern it is bound
+   * by, or the closure or the loop it is a parameter of.
+   */
+  names: Map<string, Shape[]>
+  /** Each parameter whose type is written, with its function's or its closure's body. */
+  parameters: { name: string; shapes: Shape[]; from: number; to: number }[]
+  /**
+   * Each name's shapes from every type written for it, parameters included:
+   * the fallback for a member of a value the file does not type.
+   */
+  members: Map<string, Shape[]>
+  /** Each function's result, by the function's name. */
+  results: Map<string, Shape[]>
+  /** The closures with a subject, for `$0`, `$1` and `it`. */
+  closures: Closure[]
+}
+
+/** The shapes of a name written alone at `at`: its innermost parameter, else the file's. */
+function nameShapes(typing: Typing, name: string, at: number): Shape[] {
+  const parameter = typing.parameters
+    .filter((candidate) => candidate.name === name && candidate.from <= at && at <= candidate.to)
+    .sort((a, b) => a.to - a.from - (b.to - b.from))[0]
+  return parameter === undefined ? (typing.names.get(name) ?? []) : parameter.shapes
+}
+
+/**
+ * The body a parameter whose type is written at `at` is in scope for: its
+ * closure's, `{ (value: PMType) in … }`, or its function's, `func f(value:
+ * PMType) { … }`, `fun f(value: PMType) = …`. Undefined when `at` is in no
+ * parameter list.
+ */
+function parameterScope(
+  code: string,
+  at: number,
+  closes: ReadonlyMap<number, number>,
+): [number, number] | undefined {
+  const list = enclosing(code, at, '(')
+  if (list === -1) return undefined
+  const before = back(code, list)
+  if (before >= 0 && code[before] === '{') return [before, closes.get(before) ?? code.length]
+  const head = code.slice(Math.max(0, list - 300), list)
+  if (!/\b(?:func|fun|init|subscript|constructor)\b[^(){};]*$/.test(head)) return undefined
+  const close = closeOf(code, list)
+  const body = /[{=]/.exec(code.slice(close))
+  if (body === null) return undefined
+  const start = close + body.index
+  return body[0] === '{'
+    ? [start, closes.get(start) ?? code.length]
+    : [start, expressionEnd(code, list, start)]
+}
+
+const add = (into: Map<string, Shape[]>, name: string, shapes: readonly Shape[]): boolean => {
+  const known = into.get(name) ?? []
+  const fresh = shapes.filter((shape) => !known.some((had) => shapeKey(had) === shapeKey(shape)))
+  if (fresh.length === 0) return false
+  into.set(name, [...known, ...fresh])
+  return true
+}
+
+/** The offset of the bracket that opens the one that closes at `close`, or -1. */
+function openOf(code: string, close: number): number {
+  const closer = code[close] as string
+  const opener = closer === ')' ? '(' : closer === ']' ? '[' : '{'
+  let depth = 0
+  for (let at = close; at >= 0; at -= 1) {
+    if (code[at] === closer) depth += 1
+    else if (code[at] === opener) {
+      depth -= 1
+      if (depth === 0) return at
+    }
+  }
+  return -1
+}
+
+/** The last offset before `at` that is not white space, or -1. */
+function back(code: string, at: number): number {
+  let from = at - 1
+  while (from >= 0 && /\s/.test(code[from] as string)) from -= 1
+  return from
+}
+
+/** Where the identifier that ends at `last` starts. */
+function identifierStart(code: string, last: number): number {
+  let from = last
+  while (from > 0 && /[\w$`]/.test(code[from - 1] as string)) from -= 1
+  return from
+}
+
+/** The identifier that ends at `last`, backticks left out. */
+const identifierAt = (code: string, last: number): string =>
+  code.slice(identifierStart(code, last), last + 1).replace(/`/g, '')
+
+/** Each shape a member named `name` of a value of `shapes` has. */
+function memberShapes(typing: Typing, shapes: readonly Shape[], name: string): Shape[] {
+  const found: Shape[] = []
+  for (const shape of shapes) {
+    if ('struct' in shape) {
+      const written = typing.structs.get(shape.struct)?.get(name)
+      const field = written === undefined ? undefined : shapeOfType(written)
+      if (field !== undefined) found.push(field)
+    } else if ('some' in shape) {
+      if (name === 'value') found.push(shape.some)
+    } else if ('pair' in shape) {
+      if (name === 'element' || name === 'value') found.push(shape.pair)
+    } else if (ELEMENT_METHODS.has(name)) {
+      found.push(shape.list)
+    }
+  }
+  return found
+}
+
+/**
+ * What a call of `callee` on a value of `receiver` returns, or a call of
+ * `callee` alone when `receiver` is undefined.
+ */
+function callShapes(
+  typing: Typing,
+  callee: string,
+  receiver: readonly Shape[] | undefined,
+): Shape[] {
+  const found: Shape[] = []
+  for (const shape of receiver ?? []) {
+    if (RETURNS_RECEIVER.has(callee)) found.push(shape)
+    else if (!('list' in shape)) continue
+    else if (ELEMENT_METHODS.has(callee)) found.push(shape.list)
+    else if (LIST_METHODS.has(callee)) found.push(shape)
+    else if (INDEXED_METHODS.has(callee)) found.push({ list: { pair: shape.list } })
+  }
+  if (found.length > 0) return found
+  if (receiver === undefined && typing.structs.has(callee)) return [{ struct: callee }]
+  return typing.results.get(callee) ?? []
+}
+
+/**
+ * The call that the argument at `at` is written in: where its arguments open,
+ * the callee's name, and the shapes of the value the callee is a method of,
+ * undefined when it is a function.
+ */
+function callAround(
+  typing: Typing,
+  at: number,
+): { open: number; callee: string; receiver: Shape[] | undefined } | undefined {
+  const { code } = typing
+  const open = enclosing(code, at, '(')
+  const calleeEnd = open === -1 ? -1 : back(code, open)
+  if (calleeEnd < 0 || !/[\w`]/.test(code[calleeEnd] as string)) return undefined
+  const start = identifierStart(code, calleeEnd)
+  const callee = identifierAt(code, calleeEnd)
+  const dot = back(code, start)
+  const receiver = dot >= 0 && code[dot] === '.' ? shapesBefore(typing, dot) : undefined
+  return { open, callee, receiver }
+}
+
+/**
+ * The value a key path starts from: an element of the list the call it is an
+ * argument of works through, `ForEach(items, id: \.id)`, `items.map(\.value)`.
+ */
+function keyPathRoot(typing: Typing, slash: number): Shape[] {
+  const call = callAround(typing, slash)
+  if (call === undefined) return []
+  const list = call.receiver ?? headShapes(typing, call.open + 1, closeOf(typing.code, call.open))
+  return list.flatMap((shape) => ('list' in shape ? [shape.list] : []))
+}
+
+/**
+ * The shapes of the value of the expression that ends at `end` (exclusive): a
+ * name, a member of a value, a key path's root, a call, a subscript, a
+ * trailing closure's call, or a group, whose value is its first operand's.
+ */
+function shapesBefore(typing: Typing, end: number, depth = 0): Shape[] {
+  const { code } = typing
+  if (depth > 16) return []
+  let at = back(code, end)
+  if (at >= 0 && code[at] === '\\') return keyPathRoot(typing, at)
+  // Optional chaining and unwrapping, written against the value: `value?`, `value!!`.
+  if (at >= 0 && /[?!]/.test(code[at] as string)) {
+    while (at >= 0 && /[?!]/.test(code[at] as string)) at -= 1
+    if (at < 0 || /\s/.test(code[at] as string)) return []
+  }
+  if (at < 0) return []
+  const char = code[at] as string
+  if (/[\w$`]/.test(char)) {
+    const start = identifierStart(code, at)
+    const name = identifierAt(code, at)
+    const dot = back(code, start)
+    if (dot >= 0 && code[dot] === '.' && code[dot - 1] !== '.') {
+      const receiver = shapesBefore(typing, dot, depth + 1)
+      const found = memberShapes(typing, receiver, name)
+      return found.length > 0 ? found : (typing.members.get(name) ?? [])
+    }
+    if (KEYWORDS.has(name)) return []
+    const implicit = /^\$(\d)$/.exec(name)
+    if (implicit !== null || name === 'it') {
+      const closure = typing.closures
+        .filter((candidate) => candidate.open < start && start < candidate.close)
+        .sort((a, b) => b.open - a.open)[0]
+      if (closure === undefined) return []
+      const index = implicit === null ? 0 : Number(implicit[1])
+      return parameterOf(closure.subject, index, index + 1)
+    }
+    return nameShapes(typing, name, start)
+  }
+  if (char === ')' || char === '}') {
+    const open = openOf(code, at)
+    if (open === -1) return []
+    const calleeEnd = back(code, open)
+    // A trailing closure after a call's arguments: `items.first(where:) { … }`.
+    if (char === '}' && calleeEnd >= 0 && code[calleeEnd] === ')') {
+      return shapesBefore(typing, calleeEnd + 1, depth + 1)
+    }
+    if (calleeEnd >= 0 && /[\w`]/.test(code[calleeEnd] as string)) {
+      const start = identifierStart(code, calleeEnd)
+      const callee = identifierAt(code, calleeEnd)
+      const dot = back(code, start)
+      if (dot >= 0 && code[dot] === '.') {
+        return callShapes(typing, callee, shapesBefore(typing, dot, depth + 1))
+      }
+      if (KEYWORDS.has(callee)) return []
+      // `Array(items)`, `Array(items.enumerated())`: the argument's value.
+      if (char === ')' && (callee === 'Array' || callee === 'List' || callee === 'Set')) {
+        return headShapes(typing, open + 1, at, depth + 1)
+      }
+      return callShapes(typing, callee, undefined)
+    }
+    return char === ')' ? headShapes(typing, open + 1, at, depth + 1) : []
+  }
+  if (char === ']') {
+    const open = openOf(code, at)
+    const before = open === -1 ? -1 : back(code, open)
+    if (before < 0 || !/[\w)\]?!]/.test(code[before] as string)) return []
+    return shapesBefore(typing, open, depth + 1).flatMap((shape) =>
+      'list' in shape ? [shape.list] : [],
+    )
+  }
+  return []
+}
+
+/**
+ * The shapes of the first operand of the expression from `from` to `to`: what
+ * comes before its first `??`, `?:`, `,`, `;`, `else`, `where`, or a line end
+ * outside brackets. A brace ends it when it opens the body of a Swift `if let`
+ * or `guard let` (`condition`); otherwise it opens a trailing closure, which
+ * the expression goes on past. A conditional's value is its first branch's:
+ * Swift's `c ? a : b`, Kotlin's `if (c) a else b`.
+ */
+function headShapes(
+  typing: Typing,
+  from: number,
+  to: number,
+  depth = 0,
+  condition = false,
+): Shape[] {
+  const { code } = typing
+  if (depth > 16) return []
+  let start = from
+  while (start < to && /\s/.test(code[start] as string)) start += 1
+  const branch = /^if\s*\(/.exec(code.slice(start, start + 8))
+  if (branch !== null) {
+    let body = closeOf(code, start + branch[0].length - 1) + 1
+    while (body < to && /\s/.test(code[body] as string)) body += 1
+    return code[body] === '{'
+      ? headShapes(typing, body + 1, closeOf(code, body), depth + 1)
+      : headShapes(typing, body, to, depth + 1)
+  }
+  let level = 0
+  for (let at = start; at < to; at += 1) {
+    const char = code[at] as string
+    if (char === '(' || char === '[') level += 1
+    else if (char === ')' || char === ']') level -= 1
+    if (level < 0) return shapesBefore(typing, at, depth)
+    if (level > 0) continue
+    if (char === '{' && !condition) {
+      at = closeOf(code, at)
+      continue
+    }
+    const rest = code.slice(at, at + 7)
+    if (/^\s\?\s/.test(rest)) return headShapes(typing, at + 3, to, depth + 1, condition)
+    if (
+      /^(?:\?\?|\?:|,|;|\{|\n)/.test(rest) ||
+      /^\s(?:else|where)\b/.test(rest) ||
+      /^\s:\s/.test(rest)
+    ) {
+      // A chain broken over lines goes on: `props.messages\n  .start`.
+      if (char === '\n' && /^\s*\./.test(code.slice(at + 1, at + 200))) continue
+      return shapesBefore(typing, at, depth)
+    }
+  }
+  return shapesBefore(typing, to, depth)
+}
+
+/**
+ * What the parameters of the closure that opens at `open` stand for: the list
+ * or the value of the method it is handed to (`items.map { … }`,
+ * `value?.let { … }`), the first argument of a function it is the trailing or
+ * a named argument of (`ForEach(items) { … }`, `items(lines, key = { … })`),
+ * or the parameters of the contract's function-typed field it is the value
+ * of (`PMFilterBarMessages(resultCount: { count in … })`).
+ */
+function subjectOf(typing: Typing, open: number): Subject | undefined {
+  const { code } = typing
+  const before = back(code, open)
+  if (before < 0) return undefined
+  const char = code[before] as string
+  if (/[\w`]/.test(char)) {
+    // `items.forEach { … }`, `value?.let { … }`.
+    const start = identifierStart(code, before)
+    const dot = back(code, start)
+    if (dot < 0 || code[dot] !== '.') return undefined
+    return { shapes: shapesBefore(typing, dot), method: identifierAt(code, before) }
+  }
+  if (char === ')') {
+    // A trailing closure: `items.map(…) { … }`, `ForEach(items, id: \.value) { … }`.
+    const call = openOf(code, before)
+    const calleeEnd = call === -1 ? -1 : back(code, call)
+    if (calleeEnd < 0 || !/[\w`]/.test(code[calleeEnd] as string)) return undefined
+    const start = identifierStart(code, calleeEnd)
+    const method = identifierAt(code, calleeEnd)
+    const dot = back(code, start)
+    return dot >= 0 && code[dot] === '.'
+      ? { shapes: shapesBefore(typing, dot), method }
+      : { shapes: headShapes(typing, call + 1, before), method }
+  }
+  if (char === '(' || char === ',' || char === ':' || (char === '=' && code[before - 1] !== '=')) {
+    const call = callAround(typing, open)
+    if (call === undefined) return undefined
+    const label = char === ':' || char === '=' ? back(code, before) : -1
+    const field =
+      label >= 0 && call.receiver === undefined
+        ? typing.structs.get(call.callee)?.get(identifierAt(code, label))
+        : undefined
+    if (field !== undefined) return { shapes: [], fixed: parameterShapes(field) }
+    if (call.receiver !== undefined) return { shapes: call.receiver, method: call.callee }
+    // A named argument of a function, after its first: `items(lines, key = { … })`.
+    if (char !== '(') {
+      return { shapes: headShapes(typing, call.open + 1, open), method: call.callee }
+    }
+  }
+  return undefined
+}
+
+/**
+ * The names a closure's or a loop's parameter list declares, in order:
+ * `item`, `index, item`, `(a, b)`. A parameter with no name, `_`, keeps its
+ * place as an empty name.
+ */
+const parameterNames = (list: string): string[] =>
+  list
+    .replace(/[()]/g, ' ')
+    .split(',')
+    .map((part) => (part.split(':')[0] as string).trim())
+    .map((name) => (/^[A-Za-z]\w*$/.test(name) ? name : ''))
+
+/**
+ * What the contract's enums carry. In Swift, each case that holds a value, by
+ * the case's name (`case band(PMChartBandAnnotation)`), for a pattern that
+ * binds it (`case .band(let band)`). In Kotlin, each case of a sealed
+ * interface that holds a value, as a struct of one field, `value`
+ * (`PMMenuEntry.Label`), for a smart cast (`is PMMenuEntry.Label`).
+ */
+function contractCases(
+  contract: string,
+  language: NativeLanguage,
+): { cases: Map<string, Shape[]>; nested: Map<string, Map<string, string>> } {
+  const cases = new Map<string, Shape[]>()
+  const nested = new Map<string, Map<string, string>>()
+  let current: string | null = null
+  for (const line of contract.split('\n')) {
+    const opened =
+      language === 'swift'
+        ? /^public enum (PM\w+)\b/.exec(line)
+        : /^sealed interface (PM\w+)\b/.exec(line)
+    if (opened !== null) {
+      current = opened[1] as string
+    } else if (/^\}/.test(line)) {
+      current = null
+    } else if (current !== null) {
+      if (language === 'swift') {
+        const found = /^ {2}case (\w+)\((?:\w+:\s*)?([^,]+)\)$/.exec(line)
+        const shape = found === null ? undefined : shapeOfType(found[2] as string)
+        if (found !== null && shape !== undefined) add(cases, found[1] as string, [shape])
+      } else {
+        const found = /^ {4}data class (\w+)\(val value: (.+)\) : /.exec(line)
+        if (found !== null) {
+          nested.set(`${current}.${found[1]}`, new Map([['value', found[2] as string]]))
+        }
+      }
+    }
+  }
+  return { cases, nested }
+}
+
+/**
+ * What a file says about the values its names hold: each name with a type
+ * written for it, each local that starts with a value the law can follow, each
+ * name a pattern or a smart cast binds to a case's value, each parameter of a
+ * closure or a loop handed a list or a value, and each function's result. A
+ * parameter whose type is written is typed for its function's or its
+ * closure's body. Every other name is typed for the whole file, not for its
+ * scope, which errs towards a read.
+ */
+function typingOf(
+  code: string,
+  structs: Structs,
+  cases: ReadonlyMap<string, readonly Shape[]>,
+  language: NativeLanguage,
+): Typing {
+  const typing: Typing = {
+    code,
+    structs,
+    names: new Map(),
+    parameters: [],
+    members: new Map(),
+    results: new Map(),
+    closures: [],
+  }
+  // Each brace's partner, in one pass: a file has thousands.
+  const closes = new Map<number, number>()
+  const stack: number[] = []
+  for (let at = 0; at < code.length; at += 1) {
+    if (code[at] === '{') stack.push(at)
+    else if (code[at] === '}') {
+      const open = stack.pop()
+      if (open !== undefined) closes.set(open, at)
+    }
+  }
+
+  // A type written for a name: a parameter, a stored or computed property, a local.
+  for (const match of code.matchAll(/(?<![\w.$])([A-Za-z_]\w*)\s*:(?!:)\s*/g)) {
+    let at = match.index + match[0].length
+    let level = 0
+    const from = at
+    for (; at < code.length; at += 1) {
+      const char = code[at] as string
+      if (char === '-' && code[at + 1] === '>') {
+        at += 1
+        continue
+      }
+      if ('([<'.includes(char)) level += 1
+      else if (')]>'.includes(char)) {
+        if (level === 0) break
+        level -= 1
+      } else if (level === 0 && /[,={;\n]/.test(char)) break
+    }
+    const shape = shapeOfType(code.slice(from, at))
+    if (shape === undefined) continue
+    const name = match[1] as string
+    add(typing.members, name, [shape])
+    const scope = parameterScope(code, match.index, closes)
+    if (scope === undefined) add(typing.names, name, [shape])
+    else typing.parameters.push({ name, shapes: [shape], from: scope[0], to: scope[1] })
+  }
+
+  // A case's value bound by a pattern, `case .band(let band)`, or a smart
+  // cast, `entry is PMMenuEntry.Label`.
+  if (language === 'swift') {
+    for (const match of code.matchAll(
+      /\.(\w+)\(\s*(?:let|var)\s+(\w+)\s*\)|\b(?:let|var)\s+\.(\w+)\(\s*(\w+)\s*\)/g,
+    )) {
+      const shapes = cases.get((match[1] ?? match[3]) as string) ?? []
+      add(typing.names, (match[2] ?? match[4]) as string, shapes)
+    }
+  } else {
+    for (const match of code.matchAll(/\b(\w+)\s+is\s+(PM\w+(?:\.\w+)?)/g)) {
+      add(typing.names, match[1] as string, [{ struct: match[2] as string }])
+    }
+    for (const match of code.matchAll(/\bwhen\s*\(\s*(?:val\s+(\w+)\s*=\s*)?([^)]*?)\s*\)\s*\{/g)) {
+      const subject = match[1] ?? /(\w+)\W*$/.exec(match[2] as string)?.[1]
+      if (subject === undefined) continue
+      const open = match.index + match[0].length - 1
+      const body = code.slice(open, closeOf(code, open))
+      for (const branch of body.matchAll(/(?:^|[\s,{])is\s+(PM\w+(?:\.\w+)?)/g)) {
+        add(typing.names, subject, [{ struct: branch[1] as string }])
+      }
+    }
+  }
+
+  // A function's result: `func name(…) -> PMType`, `fun name(…): PMType`.
+  const callable =
+    language === 'swift'
+      ? /\bfunc\s+(\w+)\s*(?:<[^>]*>)?\s*\(/g
+      : /\bfun\s+(?:<[^>]*>\s*)?(?:\w+\s*\.\s*)?(\w+)\s*\(/g
+  for (const match of code.matchAll(callable)) {
+    const close = closeOf(code, match.index + match[0].length - 1)
+    const result = (
+      language === 'swift' ? /^\s*(?:async\s+)?(?:throws\s+)?->\s*([^{\n]+)/ : /^\s*:\s*([^{=\n]+)/
+    ).exec(code.slice(close + 1, close + 400))
+    const shape =
+      result === null
+        ? undefined
+        : shapeOfType((result[1] as string).replace(/\bwhere\b[\s\S]*$/, ''))
+    if (shape !== undefined) add(typing.results, match[1] as string, [shape])
+  }
+
+  const opens = [...closes].map(([open, close]) => {
+    const head =
+      language === 'swift'
+        ? /^\{\s*(?:\[[^\]\n]*\]\s*)?(\([^()\n]*\)|\w+(?:\s*,\s*\w+)*)(?:\s*->[^{}\n]*?)?\s+in\b/.exec(
+            code.slice(open, open + 160),
+          )
+        : /^\{\s*(\([\w\s,]*\)|\w+(?:\s*,\s*\w+)*)\s*->/.exec(code.slice(open, open + 160))
+    return { open, close, names: head === null ? [] : parameterNames(head[1] as string) }
+  })
+  const assignments = [...code.matchAll(/\b(?:let|var|val)\s+([A-Za-z_]\w*)\s*=(?!=)/g)]
+  const loops =
+    language === 'swift'
+      ? [...code.matchAll(/\bfor\s+(?:case\s+let\s+)?(\(\s*\w+(?:\s*,\s*\w+)*\s*\)|\w+)\s+in\s+/g)]
+      : [...code.matchAll(/\bfor\s*\(\s*(\(\s*\w+(?:\s*,\s*\w+)*\s*\)|\w+)\s+in\s+/g)]
+
+  // The values flow from one name to the next, so the table is filled until it stops growing.
+  for (let pass = 0, grew = true; grew && pass < 8; pass += 1) {
+    grew = false
+    for (const match of assignments) {
+      const from = match.index + match[0].length
+      // `if let`, `guard let`, `while let` and a later binding of the same condition end at a brace.
+      const condition = /(?:\b(?:if|guard|while)|,)\s*$/.test(
+        code.slice(Math.max(0, match.index - 12), match.index),
+      )
+      const shapes = headShapes(typing, from, Math.min(code.length, from + 400), 0, condition)
+      if (add(typing.names, match[1] as string, shapes)) grew = true
+    }
+    for (const match of loops) {
+      const from = match.index + match[0].length
+      const end =
+        language === 'swift'
+          ? code.indexOf('{', from)
+          : closeOf(code, code.indexOf('(', match.index))
+      if (end === -1) continue
+      const names = parameterNames(match[1] as string)
+      const subject: Subject = { shapes: headShapes(typing, from, end) }
+      names.forEach((name, index) => {
+        if (name !== '' && add(typing.names, name, parameterOf(subject, index, names.length))) {
+          grew = true
+        }
+      })
+    }
+    typing.closures = []
+    for (const { open, close, names } of opens) {
+      const subject = subjectOf(typing, open)
+      if (subject === undefined) continue
+      if (names.length === 0) typing.closures.push({ open, close, subject })
+      names.forEach((name, index) => {
+        if (name !== '' && add(typing.names, name, parameterOf(subject, index, names.length))) {
+          grew = true
+        }
+      })
+    }
+  }
+  return typing
+}
+
+/** A place a rendering reads a field of a value of one of the contract's structs. */
+interface ShapeRead {
+  struct: string
+  field: string
+  /** Set when the read only builds the member's identifier. */
+  identity: boolean
+}
+
+/**
+ * Every read of a field named in `fields`, `.<field>`, in a file, with the
+ * struct of the value it is read from. A write, `.<field> = …`, is not a read,
+ * and a read from a value whose shape the file does not say counts for no
+ * struct.
+ */
+function shapeReads(
+  file: Prepared,
+  structs: Structs,
+  cases: ReadonlyMap<string, readonly Shape[]>,
+  fields: ReadonlySet<string>,
+  language: NativeLanguage,
+): ShapeRead[] {
+  const typing = typingOf(file.structure, structs, cases, language)
+  // The file's text, strings kept, so that a read inside an interpolation is typed too.
+  const text: Typing = { ...typing, code: file.text }
+  const reads: ShapeRead[] = []
+  for (const match of file.text.matchAll(/\.\s*`?([A-Za-z_]\w*)`?(?!\s*=(?!=))/g)) {
+    const field = match[1] as string
+    if (!fields.has(field) || file.text[match.index - 1] === '.') continue
+    const offset = match.index
+    const identity = file.identity.some(([from, to]) => from <= offset && offset <= to)
+    for (const shape of shapesBefore(text, offset)) {
+      if ('struct' in shape && structs.get(shape.struct)?.has(field) === true) {
+        reads.push({ struct: shape.struct, field, identity })
+      }
+    }
+  }
+
+  // An extension of a struct reads its fields by their names alone, or through `self` or `this`.
+  const { structure } = file
+  const extension =
+    language === 'swift'
+      ? /\bextension\s+(PM\w+)\b[^{]*\{/g
+      : /\bfun\s+(?:<[^>]*>\s*)?(PM\w+)(?:<[^>]*>)?\s*\.\s*\w+\s*\(/g
+  const label = language === 'swift' ? /^\s*:(?!:)/ : /^\s*=(?!=)/
+  for (const match of structure.matchAll(extension)) {
+    const struct = match[1] as string
+    const own = structs.get(struct)
+    if (own === undefined) continue
+    let open = match.index + match[0].length - 1
+    let close: number
+    if (language === 'swift') {
+      close = closeOf(structure, open)
+    } else {
+      const parameters = closeOf(structure, open)
+      const body = /[{=]/.exec(structure.slice(parameters))
+      if (body === null) continue
+      open = parameters + body.index
+      close =
+        body[0] === '{' ? closeOf(structure, open) : expressionEnd(structure, match.index, open)
+    }
+    const names = /(?<![\w$.])(?:(?:self|this)\s*\.\s*)?([A-Za-z_]\w*)\b/g
+    for (const name of file.text.slice(open, close).matchAll(names)) {
+      const field = name[1] as string
+      const at = open + name.index
+      if (!own.has(field) || label.test(file.text.slice(at + name[0].length, at + 80))) continue
+      const identity = file.identity.some(([from, to]) => from <= at && at <= to)
+      reads.push({ struct, field, identity })
+    }
+  }
+  return reads
+}
+
 export interface DrawnInput {
   language: NativeLanguage
   /** The key of `UNDRAWN`'s member lists for this platform. */
@@ -619,8 +1478,16 @@ export function undrawnViolations(input: DrawnInput): string[] {
   )
   const foundation = prepared.filter((file) => input.isFoundation(file.path))
   const everything = prepared.map((file) => file.text).join('\n')
-  const join = (from: readonly Prepared[], part: 'text' | 'drawing') =>
-    from.map((file) => file[part]).join('\n')
+  const shapeFields = new Set(
+    [...structs]
+      .filter(([struct]) => !struct.endsWith('Props'))
+      .flatMap(([, fields]) => [...fields.keys()]),
+  )
+  const { cases, nested } = contractCases(input.contract, language)
+  const typed: Structs = new Map([...structs, ...nested])
+  const readsIn = new Map(
+    prepared.map((file) => [file.path, shapeReads(file, typed, cases, shapeFields, language)]),
+  )
 
   /** The member a struct is named for: the longest member name that starts it. */
   const ownerOf = (struct: string): string | undefined => {
@@ -657,9 +1524,13 @@ export function undrawnViolations(input: DrawnInput): string[] {
             ? `${owner}.${field}`
             : `${owner}.${bare}.${field}`
       const key = keyOf(struct, field)
-      const named = new RegExp(`\\.\\s*\`?${field}\`?\\b`)
-      const isDrawn = isProps ? drawn.has(key) : named.test(join(readers, 'drawing'))
-      const isRecorded = isProps ? recorded.has(key) : named.test(join(readers, 'text'))
+      const reads = readers.flatMap((file) =>
+        (readsIn.get(file.path) ?? []).filter(
+          (read) => read.struct === struct && read.field === field,
+        ),
+      )
+      const isDrawn = isProps ? drawn.has(key) : reads.some((read) => !read.identity)
+      const isRecorded = isProps ? recorded.has(key) : reads.length > 0
       held.set(name, isDrawn ? 'drawn' : isRecorded ? 'recorded' : 'unread')
     }
   }

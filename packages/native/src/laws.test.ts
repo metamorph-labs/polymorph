@@ -686,6 +686,85 @@ describe('the laws detect faults', () => {
       }),
     ).toEqual([recorded('Badge.pinned'), recorded('Badge.sticky')])
   })
+
+  it('drawn props reads a shape’s field only from a value of that shape', () => {
+    const contract = [
+      'public struct PMRangeFieldProps {',
+      '  public var items: [PMRangeFieldItem]',
+      '  public var messages: PMRangeFieldMessages?',
+      '  public var value: PMRangeFieldRange?',
+      '}',
+      'public struct PMRangeFieldMessages {',
+      '  public var start: String?',
+      '  public var end: String?',
+      '  public var clear: String?',
+      '  public var empty: String?',
+      '}',
+      'public struct PMRangeFieldRange {',
+      '  public var start: String',
+      '  public var end: String',
+      '}',
+      'public struct PMRangeFieldItem {',
+      '  public var label: String',
+      '  public var hint: String?',
+      '}',
+    ].join('\n')
+    // The member reads its range's `start` and `end`, which are not its
+    // messages' `start` and `end`, and neither is the `end` of a foundation
+    // type of its own. It reads `clear` through a local, each item's `label`
+    // through a key path and `hint` through a closure's parameter, and hands
+    // its messages to a foundation function that reads `empty`.
+    const member = `
+      public struct PMRangeField: PMRangeFieldRendering {
+        private let props: PMRangeFieldProps
+        public var body: some View {
+          let messages = props.messages ?? PMStrings.rangeField
+          HStack {
+            Text(props.value?.start ?? "")
+            Text(props.value?.end ?? "")
+            Button(messages.clear ?? "") {}
+            Text(pmEmptyWord(props.messages))
+            ForEach(props.items, id: \\.label) { item in Text(item.hint ?? "") }
+          }
+        }
+      }
+    `
+    const foundation = `
+      func pmEmptyWord(_ messages: PMRangeFieldMessages?) -> String { messages?.empty ?? "" }
+      struct PMLegendEdge { let end: String }
+      func pmEdge(_ edge: PMLegendEdge) -> String { edge.end }
+    `
+    const check = (declared: readonly UndrawnProps[]) =>
+      undrawnViolations({
+        language: 'swift',
+        platform: 'ios',
+        contract,
+        files: [
+          { path: 'RangeField.swift', source: member },
+          { path: 'PolymorphUI+Sample.swift', source: foundation },
+        ],
+        isFoundation: (path) => path.startsWith('PolymorphUI'),
+        memberOf: memberOfFile,
+        members: ['RangeField'],
+        declared,
+      })
+    const undeclared = (name: string) =>
+      `${name}: the contract carries it and the rendering on ios never reads it — draw it, or declare it in undrawn.ts with the reason`
+
+    expect(check([])).toEqual([
+      undeclared('RangeField.RangeFieldMessages.start'),
+      undeclared('RangeField.RangeFieldMessages.end'),
+    ])
+    const entry = (props: string[]): UndrawnProps => ({ props, reason: 'r', ios: ['RangeField'] })
+    expect(check([entry(['RangeFieldMessages.start', 'RangeFieldMessages.end'])])).toEqual([])
+    expect(
+      check([
+        entry(['RangeFieldMessages.start', 'RangeFieldMessages.end', 'RangeFieldMessages.empty']),
+      ]),
+    ).toEqual([
+      'undrawn.ts (RangeFieldMessages.start, RangeFieldMessages.end, RangeFieldMessages.empty): RangeField.RangeFieldMessages.empty is read by its rendering on ios — remove it from the entry',
+    ])
+  })
 })
 
 /**
